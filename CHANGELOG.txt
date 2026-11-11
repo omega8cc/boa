@@ -100,6 +100,13 @@
 
 @=> Security
 
+    * The scheduled cron watchdog counts only the control panel's own cron
+      requests once the account has a cron key. Any site's PHP on the server
+      could send a request with the panel's agent and another site's name,
+      making that site look failing or clearing a real failure. The panel
+      makes the key in the account's home, readable by its backend user
+      alone, and sends it with each cron request, and nginx logs it.
+
     * A program a hosted account runs can no longer make the firewall block
       an address, or spare one from a block. rsyslog now reads who sent each
       line: the auth, authpriv, ftp and kernel lines of any sender but root
