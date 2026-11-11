@@ -33,7 +33,7 @@
 # map/geo vars across the whole http{} regardless of textual order, so the forward
 # reference is fine).
 #
-# 127.0.0.1, ::1, the server's own IPv4 and every live inbound SSH peer (v4 or v6)
+# 127.0.0.1, ::1, the server's own IPv4 and every logged-in SSH peer (v4 or v6)
 # are always allowed (anti-lockout), so an admin working over SSH can never be shut
 # out of /admin.  A site removed from the control file has both fragments pruned
 # (restriction lifted).  A deleted control file changes nothing: the lists stay as
@@ -973,14 +973,22 @@ _server_ip=""
 _valid_ip "${_server_ip}" || _server_ip=""
 
 _get_ssh_ips() {
-  # Same source ip_access.sh uses: `who --ips` is unavailable on Excalibur and
-  # newer, so read established inbound SSH peers from netstat.  netstat prints the
-  # foreign address as `<addr>:<port>`; the port is always the final `:field`, so
-  # strip it with a trailing-`:port` chop rather than splitting on the first colon
-  # — that yields the peer address for BOTH families (IPv4 `1.2.3.4:22` ->
-  # `1.2.3.4`, IPv6 `2001:db8::2:50913` -> `2001:db8::2`).  Each harvested token is
-  # validated by _valid_ip before it reaches a geo entry, so a parsed-garbage /
-  # scoped (fe80::1%eth0) token can never break configtest.
+  # The addresses of the logged-in SSH sessions, as ip_access.sh reads them. A
+  # bare connection to sshd (a scanner, a login still being refused) is no
+  # session and must not count: every change of this set rebuilds every
+  # account's lists and reloads nginx, and is never held. ss names each
+  # established socket's processes, and sshd titles a session's
+  # `<user>@<tty>` (`sshd: root@pts/0`, `sshd-session: root@notty`) or, once
+  # its login succeeded, `<user> [postauth]`; a connection before its login
+  # shows `[accepted]`, `[net]`, `[preauth]`, `unknown [priv]` or
+  # `sshd-auth: ...`. Where ss is missing or cannot name a socket's
+  # processes, the peer counts, as every established peer did before: an
+  # address too many beats a lockout. (`who --ips` is unavailable on
+  # Excalibur and newer, and utmp holds no entry for a session without a
+  # terminal.) The port is always the final `:field`, so it is chopped from
+  # the end (ss brackets an IPv6 address); each harvested token is validated
+  # by _valid_ip before it reaches a geo entry, so a parsed-garbage / scoped
+  # (fe80::1%eth0) token can never break configtest.
   # sshd may serve a custom _SSH_PORT, but the declared cnf value is not
   # always the effective one: hosted boxes and a failed sshd -t validation
   # force 22, and a cnf edit reaches sshd only on a firewall pass. Harvest
@@ -998,6 +1006,32 @@ _get_ssh_ips() {
       _ports="${_ports} ${_p}"
     fi
   done
+  local _f="" _out="" _line _peer _pid _t _re='^sshd(-session)?: [^[:space:]@]+(@| \[postauth\])'
+  for _p in ${_ports}; do
+    _f="${_f:+${_f} or }sport = :${_p}"
+  done
+  if command -v ss > /dev/null 2>&1 \
+    && _out=$(ss -tnpH state established "( ${_f} )" 2>/dev/null); then
+    while IFS= read -r _line; do
+      read -r _ _ _ _peer _ <<< "${_line}"
+      _peer="${_peer%:*}"
+      _peer="${_peer#[}"
+      _peer="${_peer%]}"
+      [[ -n "${_peer}" ]] || continue
+      if [[ "${_line}" != *"pid="* ]]; then
+        echo "${_peer}"
+        continue
+      fi
+      for _pid in $(grep -oE 'pid=[0-9]+' <<< "${_line}"); do
+        _t=$(tr '\0' ' ' 2>/dev/null < "/proc/${_pid#pid=}/cmdline")
+        if [[ "${_t}" =~ ${_re} ]]; then
+          echo "${_peer}"
+          break
+        fi
+      done
+    done <<< "${_out}" | sort -u
+    return 0
+  fi
   netstat -tn 2>/dev/null \
     | awk -v p=":(${_ports// /|})$" '$6 == "ESTABLISHED" && $4 ~ p { addr=$5; sub(/:[0-9]+$/, "", addr); print addr }' \
     | sort -u
@@ -1035,22 +1069,27 @@ _acct_reload_stamp() {
   date +%s > "${_ACCT_REQ_DIR}/${_RELOAD_TOOL}.${1}"
   rm -f "${_ACCT_REQ_DIR}/${_RELOAD_TOOL}.${1}.noted"
 }
-# The SSH addresses the account $1's lists now carry, recorded by root beside
-# its stamp once a reload has applied them (never before: a run that fails
-# and reverts must leave the next one free to apply them at once).
+# The SSH addresses the account $1's lists now carry (the server's own with
+# them), one a line, recorded by root beside its stamp once a reload has
+# applied them (never before: a run that fails and reverts must leave the
+# next one free to apply them at once).
 _acct_ssh_record() {
   mkdir -p -m 0700 "${_ACCT_REQ_DIR}" 2> /dev/null
-  echo "${_ssh_ips_hash}" > "${_ACCT_REQ_DIR}/${_RELOAD_TOOL}.${1}.ssh"
+  printf '%s\n' ${_ssh_ips} ${_server_ip} | sort -u > "${_ACCT_REQ_DIR}/${_RELOAD_TOOL}.${1}.ssh"
 }
-# Status 0 when the logged-in SSH addresses differ from the set applied for
-# the account $1 at its last reload, by root's own record beside its stamp.
-# The account's own marker is no judge of that: config/includes is the
-# account's, so it could move the marker away and have every change it makes
-# read as a new login's, which is never held.
+# Status 0 when a logged-in SSH address joined: one root's own record of the
+# set the account $1's lists last took lacks (no record: joined). A login
+# leaving, or one that comes back, only narrows or keeps those lists, so it
+# waits like any change. The account's own marker is no judge of this:
+# config/includes is the account's, so it could move the marker away and have
+# every change it makes read as a new login's, which is never held.
 _acct_ssh_changed() {
-  local _h
-  _h=$(tr -dc '0-9a-f' 2> /dev/null < "${_ACCT_REQ_DIR}/${_RELOAD_TOOL}.${1}.ssh")
-  [[ "${_h}" != "${_ssh_ips_hash}" ]]
+  local _rec _a
+  _rec=$(cat "${_ACCT_REQ_DIR}/${_RELOAD_TOOL}.${1}.ssh" 2> /dev/null) || return 0
+  for _a in ${_ssh_ips} ${_server_ip}; do
+    grep -qxF -- "${_a}" <<< "${_rec}" || return 0
+  done
+  return 1
 }
 
 _process_instance() {
