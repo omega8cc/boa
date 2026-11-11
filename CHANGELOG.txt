@@ -280,6 +280,11 @@
       leaving, or one coming back, now waits like any change. Where ss
       cannot name a connection's processes, its address still counts.
 
+    * The web abuse guard spares only the address of a logged-in SSH
+      session from its bans, told the same way. Anyone who held a
+      connection to the SSH port open, with no login, kept their address
+      out of the guard's bans for as long as it stayed open.
+
     * The pass that writes the quic_bpf fragment no longer reads Nginx's
       error log after a reload. A reload never runs that setting's eBPF
       init, so only a line it did not cause, such as a site's own PHP
