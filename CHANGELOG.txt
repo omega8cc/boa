@@ -170,7 +170,9 @@
       one account's change at most once in 15 minutes; a later change is
       applied when that time is up. A file touched every two minutes made
       each of them reload nginx, and reset every HTTP/3 transfer on the
-      server, at that pace.
+      server, at that pace. A new SSH login's address is let in at once,
+      and root's own run with _ACCT_RELOAD_HOLD=NO (edgetest sets it)
+      applies at once.
 
     * The pass that writes the quic_bpf fragment no longer reads Nginx's
       error log after a reload. A reload never runs that setting's eBPF
@@ -178,8 +180,9 @@
       message, could match, and that switched quic_bpf off for good.
 
     * The shell escape monitor takes this minute's and the last minute's
-      forbidden lines from each lshell log before any cap, at most 999 a
-      log. One login's long log pushed every other login's fresh lines out.
+      forbidden lines from the lshell logs before any cap, at most 999 for
+      each login. One login's long log pushed every other login's fresh
+      lines out.
 
     * An account's request to restart Nginx or the cache server, or to
       reload PHP-FPM, is honoured at most once in 15 minutes for that
