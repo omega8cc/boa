@@ -1184,8 +1184,8 @@ _guard_stats() {
 # The lines the pass owns inside the guarded window, by their EXACT shape:
 # " # <tag> ips" at the end of the line for every provider tag the refreshes
 # above write (site24x7_extra is a tag of its own) and the migration proxy
-# line; the DHCP lease line is rewritten after the guard and listed for
-# safety. Exact shapes, not bare words: an operator line whose comment merely
+# line; the DHCP lease lines are pruned and added after the guard, from the
+# lease files, and listed for safety. Exact shapes, not bare words: an operator line whose comment merely
 # mentions a provider is foreign to the pass, so a change to it is caught by
 # the diff-guard and named by the rollback alert instead of being tolerated
 # and hidden. A provider added above is added here, once -- left out, its own
@@ -1352,6 +1352,24 @@ _dhcp_allow_lease_servers() {
       echo "udp|out|d=67|d=${_srv} # Local DHCP out" >> /etc/csf/csf.allow
       echo "${_srv}"
     fi
+  done
+}
+
+# BOA's own DHCP allow lines (that exact shape) for a server no lease names
+# any more: a former server, or an address an older BOA took from a forged
+# log line. Pruned only while some lease names a server, so a dhclient
+# between restarts empties nothing; every other line stays.
+_dhcp_prune_stale_lines() {
+  local _keep _l _ip
+  [ -e "/etc/csf/csf.allow" ] || return 0
+  _keep="$(_dhcp_lease_servers)"
+  [ -n "${_keep}" ] || return 0
+  grep -E '^udp\|out\|d=67\|d=[0-9.]+ # Local DHCP out$' /etc/csf/csf.allow \
+    | while IFS= read -r _l; do
+    _ip="${_l#udp|out|d=67|d=}"
+    _ip="${_ip%% *}"
+    grep -qxF "${_ip}" <<< "${_keep}" && continue
+    sed -i "/^udp|out|d=67|d=${_ip//./\\.} # Local DHCP out$/d" /etc/csf/csf.allow
   done
 }
 
@@ -1524,6 +1542,7 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
   service lfd restart
   _NOW=$(date +%y%m%d-%H%M%S)
   cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-dhcp-${_NOW}
+  _dhcp_prune_stale_lines
   _NOW=$(date +%y%m%d-%H%M%S)
   cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-clear-${_NOW}
   sed -i "/^$/d" /etc/csf/csf.allow

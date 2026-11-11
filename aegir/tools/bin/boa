@@ -2644,9 +2644,9 @@ _csf_check_fix() {
         update-alternatives --set ebtables /usr/sbin/ebtables-legacy &> /dev/null
       fi
     fi
-    csf -e  &> /dev/null
     sed -i "/^$/d" /etc/csf/csf.allow
     _dhcp_allow_lease_servers > /dev/null
+    csf -e  &> /dev/null
     service lfd start &> /dev/null
     ### Linux kernel TCP SACK CVEs mitigation
     ### CVE-2019-11477 SACK Panic

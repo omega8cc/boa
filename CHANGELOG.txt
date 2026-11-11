@@ -100,13 +100,17 @@
       add only the allow lines that are missing. They read them from
       "DHCPREQUEST" lines in the system log, which any program could write,
       and the OS upgrade tools rewrote the list on a "dhclient ... Failed"
-      line.
+      line. guest-water's daily refresh removes BOA's own DHCP lines for a
+      server no lease names any more, and boa adds its line before it
+      re-enables the firewall, so the line takes effect.
 
-    * The FTP abuse scanner bans a client that tries a session without TLS
-      again: it looked for an older wording of pure-ftpd's refusal, so the
-      refusals of the current pure-ftpd went unbanned. Its filter of the
-      characters a line may carry now removes the others, as it was written
-      to; a misplaced slash had made it remove nothing.
+    * The FTP abuse scanner's filter of the characters a line may carry now
+      removes the others, as it was written to; a misplaced slash had made
+      it remove nothing. Its check for pure-ftpd's refusal of a session
+      without TLS is gone: it matched only an older wording, and the current
+      pure-ftpd logs that refusal only when a TLS start fails, which an FTPS
+      client that rejects the server's self-signed certificate does as well
+      as a scanner.
 
     * barracuda's pass-through for a database server that stopped halfway
       into a series upgrade takes a system log line as its evidence only
