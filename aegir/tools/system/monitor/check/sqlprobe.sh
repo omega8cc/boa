@@ -104,16 +104,30 @@ _dcy_live_count() {
 
 # A dump or load in flight: root's own mydumper or myloader, or one an
 # account's backend user runs (provision dumps and loads a site's database as
-# the account) when it is the installed binary itself; a copy or a link that
-# only carries the name is not.
+# the account) when the file it runs is one root installed under the name:
+# the one on the PATH, the build beside the installed mydumper (the myloader
+# wrapper on the PATH is a script that execs it) or the wrapper's fallbacks.
+# Compared by device and inode: a path read through /proc can name a file of
+# another mount namespace, and a copy or a link only carries the name.
 _dump_tool_live() {
-  local _p="" _bin="" _bU=""
+  local _p="" _x="" _e="" _md="" _ok=" " _bU=""
   pgrep -u root -U root -x "${1}" > /dev/null 2>&1 && return 0
-  _bin=$(readlink -f "$(command -v "${1}" 2> /dev/null)" 2> /dev/null)
-  [ -n "${_bin}" ] || return 1
+  _md=$(readlink -f /usr/local/bin/mydumper 2> /dev/null)
+  [ -n "${_md}" ] && [ -x "${_md}" ] \
+    || _md=$(readlink -f "$(command -v mydumper 2> /dev/null)" 2> /dev/null)
+  for _x in "$(command -v "${1}" 2> /dev/null)" "${_md:+${_md%/*}/${1}}" \
+    "/usr/local/bin/${1}.bin" "/usr/bin/${1}"; do
+    case "${_x}" in /*) ;; *) continue ;; esac
+    [ -x "${_x}" ] || continue
+    _e=$(stat -L -c '%d:%i' "${_x}" 2> /dev/null)
+    [ -n "${_e}" ] && _ok="${_ok}${_e} "
+  done
+  [ "${_ok}" != " " ] || return 1
   _bU="$(_boa_run_uids)"
   for _p in $(pgrep -u "${_bU}" -U "${_bU}" -x "${1}" 2> /dev/null); do
-    [ "$(readlink -f "/proc/${_p}/exe" 2> /dev/null)" = "${_bin}" ] && return 0
+    _e=$(stat -L -c '%d:%i' "/proc/${_p}/exe" 2> /dev/null)
+    [ -n "${_e}" ] || continue
+    case "${_ok}" in *" ${_e} "*) return 0 ;; esac
   done
   return 1
 }
