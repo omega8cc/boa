@@ -967,9 +967,14 @@ _left_add _in_pinned_dir "${drupal_root}" _walk_here f "${_MODE_FILE}" \
 ### opened the lock for the length of the walk in every platform Verify, and
 ### a run on a platform its owner had unlocked closed the modes over a tree
 ### whose patches were off. The three directories themselves are skipped;
-### what is in them is walked.
-_LOCK_DIRS_KEPT=( ! \( -path ./vendor/drush -o -path ./vendor/symfony/console/Input \
-  -o -path ./vendor/symfony/console/Style \) )
+### what is in them is walked. Only on a Drupal 8+ tree (core/), the one
+### provision locks: on Drupal 7 nothing locks them, and they take the
+### walk's mode like any other vendor directory.
+_LOCK_DIRS_KEPT=()
+if [ -e "${drupal_root}/core" ]; then
+  _LOCK_DIRS_KEPT=( ! \( -path ./vendor/drush -o -path ./vendor/symfony/console/Input \
+    -o -path ./vendor/symfony/console/Style \) )
+fi
 if [ -e "${drupal_root}/vendor" ]; then
   printf 'Setting permissions of all codebase directories inside %s...\n' "$(_nm "${drupal_root}/vendor")"
   _left_add _in_pinned_dir "${drupal_root}" \
