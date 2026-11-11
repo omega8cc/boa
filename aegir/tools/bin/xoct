@@ -2808,36 +2808,58 @@ _xoct_gate_put_here() {
 ### folder that is the account's own: a real directory root or one of the
 ### account's identities owns (the uids root keeps in
 ### /data/conf/acct-uids/<oN>), with no write for others and group write only
-### for group root or the account's own group; until that list exists, any.
-### Run inside the real static/, $1 = the account: OK, or why not and
-### status 1. Another account's login can make a control/ in the static/ of
-### an account still on the box-wide group when it has none, and a gate put
-### there holds nothing.
-_ACCT_GATE_OWN_PL='my $acct = shift @ARGV;
-exit 0 unless defined $acct && $acct =~ /^[a-z0-9-]+$/;
-open(my $f, "<", "/data/conf/acct-uids/$acct") or do { print "OK\n"; exit 0; };
+### for group root or the account's own group; until that list exists, or
+### while the deployed global-mode.inc predates the test, any. Run inside the
+### real static/, $1 = the account, $2 = t to first take write for others,
+### and group write for any other group, off a control folder that is the
+### account's own (through a no-follow handle, the folder lstat saw): OK, or
+### why not and status 1. Another account's login can make a control/ in the
+### static/ of an account still on the box-wide group when it has none, and a
+### gate put there holds nothing.
+_ACCT_GATE_OWN_PL='use Fcntl;
+my ($acct, $op) = @ARGV;
+$op = "" unless defined $op;
+my $old = 0;
+sub ok { print "OK\n"; exit 0; }
+sub refuse { ok() if $old; print "$_[0]\n"; exit 1; }
+ok() unless defined $acct && $acct =~ /^[a-z0-9-]+$/;
+open(my $f, "<", "/data/conf/acct-uids/$acct") or ok();
 my $l = do { local $/; <$f> };
 close($f);
 $l = "" unless defined $l;
 $l =~ s/^\s+|\s+\z//g;
-unless ($l =~ /^[0-9]+(,[0-9]+)*$/) { print "OK\n"; exit 0; }
+ok() unless $l =~ /^[0-9]+(,[0-9]+)*$/;
 my %ok = map { $_ => 1 } (0, split(/,/, $l));
-sub refuse { print "$_[0]\n"; exit 1; }
+if (open(my $g, "<", "/data/conf/global/global-mode.inc")) {
+  my $c = do { local $/; <$g> };
+  close($g);
+  $old = 1 unless defined $c && index($c, "/data/conf/acct-uids/") >= 0;
+}
+sub owng { return 1 if $_[0] == 0; my $n = getgrgid($_[0]); return (defined $n && $n eq $acct) ? 1 : 0; }
 my @s = lstat("./control") or refuse("there is no control folder");
 (($s[2] & 0170000) == 0040000) or refuse("control is not a folder");
 $ok{$s[4]} or refuse("control is owned by uid $s[4], none of the account");
-($s[2] & 02) and refuse("others can write control");
-if (($s[2] & 020) && $s[5] != 0) {
-  my $n = getgrgid($s[5]);
-  (defined $n && $n eq $acct) or refuse("group $s[5] can write control");
+if ($op eq "t" && sysopen(my $h, "./control", O_RDONLY | O_DIRECTORY | O_NOFOLLOW)) {
+  my @t = stat($h);
+  if (@t && $t[0] == $s[0] && $t[1] == $s[1] && $ok{$t[4]}) {
+    my $m = $t[2] & 07777;
+    my $n = $m & ~02;
+    $n &= ~020 if ($n & 020) && !owng($t[5]);
+    chmod($n, $h) if $n != $m;
+    @s = @t;
+    $s[2] = ($t[2] & ~07777) | $n;
+  }
+  close($h);
 }
-print "OK\n";
-exit 0;'
+($s[2] & 02) and refuse("others can write control");
+(($s[2] & 020) && !owng($s[5])) and refuse("group $s[5] can write control");
+ok();'
 ### Whether the sites' PHP honours a 503 gate in the control folder of the
-### account at $1 (/data/disk/<oN>): status 1 and why on stdout when not.
+### account at $1 (/data/disk/<oN>), with $2 = t its own folder closed to
+### other writers first: status 1 and why on stdout when not.
 _xoct_gate_own() {
   local _r
-  _r="$(_xoct_in_real_dir "${1}/static" perl -e "${_ACCT_GATE_OWN_PL}" -- "${1##*/}" 2> /dev/null)" \
+  _r="$(_xoct_in_real_dir "${1}/static" perl -e "${_ACCT_GATE_OWN_PL}" -- "${1##*/}" "${2:-}" 2> /dev/null)" \
     && return 0
   echo "${_r:-static/ is not a real directory}"
   return 1
@@ -3872,10 +3894,10 @@ _xoct_plant_host_gate() {
   _xoct_in_real_dir "${_usr}/static/control" \
     _xoct_host_gate_here "${_fqdn}" "${_oct_id}:${_grp}" || return 1
   ### written is not held: the sites' PHP ignores it in a folder not the
-  ### account's own
-  if ! _XOCT_GATE_WHY="$(_xoct_gate_own "${_usr}")"; then
-    echo "ALRT: the per-host gate is not honoured by ${_oct_id}'s sites (static/control: ${_XOCT_GATE_WHY})"
-    return 1
+  ### account's own (status 2)
+  if ! _XOCT_GATE_WHY="$(_xoct_gate_own "${_usr}" t)"; then
+    echo "ALRT: the per-host gate is written, but ${_oct_id}'s sites do not honour it (static/control: ${_XOCT_GATE_WHY})"
+    return 2
   fi
 }
 _xoct_host_gate_here() {
@@ -4356,7 +4378,7 @@ EOFMYSQL
           _xoct_gate_put_here http-off.pid 3600 "${_oct}:${_OCT_GRP}"; then
           echo "INFO: account ${_oct} http-off pid created"
         fi
-        if ! _XOCT_GATE_WHY="$(_xoct_gate_own "${_USR}")"; then
+        if ! _XOCT_GATE_WHY="$(_xoct_gate_own "${_USR}" t)"; then
           echo "ALRT: account ${_oct} 503 gate is not honoured by its sites (static/control: ${_XOCT_GATE_WHY}): they keep answering during this export"
         fi
         ###
@@ -7433,7 +7455,7 @@ _migrate_prepare() {
           && _xoct_in_real_dir "${_USR}/static/control" \
             _xoct_gate_put_here http-off.pid "${_XOCT_GATE_TTL:-3600}" \
             "${_THIS_HM_USER}:$(_acct_group "${_USR}")"
-        if ! _XOCT_GATE_WHY="$(_xoct_gate_own "${_USR}")"; then
+        if ! _XOCT_GATE_WHY="$(_xoct_gate_own "${_USR}" t)"; then
           echo "ALRT: account ${_THIS_HM_USER} 503 gate is not honoured by its sites (static/control: ${_XOCT_GATE_WHY}): its sites serve from this box"
         elif _xoct_in_real_dir "${_USR}/static/control" test -f ./http-off.pid; then
           echo "INFO: account ${_THIS_HM_USER} 503 gate put back"
@@ -7834,6 +7856,18 @@ _migrate_prepare() {
     _XOCT_HOST_INC="${_THIS_HM_SITE%/sites/*}/profiles/hostmaster/modules/aegir/hosting"
     if _xoct_read_in "${_XOCT_HOST_INC}" hosting.drush.inc | grep -q "'runner-wait' => array"; then
       _XOCT_RUNNER_UNTIL=$(( $(date +%s) + 600 ))
+    fi
+  fi
+  ### The export's 503 gate holds the sites while their databases are
+  ### dumped, so it has to sit in a control folder they honour: the
+  ### account's own is closed to other writers first, a missing one is made
+  ### root's, and one the account does not own refuses the export.
+  if [ "${_cmd}" = "export" ]; then
+    _xoct_in_real_dir "${_USR}/static" _xoct_ctrl_dir_here
+    if ! _XOCT_GATE_WHY="$(_xoct_gate_own "${_USR}" t)"; then
+      echo "ERROR: ${_USR##*/} not exported: its sites would not honour the 503 gate in static/control (${_XOCT_GATE_WHY})"
+      echo "ERROR: a control folder another account made is named by the ltd worker's ALERT; remove it, then run the export again"
+      exit 1
     fi
   fi
   if [ "${_cmd}" = "import" ] \
@@ -11251,8 +11285,14 @@ _migrate_init() {
           ### a deferred site must never be reachable ungated. A gate that
           ### cannot be written refuses the run with the account gate intact.
           if [ -n "${_XOCT_PROXY_DEFERRED}" ]; then
-            if ! _xoct_plant_host_gate "${_USR}" "${_oct}" "${_OCT_GRP}" "${_XOCT_DEFER_FQDN}"; then
-              echo "ERROR: could not write ${_USR}/static/control/http-off-host.pid for the deferred sites"
+            _xoct_plant_host_gate "${_USR}" "${_oct}" "${_OCT_GRP}" "${_XOCT_DEFER_FQDN}"
+            _XOCT_HG_RC=$?
+            if [ "${_XOCT_HG_RC}" -ne 0 ]; then
+              if [ "${_XOCT_HG_RC}" -eq 2 ]; then
+                echo "ERROR: the deferred sites' gate ${_USR}/static/control/http-off-host.pid is written, but the sites do not honour it there"
+              else
+                echo "ERROR: could not write ${_USR}/static/control/http-off-host.pid for the deferred sites"
+              fi
               _xoct_revert_converted_vhosts \
                 "${_USR}/config/server_master/nginx/vhost.d" \
                 "${_XOCT_FIRST_BACKUP_DOMS}"

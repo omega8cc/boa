@@ -176,17 +176,20 @@
       stays writable by the shared group, and a control folder that is not
       the account's own is left unread, with an ALERT line saying why.
 
-    * Another account can no longer take an account's sites offline with a
-      control folder of its own. Where an account not yet on its own group
-      had no ~/static/control, another account's login could make one, or
-      move a folder of its own there, holding the migration gate
-      http-off.pid, and every site of the account answered 503. The sites
-      now honour that gate, and its per-host twin, only in a control folder
-      that root or the account owns and no one else can write; the ltd
-      worker keeps the list of each account's identities the test reads in
-      /data/conf/acct-uids. xoct and xmass say so when a gate they put for
-      a move sits in a folder the sites ignore, and refuse a move whose
-      deferred sites could not be held.
+    * Another account can no longer take an account's Drupal and Backdrop
+      sites offline with a control folder of its own. Where an account not
+      yet on its own group had no ~/static/control, another account's login
+      could make one, or move a folder of its own there, holding the
+      migration gate http-off.pid, and every such site of the account
+      answered 503. They now honour that gate, and its per-host twin, only
+      in a control folder that root or the account owns and no one else can
+      write; the ltd worker keeps the list of each account's identities the
+      test reads in /data/conf/acct-uids. A folder left by a login that was
+      removed since loses its gate files before root hands it to the
+      account. xoct export and the xmass cutover first close the account's
+      own control folder to other writers and refuse to start on one the
+      account does not own; a deferred site's gate there refuses the move.
+      Grav and Textpattern sites still read the gate in nginx by path.
 
     * Root's checks that it stands in an account's own folder, before it
       reads, writes, changes the owner or mode of, or removes anything

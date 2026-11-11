@@ -226,9 +226,12 @@ if (!$is_backend && !$is_install && isset($_SERVER['DOCUMENT_ROOT'])) {
  * the account. The pools cannot read passwd, so the identities come from
  * the list root keeps for each account, /data/conf/acct-uids/<oct> (the
  * ltd worker's): until root has written it, the gate counts as before.
- * xoct and xmass put the gate in the account's own folder, or in one root
- * makes where there is none, and say so when what is there is not its own.
- * The test runs only while a gate file is there.
+ * xoct and xmass close the account's own folder to other writers before
+ * they put a gate, make root's where there is none, and refuse a move on a
+ * folder the account does not own; the worker removes the gate files from
+ * a folder a removed login left before root hands it to the account. Grav
+ * and Textpattern vhosts read the gate in nginx, by path. The test runs
+ * only while a gate file is there.
  */
 if (!$is_backend && !$is_install && isset($_SERVER['DOCUMENT_ROOT'])) {
   if (preg_match('#^(/data/disk/([^/]+))/#', $_SERVER['DOCUMENT_ROOT'], $_http_off_m)) {

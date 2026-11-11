@@ -2077,36 +2077,58 @@ _xmass_ctrl_dir_here() {
 ### folder that is the account's own: a real directory root or one of the
 ### account's identities owns (the uids root keeps in
 ### /data/conf/acct-uids/<oN>), with no write for others and group write only
-### for group root or the account's own group; until that list exists, any.
-### Run inside the real static/, $1 = the account: OK, or why not and
-### status 1. Another account's login can make a control/ in the static/ of
-### an account still on the box-wide group when it has none, and a gate put
-### there holds nothing.
-_ACCT_GATE_OWN_PL='my $acct = shift @ARGV;
-exit 0 unless defined $acct && $acct =~ /^[a-z0-9-]+$/;
-open(my $f, "<", "/data/conf/acct-uids/$acct") or do { print "OK\n"; exit 0; };
+### for group root or the account's own group; until that list exists, or
+### while the deployed global-mode.inc predates the test, any. Run inside the
+### real static/, $1 = the account, $2 = t to first take write for others,
+### and group write for any other group, off a control folder that is the
+### account's own (through a no-follow handle, the folder lstat saw): OK, or
+### why not and status 1. Another account's login can make a control/ in the
+### static/ of an account still on the box-wide group when it has none, and a
+### gate put there holds nothing.
+_ACCT_GATE_OWN_PL='use Fcntl;
+my ($acct, $op) = @ARGV;
+$op = "" unless defined $op;
+my $old = 0;
+sub ok { print "OK\n"; exit 0; }
+sub refuse { ok() if $old; print "$_[0]\n"; exit 1; }
+ok() unless defined $acct && $acct =~ /^[a-z0-9-]+$/;
+open(my $f, "<", "/data/conf/acct-uids/$acct") or ok();
 my $l = do { local $/; <$f> };
 close($f);
 $l = "" unless defined $l;
 $l =~ s/^\s+|\s+\z//g;
-unless ($l =~ /^[0-9]+(,[0-9]+)*$/) { print "OK\n"; exit 0; }
+ok() unless $l =~ /^[0-9]+(,[0-9]+)*$/;
 my %ok = map { $_ => 1 } (0, split(/,/, $l));
-sub refuse { print "$_[0]\n"; exit 1; }
+if (open(my $g, "<", "/data/conf/global/global-mode.inc")) {
+  my $c = do { local $/; <$g> };
+  close($g);
+  $old = 1 unless defined $c && index($c, "/data/conf/acct-uids/") >= 0;
+}
+sub owng { return 1 if $_[0] == 0; my $n = getgrgid($_[0]); return (defined $n && $n eq $acct) ? 1 : 0; }
 my @s = lstat("./control") or refuse("there is no control folder");
 (($s[2] & 0170000) == 0040000) or refuse("control is not a folder");
 $ok{$s[4]} or refuse("control is owned by uid $s[4], none of the account");
-($s[2] & 02) and refuse("others can write control");
-if (($s[2] & 020) && $s[5] != 0) {
-  my $n = getgrgid($s[5]);
-  (defined $n && $n eq $acct) or refuse("group $s[5] can write control");
+if ($op eq "t" && sysopen(my $h, "./control", O_RDONLY | O_DIRECTORY | O_NOFOLLOW)) {
+  my @t = stat($h);
+  if (@t && $t[0] == $s[0] && $t[1] == $s[1] && $ok{$t[4]}) {
+    my $m = $t[2] & 07777;
+    my $n = $m & ~02;
+    $n &= ~020 if ($n & 020) && !owng($t[5]);
+    chmod($n, $h) if $n != $m;
+    @s = @t;
+    $s[2] = ($t[2] & ~07777) | $n;
+  }
+  close($h);
 }
-print "OK\n";
-exit 0;'
+($s[2] & 02) and refuse("others can write control");
+(($s[2] & 020) && !owng($s[5])) and refuse("group $s[5] can write control");
+ok();'
 ### Whether the sites' PHP honours a 503 gate in the control folder of the
-### account $1: status 1 and why on stdout when not.
+### account $1, with $2 = t its own folder closed to other writers first:
+### status 1 and why on stdout when not.
 _xmass_gate_own() {
   local _r
-  _r="$(_xmass_in_real_dir "/data/disk/${1}/static" perl -e "${_ACCT_GATE_OWN_PL}" -- "${1}" 2> /dev/null)" \
+  _r="$(_xmass_in_real_dir "/data/disk/${1}/static" perl -e "${_ACCT_GATE_OWN_PL}" -- "${1}" "${2:-}" 2> /dev/null)" \
     && return 0
   echo "${_r:-static/ is not a real directory}"
   return 1
@@ -11107,6 +11129,25 @@ _xmass_restore_hint() {
   return 0
 }
 
+# Every source account this cutover gates has a control folder its sites
+# honour a gate in (_xmass_gate_own): its own is closed to other writers, a
+# missing one comes later as root's, and one the account does not own is
+# named, status 1.
+_xmass_gate_ready_all() {
+  local _oct _why _away _bad=""
+  for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    _away=$(_xmass_relays_elsewhere "${_oct}") && continue
+    [ -e "/data/disk/${_oct}/static/control" ] || [ -L "/data/disk/${_oct}/static/control" ] || continue
+    if ! _why="$(_xmass_gate_own "${_oct}" t)"; then
+      _alrt "  ${_oct}: its sites would not honour the 503 gate in static/control (${_why})"
+      _bad="${_bad} ${_oct}"
+    fi
+  done
+  [ -z "${_bad}" ] && return 0
+  _alrt "account(s)${_bad}: a control folder another account made is named by the ltd worker's ALERT; remove it before the cutover"
+  return 1
+}
+
 _xmass_block_web_all() {
   _info "Blocking web (http-off.pid) on all source accounts ..."
   _XMASS_WEB_BLOCKED=YES
@@ -11128,8 +11169,12 @@ _xmass_block_web_all() {
     # would keep the account gate off sites that still serve locally.
     if _mig_is_proxied "${_oct}" \
       || _xmass_word_in "${_oct}" "${_XMASS_PROXY_CONVERTED:-}"; then
-      _xmass_plant_host_gate "${_oct}" "$(_xmass_src_fqdn)" \
-        || _alrt "  ${_oct}: could not re-assert the per-host gate"
+      _xmass_plant_host_gate "${_oct}" "$(_xmass_src_fqdn)"
+      case "$?" in
+        0) ;;
+        2) _alrt "  ${_oct}: the per-host gate is re-asserted, but its sites do not honour it here" ;;
+        *) _alrt "  ${_oct}: could not re-assert the per-host gate" ;;
+      esac
       _held="${_held} ${_oct}"
       continue
     fi
@@ -11140,7 +11185,7 @@ _xmass_block_web_all() {
     _xmass_in_real_dir "/data/disk/${_oct}/static/control" \
       _xmass_put_here http-off.pid 7200 "${_oct}:$(_acct_group "${_oct}")" \
       || _alrt "  ${_oct}: could not write the 503 gate"
-    _why="$(_xmass_gate_own "${_oct}")" \
+    _why="$(_xmass_gate_own "${_oct}" t)" \
       || _alrt "  ${_oct}: its sites do not honour the 503 gate (static/control: ${_why}): they keep answering here"
   done
   # Purge the Nginx speed cache so cached 200s don't mask the 503
@@ -11180,11 +11225,11 @@ _xmass_plant_host_gate() {
   _xmass_in_real_dir "/data/disk/${_oct}/static/control" \
     _xmass_host_gate_here "${_fqdn}" "${_oct}:$(_acct_group "${_oct}")" || return 1
   # written is not held: the sites' PHP ignores it in a folder not the
-  # account's own
+  # account's own (status 2)
   local _why
-  if ! _why="$(_xmass_gate_own "${_oct}")"; then
-    _alrt "  ${_oct}: its sites do not honour the per-host gate (static/control: ${_why})"
-    return 1
+  if ! _why="$(_xmass_gate_own "${_oct}" t)"; then
+    _alrt "  ${_oct}: the per-host gate is written, but its sites do not honour it (static/control: ${_why})"
+    return 2
   fi
 }
 ### The per-host gate in the current (pinned) control directory: the name is
@@ -11595,8 +11640,12 @@ _xmass_convert_source_to_proxy() {
     if [ "${_pass}" = "relay" ]; then
       # The per-host gate goes up before xoct lifts the account gate; xoct
       # writes it too, and refuses the account when it cannot.
-      _xmass_plant_host_gate "${_oct}" "${_defer_fqdn}" \
-        || _alrt "  ${_oct}: could not write the per-host gate here; xoct will retry and refuse without it"
+      _xmass_plant_host_gate "${_oct}" "${_defer_fqdn}"
+      case "$?" in
+        0) ;;
+        2) _alrt "  ${_oct}: the per-host gate here is not honoured by its sites; xoct will refuse the account until its control folder is its own" ;;
+        *) _alrt "  ${_oct}: could not write the per-host gate here; xoct will retry and refuse without it" ;;
+      esac
       _info "  xoct proxy ${_oct} ${_tgt} --defer-host-named=${_defer_fqdn} ..."
       xoct proxy "${_oct}" "${_tgt}" --defer-host-named="${_defer_fqdn}" \
         ${_tok:+"admail=${_tok}"}
@@ -15887,6 +15936,14 @@ _xmass_return_gate() {
     _alrt "account(s)${_f} answer visitors here (no static/control/http-off.pid): fence this box first (the failover page)"
     return 1
   fi
+  # a gate in a control folder the sites ignore fences nothing
+  for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    _out="$(_xmass_gate_own "${_oct}" t)" || _f="${_f} ${_oct} (${_out})"
+  done
+  if [ -n "${_f}" ]; then
+    _alrt "account(s)${_f} answer visitors here: their sites ignore the gate in static/control; fence this box first (the failover page)"
+    return 1
+  fi
   _out="$(ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" '[ -e /root/.standby.cnf ] && echo XMRET-STANDBY
 [ -e /var/log/boa/.xmass_hand_promoted.pid ] && echo XMRET-HANDPATH
 _r=$(mysql --defaults-file=/root/.my.cnf -N -B -e "SELECT @@GLOBAL.read_only + @@GLOBAL.super_read_only" 2> /dev/null)
@@ -20077,6 +20134,10 @@ _xmass_cmd_cutover() {
   # restores it on success and _xmass_restore_hint covers the aborts below.
   _xmass_park_runners_and_cron
   _xmass_check_no_boa_running
+
+  # The 503 gate is the write barrier below, so each account's has to sit
+  # in a control folder its sites honour: checked before anything changes.
+  _xmass_gate_ready_all || _die "the cutover did not start: fix the control folders named above, then run it again"
 
   # Pause the mysql.sh watchdog on BOTH hosts for the whole cutover: a
   # watchdog restart of MySQL between the final position read and the

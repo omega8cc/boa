@@ -1875,6 +1875,49 @@ _ltd_acct_uids_put() {
   rm -f -- "${_f}.tmp"
   return 1
 }
+# Run inside the real static/: when control/ is a folder whose own owner no
+# passwd entry names, the gate files in it go and each name removed is
+# printed. A login removed from another account leaves its folder under such
+# a number, and root's walks take that number as the account's own and hand
+# the folder over; a gate left in it would then hold the account's sites.
+# The worker is parked through a move, so no gate of a move is lost here.
+_ACCT_GONE_GATE_PL='my @s = lstat("./control") or exit 0;
+exit 0 unless ($s[2] & 0170000) == 0040000;
+{
+  local $! = 0;
+  exit 0 if defined(getpwuid($s[4]));
+  exit 0 unless $! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM};
+}
+chdir("./control") or exit 0;
+my @d = stat(".");
+exit 0 unless @d && $d[0] == $s[0] && $d[1] == $s[1];
+for my $n ("http-off.pid", "http-off-host.pid") {
+  print "$n\n" if lstat($n) && unlink($n);
+}
+exit 0;'
+# The account $1's uid list for its sites (_ltd_acct_uids_put) and the gate
+# files out of a control/ a gone login left (_ACCT_GONE_GATE_PL), before any
+# walk of this pass hands that folder to the account.
+_ltd_ctrl_gate_guard() {
+  local _r
+  id -u -- "${1}" > /dev/null 2>&1 || return 0
+  [ -d "/data/disk/${1}/static" ] || return 0
+  _ltd_acct_uids_put "${1}" \
+    || echo "ALERT: could not write /data/conf/acct-uids/${1}"
+  _r=$(_ltd_in_real_dir "/data/disk/${1}/static" perl -e "${_ACCT_GONE_GATE_PL}" 2> /dev/null)
+  if [ -n "${_r}" ]; then
+    echo "ALERT: /data/disk/${1}/static/control is owned by a number no user has: its 503 gate files are removed ($(printf '%s' "${_r}" | tr '\n' ' '))"
+  fi
+  return 0
+}
+_ltd_ctrl_gate_guard_all() {
+  local _p
+  for _p in /data/disk/*; do
+    [ -d "${_p}" ] && [ ! -L "${_p}" ] || continue
+    _ltd_ctrl_gate_guard "${_p##*/}"
+  done
+  return 0
+}
 # The whole of an account's control/, judged once before a run acts on it:
 # run inside the account's real static/, it prints OK when control/ and
 # everything in it, never followed through a link, and static/ and every
@@ -7753,8 +7796,7 @@ _manage_user() {
       # carries a matching stamp skip the guard for the whole pass. oN can
       # swap static/ itself, so the strip and the mkdir act only inside the
       # real static/.
-      _ltd_acct_uids_put "${_USER}" \
-        || echo "ALERT: could not write /data/conf/acct-uids/${_USER}"
+      _ltd_ctrl_gate_guard "${_USER}"
       _ltd_ctrl_shut "${_USER}"
       _ltd_in_real_dir "${_dscUsr}/static" _desymlink_planted ./control
       if [ ! -e "${_dscUsr}/static/control/.ctrl.${_tRee}.${_xSrl}.pid" ] \
@@ -9661,6 +9703,9 @@ else
   _add_ltd_group_if_not_exists
   _add_allow_snail_if_not_exists
   _kill_zombies >/var/backups/ltd/log/zombies-${_NOW}.log 2>&1
+  # after the reaps and before any walk hands a gone login's files over or
+  # a new login takes a freed number
+  _ltd_ctrl_gate_guard_all >>/var/backups/ltd/log/zombies-${_NOW}.log 2>&1
   _ltd_gone_hand_over_all >>/var/backups/ltd/log/zombies-${_NOW}.log 2>&1
   # before the account loop, which skips a frozen account: one the route
   # clears rejoins this very pass
