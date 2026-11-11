@@ -201,6 +201,35 @@ _boa_run_uids() {
   echo "${_l:-0}"
 }
 
+# Duplicity runs in flight, counted from root's processes alone: root's own
+# duplicity, and root's mybackup pass, which runs an account's queued restore
+# as the account through su. An account's own process is never counted: the
+# account's site code runs as its backend user in tasks and can give a
+# process any command line.
+_dcy_live_count() {
+  local _a _b _c
+  _a=$(pgrep -u root -U root -fc '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)' 2> /dev/null)
+  _b=$(pgrep -u root -U root -fc '^[^ ]*duplicity( |$)' 2> /dev/null)
+  _c=$(pgrep -u root -U root -fc '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*mybackup( |$)' 2> /dev/null)
+  echo $(( ${_a:-0} + ${_b:-0} + ${_c:-0} ))
+}
+
+# A dump or load in flight: root's own mydumper or myloader, or one an
+# account's backend user runs (provision dumps and loads a site's database as
+# the account) when it is the installed binary itself; a copy or a link that
+# only carries the name is not.
+_dump_tool_live() {
+  local _p="" _bin="" _bU=""
+  pgrep -u root -U root -x "${1}" > /dev/null 2>&1 && return 0
+  _bin=$(readlink -f "$(command -v "${1}" 2> /dev/null)" 2> /dev/null)
+  [ -n "${_bin}" ] || return 1
+  _bU="$(_boa_run_uids)"
+  for _p in $(pgrep -u "${_bU}" -U "${_bU}" -x "${1}" 2> /dev/null); do
+    [ "$(readlink -f "/proc/${_p}/exe" 2> /dev/null)" = "${_bin}" ] && return 0
+  done
+  return 1
+}
+
 # Sanitize numeric variables (allow digits and decimal point)
 _sanitize_number() {
   echo "$1" | sed 's/[^0-9.]//g'
@@ -634,22 +663,19 @@ _backup_in_progress() {
   pgrep -u root -U root -f '(^|(^| )[^ ]*bash )/var/xdrago/(mysql_backup|mysql_cluster_backup)\.sh( |$)' >/dev/null 2>&1 && return 0
   # mydumper and myloader also run as an account's backend user: provision
   # takes a site's dump and load with them in its backup, clone and migrate
-  local _bU=""
-  _bU="$(_boa_run_uids)"
-  pgrep -u "${_bU}" -U "${_bU}" -x mydumper >/dev/null 2>&1 && return 0
+  _dump_tool_live mydumper && return 0
   # xtrabackup/myloader: an xmass seed or a restore is disk-bound work on
   # a box whose cron now stays armed -- its load must not trip the
   # drastic tiers any more than a duplicity run's. The packaged myloader
   # is a wrapper exec'ing myloader.bin, so match both comm names.
   pgrep -u root -U root -x xtrabackup >/dev/null 2>&1 && return 0
   pgrep -u root -U root -x xbstream >/dev/null 2>&1 && return 0      # the xmass seed's receiving end
-  pgrep -u "${_bU}" -U "${_bU}" -x myloader >/dev/null 2>&1 && return 0
-  pgrep -u "${_bU}" -U "${_bU}" -x myloader.bin >/dev/null 2>&1 && return 0
+  _dump_tool_live myloader && return 0
+  _dump_tool_live myloader.bin && return 0
   # duplicity runs as its pipx venv python with the console script as the
   # argument, never as a process named duplicity: the anchored pair the other
   # gates use, not a comm test that can never match.
-  pgrep -u "${_bU}" -U "${_bU}" -f '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)' >/dev/null 2>&1 && return 0
-  pgrep -u "${_bU}" -U "${_bU}" -f '^[^ ]*duplicity( |$)' >/dev/null 2>&1
+  [ "$(_dcy_live_count)" -gt 0 ]
 }
 
 # Measured system iowait% over a short sample. Used to CONFIRM a backup's high

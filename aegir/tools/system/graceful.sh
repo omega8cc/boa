@@ -5,15 +5,17 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 
-# The real uids of BOA's own work: root, aegir and each account's backend
-# user (home /data/disk/<name>), as whom root runs the account's tasks and
-# queued restores; never a web, FTP or shell login, which can give its own
+# Duplicity runs in flight, counted from root's processes alone: root's own
+# duplicity, and root's mybackup pass, which runs an account's queued restore
+# as the account through su. An account's own process is never counted: the
+# account's site code runs as its backend user in tasks and can give a
 # process any command line.
-_boa_run_uids() {
-  local _l=""
-  _l=$(getent passwd 2> /dev/null \
-    | awk -F: '$3 == 0 || $1 == "aegir" || $6 ~ /^\/data\/disk\/[^\/]+\/?$/ { printf "%s%s", s, $3; s = "," }')
-  echo "${_l:-0}"
+_dcy_live_count() {
+  local _a _b _c
+  _a=$(pgrep -u root -U root -fc '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)' 2> /dev/null)
+  _b=$(pgrep -u root -U root -fc '^[^ ]*duplicity( |$)' 2> /dev/null)
+  _c=$(pgrep -u root -U root -fc '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*mybackup( |$)' 2> /dev/null)
+  echo $(( ${_a:-0} + ${_b:-0} + ${_c:-0} ))
 }
 
 # Function to check if the script is run as root
@@ -968,9 +970,8 @@ _graceful_action() {
   _purge_weekly_backups
 
   # Speed cleanup
-  local _bU=""
-  _bU="$(_boa_run_uids)"
-  _IF_BCP="$(pgrep -u "${_bU}" -U "${_bU}" -f '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)'; pgrep -u "${_bU}" -U "${_bU}" -f '^[^ ]*duplicity( |$)')"
+  _IF_BCP=""
+  [ "$(_dcy_live_count)" -gt 0 ] && _IF_BCP=YES
   if [ -z "${_IF_BCP}" ] && [ ! -e "/run/speed_cleanup.pid" ] && [ ! -e "/root/.giant_traffic.cnf" ]; then
     echo "Performing speed cleanup..."
     touch /run/speed_cleanup.pid
