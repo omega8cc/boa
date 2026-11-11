@@ -143,6 +143,9 @@ foreach (array('STDIN' => 'r', 'STDOUT' => 'w', 'STDERR' => 'w') as $name => $mo
     define($name, fopen('php://' . strtolower($name), $mode));
   }
 }
+// The worker creates folders as the site's web requests do: with the group
+// write the hosting model gives them (BOA's Grav setup file sets the same).
+umask(0002);
 $argv = array('bin/plugin', 'kahunacart', 'work', '--quiet');
 $argc = count($argv);
 $_SERVER['argv'] = $argv;

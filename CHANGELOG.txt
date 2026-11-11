@@ -315,6 +315,16 @@
 
 @=> Important Fixes
 
+    * A Grav site's web requests create folders with group write, as the
+      hosting model and the shell's grav command have them: Grav makes its
+      cache folders under the process umask, and PHP-FPM's 0022 left each
+      one the web server made at 2755, so the account's own cache clear or
+      package update listed its files as "Unable to delete file" until a
+      Verify or the nightly handed the folder back. The vhost now names
+      BOA's Grav setup file, which sets umask 0002 for the request and then
+      loads the site's own setup.php; the shop worker's tick does the same.
+      A site takes it at its next Verify after the server's upgrade.
+
     * A migration source that still holds an SSH host key for its target's
       address, left from an earlier server there, is told so. xmass
       prep-target and init stopped at "cannot verify the standby state of
