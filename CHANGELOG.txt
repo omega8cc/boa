@@ -165,6 +165,16 @@
       restore runs as the account, which could stall it and so hold the
       restore queue and every backup of the box for as long as it liked.
 
+    * An account's own off-site backup no longer keeps the server's own
+      backup from running. Root runs multiback over the data of an account
+      whose own credentials are filled in, and the account sets how long
+      that run takes: backboa, which does not try again before the next
+      night, lost every night such a run was still going at 03:15, and
+      duobackboa and root's own multiback entries gave up as well. Their
+      backup runs now go beside an account's run, and the account's entry
+      waits while one of them runs; an unconfigured duobackboa no longer
+      waits two hours for nothing, which would hold the accounts' entries.
+
     * Another account can no longer put its own files in an account's
       ~/static/control, and root acts on that folder only when it is the
       account's own. On an account not yet on its own group, ~/static was
