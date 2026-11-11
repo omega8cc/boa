@@ -12250,6 +12250,8 @@ _mig_runlog_start xoct "$@"
 # explicit --live is required (accepted only after a CLEAN dry run for the same
 # account+target — the autosymlink --batch model). Only --prefixed mode flags are
 # recognised (and stripped), so no positional argument is ever mistaken for one.
+# A shared or xusage run given any other verb is a live run: it needs, and uses up,
+# a clean dry run of the same word and target.
 _MODE=LIVE
 _XOCT_NOT_CLEAN=NO
 _XOCT_GMAP=""
@@ -12914,6 +12916,7 @@ case "$1" in
             echo "Usage: xoct {pre-mig} {source-fqdn} (source vms: publishes its key and prints its fingerprint)"
             echo "Usage: xoct {pre-mig} {source-fqdn} --key-fp=SHA256:... (target vms: the fingerprint the source printed)"
             echo "Usage: xoct {export|create|pretransfer|transfer|proxy} {o1|shared} {target-ip} {o2}"
+            echo "Usage: xoct {pretransfer|transfer} {xusage} {target-ip} (the usage records alone: a dry run, then --live)"
             echo "Usage: xoct {create} {o1} {target-ip} {o2} [--fix-php] [--adopt] (also seeds octopus.cnf, PHP pins, credentials)"
             echo "Usage: xoct {import} {o1} {target-ip} {o2} (target vms, optional target account rename)"
             echo "Usage: xoct {reset-state} {o1} (clear migration state for a fresh/chained migration)"

@@ -6516,6 +6516,8 @@ _mig_runlog_start xcopy "$@"
 # explicit --live is required (accepted only after a CLEAN dry run for the same
 # account+target — the autosymlink --batch model). Only --prefixed mode flags are
 # recognised (and stripped), so no positional argument is ever mistaken for one.
+# A shared or xusage run given any other verb is a live run: it needs, and uses up,
+# a clean dry run of the same word and target.
 _MODE=LIVE
 _XCOPY_NOT_CLEAN=NO
 _XCOPY_GMAP=""
@@ -6852,6 +6854,7 @@ case "$1" in
             echo "Usage: xcopy {pre-mig} {source-fqdn} (source vms: publishes its key and prints its fingerprint)"
             echo "Usage: xcopy {pre-mig} {source-fqdn} --key-fp=SHA256:... (target vms: the fingerprint the source printed)"
             echo "Usage: xcopy {export|create|pretransfer|transfer|noproxy} {o1|shared} {target-ip}"
+            echo "Usage: xcopy {pretransfer|transfer} {xusage} {target-ip} (the usage records alone: a dry run, then --live)"
             echo "       (the account keeps its name: xoct moves an account under a new one)"
             echo "Usage: xcopy {create} {o1} {target-ip} [--fix-php] (installs the PHP versions in force here that the target lacks)"
             echo "Usage: xcopy {import} {o1} {target-ip} (target vms)"

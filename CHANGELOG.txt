@@ -518,6 +518,7 @@
       first and --live after a clean one. It refuses a missing target and a
       target that takes no login, names a changed host key before anything
       travels, ends on a failed copy, and says so when the box holds no records.
+      The usage text of both tools names the run.
 
     * A Drupal 8+ site renamed by a Migrate on its own platform answered
       500 ("Class ... not found") until PHP-FPM restarted, while every task
