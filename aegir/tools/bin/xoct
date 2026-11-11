@@ -5556,6 +5556,94 @@ _mig_php_inert_choices() {
   done
 }
 
+### Where an account-wide fpm.info ($1 = fpm) or cli.info ($1 = cli) naming the
+### PHP $2 lands on a server whose installed versions are $3 (" 8.3 8.4 "): $2
+### itself when installed, else the first installed one of its fallback chain.
+### The chain is the ltd worker's (manage_ltd_users.sh: fpm_fallback and
+### fallback), after the Octopus pass's own ladder (satellite.sh.inc), which runs
+### first on a moved account and writes what it finds back into the file: for
+### fpm.info 8.0 and 7.4 that ladder takes 8.1 before the worker's 8.3. With
+### nothing of the chain installed, the web side keeps the version the account
+### runs ($4) where it is installed, else 8.4 (the worker's default pool); the
+### command line runs the server's own default PHP ($5, /usr/bin/php). On a
+### target the Octopus pass writes an unresolved version into the cnf itself,
+### so there the web side lands on 8.4 ($4 empty).
+_mig_php_lands() {
+  local _k="$1" _v="$2" _have="$3" _cur="$4" _def="$5" _chain="" _c
+  case "${_v}" in
+    8.6) _chain="8.5 8.4 8.3 8.2 8.1" ;;
+    8.5) _chain="8.4 8.3 8.2 8.1" ;;
+    8.4) _chain="8.3 8.2 8.1" ;;
+    8.3) _chain="8.2 8.1" ;;
+    8.2) _chain="8.1 8.3" ;;
+    8.1) _chain="8.2 8.3" ;;
+    8.0|7.4) if [ "${_k}" = "fpm" ]; then _chain="8.1 8.3"; else _chain="8.1"; fi ;;
+    7.3|7.2|7.1|7.0|5.6) _chain="7.4" ;;
+  esac
+  case "${_have}" in *" ${_v} "*) echo "${_v}"; return 0 ;; esac
+  for _c in ${_chain}; do
+    case "${_have}" in *" ${_c} "*) echo "${_c}"; return 0 ;; esac
+  done
+  if [ "${_k}" = "fpm" ]; then
+    case "${_have}" in *" ${_cur:-none} "*) echo "${_cur}"; return 0 ;; esac
+    echo 8.4
+  else
+    echo "${_def}"
+  fi
+}
+
+### An account-wide fpm.info or cli.info naming a PHP that neither server has
+### lands on its fallback on each (_mig_php_lands): named when the two differ,
+### since the account then moves to another PHP at the cutover with nothing
+### said. $1 = the account, $2 = the target, $3 = alrt or deny, $4 = the
+### version, $5 = what names it, $6 = the versions the target has or a fix
+### installs there, $7 = the account's directory. A phpNN.info marker in force
+### outranks cli.info (websh), and the marker rows name its own moves.
+_xoct_php_lands_report() {
+  local _acct="$1" _t="$2" _how="$3" _v="$4" _w="$5" _there="$6" _u="$7" _k _cur="" _here=" " _e _a _b _dh="" _dt=""
+  case "${_w}" in
+    "its fpm.info") _k=fpm ;;
+    "its cli.info") _k=cli ;;
+    *) return 0 ;;
+  esac
+  ### no answer from the target: never a guess
+  [ -n "${_there// /}" ] || return 0
+  for _e in 5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3 8.4 8.5 8.6; do
+    [ -x "/opt/php${_e//./}/bin/php" ] && _here="${_here}${_e} "
+  done
+  if [ "${_k}" = "fpm" ]; then
+    _cur="$(grep -a "^_PHP_FPM_VERSION=" "/root/.${_acct}.octopus.cnf" 2> /dev/null | tail -n 1)"
+    _cur="$(_mig_php_norm "${_cur#*=}")"
+  else
+    ### a marker in force here or there: cli.info does nothing on that side
+    if _xoct_in_real_dir "${_u}/static/control" true; then
+      for _e in 5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3 8.4 8.5 8.6; do
+        [ -e "${_u}/static/control/php${_e//./}.info" ] || continue
+        case "${_here} ${_there} " in *" ${_e} "*) return 0 ;; esac
+      done
+    fi
+    ### the server's own default PHP, /usr/bin/php, on each side
+    _dh="$(readlink -f /usr/bin/php 2> /dev/null)"
+    _dh="${_dh#*/php}"
+    _dh="$(_mig_php_norm "${_dh%%/*}")"
+    _dt="$(ssh root@"${_t}" 'readlink -f /usr/bin/php' 2> /dev/null)"
+    _dt="${_dt#*/php}"
+    _dt="$(_mig_php_norm "${_dt%%/*}")"
+    [ -n "${_dt}" ] || return 0
+  fi
+  _a="$(_mig_php_lands "${_k}" "${_v}" "${_here}" "${_cur}" "${_dh}")"
+  _b="$(_mig_php_lands "${_k}" "${_v}" " ${_there} " "" "${_dt}")"
+  [ "${_a}" != "${_b}" ] || return 0
+  _a="${_a:+PHP ${_a}}"
+  _b="${_b:+PHP ${_b}}"
+  if [ "${_how}" = "deny" ]; then
+    echo "DENY: ${_acct}: ${_w} names PHP ${_v}, which neither server has, so it runs on ${_a:-the PHP it runs now} here and would run on ${_b:-the PHP it runs now} on ${_t} from the cutover. Write the PHP it should run on in it."
+    _XOCT_NOT_CLEAN=YES
+  else
+    echo "ALRT: ${_acct}: ${_w} names PHP ${_v}, which neither server has, so it runs on ${_a:-the PHP it runs now} here and would run on ${_b:-the PHP it runs now} on ${_t} from the cutover."
+  fi
+}
+
 ### The tree the TARGET runs, for target-side barracuda/octopus verbs; the
 ### local _tRee belongs to THIS box and a cross-tree migration must not push
 ### the source's tree through the target's licence gate.
@@ -5585,7 +5673,12 @@ _xoct_php_inert_report() {
   while IFS= read -r _row; do
     _v="${_row%% *}"
     _w="${_row#* }"
-    case "${_have}${_fix}" in *" ${_v} "*) ;; *) continue ;; esac
+    case "${_have}${_fix}" in
+      *" ${_v} "*) ;;
+      *)
+        _xoct_php_lands_report "${_acct}" "${_t}" "${_how}" "${_v}" "${_w}" "${_have}${_fix}" "${_u}"
+        continue ;;
+    esac
     if [ "${_how}" = "deny" ]; then
       echo "DENY: ${_acct}: ${_w} names PHP ${_v}, which this server lacks, so it does nothing here; on ${_t} it applies from the cutover. Delete it, or install PHP ${_v} here."
       _XOCT_NOT_CLEAN=YES
