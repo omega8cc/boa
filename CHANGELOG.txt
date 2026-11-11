@@ -102,6 +102,12 @@
       and the OS upgrade tools rewrote the list on a "dhclient ... Failed"
       line.
 
+    * The FTP abuse scanner bans a client that tries a session without TLS
+      again: it looked for an older wording of pure-ftpd's refusal, so the
+      refusals of the current pure-ftpd went unbanned. Its filter of the
+      characters a line may carry now removes the others, as it was written
+      to; a misplaced slash had made it remove nothing.
+
     * barracuda's pass-through for a database server that stopped halfway
       into a series upgrade takes a system log line as its evidence only
       under the mysqld tag, which rsyslog keeps for root and the server's

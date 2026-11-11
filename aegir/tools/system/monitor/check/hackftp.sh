@@ -134,7 +134,11 @@ _recycle_log() {
 #
 # BOA runs pure-ftpd (DontResolve/-H), which logs to /var/log/messages as:
 #   "... host pure-ftpd: (?@1.2.3.4) [WARNING] Authentication failed for user [name]"
-#   "... host pure-ftpd: (?@1.2.3.4) [WARNING] Sorry, cleartext sessions are not accepted"
+#   "... host pure-ftpd: (?@1.2.3.4) [WARNING] Sorry, cleartext sessions and weak
+#    ciphers are not accepted on this server.#012Please reconnect using TLS ..."
+# (older pure-ftpd releases wrote "Sorry, cleartext sessions are not accepted";
+# both forms count: BOA's pure-ftpd refuses sessions without TLS, and a client
+# that tries one is banned like a failed login.)
 #
 # The peer IP is the server-written "(?@<ip>)" prefix; the login name is
 # attacker-controlled and logged later inside "[...]". We anchor extraction on
@@ -177,11 +181,14 @@ _makeactions() {
     exec 3< <(tail -c +$(( _last_offset + 1 )) "${_MESSAGES_LOG}" 2>/dev/null)
   fi
 
+  local _cleartext_re='Sorry, cleartext sessions (and weak ciphers )?are not accepted'
   while LC_ALL=C IFS= read -r _line <&3; do
-    _line="${_line//[^a-zA-Z0-9: $'\t'\/@_()*/\[\].,\-]/}"
+    # Keep only the characters the checks below read; the slash inside the
+    # set is escaped, since an unescaped one ends the pattern.
+    _line="${_line//[^a-zA-Z0-9: $'\t'\/@_()*\[\].,\-]/}"
 
     if [[ "${_line}" =~ "Authentication failed for user" ]] || \
-       [[ "${_line}" =~ "Sorry, cleartext sessions are not accepted" ]]; then
+       [[ "${_line}" =~ ${_cleartext_re} ]]; then
 
       _line_is_recent "${_line}" || continue
 
