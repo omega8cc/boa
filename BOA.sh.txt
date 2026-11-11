@@ -2764,7 +2764,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/monitor/check/valkey.sh "${_urlHmr}/tools/system/monitor/check/valkey.sh" f72
     _fetch_versioned /var/xdrago/monitor/check/system.sh "${_urlHmr}/tools/system/monitor/check/system.sh" f59
     _fetch_versioned /var/xdrago/monitor/check/unbound.sh "${_urlHmr}/tools/system/monitor/check/unbound.sh" f78
-    _fetch_versioned /var/xdrago/monitor/check/escapecheck.sh "${_urlHmr}/tools/system/monitor/check/escapecheck.sh" f93
+    _fetch_versioned /var/xdrago/monitor/check/escapecheck.sh "${_urlHmr}/tools/system/monitor/check/escapecheck.sh" f92
     _fetch_versioned /var/xdrago/monitor/check/hackcheck.sh "${_urlHmr}/tools/system/monitor/check/hackcheck.sh" f86
     _fetch_versioned /var/xdrago/monitor/check/hackftp.sh "${_urlHmr}/tools/system/monitor/check/hackftp.sh" f90
     _fetch_versioned /var/xdrago/monitor/check/segfault_alert.sh "${_urlHmr}/tools/system/monitor/check/segfault_alert.sh" f98
