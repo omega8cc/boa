@@ -804,12 +804,15 @@ _get_ssh_ips() {
   # The addresses of the logged-in SSH sessions. A bare connection to sshd
   # (a scanner, a login still being refused) is no session and must not
   # count: every change of this set rebuilds every account's lists and
-  # reloads nginx, and is never held. ss names each established socket's
-  # processes, and sshd titles a session's `<user>@<tty>` (`sshd: root@pts/0`,
-  # `sshd-session: root@notty`) or, once its login succeeded,
-  # `<user> [postauth]`; a connection before its login shows `[accepted]`,
-  # `[net]`, `[preauth]`, `unknown [priv]` or `sshd-auth: ...`. Where ss is
-  # missing or cannot name a socket's processes, the peer counts, as every
+  # reloads nginx, and is never held. sshd titles a session's processes
+  # `<user>@<tty>` (`sshd: root@pts/0`, `sshd-session: root@notty`) or, once
+  # its login succeeded, `<user> [postauth]` (before OpenSSH 10.5 a login
+  # with no shell or command yet, a tunnel, is `<user>` alone); a connection
+  # before its login shows `[accepted]`, `[net]`, `[preauth]`, `<user>
+  # [priv]`, `unknown [priv]` or `sshd-auth: ...`. The sockets those session processes hold, by inode, are
+  # the established connections that count: only their descriptors are read,
+  # never every process's as `ss -p` would. Where ss or pgrep is missing or
+  # fails, or ss gives a connection no inode, the peer counts, as every
   # established peer did before: an address too many beats a lockout.
   # (`who --ips` is unavailable on Excalibur and newer, and utmp holds no
   # entry for a session without a terminal.) The port is always the final
@@ -834,34 +837,57 @@ _get_ssh_ips() {
       _ports="${_ports} ${_p}"
     fi
   done
-  local _f="" _out="" _line _peer _pid _t _re='^sshd(-session)?: [^[:space:]@]+(@| \[postauth\])'
+  local _f="" _out="" _line _peer _ino _x _pid _pids _rc
+  local _re='^sshd(-session)?: [^][:space:]@[]+(@|[[:space:]]*$| \[postauth\])'
+  local -a _fds=()
+  local -A _held=()
   for _p in ${_ports}; do
     _f="${_f:+${_f} or }sport = :${_p}"
   done
-  if command -v ss > /dev/null 2>&1 \
-    && _out=$(ss -tnpH state established "( ${_f} )" 2>/dev/null); then
-    while IFS= read -r _line; do
-      read -r _ _ _ _peer _ <<< "${_line}"
-      _peer="${_peer%:*}"
-      _peer="${_peer#[}"
-      _peer="${_peer%]}"
-      [[ -n "${_peer}" ]] || continue
-      if [[ "${_line}" != *"pid="* ]]; then
-        echo "${_peer}"
-        continue
-      fi
-      for _pid in $(grep -oE 'pid=[0-9]+' <<< "${_line}"); do
-        _t=$(tr '\0' ' ' 2>/dev/null < "/proc/${_pid#pid=}/cmdline")
-        if [[ "${_t}" =~ ${_re} ]]; then
-          echo "${_peer}"
-          break
-        fi
+  if command -v ss > /dev/null 2>&1 && command -v pgrep > /dev/null 2>&1 \
+    && _out=$(unset COLUMNS; ss -tneH state established "( ${_f} )" 2>/dev/null); then
+    # Before OpenSSH 10.5 a session's process runs as its user, and a
+    # process another user titles the same holds no SSH connection's socket.
+    # owner-any: every user's sessions, told by the sockets they hold
+    _pids=$(pgrep -f "${_re}" 2>/dev/null)
+    _rc=$?
+    if (( _rc <= 1 )); then
+      for _pid in ${_pids}; do
+        _fds+=("/proc/${_pid}/fd")
       done
-    done <<< "${_out}" | sort -u
-    return 0
+      if (( ${#_fds[@]} > 0 )); then
+        while IFS= read -r _x; do
+          _x="${_x#socket:[}"
+          _x="${_x%]}"
+          [[ "${_x}" =~ ^[0-9]+$ ]] && _held["${_x}"]=1
+        done < <(find "${_fds[@]}" -lname 'socket:*' -printf '%l\n' 2>/dev/null)
+      fi
+      while IFS= read -r _line; do
+        read -r _ _ _ _peer _ <<< "${_line}"
+        _peer="${_peer%:*}"
+        _peer="${_peer#[}"
+        _peer="${_peer%]}"
+        [[ "${_peer}" =~ ^::ffff:[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] && _peer="${_peer#::ffff:}"
+        [[ -n "${_peer}" ]] || continue
+        # A loopback peer counts for nothing: any account can open one, the
+        # lists always allow 127.0.0.1 and ::1, and the abuse guard scores
+        # only public addresses.
+        case "${_peer}" in
+          127.*|::1|::ffff:127.*) continue ;;
+        esac
+        # ino:0 is a connection sshd has not accepted yet, no session; a
+        # line with no inode at all cannot be told, so it counts.
+        if [[ "${_line}" =~ [[:space:]]ino:([0-9]+) ]]; then
+          _ino="${BASH_REMATCH[1]}"
+          [[ "${_ino}" != 0 && -n "${_held[${_ino}]:-}" ]] || continue
+        fi
+        echo "${_peer}"
+      done <<< "${_out}" | sort -u
+      return 0
+    fi
   fi
   netstat -tn 2>/dev/null \
-    | awk -v p=":(${_ports// /|})$" '$6 == "ESTABLISHED" && $4 ~ p { addr=$5; sub(/:[0-9]+$/, "", addr); print addr }' \
+    | awk -v p=":(${_ports// /|})$" '$6 == "ESTABLISHED" && $4 ~ p { addr=$5; sub(/:[0-9]+$/, "", addr); if (addr !~ /^(127\.|::1$|::ffff:127\.)/) print addr }' \
     | sort -u
 }
 _ssh_ips=$(_get_ssh_ips)
@@ -898,9 +924,11 @@ _acct_reload_stamp() {
   rm -f "${_ACCT_REQ_DIR}/${_RELOAD_TOOL}.${1}.noted"
 }
 # The SSH addresses the account $1's lists now carry (the server's own with
-# them), one a line, recorded by root beside its stamp once a reload has
-# applied them (never before: a run that fails and reverts must leave the
-# next one free to apply them at once).
+# them), one a line, recorded by root beside its stamp whenever this run's
+# lists stay on disk: applied by a reload, written on a standby whose web
+# tier is held, or kept because the last-good copy cannot be read. Never
+# when the run reverts: the last-good copy is from the run that recorded
+# its set, and a new login's address must stay free to apply at once.
 _acct_ssh_record() {
   mkdir -p -m 0700 "${_ACCT_REQ_DIR}" 2> /dev/null
   printf '%s\n' ${_ssh_ips} ${_server_ip} | sort -u > "${_ACCT_REQ_DIR}/${_RELOAD_TOOL}.${1}.ssh"
@@ -1068,6 +1096,7 @@ _process_context() {
     _acct_in_real_dir "${_nginx_path}" _acct_put_pairs_here \
       .access_last_mod_time "${_current_mod_time}" .ssh_ips_hash "${_ssh_ips_hash}" \
       .access_emit_version "${_emit_version}" .access_front_hash "${_front_hash}"
+    [[ -n "${_acct}" ]] && _acct_ssh_record "${_acct}"
     echo "ip_access written (${_input_file}); replication standby -- reload skipped (web tier held)."
     return 0
   fi
@@ -1102,6 +1131,7 @@ _process_context() {
           "last-good backup ${_last_good_backup} is unreadable -- keeping the" \
           "fragments now on disk rather than deleting them for an archive" \
           "that cannot be restored. Fix ${_input_file} and re-run."
+        [[ -n "${_acct}" ]] && _acct_ssh_record "${_acct}"
         # With the front copies gone the rest may pass again.
         service nginx configtest &> /dev/null && service nginx reload
       fi
@@ -1135,6 +1165,7 @@ _process_context() {
         _policy_alert "ip_access.refused.${_input_file}" \
           "ip_access: last-good backup unreadable, fragments kept (${_input_file})" \
           "last-good backup ${_last_good_backup} is unreadable -- fragments left in place."
+        [[ -n "${_acct}" ]] && _acct_ssh_record "${_acct}"
       fi
     fi
     _acct_in_real_dir "${_nginx_path}" rm -f -- ./.access_front_hash

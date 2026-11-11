@@ -2328,18 +2328,22 @@ _get_ssh_ips() {
   # The addresses of the logged-in SSH sessions, as ip_access.sh reads them.
   # A bare connection to sshd (a scanner, a login still being refused) is no
   # session: counted, anyone could shield a flood from its ban by holding one
-  # open. ss names each established socket's processes, and sshd titles a
-  # session's `<user>@<tty>` (`sshd: root@pts/0`, `sshd-session:
-  # root@notty`) or, once its login succeeded, `<user> [postauth]`; a
-  # connection before its login shows `[accepted]`, `[net]`, `[preauth]`,
-  # `unknown [priv]` or `sshd-auth: ...`. Where ss is missing or cannot name
-  # a socket's processes, the peer counts, as every established peer did
-  # before. Same port resolution ip_access.sh uses: sshd may serve a custom
-  # _SSH_PORT, and the declared cnf value is not always the effective one
-  # (hosted boxes and a failed sshd -t validation force 22). Match the
-  # union of 22, the cnf value (inline comments stripped, never sourced)
-  # and every port the live sshd config serves, so the logged-in shield
-  # can never go dark on a default-port box.
+  # open. sshd titles a session's processes `<user>@<tty>` (`sshd:
+  # root@pts/0`, `sshd-session: root@notty`) or, once its login succeeded,
+  # `<user> [postauth]` (before OpenSSH 10.5 a login with no shell or command
+  # yet, a tunnel, is `<user>` alone); a connection before its login shows
+  # `[accepted]`, `[net]`, `[preauth]`, `<user> [priv]`, `unknown [priv]` or
+  # `sshd-auth: ...`. The sockets
+  # those session processes hold, by inode, are the established connections
+  # that count: only their descriptors are read, never every process's as
+  # `ss -p` would (this runs every few seconds). Where ss or pgrep is
+  # missing or fails, or ss gives a connection no inode, the peer counts, as
+  # every established peer did before. Same port resolution ip_access.sh
+  # uses: sshd may serve a custom _SSH_PORT, and the declared cnf value is
+  # not always the effective one (hosted boxes and a failed sshd -t
+  # validation force 22). Match the union of 22, the cnf value (inline
+  # comments stripped, never sourced) and every port the live sshd config
+  # serves, so the logged-in shield can never go dark on a default-port box.
   local _p _ports="22" _cnf_port _sshd_ports
   _cnf_port=$(sed -n 's/^_SSH_PORT=//p' /root/.barracuda.cnf 2>/dev/null \
     | tail -n 1 | sed 's/[[:space:]]*#.*$//' | tr -d '" ')
@@ -2350,33 +2354,56 @@ _get_ssh_ips() {
       _ports="${_ports} ${_p}"
     fi
   done
-  local _f="" _out="" _line _peer _pid _t _re='^sshd(-session)?: [^[:space:]@]+(@| \[postauth\])'
+  local _f="" _out="" _line _peer _ino _x _pid _pids _rc
+  local _re='^sshd(-session)?: [^][:space:]@[]+(@|[[:space:]]*$| \[postauth\])'
+  local -a _fds=()
+  local -A _held=()
   for _p in ${_ports}; do
     _f="${_f:+${_f} or }sport = :${_p}"
   done
-  if command -v ss > /dev/null 2>&1 \
-    && _out=$(ss -tnpH state established "( ${_f} )" 2>/dev/null); then
-    while IFS= read -r _line; do
-      read -r _ _ _ _peer _ <<< "${_line}"
-      _peer="${_peer%:*}"
-      _peer="${_peer#[}"
-      _peer="${_peer%]}"
-      [[ -n "${_peer}" ]] || continue
-      if [[ "${_line}" != *"pid="* ]]; then
-        echo "${_peer}"
-        continue
-      fi
-      for _pid in $(grep -oE 'pid=[0-9]+' <<< "${_line}"); do
-        _t=$(tr '\0' ' ' 2>/dev/null < "/proc/${_pid#pid=}/cmdline")
-        if [[ "${_t}" =~ ${_re} ]]; then
-          echo "${_peer}"
-          break
-        fi
+  if command -v ss > /dev/null 2>&1 && command -v pgrep > /dev/null 2>&1 \
+    && _out=$(unset COLUMNS; ss -tneH state established "( ${_f} )" 2>/dev/null); then
+    # Before OpenSSH 10.5 a session's process runs as its user, and a
+    # process another user titles the same holds no SSH connection's socket.
+    # owner-any: every user's sessions, told by the sockets they hold
+    _pids=$(pgrep -f "${_re}" 2>/dev/null)
+    _rc=$?
+    if (( _rc <= 1 )); then
+      for _pid in ${_pids}; do
+        _fds+=("/proc/${_pid}/fd")
       done
-    done <<< "${_out}" | sort -u
-    return 0
+      if (( ${#_fds[@]} > 0 )); then
+        while IFS= read -r _x; do
+          _x="${_x#socket:[}"
+          _x="${_x%]}"
+          [[ "${_x}" =~ ^[0-9]+$ ]] && _held["${_x}"]=1
+        done < <(find "${_fds[@]}" -lname 'socket:*' -printf '%l\n' 2>/dev/null)
+      fi
+      while IFS= read -r _line; do
+        read -r _ _ _ _peer _ <<< "${_line}"
+        _peer="${_peer%:*}"
+        _peer="${_peer#[}"
+        _peer="${_peer%]}"
+        [[ "${_peer}" =~ ^::ffff:[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] && _peer="${_peer#::ffff:}"
+        [[ -n "${_peer}" ]] || continue
+        # A loopback peer counts for nothing: any account can open one, the
+        # lists always allow 127.0.0.1 and ::1, and the abuse guard scores
+        # only public addresses.
+        case "${_peer}" in
+          127.*|::1|::ffff:127.*) continue ;;
+        esac
+        # ino:0 is a connection sshd has not accepted yet, no session; a
+        # line with no inode at all cannot be told, so it counts.
+        if [[ "${_line}" =~ [[:space:]]ino:([0-9]+) ]]; then
+          _ino="${BASH_REMATCH[1]}"
+          [[ "${_ino}" != 0 && -n "${_held[${_ino}]:-}" ]] || continue
+        fi
+        echo "${_peer}"
+      done <<< "${_out}" | sort -u
+      return 0
+    fi
   fi
-  netstat -tn | awk -v p=":(${_ports// /|})$" '$4 ~ p && $6 == "ESTABLISHED" { split($5, a, ":"); print a[1] }' | sort | uniq
+  netstat -tn | awk -v p=":(${_ports// /|})$" '$4 ~ p && $6 == "ESTABLISHED" { split($5, a, ":"); if (a[1] !~ /^127\./) print a[1] }' | sort | uniq
 }
 
 if command -v ss &>/dev/null || command -v netstat &>/dev/null; then

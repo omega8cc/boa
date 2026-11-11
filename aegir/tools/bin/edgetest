@@ -576,27 +576,28 @@ _phase_ban_config() {
 
 _phase_regression() {
   _head "regression spot-checks"
-  if command -v netstat >/dev/null 2>&1; then
-    # Same port resolution ip_access.sh uses: match the union of 22, the
-    # cnf _SSH_PORT (inline comments stripped, never sourced) and every
-    # port the live sshd config serves -- the declared cnf value is not
-    # always the effective one, and a hardcoded :22 would report a false
-    # negative on a genuine custom-port box.
-    local _p _ports="22" _cnf_port _sshd_ports
-    _cnf_port=$(sed -n 's/^_SSH_PORT=//p' /root/.barracuda.cnf 2>/dev/null \
-      | tail -n 1 | sed 's/[[:space:]]*#.*$//' | tr -d '" ')
-    # The keyword's case varies by build (OpenSSH 10.5 prints "Port 22").
-    _sshd_ports=$(/usr/sbin/sshd -T 2>/dev/null | awk 'tolower($1) == "port" {print $2}')
-    for _p in ${_cnf_port} ${_sshd_ports}; do
-      if [[ "${_p}" =~ ^[0-9]+$ ]] && [[ ! " ${_ports} " =~ " ${_p} " ]]; then
-        _ports="${_ports} ${_p}"
-      fi
-    done
-    local _ssh; _ssh=$(netstat -tn 2>/dev/null | awk -v p=":(${_ports// /|})$" '$4 ~ p && $6 == "ESTABLISHED" { print $5 }' | head -1)
-    [[ -n "${_ssh}" ]] && _pass "netstat sees an established SSH peer (ip_access anti-lockout source works)" \
-      || _note "no established SSH peer via netstat (fine if you are on console)"
+  # The IP lists' SSH anti-lockout source: ip_access.sh's own reader of the
+  # logged-in sessions (its ports included), cut from the installed copy and
+  # run here, so this checks what the lists really read.
+  local _ipa="/var/xdrago/ip_access.sh" _fn _ips _me="${SSH_CLIENT:-}"
+  _me="${_me%% *}"
+  _fn=$(sed -n '/^_get_ssh_ips() {/,/^}/p' "${_ipa}" 2>/dev/null)
+  if [[ -z "${_fn}" ]]; then
+    _warn "no _get_ssh_ips in ${_ipa}: the IP lists' SSH anti-lockout source cannot be checked"
   else
-    _warn "netstat not found — ip_access SSH anti-lockout source unavailable on this box"
+    _ips=$(bash -c "${_fn}"$'\n''_get_ssh_ips' 2>/dev/null | tr '\n' ' ')
+    _ips="${_ips% }"
+    if [[ -z "${_me}" ]]; then
+      _note "not run over SSH (fine on the console); the anti-lockout source lists [${_ips}]"
+    elif [[ "${_me}" =~ ^(127\.|::1$) ]]; then
+      _note "this login is over loopback, which the IP lists always allow; the source lists [${_ips}]"
+    elif [[ " ${_ips} " == *" ${_me} "* ]]; then
+      _pass "the IP lists' SSH anti-lockout source sees this session (${_me})"
+    else
+      _warn "the IP lists' SSH anti-lockout source does not see this session (${_me}); it lists [${_ips}]"
+    fi
+    command -v ss > /dev/null 2>&1 && command -v pgrep > /dev/null 2>&1 \
+      || _note "ss or pgrep missing: every established SSH peer counts (netstat)"
   fi
   if [[ -e /etc/csf/csf.allow ]]; then
     grep -qE ':[0-9a-fA-F]*:' /etc/csf/csf.allow 2>/dev/null \
