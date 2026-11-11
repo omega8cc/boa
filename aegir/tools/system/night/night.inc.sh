@@ -1271,30 +1271,38 @@ _goaccess_copy_here() {
   [ -O . ] && cp -af -- "${1}" ./
 }
 
-# Status 0 when the name $1 is in a server_name of the nginx text read from
-# stdin ($2 = -), or of any file $3... not under the folder $2: each read as
-# a regular file, never through a link at its own name or into a FIFO, at
-# most 1 MiB; comments dropped, names compared without case, token by token,
-# as nginx matches exact names.
-_GOACCESS_NAMES_PL='use Fcntl; my $n = lc shift; my $skip = shift; sub hit { my $d = shift; $d =~ s/#[^\n]*//g; while ($d =~ /(?:^|[\s;{}])server_name\s+([^;]*);/g) { for my $t (split /\s+/, lc $1) { return 1 if $t eq $n } } return 0 } if ($skip eq "-") { local $/; my $d = <STDIN>; exit((defined $d && hit($d)) ? 0 : 1) } for my $f (@ARGV) { next if index($f, $skip) == 0; sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); unless (@s && -f _ && $s[7] <= 1048576) { close($h); next } my ($d, $b) = (""); while (sysread($h, $b, 65536)) { $d .= $b; last if length($d) > 1048576 } close($h); exit 0 if hit($d) } exit 1'
+# Whether the name $1 is in a server_name of the nginx text on stdin ($3 = -),
+# or of a vhost on this server outside the account $2 ($3 = box): the
+# Master's and every other account's vhost.d, read only where every name on
+# the way is a real directory, and of those only the regular files, never
+# through a link (a link at an account's folder could lead root into /dev or
+# /proc); root's sites-enabled and conf.d, whose links are followed. Each file
+# read without blocking, at most 1 MiB, comments dropped, names compared
+# without case, token by token, as nginx matches exact names. The folders are
+# walked here, so no count of files can make the call itself fail. Exit 0:
+# found, 1: not found, 2 or any other: cannot tell (a folder of more than
+# 20000 entries, no /data/disk).
+_GOACCESS_NAMES_PL='use Fcntl; use Cwd qw(abs_path); my ($n, $own, $mode) = (lc shift, shift, shift); sub hit { my $d = shift; $d =~ s/#[^\n]*//g; while ($d =~ /(?:^|[\s;{}])server_name\s+([^;]*);/g) { for my $t (split /\s+/, lc $1) { return 1 if $t eq $n } } return 0 } if ($mode eq "-") { local $/; my $d = <STDIN>; exit((defined $d && hit($d)) ? 0 : 1) } sub scan { my ($dir, $follow) = @_; opendir(my $dh, $dir) or return; my $c = 0; for my $e (readdir $dh) { next if $e eq "." || $e eq ".."; exit 2 if ++$c > 20000; my $p = "$dir/$e"; my @l = $follow ? stat($p) : lstat($p); next unless @l && -f _ && $l[7] <= 1048576; sysopen(my $h, $p, O_RDONLY | O_NONBLOCK | ($follow ? 0 : O_NOFOLLOW)) or next; my @s = stat($h); unless (@s && -f _ && $s[0] == $l[0] && $s[1] == $l[1]) { close($h); next } my ($d, $b) = (""); while (sysread($h, $b, 65536)) { $d .= $b; last if length($d) > 1048576 } close($h); exit 0 if hit($d) } closedir($dh) } sub real { my ($base, $rest) = @_; my $r = abs_path($base); return undef unless defined $r; my $p = "$base/$rest"; my $x = abs_path($p); return (defined $x && -d $p && $x eq "$r/$rest") ? $p : undef } my $v = "config/server_master/nginx/vhost.d"; my $m = real("/var/aegir", $v); scan($m, 0) if defined $m; opendir(my $dd, "/data/disk") or exit 2; for my $u (sort readdir $dd) { next if $u eq "." || $u eq ".." || $u eq $own; my $q = real("/data/disk", "$u/$v"); scan($q, 0) if defined $q } closedir($dd); scan("/etc/nginx/sites-enabled", 1); scan("/etc/nginx/conf.d", 1); exit 1'
 # A site's report copies the box's access lines for its name into the
 # account, so the name must be this account's: served by its own vhost text
 # $2 and by no other vhost on the box (another account's site or alias, the
-# Master's, a standalone one). Aegir keeps names unique per instance only.
+# Master's, a standalone one). Aegir keeps names unique per instance only. A
+# box that cannot be read whole gets no report.
 _goaccess_name_own() {
-  local _own="/data/disk/${_HM_U}/config/server_master/nginx/vhost.d/"
-  if ! printf '%s\n' "${2}" | perl -e "${_GOACCESS_NAMES_PL}" "${1}" -; then
+  local _rc
+  if ! printf '%s\n' "${2}" | perl -e "${_GOACCESS_NAMES_PL}" "${1}" "${_HM_U}" -; then
     echo "NOTE: ${_HM_U}: no GoAccess report for ${1}: its vhost does not serve that name"
     return 1
   fi
-  if perl -e "${_GOACCESS_NAMES_PL}" "${1}" "${_own}" \
-    /var/aegir/config/server_master/nginx/vhost.d/* \
-    /data/disk/*/config/server_master/nginx/vhost.d/* \
-    /etc/nginx/sites-enabled/* /etc/nginx/conf.d/*; then
+  perl -e "${_GOACCESS_NAMES_PL}" "${1}" "${_HM_U}" box
+  _rc=$?
+  [ "${_rc}" -eq 1 ] && return 0
+  if [ "${_rc}" -eq 0 ]; then
     echo "NOTE: ${_HM_U}: no GoAccess report for ${1}: another vhost on this server also serves that name"
-    return 1
+  else
+    echo "NOTE: ${_HM_U}: no GoAccess report for ${1}: the vhosts on this server could not all be read (status ${_rc})"
   fi
-  return 0
+  return 1
 }
 
 # One GoAccess report into the account's static/goaccess: ALL (the account
@@ -1318,6 +1326,10 @@ _if_gen_goaccess() {
     # glob or an option.
     if [ "$#" -eq 1 ] && [ "${1}" = "ALL" ]; then
       _gaAll=YES
+    elif [ "$#" -lt 2 ]; then
+      # a site's name with no vhost text: a 20-sites.sh older than this
+      # file, fetched apart from it; its report is left as it is
+      return 0
     elif [[ ! "${1}" =~ ^[a-z0-9][a-z0-9._-]*$ ]]; then
       return 0
     fi
@@ -1328,7 +1340,7 @@ _if_gen_goaccess() {
     if [ -x "${_isWblgx}" ]; then
       # a report built before for a name that is no longer the account's own
       # is withdrawn
-      if [ "${_gaAll}" = "NO" ] && ! _goaccess_name_own "${1}" "${2:-}"; then
+      if [ "${_gaAll}" = "NO" ] && ! _goaccess_name_own "${1}" "${2}"; then
         rm -rf -- "/var/www/adminer/access/${_HM_U}/${1}"
         _acct_in_real_dir "/data/disk/${_HM_U}/static/goaccess" rm -rf -- "./${1}"
         return 0
