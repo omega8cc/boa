@@ -588,6 +588,22 @@
       re-run with --fix-php, which only create takes; it names the manual
       steps alone.
 
+    * xcopy create installs the copy the way xoct create installs an
+      account: for the target's own BOA tree, not this server's, so a copy
+      from an lts or pro server to another tree no longer goes through the
+      wrong licence check; with boa in-oct and the ProxySQL marker when the
+      account uses ProxySQL here; and only after the account is proven made
+      there, not on the launcher's status alone.
+
+    * xcopy's live transfer carries the client's shell logins, as xoct's
+      does: the main login's password with log/pass.txt, the sub-account
+      password store, and each sub-user's password and SSH keys. A copy
+      left the client with a password nobody was told, since the install's
+      welcome mail is held back.
+
+    * xcopy's transfer carries the account's Ruby gems and npm trees under
+      /opt/user, as xoct's does.
+
     * On a hosted server a migration's runner park now lasts until its end.
       xoct and xcopy pre-mig, and an xmass cutover, park runner.sh, owl.sh,
       usage.sh, graceful.sh and manage_ltd_users.sh as hidden .off copies

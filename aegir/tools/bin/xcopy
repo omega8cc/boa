@@ -4,11 +4,11 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 
-### match the box's installed BOA tree -- the hardcoded dev asked the target
-### for a dev-tree account (boa in-octopus ... ${_tRee}) from an lts or pro
-### box, which sends it through the dev-licence gate. Derive from the box's
-### own self-report; fall back to the newest tools ctrl marker, then to the
-### historical dev default. Verbatim in xoct and xmass.
+### This box's installed BOA tree. create installs the copy for the
+### target's own tree (_mig_target_tree), with this one as the fallback
+### when the target cannot say. Derive from the box's own self-report; fall
+### back to the newest tools ctrl marker, then to the historical dev default.
+### Verbatim in xoct and xmass.
 _tRee=$(boa info 2>/dev/null \
   | grep -oE 'Barracuda BOA-[0-9.]+-(dev|lts|pro)' \
   | tail -1 \
@@ -3302,6 +3302,168 @@ _mig_fix_target_php() {
   return 0
 }
 
+###-------------SHELL CREDENTIALS----###
+###
+### Mirrored from xoct (bodies identical with the prefixes swapped).
+###
+### Shell text the target expands to the uid the login $1.ftp of this box
+### lands on there when a copy maps owners by name: the target's uid for the
+### name, else this box's uid. Only the login's: the files re-asserted with
+### it (the PHP pins, the password store) are the login's own. Empty when it
+### has no uid here.
+_xcopy_landed_uids_sh() {
+  local _n="${1}.ftp" _i
+  [[ "${1}" =~ ^[A-Za-z0-9._-]+$ ]] || return 0
+  _i="$(id -u -- "${_n}" 2> /dev/null)"
+  [[ "${_i}" =~ ^[0-9]+$ ]] || return 0
+  printf '%s' "\$(id -u -- ${_n} 2> /dev/null || echo ${_i})"
+}
+### The regular file ./$1 of the current (pinned) directory copied, forced
+### (no -u), to the same name in the real directory $3 on the target $2, $4
+### the caller's rsync error option. A link is never carried and neither end
+### resolves a name on its path through a link the account put there. Nothing
+### travels when ./$1 is not a regular file.
+_xcopy_put_file_remote_here() {
+  [ -f "./${1}" ] && [ ! -L "./${1}" ] || return 0
+  _xcopy_rsync -aEAX --no-links ${4} \
+    --rsync-path="$(_xcopy_rsync_path_in "${3}")" -e ssh \
+    "./${1}" "root@${2}:./${1}"
+}
+### The regular files of the current (pinned) sub-account password store of
+### the account $1, each put under the name it takes for the account $2
+### into the real store directory on the target $3: a link is never sent,
+### and the receiver never writes through one. The new name is read by a
+### shell on the target (rsync before 3.2.4 sends it unescaped), so a name
+### that is not shell-safe is refused.
+_xcopy_users_put_here() {
+  local _e _n
+  for _e in ./*; do
+    [ -f "${_e}" ] && [ ! -L "${_e}" ] || continue
+    _n="${_e#./}"
+    case "${_n}" in
+      ''|-*|*[!A-Za-z0-9._@+,=-]*)
+        echo "ALRT: sub-account password store entry $(printf '%q' "${_n}") is not a shell-safe name -- not carried"
+        continue
+        ;;
+    esac
+    _n="${_n#"${1}".}"
+    # shellcheck disable=SC2086
+    _xcopy_rsync -aEAX --no-links ${_ieni} \
+      --rsync-path="$(_xcopy_rsync_path_mk_in "/home/${2}.ftp/users")" -e ssh \
+      "${_e}" "root@${3}:./${2}.${_n}"
+  done
+}
+### Whether the sub-user $1 has a .ssh to carry: a real directory, or none
+### (quietly); one that is not a real directory is reported and left.
+_xcopy_subuser_ssh_ok() {
+  [ -e "/home/${1}/.ssh" ] || [ -L "/home/${1}/.ssh" ] || return 1
+  _xcopy_in_real_dir "/home/${1}/.ssh" true && return 0
+  echo "ALRT: /home/${1}/.ssh is not a real directory -- not followed; its keys not carried"
+  return 1
+}
+### Carry the client shell identity, so the copy keeps the client's own
+### logins: the main <acct>.ftp shadow hash and log/pass.txt (kept consistent
+### as a pair), the sub-account password store /home/<acct>.ftp/users (whose
+### carried entries manage_ltd_users honours at sub-user creation), and each
+### existing sub-user's shadow hash and .ssh where the target user already
+### exists (later passes converge the rest). LIVE operations only -- never
+### call this from a DRY path.
+_xcopy_sync_shell_credentials() {
+  local _src="$1" _dst="$2" _t="$3"
+  local _sUsr="/data/disk/${_src}" _dUsr="/data/disk/${_dst}"
+  local _hash _d _n _e _set=NO
+  _hash=$(getent shadow "${_src}.ftp" 2>/dev/null | cut -d: -f2)
+  if [ -n "${_hash}" ] && [ "${_hash}" != "*" ] && [ "${_hash}" != "!" ]; then
+    if ssh root@"${_t}" "getent passwd ${_dst}.ftp" &> /dev/null; then
+      if printf '%s.ftp:%s\n' "${_dst}" "${_hash}" | ssh root@"${_t}" "chpasswd -e"; then
+        _set=YES
+        echo "INFO: carried ${_src}.ftp shell/SFTP password to ${_dst}.ftp on ${_t}"
+      else
+        echo "ALRT: could not set the carried password for ${_dst}.ftp on ${_t}"
+      fi
+    else
+      echo "ALRT: user ${_dst}.ftp missing on ${_t}; password not carried yet (re-run converges)"
+    fi
+  fi
+  ### pass.txt travels ONLY when the paired hash actually landed: it is what
+  ### the client is shown, and shipping it after a failed chpasswd would
+  ### advertise a password that does not work. A re-run converges both.
+  ### log/ is oN's on both boxes: a regular file only, from the real
+  ### directory into the real directory.
+  if [ "${_set}" = "YES" ] && [ -e "${_sUsr}/log/pass.txt" ]; then
+    _xcopy_in_real_dir "${_sUsr}/log" _xcopy_put_file_remote_here \
+      pass.txt "${_t}" "${_dUsr}/log" "${_ieni}"
+  elif [ -e "${_sUsr}/log/pass.txt" ]; then
+    echo "ALRT: NOT carrying log/pass.txt for ${_dst} -- the shadow hash was not set on ${_t}"
+  fi
+  ### The store is keyed by FULL sub-user name, so a rename must rewrite the
+  ### entry filenames -- an rsync of the directory would land <src>-named
+  ### files that manage_ltd_users never looks for on the target. The store
+  ### is the account's on both boxes: its regular files are sent from inside
+  ### the real directory into the real one, and the owner and modes are set
+  ### there without following a link put at any name.
+  if [ -e "/home/${_src}.ftp/users" ] || [ -L "/home/${_src}.ftp/users" ]; then
+    if _xcopy_in_real_dir "/home/${_src}.ftp/users" true; then
+      ssh root@"${_t}" "mkdir -p /home/${_dst}.ftp/users" &> /dev/null
+      _xcopy_in_real_dir "/home/${_src}.ftp/users" \
+        _xcopy_users_put_here "${_src}" "${_dst}" "${_t}"
+      ### The group is the account's group ON THE TARGET (its own once
+      ### converted there, the box-wide one until then), asked of the target
+      ### itself: the two boxes are in different states for the length of a
+      ### rollout. The directory is the one this shell holds ("."); each
+      ### entry is re-asserted through a no-follow handle, only when it is a
+      ### regular file with one link that is already the login's, or the
+      ### owner the copy of the source's store lands on there, so a hard link
+      ### to another file, or a root-only file (log/pass.txt) renamed into the
+      ### store, is never handed over or chmodded.
+      _xcopy_remote_in "${_t}" "/home/${_dst}.ftp/users" \
+        "_g=\$(id -gn ${_dst} 2>/dev/null); [ \"\$_g\" = ${_dst} ] || _g=users; chown -- ${_dst}.ftp:\$_g . 2>/dev/null; chmod 700 .; _ro ${_dst}.ftp:\$_g 600 \"$(_xcopy_landed_uids_sh "${_src}")\" ./*; true" &> /dev/null
+    else
+      echo "ALRT: /home/${_src}.ftp/users is not a real directory -- not followed; its password store not carried"
+    fi
+  fi
+  for _d in "${_sUsr}"/clients/*/; do
+    [ -d "${_d}" ] || continue
+    _n=$(basename "${_d}")
+    # the name is read by a shell on the target
+    case "${_n}" in
+      ''|-*|*[!A-Za-z0-9._@+,=-]*) continue ;;
+    esac
+    getent passwd "${_src}.${_n}" &> /dev/null || continue
+    _hash=$(getent shadow "${_src}.${_n}" 2>/dev/null | cut -d: -f2)
+    [ -n "${_hash}" ] && [ "${_hash}" != "*" ] && [ "${_hash}" != "!" ] || continue
+    if ssh root@"${_t}" "getent passwd ${_dst}.${_n}" &> /dev/null; then
+      if printf '%s.%s:%s\n' "${_dst}" "${_n}" "${_hash}" | ssh root@"${_t}" "chpasswd -e"; then
+        echo "INFO: carried sub-account password for ${_dst}.${_n} on ${_t}"
+      else
+        echo "ALRT: could not carry the sub-account password for ${_dst}.${_n} on ${_t}"
+      fi
+      ### The sub-user's keys: from the real directory into the real one.
+      if _xcopy_subuser_ssh_ok "${_src}.${_n}"; then
+        _xcopy_in_real_dir "/home/${_src}.${_n}/.ssh" _xcopy_copy_mk_here "${_t}" \
+          "/home/${_dst}.${_n}/.ssh" '' -aEAXqu ${_ieni}
+      fi
+    else
+      ### The sub-user does not exist there yet: manage_ltd_users creates it
+      ### from clients/ on its next pass (after post-mig while the target's
+      ### runners are parked) and honours the carried store entry above, so
+      ### the password converges. Its .ssh cannot be placed before the home
+      ### exists -- stage it for the post-creation pass instead.
+      if _xcopy_subuser_ssh_ok "${_src}.${_n}"; then
+        ssh root@"${_t}" "mkdir -p /var/backups/migrate-subuser-ssh/${_dst}.${_n}" &> /dev/null
+        _xcopy_in_real_dir "/home/${_src}.${_n}/.ssh" _xcopy_rsync -aEAXqu ${_ieni} -e ssh \
+          ./ "root@${_t}:/var/backups/migrate-subuser-ssh/${_dst}.${_n}/.ssh/"
+        echo "INFO: sub-account ${_dst}.${_n} not created on ${_t} yet; password converges via the"
+        echo "INFO: carried store, and its keys are staged at /var/backups/migrate-subuser-ssh/${_dst}.${_n}/.ssh"
+      else
+        echo "INFO: sub-account ${_dst}.${_n} not created on ${_t} yet; its carried password"
+        echo "INFO: store entry makes it converge when manage_ltd_users creates it there"
+      fi
+    fi
+  done
+  return 0
+}
+
 _migrate_prepare() {
   # The watchdog stands down for the database verbs (_xcopy_sql_maint_hold);
   # released at the end of this function, or by the EXIT trap.
@@ -3766,6 +3928,29 @@ _migrate_prepare() {
       ### is installed there; a missing version means silent fallback to a
       ### different PHP on the copied sites (as in xoct).
       _xcopy_php_coverage_gate "${_USR}" "${_tgt}" || exit 1
+      ### Install from the TARGET's own tree: a cross-tree copy must not push
+      ### this box's tree through the target's licence gate (as in xoct).
+      _TGT_TREE="$(_mig_target_tree "${_tgt}")"
+      case "${_TGT_TREE}" in
+        dev|lts|pro) : ;;
+        *)
+          echo "ALRT: invalid tree token '${_TGT_TREE}' from the target probe; refusing create"
+          exit 1
+        ;;
+      esac
+      if [ "${_TGT_TREE}" != "${_tRee}" ]; then
+        echo "ALRT: source tree is ${_tRee} but target ${_tgt} runs ${_TGT_TREE}; installing for ${_TGT_TREE}"
+      fi
+      ### A ProxySQL account here is born ProxySQL-wired on the target, not
+      ### retro-fitted: in-oct is in-octopus plus that wiring.
+      _IN_VERB=in-octopus
+      if [ -e "/data/conf/${_oct}_use_proxysql.txt" ]; then
+        _IN_VERB=in-oct
+        echo "INFO: source account uses ProxySQL; installing with 'boa in-oct'"
+      fi
+      ### Asked again: the PHP pass above is a full system pass, and the
+      ### target may have taken the name meanwhile.
+      _xcopy_create_owner_gate "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
       ### Skipped only when the marked account is also really installed, on
       ### what only an install produces (xoct asks the same): one whose cnf or
       ### vhost include is gone goes to the install, which refuses the name.
@@ -3817,9 +4002,16 @@ _migrate_prepare() {
         _xcopy_wg_seed "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
         _xcopy_dbarm_seed "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
         _XCOPY_INSTALL_ON=YES
-        ssh root@${_tgt} "/opt/local/bin/boa in-octopus ${_CLIENT_EMAIL} ${_TGT_HM_USER} ${_tRee} ${_CLIENT_OPTION} ${_CLIENT_SUBSCR} ${_CLIENT_CORES} noscreen"
+        ssh root@${_tgt} "/opt/local/bin/boa ${_IN_VERB} ${_CLIENT_EMAIL} ${_TGT_HM_USER} ${_TGT_TREE} ${_CLIENT_OPTION} ${_CLIENT_SUBSCR} ${_CLIENT_CORES} noscreen"
         _INSTALL_RC=$?
-        if [ "${_INSTALL_RC}" != "0" ]; then
+        ### The launcher's status alone is not the account (the install can
+        ### die for its own reasons): it is proven to exist before anything
+        ### else is done there, as xoct proves it.
+        _TGT_BORN=$(ssh root@${_tgt} "getent passwd ${_TGT_HM_USER} >/dev/null 2>&1 \
+          && [ -e /root/.${_TGT_HM_USER}.octopus.cnf ] \
+          && [ -s /data/disk/${_TGT_HM_USER}/log/octopus_log.txt ] \
+          && echo BORN" 2>/dev/null)
+        if [ "${_INSTALL_RC}" != "0" ] || [ "${_TGT_BORN}" != "BORN" ]; then
           ### 255 is the connection lost, not the launcher's answer: the
           ### remote install may go on and make the account after this, so
           ### both seeds stay there for a re-run whose install uses them; any
@@ -3829,7 +4021,8 @@ _migrate_prepare() {
             _xcopy_dbarm_unseed "${_TGT_HM_USER}" "${_tgt}"
             _xcopy_wg_unseed "${_TGT_HM_USER}" "${_tgt}"
           fi
-          echo "ALRT: install of ${_TGT_HM_USER} on ${_tgt} failed or was refused (launcher rc=${_INSTALL_RC}, see its output above); nothing further was changed there"
+          echo "ALRT: install of ${_TGT_HM_USER} on ${_tgt} did not happen (launcher rc=${_INSTALL_RC}, see its output above); nothing further was changed there"
+          echo "ALRT: re-run this create once ${_tgt} is quiet"
           exit 1
         fi
         if [ "${_SILENT_MARKER}" = "YES" ]; then
@@ -3847,6 +4040,9 @@ _migrate_prepare() {
           echo "ALRT: the create marker for ${_TGT_HM_USER} could not be put on ${_tgt}; a re-run of this create will refuse the account"
           _xcopy_create_adopt_hint "${_oct}" "${_TGT_HM_USER}" "${_tgt}" "$(_xcopy_create_src_host)"
         fi
+      fi
+      if [ -e "/data/conf/${_oct}_use_proxysql.txt" ]; then
+        ssh root@${_tgt} "mkdir -p /data/conf && echo ProxySQL > /data/conf/${_TGT_HM_USER}_use_proxysql.txt"
       fi
       ssh root@${_tgt} "/bin/rm -f /data/disk/${_TGT_HM_USER}/tools/le/.ctrl/ssl-demo-mode.pid"
       ssh root@${_tgt} "/bin/rm -f /data/disk/${_TGT_HM_USER}/tools/le/config"
@@ -6000,6 +6196,20 @@ _migrate_init() {
               "${_DST}/src" '*' -aEAXqu ${_ieni}
           _xcopy_transfer_static_symlink_safe "${_USR}" "${_tgt}" "${_DST}" "${_ieni}" "${_TGT_MNT}"
           #
+          # The sub-account password store must land BEFORE clients/ does:
+          # manage_ltd_users creates sub-users from clients/ on its first
+          # pass that sees them and honours a pre-existing store entry (the
+          # carried password) only if it is already there. Forced (no -u): the
+          # target's fresh install must never shadow the carried credentials.
+          # The store is the account's: sent from inside the real directory
+          # into the real directory on the target (made when missing). Its
+          # entries are keyed by the full sub-user name, so it travels whole
+          # under the account's own name only (as in xoct).
+          if [ "${_DST##*/}" = "${_oct}" ]; then
+            _xcopy_leg_ok "/home/${_oct}.ftp/users" \
+              && _xcopy_in_real_dir "/home/${_oct}.ftp/users" _xcopy_copy_mk_here \
+                "${_tgt}" "/home/${_DST##*/}.ftp/users" '' -aEAX ${_ieni}
+          fi
           # clients/ is oN's on both boxes: pinned both ends, target made real.
           _xcopy_leg_ok "${_USR}/clients" \
             && _xcopy_in_real_dir "${_USR}/clients" _xcopy_copy_mk_here "${_tgt}" \
@@ -6048,16 +6258,30 @@ _migrate_init() {
             && _xcopy_in_real_dir "/home/${_oct}.ftp/.ssh" _xcopy_copy_mk_here \
               "${_tgt}" "/home/${_DST##*/}.ftp/.ssh" '' -aEAXqu ${_ieni}
 
+          # Client-installed toolchains live outside /data/disk in the lshell
+          # jail's writable trees: copied AS-IS (as in xoct). The parents are
+          # sticky and world-writable, so each leaf is its owner's to replace:
+          # pinned as the account legs are.
+          _xcopy_leg_ok "/opt/user/gems/${_oct}.ftp" \
+            && _xcopy_in_real_dir "/opt/user/gems/${_oct}.ftp" _xcopy_copy_mk_here \
+              "${_tgt}" "/opt/user/gems/${_DST##*/}.ftp" '' -aEAXqu ${_ieni}
+          _xcopy_leg_ok "/opt/user/npm/${_oct}.ftp" \
+            && _xcopy_in_real_dir "/opt/user/npm/${_oct}.ftp" _xcopy_copy_mk_here \
+              "${_tgt}" "/opt/user/npm/${_DST##*/}.ftp" '' -aEAXqu ${_ieni}
+
           # The PHP coverage gate re-runs on every LIVE transfer: the control
           # files the pass above carried, changed here since create, must
           # never name a version in force here that the target lacks. A dry
           # run names a choice the target would start to honour (as in xoct).
+          # The client's shell credentials converge on every LIVE transfer
+          # too, never in a dry run: they change the target.
           if [ "${_MODE}" = "LIVE" ]; then
             if ! _xcopy_php_coverage_gate "${_USR}" "${_tgt}"; then
               echo "ERROR: ${_cmd} for ${_oct}: target PHP coverage failed AFTER the file sync;"
               echo "ERROR: NOT marking the transfer complete -- fix the target PHP set and re-run"
               exit 1
             fi
+            _xcopy_sync_shell_credentials "${_oct}" "${_DST##*/}" "${_tgt}"
           else
             _xcopy_php_inert_report "${_USR}" "${_tgt}" deny
           fi

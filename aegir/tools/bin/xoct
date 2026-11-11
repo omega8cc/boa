@@ -4,11 +4,10 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 
-### The tree used for the target-side account install (boa in-octopus) must
-### match the box's installed BOA tree — a hardcoded dev sent lts-tree
-### migrations through the dev-license gate, which denies non-licensed
-### hostnames. Derive from the box's own self-report; fall back to the
-### newest tools ctrl marker, then to the historical dev default.
+### This box's installed BOA tree. create installs the account for the
+### target's own tree (_mig_target_tree), with this one as the fallback
+### when the target cannot say. Derive from the box's own self-report; fall
+### back to the newest tools ctrl marker, then to the historical dev default.
 _tRee=$(boa info 2>/dev/null \
   | grep -oE 'Barracuda BOA-[0-9.]+-(dev|lts|pro)' \
   | tail -1 \
@@ -7785,7 +7784,8 @@ _migrate_prepare() {
         _IN_VERB=in-oct
         echo "INFO: source account uses ProxySQL; installing with 'boa in-oct'"
       fi
-      ### Asked again: the PHP pass above can run for half an hour.
+      ### Asked again: the PHP pass above is a full system pass, and the
+      ### target may have taken the name meanwhile.
       _xoct_create_owner_gate "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
       ### Under admail= the target holds its clients' mail for that address
       ### before anything is installed there (xmass puts it for its own
