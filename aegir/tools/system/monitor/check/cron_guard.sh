@@ -29,7 +29,13 @@
 # a success within 15 minutes of a run killed at the PHP time limit: that is
 # the panel's retry meeting the cron lock the killed run left, and no cron
 # ran. Only requests from the box's own addresses count: anyone can send
-# the agent string.
+# the agent string. And any site's PHP on the box can send it from there,
+# with another site's name, so where the panel sends the account's cron
+# key (nginx logs it as bcron=), a line counts only on a name an account's
+# vhost carries and with that account's key, or with none while the account
+# has none; any other line can only be a redirect's next hop. A box where no
+# account has a key, and a line from before nginx logged the field, are
+# judged as before.
 #
 # A site whose cron interval is longer than a day has one run in the window
 # at most and is never judged.
@@ -289,10 +295,39 @@ function hop(k, h, n, s, e, b, r,   on, m, i, c) {
 function route(p) {
   return (p ~ /^\/(cron\/[A-Za-z0-9_-]*|cron\.php|core\/cron\.php)([?].*)?$/)
 }
-BEGIN { n = split(own, a, " "); for (i = 1; i <= n; i++) mine[a[i]] = 1 }
+# A line with the bcron field counts, on a box where some account has a key,
+# only on a name the vhost of an account carries, and with the key of that
+# account, or with none while it has none. Any site PHP learns the key of
+# its own account (the panel sends it to the sites of the account), so a key
+# counts for the names of its own account alone; an alias or another name
+# no vhost file carries is never judged.
+function keyok(v, hh) {
+  if (nkey == 0) return 1
+  if (!(hh in owner)) return 0
+  if (v in kacct) return (kacct[v] == owner[hh])
+  return (v == "-" && !(owner[hh] in keyed))
+}
+BEGIN {
+  n = split(own, a, " "); for (i = 1; i <= n; i++) mine[a[i]] = 1
+  nkey = 0
+  if (kf != "") {
+    while ((getline kl < kf) > 0) {
+      if (split(kl, w, " ") != 3) continue
+      if (w[1] == "K") { kacct[w[3]] = w[2]; keyed[w[2]] = 1; nkey++ }
+      else if (w[1] == "H" && !(w[2] in owner)) owner[w[2]] = w[3]
+    }
+    close(kf)
+  }
+}
 $8 ~ /^[0-9][0-9][0-9]$/ {
   ip = $1; gsub(/"/, "", ip); sub(/^::ffff:/, "", ip)
   if (!(ip in mine) && ip !~ /^127\./ && ip != "::1") next
+  # the last bcron field: an earlier quote in a field is logged escaped
+  hoponly = 0
+  if (match($0, /.* bcron="/)) {
+    gv = substr($0, RLENGTH + 1); sub(/".*$/, "", gv)
+    if (!keyok(gv, $2)) hoponly = 1
+  }
   p = $6
   pre = 0
   if (!route(p)) {
@@ -304,6 +339,16 @@ $8 ~ /^[0-9][0-9][0-9]$/ {
   if (!(f[1] in day)) day[f[1]] = ++nd
   sec = day[f[1]] * 86400 + f[2] * 3600 + f[3] * 60 + f[4]
   k = ckey(p); b = sec - $14
+  # A line that does not count is never judged: it can only be the next hop
+  # of a redirect that the cron key of the site links, within 2 s (a redirect
+  # to an alias, or the hop of an account with no key where others have one).
+  if (hoponly) {
+    # a run killed at the time limit holds the cron lock, so the retry that
+    # meets it ran no cron here either; timed by the cron key of the site
+    if ((s ~ /^5/ || s == "499") && $14 + 0 >= 170) hk[k] = sec - int($14 + 0)
+    hop(k, rh, "", s, sec, b, s ~ /^2/ && !((k in hk) && sec - hk[k] <= ((p ~ /\/core\/cron\.php/) ? 270 : 930)))
+    next
+  }
   if (pre && !linked(k, rh, b)) {
     if ((k in cp) && cp[k] == rh SUBSEP p && sec - cpe[k] <= 1 &&
       (s == cps[k] || (s !~ /^[23]/ && cps[k] !~ /^[23]/))) next
@@ -354,6 +399,18 @@ _OWN_IPS="$( { ip -o addr show 2> /dev/null | awk '{print $4}' | sed 's#/.*##'
     [ -r /root/.local.IP.list ] && sed -e 's/#.*//' -e 's/[[:space:]]//g' /root/.local.IP.list
     echo "${_MY_OWNIP}"; } | grep -E '^[0-9A-Fa-f.:]+$' | sort -u | tr '\n' ' ')"
 
+# The accounts' cron keys and the names their vhosts carry, as "K <account>
+# <key>" and "H <name> <account>" lines for the judgement; a name two
+# accounts carry is the first one's in the order nginx includes them
+# (platform.d/<account>.conf by name, so o1-b before o1). An
+# account's files are its backend user's to write: its key is read only as a
+# regular file reached without a link, owned by the home's owner, 128 bytes
+# at most, never from a FIFO; its names only from a vhost.d whose path holds
+# no link.
+_CRON_KEYS_PL='use Fcntl; use Cwd qw(abs_path); my %seen; for my $h (sort { "$a.conf" cmp "$b.conf" } glob("/data/disk/*")) { my @hs = lstat($h); next unless @hs && -d _; my $acct = $h; $acct =~ s{\A.*/}{}; next unless $acct =~ /\A[A-Za-z0-9_.-]+\z/; if (sysopen(my $fh, "$h/.cron-guard.hdr", O_RDONLY | O_NOFOLLOW | O_NONBLOCK)) { my @s = stat($fh); if (@s && -f _ && $s[4] == $hs[4] && $s[7] <= 128) { my $d = ""; sysread($fh, $d, 128); print "K $acct $1\n" if $d =~ /\AX-Boa-Cron: ([0-9a-f]{32})\n?\z/ } close($fh) } my $v = "$h/config/server_master/nginx/vhost.d"; my $rh = abs_path($h); my $rv = abs_path($v); next unless defined $rh && defined $rv && $rv eq "$rh/config/server_master/nginx/vhost.d"; my @vs = lstat($v); next unless @vs && -d _ && $vs[4] == $hs[4]; opendir(my $dh, $v) or next; for my $n (readdir $dh) { print "H $n $acct\n" if $n =~ /\A[A-Za-z0-9][A-Za-z0-9.-]*\z/ && !$seen{$n}++ } closedir($dh) } exit 0'
+_KEYS="${_pthDat}/.keys"
+perl -e "${_CRON_KEYS_PL}" > "${_KEYS}" 2> /dev/null || : > "${_KEYS}"
+
 # -a: a log with a crash-zeroed stretch must not read as binary, which
 # would hide every line after it. The judgement's errors are kept: an awk
 # that cannot run it reports no site at all and would look healthy.
@@ -361,8 +418,9 @@ _AERR="${_pthDat}/.reader.err"
 _failing="$(for _f in ${_LOGS}; do
     [ -f "${_f}" ] && [ ! -L "${_f}" ] && [ -r "${_f}" ] || continue
     LC_ALL=C grep -a -h -F '"iCabProXy"' "${_f}"
-  done | awk -v own="${_OWN_IPS}" "${_CRON_GUARD_AWK}" 2> "${_AERR}")"
+  done | awk -v own="${_OWN_IPS}" -v kf="${_KEYS}" "${_CRON_GUARD_AWK}" 2> "${_AERR}")"
 _awkRc=$?
+rm -f "${_KEYS}"
 _failing="$(sort <<< "${_failing}")"
 
 _today="$(date +%F)"

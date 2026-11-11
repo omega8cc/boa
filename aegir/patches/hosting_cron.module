@@ -85,6 +85,59 @@ function _hosting_cron_site_answers_elysia($site) {
 }
 
 /**
+ * The curl option that sends this account's cron key, or '' without one.
+ *
+ * The server's scheduled-cron watchdog reads what nginx logged for the cron
+ * requests sent with the iCabProXy agent from the server itself, and any
+ * site's PHP on the server can send such a request with another site's name.
+ * The key, which nginx logs, tells the panel's own requests apart. It lives in
+ * the backend user's home, readable by that user alone, made on first use;
+ * curl reads the header from the file, so it is never on a command line.
+ */
+function _hosting_cron_guard_header() {
+  // Asked for each request, never kept for the run: a key file removed in
+  // the middle of a queue run would make curl refuse every later site.
+  $option = '';
+  $home = isset($_SERVER['HOME']) ? $_SERVER['HOME'] : getenv('HOME');
+  if (!is_string($home) || $home === '' || !is_dir($home)) {
+    return $option;
+  }
+  $file = rtrim($home, '/') . '/.cron-guard.hdr';
+  if (!file_exists($file) && !is_link($file)) {
+    $raw = FALSE;
+    if (function_exists('openssl_random_pseudo_bytes')) {
+      $raw = openssl_random_pseudo_bytes(16);
+    }
+    if (!is_string($raw) || strlen($raw) != 16) {
+      $raw = FALSE;
+      $urandom = @fopen('/dev/urandom', 'rb');
+      if ($urandom) {
+        $raw = fread($urandom, 16);
+        fclose($urandom);
+      }
+    }
+    if (!is_string($raw) || strlen($raw) != 16) {
+      return $option;
+    }
+    // Made new, never through a link, readable by the backend user alone.
+    $mask = umask(0077);
+    $handle = @fopen($file, 'x');
+    umask($mask);
+    if ($handle) {
+      fwrite($handle, 'X-Boa-Cron: ' . bin2hex($raw) . "\n");
+      fclose($handle);
+    }
+  }
+  if (is_file($file) && !is_link($file)) {
+    $line = @file_get_contents($file, FALSE, NULL, 0, 128);
+    if (is_string($line) && preg_match('/^X-Boa-Cron: [0-9a-f]{32}\n?$/', $line)) {
+      $option = ' -H ' . escapeshellarg('@' . $file);
+    }
+  }
+  return $option;
+}
+
+/**
  * Queue callback (hosting_<QUEUE_NAME>_queue) for the advanced cron queue.
  *
  * This function is called by hosting_run_queue() whenever the "Advanced Cron"
@@ -168,7 +221,7 @@ function hosting_cron_queue($count = ADV_CRON_MAX_PLL) {
         $date = date("Y-m-d H:i:s");
         file_put_contents($this_clog, "\n$date cURL command via IP request\n", FILE_APPEND);
         file_put_contents($this_clog, "$date KEY $this_host KEY $url\n", FILE_APPEND);
-        $second_cmd = 'curl -L --max-redirs 5 -k -s --retry 3 --retry-delay 5 --max-time 600 -A iCabProXy ' . $this_host . ' ' . $url;
+        $second_cmd = 'curl -L --max-redirs 5 -k -s --retry 3 --retry-delay 5 --max-time 600 -A iCabProXy' . _hosting_cron_guard_header() . ' ' . $this_host . ' ' . $url;
         $second_output = [];
         $second_return_var = 0;
         exec($second_cmd, $second_output, $second_return_var);
@@ -182,7 +235,7 @@ function hosting_cron_queue($count = ADV_CRON_MAX_PLL) {
       else {
         file_put_contents($this_clog, "\n$date cURL command via DOMAIN request\n", FILE_APPEND);
         file_put_contents($this_clog, "$date KEY $url_own\n", FILE_APPEND);
-        $cmd = 'curl -L --max-redirs 5 -k -s --retry 3 --retry-delay 5 --max-time 600 -A iCabProXy ' . $url_own;
+        $cmd = 'curl -L --max-redirs 5 -k -s --retry 3 --retry-delay 5 --max-time 600 -A iCabProXy' . _hosting_cron_guard_header() . ' ' . $url_own;
         $output = [];
         $return_var = 0;
         exec($cmd, $output, $return_var);
@@ -193,7 +246,7 @@ function hosting_cron_queue($count = ADV_CRON_MAX_PLL) {
           file_put_contents($this_clog, $response . "\n", FILE_APPEND);
           file_put_contents($this_clog, "$date Another cURL command, this time via IP request\n", FILE_APPEND);
           file_put_contents($this_clog, "$date KEY $this_host KEY $url\n", FILE_APPEND);
-          $second_cmd = 'curl -L --max-redirs 5 -k -s --retry 3 --retry-delay 5 --max-time 600 -A iCabProXy ' . $this_host . ' ' . $url;
+          $second_cmd = 'curl -L --max-redirs 5 -k -s --retry 3 --retry-delay 5 --max-time 600 -A iCabProXy' . _hosting_cron_guard_header() . ' ' . $this_host . ' ' . $url;
           $second_output = [];
           $second_return_var = 0;
           exec($second_cmd, $second_output, $second_return_var);

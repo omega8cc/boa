@@ -2759,7 +2759,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/monitor/check/xdr9000.sh "${_urlHmr}/tools/system/monitor/check/xdr9000.sh" f90
     _fetch_versioned /var/xdrago/monitor/check/batch_guard.sh "${_urlHmr}/tools/system/monitor/check/batch_guard.sh" f90
     _fetch_versioned /var/xdrago/monitor/check/task_guard.sh "${_urlHmr}/tools/system/monitor/check/task_guard.sh" f96
-    _fetch_versioned /var/xdrago/monitor/check/cron_guard.sh "${_urlHmr}/tools/system/monitor/check/cron_guard.sh" f86
+    _fetch_versioned /var/xdrago/monitor/check/cron_guard.sh "${_urlHmr}/tools/system/monitor/check/cron_guard.sh" f85
     _fetch_versioned /var/xdrago/monitor/check/autosync.sh "${_urlHmr}/tools/system/monitor/check/autosync.sh" f00
     _fetch_versioned /var/xdrago/monitor/check/valkey.sh "${_urlHmr}/tools/system/monitor/check/valkey.sh" f72
     _fetch_versioned /var/xdrago/monitor/check/system.sh "${_urlHmr}/tools/system/monitor/check/system.sh" f59
@@ -3225,7 +3225,7 @@ _update_agents() {
           | md5sum | cut -d' ' -f1 > "${_hQueueR}"
       fi
     fi
-    _fetch_versioned "${_hQueueP}" "${_urlHmr}/patches/${_hQueueF}" f92 --mode 644
+    _fetch_versioned "${_hQueueP}" "${_urlHmr}/patches/${_hQueueF}" f91 --mode 644
     if [ "${_hQueueA}" = "YES" ] && [ -s "${_hQueueP}" ]; then
       _hQueueL="$(grep -xE '[0-9a-f]{32}' "${_hQueueR}" 2> /dev/null | tail -n 20)"
       _hQueueN="$(sed "s/127.0.0.1/${_LOC_IP}/g" "${_hQueueP}" 2> /dev/null \
