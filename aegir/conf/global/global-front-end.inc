@@ -270,23 +270,27 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
       }
     }
     if ($is_bot) {
-      if (!preg_match("/(?:Pingdom|UptimeRobot)/i", $_SERVER['HTTP_USER_AGENT']) &&
+      // Uptime monitors never get the crawler window: they must see the live
+      // site. The list is the one nginx's Monitor test uses, which also keeps
+      // them from reading or storing any cached copy.
+      if (!preg_match("/(?:Pingdom|UptimeRobot|uptime|monitor|statuscake|site24x7|hetrix|freshping|nodeping|updown)/i", $_SERVER['HTTP_USER_AGENT']) &&
           !preg_match("/(?:rss|feed)/i", $_SERVER['REQUEST_URI'])) {
         $expire_in_seconds = '3600';
         if ($is_dev) {
           header('X-Bot-Booster: 3600');
         }
-        // A crawler that sent no session cookie gets no cookie back. nginx
-        // never stores a response that sets one, so on a site that starts a
-        // session for every anonymous visitor (a geolocation or shop module)
-        // each crawler request was a full render plus a new session row.
-        // Crawlers and people never share a stored copy ($is_bot is part of
-        // the cache key, matched by the same pattern), and a crawler does not
-        // keep the cookie anyway.
+        // A crawler that sends no cookie at all gets a 200 page with no
+        // cookie back (the header callback below drops them). nginx never
+        // stores a response that sets one, so on a site that starts a session
+        // for every anonymous visitor (a geolocation or shop module) each
+        // crawler request was a full render plus a new session row. The page
+        // stored is then the one every crawler without a session cookie gets
+        // at that address for the window: nginx keys crawlers apart from
+        // people, but not by country or by any other cookie. A crawler that
+        // sends a cookie keeps the cookies of its own answer.
         if (isset($_SERVER['REQUEST_METHOD'])
           && ($_SERVER['REQUEST_METHOD'] == 'GET' || $_SERVER['REQUEST_METHOD'] == 'HEAD')
-          && (empty($_SERVER['HTTP_COOKIE'])
-            || !preg_match('/SESS[[:alnum:]]+=/', $_SERVER['HTTP_COOKIE']))) {
+          && empty($_SERVER['HTTP_COOKIE'])) {
           $boa_bot_drop_cookies = TRUE;
         }
       }
@@ -296,17 +300,26 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
       // A 5xx this request ends up sending must not carry that lifetime:
       // nginx would keep serving the error for all of it, recovered or not.
       // Without the header the one-second error microcache applies.
-      // Any other answer to a cookieless crawler loses its Set-Cookie lines
-      // (see above). PHP keeps one header callback per request, so both
-      // jobs live in this one.
+      // A 200 answer to a cookieless crawler loses its Set-Cookie lines (see
+      // above); a redirect or any other status keeps them, so it is not
+      // stored, as before. A CGI-style "Status:" header sets the status nginx
+      // acts on and http_response_code() does not see it, so it wins here.
+      // PHP keeps one header callback per request, so both jobs live in this
+      // one.
       if ($expire_in_seconds > 1 && function_exists('header_register_callback')
         && function_exists('http_response_code')) {
         $boa_drop_cookies = !empty($boa_bot_drop_cookies);
         header_register_callback(function () use ($boa_drop_cookies) {
-          if (http_response_code() >= 500) {
+          $boa_status = http_response_code();
+          foreach (headers_list() as $boa_header) {
+            if (strncasecmp($boa_header, 'Status:', 7) == 0) {
+              $boa_status = (int) trim(substr($boa_header, 7));
+            }
+          }
+          if ($boa_status >= 500) {
             header_remove('X-Accel-Expires');
           }
-          elseif ($boa_drop_cookies) {
+          elseif ($boa_drop_cookies && $boa_status == 200) {
             header_remove('Set-Cookie');
           }
         });

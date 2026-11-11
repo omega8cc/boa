@@ -80,13 +80,23 @@
 
     * Speed Booster now stores crawler pages on sites that start a session
       for every anonymous visitor, such as a shop or a geolocation module. A
-      crawler that sends no session cookie gets the page without a cookie,
-      so nginx can keep it for the crawler hour it already used for other
-      sites; before, every such crawler request was a full page build plus
-      a new session row. People are unaffected: crawlers and people never
-      share a stored page, and a person still gets the cookie. A crawler
-      that does send a session cookie, a POST and an error answer keep
-      their cookies as before.
+      crawler that sends no cookie at all gets a 200 page without a cookie,
+      so nginx can keep it for the crawler window (_SPEED_VALID_MAX, an hour
+      by default), as on other sites; before, every such crawler request was
+      a full page build plus a new session row. That stored page is what
+      every crawler without a session cookie gets at that address for the
+      window, so on a site whose pages vary by the visitor's country it shows
+      the first crawler's country. A redirect, an error (a "Status:" header
+      included) and a POST keep their cookies and are not stored, as before.
+      Visitors whose browser BOA does not take for a crawler never get a
+      crawler's page and keep their cookie.
+
+    * Uptime monitors always reach the live site: besides Pingdom and
+      UptimeRobot, a user agent naming uptime, monitor, StatusCake,
+      Site24x7, HetrixTools, Freshping, NodePing or updown is never served
+      from the front cache nor stored in it, and never gets the crawler
+      window, so a monitor whose name also reads as a crawler cannot be
+      shown a crawler's stored copy while the site is down.
 
 @=> Security
 
