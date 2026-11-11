@@ -464,6 +464,13 @@
 
 @=> Important Fixes
 
+    * xmass, xoct and xcopy name an account-wide fpm.info or cli.info that
+      names a PHP neither server has when BOA's fallback (an Octopus pass's
+      ladder, then the ltd worker's, else the account's web PHP or the
+      server's default command line) lands it on another PHP on the target
+      than here, as they name a choice the target would start to honour:
+      the account would change PHP at the cutover with nothing said.
+
     * The Shell Escape Alert reaches the operator again: since the monitor
       moved to bash it could not read _MY_EMAIL and mailed nothing. Each
       refused line is now mailed once, with the lshell log and owner it came
