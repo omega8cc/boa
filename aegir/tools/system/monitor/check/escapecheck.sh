@@ -143,8 +143,11 @@ _send_alert() {
 # The forbidden lines of this minute ($2) and the last ($3) in the lshell logs
 # of the directory $1, as "<log>:<line>", at most 999 for each owner: a log
 # named <login>.log (no colon, so the prefix ends at the first ".log:"), read
-# only when lstat and the opened handle agree it is the same regular file.
-_LSH_FORBIDDEN_PL='use Fcntl; my ($dir, $a, $b) = @ARGV; opendir(my $dh, $dir) or exit 0; my %n; for my $f (sort readdir $dh) { next unless $f =~ /\A[A-Za-z0-9._-]+\.log\z/; my $p = "$dir/$f"; my @l = lstat($p); next unless @l && -f _; sysopen(my $h, $p, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next; my @s = stat($h); unless (@s && -f _ && $s[0] == $l[0] && $s[1] == $l[1]) { close($h); next } my $u = $s[4]; while (my $line = <$h>) { next unless $line =~ /forbidden/i; my $t = $line; $t =~ s/\A[ \t]+//; $t = substr($t, 0, 16); next unless $t eq $a || $t eq $b; next if ++$n{$u} > 999; $line .= "\n" unless $line =~ /\n\z/; print "$p:$line" } close($h) } exit 0'
+# only when lstat and the opened handle agree it is the same regular file, and
+# only its last MiB (lshell appends, so this minute's lines are at the end); an
+# owner at its cap has no further log opened. However long or many the logs,
+# a run reads at most a MiB a log.
+_LSH_FORBIDDEN_PL='use Fcntl; my ($dir, $a, $b) = @ARGV; opendir(my $dh, $dir) or exit 0; my @f = sort grep { /\A[A-Za-z0-9._-]+\.log\z/ } readdir $dh; closedir($dh); my %n; for my $f (@f) { my $p = "$dir/$f"; my @l = lstat($p); next unless @l && -f _; next if ($n{$l[4]} // 0) >= 999; sysopen(my $h, $p, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next; my @s = stat($h); unless (@s && -f _ && $s[0] == $l[0] && $s[1] == $l[1]) { close($h); next } my $u = $s[4]; my $off = $s[7] > 1048576 ? $s[7] - 1048576 : 0; my $d = ""; if (sysseek($h, $off, 0)) { my $b2; while (length($d) < 1048576 && sysread($h, $b2, 65536)) { $d .= $b2 } } close($h); $d =~ s/\A[^\n]*\n// if $off; for my $line (split /\n/, $d) { next unless $line =~ /forbidden/i; my $t = $line; $t =~ s/\A[ \t]+//; $t = substr($t, 0, 16); next unless $t eq $a || $t eq $b; last if ++$n{$u} > 999; print "$p:$line\n" } } exit 0'
 
 _makeactions() {
   mkdir -p "${_BOA_LOG_DIR}"
@@ -207,10 +210,10 @@ _makeactions() {
   # The logs are read by _LSH_FORBIDDEN_PL: the directory is writable by every
   # lshell login, each log is its login's own and any line in it is the
   # login's to write, so a log is read only as a regular file reached without a
-  # link (never blocking on a FIFO), named as lshell names it, the window (this
-  # minute and the last) is applied before any cap, and the cap of 999 lines
-  # is per owner: one login's long, busy or many logs must not push another
-  # login's fresh lines out of the alert, nor make this run long.
+  # link (never blocking on a FIFO), named as lshell names it, its last MiB
+  # only, the window (this minute and the last) applied before any cap, and the
+  # cap of 999 lines per owner: one login's long, busy or many logs must not
+  # push another login's fresh lines out of the alert, nor make this run long.
   done < <(perl -e "${_LSH_FORBIDDEN_PL}" "${_LSH_LOG_DIR}" "${_NOW_IS}" "${_PREV_IS}" 2>/dev/null)
 
   if [[ "${_status}" != "CLEAN" ]]; then
