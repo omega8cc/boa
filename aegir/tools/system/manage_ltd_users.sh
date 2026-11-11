@@ -1760,9 +1760,12 @@ _ltd_own_gid() {
   echo -1
 }
 # The group the account $1's static/control files are handed to: root while
-# it has no group of its own (_ltd_own_gid), as the Octopus pass and BOA.sh
-# hand them, so a file the login made there during a pass is never handed to
-# the shared group with its group write still on; else the pass's group $2.
+# it has no group of its own (_ltd_own_gid), so a file the login made there
+# during a pass is never handed to the shared group with its group write
+# still on; else the pass's group $2. The Octopus pass and BOA.sh hand an
+# unconverted account's control tree to root too; they judge by the main
+# user's group alone, so while a revert waits or the login is back on users
+# they give it the account's group, and the next pass here takes it back.
 _ltd_ctl_group() {
   if [ "$(_ltd_own_gid "${1}")" = "-1" ]; then
     echo root
@@ -1825,7 +1828,8 @@ exit 0;'
 # account's own, and control/ with every folder in it is handed to group
 # root: a file or folder the login makes there later takes that group from
 # its set-group-ID parent, so no other account can write it in the minutes
-# before the next pass. On a converted account only stray other-write goes.
+# before the next pass. On an account with a group of its own (_ltd_own_gid)
+# only write for others, or for a group that is not the account's, goes.
 # $1 = the account.
 _ltd_ctrl_shut() {
   local _o _g
@@ -7838,7 +7842,8 @@ _manage_user() {
         _ltd_fpm_cut_notice
       fi
       # what the login made in control/ during this pass, and anything the
-      # hand-overs above left group- or other-writable, is closed again
+      # hand-overs above left writable by others or by a group that is not
+      # the account's own, is closed again
       _ltd_ctrl_shut "${_USER}"
       _ltd_ngx_pass_reload
       if [ -e "${_pthParentUsr}/clients" ] && [ ! -z ${_USER} ]; then
