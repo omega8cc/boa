@@ -28,6 +28,19 @@ _boa_run_uids() {
   echo "${_l:-0}"
 }
 
+# Duplicity runs in flight, counted from root's processes alone: root's own
+# duplicity, and root's mybackup pass, which runs an account's queued restore
+# as the account through su. An account's own process is never counted: the
+# account's site code runs as its backend user in tasks and can give a
+# process any command line.
+_dcy_live_count() {
+  local _a _b _c
+  _a=$(pgrep -u root -U root -fc '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)' 2> /dev/null)
+  _b=$(pgrep -u root -U root -fc '^[^ ]*duplicity( |$)' 2> /dev/null)
+  _c=$(pgrep -u root -U root -fc '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*mybackup( |$)' 2> /dev/null)
+  echo $(( ${_a:-0} + ${_b:-0} + ${_c:-0} ))
+}
+
 # --- diagnostic helpers (used by every guard below) ---------------------------
 # _dbg : progress/heartbeat, printed to stdout only under --debug.
 # _why : the reason THIS run is skipping / exiting without doing anything,
@@ -272,9 +285,7 @@ _is_protected_run() {
     _protectedRun=TRUE
     _protectedReason="${_protectedReason} provision"
   fi
-  local _bU=""
-  _bU="$(_boa_run_uids)"
-  _IS_DUPLICITY_RUNNING=$(( $(pgrep -u "${_bU}" -U "${_bU}" -fc '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)') + $(pgrep -u "${_bU}" -U "${_bU}" -fc '^[^ ]*duplicity( |$)') ))
+  _IS_DUPLICITY_RUNNING=$(_dcy_live_count)
   if (( _IS_DUPLICITY_RUNNING > 0 )); then
     _protectedRun=TRUE
     _protectedReason="${_protectedReason} duplicity(${_IS_DUPLICITY_RUNNING})"
