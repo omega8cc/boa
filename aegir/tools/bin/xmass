@@ -14218,6 +14218,14 @@ _xmass_refuse_role_clash() {
   fi
   [ "${_rc}" = "1" ] && return 0
   if [ "${_rc}" != "0" ]; then
+    # the login that read the one key named met another: the fingerprint
+    # given is not the key the target serves now, and nothing held is at fault
+    if [ -n "${_XMASS_HOST_FP}" ] && _lrn="$(_mig_hostkey_changed "${_tgt}" "${_said}")"; then
+      _lrn="$(printf '%s\n' "${_lrn}" | sed -n 's/^ALRT:   served now: //p' | head -n 1)"
+      _die "target ${_tgt} serves another key (${_lrn:-not readable}) than the one --host-fp names" \
+           "(${_XMASS_HOST_FP%=}) -- refusing to proceed; no held key was removed. Read the" \
+           "fingerprint on ${_tgt} itself and pass that one"
+    fi
     _xmass_die_hostkey_changed "${_tgt}" "${_said}"
     _said="$(_xmass_last_words "${_said}")"
     _die "cannot verify the standby state of target ${_tgt} (ssh rc=${_rc}${_said:+: ${_said}})" \
