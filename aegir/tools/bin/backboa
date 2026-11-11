@@ -39,6 +39,35 @@ _dcy_live_count() {
   echo $(( ${_a:-0} + ${_b:-0} + ${_c:-0} ))
 }
 
+# Duplicity runs in flight that hold the server's own backup: those
+# _dcy_live_count counts, less the ones an account's own entry runs (multiback
+# backup <service> <account>, which the schedule starts for an account whose
+# own off-site credentials are filled in). The account sets how long that
+# runs (its data, its bucket), so the server's own backup runs beside it
+# instead of waiting on it, and an account's entry does not start while the
+# server's own backup runs. One snapshot of root's processes alone, read by
+# their own argument lists: an account's process can take any title.
+_dcy_box_count() {
+  ps -e -ww -o pid= -o ppid= -o ruid= -o euid= -o args= 2> /dev/null | awk '
+    $3 == 0 && $4 == 0 {
+      a = $0; sub(/^ *[0-9]+ +[0-9]+ +[0-9]+ +[0-9]+ */, "", a)
+      n++; k[n] = $1; p[$1] = $2; c[$1] = a
+      if (a ~ /^([^ ]*\/)?bash \/(opt|usr)\/local\/bin\/multiback backup [^ ]+ [^ ]+$/ &&
+        a !~ / (global|data|custom)$/) e[$1] = 1
+    }
+    END {
+      for (i = 1; i <= n; i++) {
+        a = c[k[i]]
+        if (a !~ /^([^ ]*\/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*(duplicity|mybackup)( |$)/ &&
+          a !~ /^[^ ]*duplicity( |$)/) continue
+        q = p[k[i]]; d = 0
+        while ((q in p) && !(q in e) && d < 64) { q = p[q]; d++ }
+        if (!(q in e)) m++
+      }
+      print m + 0
+    }'
+}
+
 # The scheduled run discards what it prints (crontabs/root), so a backup
 # refused for disk room says so where the daily report goes: the same
 # address, the same _INCIDENT_REPORT gate, the same "Daily backup:" subject
@@ -259,7 +288,7 @@ _pipx_install_pinned() {
 # cmdline means the process exited (or is a zombie) between the
 # checks: dead.
 _pid_is_live() {
-  local _pid=$1 _cmd
+  local _pid=$1 _tool="${2:-}" _cmd
   [[ "${_pid}" =~ ^[0-9]+$ ]] || return 1
   [ -d "/proc/${_pid}" ] || return 1
   # The lock is root's: a recycled pid now held by another user's process
@@ -267,6 +296,14 @@ _pid_is_live() {
   [ "$(awk '/^Uid:/ { print $2 " " $3; exit }' "/proc/${_pid}/status" 2> /dev/null)" = "0 0" ] || return 1
   _cmd=$(tr '\0' ' ' 2>/dev/null < "/proc/${_pid}/cmdline")
   [ -n "${_cmd}" ] || return 1
+  # A tool's own lock is owned by that tool's run alone: a pid recycled by
+  # a run of an account's own entry, which the backup gate leaves out, must
+  # not hold it.
+  if [ -n "${_tool}" ]; then
+    [[ "${_cmd}" =~ ^([^\ ]*/)?bash(\ [-+][^\ ]+|\ [-+][oO]\ [^\ ]+|\ --(rcfile|init-file)\ [^\ ]+)*\ ([^\ ]*/)?${_tool}( |$) ]] \
+      && return 0
+    return 1
+  fi
   case "${_cmd}" in
     *duplicity*|*multiback*|*mybackup*|*backboa*|*sequential_backups*) return 0 ;;
     *) return 1 ;;
@@ -283,7 +320,7 @@ _pid_is_live() {
 # starter whose fresh claim was swept by a slower healer detects the
 # loss and re-enters instead of running unlocked.
 _acquire_pid_file() {
-  local _pidfile=$1 _old_pid _now_pid _try=0
+  local _pidfile=$1 _tool="${2:-}" _old_pid _now_pid _try=0
   while [ "${_try}" -lt 3 ]; do
     _try=$((_try + 1))
     if ( set -o noclobber; echo $$ > "${_pidfile}" ) 2>/dev/null; then
@@ -294,7 +331,8 @@ _acquire_pid_file() {
       continue
     fi
     _old_pid=$(tr -dc '0-9' 2>/dev/null < "${_pidfile}")
-    if _pid_is_live "${_old_pid}"; then
+    # a lock left holding this run's own pid is stale: no run precedes itself
+    if [ "${_old_pid}" != "$$" ] && _pid_is_live "${_old_pid}" "${_tool}"; then
       echo "Live run holds ${_pidfile} (pid ${_old_pid})..."
       return 1
     fi
@@ -781,6 +819,9 @@ _check_aws() {
 }
 
 _CNT=$(_dcy_live_count)
+# a backup run goes beside an account's own entry (_dcy_box_count); every
+# other verb waits on any duplicity
+[ "${1}" = "backup" ] && _CNT=$(_dcy_box_count)
 if (( _CNT > 0 )); then
   echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
   # a configured backup run waits: mybackup's queue starts no restore until
@@ -1954,7 +1995,7 @@ if [ "$1" = "backup" ]; then
   # _acquire_pid_file, whose liveness check also matches the recorded
   # pid's cmdline, so a recycled pid cannot hold the gate forever.
   _PID_FILE="/run/${_HST}_backboa.pid"
-  if ! _acquire_pid_file "${_PID_FILE}"; then
+  if ! _acquire_pid_file "${_PID_FILE}" backboa; then
     touch ${_LOGPTH}/wait_${_HST}_backup.log
     echo "The duplicity backup is running already?"
     exit 1

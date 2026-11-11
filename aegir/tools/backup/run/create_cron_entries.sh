@@ -91,11 +91,22 @@ _LOGFILE="/var/log/backup_runtime.log"
 # by another user. An unreadable or empty cmdline means the process
 # exited (or is a zombie) between the checks: dead.
 _pid_is_live() {
-  local _pid=$1 _cmd
+  local _pid=$1 _tool="${2:-}" _cmd
   [[ "${_pid}" =~ ^[0-9]+$ ]] || return 1
   [ -d "/proc/${_pid}" ] || return 1
+  # The lock is root's: a recycled pid now held by another user's process
+  # titled like a backup is not its owner.
+  [ "$(awk '/^Uid:/ { print $2 " " $3; exit }' "/proc/${_pid}/status" 2> /dev/null)" = "0 0" ] || return 1
   _cmd=$(tr '\0' ' ' 2>/dev/null < "/proc/${_pid}/cmdline")
   [ -n "${_cmd}" ] || return 1
+  # A tool's own lock is owned by that tool's run alone: a pid recycled by
+  # a run of an account's own entry, which the backup gate leaves out, must
+  # not hold it.
+  if [ -n "${_tool}" ]; then
+    [[ "${_cmd}" =~ ^([^\ ]*/)?bash(\ [-+][^\ ]+|\ [-+][oO]\ [^\ ]+|\ --(rcfile|init-file)\ [^\ ]+)*\ ([^\ ]*/)?${_tool}( |$) ]] \
+      && return 0
+    return 1
+  fi
   case "${_cmd}" in
     *duplicity*|*multiback*|*mybackup*|*backboa*|*sequential_backups*) return 0 ;;
     *) return 1 ;;
@@ -114,7 +125,7 @@ _pid_is_live() {
 # claim was swept by a slower healer detects the loss and re-enters
 # instead of running unlocked.
 _acquire_pid_file() {
-  local _pidfile=$1 _old_pid _now_pid _try=0
+  local _pidfile=$1 _tool="${2:-}" _old_pid _now_pid _try=0
   while [ "${_try}" -lt 3 ]; do
     _try=$((_try + 1))
     if ( set -o noclobber; echo $$ > "${_pidfile}" ) 2>/dev/null; then
@@ -125,7 +136,8 @@ _acquire_pid_file() {
       continue
     fi
     _old_pid=$(tr -dc '0-9' 2>/dev/null < "${_pidfile}")
-    if _pid_is_live "${_old_pid}"; then
+    # a lock left holding this run's own pid is stale: no run precedes itself
+    if [ "${_old_pid}" != "$$" ] && _pid_is_live "${_old_pid}" "${_tool}"; then
       echo "Process already running with PID ${_old_pid} holding ${_pidfile}"
       return 1
     fi
@@ -146,12 +158,16 @@ _acquire_pid_file() {
 # unbounded skip-and-continue would pile concurrent fulls onto the same
 # day. At the cap, the remaining entries wait for a later cycle.
 _live_backup_streams() {
-  local _n=0 _f _p
+  local _n=0 _f _p _e
   for _f in /run/duplicity_*.pid; do
     [ -e "${_f}" ] || continue
     case "${_f}" in *_sequential.pid) continue ;; esac
     _p=$(tr -dc '0-9' 2>/dev/null < "${_f}")
-    _pid_is_live "${_p}" && _n=$((_n + 1))
+    # a lock counts while a run of its own entry holds it (the name is
+    # duplicity_<service>_<target>.pid; a service may hold _, a target not)
+    _e="${_f##*/duplicity_}"
+    _e="${_e%.pid}"
+    _pid_is_live "${_p}" "multiback [^ ]+ ${_e%_*} ${_e##*_}" && _n=$((_n + 1))
   done
   echo "${_n}"
 }
@@ -184,7 +200,7 @@ _remove_stale_multiback_pid() {
   _multiback_pidfile="/run/duplicity_${_service}_${_user}.pid"
   if [ -f "${_multiback_pidfile}" ]; then
     _old_pid=$(tr -dc '0-9' 2>/dev/null < "${_multiback_pidfile}")
-    if ! _pid_is_live "${_old_pid}"; then
+    if ! _pid_is_live "${_old_pid}" "multiback [^ ]+ ${_service} ${_user}"; then
       _now_pid=$(tr -dc '0-9' 2>/dev/null < "${_multiback_pidfile}")
       if [ "${_now_pid}" = "${_old_pid}" ]; then
         echo "Stale multiback PID file detected: ${_multiback_pidfile}. Removing it."
@@ -258,7 +274,8 @@ while IFS= read -r _line || [ -n "${_line}" ]; do
 
   # Acquire the per-service lock; a service still running from an
   # earlier cycle skips only itself, the rest of the schedule proceeds
-  if ! _acquire_pid_file "${_SEQ_PIDFILE}"; then
+  # the entry's lock is owned by a run of this wrapper alone
+  if ! _acquire_pid_file "${_SEQ_PIDFILE}" 'sequential_backups\.sh'; then
     echo "Skipping backup for ${_service} (${_user}): a previous run still holds its lock."
     continue
   fi
