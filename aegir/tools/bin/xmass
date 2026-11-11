@@ -2071,7 +2071,45 @@ _xmass_put_here() {
 ### put at the name is removed, a missing directory created.
 _xmass_ctrl_dir_here() {
   [ -L ./control ] && rm -f ./control
-  [ -d ./control ] || mkdir -p ./control
+  [ -d ./control ] || ( umask 022; mkdir -p ./control )
+}
+### The sites' PHP (global-mode.inc) honours a 503 gate only in a control
+### folder that is the account's own: a real directory root or one of the
+### account's identities owns (the uids root keeps in
+### /data/conf/acct-uids/<oN>), with no write for others and group write only
+### for group root or the account's own group; until that list exists, any.
+### Run inside the real static/, $1 = the account: OK, or why not and
+### status 1. Another account's login can make a control/ in the static/ of
+### an account still on the box-wide group when it has none, and a gate put
+### there holds nothing.
+_ACCT_GATE_OWN_PL='my $acct = shift @ARGV;
+exit 0 unless defined $acct && $acct =~ /^[a-z0-9-]+$/;
+open(my $f, "<", "/data/conf/acct-uids/$acct") or do { print "OK\n"; exit 0; };
+my $l = do { local $/; <$f> };
+close($f);
+$l = "" unless defined $l;
+$l =~ s/^\s+|\s+\z//g;
+unless ($l =~ /^[0-9]+(,[0-9]+)*$/) { print "OK\n"; exit 0; }
+my %ok = map { $_ => 1 } (0, split(/,/, $l));
+sub refuse { print "$_[0]\n"; exit 1; }
+my @s = lstat("./control") or refuse("there is no control folder");
+(($s[2] & 0170000) == 0040000) or refuse("control is not a folder");
+$ok{$s[4]} or refuse("control is owned by uid $s[4], none of the account");
+($s[2] & 02) and refuse("others can write control");
+if (($s[2] & 020) && $s[5] != 0) {
+  my $n = getgrgid($s[5]);
+  (defined $n && $n eq $acct) or refuse("group $s[5] can write control");
+}
+print "OK\n";
+exit 0;'
+### Whether the sites' PHP honours a 503 gate in the control folder of the
+### account $1: status 1 and why on stdout when not.
+_xmass_gate_own() {
+  local _r
+  _r="$(_xmass_in_real_dir "/data/disk/${1}/static" perl -e "${_ACCT_GATE_OWN_PL}" -- "${1}" 2> /dev/null)" \
+    && return 0
+  echo "${_r:-static/ is not a real directory}"
+  return 1
 }
 ### ./$1 in the current (pinned) directory touched: a plain file keeps its
 ### content and only its time moves; anything else put there (a link, a
@@ -11072,7 +11110,7 @@ _xmass_restore_hint() {
 _xmass_block_web_all() {
   _info "Blocking web (http-off.pid) on all source accounts ..."
   _XMASS_WEB_BLOCKED=YES
-  local _oct _held="" _away
+  local _oct _held="" _away _why
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
     # One this box relays to another box (a single-account move made
     # before this cutover) holds nothing local to gate and is no part of it.
@@ -11102,6 +11140,8 @@ _xmass_block_web_all() {
     _xmass_in_real_dir "/data/disk/${_oct}/static/control" \
       _xmass_put_here http-off.pid 7200 "${_oct}:$(_acct_group "${_oct}")" \
       || _alrt "  ${_oct}: could not write the 503 gate"
+    _why="$(_xmass_gate_own "${_oct}")" \
+      || _alrt "  ${_oct}: its sites do not honour the 503 gate (static/control: ${_why}): they keep answering here"
   done
   # Purge the Nginx speed cache so cached 200s don't mask the 503
   if [ -d "/var/lib/nginx/speed" ]; then
@@ -11138,7 +11178,14 @@ _xmass_plant_host_gate() {
   [ -n "${_fqdn}" ] || return 1
   _xmass_in_real_dir "/data/disk/${_oct}/static" _xmass_ctrl_dir_here
   _xmass_in_real_dir "/data/disk/${_oct}/static/control" \
-    _xmass_host_gate_here "${_fqdn}" "${_oct}:$(_acct_group "${_oct}")"
+    _xmass_host_gate_here "${_fqdn}" "${_oct}:$(_acct_group "${_oct}")" || return 1
+  # written is not held: the sites' PHP ignores it in a folder not the
+  # account's own
+  local _why
+  if ! _why="$(_xmass_gate_own "${_oct}")"; then
+    _alrt "  ${_oct}: its sites do not honour the per-host gate (static/control: ${_why})"
+    return 1
+  fi
 }
 ### The per-host gate in the current (pinned) control directory: the name is
 ### read and rewritten, never followed or opened as a FIFO. Its lines are

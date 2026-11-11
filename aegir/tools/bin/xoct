@@ -2804,6 +2804,44 @@ _xoct_gate_put_here() {
   [ -f "./${1}" ] && [ ! -L "./${1}" ] && return 1
   _xoct_put_here "${1}" "${2}" "${3}"
 }
+### The sites' PHP (global-mode.inc) honours a 503 gate only in a control
+### folder that is the account's own: a real directory root or one of the
+### account's identities owns (the uids root keeps in
+### /data/conf/acct-uids/<oN>), with no write for others and group write only
+### for group root or the account's own group; until that list exists, any.
+### Run inside the real static/, $1 = the account: OK, or why not and
+### status 1. Another account's login can make a control/ in the static/ of
+### an account still on the box-wide group when it has none, and a gate put
+### there holds nothing.
+_ACCT_GATE_OWN_PL='my $acct = shift @ARGV;
+exit 0 unless defined $acct && $acct =~ /^[a-z0-9-]+$/;
+open(my $f, "<", "/data/conf/acct-uids/$acct") or do { print "OK\n"; exit 0; };
+my $l = do { local $/; <$f> };
+close($f);
+$l = "" unless defined $l;
+$l =~ s/^\s+|\s+\z//g;
+unless ($l =~ /^[0-9]+(,[0-9]+)*$/) { print "OK\n"; exit 0; }
+my %ok = map { $_ => 1 } (0, split(/,/, $l));
+sub refuse { print "$_[0]\n"; exit 1; }
+my @s = lstat("./control") or refuse("there is no control folder");
+(($s[2] & 0170000) == 0040000) or refuse("control is not a folder");
+$ok{$s[4]} or refuse("control is owned by uid $s[4], none of the account");
+($s[2] & 02) and refuse("others can write control");
+if (($s[2] & 020) && $s[5] != 0) {
+  my $n = getgrgid($s[5]);
+  (defined $n && $n eq $acct) or refuse("group $s[5] can write control");
+}
+print "OK\n";
+exit 0;'
+### Whether the sites' PHP honours a 503 gate in the control folder of the
+### account at $1 (/data/disk/<oN>): status 1 and why on stdout when not.
+_xoct_gate_own() {
+  local _r
+  _r="$(_xoct_in_real_dir "${1}/static" perl -e "${_ACCT_GATE_OWN_PL}" -- "${1##*/}" 2> /dev/null)" \
+    && return 0
+  echo "${_r:-static/ is not a real directory}"
+  return 1
+}
 ### ./$1 in the current (pinned) directory with exactly the bytes read from
 ### stdin, the mode the umask $2 leaves of 0666 (022 gives 0644, 077 0600),
 ### owned by $3 (owner:group; root's when empty or when it does not
@@ -3832,7 +3870,13 @@ _xoct_plant_host_gate() {
   local _grp="$3"
   local _fqdn="$4"
   _xoct_in_real_dir "${_usr}/static/control" \
-    _xoct_host_gate_here "${_fqdn}" "${_oct_id}:${_grp}"
+    _xoct_host_gate_here "${_fqdn}" "${_oct_id}:${_grp}" || return 1
+  ### written is not held: the sites' PHP ignores it in a folder not the
+  ### account's own
+  if ! _XOCT_GATE_WHY="$(_xoct_gate_own "${_usr}")"; then
+    echo "ALRT: the per-host gate is not honoured by ${_oct_id}'s sites (static/control: ${_XOCT_GATE_WHY})"
+    return 1
+  fi
 }
 _xoct_host_gate_here() {
   local _t _f
@@ -4311,6 +4355,9 @@ EOFMYSQL
         if _xoct_in_real_dir "${_USR}/static/control" \
           _xoct_gate_put_here http-off.pid 3600 "${_oct}:${_OCT_GRP}"; then
           echo "INFO: account ${_oct} http-off pid created"
+        fi
+        if ! _XOCT_GATE_WHY="$(_xoct_gate_own "${_USR}")"; then
+          echo "ALRT: account ${_oct} 503 gate is not honoured by its sites (static/control: ${_XOCT_GATE_WHY}): they keep answering during this export"
         fi
         ###
         ### Purge the fastcgi speed cache so already-cached 200 responses
@@ -7386,7 +7433,9 @@ _migrate_prepare() {
           && _xoct_in_real_dir "${_USR}/static/control" \
             _xoct_gate_put_here http-off.pid "${_XOCT_GATE_TTL:-3600}" \
             "${_THIS_HM_USER}:$(_acct_group "${_USR}")"
-        if _xoct_in_real_dir "${_USR}/static/control" test -f ./http-off.pid; then
+        if ! _XOCT_GATE_WHY="$(_xoct_gate_own "${_USR}")"; then
+          echo "ALRT: account ${_THIS_HM_USER} 503 gate is not honoured by its sites (static/control: ${_XOCT_GATE_WHY}): its sites serve from this box"
+        elif _xoct_in_real_dir "${_USR}/static/control" test -f ./http-off.pid; then
           echo "INFO: account ${_THIS_HM_USER} 503 gate put back"
         else
           echo "ALRT: account ${_THIS_HM_USER} 503 gate could NOT be put back (static/control/http-off.pid): its sites serve from this box"

@@ -4214,6 +4214,9 @@ _octopus_cleanup() {
           /data/conf/${_usEr}_db_broker.txt /root/.${_usEr}.migproxy.*; do
           [ -e "${_rootCnf}" ] && mv -f "${_rootCnf}" ${_zombie_dir}root/
         done
+        # So does the list of its identities' uids the sites' PHP reads (the
+        # ltd worker writes it again for an account made later by the name).
+        rm -f -- "/data/conf/acct-uids/${_usEr}"
         # So does its aegir2boa import state, beside the create marker, once
         # the database users its import made and still names are looked at.
         _boa_purge_a2b_users "${_usEr}"

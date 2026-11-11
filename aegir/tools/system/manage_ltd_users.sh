@@ -1853,6 +1853,28 @@ _ltd_ctrl_shut() {
   fi
   return 0
 }
+# The uids of the account $1's identities (_acct_walk_uids) for its sites'
+# PHP, which cannot read passwd: global-mode.inc honours a 503 gate in
+# static/control only in a folder root or one of them owns and no one else
+# can write, so a control/ another account's login made or moved into
+# static/ holds none of the account's sites. Root's alone, in
+# /data/conf/acct-uids/<oN> (the folder 0711, the file 0644), rewritten
+# only when it differs; nothing for an account not in passwd.
+_ltd_acct_uids_put() {
+  local _o _d=/data/conf/acct-uids _f
+  _o=$(_acct_walk_uids "${1}") || return 0
+  _f="${_d}/${1}"
+  [ "$(cat -- "${_f}" 2> /dev/null)" = "${_o}" ] && return 0
+  mkdir -p "${_d}" && chown root:root "${_d}" && chmod 0711 "${_d}" || return 1
+  rm -f -- "${_f}.tmp"
+  if ( umask 022; printf '%s\n' "${_o}" > "${_f}.tmp" ) \
+    && chown root:root "${_f}.tmp" && chmod 0644 "${_f}.tmp" \
+    && mv -f -T -- "${_f}.tmp" "${_f}"; then
+    return 0
+  fi
+  rm -f -- "${_f}.tmp"
+  return 1
+}
 # The whole of an account's control/, judged once before a run acts on it:
 # run inside the account's real static/, it prints OK when control/ and
 # everything in it, never followed through a link, and static/ and every
@@ -7731,6 +7753,8 @@ _manage_user() {
       # carries a matching stamp skip the guard for the whole pass. oN can
       # swap static/ itself, so the strip and the mkdir act only inside the
       # real static/.
+      _ltd_acct_uids_put "${_USER}" \
+        || echo "ALERT: could not write /data/conf/acct-uids/${_USER}"
       _ltd_ctrl_shut "${_USER}"
       _ltd_in_real_dir "${_dscUsr}/static" _desymlink_planted ./control
       if [ ! -e "${_dscUsr}/static/control/.ctrl.${_tRee}.${_xSrl}.pid" ] \
