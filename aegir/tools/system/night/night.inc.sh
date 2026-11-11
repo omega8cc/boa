@@ -1277,16 +1277,16 @@ _goaccess_copy_here() {
 # only when the folder the process then stands in is the real one (every name
 # on the way a real directory), and of it only regular files, by name inside
 # it, never through a link (a link at an account's folder could lead root into
-# /dev or /proc); root's sites-enabled and conf.d, whose links are followed.
-# Names starting with a dot are left out, as nginx's vhost.d/* leaves them.
-# Each file read without blocking, at most 1 MiB; comments dropped, names
-# compared without case, token by token, as nginx matches exact names. The
-# folders are walked here, so no count of files can make the call itself
-# fail; an account's folder past 20000 entries or 64 MiB read is left
-# unread past that point (it only stops that account's own names counting),
-# root's or the Master's is "cannot tell". Exit 0: found, 1: not found,
-# 2 or any other: cannot tell.
-_GOACCESS_NAMES_PL='use Fcntl; use Cwd qw(abs_path getcwd); my ($n, $own, $mode) = (lc shift, shift, shift); sub hit { my $d = shift; $d =~ s/#[^\n]*//g; while ($d =~ /(?:^|[\s;{}])server_name\s+([^;]*);/g) { for my $t (split /\s+/, lc $1) { return 1 if $t eq $n } } return 0 } if ($mode eq "-") { local $/; my $d = <STDIN>; exit((defined $d && hit($d)) ? 0 : 1) } sub scan { my ($dir, $want, $follow, $acct) = @_; chdir($dir) or return; if (defined $want) { my $here = getcwd(); return unless defined $here && $here eq $want } opendir(my $dh, ".") or return; my ($c, $bytes) = (0, 0); while (defined(my $e = readdir $dh)) { next if substr($e, 0, 1) eq "."; if (++$c > 20000 || $bytes > 67108864) { return if $acct; exit 2 } my @l = $follow ? stat("./$e") : lstat("./$e"); next unless @l && -f _ && $l[7] <= 1048576; sysopen(my $h, "./$e", O_RDONLY | O_NONBLOCK | ($follow ? 0 : O_NOFOLLOW)) or next; my @s = stat($h); unless (@s && -f _ && $s[0] == $l[0] && $s[1] == $l[1]) { close($h); next } my ($d, $b) = (""); while (sysread($h, $b, 65536)) { $d .= $b; last if length($d) > 1048576 } close($h); $bytes += length($d); exit 0 if hit($d) } closedir($dh) } my $v = "config/server_master/nginx/vhost.d"; my $ra = abs_path("/var/aegir"); scan("/var/aegir/$v", "$ra/$v", 0, 0) if defined $ra && -d "/var/aegir/$v"; my $rd = abs_path("/data/disk"); defined $rd or exit 2; opendir(my $dd, "/data/disk") or exit 2; my @acc = grep { $_ ne "." && $_ ne ".." && $_ ne $own } readdir $dd; closedir($dd); for my $u (sort @acc) { scan("/data/disk/$u/$v", "$rd/$u/$v", 0, 1) } scan("/etc/nginx/sites-enabled", undef, 1, 0); scan("/etc/nginx/conf.d", undef, 1, 0); exit 1'
+# /dev or /proc); root's sites-enabled (every file) and conf.d (*.conf), as
+# nginx includes them, whose links are followed. Names starting with a dot are
+# left out, as nginx's wildcards leave them. Each file read without blocking,
+# at most 1 MiB; comments dropped, the text cut at each ";" so no directive
+# can make the match slow, names compared without case, token by token, as
+# nginx matches exact names. The folders are walked here, so no count of files
+# can make the call itself fail. A folder past 20000 entries or 256 MiB read
+# is "cannot tell", and is named on stderr. Exit 0: found, 1: not found, 2 or
+# any other: cannot tell.
+_GOACCESS_NAMES_PL='use Fcntl; use Cwd qw(abs_path getcwd); my ($n, $own, $mode) = (lc shift, shift, shift); sub hit { my $d = shift; $d =~ s/#[^\n]*//g; my @p = split /;/, $d, -1; pop @p; for my $x (@p) { next unless $x =~ /(?:\A|[\s{}])server_name\s+(.*)\z/s; for my $t (split /\s+/, lc $1) { return 1 if $t eq $n } } return 0 } if ($mode eq "-") { local $/; my $d = <STDIN>; exit((defined $d && hit($d)) ? 0 : 1) } sub scan { my ($dir, $want, $follow, $only) = @_; chdir($dir) or return; if (defined $want) { my $here = getcwd(); return unless defined $here && $here eq $want } opendir(my $dh, ".") or return; my ($c, $bytes) = (0, 0); while (defined(my $e = readdir $dh)) { if (++$c > 20000 || $bytes > 268435456) { print STDERR "$dir\n"; exit 2 } next if substr($e, 0, 1) eq "."; next if defined $only && $e !~ $only; my @l = $follow ? stat("./$e") : lstat("./$e"); next unless @l && -f _ && $l[7] <= 1048576; sysopen(my $h, "./$e", O_RDONLY | O_NONBLOCK | ($follow ? 0 : O_NOFOLLOW)) or next; my @s = stat($h); unless (@s && -f _ && $s[0] == $l[0] && $s[1] == $l[1]) { close($h); next } my ($d, $b) = (""); while (sysread($h, $b, 65536)) { $d .= $b; last if length($d) > 1048576 } close($h); $bytes += length($d); exit 0 if hit($d) } closedir($dh) } my $v = "config/server_master/nginx/vhost.d"; my $ra = abs_path("/var/aegir"); scan("/var/aegir/$v", "$ra/$v", 0, undef) if defined $ra && -d "/var/aegir/$v"; my $rd = abs_path("/data/disk"); defined $rd or exit 2; opendir(my $dd, "/data/disk") or exit 2; my @acc = grep { $_ ne "." && $_ ne ".." && $_ ne $own } readdir $dd; closedir($dd); for my $u (sort @acc) { scan("/data/disk/$u/$v", "$rd/$u/$v", 0, undef) } scan("/etc/nginx/sites-enabled", undef, 1, undef); scan("/etc/nginx/conf.d", undef, 1, qr/\.conf\z/); exit 1'
 # A site's report copies the box's access lines for its name into the
 # account, so the name must be this account's: served by its own vhost text
 # $2 and by no other vhost on the box (another account's site or alias, the
@@ -1294,19 +1294,20 @@ _GOACCESS_NAMES_PL='use Fcntl; use Cwd qw(abs_path getcwd); my ($n, $own, $mode)
 # Status 0: the account's own; 1: not its own; 2: cannot tell, no report
 # built and the last one left as it is.
 _goaccess_name_own() {
-  local _rc
+  local _rc _gaWhy
   if ! printf '%s\n' "${2}" | perl -e "${_GOACCESS_NAMES_PL}" "${1}" "${_HM_U}" -; then
     echo "NOTE: ${_HM_U}: no GoAccess report for ${1}: its vhost does not serve that name"
     return 1
   fi
-  perl -e "${_GOACCESS_NAMES_PL}" "${1}" "${_HM_U}" box
+  _gaWhy="$(perl -e "${_GOACCESS_NAMES_PL}" "${1}" "${_HM_U}" box 2>&1 > /dev/null)"
   _rc=$?
   [ "${_rc}" -eq 1 ] && return 0
   if [ "${_rc}" -eq 0 ]; then
     echo "NOTE: ${_HM_U}: no GoAccess report for ${1}: another vhost on this server also serves that name"
     return 1
   fi
-  echo "NOTE: ${_HM_U}: no new GoAccess report for ${1}: the vhosts on this server could not all be read (status ${_rc})"
+  _gaWhy="$(printf '%s' "${_gaWhy}" | head -n 1 | tr -cd '[:alnum:]/._-')"
+  echo "NOTE: ${_HM_U}: no new GoAccess report for ${1}: the vhosts on this server could not all be read (status ${_rc}${_gaWhy:+, ${_gaWhy:0:200}})"
   return 2
 }
 
