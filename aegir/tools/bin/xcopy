@@ -4378,9 +4378,23 @@ _xcopy_rsync_path_in() {
 _xcopy_copy_here() {
   local _h="${1}" _d="${2}" _g="${3}"
   shift 3
+  _xcopy_glob_names "${_g}" || return 0
   # shellcheck disable=SC2086
   _xcopy_rsync "$@" --rsync-path="$(_xcopy_rsync_path_in "${_d}")" -e ssh \
     ./${_g} "root@${_h}:./"
+}
+### True when the glob $1 names an entry of the current directory, or is
+### empty (the directory's contents). A glob that names nothing copies
+### nothing: rsync would be handed the pattern itself and print an error
+### for a folder that is only empty.
+_xcopy_glob_names() {
+  local _m
+  [ -n "${1}" ] || return 0
+  # shellcheck disable=SC2086
+  for _m in ./${1}; do
+    { [ -e "${_m}" ] || [ -L "${_m}" ]; } && return 0
+  done
+  return 1
 }
 # As _xcopy_rsync_path_in, but the last name of $1 is made a real directory
 # first (a link the account put there is removed, a missing directory made):
@@ -4401,6 +4415,7 @@ _xcopy_rsync_path_mk_in() {
 _xcopy_copy_mk_here() {
   local _h="${1}" _d="${2}" _g="${3}"
   shift 3
+  _xcopy_glob_names "${_g}" || return 0
   # shellcheck disable=SC2086
   _xcopy_rsync "$@" --rsync-path="$(_xcopy_rsync_path_mk_in "${_d}")" -e ssh \
     ./${_g} "root@${_h}:./"

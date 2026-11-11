@@ -604,6 +604,11 @@
     * xcopy's transfer carries the account's Ruby gems and npm trees under
       /opt/user, as xoct's does.
 
+    * xcopy and xoct no longer print an rsync error for each empty folder of
+      the account they copy (an account with no platforms of its own, or no
+      nginx pre.d, subdir.d or platform.d files, showed four in every
+      transfer): a folder with nothing to copy is skipped.
+
     * On a hosted server a migration's runner park now lasts until its end.
       xoct and xcopy pre-mig, and an xmass cutover, park runner.sh, owl.sh,
       usage.sh, graceful.sh and manage_ltd_users.sh as hidden .off copies
