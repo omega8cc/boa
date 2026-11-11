@@ -1648,6 +1648,18 @@ _validate_restore_command() {
 # Check if run as root
 export _run_as_user=$(whoami)
 
+# True while root's backups go first: root's own duplicity, a run of backboa,
+# duobackboa or multiback, or a configured backup run one of them marked held
+# when a restore held it off (each tool and multiback entry its own mark,
+# cleared when that one next gets through; a mark a day old holds no longer).
+_backups_first() {
+  (( $(pgrep -u root -U root -fc '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)') \
+    + $(pgrep -u root -U root -fc '^[^ ]*duplicity( |$)') > 0 )) && return 0
+  pgrep -u root -U root -f '(^|(^| )[^ ]*bash )/(opt|usr)/local/bin/(backboa|duobackboa|multiback)( |$)' \
+    > /dev/null 2>&1 && return 0
+  [ -n "$(find /run -maxdepth 1 -name 'boa_backup_held.*' -type f -mmin -1440 2> /dev/null)" ]
+}
+
 # Main script
 _main_script() {
   # One queue pass at a time (the launcher starts one every few minutes
@@ -1663,10 +1675,8 @@ _main_script() {
     echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
     exit 1
   fi
-  # A backup run a restore held off goes first: backboa, duobackboa and
-  # multiback mark it until they run. A mark a day old holds no longer.
-  if [ -n "$(find /run/boa_backup_held -mmin -1440 2> /dev/null)" ]; then
-    echo "[$(date)] A held backup runs first, will try again later..." >> /var/log/mybackup_waiting_queue.log
+  if _backups_first; then
+    echo "[$(date)] A backup runs or waits first, will try again later..." >> /var/log/mybackup_waiting_queue.log
     exit 1
   fi
   # Process queued commands for all users.
@@ -1676,12 +1686,29 @@ _main_script() {
   # restore into the synced tree as the tenant and mail them a duplicate
   # notice. Leave the file alone; the active consumes its own copy.
   [ -e "/root/.standby.cnf" ] && return 0
-  for _user_dir in "${_BASE_DIR}"/*; do
+  # Each pass starts after the account it served last, so one account's
+  # queue cannot keep another's waiting behind it.
+  local _q_last="" _q_after=() _q_upto=() _q_d
+  _q_last="$(cat /run/mybackup_queue_last 2> /dev/null)"
+  for _q_d in "${_BASE_DIR}"/*; do
+    if [ -n "${_q_last}" ] && [[ "${_q_d##*/}" > "${_q_last}" ]]; then
+      _q_after+=("${_q_d}")
+    else
+      _q_upto+=("${_q_d}")
+    fi
+  done
+  for _user_dir in "${_q_after[@]}" "${_q_upto[@]}"; do
     if [[ -d "${_user_dir}" ]]; then
       export _user=$(basename "${_user_dir}")
       export _user_run_dir="${_user_dir}/${_RUN_SUBDIR}"
       export _user_cmd_file="${_user_run_dir}/${_CMD_FILE}"
       if [[ -f "${_user_cmd_file}" ]]; then
+        # Backups go first between restores too: this pass ends, the queue
+        # stays, and the next pass starts with this account.
+        if _backups_first; then
+          echo "[$(date)] A backup runs or waits first, ${_user}'s restore waits..." >> /var/log/mybackup_waiting_queue.log
+          break
+        fi
         # These paths hang off static/control, which the tenant owns, so every
         # component here is a name it can replace with a symlink. The leaf is
         # not enough: a planted INTERMEDIATE link (static/control itself,
@@ -1794,6 +1821,7 @@ _main_script() {
         # Close the window: ownership goes back to the recorded owners, and a
         # failure to do so is logged, never retried by path.
         _win_close "${_user}"
+        printf '%s\n' "${_user}" > /run/mybackup_queue_last
         sleep 10
       fi
     fi
