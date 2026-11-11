@@ -16,6 +16,9 @@ _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n')"
 _TMP="/var/tmp"
 
 _usrGroup=users
+# the group the account's static/control files are handed to, set per
+# account below with _usrGroup: root for an account with no group of its own
+_ctlGroup=root
 _WEBG=www-data
 
 _acct_group() {
@@ -1685,7 +1688,7 @@ _ltd_ctrl_read() {
 }
 _ltd_ctrl_put_here() {
   printf '%s\n' "${2}" \
-    | _ltd_put_own_here "${1}" "${_USER}.ftp:${_usrGroup}" 0644
+    | _ltd_put_own_here "${1}" "${_USER}.ftp:${_ctlGroup}" 0644
 }
 _ltd_ctrl_put() {
   # $1 = name, $2 = content: a file of the main login's
@@ -1707,7 +1710,7 @@ _ltd_ctrl_info_owner() {
   # account's file the login renamed in keeps its owner, counted
   local _o _ids
   _o=$(_acct_walk_uids "${_USER}") || return 0
-  _ids=$(_ltd_num_ids "${_USER}.ftp:${_usrGroup}") || return 0
+  _ids=$(_ltd_num_ids "${_USER}.ftp:${_ctlGroup}") || return 0
   _ltd_left_note "$(env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 \
     -maxdepth 1 -name '*.info' -type f -links 1 -execdir perl \
     -e "${_SAT_REOWN_OWN_PL}" -- "${_o}" "${_ids%%:*}" "${_ids#*:}" {} + \
@@ -1734,7 +1737,7 @@ _ltd_ctrl_init() (
       cp -T --no-preserve=mode --remove-destination \
         /var/xdrago/conf/control-readme.txt ./README.txt ) &> /dev/null
   fi
-  _ltd_tree_own_here "${_o}" "${_USER}.ftp:${_usrGroup}" \
+  _ltd_tree_own_here "${_o}" "${_USER}.ftp:${_ctlGroup}" \
     "the control directory hand-over" || exit 0
   _ltd_left_note "$(perl -e "${_ACCT_RM_OWN_PL}" -- h "${_o}" - ./.ctrl.* 2> /dev/null)" \
     "the removal of old control stamps" "in place"
@@ -1744,11 +1747,28 @@ _ltd_ctrl_init() (
 # box-wide group (whose members are every other account's .ftp login too).
 _ltd_own_gid() {
   local _g
-  if [ "$(id -gn -- "${1}" 2> /dev/null)" = "${1}" ]; then
+  # Only when the account and its main login both have it as their primary
+  # group, and no revert of it is waiting on a busy identity: the login is
+  # what makes files in control/, and a revert re-groups its set-group-ID
+  # folders to the box-wide group, which new files there then take.
+  [ -s "/var/log/boa/instgrp.revert-pending.${1}" ] && { echo -1; return 0; }
+  if [ "$(id -gn -- "${1}" 2> /dev/null)" = "${1}" ] \
+    && [ "$(id -gn -- "${1}.ftp" 2> /dev/null)" = "${1}" ]; then
     _g=$(getent group "${1}" 2> /dev/null | cut -d: -f3)
     [[ "${_g}" =~ ^[0-9]+$ ]] && { echo "${_g}"; return 0; }
   fi
   echo -1
+}
+# The group the account $1's static/control files are handed to: root while
+# it has no group of its own (_ltd_own_gid), as the Octopus pass and BOA.sh
+# hand them, so a file the login made there during a pass is never handed to
+# the shared group with its group write still on; else the pass's group $2.
+_ltd_ctl_group() {
+  if [ "$(_ltd_own_gid "${1}")" = "-1" ]; then
+    echo root
+  else
+    echo "${2}"
+  fi
 }
 # What root or the account's identities own (the uids given second, a uid
 # no passwd entry names too) in the current (pinned) directory, never through
@@ -1758,12 +1778,12 @@ _ltd_own_gid() {
 # -1 for none) gets the sticky bit, so no one outside the account can rename
 # or remove what is not theirs in it; with w, such write is taken off (a
 # directory group root holds is not another account's; a file keeps group
-# write only for the account's own group, since root hands the control
-# files to the shared group later in the pass), a file losing it loses any
+# write only for the account's own group), a file losing it loses any
 # set-ID bit too, and, for an account with no group of its own, a directory
 # is handed to group root and made set-group-ID, so what the account makes
-# in it later takes group root, never the shared group (a mode set as a
-# number, the control set-up's 0755 among them, drops that bit).
+# in it later takes group root, never the shared group (a folder can come
+# without that bit, as one did on an account moved back to the shared
+# group).
 _LTD_SHUT_OWN_PL='use Fcntl;
 my ($op, $o, $g) = (shift @ARGV, shift @ARGV, shift @ARGV);
 $g = -1 unless defined $g && $g =~ /^[0-9]+$/;
@@ -6880,7 +6900,7 @@ _switch_php() {
           # the main login's own file, handed over through a handle: never
           # a hard link it put at the name
           _ltd_in_real_dir "${_dscUsr}/static/control" \
-            _ltd_reown_here "${_USER}.ftp:${_usrGroup}" ./fpm.info
+            _ltd_reown_here "${_USER}.ftp:${_ctlGroup}" ./fpm.info
         fi
 
         _PHP_SV=${_T_FPM_VRN//[^0-9]/}
@@ -7602,6 +7622,7 @@ _manage_user() {
       else
         _usrGroup=$(_acct_group "${_USER}")
       fi
+      _ctlGroup=$(_ltd_ctl_group "${_USER}" "${_usrGroup}")
       # An account that holds its own web group, or is converted onto one an
       # identity outside it holds too (_web_group_conv): its backend user
       # (provision's membership test reads the group database), its SFTP user
@@ -7712,7 +7733,7 @@ _manage_user() {
         && [ -e "/home/${_USER}.ftp/clients" ]; then
         _ltd_in_real_dir "${_dscUsr}/static" mkdir -p ./control
         _ltd_in_real_dir "${_dscUsr}/static/control" _ltd_ctrl_init
-        # the hand-over gives the tree the account's group: closed again
+        # the hand-over gives the tree the control group: closed again
         _ltd_ctrl_shut "${_USER}"
       fi
       # Nothing below acts on a control/ that is not the account's own
@@ -7816,9 +7837,8 @@ _manage_user() {
         _ltd_fpm_plat_skip_put
         _ltd_fpm_cut_notice
       fi
-      # the hand-overs above give control files the account's group, every
-      # co-tenant's on the box-wide group: one the login made during this
-      # pass would keep that group's write until the next, so closed again
+      # what the login made in control/ during this pass, and anything the
+      # hand-overs above left group- or other-writable, is closed again
       _ltd_ctrl_shut "${_USER}"
       _ltd_ngx_pass_reload
       if [ -e "${_pthParentUsr}/clients" ] && [ ! -z ${_USER} ]; then
