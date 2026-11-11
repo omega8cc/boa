@@ -2325,7 +2325,16 @@ fi
 # ==============================
 
 _get_ssh_ips() {
-  # Same port resolution ip_access.sh uses: sshd may serve a custom
+  # The addresses of the logged-in SSH sessions, as ip_access.sh reads them.
+  # A bare connection to sshd (a scanner, a login still being refused) is no
+  # session: counted, anyone could shield a flood from its ban by holding one
+  # open. ss names each established socket's processes, and sshd titles a
+  # session's `<user>@<tty>` (`sshd: root@pts/0`, `sshd-session:
+  # root@notty`) or, once its login succeeded, `<user> [postauth]`; a
+  # connection before its login shows `[accepted]`, `[net]`, `[preauth]`,
+  # `unknown [priv]` or `sshd-auth: ...`. Where ss is missing or cannot name
+  # a socket's processes, the peer counts, as every established peer did
+  # before. Same port resolution ip_access.sh uses: sshd may serve a custom
   # _SSH_PORT, and the declared cnf value is not always the effective one
   # (hosted boxes and a failed sshd -t validation force 22). Match the
   # union of 22, the cnf value (inline comments stripped, never sourced)
@@ -2341,10 +2350,36 @@ _get_ssh_ips() {
       _ports="${_ports} ${_p}"
     fi
   done
+  local _f="" _out="" _line _peer _pid _t _re='^sshd(-session)?: [^[:space:]@]+(@| \[postauth\])'
+  for _p in ${_ports}; do
+    _f="${_f:+${_f} or }sport = :${_p}"
+  done
+  if command -v ss > /dev/null 2>&1 \
+    && _out=$(ss -tnpH state established "( ${_f} )" 2>/dev/null); then
+    while IFS= read -r _line; do
+      read -r _ _ _ _peer _ <<< "${_line}"
+      _peer="${_peer%:*}"
+      _peer="${_peer#[}"
+      _peer="${_peer%]}"
+      [[ -n "${_peer}" ]] || continue
+      if [[ "${_line}" != *"pid="* ]]; then
+        echo "${_peer}"
+        continue
+      fi
+      for _pid in $(grep -oE 'pid=[0-9]+' <<< "${_line}"); do
+        _t=$(tr '\0' ' ' 2>/dev/null < "/proc/${_pid#pid=}/cmdline")
+        if [[ "${_t}" =~ ${_re} ]]; then
+          echo "${_peer}"
+          break
+        fi
+      done
+    done <<< "${_out}" | sort -u
+    return 0
+  fi
   netstat -tn | awk -v p=":(${_ports// /|})$" '$4 ~ p && $6 == "ESTABLISHED" { split($5, a, ":"); print a[1] }' | sort | uniq
 }
 
-if command -v netstat &>/dev/null; then
+if command -v ss &>/dev/null || command -v netstat &>/dev/null; then
   while IFS= read -r _logged_ip; do
     if _validate_ip "${_logged_ip}"; then
       _LOGGED_IN_IPS["${_logged_ip}"]=1
