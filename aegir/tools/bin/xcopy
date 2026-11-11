@@ -1140,14 +1140,31 @@ _xcopy_le_keep() {
   elif [ "${_rc}" -ne 2 ]; then
     echo "ALRT: site ${1} on ${_oct}: its Let's Encrypt stop marker could not be put; its verify can order a certificate for the source's name"
   fi
-  case "${1}" in
-    *.host8.biz|*.boa.io|*.aegir.cc|*.o8.io|*.nodns.*|*.temp.*|*.tmp.*|*.temporary.*|*.test.*|*.testing.*|*.dev.*|*.devel.*) return 0 ;;
-  esac
+  _xcopy_le_order_named "${1}" || return 0
   if ! _xcopy_in_real_dir "${_USR}/tools/le/certs/${1}" true \
     && _xcopy_read_in "${_USR}/.drush" "${1}.alias.drushrc.php" \
       | grep -qE "'ssl_enabled' => '?[12]'?"; then
     echo "WARN: site ${1} on ${_oct}: no certificate travelled for it, so its verify here can still order one for the source's name, which fails while DNS points at the source"
   fi
+  return 0
+}
+### Whether hosting_le's verify orders for the site $1 at all: it names the
+### site's redirect target when there is one, and leaves out the service
+### domains and the .nodns. names, and the .temp., .tmp., .test., .dev. kind
+### unless the account's ssl-yes-dev flag names it.
+_xcopy_le_order_named() {
+  local _m="${1}" _r
+  _r=$(_xcopy_read_in "${_USR}/.drush" "${1}.alias.drushrc.php" \
+    | sed -n "s/^.*'redirection' => '\([A-Za-z0-9][A-Za-z0-9.-]*\)'.*$/\1/p" | head -1)
+  [ -n "${_r}" ] && _m="${_r}"
+  case "${_m}" in
+    *.host8.biz|*.host8.io|*.host8.cc|*.boa.biz|*.boa.io|*.boa.cc) return 1 ;;
+    *.aegir.biz|*.aegir.io|*.aegir.cc|*.o8.biz|*.o8.io|*.o8.cc|*.nodns.*) return 1 ;;
+  esac
+  [ -e "${_USR}/static/control/ssl-yes-dev-${_m}.info" ] && return 0
+  case "${_m}" in
+    *.temp.*|*.tmp.*|*.temporary.*|*.test.*|*.testing.*|*.dev.*|*.devel.*) return 1 ;;
+  esac
   return 0
 }
 ### What this import put, said once at its end.
@@ -1218,14 +1235,16 @@ _xcopy_verify_list_put() {
 ### Run by post-mig on the target: each copied site's verify that an import
 ### scheduled, waited for up to 30 minutes once cron runs again (not at all
 ### when cron is down: the verifies cannot run), and its result printed and
-### kept in log/import_verifies.report.txt. Only a list written after the
-### account's imported.pid is read; it is removed once reported, so a later
-### post-mig says nothing again. A panel database that is gone, or cannot be
-### read for two minutes, ends the wait at once and the list is kept as
-### import_verifies.unread.txt.
+### kept in log/import_verifies.report.txt. Only a list root wrote after the
+### account's imported.pid is read (the account owns log/ and could put one
+### of its own there); it is removed once reported, so a later post-mig says
+### nothing again. A panel database that is gone ends the wait at once and
+### the list is kept as import_verifies.unread.txt; a server that cannot be
+### reached for two minutes ends it too, and the list stays for a later
+### post-mig.
 _xcopy_verify_report() {
   local _l _a _u _txt _db _pairs _ids _rows _p _s _id _st _pend _end _rep
-  local _ok _warn _fail _left _n _next _cron=YES _gone _qf
+  local _ok _warn _fail _left _n _next _cron=YES _gone _qf _sch _src
   pgrep -x cron > /dev/null 2>&1 || _cron=NO
   for _l in /data/disk/*/log/import_verifies.txt; do
     [ -f "${_l}" ] || continue
@@ -1234,7 +1253,10 @@ _xcopy_verify_report() {
     [[ "${_a}" =~ ^[a-z0-9]+$ ]] || continue
     [ -f "${_u}/log/imported.pid" ] || continue
     [ "${_u}/log/imported.pid" -nt "${_l}" ] && continue
-    _txt=$(_xcopy_read_in "${_u}/log" import_verifies.txt)
+    if ! _txt=$(_xcopy_in_real_dir "${_u}/log" _xcopy_read_root_here import_verifies.txt); then
+      echo "ALRT: ${_a}: ${_l} is not a list this tool wrote; not read"
+      continue
+    fi
     _db=$(printf '%s\n' "${_txt}" | sed -n 's/^db=\([A-Za-z0-9_]\{1,64\}\)$/\1/p' | head -1)
     _pairs=$(printf '%s\n' "${_txt}" \
       | sed -n 's/^site=\([A-Za-z0-9][A-Za-z0-9.-]*\) \([0-9]\{1,12\}\)$/\1:\2/p' | sort -u)
@@ -1261,9 +1283,14 @@ _xcopy_verify_report() {
       if ! _rows=$(mysql --silent -u root -N -B "${_db}" -e "SELECT t.nid, t.task_status FROM hosting_task t JOIN node tn ON tn.nid = t.nid AND tn.vid = t.vid WHERE t.nid IN (${_ids})" 2> /dev/null); then
         _rows=""
         [ -n "${_qf}" ] || _qf=$(date +%s)
-        if [ -z "$(mysql --silent -u root -N -B -e "SELECT SCHEMA_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = '${_db}'" 2> /dev/null)" ] \
-          || [ $(( $(date +%s) - _qf )) -ge 120 ] || [ "$(date +%s)" -ge "${_end}" ]; then
-          _gone=YES
+        _sch=$(mysql --silent -u root -N -B -e "SELECT SCHEMA_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = '${_db}'" 2> /dev/null)
+        _src=$?
+        if [ "${_src}" -eq 0 ] && [ -z "${_sch}" ]; then
+          _gone=GONE
+          break
+        fi
+        if [ $(( $(date +%s) - _qf )) -ge 120 ] || [ "$(date +%s)" -ge "${_end}" ]; then
+          _gone=UNREAD
           break
         fi
         sleep 20
@@ -1279,9 +1306,12 @@ _xcopy_verify_report() {
       fi
       sleep 20
     done
-    if [ -n "${_gone}" ]; then
-      echo "ALRT: ${_a}: its panel database ${_db} could not be read; its copied sites' verifies are not reported"
+    if [ "${_gone}" = "GONE" ]; then
+      echo "ALRT: ${_a}: its panel database ${_db} is gone; its copied sites' verifies are not reported"
       _xcopy_in_real_dir "${_u}/log" mv -f -T -- ./import_verifies.txt ./import_verifies.unread.txt
+      continue
+    elif [ "${_gone}" = "UNREAD" ]; then
+      echo "ALRT: ${_a}: its panel database ${_db} could not be read; the list stays for the next post-mig"
       continue
     fi
     _ok=0; _warn=0; _fail=0; _left=0; _rep=""
@@ -3968,6 +3998,13 @@ _xcopy_in_real_dir() {
 _xcopy_read_here() {
   timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
     bs=1048576 count=1 status=none 2> /dev/null
+}
+# ./$1 in the current (pinned) directory, printed only when it is a regular
+# file owned by root with one link, checked on the one handle that reads it
+# (at most 1 MiB): an account can put a file of its own at a name in a
+# directory it owns.
+_xcopy_read_root_here() {
+  perl -e 'use Fcntl; sysopen(my $h, $ARGV[0], O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit 1; my @s = stat($h) or exit 1; exit 1 unless -f _ && $s[4] == 0 && $s[3] == 1; my $d = ""; defined(read($h, $d, 1048576)) or exit 1; print $d; exit 0' -- "./${1}"
 }
 # The words of $1 that are host names (letters, digits, dots, dashes, a
 # leading wildcard), space-separated; anything else is dropped. The words
