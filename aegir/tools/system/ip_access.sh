@@ -920,7 +920,10 @@ _process_context() {
      && "${_front_hash}" == "${_previous_front_hash}" ]]; then
     return 0
   fi
-  [[ -n "${_acct}" ]] && _acct_reload_held "${_acct}" && return 0
+  # A login's address joining the anti-lockout lists is never held: it is how
+  # an account that locked itself out gets back in.
+  [[ -n "${_acct}" && "${_ssh_ips_hash}" == "${_previous_ssh_hash}" ]] \
+    && _acct_reload_held "${_acct}" && return 0
 
   _acct_in_real_dir "${_nginx_path%/*}" \
     mkdir -p -- "./${_nginx_path##*/}" "./${_front_path##*/}" 2> /dev/null

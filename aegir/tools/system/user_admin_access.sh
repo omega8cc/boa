@@ -1094,7 +1094,10 @@ _process_instance() {
      && "${_front_hash}" == "${_previous_front_hash}" ]]; then
     return 0
   fi
-  _acct_reload_held "${_root##*/}" && return 0
+  # A login's address joining the anti-lockout lists is never held: it is how
+  # an account that locked itself out gets back in.
+  [[ "${_ssh_ips_hash}" == "${_previous_ssh_hash}" ]] \
+    && _acct_reload_held "${_root##*/}" && return 0
 
   _acct_in_real_dir "${_root}/config/includes" mkdir -p -- ./user_admin_access_map \
     ./user_admin_access ./user_admin_access_front 2> /dev/null
