@@ -429,6 +429,14 @@
       the run is never touched, and a key the key tool could not remove is
       reported as still held, with the command to run.
 
+    * 'xoct transfer xusage <target>' and 'xcopy transfer xusage <target>',
+      which copy a box's usage records alone, stopped at "supports only
+      BOA-3.2.2 or newer": the release check of an account read the word
+      xusage as one. The leg runs again, as the shared leg does: a dry run
+      first and --live after a clean one. It refuses a missing target and a
+      target that takes no login, names a changed host key before anything
+      travels, ends on a failed copy, and says so when the box holds no records.
+
     * A Drupal 8+ site renamed by a Migrate on its own platform answered
       500 ("Class ... not found") until PHP-FPM restarted, while every task
       passed: Drupal keeps the class loader's file paths in the web pool's

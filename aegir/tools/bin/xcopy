@@ -4973,7 +4973,10 @@ _migrate_init() {
     echo "_USR ${_oct} is not eligible for migration: system dir"
     exit 1
   fi
-  if [ ! -e "${_USR}/tools/le/dehydrated" ] && [ "${_oct}" != "shared" ]; then
+  ### The release check is an account's. The shared and xusage legs name
+  ### none, and there is no /data/disk/xusage to read.
+  if [ ! -e "${_USR}/tools/le/dehydrated" ] && [ "${_oct}" != "shared" ] \
+    && [ "${_oct}" != "xusage" ]; then
     echo
     echo "ERROR: This version of xcopy migration tool supports only BOA-3.2.2 or newer"
     echo "ERROR: Please upgrade ${_oct} instance to current BOA head before trying again"
@@ -4985,6 +4988,11 @@ _migrate_init() {
     _SQL_CONNECT=127.0.0.1
     _THIS_DB_PORT=6033
   fi
+  ### With no target the usage records leg would address this box itself.
+  if [ "${_oct}" = "xusage" ] && [ -z "${_tgt}" ]; then
+    echo "ERROR: ${_cmd} xusage needs a target: xcopy ${_cmd} xusage <target>"
+    exit 1
+  fi
   ### The verbs that reach the target learn its host key before their first
   ### contact (the hold read before them would pass an unknown key by
   ### silently). An account's export, import and noproxy reach no peer; the
@@ -4995,12 +5003,43 @@ _migrate_init() {
       ;;
   esac
   if [ "${_oct}" = "xusage" ]; then
+    ### The box's usage records alone, which the shared leg also carries:
+    ### for a second pass close to the move. The same dry run first.
     echo "INFO: ${_cmd} for ${_oct} to ${_tgt} start"
-    if [ -e "/var/log/boa/usage" ]; then
-      _xcopy_rsync -aEAXq ${_ieni} -e ssh /var/log/boa/usage/* root@${_tgt}:/var/log/boa/usage/
+    ### One login that runs nothing comes first: a key that is not the one
+    ### held here is named, and a target that takes no login is refused,
+    ### before a dry run calls the copy clean or anything travels.
+    local _xu_said
+    _xu_said="$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" true 2>&1 < /dev/null)" || {
+      if _mig_hostkey_changed "${_tgt}" "${_xu_said}"; then
+        echo "ERROR: ${_tgt} serves a host key that is not the one this box holds for it"
+        echo "ERROR: (${_MIG_HOSTKEY_SAYS}); nothing travelled. Make the check named above,"
+        echo "ERROR: forget the old entries here, then run this command again"
+      else
+        _xu_said="${_xu_said//$'\r'/}"
+        _xu_said="${_xu_said##*$'\n'}"
+        _xu_said="${_xu_said//[^[:print:]]/?}"
+        echo "ERROR: ${_cmd} for ${_oct}: no login to ${_tgt} (${_xu_said:0:200}); nothing travelled"
+      fi
+      _XCOPY_NOT_CLEAN=YES
+      [ "${_MODE}" = "DRY" ] && _xcopy_finalize_dry "${_oct}" "${_tgt}"
+      exit 1
+    }
+    [ "${_MODE}" = "LIVE" ] && _xcopy_require_clean_dry "${_oct}" "${_tgt}"
+    if compgen -G "/var/log/boa/usage/*" > /dev/null; then
+      if ! _xcopy_rsync -aEAXq ${_ieni} -e ssh /var/log/boa/usage/* root@${_tgt}:/var/log/boa/usage/; then
+        echo "ERROR: ${_cmd} for ${_oct}: the copy of /var/log/boa/usage to ${_tgt} failed"
+        exit 1
+      fi
       echo "INFO: ${_cmd} for ${_oct} /var/log/boa/usage complete"
+    else
+      echo "INFO: ${_cmd} for ${_oct}: this box holds no usage records, nothing to copy"
     fi
-    echo "INFO: ${_cmd} for ${_oct} to ${_tgt} complete"
+    if [ "${_MODE}" = "LIVE" ]; then
+      echo "INFO: ${_cmd} for ${_oct} to ${_tgt} complete"
+    else
+      _xcopy_finalize_dry "${_oct}" "${_tgt}"
+    fi
   elif [ "${_oct}" = "shared" ]; then
     echo "INFO: ${_cmd} for ${_oct} to ${_tgt} start"
     # Refuse an empty target: an empty ssh host resolves to localhost, so the arch
