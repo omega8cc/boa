@@ -1176,8 +1176,8 @@ _global_inc_conf_update() {
   fi
   _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
     "${_locCnf}/global/global-bd.inc" global-bd.inc
-  ### Grav's setup file: each Grav vhost names it in GRAV_SETUP_PATH only
-  ### while it is here, so web requests create group-writable folders.
+  ### Grav's setup file: a Grav vhost names it in GRAV_SETUP_PATH while nginx
+  ### finds it, so web requests create group-writable folders.
   _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
     "${_locCnf}/global/global-grav-setup.php" global-grav-setup.php
   ### The legacy-path dispatcher is deployed LAST: it only hands off to the
