@@ -21562,7 +21562,7 @@ case "${_cmd}" in
         *) _die "Unknown argument: $1" ;;
       esac
     done
-    [ -z "${_tgt}" ] && _die "Usage: xmass prep-target <target-ip> [--host-fp=SHA256:...] [--fix-php] [--fix-solr] [--fix-accounts] [--fix-users] [--adopt-siteless=<oN>[,<oN>...]] [--return-accounts=<oN>[,<oN>...]] [admail=<address>]"
+    [ -z "${_tgt}" ] && _die "Usage: xmass prep-target <target-ip> [--fix-php] [--fix-solr] [--fix-accounts] [--fix-users] [--adopt-siteless=<oN>[,<oN>...]] [--return-accounts=<oN>[,<oN>...]] [--host-fp=SHA256:...] [admail=<address>]"
     # it lays accounts on a box that serves, and nothing else
     [ -n "${_XMASS_RETURN_ACCOUNTS}" ] \
       && [ -n "${_XMASS_FIX_PHP}${_XMASS_FIX_SOLR}${_XMASS_FIX_USERS}${_XMASS_FIX_ACCOUNTS}${_XMASS_ADOPT_SITELESS}" ] \
