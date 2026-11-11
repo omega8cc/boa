@@ -436,6 +436,12 @@
 
 @=> Important Fixes
 
+    * The backup cron writer skips an indented comment and a line of
+      spaces in the backup schedule, and refuses a line of one word. Its
+      comment test read \s as the letter s, so an indented comment was an
+      invalid line and a tab-indented one an entry, and a one-word line
+      took that word as its user too.
+
     * xcopy checks the PHP versions an account has in force against the
       target, as xoct does: create refuses a target that lacks one before
       anything is installed there, and every live transfer and pretransfer
