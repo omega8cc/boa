@@ -12,7 +12,8 @@
       stored. Without it a target the source holds no key for is trusted on
       first use, as before, and the run now says so with the fingerprint it
       stored. A key held for the target that is not the one named is never
-      removed: the refusal prints the command.
+      removed: the refusal prints the command. A key that known_hosts marks
+      revoked is refused.
 
     * xmass, xoct, xcopy and xtrim keep each run's whole output on the
       server, as barracuda and octopus do: in
@@ -425,7 +426,8 @@
       target's host key it stored, as it withdraws its firewall lines. The
       key was stored by the verb's first login, before the step that records
       it, so a refused run left it in root's known_hosts. A key held before
-      the run is never touched.
+      the run is never touched, and a key the key tool could not remove is
+      reported as still held, with the command to run.
 
     * A Drupal 8+ site renamed by a Migrate on its own platform answered
       500 ("Class ... not found") until PHP-FPM restarted, while every task
