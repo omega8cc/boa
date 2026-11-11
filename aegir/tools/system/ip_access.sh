@@ -829,6 +829,33 @@ _ssh_ips=$(_get_ssh_ips)
 # fire the change-gate exactly like a changed SSH-peer set.
 _ssh_ips_hash=$(echo "${_ssh_ips} ${_server_ip}" | md5sum | awk '{print $1}')
 
+# An account's change reloads the box-wide nginx at most once in
+# _ACCT_RELOAD_SECS for this tool: a change inside that time waits, its
+# markers untouched, for the first pass after it, which judges it afresh. The
+# account's last reload is a root-only stamp beside its restart requests'.
+_ACCT_RELOAD_SECS=900
+_ACCT_REQ_DIR="/run/boa_acct_requests"
+_RELOAD_TOOL="ip_access"
+# Status 0 while the account $1's last reload by this tool is younger than
+# the allowance; a held change is said once.
+_acct_reload_held() {
+  local _st="${_ACCT_REQ_DIR}/${_RELOAD_TOOL}.${1}" _ts _now
+  _now=$(date +%s)
+  _ts=$(tr -dc '0-9' 2> /dev/null < "${_st}")
+  [[ "${_ts}" =~ ^[1-9][0-9]{0,11}$ ]] || return 1
+  (( _now - _ts >= 0 && _now - _ts < _ACCT_RELOAD_SECS )) || return 1
+  if [[ ! -e "${_st}.noted" ]]; then
+    : > "${_st}.noted"
+    echo "${_RELOAD_TOOL} change of ${1} waits: its last reload was under $(( _ACCT_RELOAD_SECS / 60 )) minutes ago."
+  fi
+  return 0
+}
+_acct_reload_stamp() {
+  mkdir -p -m 0700 "${_ACCT_REQ_DIR}" 2> /dev/null
+  date +%s > "${_ACCT_REQ_DIR}/${_RELOAD_TOOL}.${1}"
+  rm -f "${_ACCT_REQ_DIR}/${_RELOAD_TOOL}.${1}.noted"
+}
+
 _process_context() {
   local _input_file="$1" _nginx_path="$2" _backup_dir="$3" _vhost_dir="$4"
   if [[ ! -f "${_input_file}" ]]; then
@@ -893,6 +920,7 @@ _process_context() {
      && "${_front_hash}" == "${_previous_front_hash}" ]]; then
     return 0
   fi
+  [[ -n "${_acct}" ]] && _acct_reload_held "${_acct}" && return 0
 
   _acct_in_real_dir "${_nginx_path%/*}" \
     mkdir -p -- "./${_nginx_path##*/}" "./${_front_path##*/}" 2> /dev/null
@@ -982,6 +1010,7 @@ _process_context() {
   # narrow what the front lets through, and an older set could still claim a
   # name that has since moved to another site.
   local _ct
+  [[ -n "${_acct}" ]] && _acct_reload_stamp "${_acct}"
   _ct=$(service nginx configtest 2>&1)
   if [[ $? -ne 0 ]]; then
     echo "Nginx configtest failed after ip_access update (${_input_file}): ${_ct}"

@@ -414,6 +414,33 @@ _work="$(mktemp -d /run/.ai_policy.XXXXXX 2> /dev/null)" \
   || { echo "Cannot create a work directory in /run; skipping this run."; exit 1; }
 trap 'rm -rf -- "${_work}"' EXIT
 
+# An account's change reloads the box-wide nginx at most once in
+# _ACCT_RELOAD_SECS for this tool: a change inside that time waits, its
+# markers untouched, for the first pass after it, which judges it afresh. The
+# account's last reload is a root-only stamp beside its restart requests'.
+_ACCT_RELOAD_SECS=900
+_ACCT_REQ_DIR="/run/boa_acct_requests"
+_RELOAD_TOOL="ai_policy"
+# Status 0 while the account $1's last reload by this tool is younger than
+# the allowance; a held change is said once.
+_acct_reload_held() {
+  local _st="${_ACCT_REQ_DIR}/${_RELOAD_TOOL}.${1}" _ts _now
+  _now=$(date +%s)
+  _ts=$(tr -dc '0-9' 2> /dev/null < "${_st}")
+  [[ "${_ts}" =~ ^[1-9][0-9]{0,11}$ ]] || return 1
+  (( _now - _ts >= 0 && _now - _ts < _ACCT_RELOAD_SECS )) || return 1
+  if [[ ! -e "${_st}.noted" ]]; then
+    : > "${_st}.noted"
+    echo "${_RELOAD_TOOL} change of ${1} waits: its last reload was under $(( _ACCT_RELOAD_SECS / 60 )) minutes ago."
+  fi
+  return 0
+}
+_acct_reload_stamp() {
+  mkdir -p -m 0700 "${_ACCT_REQ_DIR}" 2> /dev/null
+  date +%s > "${_ACCT_REQ_DIR}/${_RELOAD_TOOL}.${1}"
+  rm -f "${_ACCT_REQ_DIR}/${_RELOAD_TOOL}.${1}.noted"
+}
+
 _process_instance() {
   local _root="$1"
   local _input_file="${_root}/static/control/ai/policy.txt"
@@ -458,6 +485,7 @@ _process_instance() {
       return 0
     fi
   fi
+  _acct_reload_held "${_root##*/}" && return 0
 
   _acct_in_real_dir "${_root}/config/includes" mkdir -p ./ai_policy 2> /dev/null
   _acct_in_real_dir "${_root}" mkdir -p ./undo 2> /dev/null
@@ -540,6 +568,7 @@ _process_instance() {
 
   # Validate the whole host nginx config; revert THIS instance on failure.
   local _ct
+  _acct_reload_stamp "${_root##*/}"
   _ct=$(service nginx configtest 2>&1)
   if [[ $? -ne 0 ]]; then
     echo "Nginx configtest failed after AI policy update (${_root}): ${_ct}"
