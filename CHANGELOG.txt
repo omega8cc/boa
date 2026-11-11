@@ -148,6 +148,39 @@
       check from inside a folder of root's, where root then acted as if it
       were the account's own.
 
+    * A site's GoAccess report holds that site's own visits only. weblogx
+      matched the site's name as a pattern anywhere in a log line, so its
+      dots took another site's lines and a name holding ALL took the whole
+      server's; it now compares the logged host as a string. The nightly
+      builds a report only for a name the account's own vhost serves and no
+      other vhost on the server does, and withdraws one it built before.
+
+    * xmass and xoct require of a move's target only the PHP versions in
+      force on the source. A line in an account's own control files naming
+      a PHP the source lacks refused the whole-server move, or had
+      --fix-php build that PHP on the target; it does nothing on either
+      side, and is still named before the move.
+
+    * A hosted server's tuning tier counts its accounts. It counted the
+      lines ls printed for every account's cli.info, so one account that
+      made its cli.info a folder of files moved the server to the slow
+      cron pace and pinned its PHP-FPM workers.
+
+    * ai_policy.sh, ip_access.sh and user_admin_access.sh reload nginx for
+      one account's change at most once in 15 minutes; a later change is
+      applied when that time is up. A file touched every two minutes made
+      each of them reload nginx, and reset every HTTP/3 transfer on the
+      server, at that pace.
+
+    * The pass that writes the quic_bpf fragment no longer reads Nginx's
+      error log after a reload. A reload never runs that setting's eBPF
+      init, so only a line it did not cause, such as a site's own PHP
+      message, could match, and that switched quic_bpf off for good.
+
+    * The shell escape monitor takes this minute's and the last minute's
+      forbidden lines from each lshell log before any cap, at most 999 a
+      log. One login's long log pushed every other login's fresh lines out.
+
     * An account's request to restart Nginx or the cache server, or to
       reload PHP-FPM, is honoured at most once in 15 minutes for that
       account and service, and only as a plain file of the account's own in
