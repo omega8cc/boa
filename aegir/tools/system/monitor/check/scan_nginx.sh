@@ -2344,6 +2344,9 @@ _get_ssh_ips() {
   # validation force 22). Match the union of 22, the cnf value (inline
   # comments stripped, never sourced) and every port the live sshd config
   # serves, so the logged-in shield can never go dark on a default-port box.
+  # The caller's IFS is not this function's: scan_nginx.sh splits on
+  # newlines and tabs alone, which would leave every ss line unsplit.
+  local IFS=$' \t\n'
   local _p _ports="22" _cnf_port _sshd_ports
   _cnf_port=$(sed -n 's/^_SSH_PORT=//p' /root/.barracuda.cnf 2>/dev/null \
     | tail -n 1 | sed 's/[[:space:]]*#.*$//' | tr -d '" ')
@@ -2354,30 +2357,44 @@ _get_ssh_ips() {
       _ports="${_ports} ${_p}"
     fi
   done
-  local _f="" _out="" _line _peer _ino _x _pid _pids _rc
+  local _f="" _out="" _line _peer _ino _x _pid _pids _rpids _rc _rrc
   local _re='^sshd(-session)?: [^][:space:]@[]+(@|[[:space:]]*$| \[postauth\])'
-  local -a _fds=()
-  local -A _held=()
+  local -a _fds=() _rfds=()
+  local -A _held=() _rheld=()
   for _p in ${_ports}; do
     _f="${_f:+${_f} or }sport = :${_p}"
   done
   if command -v ss > /dev/null 2>&1 && command -v pgrep > /dev/null 2>&1 \
     && _out=$(unset COLUMNS; ss -tneH state established "( ${_f} )" 2>/dev/null); then
-    # Before OpenSSH 10.5 a session's process runs as its user, and a
-    # process another user titles the same holds no SSH connection's socket.
-    # owner-any: every user's sessions, told by the sockets they hold
+    [[ -n "${_out}" ]] || return 0
+    # A session's process runs as its user before OpenSSH 10.5, so the
+    # titles are read whoever owns them; any account can title its own
+    # process so, and hold a socket on a port sshd does not serve (a cnf
+    # port sshd has not taken up yet). A connection counts only when root's
+    # own sshd, the session's privileged monitor, holds its socket too.
+    # owner-any: every user's sessions, told by the sockets root's sshd holds
     _pids=$(pgrep -f "${_re}" 2>/dev/null)
     _rc=$?
-    if (( _rc <= 1 )); then
+    _rpids=$(pgrep -u 0 -U 0 -f '^sshd(-session)?: ' 2>/dev/null)
+    _rrc=$?
+    if (( _rc <= 1 && _rrc <= 1 )); then
       for _pid in ${_pids}; do
         _fds+=("/proc/${_pid}/fd")
       done
-      if (( ${#_fds[@]} > 0 )); then
+      for _pid in ${_rpids}; do
+        _rfds+=("/proc/${_pid}/fd")
+      done
+      if (( ${#_fds[@]} > 0 && ${#_rfds[@]} > 0 )); then
         while IFS= read -r _x; do
           _x="${_x#socket:[}"
           _x="${_x%]}"
           [[ "${_x}" =~ ^[0-9]+$ ]] && _held["${_x}"]=1
         done < <(find "${_fds[@]}" -lname 'socket:*' -printf '%l\n' 2>/dev/null)
+        while IFS= read -r _x; do
+          _x="${_x#socket:[}"
+          _x="${_x%]}"
+          [[ "${_x}" =~ ^[0-9]+$ ]] && _rheld["${_x}"]=1
+        done < <(find "${_rfds[@]}" -lname 'socket:*' -printf '%l\n' 2>/dev/null)
       fi
       while IFS= read -r _line; do
         read -r _ _ _ _peer _ <<< "${_line}"
@@ -2396,7 +2413,8 @@ _get_ssh_ips() {
         # line with no inode at all cannot be told, so it counts.
         if [[ "${_line}" =~ [[:space:]]ino:([0-9]+) ]]; then
           _ino="${BASH_REMATCH[1]}"
-          [[ "${_ino}" != 0 && -n "${_held[${_ino}]:-}" ]] || continue
+          [[ "${_ino}" != 0 && -n "${_held[${_ino}]:-}" && -n "${_rheld[${_ino}]:-}" ]] \
+            || continue
         fi
         echo "${_peer}"
       done <<< "${_out}" | sort -u

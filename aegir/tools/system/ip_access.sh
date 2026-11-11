@@ -827,6 +827,9 @@ _get_ssh_ips() {
   # sourced -- sourcing a slice resets config vars) and every port the live
   # sshd config serves, so a default-port box can never lose its peers and
   # a custom-port box is still covered.
+  # The caller's IFS is not this function's: scan_nginx.sh splits on
+  # newlines and tabs alone, which would leave every ss line unsplit.
+  local IFS=$' \t\n'
   local _p _ports="22" _cnf_port _sshd_ports
   _cnf_port=$(sed -n 's/^_SSH_PORT=//p' /root/.barracuda.cnf 2>/dev/null \
     | tail -n 1 | sed 's/[[:space:]]*#.*$//' | tr -d '" ')
@@ -837,30 +840,44 @@ _get_ssh_ips() {
       _ports="${_ports} ${_p}"
     fi
   done
-  local _f="" _out="" _line _peer _ino _x _pid _pids _rc
+  local _f="" _out="" _line _peer _ino _x _pid _pids _rpids _rc _rrc
   local _re='^sshd(-session)?: [^][:space:]@[]+(@|[[:space:]]*$| \[postauth\])'
-  local -a _fds=()
-  local -A _held=()
+  local -a _fds=() _rfds=()
+  local -A _held=() _rheld=()
   for _p in ${_ports}; do
     _f="${_f:+${_f} or }sport = :${_p}"
   done
   if command -v ss > /dev/null 2>&1 && command -v pgrep > /dev/null 2>&1 \
     && _out=$(unset COLUMNS; ss -tneH state established "( ${_f} )" 2>/dev/null); then
-    # Before OpenSSH 10.5 a session's process runs as its user, and a
-    # process another user titles the same holds no SSH connection's socket.
-    # owner-any: every user's sessions, told by the sockets they hold
+    [[ -n "${_out}" ]] || return 0
+    # A session's process runs as its user before OpenSSH 10.5, so the
+    # titles are read whoever owns them; any account can title its own
+    # process so, and hold a socket on a port sshd does not serve (a cnf
+    # port sshd has not taken up yet). A connection counts only when root's
+    # own sshd, the session's privileged monitor, holds its socket too.
+    # owner-any: every user's sessions, told by the sockets root's sshd holds
     _pids=$(pgrep -f "${_re}" 2>/dev/null)
     _rc=$?
-    if (( _rc <= 1 )); then
+    _rpids=$(pgrep -u 0 -U 0 -f '^sshd(-session)?: ' 2>/dev/null)
+    _rrc=$?
+    if (( _rc <= 1 && _rrc <= 1 )); then
       for _pid in ${_pids}; do
         _fds+=("/proc/${_pid}/fd")
       done
-      if (( ${#_fds[@]} > 0 )); then
+      for _pid in ${_rpids}; do
+        _rfds+=("/proc/${_pid}/fd")
+      done
+      if (( ${#_fds[@]} > 0 && ${#_rfds[@]} > 0 )); then
         while IFS= read -r _x; do
           _x="${_x#socket:[}"
           _x="${_x%]}"
           [[ "${_x}" =~ ^[0-9]+$ ]] && _held["${_x}"]=1
         done < <(find "${_fds[@]}" -lname 'socket:*' -printf '%l\n' 2>/dev/null)
+        while IFS= read -r _x; do
+          _x="${_x#socket:[}"
+          _x="${_x%]}"
+          [[ "${_x}" =~ ^[0-9]+$ ]] && _rheld["${_x}"]=1
+        done < <(find "${_rfds[@]}" -lname 'socket:*' -printf '%l\n' 2>/dev/null)
       fi
       while IFS= read -r _line; do
         read -r _ _ _ _peer _ <<< "${_line}"
@@ -879,7 +896,8 @@ _get_ssh_ips() {
         # line with no inode at all cannot be told, so it counts.
         if [[ "${_line}" =~ [[:space:]]ino:([0-9]+) ]]; then
           _ino="${BASH_REMATCH[1]}"
-          [[ "${_ino}" != 0 && -n "${_held[${_ino}]:-}" ]] || continue
+          [[ "${_ino}" != 0 && -n "${_held[${_ino}]:-}" && -n "${_rheld[${_ino}]:-}" ]] \
+            || continue
         fi
         echo "${_peer}"
       done <<< "${_out}" | sort -u
@@ -924,14 +942,20 @@ _acct_reload_stamp() {
   rm -f "${_ACCT_REQ_DIR}/${_RELOAD_TOOL}.${1}.noted"
 }
 # The SSH addresses the account $1's lists now carry (the server's own with
-# them), one a line, recorded by root beside its stamp whenever this run's
-# lists stay on disk: applied by a reload, written on a standby whose web
-# tier is held, or kept because the last-good copy cannot be read. Never
-# when the run reverts: the last-good copy is from the run that recorded
-# its set, and a new login's address must stay free to apply at once.
+# them), one a line, recorded by root beside its stamp when a reload applied
+# them or a standby whose web tier is held wrote them. Never when the run
+# reverts: the last-good copy is from the run that recorded its set, and a
+# new login's address must stay free to apply at once.
 _acct_ssh_record() {
   mkdir -p -m 0700 "${_ACCT_REQ_DIR}" 2> /dev/null
   printf '%s\n' ${_ssh_ips} ${_server_ip} | sort -u > "${_ACCT_REQ_DIR}/${_RELOAD_TOOL}.${1}.ssh"
+}
+# Root's record forgotten where this run's lists stay on disk but nginx may
+# not have loaded them (a failed configtest or reload kept them for want of
+# a readable last-good copy): with no record every logged-in address reads
+# as new, so the next run applies them at once.
+_acct_ssh_forget() {
+  rm -f "${_ACCT_REQ_DIR}/${_RELOAD_TOOL}.${1}.ssh"
 }
 # Status 0 when a logged-in SSH address joined: one root's own record of the
 # set the account $1's lists last took lacks (no record: joined). A login
@@ -1131,7 +1155,7 @@ _process_context() {
           "last-good backup ${_last_good_backup} is unreadable -- keeping the" \
           "fragments now on disk rather than deleting them for an archive" \
           "that cannot be restored. Fix ${_input_file} and re-run."
-        [[ -n "${_acct}" ]] && _acct_ssh_record "${_acct}"
+        [[ -n "${_acct}" ]] && _acct_ssh_forget "${_acct}"
         # With the front copies gone the rest may pass again.
         service nginx configtest &> /dev/null && service nginx reload
       fi
@@ -1165,8 +1189,10 @@ _process_context() {
         _policy_alert "ip_access.refused.${_input_file}" \
           "ip_access: last-good backup unreadable, fragments kept (${_input_file})" \
           "last-good backup ${_last_good_backup} is unreadable -- fragments left in place."
-        [[ -n "${_acct}" ]] && _acct_ssh_record "${_acct}"
+        [[ -n "${_acct}" ]] && _acct_ssh_forget "${_acct}"
       fi
+    else
+      [[ -n "${_acct}" ]] && _acct_ssh_forget "${_acct}"
     fi
     _acct_in_real_dir "${_nginx_path}" rm -f -- ./.access_front_hash
     return 1
