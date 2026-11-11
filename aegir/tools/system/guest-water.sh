@@ -1185,8 +1185,9 @@ _guard_stats() {
 # " # <tag> ips" at the end of the line for every provider tag the refreshes
 # above write (site24x7_extra is a tag of its own) and the migration proxy
 # line; the DHCP lease lines are pruned and added after the guard, from the
-# lease files, and listed for safety. Exact shapes, not bare words: an operator line whose comment merely
-# mentions a provider is foreign to the pass, so a change to it is caught by
+# lease files, and listed for safety. Exact shapes, not bare words: an
+# operator line whose comment merely mentions a provider is foreign to the
+# pass, so a change to it is caught by
 # the diff-guard and named by the rollback alert instead of being tolerated
 # and hidden. A provider added above is added here, once -- left out, its own
 # lines would roll every pass back and the alert would name them.
@@ -1355,15 +1356,33 @@ _dhcp_allow_lease_servers() {
   done
 }
 
-# BOA's own DHCP allow lines (that exact shape) for a server no lease names
-# any more: a former server, or an address an older BOA took from a forged
-# log line. Pruned only while some lease names a server, so a dhclient
-# between restarts empties nothing; every other line stays.
+# Every server any lease file names: those of the running dhclients, whatever
+# their owner, and every lease file in /var/lib/dhcp. Used only to keep lines,
+# so a file another user could write can at most keep one; never to add one.
+_dhcp_known_servers() {
+  local _p _lf
+  {
+    for _p in $(pgrep -u root -x dhclient 2> /dev/null); do
+      tr '\0' '\n' 2> /dev/null < "/proc/${_p}/cmdline" | sed -n '/^-lf$/{n;p;q;}'
+    done
+    ls -1 /var/lib/dhcp/*.leases 2> /dev/null
+  } | sort -u | while IFS= read -r _lf; do
+    [ -f "${_lf}" ] || continue
+    sed -n -E 's/^[[:space:]]*option dhcp-server-identifier[[:space:]]+([0-9.]+);.*$/\1/p' "${_lf}"
+  done | sort -u
+}
+
+# BOA's own DHCP allow lines (that exact shape) for a server no lease file
+# names any more: a former server, or an address an older BOA took from a
+# forged log line. Nothing is pruned unless a running root dhclient holds a
+# lease, and a server named in any lease file on disk keeps its line, so a
+# dhclient between restarts, or one whose lease file the add step does not
+# trust, keeps its line; every other line stays.
 _dhcp_prune_stale_lines() {
   local _keep _l _ip
   [ -e "/etc/csf/csf.allow" ] || return 0
-  _keep="$(_dhcp_lease_servers)"
-  [ -n "${_keep}" ] || return 0
+  [ -n "$(_dhcp_lease_servers)" ] || return 0
+  _keep="$(_dhcp_known_servers)"
   grep -E '^udp\|out\|d=67\|d=[0-9.]+ # Local DHCP out$' /etc/csf/csf.allow \
     | while IFS= read -r _l; do
     _ip="${_l#udp|out|d=67|d=}"
