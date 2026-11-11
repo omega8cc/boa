@@ -2979,6 +2979,51 @@ _myloader_binlog_opts() {
   fi
   return 0
 }
+### A Percona 5.7 dump names a utf8mb4 table's character set and no
+### collation (utf8mb4_general_ci was that set's default there). Loaded on
+### 8.0 or later, such a table and every column of it took that server's
+### default, utf8mb4_0900_ai_ci: the copy no longer matched its source, nor
+### what an in-place upgrade of the source keeps, and a join on columns of
+### two collations fails (error 1267). A dump made on 8.0 or later names the
+### collation of every utf8mb4 table, so the old default changes nothing for
+### it. On a server that has the setting, _MYLOADER_UTF8MB4 is the option
+### file that gives every myloader session the old default (written when
+### missing or different) and _MYSQL_UTF8MB4 the same for a client load; on
+### 5.7 both stay empty. Worked out once per run, and a myloader that cannot
+### be given the file is named once.
+_MIG_UTF8MB4_DONE=""
+_MYLOADER_UTF8MB4=()
+_MYSQL_UTF8MB4=()
+_myloader_utf8mb4_opts() {
+  local _f=/etc/boa/myloader-utf8mb4.cnf _want _tmp
+  [ -n "${_MIG_UTF8MB4_DONE}" ] && return 0
+  _MIG_UTF8MB4_DONE=YES
+  _MYLOADER_UTF8MB4=()
+  _MYSQL_UTF8MB4=()
+  [ -n "$(mysql --silent -u root -N -B -e 'SELECT @@SESSION.default_collation_for_utf8mb4' 2> /dev/null)" ] \
+    || return 0
+  _MYSQL_UTF8MB4=(--init-command="SET SESSION default_collation_for_utf8mb4 = utf8mb4_general_ci")
+  _want=$'[myloader_session_variables]\ndefault_collation_for_utf8mb4 = utf8mb4_general_ci'
+  if myloader --help 2>&1 | grep -qE -- '^[[:space:]]+--defaults-extra-file([[:space:]]|=|$)' \
+    && [[ ! -d "${_f}" ]]; then
+    if [[ ! -f "${_f}" || -L "${_f}" || "$(cat "${_f}" 2> /dev/null)" != "${_want}" ]]; then
+      mkdir -p "${_f%/*}" 2> /dev/null
+      _tmp=$(mktemp "${_f}.XXXXXX" 2> /dev/null)
+      if [ -n "${_tmp}" ] \
+        && printf '%s\n' "${_want}" > "${_tmp}" && chmod 644 "${_tmp}" && mv -f "${_tmp}" "${_f}"; then
+        _MYLOADER_UTF8MB4=(--defaults-extra-file="${_f}")
+      else
+        rm -f "${_tmp}"
+      fi
+    else
+      _MYLOADER_UTF8MB4=(--defaults-extra-file="${_f}")
+    fi
+  fi
+  if [ "${#_MYLOADER_UTF8MB4[@]}" -eq 0 ]; then
+    echo "WARN: myloader here cannot be given ${_f}: a utf8mb4 table a Percona 5.7 dump names no collation for loads as utf8mb4_0900_ai_ci"
+  fi
+  return 0
+}
 ### A table a load has just written can read as empty to the query optimiser
 ### until InnoDB measures it in the background, and once nothing new wakes
 ### that queue it takes about one table every ten seconds: a large site
@@ -3253,6 +3298,7 @@ _xoct_put_file_remote_here() {
 _xoct_copy_here() {
   local _h="${1}" _d="${2}" _g="${3}"
   shift 3
+  _xoct_glob_none "${_g}" && return 0
   # shellcheck disable=SC2086
   _xoct_rsync "$@" --rsync-path="$(_xoct_rsync_path_in "${_d}")" -e ssh \
     ./${_g} "root@${_h}:./"
@@ -3314,11 +3360,28 @@ _xoct_rsync_path_mk_in() {
 ### but the target directory is created when missing (a link there removed
 ### first). For legs whose target directory the install does not provide.
 _xoct_copy_mk_here() {
-  local _h="${1}" _d="${2}" _g="${3}"
+  local _h="${1}" _d="${2}" _g="${3}" _c
   shift 3
+  ### An empty directory: only the target directory is made.
+  if _xoct_glob_none "${_g}"; then
+    [ "${_MODE}" = "LIVE" ] || return 0
+    _c="$(_xoct_rsync_path_mk_in "${_d}")"
+    ssh root@"${_h}" "${_c%rsync}true"
+    return
+  fi
   # shellcheck disable=SC2086
   _xoct_rsync "$@" --rsync-path="$(_xoct_rsync_path_mk_in "${_d}")" -e ssh \
     ./${_g} "root@${_h}:./"
+}
+### Whether the pattern $1 names no entry of the current (pinned) directory.
+### Bash leaves a pattern that matches nothing as it is, and rsync reported
+### that text as a missing file (code 23) on every empty directory of a
+### transfer; nothing was missing.
+_xoct_glob_none() {
+  local -a _m
+  # shellcheck disable=SC2206
+  _m=( ./${1} )
+  [ "${#_m[@]}" -eq 1 ] && [ ! -e "${_m[0]}" ] && [ ! -L "${_m[0]}" ]
 }
 ### Where the directory $1 resolves when every name on its path below
 ### /data/disk, /home or /opt/user (the client toolchain trees) is a real
@@ -4305,7 +4368,9 @@ EOFMYSQL
             ### a transferred dir without it is a partial/hollow dump and
             ### loading it would silently restore an incomplete database.
             ### The load is binlogged, so a replica of this box gets it too.
+            ### A 5.7 dump's utf8mb4 tables keep utf8mb4_general_ci on 8.x.
             _myloader_binlog_opts
+            _myloader_utf8mb4_opts
             if ! _xoct_in_real_dir "${_USR}/src/${_DBN}" test -e ./metadata; then
               _XOCT_IMPORT_FAIL=$(( ${_XOCT_IMPORT_FAIL:-0} + 1 ))
               _XOCT_IMPORT_FAILED_DBS="${_XOCT_IMPORT_FAILED_DBS} ${_DBN}"
@@ -4319,6 +4384,7 @@ EOFMYSQL
               --threads=4 \
               --drop-table=DROP \
               "${_MYLOADER_BINLOG[@]}" \
+              "${_MYLOADER_UTF8MB4[@]}" \
               --verbose=2; then
               _XOCT_SITE_IMPORT_OK=YES
               echo "INFO: site ${_Dom} db import on ${_oct} complete"
@@ -7369,13 +7435,18 @@ _migrate_prepare() {
     fi
     printf '%s' "${_HDB}" \
       | _xoct_in_real_dir "${_USR}/log" _xoct_write_here panel_db.txt 022
+    ### A 5.7 panel dump's utf8mb4 tables keep utf8mb4_general_ci on 8.x
+    ### (_myloader_utf8mb4_opts); a pour through ProxySQL is left as it was.
+    _myloader_utf8mb4_opts
+    _XOCT_POUR_UTF8MB4=()
+    [ "${_THIS_DB_PORT}" = "3306" ] && _XOCT_POUR_UTF8MB4=("${_MYSQL_UTF8MB4[@]}")
     ### src/ is oN's on the target: the dump is streamed from inside the real
     ### directory, never through a link, and fed with --binary-mode, so the
     ### client runs no \! or system command from the dump. pipefail keeps a
     ### streaming failure (a link) from passing as a clean load.
     if ! ( set -o pipefail
       _xoct_in_real_dir "${_USR}/src" _xoct_cat_here prev_hostmaster.sql \
-        | mysql --binary-mode --silent -u root -h${_SQL_CONNECT} \
+        | mysql --binary-mode "${_XOCT_POUR_UTF8MB4[@]}" --silent -u root -h${_SQL_CONNECT} \
           -P${_THIS_DB_PORT} --protocol=tcp ${_HDB} ); then
       echo "ERROR: hostmaster dump import into ${_HDB} FAILED — this import is INCOMPLETE"
       echo "ERROR: nothing was renamed; fix the cause, then re-run the FULL import"

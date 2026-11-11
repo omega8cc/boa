@@ -462,6 +462,36 @@
       invalid line and a tab-indented one an entry, and a one-word line
       took that word as its user too.
 
+    * xoct and xcopy keep a Percona 5.7 account's utf8mb4_general_ci
+      tables as they are on a target running Percona 8.0 or 8.4. A 5.7 dump
+      names that character set with no collation, and the load gave every
+      such table, and its columns, the newer server's own default,
+      utf8mb4_0900_ai_ci: the copy no longer matched its source, nor what an
+      in-place upgrade keeps, and a query joining its tables with ones made
+      under another collation could fail. The site loads and the control
+      panel's load now run with the 5.7 default for that character set; a
+      dump made on 8.0 or later names its collations and loads as before.
+
+    * xcopy import puts the Let's Encrypt stop marker,
+      tools/le/.ctrl/dont-overwrite-<site>.pid, for each copied site that has
+      none, and lists the ones it put in the account's log/xcopy_le_kept.txt.
+      A copy keeps its source's names while public DNS keeps them on the
+      source, so an order there could only fail, under the account
+      registration both servers share, and count against the source's own
+      orders. The certificates that travelled stay in place; remove the
+      listed markers before the copy serves any of the names.
+
+    * xcopy post-mig on the target waits, up to 30 minutes, for the verify
+      of each site the import copied, and prints how each one ended (OK,
+      with warnings, failed or unfinished) and a total; the same lines are
+      kept in the account's log/import_verifies.report.txt. The import
+      queues those verifies and they run once post-mig starts cron again,
+      so their results were seen only in the control panel.
+
+    * xoct and xcopy no longer print rsync errors (code 23) for an empty
+      directory in pretransfer and transfer. Such a directory has nothing to
+      copy, and its directory on the target is still made.
+
     * xcopy checks the PHP versions an account has in force against the
       target, as xoct does: create refuses a target that lacks one before
       anything is installed there, and every live transfer and pretransfer

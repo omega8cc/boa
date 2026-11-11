@@ -1082,6 +1082,154 @@ _disable_chattr() {
   fi
 }
 
+### A copy keeps the names its source serves, and public DNS keeps them on
+### the source: an order this box made for one could only fail, under the
+### account's Let's Encrypt registration that travelled with tools/le, whose
+### failed validations count against the source's own orders too. Each copied
+### site gets the stop marker under its own name before its verify, so the
+### verify keeps the certificate that travelled and the nightly renews none
+### here. A marker already there is left as it is; one put here is owned by
+### the account and listed in log/xcopy_le_kept.txt. An account with no
+### tools/le/.ctrl has never had a site with SSL on, so there is nothing to
+### keep. A copy that is ever to serve the names gets its listed markers
+### removed, then each site verified.
+_XCOPY_LE_KEPT=""
+_xcopy_le_mark_here() {
+  local _t="./.${1}.put.$$.${RANDOM}"
+  { [ -e "./${1}" ] || [ -L "./${1}" ]; } && return 2
+  rm -f -- "${_t}"
+  if perl -e "${_XCOPY_PUT_PL}" "${_t}" "${2}" "${3}" 644 < /dev/null \
+    && mv -f -T -- "${_t}" "./${1}"; then
+    return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+_xcopy_le_keep() {
+  local _u _g _rc
+  [[ "${1}" =~ ^[A-Za-z0-9][A-Za-z0-9.-]*$ ]] || return 1
+  case " ${_XCOPY_LE_KEPT} " in
+    *" ${1} "*) return 0 ;;
+  esac
+  _xcopy_in_real_dir "${_USR}/tools/le/.ctrl" true || return 0
+  _u=$(id -u -- "${_THIS_HM_USER}" 2> /dev/null)
+  _g=$(id -g -- "${_THIS_HM_USER}" 2> /dev/null)
+  [[ "${_u}" =~ ^[0-9]+$ ]] && [[ "${_g}" =~ ^[0-9]+$ ]] || return 1
+  _xcopy_in_real_dir "${_USR}/tools/le/.ctrl" \
+    _xcopy_le_mark_here "dont-overwrite-${1}.pid" "${_u}" "${_g}"
+  _rc=$?
+  if [ "${_rc}" -eq 0 ]; then
+    _XCOPY_LE_KEPT="${_XCOPY_LE_KEPT} ${1}"
+  elif [ "${_rc}" -ne 2 ]; then
+    echo "ALRT: site ${1} on ${_oct}: its Let's Encrypt stop marker could not be put; its verify can order a certificate for the source's name"
+  fi
+  return 0
+}
+### The markers this import put, added to log/xcopy_le_kept.txt.
+_xcopy_le_kept_put() {
+  local _n
+  [ -n "${_XCOPY_LE_KEPT}" ] || return 0
+  _n=$(printf '%s\n' ${_XCOPY_LE_KEPT} | wc -l | tr -d ' ')
+  { _xcopy_read_in "${_USR}/log" xcopy_le_kept.txt
+    printf '%s\n' ${_XCOPY_LE_KEPT}; } | grep -E '^[A-Za-z0-9][A-Za-z0-9.-]*$' | sort -u \
+    | _xcopy_in_real_dir "${_USR}/log" _xcopy_write_here xcopy_le_kept.txt
+  echo "INFO: ${_n} copied site(s) of ${_oct} keep the certificate that travelled and order none here:"
+  echo "INFO: a stop marker each in ${_USR}/tools/le/.ctrl, listed in ${_USR}/log/xcopy_le_kept.txt;"
+  echo "INFO: remove those markers, then verify each site, before this copy serves any of the names"
+}
+### The sites whose verify this import scheduled, and when the first was,
+### kept in log/import_verifies.txt for post-mig on this box to report (the
+### verifies run once post-mig starts cron here).
+_XCOPY_VERIFY_SITES=""
+_XCOPY_VERIFY_T0=""
+_xcopy_verify_note() {
+  [ -n "${_XCOPY_VERIFY_T0}" ] || _XCOPY_VERIFY_T0=$(date +%s)
+  _XCOPY_VERIFY_SITES="${_XCOPY_VERIFY_SITES} ${1}"
+}
+_xcopy_verify_list_put() {
+  local _db
+  [ -n "${_XCOPY_VERIFY_SITES}" ] || return 0
+  _db=$(_xcopy_read_in "${_USR}/log" panel_db.txt | tr -cd 'A-Za-z0-9_')
+  { echo "t0=${_XCOPY_VERIFY_T0}"
+    echo "db=${_db}"
+    printf 'site=%s\n' ${_XCOPY_VERIFY_SITES}; } \
+    | _xcopy_in_real_dir "${_USR}/log" _xcopy_write_here import_verifies.txt
+}
+### Run by post-mig on the target: each copied site's verify that an import
+### scheduled, waited for up to 30 minutes once cron runs again, and its
+### result printed and kept in log/import_verifies.report.txt. The list is
+### removed once reported, so a later post-mig says nothing again.
+_xcopy_verify_report() {
+  local _l _a _u _txt _t0 _db _sites _rows _s _row _st _nid _pend _end _rep
+  local _ok _warn _fail _left _n _next
+  for _l in /data/disk/*/log/import_verifies.txt; do
+    [ -f "${_l}" ] || continue
+    _u="${_l%/log/import_verifies.txt}"
+    _a="${_u##*/}"
+    [[ "${_a}" =~ ^[a-z0-9]+$ ]] || continue
+    _txt=$(_xcopy_read_in "${_u}/log" import_verifies.txt)
+    _t0=$(printf '%s\n' "${_txt}" | sed -n 's/^t0=\([0-9]\{9,12\}\)$/\1/p' | head -1)
+    _db=$(printf '%s\n' "${_txt}" | sed -n 's/^db=\([A-Za-z0-9_]\{1,64\}\)$/\1/p' | head -1)
+    _sites=$(printf '%s\n' "${_txt}" | sed -n 's/^site=\([A-Za-z0-9][A-Za-z0-9.-]*\)$/\1/p' | sort -u)
+    if [ -z "${_t0}" ] || [ -z "${_db}" ] || [ -z "${_sites}" ]; then
+      echo "ALRT: ${_a}: ${_l} cannot be read; its copied sites' verifies are not reported"
+      continue
+    fi
+    _n=$(printf '%s\n' "${_sites}" | wc -l | tr -d ' ')
+    echo "INFO: ${_a}: waiting up to 30 minutes for the verifies of ${_n} copied site(s)"
+    _end=$(( $(date +%s) + 1800 ))
+    _next=$(( $(date +%s) + 120 ))
+    while :; do
+      if ! _rows=$(mysql --silent -u root -N -B "${_db}" -e "SELECT s.title, t.nid, t.task_status FROM hosting_task t JOIN node tn ON tn.nid = t.nid AND tn.vid = t.vid JOIN node s ON s.nid = t.rid JOIN hosting_site hs ON hs.vid = s.vid WHERE s.type = 'site' AND hs.status <> -2 AND t.task_type = 'verify' AND tn.changed >= ${_t0} ORDER BY t.nid" 2> /dev/null); then
+        _rows=""
+        if [ "$(date +%s)" -ge "${_end}" ]; then
+          echo "ALRT: ${_a}: its panel database ${_db} could not be read; its copied sites' verifies are not reported"
+          continue 2
+        fi
+        sleep 20
+        continue
+      fi
+      _pend=0
+      for _s in ${_sites}; do
+        _st=$(printf '%s\n' "${_rows}" | awk -F'\t' -v s="${_s}" '$1 == s { st = $3 } END { print st }')
+        case "${_st}" in
+          0|-1) _pend=$(( _pend + 1 )) ;;
+        esac
+      done
+      [ "${_pend}" -eq 0 ] && break
+      [ "$(date +%s)" -ge "${_end}" ] && break
+      if [ "$(date +%s)" -ge "${_next}" ]; then
+        echo "INFO: ${_a}: $(( _n - _pend )) of ${_n} verifies finished"
+        _next=$(( $(date +%s) + 120 ))
+      fi
+      sleep 20
+    done
+    _ok=0; _warn=0; _fail=0; _left=0; _rep=""
+    for _s in ${_sites}; do
+      _row=$(printf '%s\n' "${_rows}" | awk -F'\t' -v s="${_s}" '$1 == s { r = $2 " " $3 } END { print r }')
+      _nid="${_row% *}"
+      _st="${_row#* }"
+      case "${_st}" in
+        1) _ok=$(( _ok + 1 ))
+           _rep="${_rep}INFO: ${_a}: site ${_s} verify OK"$'\n' ;;
+        3) _warn=$(( _warn + 1 ))
+           _rep="${_rep}WARN: ${_a}: site ${_s} verify ended with warnings (task ${_nid})"$'\n' ;;
+        2) _fail=$(( _fail + 1 ))
+           _rep="${_rep}ALRT: ${_a}: site ${_s} verify FAILED (task ${_nid}): read its log in the panel"$'\n' ;;
+        0|-1) _left=$(( _left + 1 ))
+           _rep="${_rep}ALRT: ${_a}: site ${_s} verify still queued or running after 30 minutes (task ${_nid})"$'\n' ;;
+        *) _fail=$(( _fail + 1 ))
+           _rep="${_rep}ALRT: ${_a}: site ${_s}: no verify task found since the import"$'\n' ;;
+      esac
+    done
+    _rep="${_rep}INFO: ${_a}: ${_n} copied site(s) verified: ${_ok} OK, ${_warn} with warnings, ${_fail} failed, ${_left} unfinished"$'\n'
+    printf '%s' "${_rep}"
+    printf '%s' "${_rep}" | _xcopy_in_real_dir "${_u}/log" _xcopy_write_here import_verifies.report.txt
+    _xcopy_in_real_dir "${_u}/log" rm -f -- ./import_verifies.txt
+  done
+  return 0
+}
+
 ### The --runner-wait option of a forced verify in an import's verify stage:
 ### what is left of one budget for the whole stage, set where the panel's
 ### hosting knows the option; nothing once 30 s or less is left, or without
@@ -1160,6 +1308,11 @@ _migrate_sites() {
     fi
     if [ -e "${_USR}/.drush/${_Dom}.alias.drushrc.php" ]; then
       echo Dom is ${_Dom}
+      ### Every copied site keeps the certificate that travelled (see
+      ### _xcopy_le_keep), whether or not its verify runs now.
+      if [ "${_cmd}" = "import" ] && [ "${_XCOPY_SITES_STAGE}" != "load" ]; then
+        _xcopy_le_keep "${_Dom}"
+      fi
       # .drush is oN's: the alias read inside the real directory, never
       # through a link or into a FIFO put at the name
       _Dir=$(_xcopy_read_in "${_USR}/.drush" "${_Dom}.alias.drushrc.php" | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g")
@@ -1223,6 +1376,7 @@ _migrate_sites() {
         _XCOPY_MET_DIRS="${_XCOPY_MET_DIRS} ${_SIDN}"
         case " ${_XCOPY_LOADED_DIRS} " in
           *" ${_SIDN} "*)
+            _xcopy_verify_note "${_Dom}"
             _run_drush8_hmr_cmd "hosting-task @${_Dom} verify --force$(_xcopy_runner_wait_opt)"
             echo "INFO: site ${_Dom} verify on ${_oct} scheduled"
           ;;
@@ -1372,7 +1526,9 @@ EOFMYSQL
             ### a transferred dir without it is a partial/hollow dump and
             ### loading it would silently restore an incomplete database.
             ### The load is binlogged, so a replica of this box gets it too.
+            ### A 5.7 dump's utf8mb4 tables keep utf8mb4_general_ci on 8.x.
             _myloader_binlog_opts
+            _myloader_utf8mb4_opts
             if ! _xcopy_in_real_dir "${_USR}/src/${_DBN}" test -e ./metadata; then
               _XCOPY_IMPORT_FAIL=$(( ${_XCOPY_IMPORT_FAIL:-0} + 1 ))
               _XCOPY_IMPORT_FAILED_DBS="${_XCOPY_IMPORT_FAILED_DBS} ${_DBN}"
@@ -1386,6 +1542,7 @@ EOFMYSQL
               --threads=4 \
               --drop-table=DROP \
               "${_MYLOADER_BINLOG[@]}" \
+              "${_MYLOADER_UTF8MB4[@]}" \
               --verbose=2; then
               _XCOPY_SITE_IMPORT_OK=YES
               echo "INFO: site ${_Dom} db import on ${_oct} complete"
@@ -1431,6 +1588,7 @@ EOFMYSQL
               _XCOPY_LOADED_NAMES="${_XCOPY_LOADED_NAMES} ${_SIDN}=${_Dom}"
             fi
           elif [ -e "${_USR}/.drush/${_Dom}.alias.drushrc.php" ]; then
+            _xcopy_verify_note "${_Dom}"
             _run_drush8_hmr_cmd "hosting-task @${_Dom} verify --force$(_xcopy_runner_wait_opt)"
             echo "INFO: site ${_Dom} verify on ${_oct} scheduled"
           else
@@ -3218,6 +3376,11 @@ _migrate_prepare() {
     fi
     printf '%s' "${_HDB}" \
       | _xcopy_in_real_dir "${_USR}/log" _xcopy_write_here panel_db.txt
+    ### A 5.7 panel dump's utf8mb4 tables keep utf8mb4_general_ci on 8.x
+    ### (_myloader_utf8mb4_opts); a pour through ProxySQL is left as it was.
+    _myloader_utf8mb4_opts
+    _XCOPY_POUR_UTF8MB4=()
+    [ "${_THIS_DB_PORT}" = "3306" ] && _XCOPY_POUR_UTF8MB4=("${_MYSQL_UTF8MB4[@]}")
     if [ ! -z "${_dst}" ]; then
       if [ "${_oct}" = "${_dst}" ]; then
         [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL5 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp"
@@ -3230,7 +3393,7 @@ _migrate_prepare() {
         ### keeps a streaming failure from passing.
         if ! ( set -o pipefail
           _xcopy_in_real_dir "${_USR}/src" _xcopy_cat_here prev_hostmaster.sql \
-            | mysql --binary-mode --silent -u root -h${_SQL_CONNECT} \
+            | mysql --binary-mode "${_XCOPY_POUR_UTF8MB4[@]}" --silent -u root -h${_SQL_CONNECT} \
               -P${_THIS_DB_PORT} --protocol=tcp ${_HDB} ); then
           echo "ERROR: hostmaster dump import into ${_HDB} FAILED -- this import is INCOMPLETE"
           echo "ERROR: nothing was stamped; fix the cause, then re-run the FULL import"
@@ -3250,7 +3413,7 @@ _migrate_prepare() {
       ### and fed with --binary-mode (see the rename-mode branch above).
       if ! ( set -o pipefail
         _xcopy_in_real_dir "${_USR}/src" _xcopy_cat_here prev_hostmaster.sql \
-          | mysql --binary-mode --silent -u root -h${_SQL_CONNECT} \
+          | mysql --binary-mode "${_XCOPY_POUR_UTF8MB4[@]}" --silent -u root -h${_SQL_CONNECT} \
             -P${_THIS_DB_PORT} --protocol=tcp ${_HDB} ); then
         echo "ERROR: hostmaster dump import into ${_HDB} FAILED -- this import is INCOMPLETE"
         echo "ERROR: nothing was stamped; fix the cause, then re-run the FULL import"
@@ -3576,6 +3739,8 @@ _migrate_prepare() {
     _xcopy_flush_caches_target
     # Carried FPM markers would leave every pinned site on the default pool.
     _xcopy_heal_fpm_pins "${_THIS_HM_USER}"
+    _xcopy_le_kept_put
+    _xcopy_verify_list_put
     if [ "${_XCOPY_IMPORT_FAIL:-0}" != "0" ]; then
       {
         echo "failed=${_XCOPY_IMPORT_FAIL}"
@@ -3800,6 +3965,7 @@ _xcopy_rsync_path_in() {
 _xcopy_copy_here() {
   local _h="${1}" _d="${2}" _g="${3}"
   shift 3
+  _xcopy_glob_none "${_g}" && return 0
   # shellcheck disable=SC2086
   _xcopy_rsync "$@" --rsync-path="$(_xcopy_rsync_path_in "${_d}")" -e ssh \
     ./${_g} "root@${_h}:./"
@@ -3821,11 +3987,28 @@ _xcopy_rsync_path_mk_in() {
 # the real directory $2 on the target $1, the target directory created when
 # missing (a link there removed first).
 _xcopy_copy_mk_here() {
-  local _h="${1}" _d="${2}" _g="${3}"
+  local _h="${1}" _d="${2}" _g="${3}" _c
   shift 3
+  ### An empty directory: only the target directory is made.
+  if _xcopy_glob_none "${_g}"; then
+    [ "${_MODE}" = "LIVE" ] || return 0
+    _c="$(_xcopy_rsync_path_mk_in "${_d}")"
+    ssh root@"${_h}" "${_c%rsync}true"
+    return
+  fi
   # shellcheck disable=SC2086
   _xcopy_rsync "$@" --rsync-path="$(_xcopy_rsync_path_mk_in "${_d}")" -e ssh \
     ./${_g} "root@${_h}:./"
+}
+### Whether the pattern $1 names no entry of the current (pinned) directory.
+### Bash leaves a pattern that matches nothing as it is, and rsync reported
+### that text as a missing file (code 23) on every empty directory of a
+### transfer; nothing was missing.
+_xcopy_glob_none() {
+  local -a _m
+  # shellcheck disable=SC2206
+  _m=( ./${1} )
+  [ "${#_m[@]}" -eq 1 ] && [ ! -e "${_m[0]}" ] && [ ! -L "${_m[0]}" ]
 }
 ### Where the directory $1 resolves when every name on its path below
 ### /data/disk, /home or /opt/user (the client toolchain trees) is a real
@@ -4458,6 +4641,51 @@ _myloader_binlog_opts() {
   _MYLOADER_BINLOG=()
   if myloader --help 2>&1 | grep -qE -- '^[[:space:]]+--ignore-set([[:space:]]|=)'; then
     _MYLOADER_BINLOG=(--ignore-set=SQL_LOG_BIN)
+  fi
+  return 0
+}
+### A Percona 5.7 dump names a utf8mb4 table's character set and no
+### collation (utf8mb4_general_ci was that set's default there). Loaded on
+### 8.0 or later, such a table and every column of it took that server's
+### default, utf8mb4_0900_ai_ci: the copy no longer matched its source, nor
+### what an in-place upgrade of the source keeps, and a join on columns of
+### two collations fails (error 1267). A dump made on 8.0 or later names the
+### collation of every utf8mb4 table, so the old default changes nothing for
+### it. On a server that has the setting, _MYLOADER_UTF8MB4 is the option
+### file that gives every myloader session the old default (written when
+### missing or different) and _MYSQL_UTF8MB4 the same for a client load; on
+### 5.7 both stay empty. Worked out once per run, and a myloader that cannot
+### be given the file is named once.
+_MIG_UTF8MB4_DONE=""
+_MYLOADER_UTF8MB4=()
+_MYSQL_UTF8MB4=()
+_myloader_utf8mb4_opts() {
+  local _f=/etc/boa/myloader-utf8mb4.cnf _want _tmp
+  [ -n "${_MIG_UTF8MB4_DONE}" ] && return 0
+  _MIG_UTF8MB4_DONE=YES
+  _MYLOADER_UTF8MB4=()
+  _MYSQL_UTF8MB4=()
+  [ -n "$(mysql --silent -u root -N -B -e 'SELECT @@SESSION.default_collation_for_utf8mb4' 2> /dev/null)" ] \
+    || return 0
+  _MYSQL_UTF8MB4=(--init-command="SET SESSION default_collation_for_utf8mb4 = utf8mb4_general_ci")
+  _want=$'[myloader_session_variables]\ndefault_collation_for_utf8mb4 = utf8mb4_general_ci'
+  if myloader --help 2>&1 | grep -qE -- '^[[:space:]]+--defaults-extra-file([[:space:]]|=|$)' \
+    && [[ ! -d "${_f}" ]]; then
+    if [[ ! -f "${_f}" || -L "${_f}" || "$(cat "${_f}" 2> /dev/null)" != "${_want}" ]]; then
+      mkdir -p "${_f%/*}" 2> /dev/null
+      _tmp=$(mktemp "${_f}.XXXXXX" 2> /dev/null)
+      if [ -n "${_tmp}" ] \
+        && printf '%s\n' "${_want}" > "${_tmp}" && chmod 644 "${_tmp}" && mv -f "${_tmp}" "${_f}"; then
+        _MYLOADER_UTF8MB4=(--defaults-extra-file="${_f}")
+      else
+        rm -f "${_tmp}"
+      fi
+    else
+      _MYLOADER_UTF8MB4=(--defaults-extra-file="${_f}")
+    fi
+  fi
+  if [ "${#_MYLOADER_UTF8MB4[@]}" -eq 0 ]; then
+    echo "WARN: myloader here cannot be given ${_f}: a utf8mb4 table a Percona 5.7 dump names no collation for loads as utf8mb4_0900_ai_ci"
   fi
   return 0
 }
@@ -6014,6 +6242,8 @@ _post_mig() {
       echo "ALRT: cron did not start; the BOA runners and every scheduled job are DOWN"
       echo "ALRT: start it manually: /etc/init.d/cron start"
     fi
+    # On the target: how each copied site's verify ended.
+    _xcopy_verify_report
     exit 0
   fi
 }
