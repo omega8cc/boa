@@ -120,6 +120,80 @@ for my $n ("http-off.pid", "http-off-host.pid") {
   print "$n\n" if lstat($n) && unlink($n);
 }
 exit 0;'
+# What a login made in another account's control/ goes before deluser frees
+# its number. Every login keeps the box-wide group, so it can make control/
+# in the static/ of an account still on that group; once the login is gone,
+# root's walks take a number no user has as the account's own, hand the
+# folder over and read it (ip/access.txt, the backup credentials). Run inside
+# that account's real static/ with the uids given, comma-separated: what they
+# own in control/ is removed by name from inside each directory, entered only
+# as lstat saw it and left through a handle; a directory of theirs is first
+# closed to group and other writers, so no other login can swap what is in
+# it meanwhile. What another user owns stays whole, and control/ stays while
+# it holds any. Prints what was removed, nothing when nothing was.
+_ACCT_FOREIGN_CTRL_PL='use Fcntl;
+my %g = map { $_ => 1 } grep { /^[1-9][0-9]*$/ } split(/,/, shift @ARGV // "");
+exit 0 unless %g;
+my @s = lstat("./control") or exit 0;
+exit 0 unless ($s[2] & 0170000) == 0040000;
+my ($mine, $rm, $kept) = ($g{$s[4]}, 0, 0);
+sub isd { ($_[0] & 0170000) == 0040000 }
+sub sweep {
+  opendir(my $h, ".") or return 1;
+  my @e = grep { $_ ne "." && $_ ne ".." } readdir($h);
+  my $left = 0;
+  for my $b (@e) {
+    my @t = lstat($b) or next;
+    unless ($g{$t[4]}) { $left++; $kept++; next; }
+    if (isd($t[2])) {
+      my $l = 1;
+      if (chdir($b)) {
+        my @c = stat(".");
+        if (@c && $c[0] == $t[0] && $c[1] == $t[1]) {
+          chmod(($c[2] & 07777) & ~022, ".") if $c[2] & 022;
+          $l = sweep();
+        }
+        chdir($h) or exit 1;
+      }
+      if (!$l && rmdir($b)) { $rm++; } else { $left++; }
+    } elsif (unlink($b)) {
+      $rm++;
+    } else {
+      $left++;
+    }
+  }
+  closedir($h);
+  return $left;
+}
+opendir(my $top, ".") or exit 1;
+chdir("./control") or exit 1;
+my @d = stat(".");
+exit 1 unless @d && $d[0] == $s[0] && $d[1] == $s[1];
+chmod(($d[2] & 07777) & ~022, ".") if $mine && ($d[2] & 022);
+my $left = sweep();
+chdir($top) or exit 1;
+if ($mine && !$left && rmdir("./control")) {
+  print "removed control/, which they made, with the $rm entries in it\n";
+} elsif ($mine) {
+  print "removed $rm entries of theirs from control/, which they made; kept the $kept of other users in it\n";
+} elsif ($rm) {
+  print "removed $rm entries of theirs from control/\n";
+}
+exit 0;'
+# The account $1's identities' entries in every other account's control/
+# (_ACCT_FOREIGN_CTRL_PL), the uids $2 comma-separated: run while those
+# numbers still name them, their processes ended.
+_boa_purge_foreign_ctrl() {
+  local _p _r
+  [ -n "${2}" ] || return 0
+  for _p in /data/disk/*; do
+    [ -d "${_p}/static" ] && [ ! -L "${_p}" ] || continue
+    [ "${_p##*/}" = "${1}" ] && continue
+    _r=$(_boa_in_real_dir "${_p}/static" perl -e "${_ACCT_FOREIGN_CTRL_PL}" -- "${2}" 2> /dev/null)
+    [ -n "${_r}" ] && echo "${1}'s identities: ${_r} (${_p}/static)"
+  done
+  return 0
+}
 # ./$1 in the current (pinned) directory with the content $2 (root's, 0644):
 # a fresh file created exclusively, then renamed over the name, so a link or
 # a FIFO put at the name is replaced, never followed or opened.
@@ -4393,6 +4467,14 @@ _octopus_cleanup() {
             env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_tmpD}" -xdev \( "${_tmpC[@]:1}" \) &> /dev/null
           done
         fi
+        # What its identities made in other accounts' control/ goes the same
+        # way, while their numbers still name them.
+        _fcUs=""
+        for _fcN in $(cut -d: -f1 ${_zombie_dir}.purge.list 2>/dev/null); do
+          _fcU=$(id -u -- "${_fcN}" 2> /dev/null) || continue
+          [[ "${_fcU}" =~ ^[1-9][0-9]*$ ]] && _fcUs="${_fcUs:+${_fcUs},}${_fcU}"
+        done
+        _boa_purge_foreign_ctrl "${_usEr}" "${_fcUs}"
         IFS=$'\12'
           # Read before the deluser loop: on a converted account the group
           # is the identities' primary one, so the last deluser takes the

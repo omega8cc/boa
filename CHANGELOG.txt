@@ -211,6 +211,16 @@
       refuses the move. Grav and Textpattern sites still read the gate in
       nginx by path.
 
+    * A control folder another account's login made in an account not yet
+      on its own group no longer becomes that account's once the login is
+      removed. Root counted the files of a removed login as the account's
+      own and read them, so an IP list or backup credentials planted there
+      applied to the account. Before the ltd worker removes a client login,
+      and before boa cleanup purge removes an account's identities, what
+      they own in every other account's ~/static/control is removed while
+      their numbers still name them; what other users own there stays. A
+      login removed by hand still leaves its files there.
+
     * Root's checks that it stands in an account's own folder, before it
       reads, writes, changes the owner or mode of, or removes anything
       there, read the folder the shell is really in. They compared bash's

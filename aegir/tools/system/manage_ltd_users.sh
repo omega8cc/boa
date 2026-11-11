@@ -3230,6 +3230,83 @@ _ltd_reap_hand_over() {
   return 0
 }
 #
+# What a login made in another account's control/ goes before deluser frees
+# its number. Every login keeps the box-wide group, so it can make control/
+# in the static/ of an account still on that group; once the login is gone,
+# root's walks take a number no user has as the account's own, hand the
+# folder over and read it (ip/access.txt, the backup credentials). Run inside
+# that account's real static/ with the uids given, comma-separated: what they
+# own in control/ is removed by name from inside each directory, entered only
+# as lstat saw it and left through a handle; a directory of theirs is first
+# closed to group and other writers, so no other login can swap what is in
+# it meanwhile. What another user owns stays whole, and control/ stays while
+# it holds any. Prints what was removed, nothing when nothing was.
+_ACCT_FOREIGN_CTRL_PL='use Fcntl;
+my %g = map { $_ => 1 } grep { /^[1-9][0-9]*$/ } split(/,/, shift @ARGV // "");
+exit 0 unless %g;
+my @s = lstat("./control") or exit 0;
+exit 0 unless ($s[2] & 0170000) == 0040000;
+my ($mine, $rm, $kept) = ($g{$s[4]}, 0, 0);
+sub isd { ($_[0] & 0170000) == 0040000 }
+sub sweep {
+  opendir(my $h, ".") or return 1;
+  my @e = grep { $_ ne "." && $_ ne ".." } readdir($h);
+  my $left = 0;
+  for my $b (@e) {
+    my @t = lstat($b) or next;
+    unless ($g{$t[4]}) { $left++; $kept++; next; }
+    if (isd($t[2])) {
+      my $l = 1;
+      if (chdir($b)) {
+        my @c = stat(".");
+        if (@c && $c[0] == $t[0] && $c[1] == $t[1]) {
+          chmod(($c[2] & 07777) & ~022, ".") if $c[2] & 022;
+          $l = sweep();
+        }
+        chdir($h) or exit 1;
+      }
+      if (!$l && rmdir($b)) { $rm++; } else { $left++; }
+    } elsif (unlink($b)) {
+      $rm++;
+    } else {
+      $left++;
+    }
+  }
+  closedir($h);
+  return $left;
+}
+opendir(my $top, ".") or exit 1;
+chdir("./control") or exit 1;
+my @d = stat(".");
+exit 1 unless @d && $d[0] == $s[0] && $d[1] == $s[1];
+chmod(($d[2] & 07777) & ~022, ".") if $mine && ($d[2] & 022);
+my $left = sweep();
+chdir($top) or exit 1;
+if ($mine && !$left && rmdir("./control")) {
+  print "removed control/, which they made, with the $rm entries in it\n";
+} elsif ($mine) {
+  print "removed $rm entries of theirs from control/, which they made; kept the $kept of other users in it\n";
+} elsif ($rm) {
+  print "removed $rm entries of theirs from control/\n";
+}
+exit 0;'
+# The login $1's entries in the control/ of every account but its own, $2,
+# while its number still names it (its processes ended, its shell locked).
+_ltd_reap_foreign_ctrl() {
+  local _gu _p _r
+  _gu=$(id -u -- "${1}" 2> /dev/null)
+  [[ "${_gu}" =~ ^[1-9][0-9]*$ ]] || return 0
+  for _p in /data/disk/*; do
+    [ -d "${_p}/static" ] && [ ! -L "${_p}" ] || continue
+    [ "${_p##*/}" = "${2}" ] && continue
+    _r=$(_ltd_in_real_dir "${_p}/static" perl -e "${_ACCT_FOREIGN_CTRL_PL}" -- "${_gu}" 2> /dev/null)
+    [ -n "${_r}" ] || continue
+    echo "${1}: ${_r} (${_p}/static)"
+    echo "$(date) LTD account ${1}: ${_r} (${_p}/static)" >> /var/log/boa/manage_ltd.incident.log
+  done
+  return 0
+}
+#
 # The account's trees a login's files can sit in: static and distro, and the
 # files store on attached storage (static/files is then a link to
 # /mnt/<m>/files/<oN>/static/files, which a walk of static never follows).
@@ -3329,6 +3406,7 @@ _ltd_reap_account() {
   _ltd_in_real_dir "/home/${_acct}" _ltd_rm_glob_own_here \
     "$(_acct_walk_uids "${_acct%%.*}" || echo 0),$(id -u -- "${_acct}" 2> /dev/null || echo 0)" .gnupg
   _ltd_reap_hand_over "${_acct}" "${_parent}"
+  _ltd_reap_foreign_ctrl "${_acct}" "${_parent}"
   # its gem and npm trees carry its number too; a login made again gets
   # fresh copies of its own
   # only what root, the login or its account's identities own: any account
