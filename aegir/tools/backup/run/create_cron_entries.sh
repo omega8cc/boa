@@ -559,18 +559,31 @@ _acct_ready_services_here() {
   done
 }
 
-# Function to generate the backup schedule
+# Function to generate the backup schedule. Written to a fresh file and
+# moved into place, as the wrapper is: a wrapper run that started hours ago
+# still reads the schedule a line at a time, and a rewrite in place would
+# end its walk early or hand it half a line. The run keeps reading the file
+# it opened to its end.
 _generate_backup_schedule() {
-  echo "# Backup schedule (service user)" > "${_SCHEDULE_FILE}"
+  local _new="${_SCHEDULE_FILE}.fresh.$$"
+  # a generator killed before its move leaves its fresh file behind
+  find "${_SCHEDULE_DIR}" -maxdepth 1 -name 'backup_schedule.txt.fresh.*' -mmin +60 \
+    -exec rm -f {} + 2> /dev/null
+  rm -f "${_new}"
+  if ! echo "# Backup schedule (service user)" > "${_new}"; then
+    rm -f "${_new}"
+    echo "Backup schedule not written: ${_SCHEDULE_DIR} is not writable."
+    return 1
+  fi
 
   # Add global backups
   _custom_paths_file="/root/.remote_backups/paths/custom_paths.txt"
   _GLOBAL_CRED_DIR="/root/.remote_backups/credentials"
   for _service in aws aws_one_zone aws_standard_ia azure b2 cloudflare do_spaces gcs ibm linode wasabi; do
     if [ -f "${_GLOBAL_CRED_DIR}/${_service}.txt" ] && ! grep -q "your_" "${_GLOBAL_CRED_DIR}/${_service}.txt"; then
-      echo "${_service} global" >> "${_SCHEDULE_FILE}"
-      echo "${_service} data" >> "${_SCHEDULE_FILE}"
-      [ -s "${_custom_paths_file}" ] && echo "${_service} custom" >> "${_SCHEDULE_FILE}"
+      echo "${_service} global" >> "${_new}"
+      echo "${_service} data" >> "${_new}"
+      [ -s "${_custom_paths_file}" ] && echo "${_service} custom" >> "${_new}"
     fi
   done
 
@@ -588,10 +601,16 @@ _generate_backup_schedule() {
         continue
       fi
       _acct_in_real_dir "${_USER_CRED_DIR}" \
-        _acct_ready_services_here "${_user}" >> "${_SCHEDULE_FILE}"
+        _acct_ready_services_here "${_user}" >> "${_new}"
     fi
   done
 
+  chmod 0644 "${_new}" 2> /dev/null
+  if ! mv -f "${_new}" "${_SCHEDULE_FILE}"; then
+    rm -f "${_new}"
+    echo "Backup schedule not replaced at ${_SCHEDULE_FILE}."
+    return 1
+  fi
   echo "Backup schedule created at ${_SCHEDULE_FILE}"
 }
 
