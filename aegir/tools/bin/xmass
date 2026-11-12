@@ -5990,13 +5990,16 @@ else
   echo "BL_ONE_MNT=NONE"
 fi
 _q() { mysql --defaults-file=/root/.my.cnf --connect-timeout=5 -sNe "$1" 2>/dev/null; }
-# the log counts as the folder's only where its files are written inside it
+# the log counts as the folder's only where its files are written inside it:
+# the folder they are written to, resolved, inside the folder, resolved
 _lb="$(_q 'SELECT @@log_bin_basename')"
 _lr="$(readlink -f /var/lib/mysql 2>/dev/null)"
-case "${_lb}" in
-  /var/lib/mysql/*) _lin=YES ;;
-  *) _lin=NO; [ -n "${_lr}" ] && [ "${_lb#"${_lr}"/}" != "${_lb}" ] && _lin=YES ;;
-esac
+_lbd=""
+case "${_lb}" in /*/*) _lbd="$(readlink -f "${_lb%/*}" 2>/dev/null)" ;; esac
+_lin=NO
+if [ -n "${_lr}" ] && [ -n "${_lbd}" ]; then
+  { [ "${_lbd}" = "${_lr}" ] || [ "${_lbd#"${_lr}"/}" != "${_lbd}" ]; } && _lin=YES
+fi
 if [ "${_lin}" = "YES" ]; then
   echo "BL_LOG_KB=$(_q 'SHOW BINARY LOGS' | awk '{ s += $2 } END { printf "%.0f\n", s / 1024 }')"
 else
@@ -6017,7 +6020,7 @@ _xmass_binlog_plan() {
   local _how="$1" _st _up _lw _day="" _why="" _pin="" _e _o _k _v _bad=""
   local _sz _us _mnt _dus _dmnt _ddk _lg _now _rd _room _n _hard _seed=0 _files=0 _other _sother=""
   local _ns=7 _nt=7 _sv _sd _oth
-  local _xk _xms _om _omu _sxk=0 _sxms="" _xto="" _xin=0 _fw=""
+  local _xk _xms _om _omu _sxk=0 _sxms="" _xto="" _xin=0 _xhv="" _fw=""
   case "${_XMASS_BINLOG_DAYS:-}" in
     "") : ;;
     [1-7]) _pin="${_XMASS_BINLOG_DAYS}" ;;
@@ -6120,18 +6123,26 @@ _xmass_binlog_plan() {
           /mnt/*) _xto="${_om}" ;;
         esac
       fi
-      _xin="${_sother}"
-      [ -z "${_xin}" ] || [ "${_xto}" != "root" ] || _xin=$(( _xin + _sxk ))
-      if [ -n "${_other}" ] && [ -n "${_xin}" ] && [ "${_xin}" -gt "${_other}" ]; then
-        _files=$(( _xin - _other ))
-      fi
+      # what arrives on the database's filesystem here, less what that
+      # filesystem holds beside the database now, counted once: the accounts'
+      # root share when they share it, the stores when their place does
       _xin=0
-      if [ -n "${_xto}" ] && [ "${_xto}" != "root" ] && [ "${_xto}" = "${_mnt}" ]; then
-        # that mount holds this end's database folder too
-        [[ "${_omu}" =~ ^[0-9]+$ ]] || _omu=0
-        [ "${_sxk}" -le "${_omu}" ] || _xin=$(( _sxk - _omu ))
-        _files=$(( _files + _xin ))
+      _xhv=""
+      if [ -n "${_other}" ]; then
+        _xhv="${_other}"
+        [ -z "${_sother}" ] || _xin="${_sother}"
       fi
+      if [ "${_sxk}" -gt 0 ]; then
+        if { [ "${_xto}" = "root" ] && [ -n "${_other}" ]; } \
+          || { [ -n "${_xto}" ] && [ "${_xto}" != "root" ] && [ "${_xto}" = "${_mnt}" ]; }; then
+          _xin=$(( _xin + _sxk ))
+          if [ -z "${_xhv}" ]; then
+            [[ "${_omu}" =~ ^[0-9]+$ ]] || _omu=0
+            _xhv="${_omu}"
+          fi
+        fi
+      fi
+      [ -z "${_xhv}" ] || [ "${_xin}" -le "${_xhv}" ] || _files=$(( _xin - _xhv ))
       _room=$(( _room - _seed ))
       # what the files figure covers, said with it
       _fw=""
@@ -6895,11 +6906,18 @@ if [ -d "${_base%/}/xmass_restore" ] && [ ! -L "${_base%/}/xmass_restore" ]; the
 fi
 echo "DD_STALE_KB=${_stale}"
 # the folder's own size (a seed parks it whole) and the standby marker's
-# first line (a box that is a replica already)
+# first line on a box that is a replica already: one a committed init stands
+# behind (its witness line, or a folder parked after the marker was written),
+# never the marker an init writes for itself before its swap
 _k=""
 [ ! -d "${_real}" ] || _k="$(du -sk "${_real}" 2>/dev/null | awk '{ print $1 }')"
 echo "DD_KB=${_k}"
-echo "DD_STANDBY=$(head -n 1 /root/.standby.cnf 2>/dev/null | tr -cd 'A-Za-z0-9 .:_-' | cut -c1-120)"
+_sb=""
+if [ -f /root/.standby.cnf ] && { grep -q '^init-committed' /root/.standby.cnf 2>/dev/null \
+  || [ -n "$(find /var/lib/mysql.xmass_pre_* -maxdepth 0 -newer /root/.standby.cnf 2>/dev/null | head -1)" ]; }; then
+  _sb="$(head -n 1 /root/.standby.cnf 2>/dev/null | tr -cd 'A-Za-z0-9 .:_-' | cut -c1-120)"
+fi
+echo "DD_STANDBY=${_sb}"
 PROBE
 }
 
@@ -6907,7 +6925,7 @@ PROBE
 # into _XM_DD_SHAPE, _XM_DD_REAL, _XM_DD_WHY, _XM_DD_BASE, _XM_DD_FREE_KB,
 # _XM_DD_BASE_FREE_KB, _XM_DD_SAME_FS, _XM_DD_STALE_KB, _XM_DD_KB (the
 # folder's own size) and _XM_DD_STANDBY (the standby marker's first line,
-# empty on a box that is no replica). Every value is
+# empty on a box no committed init made a replica). Every value is
 # judged here: a probe that did not answer, or answered with a path or a
 # number that is not one, leaves the shape "unread" and the figures empty,
 # never a guess.
@@ -7001,17 +7019,24 @@ _xmass_dd_own_mount() {
 
 # The binary log this box's MySQL holds inside its database folder, in K
 # (no snapshot carries it); 0 when there is none, no answer, or the log is
-# written elsewhere (then the folder's size never held it).
+# written elsewhere (then the folder's size never held it): the folder the
+# log's files are written to, resolved, must lie in the folder, resolved, so
+# a log subfolder linked onto another disk is no part of it. The newest file
+# is left in: xtrabackup 8 copies the one written at the backup's end, up to
+# max_binlog_size.
 _xmass_src_log_kb() {
-  local _k _b _r
+  local _k _b _r _bd
   _b="$(mysql --defaults-file=/root/.my.cnf --connect-timeout=5 -sNe 'SELECT @@log_bin_basename' 2> /dev/null)"
   _r="$(readlink -f /var/lib/mysql 2> /dev/null)"
-  case "${_b}" in
-    /var/lib/mysql/*) : ;;
-    *) [ -n "${_r}" ] && [ "${_b#"${_r}"/}" != "${_b}" ] || { printf '0'; return 0; } ;;
-  esac
+  _bd=""
+  case "${_b}" in /*/*) _bd="$(readlink -f "${_b%/*}" 2> /dev/null)" ;; esac
+  if [ -z "${_r}" ] || [ -z "${_bd}" ] \
+    || { [ "${_bd}" != "${_r}" ] && [ "${_bd#"${_r}"/}" = "${_bd}" ]; }; then
+    printf '0'
+    return 0
+  fi
   _k="$(mysql --defaults-file=/root/.my.cnf --connect-timeout=5 -sNe 'SHOW BINARY LOGS' 2> /dev/null \
-    | awk '{ s += $2 } END { printf "%.0f\n", s / 1024 }')"
+    | awk '{ s += $2; l = $2 } END { printf "%.0f\n", (s - l) / 1024 }')"
   [[ "${_k}" =~ ^[0-9]+$ ]] || _k=0
   printf '%s' "${_k}"
 }
@@ -7021,8 +7046,12 @@ _xmass_decide_transfer_method() {
   # snapshot free (the folder without its binary log, which no snapshot
   # carries) and stays under the 90% line BOA's own runs stop at with the
   # snapshot on it; stream otherwise.
-  local _mysql_kb _free_kb _needed_kb _on="/" _log_kb _snap_kb _size_kb _used_kb _why=""
+  local _mysql_kb _free_kb _needed_kb _on _onm _log_kb _snap_kb _size_kb _used_kb _why=""
+  local _short=0 _s90=0
   _xmass_dd_read
+  # the room is read where the stage lands: /var/backups, its own mount or not
+  _on="${_XTRA_STAGE_SRC%/*}"
+  [ -d "${_on}" ] || _on=/
   if [ "${_XM_DD_SHAPE}" = "link" ]; then
     # du -s reads a link as nothing: the folder it names is what travels,
     # and the stage lands on that folder's filesystem, so the room is read
@@ -7030,34 +7059,42 @@ _xmass_decide_transfer_method() {
     _on="${_XM_DD_BASE}"
     _XTRA_STAGE_SRC="${_XM_DD_BASE%/}/xmass_stage"
     _mysql_kb=$(du -s "${_XM_DD_REAL}" 2>/dev/null | awk '{print $1}')
-    _free_kb=$(df -P "${_on}" 2>/dev/null | awk 'NR==2{print $4}')
     _info "the database folder here is ${_XM_DD_REAL} (a link at /var/lib/mysql names it): a staged snapshot goes to ${_XTRA_STAGE_SRC}"
   elif [ -L /var/lib/mysql ]; then
     # a link this box serves from all the same (onto a mount's own root,
     # say): its size is read through it, and the stage stays where it was
     _mysql_kb=$(du -sL /var/lib/mysql 2>/dev/null | awk '{print $1}')
-    _free_kb=$(df -P / 2>/dev/null | awk 'NR==2{print $4}')
   else
     _mysql_kb=$(du -s /var/lib/mysql 2>/dev/null | awk '{print $1}')
-    _free_kb=$(df -P / 2>/dev/null | awk 'NR==2{print $4}')
   fi
+  # one read of that filesystem: its size as BOA's own runs judge the 90%
+  # line (df's Use%, used against used plus available: the blocks reserved
+  # for root are no room), what is used, what is free, where it is mounted
+  read -r _size_kb _used_kb _free_kb _onm <<< "$(df -Pk "${_on}" 2> /dev/null \
+    | awk 'NR==2 { printf "%.0f %s %s %s\n", $3 + $4, $3, $4, $NF }')"
+  _onm="${_onm:-${_on}}"
   _log_kb="$(_xmass_src_log_kb)"
   [[ "${_mysql_kb}" =~ ^[0-9]+$ ]] || _mysql_kb=0
   [[ "${_log_kb}" =~ ^[0-9]+$ ]] && [ "${_log_kb}" -le "${_mysql_kb}" ] || _log_kb=0
   _snap_kb=$(( _mysql_kb - _log_kb ))
   _needed_kb=$(( _snap_kb * 3 / 2 ))
-  _size_kb="$(df -Pk "${_on}" 2> /dev/null | awk 'NR==2 { print $2 }')"
-  _used_kb="$(df -Pk "${_on}" 2> /dev/null | awk 'NR==2 { print $3 }')"
   [[ "${_free_kb}" =~ ^[0-9]+$ ]] || _free_kb=0
-  if [ "${_free_kb}" -le "${_needed_kb}" ]; then
+  # what freeing would take to stage: more free than 1.5 times the snapshot,
+  # and the 90% line kept with it (freeing leaves the size as read)
+  [ "${_free_kb}" -gt "${_needed_kb}" ] || _short=$(( _needed_kb - _free_kb + 1 ))
+  if [[ "${_size_kb}" =~ ^[0-9]+$ ]] && [[ "${_used_kb}" =~ ^[0-9]+$ ]]; then
+    _s90=$(( _used_kb + _snap_kb * 11 / 10 - _size_kb * 9 / 10 ))
+    [ "${_s90}" -gt 0 ] || _s90=0
+  fi
+  if [ "${_short}" -gt 0 ]; then
     _XTRA_METHOD="stream"
-  elif [[ "${_size_kb}" =~ ^[0-9]+$ ]] && [[ "${_used_kb}" =~ ^[0-9]+$ ]] \
-    && [ $(( _used_kb + _snap_kb * 11 / 10 )) -gt $(( _size_kb * 9 / 10 )) ]; then
+  elif [ "${_s90}" -gt 0 ]; then
     _XTRA_METHOD="stream"
-    _why="the snapshot would take ${_on} past the 90% line where BOA's own runs stop"
+    _why="the snapshot would take ${_onm} past the 90% line where BOA's own runs stop"
   else
     _XTRA_METHOD="stage"
   fi
+  [ "${_s90}" -le "${_short}" ] || _short="${_s90}"
   _info "xtrabackup method: ${_XTRA_METHOD}" \
     "(mysql=${_mysql_kb}K, of it ${_log_kb}K binary log no snapshot carries; free=${_free_kb}K needed=${_needed_kb}K)"
   [ -z "${_why}" ] || _alrt "  ${_why}"
@@ -7069,12 +7106,8 @@ _xmass_decide_transfer_method() {
     # relocating it first is almost always worth it -- name the shortfall
     # and the usual suspects so that decision is informed, not discovered.
     _alrt "STREAM selected: the transfer is a single unresumable pipe. Shortfall:"
-    if [ -n "${_why}" ]; then
-      _alrt "  $(( (_used_kb + _snap_kb * 11 / 10 - _size_kb * 9 / 10) / 1024 ))M more free on ${_on} would enable resumable STAGE under the 90% line."
-    else
-      _alrt "  $(( (_needed_kb - _free_kb) / 1024 ))M more free on ${_on} would enable resumable STAGE."
-    fi
-    if [ "${_on}" = "/" ]; then
+    _alrt "  $(( (_short + 1023) / 1024 ))M more free on ${_onm} would enable resumable STAGE (1.5 times the snapshot free, and under the 90% line with it)."
+    if [ "${_onm}" = "/" ]; then
       _alrt "  Largest reclaim candidates (relocate, do not delete):"
       du -sk /root/.cache /var/backups /opt/tmp 2>/dev/null \
         | sort -rn | head -3 | awk '{ printf "ALRT:     %sM  %s\n", int($1/1024), $2 }'
@@ -7981,7 +8014,13 @@ _xmass_restore_rec_read() {
     /var/lib/mysql.xmass_pre_*) _dd=/var/lib/mysql ;;
   esac
   [[ "${_p##*.xmass_pre_}" =~ ^[0-9]{14}$ ]] && [ "${_p}" = "${_dd}.xmass_pre_${_p##*.xmass_pre_}" ] || return 1
-  [ -d "${_dd}.xmass_standby_${_s}" ] && [ ! -L "${_dd}.xmass_standby_${_s}" ] || return 1
+  # the replica's folder kept aside, or, once the marker is gone, the empty
+  # one that stood for it removed by a finish cut before the record went
+  if [ -L "${_dd}.xmass_standby_${_s}" ]; then
+    return 1
+  elif [ ! -d "${_dd}.xmass_standby_${_s}" ]; then
+    [ "${1:-}" != "swap" ] && [ ! -e /root/.standby.cnf ] && [ ! -e "${_dd}.xmass_standby_${_s}" ] || return 1
+  fi
   if [ -d "${_dd}" ] && [ ! -L "${_dd}" ] \
     && [ "$(stat -c '%i:%W' "${_dd}" 2> /dev/null)" = "${_id}" ]; then
     _XMASS_RESTORE_AT=swapped
@@ -8202,7 +8241,10 @@ _xmass_restore_target_finish() {
   _xmass_restore_laid_accounts "${3:-}" "${4:-}"
   # the empty folder that stood for a replica's directory an init never made
   local _kept="replica copy kept as ${_dd}.xmass_standby_${_stamp}"
-  if [ -d "${_dd}.xmass_standby_${_stamp}" ] && [ ! -L "${_dd}.xmass_standby_${_stamp}" ] \
+  if [ ! -e "${_dd}.xmass_standby_${_stamp}" ] && [ ! -L "${_dd}.xmass_standby_${_stamp}" ]; then
+    # removed by this finish already, in a run cut before the record went
+    _kept="no replica copy (the init had stopped before it made one)"
+  elif [ -d "${_dd}.xmass_standby_${_stamp}" ] && [ ! -L "${_dd}.xmass_standby_${_stamp}" ] \
     && rmdir -- "${_dd}.xmass_standby_${_stamp}" 2> /dev/null; then
     _kept="no replica copy (the init had stopped before it made one)"
   fi
@@ -8422,24 +8464,30 @@ _xmass_restore_target() {
   fi
   [ -n "${_pre}" ] || _die "no parked data directory (${_dd}.xmass_pre_<stamp>) on this box"
   _ts="${_pre##*.xmass_pre_}"
-  # An init stopped between parking the folder and making it again: nothing
-  # at its name (the link there names nothing), no replica's folder to set
-  # aside. The parked one goes back as it would after a whole run.
+  # A box seeded by older bytes over a link: they moved the link itself aside
+  # as the parked name and made a real folder on the root disk. The link goes
+  # back in place of that folder, which is kept aside like any replica's. What
+  # it names must hold a MySQL data directory: with its volume away it names
+  # nothing, or the mount point's own empty folder on the root disk.
+  if [ -L "${_pre}" ]; then
+    _a="$(readlink -f "${_pre}" 2> /dev/null)"
+    { [ -n "${_a}" ] && [ -d "${_a}" ] && { [ -d "${_a}/mysql" ] || [ -f "${_a}/mysql.ibd" ]; }; } \
+      || _die "${_pre} is the link an init by older bytes moved aside, and the folder it names ($(readlink "${_pre}" 2> /dev/null))" \
+              " is not there or holds no MySQL data directory (its volume not mounted?): mount its volume, then" \
+              " run this again -- nothing changed"
+    [ "${_dd}" = "/var/lib/mysql" ] && { [ -d "${_dd}" ] || { [ ! -e "${_dd}" ] && [ ! -L "${_dd}" ]; }; } \
+      || _die "${_pre} is a link while the data directory here is ${_dd}: read both by hand -- nothing changed"
+  fi
+  # An init stopped between parking the folder (or an older init's link) and
+  # making it again: nothing at its name (the link there names nothing), no
+  # replica's folder to set aside. The parked one goes back as it would after
+  # a whole run.
   if [ ! -d "${_dd}" ]; then
-    { [ ! -e "${_dd}" ] && [ ! -L "${_dd}" ] && [ -d "${_pre}" ] && [ ! -L "${_pre}" ]; } \
+    { [ ! -e "${_dd}" ] && [ ! -L "${_dd}" ] && [ -d "${_pre}" ] \
+      && { [ ! -L "${_pre}" ] || [ "${_dd}" = "/var/lib/mysql" ]; }; } \
       || _die "no data directory at ${_dd} on this box, while ${_pre} waits beside it, and the name ${_dd}" \
               " holds something else: read both by hand -- nothing changed"
     _cut=YES
-  fi
-  # A box seeded by older bytes over a link: they moved the link itself aside
-  # as the parked name and made a real folder on the root disk. The link goes
-  # back in place of that folder, which is kept aside like any replica's.
-  if [ -L "${_pre}" ]; then
-    [ "${_dd}" = "/var/lib/mysql" ] && [ -d "${_dd}" ] \
-      || _die "${_pre} is a link while the data directory here is ${_dd}: read both by hand -- nothing changed"
-    [ -d "$(readlink -f "${_pre}" 2> /dev/null)" ] \
-      || _die "${_pre} is the link an init by older bytes moved aside, and the folder it names ($(readlink "${_pre}" 2> /dev/null))" \
-              " is not there: mount its volume, then run this again -- nothing changed"
   fi
   ! _xmass_dd_own_mount "${_dd}" \
     || _die "${_dd} is a mount point of its own and cannot be renamed aside -- nothing changed"
@@ -8447,6 +8495,11 @@ _xmass_restore_target() {
     [ -e "${_cnf}.xmass_pre_${_ts}" ] || [ "${_cut}" = "YES" ] \
       || _die "no parked credential file ${_cnf}.xmass_pre_${_ts} beside ${_pre}: the parked data directory" \
               " cannot be opened without it (an init by older bytes parked none) -- reimage this box instead"
+    # a cut init's are parked now from the ones in place: one in neither place
+    # would stop the swap after MySQL's stop
+    [ -e "${_cnf}.xmass_pre_${_ts}" ] || [ -e "${_cnf}" ] \
+      || _die "${_cnf} is neither parked beside ${_pre} nor in place: the data directory put back cannot be opened" \
+              " without it -- write it again for that directory's root user, then run this again -- nothing changed"
   done
   _ver=$(mysql -V 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 | cut -d"." -f1,2)
   if [ "${_ver}" = "8.4" ]; then
@@ -8464,6 +8517,9 @@ _xmass_restore_target() {
       _info "  its credentials were parked at the same stamp and come back"
     else
       _info "  its credentials were not parked yet: the ones in place are the ones that init left, and stay"
+    fi
+    if compgen -G "${_dd}.xmass_standby_*" > /dev/null; then
+      _info "  a replica copy an earlier run kept stays as it is: $(ls -1d "${_dd}".xmass_standby_* 2> /dev/null | tr '\n' ' ')"
     fi
     # no pass ran after it: every switch in /data/conf is this box's own
     for _d in /data/conf/*_db_broker.txt; do
@@ -9777,15 +9833,32 @@ _xmass_fit_warn() {   # 1 = side (space|inodes|count)  2 = dest  3 = message
 ### another link (a dangling one too), D a real directory, N nothing (one
 ### remote read, no stdin; empty when the target could not be asked).
 # The script verify runs on the target, with its one mount under /mnt as $1:
-# a "LEFT <K> <copy> <store>" line for each account's files store and the
-# archive whose copy on the mount nothing reads, since the store's own path
-# there is a real directory (a manual pass moved it onto the root, taking
-# the link and leaving the copy), then DONE. The size waits at most two
-# minutes ('?' after that).
+# one tab-separated line for each account's files store and the archive
+# whose copy on the mount is no longer the store's place, since the store's
+# own path there is a real directory (a manual pass moved it onto the root,
+# taking the link and leaving the copy), then DONE:
+#   LEFT <K> <copy> <store>          nothing under /data/disk links into it
+#   USED <K> <copy> <store> <link>   that link still reads it (a site's files
+#                                    link written with the mount's own path)
+#   UNSURE <K> <copy> <store>        the link scan did not finish in ten minutes
+# A store whose path reaches the copy itself (/data/disk/<oN>/static, or the
+# account, a link onto the mount) is the live store: no line. The size waits
+# at most two minutes ('?' after that). No DONE when the mount cannot be read.
 _xmass_left_store_copies_sh() {
   cat <<'LEFT'
 _m="$1"
 case "${_m}" in /mnt/?*) ;; *) echo DONE; exit 0 ;; esac
+[ -d "${_m}" ] || exit 1
+_L="$(mktemp)" || exit 1
+trap 'rm -f "${_L}"' EXIT
+# every link under /data/disk whose text names a mount, with what it reaches
+timeout 600 find /data/disk -type l \( -lname '/mnt/*' -o -lname '*/mnt/*' \) -print0 2> /dev/null \
+  | while LC_ALL=C IFS= read -r -d '' _l; do
+      _r="$(readlink -e -- "${_l}")" && printf '%s\t%s\n' "${_r}" "${_l}"
+    done > "${_L}"
+_fr="${PIPESTATUS[0]}"
+_scan=DONE
+[ "${_fr}" = "124" ] && _scan=UNSURE
 for _d in "${_m}"/files/*/static/files "${_m}"/files/system/arch; do
   [ -d "${_d}" ] && [ ! -L "${_d}" ] || continue
   case "${_d}" in
@@ -9793,8 +9866,20 @@ for _d in "${_m}"/files/*/static/files "${_m}"/files/system/arch; do
     *) _a="${_d#"${_m}"/files/}"; _a="${_a%%/*}"; _u="/data/disk/${_a}/static/files" ;;
   esac
   [ -d "${_u}" ] && [ ! -L "${_u}" ] || continue
-  _k="$(timeout 120 du -sk -- "${_d}" 2>/dev/null | awk '{ print $1 }')"
-  echo "LEFT ${_k:-?} ${_d} ${_u}"
+  _rd="$(cd -P -- "${_d}" 2> /dev/null && /bin/pwd -P)"
+  _ru="$(cd -P -- "${_u}" 2> /dev/null && /bin/pwd -P)"
+  [ -n "${_rd}" ] && [ -n "${_ru}" ] || continue
+  case "${_ru}/" in "${_rd}/"*) continue ;; esac
+  case "${_rd}/" in "${_ru}/"*) continue ;; esac
+  _via="$(P="${_rd}" awk -F'\t' '$1 == ENVIRON["P"] || index($1, ENVIRON["P"] "/") == 1 { print $2; exit }' "${_L}")"
+  _k="$(timeout 120 du -sk -- "${_d}" 2> /dev/null | awk '{ print $1 }')"
+  if [ -n "${_via}" ]; then
+    printf 'USED\t%s\t%s\t%s\t%s\n' "${_k:-?}" "${_d}" "${_u}" "${_via}"
+  elif [ "${_scan}" = "UNSURE" ]; then
+    printf 'UNSURE\t%s\t%s\t%s\n' "${_k:-?}" "${_d}" "${_u}"
+  else
+    printf 'LEFT\t%s\t%s\t%s\n' "${_k:-?}" "${_d}" "${_u}"
+  fi
 done
 echo DONE
 LEFT
@@ -10151,10 +10236,13 @@ _xmass_handle_store() {
           || { _rc=$?; _XMASS_NOT_CLEAN=YES; return "${_rc}"; }
         _info "${_lbl}: real dir on target root ${_dstRoot}"
         # the move off the mount takes the link only: the copy it named stays
-        [ "${_kind}" != "M" ] \
-          || _alrt "  ${_lbl}: its earlier copy stays on the target mount at ${_mntDest}, unused now: remove it once the move is verified ('xmass verify' names it with its size)"
+        if [ "${_kind}" = "M" ] && [ "${_mrDerived}" = "YES" ]; then
+          _alrt "  ${_lbl}: its earlier copy stays on the target mount at ${_mntDest}, a place the source's own layout gave and 'xmass verify' does not judge: read what links into it, and whether it holds another store, before removing anything"
+        elif [ "${_kind}" = "M" ]; then
+          _alrt "  ${_lbl}: its earlier copy stays on the target mount at ${_mntDest}: 'xmass verify' says whether a link still reads it and, when none does, names it with its size to remove"
+        fi
       else
-        _info "[DRY-PLAN] ${_lbl}: would place real dir on target root ${_dstRoot} (source ${_sz:-?}K)$([ "${_kind}" != "M" ] || printf '%s' ", its copy on the target mount (${_mntDest}) left there unused")"
+        _info "[DRY-PLAN] ${_lbl}: would place real dir on target root ${_dstRoot} (source ${_sz:-?}K)$([ "${_kind}" != "M" ] || printf '%s' ", its copy on the target mount (${_mntDest}) left there")"
       fi
       ;;
   esac
@@ -18568,16 +18656,27 @@ _xmass_cmd_verify() {
   # the copy it had there: named here with its size, never removed by this
   # tool (advisory, like the sweep above).
   if [ -n "${_tmv}" ]; then
-    local _lc _lw _lk _ld _lu _ln=0
+    local _lc _lw _lk _ld _lu _lv _ln=0
     _lc="$(_xmass_left_store_copies_sh \
       | ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" "bash -s -- '$(_shq "${_tmv}")'" 2> /dev/null)"
     if ! printf '%s\n' "${_lc}" | grep -qx 'DONE'; then
       _alrt "could not read ${_tgt}'s mount ${_tmv} for store copies left unused -- re-run verify"
     else
-      while read -r _lw _lk _ld _lu; do
-        [ "${_lw}" = "LEFT" ] || continue
-        _ln=$(( _ln + 1 ))
-        _alrt "a store copy left unused on the target mount: ${_ld} (${_lk}K): ${_lu} is a real directory on the root now and nothing reads this copy -- remove it once the move is verified: rm -rf -- '${_ld}'"
+      while IFS=$'\t' read -r _lw _lk _ld _lu _lv; do
+        case "${_lw}" in
+          LEFT)
+            _ln=$(( _ln + 1 ))
+            _alrt "a store copy left unused on the target mount: ${_ld} (${_lk}K): ${_lu} is a real directory on the root now and no link under /data/disk reaches this copy -- remove it once the move is verified: rm -rf -- '$(_shq "${_ld}")'"
+            ;;
+          USED)
+            _ln=$(( _ln + 1 ))
+            _alrt "a store copy on the target mount is still read: ${_ld} (${_lk}K), through the link ${_lv}, while ${_lu} is a real directory on the root now: what that link serves is the old copy -- point it into ${_lu}, and bring over any files written to the copy since, before removing anything"
+            ;;
+          UNSURE)
+            _ln=$(( _ln + 1 ))
+            _alrt "a store copy on the target mount: ${_ld} (${_lk}K): ${_lu} is a real directory on the root now, but the scan for links into the copy did not finish -- re-run verify before removing it"
+            ;;
+        esac
       done <<< "${_lc}"
       [ "${_ln}" -gt 0 ] || _info "No store copy left unused on the target mount (${_tmv}): OK"
     fi
