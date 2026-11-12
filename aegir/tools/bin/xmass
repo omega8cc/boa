@@ -6494,11 +6494,15 @@ _xmass_dd_here() {
     return 0
   fi
   _r="$(readlink -f /var/lib/mysql 2> /dev/null)"
+  if [ -z "${_r}" ]; then
+    printf '%s' "/var/lib/mysql is a link that resolves nowhere ($(readlink /var/lib/mysql 2> /dev/null)): is its volume mounted?"
+    return 1
+  fi
   if [[ "${_r}" =~ ^(/[A-Za-z0-9._-]+)+$ ]] && [ "${_r}" != "/var/lib/mysql" ]; then
     printf '%s' "${_r}"
     return 0
   fi
-  printf '%s' "/var/lib/mysql is a link that resolves to no folder path (${_r:-nowhere}): is its volume mounted?"
+  printf '%s' "/var/lib/mysql is a link onto ${_r}: only letters, digits, dot, underscore and dash are taken in that path"
   return 1
 }
 
@@ -6510,7 +6514,11 @@ _xmass_dd_volume_gone() {
   [ -L /var/lib/mysql ] || return 1
   _r="$(readlink -f /var/lib/mysql 2> /dev/null)"
   [ -n "${_r}" ] || return 0
-  [ ! -d "${_r}" ] && ! ls -1d "${_r}".xmass_pre_* "${_r}".xmass_standby_* > /dev/null 2>&1
+  [ ! -d "${_r}" ] || return 1
+  # either kind of name alone says the volume is there
+  compgen -G "${_r}.xmass_pre_*" > /dev/null && return 1
+  compgen -G "${_r}.xmass_standby_*" > /dev/null && return 1
+  return 0
 }
 
 # 0 when the folder $1 is a mount point of its own: the kernel refuses to
@@ -6665,10 +6673,13 @@ _xmass_target_dd_gate() {
   return 0
 }
 
-# The folder the gate judged, read once more when the snapshot is done and
-# nothing is committed yet: a snapshot takes minutes to hours, and a refusal
-# here still unwinds the target to what it was. The target reads it a third
-# time itself, in the swap, for the seconds between this and the rename.
+# The folder the gate judged, read again right before the snapshot and
+# once more when it is done, with nothing committed yet: minutes pass
+# between the gate and the snapshot, which itself takes minutes to hours,
+# and a volume that left meanwhile would take the stage onto the root disk
+# under its mount point. A refusal here still unwinds the target to what it
+# was. The target reads its folder once more itself, in the swap, for the
+# seconds between the last of these and the rename.
 _xmass_target_dd_recheck() {
   case "${_XM_TGT_SHAPE}" in
     plain|link) : ;;
@@ -6678,7 +6689,7 @@ _xmass_target_dd_recheck() {
   [ "${_XM_DD_SHAPE}" != "unread" ] \
     || _die "could not read the database folder on target ${_tgt} again before the swap -- nothing was displaced there; re-run init."
   if [ "${_XM_DD_SHAPE}" != "${_XM_TGT_SHAPE}" ] || [ "${_XM_DD_REAL}" != "${_XM_TGT_DD}" ]; then
-    _die "the database folder on target ${_tgt} changed while the snapshot was taken: it was ${_XM_TGT_DD} (${_XM_TGT_SHAPE})" \
+    _die "the database folder on target ${_tgt} is no longer what this run judged: it was ${_XM_TGT_DD} (${_XM_TGT_SHAPE})" \
          " and reads ${_XM_DD_REAL:-unreadable} (${_XM_DD_SHAPE}) now${_XM_DD_WHY:+: ${_XM_DD_WHY}} -- nothing was displaced there; re-run init."
   fi
   return 0
@@ -6879,10 +6890,15 @@ _xmass_restore_backup() {
 _ts=$(date +%Y%m%d%H%M%S)
 if [ "$1" = "link" ]; then
   # The link stays as it is. The folder it names is parked beside itself,
-  # on its own filesystem, and made again further down.
+  # on its own filesystem, and made again at once; one that cannot be made
+  # again goes straight back, before anything else is parked.
   [ -L /var/lib/mysql ] && [ "$(readlink -f /var/lib/mysql 2>/dev/null)" = "$2" ] \
     && [ -d "$2" ] || exit 71
   mv -f -T "$2" "$2.xmass_pre_${_ts}" || exit 72
+  if ! mkdir "$2"; then
+    mv -f -T "$2.xmass_pre_${_ts}" "$2" && exit 73
+    exit 74
+  fi
 else
   [ ! -L /var/lib/mysql ] || exit 71
   mv -f /var/lib/mysql /var/lib/mysql.xmass_pre_${_ts} &>/dev/null || true
@@ -6902,11 +6918,7 @@ for _f in /data/conf/*_db_broker.txt; do
     && chmod 700 "/data/conf/.xmass_pre_${_ts}.db_broker" \
     && mv -f "${_f}" "/data/conf/.xmass_pre_${_ts}.db_broker/"
 done
-if [ "$1" = "link" ]; then
-  mkdir "$2" || exit 73
-else
-  mkdir -p /var/lib/mysql
-fi
+[ "$1" = "link" ] || mkdir -p /var/lib/mysql
 REMOTE
   case "${_rc}" in
     71) _die "the database folder on target ${_tgt} is not the one judged before the snapshot" \
@@ -6916,8 +6928,12 @@ REMOTE
     72) _die "could not park ${_dd} beside itself on target ${_tgt}: nothing was displaced." \
              " MySQL is stopped there and the box is marked a committed standby: start MySQL with" \
              " /var/xdrago/move_sql.sh start, read why that folder cannot be renamed, then re-run init." ;;
-    73) _die "could not make ${_dd} again on target ${_tgt} after parking it as ${_dd}.xmass_pre_<stamp>:" \
-             " rename the parked folder back by hand, start MySQL there, then re-run init." ;;
+    73) _die "could not make ${_dd} again on target ${_tgt} after parking it, so it was put back: nothing is displaced." \
+             " MySQL is stopped there and the box is marked a committed standby: start MySQL with" \
+             " /var/xdrago/move_sql.sh start, read why no folder can be made beside it, then re-run init." ;;
+    74) _die "could not make ${_dd} again on target ${_tgt} after parking it, nor put it back: it waits as" \
+             " ${_dd}.xmass_pre_<stamp>. Rename it back there by hand (mv -T), start MySQL with" \
+             " /var/xdrago/move_sql.sh start, then re-run init." ;;
   esac
 
   _info "Running xtrabackup --copy-back on target ${_tgt} ..."
@@ -7807,7 +7823,10 @@ _xmass_restore_target() {
   fi
   [ -n "${_pre}" ] || _die "no parked data directory (${_dd}.xmass_pre_<stamp>) on this box"
   [ -d "${_dd}" ] \
-    || _die "no data directory at ${_dd} on this box (is its volume mounted?) -- nothing changed"
+    || _die "no data directory at ${_dd} on this box, while ${_pre} waits beside it: an init stopped between" \
+            " parking it and making the directory again. This verb puts a parked directory back in place of a" \
+            " replica's, and there is none: rename it back by hand (mv -T ${_pre} ${_dd}), its credentials are" \
+            " /root/.my.cnf.xmass_pre_${_pre##*.xmass_pre_} and /root/.my.pass.txt.xmass_pre_${_pre##*.xmass_pre_} -- nothing changed"
   ! _xmass_dd_own_mount "${_dd}" \
     || _die "${_dd} is a mount point of its own and cannot be renamed aside -- nothing changed"
   _ts="${_pre##*.xmass_pre_}"
@@ -18856,6 +18875,7 @@ REMOTE
   # committed yet, so a refusal here still unwinds cleanly.
   _xmass_wait_target_silent local "the datadir snapshot starts" die full
   _xmass_init_inflight_touch
+  _xmass_target_dd_recheck
   _xmass_take_backup
   _xmass_target_dd_recheck
   # Rotated HERE, behind every leg that can still refuse: a re-init against a
