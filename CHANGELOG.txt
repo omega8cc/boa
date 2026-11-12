@@ -25,16 +25,18 @@
 
     * xcopy reset-state <oN> clears an account's copy state on the server
       it runs on, as xoct reset-state does for a move, so the account can
-      be copied again or its copy refreshed. On the source it removes the
-      panel dump and the export and transfer stamps; on the target the
-      import stamp and the recorded panel database; on both the failure
-      latches. Each was removed by hand until now, and a panel dump left
+      be copied again or its copy refreshed. It removes the dumps in src/
+      (the panel dump and the per-site dump folders), the export, transfer
+      and import stamps, the failure latches and the recorded panel
+      database. Each was removed by hand until now: a panel dump left
       behind went out again with the next export, which dumps the panel
-      only while none is there. On a target, run it before the new
-      transfer, never between that transfer and its import. The per-site
-      dumps (the next export replaces them), the list of the certificate
-      stop markers a copy put and the state of an xoct move stay. It runs
-      on a full disk too.
+      only while none is there, and a target's per-site dump folders took
+      the next transfer's files beside the old ones, so its import loaded
+      both. On a target, run it before the new transfer, never between that
+      transfer and its import; on a server that received the account as a
+      copy, before copying it onward. The list of the certificate stop
+      markers a copy put and xoct's proxy records stay. It runs on a full
+      disk too.
 
     * A new Octopus account on a server with a standing mirror reaches the
       mirror with one command, xmass prep-target <mirror-ip> --fix-accounts,
@@ -745,12 +747,12 @@
       so their results were seen only in the control panel.
 
     * xcopy noproxy, which ends a copy on the source, clears the export and
-      transfer stamps and the panel dump there once the account was
-      transferred. The source keeps serving the account, and the stamps
-      stayed: the nightly took the export stamp for a move in flight and
-      left the account's ghost vhosts in place for good, and the next copy
-      was refused until they were removed by hand. The per-site dumps stay
-      until the next export replaces them.
+      transfer stamps and the export's dumps there (the panel dump and the
+      per-site dump folders, about the size of the account's databases)
+      once the account was transferred. The source keeps serving the
+      account, and all of it stayed: the nightly took the export stamp for
+      a move in flight and left the account's ghost vhosts in place for
+      good, and the next copy was refused until the stamps were removed by hand.
 
     * edgetest's regression phase checks the IP lists' SSH anti-lockout
       source by running ip_access.sh's own reader, and says whether it
