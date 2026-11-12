@@ -395,8 +395,9 @@ _acct_bup_others() {
 }
 # Room for an account's backup stream beside another account's: available
 # memory and free space on / (each full keeps its volumes there). No tool
-# checks memory before a run, and the only brake after an OOM kill turns
-# the whole schedule off, so a second account stream starts only with room.
+# checks memory before a run, and the brake after an OOM kill holds an
+# entry only once it has run out of memory, so a second account stream
+# starts only with room.
 _acct_stream_room() {
   local _mem _dsk
   _mem=$(awk '/^MemAvailable:/ { print int($2 / 1024) }' /proc/meminfo 2> /dev/null)
@@ -421,6 +422,48 @@ _acct_window_open() {
 _wrapper_caps_accounts() {
   grep -q '^_live_account_streams()' /root/.remote_backups/run/sequential_backups.sh 2> /dev/null
 }
+# An entry whose own duplicity the kernel killed for lack of memory waits
+# _MEM_HOLD_DAYS before it runs again: on this box that backup would only
+# run out of memory again, and an out-of-memory kill may take any process.
+# Only that entry waits; the server's own entries and other accounts' run.
+# The mark is the run's own verdict (its duplicity ended by SIGKILL while a
+# new kernel line named a duplicity), so it can name the entry; removing
+# the file lets the entry try again at once.
+_MEM_HOLD_DAYS=7
+_MEM_HOLD_DIR="/root/.remote_backups/memory_holds"
+_MEM_HOLD="${_MEM_HOLD_DIR}/$(printf '%s.%s' "${2}" "${3}" | tr -dc 'A-Za-z0-9_.-')"
+# Out-of-memory kills of a duplicity in the kernel's log
+_oom_dcy_lines() {
+  local _n
+  _n=$(grep -cE 'Out of memory: Killed process [0-9]+ \(duplicity\)' /var/log/iptables.log 2> /dev/null)
+  echo "${_n:-0}"
+}
+# After a backup run: $1 is _oom_dcy_lines before it. A duplicity that
+# ended by SIGKILL while a new line came (the log is written a moment
+# later, so it waits up to 15 seconds for one) marks this entry held.
+_mem_hold_check() {
+  local _i _n
+  [ "${_BUP_RC:-0}" -eq 137 ] || return 0
+  for _i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+    _n=$(_oom_dcy_lines)
+    # fewer than before: the log rotated, and any line in it is new
+    if [ "${_n}" -gt "${1:-0}" ] || { [ "${_n}" -lt "${1:-0}" ] && [ "${_n}" -gt 0 ]; }; then
+      mkdir -p "${_MEM_HOLD_DIR}" && chmod 700 "${_MEM_HOLD_DIR}"
+      date '+%F %T' > "${_MEM_HOLD}"
+      echo "The kernel killed duplicity for lack of memory; ${_SERVICE} ${_USER} waits ${_MEM_HOLD_DAYS} days before its next run (remove ${_MEM_HOLD} to try sooner)." >> ${_LOGFILE}
+      return 0
+    fi
+    sleep 1
+  done
+  return 0
+}
+if [ "${1}" = "backup" ] && [ -n "${2}" ] && [ -n "${3}" ] && [ -e "${_MEM_HOLD}" ]; then
+  if [ -n "$(find "${_MEM_HOLD}" -mmin "-$(( _MEM_HOLD_DAYS * 1440 ))" 2> /dev/null)" ]; then
+    echo "[$(date)] ${2} ${3} ran out of memory at $(head -c 19 "${_MEM_HOLD}" 2> /dev/null) and waits ${_MEM_HOLD_DAYS} days from then (remove ${_MEM_HOLD} to try sooner)..." >> /var/log/mybackup_waiting_queue.log
+    exit 1
+  fi
+  rm -f "${_MEM_HOLD}"
+fi
 _CNT=$(_dcy_live_count)
 # root's own entry backs up (and repairs its own chain, as backchain does
 # first) beside an account's entry (_dcy_box_count); an account's entry
@@ -1887,6 +1930,7 @@ _run_backup() {
   # the length before this run's output: a run killed before its log was
   # archived leaves its lines behind, and only this run's may decide a retry
   _bupLog0="$( { wc -l < "${_LOGFILE}"; } 2> /dev/null | tr -d ' ')"
+  _oom0=$(_oom_dcy_lines)
   set -f
   ${_DCY_BUP_CMD} ${_BATCH_EXCLUDE} ${_BATCH_INCLUDE} --exclude '**' / ${_BACKUP_TARGET} >> ${_LOGFILE} 2>&1
   _BUP_RC=$?
@@ -1916,6 +1960,7 @@ _run_backup() {
     set +f
     wait
   fi
+  _mem_hold_check "${_oom0}"
   export _BUP_RC
   _print_env "multiback_run_backup"
 }

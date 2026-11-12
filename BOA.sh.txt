@@ -2638,18 +2638,16 @@ _update_agents() {
 
   if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ] \
     && [ -d "/var/aegir/drush" ]; then
-    if grep -q "Out of memory: Killed process.*duplicity" /var/log/iptables.log; then
-     if [ ! -e "/root/.remote_backups/schedule/backup_schedule.txt-off" ]; then
-       cp -a /root/.remote_backups/schedule/backup_schedule.txt /root/.remote_backups/schedule/backup_schedule.txt-off
-       echo "# Backup schedule (service user) OFF" > /root/.remote_backups/schedule/backup_schedule.txt
-       chattr +i /root/.remote_backups/schedule/backup_schedule.txt
-     fi
-    else
-      if [ -e "/root/.remote_backups/schedule/backup_schedule.txt-off" ]; then
-        chattr -i /root/.remote_backups/schedule/backup_schedule.txt
-        rm -f /root/.remote_backups/schedule/backup_schedule.txt
-        mv /root/.remote_backups/schedule/backup_schedule.txt-off /root/.remote_backups/schedule/backup_schedule.txt
-      fi
+    # An out-of-memory kill of any duplicity used to turn the whole
+    # schedule off until the line left the weekly-rotated log: the
+    # server's own entries and every account's, for one run that ran out
+    # of memory. multiback now holds only the entry whose own duplicity
+    # was killed (its memory_holds mark), so a schedule left off by the
+    # old switch is put back.
+    if [ -e "/root/.remote_backups/schedule/backup_schedule.txt-off" ]; then
+      chattr -i /root/.remote_backups/schedule/backup_schedule.txt 2> /dev/null
+      rm -f /root/.remote_backups/schedule/backup_schedule.txt
+      mv /root/.remote_backups/schedule/backup_schedule.txt-off /root/.remote_backups/schedule/backup_schedule.txt
     fi
     # Genuine executions only, the same anchored pair as this function's
     # fetch guard: the bare substrings here SIGKILLed any command line
@@ -5876,7 +5874,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/fpmreport "${_urlHmr}/${_tBn}/fpmreport" f98 --symlink ${_usrBin}/fpmreport --guard /local/bin/fpmreport
     _fetch_versioned ${_optBin}/loadreport "${_urlHmr}/${_tBn}/loadreport" f92 --symlink ${_usrBin}/loadreport --guard /local/bin/loadreport
     _fetch_versioned ${_optBin}/lock.inc "${_urlHmr}/${_tBn}/lock.inc" f84 --guard /local/bin/lock.inc
-    _fetch_versioned ${_optBin}/multiback "${_urlHmr}/${_tBn}/multiback" f68 --guard duplicity
+    _fetch_versioned ${_optBin}/multiback "${_urlHmr}/${_tBn}/multiback" f69 --guard duplicity
     _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/${_tBn}/mybackup" f84 --mode 755 --guard duplicity
     _fetch_versioned ${_optBin}/octopus "${_urlHmr}/${_tBn}/octopus" f49 --guard /local/bin/octopus
     _fetch_versioned ${_optBin}/perftest "${_urlHmr}/${_tBn}/perftest" f93 --symlink ${_usrBin}/perftest --guard /local/bin/perftest
