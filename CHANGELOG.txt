@@ -847,6 +847,15 @@
       exists; once the park ends, or expires after 24 hours, they go with
       every other .off copy, as before.
 
+    * On a hosted server a staged kernel no longer reboots a box in the
+      middle of a migration's runner park. The unattended reboot between
+      04:00 and 04:59 waited for an xmass init or cutover window only on
+      the target; on the source it could run in an xmass cutover's relay
+      window, or under an xoct or xcopy park, which lasts from pre-mig to
+      post-mig. The reboot cleared the park marker, and the next tools
+      refresh fetched the parked runners back. autoupboa now defers the
+      reboot while the park marker exists, and says so.
+
     * nginx's country lookup reads current data, and knows visitors on
       IPv6 too. The X-GeoIP-Country headers and the GEOIP_COUNTRY_CODE,
       GEOIP_COUNTRY_CODE3 and GEOIP_COUNTRY_NAME values PHP gets came from
