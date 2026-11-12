@@ -606,6 +606,12 @@
 
 @=> Important Fixes
 
+    * xmass moves a server whose accounts use Ruby gems or npm onto a
+      target where Ruby or Node was never set up: /opt/user/gems or
+      /opt/user/npm is made there the way BOA makes it (root's, sticky,
+      world-writable). On such a target the pass refused that account's
+      gems or npm leg with a DENY and failed, so the cutover could not go ahead.
+
     * The ltd worker's New Relic step took the PHP version of the account
       before it in the pass for an account in single-FPM mode with no
       fpm.info, so a change of that account's newrelic.info could be skipped.
