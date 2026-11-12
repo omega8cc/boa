@@ -7564,6 +7564,9 @@ _xmass_restore_target_finish() {
   local _stamp="$1" _pre="$2" _act="${5:-}" _sro _svc _waited _a _rt _p
   # the folder itself: /var/lib/mysql, or the one a link there names
   local _dd="${_pre%.xmass_pre_*}"
+  # the parked directory is back in its place: the watchdog may start MySQL
+  # on it again, and this run waits out a start it has begun
+  rm -f /run/boa_sql_maintenance.pid
   if mysqladmin --defaults-file=/root/.my.cnf ping > /dev/null 2>&1; then
     _info "MySQL answers already (a watchdog started it)"
   else
@@ -7800,6 +7803,8 @@ _xmass_restore_target() {
       _info "DRY RUN -- nothing changed. Re-run with --live to finish it."
       return 0
     fi
+    # the watchdog stands down again until the swap is through, as in the run that stopped
+    : > /run/boa_sql_maintenance.pid
     _xmass_restore_target_swap "${_XMASS_RESTORE_STAMP}" "${_XMASS_RESTORE_PRE}" "${_XMASS_RESTORE_AT}" \
       "${_XMASS_RESTORE_BROKER_KEEP}" "${_XMASS_RESTORE_KEEP_KNOWN}" \
       "${_XMASS_RESTORE_LANE_ALL}" "${_XMASS_RESTORE_LANE_HALF}" "${_XMASS_RESTORE_ACTIVE}"
@@ -7866,6 +7871,10 @@ _xmass_restore_target() {
   _info "Stopping and forgetting the replication ..."
   mysql --defaults-file=/root/.my.cnf -e "${_stop}; ${_reset};" 2>/dev/null \
     || _alrt "  could not stop/reset the replica (mysql down or unauthable?) -- continuing with the data directory swap"
+  # The MySQL watchdog stands down from here until the parked directory is
+  # back: a start of its own between the stop and the renames would run on
+  # the replica's directory, or on none.
+  : > /run/boa_sql_maintenance.pid
   _info "Stopping MySQL via move_sql.sh ..."
   /var/xdrago/move_sql.sh stop || _die "MySQL stop failed"
   if [ "${_dd}" = "/var/lib/mysql" ]; then
