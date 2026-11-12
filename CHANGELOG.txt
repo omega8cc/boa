@@ -188,6 +188,15 @@
       waits while one of them runs; an unconfigured duobackboa no longer
       waits two hours for nothing, which would hold the accounts' entries.
 
+    * One account's own off-site backup no longer holds every other
+      account's. An account's entry used to wait while any backup ran, so
+      a run lasting days refused the other accounts' entries every cycle.
+      Up to two accounts' entries now run beside each other, a second only
+      with 1536 MB of available memory and 2048 MB free on /; the server's
+      own backup still goes first, and the interval wrapper never defers
+      root's own entries behind the accounts'. Under an older wrapper the
+      old rule stays. The STALLED alert names every stream stuck past its limit.
+
     * Another account can no longer put its own files in an account's
       ~/static/control, and root acts on that folder only when it is the
       account's own. On an account not yet on its own group, ~/static was
