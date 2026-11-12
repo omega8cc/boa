@@ -10575,8 +10575,9 @@ _satellite_http_off_path_list_here() {
 ### Grav and Textpattern sites test the migration's 503 gate in nginx by
 ### path, which a control folder another account's login made holds as well
 ### as the account's own. A vhost a Verify renders once BOA's gate file
-### (global-http-off.php) is there and Grav's setup file includes it leaves
-### the gate to PHP, by the own-folder rule Drupal and Backdrop sites follow;
+### (global-http-off.php) is there and the setup file Grav vhosts then name
+### (global-grav-gate.php) includes it leaves the gate to PHP, by the
+### own-folder rule Drupal and Backdrop sites follow;
 ### nothing re-verifies such a site by itself, so queue one Verify for every
 ### vhost still testing the path, once the account's provision renders the
 ### PHP form. Self-limiting: a vhost rendered so is never queued again.
@@ -10589,7 +10590,7 @@ _satellite_queue_http_off_site_verifies() {
   [ -d "${_vhd}" ] || return 0
   { [ -f "${_gl}/global-http-off.php" ] && [ ! -L "${_gl}/global-http-off.php" ]; } \
     || return 0
-  _acct_read_in "${_gl}" global-grav-setup.php | grep -qF "${_gl}/global-http-off.php" \
+  _acct_read_in "${_gl}" global-grav-gate.php | grep -qF "${_gl}/global-http-off.php" \
     || return 0
   _acct_read_in "${_prv}/grav/templates" grav_locations.tpl.php \
     | grep -qF "provision_http_off_in_php" || return 0

@@ -1176,15 +1176,17 @@ _global_inc_conf_update() {
   fi
   _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
     "${_locCnf}/global/global-bd.inc" global-bd.inc
-  ### The migration gate for Grav and Textpattern sites lands BEFORE Grav's
-  ### setup file, which includes it: a setup file never names a gate file
-  ### that is not there yet.
+  ### The migration gate for Grav and Textpattern sites lands first.
   _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
     "${_locCnf}/global/global-http-off.php" global-http-off.php
   ### Grav's setup file: a Grav vhost names it in GRAV_SETUP_PATH while nginx
   ### finds it, so web requests create group-writable folders.
   _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
     "${_locCnf}/global/global-grav-setup.php" global-grav-setup.php
+  ### The setup file a Grav vhost names once it leaves the gate to PHP: the
+  ### gate, then the setup file above, so it lands after both.
+  _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
+    "${_locCnf}/global/global-grav-gate.php" global-grav-gate.php
   ### The legacy-path dispatcher is deployed LAST: it only hands off to the
   ### per-core chain above, so it must never land without the chain present.
   _acct_in_real_dir /data/conf _sys_conf_cp_here ./global.inc \

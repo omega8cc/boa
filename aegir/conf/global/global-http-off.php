@@ -4,11 +4,12 @@
  *
  * The same rule as the HTTP-off block in global-mode.inc, which Drupal and
  * Backdrop sites run, for sites that never load the global settings chain:
- * Grav's setup file (global-grav-setup.php) and the private/config.php that
- * provision writes for a Textpattern site include this file first. Their
- * vhosts leave the gate to it once verified with a provision that knows it;
- * an older vhost still tests both gate files in nginx, by path, and so does a
- * newer one while this file or Grav's setup file is missing.
+ * the setup file Grav vhosts name (global-grav-gate.php) and the
+ * private/config.php that provision writes for a Textpattern site include
+ * this file first. Their vhosts leave the gate to it once verified with a
+ * provision that knows it; an older vhost still tests both gate files in
+ * nginx, by path, and so does a newer one while this file or Grav's
+ * global-grav-gate.php is missing.
  *
  * static/control/http-off.pid holds every site of the account (its content
  * the TTL, 30 to 86400 seconds, else 300); static/control/http-off-host.pid
