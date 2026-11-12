@@ -488,6 +488,12 @@ _daily_action() {
   if command -v _dbctl_report > /dev/null 2>&1; then
     _dbctl_report
   fi
+  # Skew-guarded likewise: what the numbers freed for account identities
+  # still own goes to their account, or to nobody, before they are given
+  # again.
+  if command -v _acct_unswept_sweep > /dev/null 2>&1; then
+    _acct_unswept_sweep
+  fi
   _night_link_count
 }
 

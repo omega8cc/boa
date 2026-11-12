@@ -184,6 +184,47 @@ if ($mine && !$left && rmdir("./control")) {
   print "removed $rm entries of theirs from control/\n";
 }
 exit 0;'
+# The numbers a purge frees wait in /data/conf/acct-uids/.unswept, as the
+# ltd worker's do, until the nightly sweep has handed over what they still
+# own: no identity of another account is made under them meanwhile. These
+# three are the ltd worker's text.
+_acct_gone_write() {
+  local _f="${1}" _t="${1}.tmp.$$"
+  rm -f -- "${_t}"
+  if ( umask 077; printf '%s\n' "${2}" | grep -E '^[1-9][0-9]*$' > "${_t}" ) \
+    || [ -e "${_t}" ]; then
+    chown root:root "${_t}" && chmod 0600 "${_t}" && mv -f -T -- "${_t}" "${_f}" && return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+_acct_unswept_seed() {
+  local _f _u
+  for _f in /data/conf/acct-uids/*.gone; do
+    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
+    while IFS= read -r _u; do
+      [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+      getent passwd "${_u}" > /dev/null 2>&1 || echo "${_u}"
+    done < "${_f}"
+  done
+  return 0
+}
+_acct_unswept_add() {
+  local _u="${1}" _d=/data/conf/acct-uids _f _c
+  [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || return 1
+  mkdir -p "${_d}" && chown root:root "${_d}" && chmod 0711 "${_d}" || return 1
+  _f="${_d}/.unswept"
+  (
+    flock -w 60 9 || exit 1
+    if [ -f "${_f}" ] && [ ! -L "${_f}" ]; then
+      grep -qx -- "${_u}" "${_f}" && exit 0
+      _c=$(cat -- "${_f}") || exit 1
+    else
+      _c=$(_acct_unswept_seed)
+    fi
+    _acct_gone_write "${_f}" "$(printf '%s\n%s\n' "${_c}" "${_u}" | sort -un)"
+  ) 9> "${_d}/.unswept.lock"
+}
 # The account $1's identities' entries in every other account's control/
 # (_ACCT_FOREIGN_CTRL_PL), the uids $2 comma-separated: run while those
 # numbers still name them, their processes ended.
@@ -4322,7 +4363,15 @@ _octopus_cleanup() {
         done
         # So does the list of its identities' uids the sites' PHP reads (the
         # ltd worker writes it again for an account made later by the name),
-        # and the record of its removed identities' numbers.
+        # and the record of its removed identities' numbers, which stay held
+        # back until the nightly sweep (.unswept) while no user has them.
+        if [ -f "/data/conf/acct-uids/${_usEr}.gone" ] \
+          && [ ! -L "/data/conf/acct-uids/${_usEr}.gone" ]; then
+          while IFS= read -r _gU; do
+            [[ "${_gU}" =~ ^[1-9][0-9]*$ ]] || continue
+            getent passwd "${_gU}" > /dev/null 2>&1 || _acct_unswept_add "${_gU}"
+          done < "/data/conf/acct-uids/${_usEr}.gone"
+        fi
         rm -f -- "/data/conf/acct-uids/${_usEr}" "/data/conf/acct-uids/${_usEr}.gone"
         # So does its aegir2boa import state, beside the create marker, once
         # the database users its import made and still names are looked at.
@@ -4484,6 +4533,12 @@ _octopus_cleanup() {
           [[ "${_fcU}" =~ ^[1-9][0-9]*$ ]] && _fcUs="${_fcUs:+${_fcUs},}${_fcU}"
         done
         _boa_purge_foreign_ctrl "${_usEr}" "${_fcUs}"
+        # Its numbers are held back from every other account's next identity
+        # until the nightly sweep has handed over what they still own outside
+        # its trees; written before deluser frees them.
+        for _fcU in "${_tmpUs[@]}"; do
+          [[ "${_fcU}" =~ ^[1-9][0-9]*$ ]] && _acct_unswept_add "${_fcU}"
+        done
         # The numbers this purge frees leave every other account's record of
         # removed identities: a number the ltd worker had not pruned yet
         # (another login took it since) would name no one again here.

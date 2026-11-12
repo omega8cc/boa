@@ -534,6 +534,7 @@ _acct_gone_add() {
   local _a="${1}" _u="${2}" _d=/data/conf/acct-uids _f
   [[ "${_a}" =~ ^[a-z0-9-]+$ && "${_u}" =~ ^[1-9][0-9]*$ ]] || return 1
   mkdir -p "${_d}" && chown root:root "${_d}" && chmod 0711 "${_d}" || return 1
+  _acct_unswept_add "${_u}" || return 1
   for _f in "${_d}"/*.gone; do
     [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
     [ "${_f}" = "${_d}/${_a}.gone" ] && continue
@@ -543,6 +544,139 @@ _acct_gone_add() {
   _f="${_d}/${_a}.gone"
   grep -qsx -- "${_u}" "${_f}" && return 0
   _acct_gone_write "${_f}" "$( { cat -- "${_f}" 2> /dev/null; echo "${_u}"; } | sort -un)"
+}
+# A number freed for an account identity is listed in
+# /data/conf/acct-uids/.unswept (root's, 0600) until the nightly sweep has
+# handed over what it still owns outside its account's trees (a file left in
+# another account's open folder, in /tmp): no identity of another account is
+# made under it meanwhile (_acct_pick_uid), or those files would be that
+# identity's. The list, when first made, takes every recorded number no user
+# has: those were freed before it existed and nothing has swept them.
+_acct_unswept_seed() {
+  local _f _u
+  for _f in /data/conf/acct-uids/*.gone; do
+    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
+    while IFS= read -r _u; do
+      [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+      getent passwd "${_u}" > /dev/null 2>&1 || echo "${_u}"
+    done < "${_f}"
+  done
+  return 0
+}
+# The list is read and written under its lock, which the nightly sweep
+# holds while it takes the numbers it swept off.
+_acct_unswept_add() {
+  local _u="${1}" _d=/data/conf/acct-uids _f _c
+  [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || return 1
+  mkdir -p "${_d}" && chown root:root "${_d}" && chmod 0711 "${_d}" || return 1
+  _f="${_d}/.unswept"
+  (
+    flock -w 60 9 || exit 1
+    if [ -f "${_f}" ] && [ ! -L "${_f}" ]; then
+      grep -qx -- "${_u}" "${_f}" && exit 0
+      _c=$(cat -- "${_f}") || exit 1
+    else
+      _c=$(_acct_unswept_seed)
+    fi
+    _acct_gone_write "${_f}" "$(printf '%s\n%s\n' "${_c}" "${_u}" | sort -un)"
+  ) 9> "${_d}/.unswept.lock"
+}
+# The number a new identity of account $2 is made under: the highest free
+# system uid ($1 high, as useradd -r picks one) or the lowest ($1 low, as
+# adduser --system does). Free means no user has it, no process runs as it,
+# and no sweep waits for it (.unswept; before that list exists, any recorded
+# number no user has) unless the account itself recorded it (<oN>.gone): a
+# number may go back to the account that freed it, never to another one.
+# Status 1, and nothing, when the range or the users cannot be read or no
+# number is free.
+_acct_pick_uid() {
+  local _w="${1}" _a="${2}" _lo="" _hi="" _um="" _k _v _u _d=/data/conf/acct-uids
+  local -A _h=()
+  [[ "${_a}" =~ ^[a-z0-9-]+$ ]] || return 1
+  case "${_w}" in
+    high)
+      while read -r _k _v _; do
+        case "${_k}" in
+          SYS_UID_MIN) _lo="${_v}" ;;
+          SYS_UID_MAX) _hi="${_v}" ;;
+          UID_MIN) _um="${_v}" ;;
+        esac
+      done < <(grep -E '^[[:space:]]*(SYS_)?UID_M(IN|AX)[[:space:]]' /etc/login.defs 2> /dev/null)
+      [ -n "${_lo}" ] || _lo=101
+      if [ -z "${_hi}" ]; then
+        [[ "${_um}" =~ ^[1-9][0-9]*$ ]] && _hi=$(( _um - 1 )) || _hi=999
+      fi
+      ;;
+    low)
+      while IFS='=' read -r _k _v; do
+        _k="${_k//[[:space:]]/}"
+        _v="${_v//[[:space:]\"\']/}"
+        case "${_k}" in
+          FIRST_SYSTEM_UID) _lo="${_v}" ;;
+          LAST_SYSTEM_UID) _hi="${_v}" ;;
+        esac
+      done < <(grep -E '^[[:space:]]*(FIRST|LAST)_SYSTEM_UID[[:space:]]*=' /etc/adduser.conf 2> /dev/null)
+      [ -n "${_lo}" ] || _lo=100
+      [ -n "${_hi}" ] || _hi=999
+      ;;
+    *) return 1 ;;
+  esac
+  [[ "${_lo}" =~ ^[1-9][0-9]*$ && "${_hi}" =~ ^[1-9][0-9]*$ ]] || return 1
+  [ "${_lo}" -le "${_hi}" ] || return 1
+  while IFS=: read -r _k _v _u _; do
+    [[ "${_u}" =~ ^[0-9]+$ ]] && _h[${_u}]=1
+  done < <(getent passwd 2> /dev/null)
+  # no passwd read, no pick: every number would look free
+  [ -n "${_h[0]:-}" ] || return 1
+  for _u in $(ps -e -o ruid= -o euid= -o suid= 2> /dev/null); do
+    [[ "${_u}" =~ ^[0-9]+$ ]] && _h[${_u}]=1
+  done
+  if [ -f "${_d}/.unswept" ] && [ ! -L "${_d}/.unswept" ]; then
+    _v=$(cat -- "${_d}/.unswept") || return 1
+  else
+    _v=$(_acct_unswept_seed)
+  fi
+  while IFS= read -r _u; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    grep -qsx -- "${_u}" "${_d}/${_a}.gone" && continue
+    _h[${_u}]=1
+  done <<< "${_v}"
+  if [ "${_w}" = "high" ]; then
+    for (( _u = _hi; _u >= _lo; _u-- )); do
+      [ -n "${_h[${_u}]:-}" ] || { echo "${_u}"; return 0; }
+    done
+  else
+    for (( _u = _lo; _u <= _hi; _u++ )); do
+      [ -n "${_h[${_u}]:-}" ] || { echo "${_u}"; return 0; }
+    done
+  fi
+  return 1
+}
+# Make an identity of account $2 under the number _acct_pick_uid gives ($1
+# high, then the rest is a useradd -r command, or low, an adduser --system
+# one), the name last. A number taken meanwhile is picked again; with none
+# to pick, the tool picks, and the incident log says so.
+_acct_new_identity() {
+  local _w="${1}" _a="${2}" _o _n _i _r
+  shift 2
+  case "${_w}" in
+    high) _o="-u" ;;
+    low) _o="--uid" ;;
+    *) return 1 ;;
+  esac
+  [ "$#" -ge 2 ] || return 1
+  for _i in 1 2 3; do
+    _n=$(_acct_pick_uid "${_w}" "${_a}") || break
+    "${@:1:$#-1}" "${_o}" "${_n}" "${@: -1}"
+    _r=$?
+    [ "${_r}" -eq 0 ] && return 0
+    # failed for another reason than its number: as the tool alone would
+    getent passwd "${_n}" > /dev/null 2>&1 || return "${_r}"
+  done
+  mkdir -p /var/log/boa
+  echo "$(date) ${_a}: no uid free of the removed identities for ${*: -1}, ${1} picks it" \
+    >> /var/log/boa/manage_ltd.incident.log
+  "$@"
 }
 #
 # Remove web user.
@@ -594,7 +728,10 @@ _satellite_create_web_user() {
       _msg "DEBUG: ARG1 is $1 in _satellite_create_web_user C"
     fi
     _satellite_remove_web_user "clean"
-    adduser --force-badname --system --ingroup www-data --home /home/${_WEB} ${_WEB} &> /dev/null
+    # made under a number no other account's removed identity left files
+    # under (_acct_new_identity), as every identity of the account
+    _acct_new_identity low "${_WEB%%.*}" \
+      adduser --force-badname --system --ingroup www-data --home /home/${_WEB} ${_WEB} &> /dev/null
     _satellite_web_user_update "$1"
   fi
   # A pool user made anew drops every group listing: once the account holds
@@ -4351,7 +4488,8 @@ _satellite_add_user_dirs() {
         _msg "NOTE: instgrp absent or the box not ready for the per-instance group (instgrp check); ${_USER} is born on the box-wide group, the next upgrade converts it"
       fi
     fi
-    adduser --system --home ${_ROOT} --ingroup ${_ACCG} ${_USER} &> /dev/null
+    _acct_new_identity low "${_USER}" \
+      adduser --system --home ${_ROOT} --ingroup ${_ACCG} ${_USER} &> /dev/null
     adduser ${_USER} ${_USRG} &> /dev/null
     adduser ${_USER} ${_WEBG} &> /dev/null
     _ACCG=$(_acct_group "${_USER}")
@@ -6556,7 +6694,8 @@ _satellite_if_add_ftps_lshell_access() {
     find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -f {} \; &> /dev/null
     # -N leaves the primary group to /etc/default/useradd (users); name it
     # explicitly so an account carrying its per-instance group gets that one.
-    useradd -d /home/${_USERFTP} -s ${_PATH_LSHELL} -m -N -r \
+    _acct_new_identity high "${_USER}" \
+      useradd -d /home/${_USERFTP} -s ${_PATH_LSHELL} -m -N -r \
       -g ${_ACCG:-users} ${_USERFTP} &> /dev/null
     # The file which contains the password is private from the start: made
     # 0600 below as a fresh file inside the real log/ (the instance user's),

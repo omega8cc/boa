@@ -1689,3 +1689,165 @@ _dbctl_report() {
       "BOA nightly on $(hostname -f): database broker report" "${_body}" )
   return 0
 }
+
+# The numbers BOA freed for account identities wait in
+# /data/conf/acct-uids/.unswept (the ltd worker, the Octopus upgrade and boa
+# cleanup purge write them before deluser), held back from every other
+# account's next identity, until this sweep has handed over what each still
+# owns where a login can leave files: every account's static/ and distro/,
+# the files stores on attached storage, /tmp, /var/tmp, /dev/shm and
+# /opt/user. An entry of a number an account recorded as one of its removed
+# identities (<oN>.gone) goes to that account, its group and mode kept, as
+# the ltd worker's hand-over gives it; an entry of a number no account
+# recorded (a purged account's) goes to nobody, closed to group and other
+# writers and without set-ID bits: every check of a control folder trusts
+# root, none trusts nobody. A number a user has, or a process runs as, waits
+# for a later night. Directories and regular files are handed over through a
+# handle opened without following a link, re-checked against what find saw;
+# any other entry (a link, a socket, a FIFO) by name, with lchown, which
+# never follows a link. Each place is walked on its own filesystem from
+# inside the real directory. The numbers swept leave the list (the record
+# <oN>.gone keeps them), and may be given again.
+_NIGHT_UNSWEPT_PL='use Fcntl; use POSIX ();
+my %m;
+for (split(/,/, shift(@ARGV) // "")) {
+  my ($u, $t, $g, $c) = split(/:/);
+  next unless defined($c) && $u =~ /^[1-9][0-9]*$/ && $t =~ /^[0-9]+$/ && $g =~ /^-?[0-9]+$/;
+  $m{$u} = [$t, $g, $c];
+}
+exit 0 unless %m;
+my $n = 0;
+for my $e (@ARGV) {
+  my @l = lstat($e) or next;
+  my $r = $m{$l[4]} or next;
+  my ($t, $g, $c) = @$r;
+  if (-d _ || -f _) {
+    sysopen(my $h, $e, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next;
+    my @s = stat($h);
+    if (@s && $s[0] == $l[0] && $s[1] == $l[1] && $s[4] == $l[4] && chown($t, $g, $h)) {
+      $n++;
+      if ($c) {
+        my @a = stat($h);
+        chmod($a[2] & 01755, $h) if @a;
+      }
+    }
+    close($h);
+  } elsif (POSIX::lchown($t, $g, $e)) {
+    $n++;
+  }
+}
+print "$n\n" if $n;
+exit 0;'
+
+_acct_gone_write() {
+  local _f="${1}" _t="${1}.tmp.$$"
+  rm -f -- "${_t}"
+  if ( umask 077; printf '%s\n' "${2}" | grep -E '^[1-9][0-9]*$' > "${_t}" ) \
+    || [ -e "${_t}" ]; then
+    chown root:root "${_t}" && chmod 0600 "${_t}" && mv -f -T -- "${_t}" "${_f}" && return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+
+_acct_unswept_seed() {
+  local _f _u
+  for _f in /data/conf/acct-uids/*.gone; do
+    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
+    while IFS= read -r _u; do
+      [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+      getent passwd "${_u}" > /dev/null 2>&1 || echo "${_u}"
+    done < "${_f}"
+  done
+  return 0
+}
+
+# Run "$@" inside the real directory $1, its last name checked against its
+# resolved parent: a link put at that name is never followed.
+_acct_unswept_in() {
+  local _d="${1}" _up
+  shift
+  _up="${_d%/*}"
+  _up=$(cd -P -- "${_up:-/}" 2> /dev/null && /bin/pwd -P) || return 1
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_up%/}/${_d##*/}" ] && "$@" )
+}
+_acct_unswept_places() {
+  local _p
+  for _p in /data/disk/*/static /data/disk/*/distro /mnt/*/files \
+    /tmp /var/tmp /dev/shm /opt/user; do
+    [ -d "${_p}" ] && [ ! -L "${_p}" ] || continue
+    case "${_p}" in
+      /data/disk/*) [ -L "${_p%/*}" ] && continue ;;
+    esac
+    echo "${_p}"
+  done
+  return 0
+}
+_acct_unswept_sweep() {
+  local _d=/data/conf/acct-uids _j _v _u _f _a _t _nb _ng _map="" _sw="" _swl="" _p _n _all=0
+  local -a _k=()
+  _j="${_d}/.unswept"
+  [ -d "${_d}" ] && [ ! -L "${_d}" ] || return 0
+  if [ -f "${_j}" ] && [ ! -L "${_j}" ]; then
+    _v=$(cat -- "${_j}") || return 0
+  elif [ -e "${_j}" ] || [ -L "${_j}" ]; then
+    echo "acct-unswept: ${_j} is not a plain file, nothing swept"
+    return 0
+  else
+    _v=$(_acct_unswept_seed)
+  fi
+  _nb=$(id -u nobody 2> /dev/null)
+  _ng=$(getent group nogroup 2> /dev/null | cut -d: -f3)
+  if ! [[ "${_nb}" =~ ^[1-9][0-9]*$ && "${_ng}" =~ ^[1-9][0-9]*$ ]]; then
+    echo "acct-unswept: no nobody user or nogroup group, nothing swept"
+    return 0
+  fi
+  while IFS= read -r _u; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    # a user has it again, or something still runs as it: a later night
+    getent passwd "${_u}" > /dev/null 2>&1 && continue
+    pgrep -u "${_u}" > /dev/null 2>&1 && continue
+    pgrep -U "${_u}" > /dev/null 2>&1 && continue
+    _t=""
+    for _f in "${_d}"/*.gone; do
+      [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
+      grep -qx -- "${_u}" "${_f}" || continue
+      _a="${_f##*/}"
+      _a="${_a%.gone}"
+      [[ "${_a}" =~ ^[a-z0-9-]+$ ]] && _t=$(id -u -- "${_a}" 2> /dev/null)
+      break
+    done
+    if [[ "${_t}" =~ ^[1-9][0-9]*$ ]]; then
+      _map="${_map:+${_map},}${_u}:${_t}:-1:0"
+    else
+      _map="${_map:+${_map},}${_u}:${_nb}:${_ng}:1"
+    fi
+    _sw="${_sw} ${_u}"
+    _swl="${_swl}${_u}"$'\n'
+    _k+=( -o -uid "${_u}" )
+  done <<< "${_v}"
+  [ "${#_k[@]}" -gt 0 ] || return 0
+  echo "acct-unswept: start, numbers${_sw}"
+  while IFS= read -r _p; do
+    _n=$(_acct_unswept_in "${_p}" env PATH=/usr/local/bin:/usr/bin:/bin \
+      find -P . -xdev \( -false "${_k[@]}" \) \
+      -execdir perl -e "${_NIGHT_UNSWEPT_PL}" "${_map}" {} + 2> /dev/null \
+      | awk '{ s += $1 } END { print s + 0 }')
+    [[ "${_n}" =~ ^[0-9]+$ ]] || _n=0
+    [ "${_n}" -gt 0 ] && echo "acct-unswept: ${_n} entries handed over in ${_p}"
+    _all=$(( _all + _n ))
+  done < <(_acct_unswept_places)
+  # off the list, under its lock: what was swept; what was added meanwhile
+  # stays
+  (
+    flock -w 60 9 || exit 1
+    if [ -f "${_j}" ] && [ ! -L "${_j}" ]; then
+      _v=$(cat -- "${_j}") || exit 1
+    else
+      _v=$(_acct_unswept_seed)
+    fi
+    _acct_gone_write "${_j}" "$(printf '%s\n' "${_v}" | grep -vxF -f <(printf '%s' "${_swl}"))"
+  ) 9> "${_d}/.unswept.lock"
+  echo "acct-unswept: done, ${_all} entries handed over, numbers${_sw} released"
+  return 0
+}
