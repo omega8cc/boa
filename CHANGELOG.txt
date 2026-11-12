@@ -229,6 +229,14 @@
       root's own entries behind the accounts'. Under an older wrapper the
       old rule stays. The STALLED alert names every stream stuck past its limit.
 
+    * One account's own off-site backup no longer holds other accounts'
+      restores, nor a restore other accounts' backups. A queued restore
+      waited while any account's backup ran, so a run lasting days held
+      every restore, and a restore held every account's backup. Under the
+      interval wrapper that caps the accounts' streams, a restore now waits
+      for the server's own backup and its own account's backup alone, and an
+      account's backup for a restore of its own account alone.
+
     * A restore queued with mybackup runs again. Since May the queue
       handed the restore its arguments one short, so every queued restore
       was refused as an invalid command and nothing was restored.
