@@ -342,24 +342,77 @@ _box_bup_live() {
   pgrep -u root -U root -f '^([^ ]*/)?bash /(opt|usr)/local/bin/multiback backup [^ ]+ (global|data|custom)$' \
     > /dev/null 2>&1
 }
+# The other accounts' entries whose backup root runs now: distinct
+# "<service> <target>" pairs, this entry's own left out, from one snapshot
+# of root's processes alone, read by their own argument lists (pairs, not
+# processes: a run's subshells carry its arguments). Processes, never the
+# lock files: a run takes its lock at the end of this script, after the
+# gate, so a lock count would miss a run between the two.
+_acct_bup_others() {
+  ps -e -ww -o pid= -o ppid= -o ruid= -o euid= -o args= 2> /dev/null | awk -v me="${1} ${2}" '
+    $3 == 0 && $4 == 0 {
+      a = $0; sub(/^ *[0-9]+ +[0-9]+ +[0-9]+ +[0-9]+ */, "", a)
+      if (a ~ /^([^ ]*\/)?bash \/(opt|usr)\/local\/bin\/multiback backup [^ ]+ [^ ]+$/ &&
+        a !~ / (global|data|custom)$/) {
+        n = split(a, w, " ")
+        k = w[n - 1] " " w[n]
+        if (k != me) s[k] = 1
+      }
+    }
+    END { c = 0; for (k in s) c++; print c }'
+}
+# Room for an account's backup stream beside another account's: available
+# memory and free space on / (each full keeps its volumes there). No tool
+# checks memory before a run, and the only brake after an OOM kill turns
+# the whole schedule off, so a second account stream starts only with room.
+_acct_stream_room() {
+  local _mem _dsk
+  _mem=$(awk '/^MemAvailable:/ { print int($2 / 1024) }' /proc/meminfo 2> /dev/null)
+  _dsk=$(df -Pm / 2> /dev/null | awk 'NR == 2 { print $4 }')
+  [ "${_mem:-0}" -ge 1536 ] && [ "${_dsk:-0}" -ge 2048 ]
+}
+# The installed wrapper caps the accounts' streams alone and never defers
+# root's own entries; an older wrapper caps every stream and would defer
+# the server's own entries behind two account runs, so an account's entry
+# runs beside another account's only under the new wrapper.
+_wrapper_caps_accounts() {
+  grep -q '^_live_account_streams()' /root/.remote_backups/run/sequential_backups.sh 2> /dev/null
+}
 _CNT=$(_dcy_live_count)
 # root's own entry backs up (and repairs its own chain, as backchain does
 # first) beside an account's entry (_dcy_box_count); an account's entry
-# waits on any duplicity and on the server's own backup
+# waits on the server's own backup and on any other duplicity, and runs
+# beside one other account's entry when there is room for it
 _BOX_FIRST=NO
+_ACCT_HOLD=""
 case "${3:-}" in
   global|data|custom)
     case "${1}" in
       backup|repair) _CNT=$(_dcy_box_count) ;;
     esac
     ;;
-  *) [ "${1}" = "backup" ] && [ -n "${2}" ] && _box_bup_live && _BOX_FIRST=YES ;;
+  *)
+    if [ "${1}" = "backup" ] && [ -n "${2}" ]; then
+      _box_bup_live && _BOX_FIRST=YES
+      if [ "${_BOX_FIRST}" = "NO" ] && _wrapper_caps_accounts; then
+        _CNT=$(_dcy_box_count)
+        _OTHERS=$(_acct_bup_others "${2}" "${3}")
+        if [ "${_OTHERS:-0}" -ge 2 ]; then
+          _ACCT_HOLD="Two account entries already back up"
+        elif [ "${_OTHERS:-0}" -ge 1 ] && ! _acct_stream_room; then
+          _ACCT_HOLD="Not enough free memory or disk for a second account backup stream"
+        fi
+      fi
+    fi
+    ;;
 esac
-if (( _CNT > 0 )) || [ "${_BOX_FIRST}" = "YES" ]; then
+if (( _CNT > 0 )) || [ "${_BOX_FIRST}" = "YES" ] || [ -n "${_ACCT_HOLD}" ]; then
   if [ "${_BOX_FIRST}" = "YES" ]; then
     echo "[$(date)] The server's own backup runs first, ${3}'s backup will try again later..." >> /var/log/mybackup_waiting_queue.log
-  else
+  elif (( _CNT > 0 )); then
     echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
+  else
+    echo "[$(date)] ${_ACCT_HOLD}, ${2} ${3} will try again later..." >> /var/log/mybackup_waiting_queue.log
   fi
   # a backup run waits: mybackup's queue starts no restore until this
   # entry's next run gets through, for a day from the first hold

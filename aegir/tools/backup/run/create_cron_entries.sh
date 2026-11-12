@@ -152,13 +152,13 @@ _acquire_pid_file() {
 }
 
 # Function to count live backup streams across ALL wrapper instances --
-# the live (non-sequential) multiback locks. One instance dispatches
-# entries strictly one at a time, but each 6-hour cron tick can add an
-# instance while a monthly full still runs (18-hour fulls are real), and
-# unbounded skip-and-continue would pile concurrent fulls onto the same
-# day. At the cap, the remaining entries wait for a later cycle.
-_live_backup_streams() {
-  local _n=0 _f _p _e
+# the live (non-sequential) multiback locks, of the accounts' entries
+# (account) or of root's own (root). One instance dispatches entries
+# strictly one at a time, but each 6-hour cron tick can add an instance
+# while a monthly full still runs (18-hour fulls are real), and unbounded
+# skip-and-continue would pile concurrent fulls onto the same day.
+_live_entry_streams() {
+  local _n=0 _f _p _e _t
   for _f in /run/duplicity_*.pid; do
     [ -e "${_f}" ] || continue
     case "${_f}" in *_sequential.pid) continue ;; esac
@@ -167,9 +167,20 @@ _live_backup_streams() {
     # duplicity_<service>_<target>.pid; a service may hold _, a target not)
     _e="${_f##*/duplicity_}"
     _e="${_e%.pid}"
-    _pid_is_live "${_p}" "multiback [^ ]+ ${_e%_*} ${_e##*_}" && _n=$((_n + 1))
+    _t="${_e##*_}"
+    case "${_t}" in
+      global|data|custom) [ "${1}" = "root" ] || continue ;;
+      *) [ "${1}" = "account" ] || continue ;;
+    esac
+    _pid_is_live "${_p}" "multiback [^ ]+ ${_e%_*} ${_t}" && _n=$((_n + 1))
   done
   echo "${_n}"
+}
+# The accounts' streams alone: the cap of two applies to them, and root's
+# own entries are never deferred by it (multiback reads this function's
+# name in the installed wrapper before it lets two accounts run).
+_live_account_streams() {
+  _live_entry_streams account
 }
 
 # Function to remove PID file
@@ -265,12 +276,29 @@ while IFS= read -r _line || [ -n "${_line}" ]; do
   export _service="${_service}"
   export _user="${_user}"
 
-  # Defer the rest of the schedule when two backup streams already run
-  # box-wide; skipping past every held lock must not stack a third
-  if [ "$(_live_backup_streams)" -ge 2 ]; then
-    echo "Two backup streams already running; deferring ${_service} (${_user}) and the rest of the schedule to a later cycle."
-    break
-  fi
+  # root's own entries come first in the schedule and are never deferred
+  # behind the accounts' streams; one of them waits for the next cycle
+  # only while another of root's own entries still runs, and marks itself
+  # held as multiback's gate would (mybackup's queue starts no restore until
+  # its next run gets through). The accounts' entries defer, with the rest
+  # of the schedule, when two accounts' streams already run box-wide:
+  # skipping past every held lock must not stack a third
+  case "${_user}" in
+    global|data|custom)
+      if [ "$(_live_entry_streams root)" -ge 1 ]; then
+        echo "Another of root's own entries still runs; ${_service} (${_user}) waits for a later cycle."
+        _held_mark="/run/boa_backup_held.multiback.$(printf '%s.%s' "${_service}" "${_user}" | tr -dc 'A-Za-z0-9_.-')"
+        [ -e "${_held_mark}" ] || touch "${_held_mark}"
+        continue
+      fi
+      ;;
+    *)
+      if [ "$(_live_account_streams)" -ge 2 ]; then
+        echo "Two accounts' backup streams already running; deferring ${_service} (${_user}) and the rest of the schedule to a later cycle."
+        break
+      fi
+      ;;
+  esac
 
   # Define the PID file path
   _SEQ_PIDFILE="${_PID_DIR}/duplicity_${_service}_${_user}_sequential.pid"

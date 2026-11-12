@@ -5850,7 +5850,7 @@ CSFSTANDBY
       _fetch_versioned /root/.remote_backups/run/create_credentials_templates.sh "${_urlHmr}/tools/backup/run/create_credentials_templates.sh" f41
       _fetch_versioned /root/.remote_backups/run/create_global_paths_config.sh "${_urlHmr}/tools/backup/run/create_global_paths_config.sh" f43
       _fetch_versioned /root/.remote_backups/run/create_user_paths_config.sh "${_urlHmr}/tools/backup/run/create_user_paths_config.sh" f36
-      _fetch_versioned /root/.remote_backups/run/create_cron_entries.sh "${_urlHmr}/tools/backup/run/create_cron_entries.sh" f35
+      _fetch_versioned /root/.remote_backups/run/create_cron_entries.sh "${_urlHmr}/tools/backup/run/create_cron_entries.sh" f34
       _fetch_versioned /root/.remote_backups/run/create_readme.sh "${_urlHmr}/tools/backup/run/create_readme.sh" f39
       _fetch_versioned /root/.remote_backups/run/create_config_readme.sh "${_urlHmr}/tools/backup/run/create_config_readme.sh" f37
     fi
@@ -5866,7 +5866,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/fpmreport "${_urlHmr}/${_tBn}/fpmreport" f98 --symlink ${_usrBin}/fpmreport --guard /local/bin/fpmreport
     _fetch_versioned ${_optBin}/loadreport "${_urlHmr}/${_tBn}/loadreport" f92 --symlink ${_usrBin}/loadreport --guard /local/bin/loadreport
     _fetch_versioned ${_optBin}/lock.inc "${_urlHmr}/${_tBn}/lock.inc" f84 --guard /local/bin/lock.inc
-    _fetch_versioned ${_optBin}/multiback "${_urlHmr}/${_tBn}/multiback" f68 --guard duplicity
+    _fetch_versioned ${_optBin}/multiback "${_urlHmr}/${_tBn}/multiback" f67 --guard duplicity
     _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/${_tBn}/mybackup" f87 --mode 755 --guard duplicity
     _fetch_versioned ${_optBin}/octopus "${_urlHmr}/${_tBn}/octopus" f49 --guard /local/bin/octopus
     _fetch_versioned ${_optBin}/perftest "${_urlHmr}/${_tBn}/perftest" f93 --symlink ${_usrBin}/perftest --guard /local/bin/perftest
@@ -7235,8 +7235,8 @@ if [ "$(id -u)" -eq 0 ]; then
     [ "${_bupStuckH}" -lt 24 ] && _bupStuckH=24
     _bupLiveAny=NO
     _bupStuckKey=""
-    _bupStuckWhat=""
-    _bupStuckAgeH=0
+    _bupStuckKeys=""
+    _bupStuckList=""
     for _bupPidF in /run/duplicity_*.pid; do
       [ -e "${_bupPidF}" ] || continue
       _bupPid=$(tr -dc '0-9' 2>/dev/null < "${_bupPidF}")
@@ -7257,13 +7257,23 @@ if [ "$(id -u)" -eq 0 ]; then
       _bupHeldT=$(stat -c %Y "${_bupPidF}" 2>/dev/null)
       [ -n "${_bupHeldT}" ] || _bupHeldT="${_bupNowT}"
       _bupHeldH=$(( (_bupNowT - _bupHeldT) / 3600 ))
-      if [ "${_bupHeldH}" -ge "${_bupStuckH}" ] && [ -z "${_bupStuckKey}" ]; then
-        _bupStuckKey="${_bupPidF##*/}"
-        _bupStuckKey="${_bupStuckKey#duplicity_}"
-        _bupStuckKey="${_bupStuckKey%.pid}"
-        _bupStuckKey="${_bupStuckKey%_sequential}"
-        _bupStuckWhat="${_bupStuckKey} (lock ${_bupPidF})"
-        _bupStuckAgeH="${_bupHeldH}"
+      # every stream past the ceiling is named, once each: up to two
+      # accounts' entries run at once, root's own beside them, and one of
+      # them must never hide another (an entry's lock and its wrapper's
+      # sequential lock name the same stream)
+      if [ "${_bupHeldH}" -ge "${_bupStuckH}" ]; then
+        _bupStuckOne="${_bupPidF##*/}"
+        _bupStuckOne="${_bupStuckOne#duplicity_}"
+        _bupStuckOne="${_bupStuckOne%.pid}"
+        _bupStuckOne="${_bupStuckOne%_sequential}"
+        case " ${_bupStuckKeys} " in
+          *" ${_bupStuckOne} "*) ;;
+          *)
+            _bupStuckKeys="${_bupStuckKeys} ${_bupStuckOne}"
+            _bupStuckList="${_bupStuckList}${_bupStuckOne}|${_bupStuckOne} (lock ${_bupPidF})|${_bupHeldH}"$'\n'
+            ;;
+        esac
+        [ -n "${_bupStuckKey}" ] || _bupStuckKey="${_bupStuckOne}"
       fi
     done
     for _bupPat in \
@@ -7279,22 +7289,27 @@ if [ "$(id -u)" -eq 0 ]; then
         _bupLiveAny=YES
         _bupProcS=$(ps -o etimes= -p "${_bupProcP}" 2>/dev/null | tr -dc '0-9')
         _bupProcH=$(( ${_bupProcS:-0} / 3600 ))
+        # a process stands in for a stream only when no lock named one
+        # (backboa and duobackboa lock under their own names)
         if [ "${_bupProcH}" -ge "${_bupStuckH}" ] && [ -z "${_bupStuckKey}" ]; then
           _bupStuckKey="pid-${_bupProcP}"
-          _bupStuckWhat="a backup process (pid ${_bupProcP})"
-          _bupStuckAgeH="${_bupProcH}"
+          _bupStuckKeys=" ${_bupStuckKey}"
+          _bupStuckList="${_bupStuckKey}|a backup process (pid ${_bupProcP})|${_bupProcH}"$'\n'
         fi
       done
     done
-    # A stream past the ceiling gets ONE distinct daily notice naming it,
-    # and the pending entries behind it stay quiet: the operator should
-    # read one true cause, not a list of its symptoms. This is deliberately
-    # self-contained -- the older waiting-queue notice above cannot serve
-    # as the backstop here, since it fires at most once per box until its
-    # queue logs are cleared.
-    if [ -n "${_bupStuckKey}" ]; then
-      _bupStuckKey="${_bupStuckKey//[^a-zA-Z0-9_-]/_}"
-      _bupStamp="/var/log/boa/backup-freshness-stalled-${_bupStuckKey}.alerted"
+    # Each stream past the ceiling gets ONE distinct daily notice naming
+    # it, and the pending entries behind it stay quiet: the operator should
+    # read the true causes, not a list of their symptoms. This is
+    # deliberately self-contained -- the older waiting-queue notice above
+    # cannot serve as the backstop here, since it fires at most once per
+    # box until its queue logs are cleared.
+    _bupStampKeep=""
+    while IFS='|' read -r _bupStuckOne _bupStuckWhat _bupStuckAgeH; do
+      [ -n "${_bupStuckOne}" ] || continue
+      _bupStuckOne="${_bupStuckOne//[^a-zA-Z0-9_-]/_}"
+      _bupStamp="/var/log/boa/backup-freshness-stalled-${_bupStuckOne}.alerted"
+      _bupStampKeep="${_bupStampKeep} ${_bupStamp}"
       if [ ! -e "${_bupStamp}" ] \
         || [ "$(( _bupNowT - $(stat -c %Y "${_bupStamp}" 2>/dev/null || echo 0) ))" -ge 86400 ]; then
         touch "${_bupStamp}"
@@ -7306,19 +7321,28 @@ if [ "$(id -u)" -eq 0 ]; then
             echo
             echo "Stuck stream: ${_bupStuckWhat}"
             echo
-            echo "The schedule is sequential, so every entry behind this one is"
-            echo "waiting and no freshness alert is raised for them. Check the"
-            echo "running duplicity process and its bucket log under /var/log/boa"
-            echo "before killing anything -- a monthly full legitimately runs for"
-            echo "many hours, and killing a full costs the whole chain a cycle."
+            echo "While it runs, the entries waiting behind it raise no freshness"
+            echo "alert of their own (up to two accounts' entries run at once, the"
+            echo "server's own beside them; each stream past this limit gets a"
+            echo "notice of its own). Check the running duplicity process and its"
+            echo "bucket log under /var/log/boa before killing anything -- a monthly"
+            echo "full legitimately runs for many hours, and killing a full costs the"
+            echo "whole chain a cycle."
             echo
             echo "This notice repeats daily until the stream finishes."
-          } | s-nail -s "Backup STALLED Alert for [${_bupHstN}]: ${_bupStuckKey} running ${_bupStuckAgeH}h" ${_MY_EMAIL}
+          } | s-nail -s "Backup STALLED Alert for [${_bupHstN}]: ${_bupStuckOne} running ${_bupStuckAgeH}h" ${_MY_EMAIL}
         fi
       fi
-    else
-      rm -f /var/log/boa/backup-freshness-stalled-*.alerted
-    fi
+    done <<< "${_bupStuckList}"
+    # a stream that finished, or is no longer past the ceiling, loses its
+    # stamp; a stream still stuck keeps its own daily repeat
+    for _bupStamp in /var/log/boa/backup-freshness-stalled-*.alerted; do
+      [ -e "${_bupStamp}" ] || continue
+      case " ${_bupStampKeep} " in
+        *" ${_bupStamp} "*) ;;
+        *) rm -f "${_bupStamp}" ;;
+      esac
+    done
     while read -r _bupSvc _bupUsr _bupRest; do
       case "${_bupSvc}" in ""|\#*) continue ;; esac
       [ -n "${_bupUsr}" ] || continue
