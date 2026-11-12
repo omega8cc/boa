@@ -2181,6 +2181,137 @@ _xoct_mail_said() {
   [ -n "${_XOCT_ADMAIL}" ] && printf '%s' " (admail=; the account's own address was not mailed)"
   return 0
 }
+### This box's hostname as the renamed-site redirects read it: the master
+### instance's name for the server, else the system's; nothing when neither
+### is a hostname.
+_xoct_this_fqdn() {
+  local _f
+  _f=$(grep "remote_host" /var/aegir/.drush/server_master.alias.drushrc.php 2>/dev/null \
+    | head -1 | sed "s/.*remote_host.*=>//; s/[' ,;]//g")
+  _xoct_valid_host "${_f}" || _f=$(hostname -f 2>/dev/null | tr -d '\n')
+  _xoct_valid_host "${_f}" || _f=""
+  printf '%s' "${_f}"
+}
+### What the target $1 says of the account $2 there, for a client notice, as
+### three lines: its hostname, the control panel name root's cnf of the
+### account holds there (_DOMAIN: written for that box when the account is
+### installed or laid there and never copied from the source, so it is the
+### panel's name there before any rename has run) and whether Adminer is
+### installed (the test the setup mail applies). Read-only; nothing when the
+### target does not answer.
+_xoct_panel_facts_there() {
+  _mig_valid_ip "${1}" && _mig_valid_acct "${2}" || return 1
+  ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${1}" "echo \"XOCT-HOST=\$(hostname -f 2> /dev/null | head -n 1)\"; echo \"XOCT-PANEL=\$(grep -a '^_DOMAIN=' '/root/.${2}.octopus.cnf' 2> /dev/null | tail -n 1 | cut -d= -f2- | tr -d '\"')\"; if [ -e /var/www/adminer/index.php ]; then echo XOCT-ADMINER=YES; else echo XOCT-ADMINER=NO; fi" 2> /dev/null
+}
+### Item 1 of the completion and start notices when the panel's new address
+### is not known: said plainly, never a guess.
+_MIG_PANEL_NONE_DONE="Your Ægir Control Panel and SQL Adminer have moved to the new server with your account. Their new address could not be confirmed when this message was sent, so it is not given here: please ask your host's support for it. The address you used so far opens only the old, disabled panel."
+_MIG_PANEL_NONE_START="Your Ægir Control Panel and SQL Adminer will move to the new server with your account. Their new address will be given in the message you receive once the migration is complete."
+### The control panel paragraph of the completion and start notices (item 1,
+### one line). The notice names only IP addresses and the panel is never
+### relayed, so its new address is given in full. It is printed only when
+### two readings agree: the name root's cnf of the account holds on the
+### target, and this account's name here (log/domain.txt) after the rename
+### the target applies to it (this box's hostname replaced by the target's,
+### then the account's name by the one it has there). The first is there
+### before the renames of a whole-box move have run, so the notice may
+### precede them. A name both boxes share (the target answers this box's
+### hostname, or the panel is not named under it) is said to stay, with the
+### DNS record that decides which box answers it. When the readings differ
+### or one is missing the notice says the address is not given, and the run
+### names the cause. The Adminer address is the panel's /sqladmin/ (the
+### setup mail's form), named only where the target has Adminer. $1 =
+### context (complete|start), $2 = the new system's IP, $3 = the account
+### there. Sets _MIG_PANEL_BLOCK and _MIG_PANEL_STATE (new|same|unknown).
+_mig_build_panel_block() {
+  local _ctx="$1" _ip="$2" _acct="$3"
+  local _old _mf _tf="" _tp="" _ta="" _out="" _rule="" _why="" _was _adm=""
+  _MIG_PANEL_STATE=unknown
+  _old="${_DOMAIN,,}"
+  _mf="${_XOCT_MY_FQDN:-${_XOCT_DEFER_FQDN}}"
+  _xoct_valid_host "${_mf}" || _mf="$(_xoct_this_fqdn)"
+  _mf="${_mf,,}"
+  if ! _xoct_valid_host "${_old}" || [[ "${_old}" != *.* ]]; then
+    _why="log/domain.txt here holds no control panel name"
+  elif ! _mig_valid_ip "${_ip}" || ! _mig_valid_acct "${_acct}"; then
+    _why="no target address or account name to ask"
+  else
+    _xoct_learn_peer_host_key "${_ip}"
+    _out="$(_xoct_panel_facts_there "${_ip}" "${_acct}")"
+    _tf="$(sed -n 's/^XOCT-HOST=//p' <<< "${_out}" | head -n 1 | tr -d '\r')"
+    _tp="$(sed -n 's/^XOCT-PANEL=//p' <<< "${_out}" | head -n 1 | tr -d '\r')"
+    _ta="$(sed -n 's/^XOCT-ADMINER=//p' <<< "${_out}" | head -n 1 | tr -d '\r')"
+    _tf="${_tf,,}"
+    _tp="${_tp,,}"
+    _xoct_valid_host "${_tf}" || _tf=""
+    if [ -z "${_out}" ]; then
+      _why="${_ip} did not answer"
+    elif [ -z "${_tf}" ] || [ -z "${_mf}" ]; then
+      _why="a hostname could not be read (this box '${_mf}', ${_ip} '${_tf}')"
+    elif ! _xoct_valid_host "${_tp}" || [[ "${_tp}" != *.* ]]; then
+      _why="/root/.${_acct}.octopus.cnf on ${_ip} holds no _DOMAIN"
+    else
+      ### As the rename tool does it: a hostname that contains the old one
+      ### is not replaced again in a name that already carries it.
+      _rule="${_old}"
+      if [ "${_mf}" != "${_tf}" ] \
+        && ! { [[ "${_tf}" == *"${_mf}"* ]] && [[ "${_old}" == *"${_tf}"* ]]; }; then
+        _rule="${_old//${_mf}/${_tf}}"
+      fi
+      [ "${_acct}" != "${_oct}" ] && _rule="${_rule//${_oct}.${_tf}/${_acct}.${_tf}}"
+      if [ "${_tp}" != "${_rule}" ]; then
+        _why="/root/.${_acct}.octopus.cnf on ${_ip} names ${_tp}, the rename of ${_old} gives ${_rule}"
+      elif [ "${_rule}" = "${_old}" ]; then
+        _MIG_PANEL_STATE=same
+      else
+        _MIG_PANEL_STATE=new
+      fi
+    fi
+  fi
+  _was="https://${_old}"
+  if [ "${_ta}" = "YES" ]; then
+    _adm=YES
+    _was="https://${_old} and https://${_old}/sqladmin/"
+  fi
+  case "${_ctx}:${_MIG_PANEL_STATE}" in
+    complete:new)
+      _MIG_PANEL_BLOCK="Your Ægir Control Panel is now at https://${_tp}${_adm:+ and your SQL Adminer at https://${_tp}/sqladmin/} (in place of ${_was}). If the new address does not open yet, the last steps of the migration are still running on the new server: please try again a little later."
+    ;;
+    complete:same)
+      _MIG_PANEL_BLOCK="Your Ægir Control Panel keeps its address, https://${_old}${_adm:+, and your SQL Adminer https://${_old}/sqladmin/}. It opens on the new server once the DNS record of ${_old} points to ${_ip}; until then that name still opens the old, disabled panel."
+    ;;
+    start:new)
+      _MIG_PANEL_BLOCK="Once the migration is complete, your Ægir Control Panel will be at https://${_tp}${_adm:+ and your SQL Adminer at https://${_tp}/sqladmin/} (in place of ${_was})."
+    ;;
+    start:same)
+      _MIG_PANEL_BLOCK="Your Ægir Control Panel will keep its address, https://${_old}${_adm:+, and your SQL Adminer https://${_old}/sqladmin/}. It will open on the new server once the DNS record of ${_old} points to ${_ip}."
+    ;;
+    start:*)
+      _MIG_PANEL_BLOCK="${_MIG_PANEL_NONE_START}"
+    ;;
+    *)
+      _MIG_PANEL_BLOCK="${_MIG_PANEL_NONE_DONE}"
+    ;;
+  esac
+  case "${_MIG_PANEL_STATE}" in
+    new)
+      echo "INFO: ${_oct}: the notice names the control panel https://${_tp}${_adm:+ and its /sqladmin/} (in place of https://${_old})"
+    ;;
+    same)
+      echo "INFO: ${_oct}: the notice says the control panel keeps its address https://${_old} (${_ip} names it the same)"
+    ;;
+    *)
+      if [ "${_ctx}" = "start" ]; then
+        echo "INFO: ${_oct}: the start notice names no new control panel address (${_why}); it says the completion notice gives it"
+      else
+        echo "ALRT: ${_oct}: the completion notice gives NO new control panel address (${_why}):"
+        echo "ALRT: it tells the client to ask support for it, and no later notice carries it"
+      fi
+    ;;
+  esac
+  return 0
+}
+
 ### Every sender sets _MAIL_SENT and only reports success when s-nail actually
 ### accepted the message: the mail log is the record of what the customer was
 ### told, and the old always-printed "sent OK" line meant a box without s-nail
@@ -2205,7 +2336,7 @@ ${_MIG_COVERAGE_BLOCK}
 Important Changes to Note:
 
 1. New Ægir Control Panel URL
-   Your Ægir Control Panel and SQL Adminer addresses follow the address change described above: replace the old server name with the new one in the addresses you use today.
+   ${_MIG_PANEL_BLOCK:-${_MIG_PANEL_NONE_DONE}}
 
 2. Access Credentials
    All your access credentials remain the same: the Ægir Control Panel, SSH/SFTP and SQL passwords have been carried over to the new server.
@@ -2269,7 +2400,7 @@ ${_MIG_COVERAGE_BLOCK}
 Important Changes to Note:
 
 1. New Ægir Control Panel URL
-   Your Ægir Control Panel and SQL Adminer addresses will follow the address change: replace the old server name with the new one in the addresses you use today.
+   ${_MIG_PANEL_BLOCK:-${_MIG_PANEL_NONE_START}}
 
 2. Access Credentials
    All your access credentials will remain the same: the Ægir Control Panel, SSH/SFTP and SQL passwords are carried over to the new server.
@@ -7345,6 +7476,7 @@ _migrate_prepare() {
       ### A refused compose must never fall through to a send with an empty
       ### forwarding block.
       if _mig_build_mail_blocks start "${_tgt}"; then
+        _mig_build_panel_block start "${_tgt}" "${_dst:-${_oct}}"
         _send_notice_migration_start
         if [ "${_MAIL_SENT}" = "YES" ]; then
           _XOCT_START_MODE="${_MIG_MODE}"
@@ -11737,6 +11869,7 @@ _migrate_init() {
           fi
           if [ "${_XOCT_DO_MAIL}" = "YES" ]; then
             if [ "${_XOCT_MAIL_KIND}" = "complete" ]; then
+              _mig_build_panel_block complete "${_tgt}" "${_XOCT_PEER_ACCT:-${_dst:-${_oct}}}"
               _send_notice_migration_complete
             else
               _send_notice_migration_change
