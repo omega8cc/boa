@@ -287,11 +287,18 @@
       like any change. Where ss or pgrep is missing or fails, every
       established peer still counts.
 
-    * ip_access.sh and user_admin_access.sh take an account's reload
-      stamp back when its run fails configtest or its reload. Such a run
-      drops the account's HTTPS front copies, and the stamp then held
-      their rebuild for 15 minutes: once nginx loaded that state, a site's
-      whole-site list did not hold over HTTPS for that long.
+    * ip_access.sh and user_admin_access.sh put an account's earlier
+      reload stamp back when its run fails configtest or its reload and
+      the revert reloads nothing either, as on a box whose config is
+      broken elsewhere. Such a run drops the account's HTTPS front copies,
+      and its stamp then held their rebuild for 15 minutes: once nginx
+      loaded that state, a site's whole-site list did not hold over HTTPS
+      for that long. A revert that does reload keeps the stamp.
+
+    * ip_access.sh and user_admin_access.sh leave out an IPv6 address
+      written as seven groups and a closing ::, which nginx refuses. An
+      account's list carrying one failed the box's configtest on every
+      run until it was corrected.
 
     * The web abuse guard spares only the address of a logged-in SSH
       session from its bans, told the same way. Anyone who held a
