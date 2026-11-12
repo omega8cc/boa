@@ -3795,6 +3795,27 @@ _xoct_backups_leg() {
   fi
   return 0
 }
+### The client toolchain tree $3 here copied to $4 on the target $1 ($2 the
+### rsync error option): from inside the real directory into the real one
+### there. A copy that fails counts as a failed backups copy does: named,
+### and the live transfer is not marked complete; a run after the cause is
+### gone copies what is missing. 24 (files that vanished while the copy ran,
+### the client's own tool at work) is no failure. A tree this box does not
+### have is nothing to copy.
+_xoct_toolchain_leg() {   # 1 = target  2 = rsync error option  3 = tree here  4 = tree there
+  local _h="${1}" _ie="${2}" _s="${3}" _d="${4}" _rc
+  _xoct_leg_ok "${_s}" || return 0
+  # shellcheck disable=SC2086
+  _xoct_in_real_dir "${_s}" _xoct_copy_mk_here "${_h}" "${_d}" '' -aEAXqu ${_ie}
+  _rc=$?
+  if [ "${_rc}" != "0" ] && [ "${_rc}" != "24" ] && [ "${_MODE}" = "LIVE" ]; then
+    echo "DENY: ${_s} copy to ${_h} failed (rc ${_rc})"
+    _XOCT_NOT_CLEAN=YES
+    _XOCT_STORE_RC=1
+    return 1
+  fi
+  return 0
+}
 ### As _xoct_copy_here, but the receiver starts in the canonical directory $2
 ### the target reported (see _xoct_tgt_place).
 _xoct_copy_canon_here() {
@@ -11320,13 +11341,12 @@ _migrate_init() {
           # Client-installed toolchains live outside /data/disk in the lshell
           # jail's writable trees and never travelled before -- migrate AS-IS.
           # The parents are sticky and world-writable, so each leaf is its
-          # owner's to replace: pinned as the account legs are.
-          _xoct_leg_ok "/opt/user/gems/${_oct}.ftp" \
-            && _xoct_in_real_dir "/opt/user/gems/${_oct}.ftp" _xoct_copy_mk_here \
-              "${_tgt}" "/opt/user/gems/${_DST_ACCT}.ftp" '' -aEAXqu ${_ieni}
-          _xoct_leg_ok "/opt/user/npm/${_oct}.ftp" \
-            && _xoct_in_real_dir "/opt/user/npm/${_oct}.ftp" _xoct_copy_mk_here \
-              "${_tgt}" "/opt/user/npm/${_DST_ACCT}.ftp" '' -aEAXqu ${_ieni}
+          # owner's to replace: pinned as the account legs are; a copy that
+          # fails keeps the transfer from completing (_xoct_toolchain_leg).
+          _xoct_toolchain_leg "${_tgt}" "${_ieni}" \
+            "/opt/user/gems/${_oct}.ftp" "/opt/user/gems/${_DST_ACCT}.ftp"
+          _xoct_toolchain_leg "${_tgt}" "${_ieni}" \
+            "/opt/user/npm/${_oct}.ftp" "/opt/user/npm/${_DST_ACCT}.ftp"
 
           # Re-converge the octopus.cnf and the client credentials on every
           # LIVE transfer: source-side changes since create (a PHP pin move,
