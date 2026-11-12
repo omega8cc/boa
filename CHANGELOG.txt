@@ -664,6 +664,28 @@
       last two folders of their own that its backup leaves out, so such an
       account was backed up under the server's rules or not at all.
 
+    * One backup run killed for lack of memory no longer stops every
+      multiback backup on the server. Any out-of-memory kill of a duplicity
+      replaced the whole schedule, the server's own entries and every
+      account's, with an OFF copy until the kernel line left the weekly
+      rotated log, so one account's run could stop all off-site backups for
+      up to a week. Now the run whose own duplicity was killed marks its
+      entry in /root/.remote_backups/memory_holds/, and that entry alone
+      waits seven days before it runs again (remove the file to try
+      sooner); the rest of the schedule runs. A schedule the old switch left
+      off is put back.
+
+    * The backup schedule is written to a new file and moved into place.
+      It was rewritten in place while the interval wrapper, which can run
+      for hours, still read it a line at a time, so a rewrite could end
+      that run's walk early or hand it half a line.
+
+    * clear.sh starts a mybackup pass only when an account has a queued
+      restore or a restore window is still recorded. It started one on
+      every quiet tick, and every gate of the server's own backup counts a
+      live pass as a backup in flight, so a pass with nothing to do could
+      refuse backboa's run at 03:15, which shares clear.sh's minute.
+
     * multiback purge empties a Backblaze B2 bucket even when the account's
       daily cap on download-class requests is spent: it deletes every
       version of the backup files, and cancels their unfinished uploads, by
