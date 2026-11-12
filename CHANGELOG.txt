@@ -23,6 +23,19 @@
       the caller's file. xmass status and the autosync passes, whose
       monitor already keeps each pass's output, keep none.
 
+    * xcopy reset-state <oN> clears an account's copy state on the server
+      it runs on, as xoct reset-state does for a move, so the account can
+      be copied again or its copy refreshed. On the source it removes the
+      panel dump and the export and transfer stamps; on the target the
+      import stamp and the recorded panel database; on both the failure
+      latches. Each was removed by hand until now, and a panel dump left
+      behind went out again with the next export, which dumps the panel
+      only while none is there. On a target, run it before the new
+      transfer, never between that transfer and its import. The per-site
+      dumps (the next export replaces them), the list of the certificate
+      stop markers a copy put and the state of an xoct move stay. It runs
+      on a full disk too.
+
     * A new Octopus account on a server with a standing mirror reaches the
       mirror with one command, xmass prep-target <mirror-ip> --fix-accounts,
       with no rebuild and no pause in replication. Until then a file sync
