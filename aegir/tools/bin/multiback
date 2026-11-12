@@ -993,16 +993,38 @@ _validate_or_default_duration() {
   local _default=$3
 
   # Supported formats: number followed by D (days), W (weeks), M (months), Y (years)
-  if [[ ! "${_value}" =~ ^[0-9]+[DWMY]$ ]] || [[ "${_value}" =~ ^[0][DWMY]$ ]]; then
+  # A zero in any spelling (0M, 00M) is invalid: duplicity reads it as now.
+  if [[ ! "${_value}" =~ ^[0-9]+[DWMY]$ ]] || [[ "${_value}" =~ ^0+[DWMY]$ ]]; then
     echo "Warning: Invalid value '${_value}' for ${_var_name}. Using default '${_default}'."
     eval "${_var_name}='${_default}'"
     _print_env "multiback_validate_or_default_duration"
   fi
 
-  # Enforced min value for KEEP_WITHIN (1M)
+  # Enforced min value for KEEP_WITHIN (1M). A day or week value never keeps
+  # less than it asks: one longer than the default becomes the whole months
+  # that cover it (duplicity's month is 30 days, so 120D is 4M and 100D is
+  # 4M); a shorter one keeps the default, as every day or week value did.
   if [ "${_var_name}" = "KEEP_WITHIN" ] && [[ ! "${_value}" =~ ^[0-9]+[MY]$ ]]; then
-    echo "Warning: Invalid value '${_value}' for ${_var_name}. It must be at least 1M. Using default '${_default}'."
-    eval "${_var_name}='${_default}'"
+    local _kDays= _kMon= _dMon=
+    # leading zeros dropped: bash reads 0120 as octal
+    if [[ "${_value}" =~ ^0*([1-9][0-9]{0,5})([DW])$ ]]; then
+      _kDays="${BASH_REMATCH[1]}"
+      [ "${BASH_REMATCH[2]}" = "W" ] && _kDays=$(( _kDays * 7 ))
+      _kMon=$(( (_kDays + 29) / 30 ))
+    fi
+    if [[ "${_default}" =~ ^([1-9][0-9]*)M$ ]]; then
+      _dMon="${BASH_REMATCH[1]}"
+    elif [[ "${_default}" =~ ^([1-9][0-9]*)Y$ ]]; then
+      _dMon=$(( BASH_REMATCH[1] * 12 ))
+    fi
+    if [ -n "${_kMon}" ] && [ -n "${_dMon}" ] && [ "${_kMon}" -gt "${_dMon}" ]; then
+      echo "Warning: ${_var_name} '${_value}' is not in months or years. Using '${_kMon}M', the whole months that cover it."
+      [ -n "${_LOGFILE}" ] && echo "${_var_name} '${_value}' is used as '${_kMon}M' on $(date)" >> "${_LOGFILE}"
+      eval "${_var_name}='${_kMon}M'"
+    else
+      echo "Warning: Invalid value '${_value}' for ${_var_name}. It must be at least 1M. Using default '${_default}'."
+      eval "${_var_name}='${_default}'"
+    fi
     _print_env "multiback_validate_or_default_duration_keep"
   fi
 
