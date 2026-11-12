@@ -65,7 +65,7 @@ _ipv4_regex="^${_ipv4}(/(3[0-2]|[12][0-9]|[0-9]))?$"
 _hex="[0-9A-Fa-f]{1,4}"
 _ipv6_core="(\
 (${_hex}:){7}${_hex}|\
-(${_hex}:){1,7}:|\
+(${_hex}:){1,6}:|\
 (${_hex}:){1,6}:${_hex}|\
 (${_hex}:){1,5}(:${_hex}){1,2}|\
 (${_hex}:){1,4}(:${_hex}){1,3}|\
@@ -938,15 +938,22 @@ _acct_reload_held() {
 }
 _acct_reload_stamp() {
   mkdir -p -m 0700 "${_ACCT_REQ_DIR}" 2> /dev/null
+  _ACCT_PREV_STAMP=$(tr -dc '0-9' 2> /dev/null < "${_ACCT_REQ_DIR}/${_RELOAD_TOOL}.${1}")
   date +%s > "${_ACCT_REQ_DIR}/${_RELOAD_TOOL}.${1}"
   rm -f "${_ACCT_REQ_DIR}/${_RELOAD_TOOL}.${1}.noted"
 }
-# The account $1's stamp taken back after a run whose configtest or reload
-# failed: that run applied nothing and dropped the account's front copies, so
-# the next pass must be free to rebuild them at once, not 15 minutes on. A
-# config that fails configtest stops every reload, so nothing can loop on it.
+# The account $1's stamp taken back, the one before it put back as it was,
+# after a run whose configtest or reload failed and whose revert reloaded
+# nothing either: that run applied nothing and dropped the account's front
+# copies, so the next pass must be free to rebuild them, not 15 minutes on. A
+# revert that did reload keeps the stamp: a list of the account's own that
+# fails configtest would otherwise reload nginx on every pass.
 _acct_reload_unstamp() {
-  rm -f "${_ACCT_REQ_DIR}/${_RELOAD_TOOL}.${1}" "${_ACCT_REQ_DIR}/${_RELOAD_TOOL}.${1}.noted"
+  if [[ -n "${_ACCT_PREV_STAMP:-}" ]]; then
+    echo "${_ACCT_PREV_STAMP}" > "${_ACCT_REQ_DIR}/${_RELOAD_TOOL}.${1}"
+  else
+    rm -f "${_ACCT_REQ_DIR}/${_RELOAD_TOOL}.${1}"
+  fi
 }
 # The SSH addresses the account $1's lists now carry (the server's own with
 # them), one a line, recorded by root beside its stamp when a reload applied
@@ -1136,7 +1143,7 @@ _process_context() {
   # front copies are dropped on every failure and never restored: they only
   # narrow what the front lets through, and an older set could still claim a
   # name that has since moved to another site.
-  local _ct
+  local _ct _rl=""
   [[ -n "${_acct}" ]] && _acct_reload_stamp "${_acct}"
   _ct=$(service nginx configtest 2>&1)
   if [[ $? -ne 0 ]]; then
@@ -1155,7 +1162,7 @@ _process_context() {
             "ip_access: restoring the last-good backup FAILED (${_input_file})" \
             "restoring ${_last_good_backup} FAILED after the fragments were removed."
         fi
-        service nginx reload
+        service nginx reload && _rl=yes
       else
         _policy_alert "ip_access.refused.${_input_file}" \
           "ip_access: last-good backup unreadable, fragments kept (${_input_file})" \
@@ -1164,7 +1171,7 @@ _process_context() {
           "that cannot be restored. Fix ${_input_file} and re-run."
         [[ -n "${_acct}" ]] && _acct_ssh_forget "${_acct}"
         # With the front copies gone the rest may pass again.
-        service nginx configtest &> /dev/null && service nginx reload
+        service nginx configtest &> /dev/null && service nginx reload && _rl=yes
       fi
     else
       # No last-good yet (a first run failed configtest). nginx never reloaded the
@@ -1177,7 +1184,7 @@ _process_context() {
     # The front copies were dropped: forget the front state so the next pass
     # rebuilds them, held by nothing.
     _acct_in_real_dir "${_nginx_path}" rm -f -- ./.access_front_hash
-    [[ -n "${_acct}" ]] && _acct_reload_unstamp "${_acct}"
+    [[ -n "${_acct}" && -z "${_rl}" ]] && _acct_reload_unstamp "${_acct}"
     return 1
   fi
 
@@ -1192,7 +1199,7 @@ _process_context() {
             "ip_access: restoring the last-good backup FAILED (${_input_file})" \
             "restoring ${_last_good_backup} FAILED after the fragments were removed."
         fi
-        service nginx reload
+        service nginx reload && _rl=yes
       else
         _policy_alert "ip_access.refused.${_input_file}" \
           "ip_access: last-good backup unreadable, fragments kept (${_input_file})" \
@@ -1203,7 +1210,7 @@ _process_context() {
       [[ -n "${_acct}" ]] && _acct_ssh_forget "${_acct}"
     fi
     _acct_in_real_dir "${_nginx_path}" rm -f -- ./.access_front_hash
-    [[ -n "${_acct}" ]] && _acct_reload_unstamp "${_acct}"
+    [[ -n "${_acct}" && -z "${_rl}" ]] && _acct_reload_unstamp "${_acct}"
     return 1
   fi
 
