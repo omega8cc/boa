@@ -630,6 +630,25 @@
 
 @=> Important Fixes
 
+    * A KEEP_WITHIN in days or weeks keeps at least what it asks: one
+      longer than the default becomes the whole 30-day months that cover it
+      (120D keeps 4M), a shorter one keeps the default 3M as before, and the
+      bucket's log names the value used. Before, every day or week value
+      became 3M, so a 120D bucket lost the backups between three and four
+      months old at its weekly retention pass. 00M is refused like 0M.
+
+    * Two backup runs starting at the same moment no longer remove each
+      other's licence check files: each check keeps its files in a folder
+      of its own. On a licensed server outside the fleet domains the run
+      whose files went stopped as unverified, with no backup and no held
+      mark; accounts' entries now start beside the server's own, which made
+      such overlaps likely.
+
+    * New Octopus accounts cannot be named global, data, custom, static or
+      arch. The first three are the server's own backup targets and the
+      last two folders of their own that its backup leaves out, so such an
+      account was backed up under the server's rules or not at all.
+
     * multiback purge empties a Backblaze B2 bucket even when the account's
       daily cap on download-class requests is spent: it deletes every
       version of the backup files, and cancels their unfinished uploads, by
