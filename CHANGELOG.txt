@@ -314,6 +314,30 @@
       connection to the SSH port open, with no login, kept their address
       out of the guard's bans for as long as it stayed open.
 
+    * The ltd worker applies an account's own change to its per-site or
+      per-platform PHP files, its fpm.info or its newrelic.info at most
+      once in 15 minutes for nginx and once for PHP-FPM; a later change of
+      the same kind waits whole, with nothing written, and the first pass
+      after that applies it. A file changed every three minutes reloaded
+      nginx, or the account's PHP-FPM masters, on every pass, and reset
+      every HTTP/3 transfer on the server at that pace. A change the
+      server makes (a PHP version installed or removed, a pool coming up,
+      an upgrade, the page check's moves) is never held, and root's own
+      run with _ACCT_RELOAD_HOLD=NO (xoct, xcopy, xmass and barracuda set
+      it) applies at once. A change that waits is named in the users log,
+      and for fpm-per-platform.info in .fpm-per-platform-skipped.info.
+
+    * The ltd worker no longer reloads nginx for a rebuild of an account's
+      per-site PHP includes that changes nothing nginx reads, and sends one
+      reload for a pass's include changes where it sent one for each kind.
+
+    * A deleted multi-fpm.info, or a folder put at its name, no longer
+      takes an account out of multi-FPM mode: one pass left the mode and
+      the next entered it again, since the worker writes the file back,
+      and each time every PHP-FPM master and nginx reloaded. The account
+      leaves the mode when tools/le goes, as before; the pins a deleted
+      file held are dropped like any other change of the file.
+
     * The pass that writes the quic_bpf fragment no longer reads Nginx's
       error log after a reload. A reload never runs that setting's eBPF
       init, so only a line it did not cause, such as a site's own PHP
@@ -505,6 +529,10 @@
       PHP both still run under the PHP profile.
 
 @=> Important Fixes
+
+    * The ltd worker's New Relic step took the PHP version of the account
+      before it in the pass for an account in single-FPM mode with no
+      fpm.info, so a change of that account's newrelic.info could be skipped.
 
     * xmass, xoct and xcopy name an account-wide fpm.info or cli.info that
       names a PHP neither server has when BOA's fallback (an Octopus pass's
