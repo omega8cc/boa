@@ -160,7 +160,7 @@ _sql_dd_size() {
 # True when a file under the datadir, or the error log, was written in the
 # last five minutes: the activity test behind the stall ceiling of the waits.
 _sql_datadir_active() {
-  [ -n "$(find /var/lib/mysql -maxdepth 2 -type f -mmin -5 -print -quit 2> /dev/null)" ] && return 0
+  [ -n "$(find -H /var/lib/mysql -maxdepth 2 -type f -mmin -5 -print -quit 2> /dev/null)" ] && return 0
   [ -n "$(find /var/log/mysql/error.log -mmin -5 2> /dev/null)" ] && return 0
   return 1
 }
@@ -174,15 +174,15 @@ _sql_startup_progress() {
   local _secs="$1" _prev="$2" _stg _tbl _now _mb _dmb _last _ibd _wrt
   _stg=$(_sql_dd_upgrade_stage)
   if [ -n "${_stg}" ]; then
-    _tbl=$(find /var/lib/mysql -maxdepth 2 -name '*.frm' 2> /dev/null | wc -l)
+    _tbl=$(find -H /var/lib/mysql -maxdepth 2 -name '*.frm' 2> /dev/null | wc -l)
     _now=$(_sql_dd_size)
     _mb=$(( _now / 1048576 ))
     _dmb=$(( (_now - _prev) / 1048576 ))
     if [ "${_stg}" = "5" ]; then
       # the dictionary stops growing here: the metadata goes into every
       # InnoDB tablespace, each written once, newer than the stage file
-      _ibd=$(find /var/lib/mysql -mindepth 2 -maxdepth 2 -name '*.ibd' 2> /dev/null | wc -l)
-      _wrt=$(find /var/lib/mysql -mindepth 2 -maxdepth 2 -name '*.ibd' -newer /var/lib/mysql/mysql_dd_upgrade_info 2> /dev/null | wc -l)
+      _ibd=$(find -H /var/lib/mysql -mindepth 2 -maxdepth 2 -name '*.ibd' 2> /dev/null | wc -l)
+      _wrt=$(find -H /var/lib/mysql -mindepth 2 -maxdepth 2 -name '*.ibd' -newer /var/lib/mysql/mysql_dd_upgrade_info 2> /dev/null | wc -l)
       _msg "WAIT: database down: Data dictionary upgrade, stage $(_sql_dd_upgrade_stage_name "${_stg}"): ${_tbl} tables, tablespaces written ${_wrt} of ${_ibd}, $(( _secs / 60 )) min so far."
     else
       _msg "WAIT: database down: Data dictionary upgrade, stage $(_sql_dd_upgrade_stage_name "${_stg}"): ${_tbl} tables, dictionary ${_mb} MB (+${_dmb} MB), $(( _secs / 60 )) min so far."
@@ -218,9 +218,9 @@ _sql_table_walk() {
   local _what="$1"
   shift
   local _cmd="$*" _pid _n=0 _tbl _ndb _cur _k _dbs
-  _tbl=$(find /var/lib/mysql -mindepth 2 -maxdepth 2 -name '*.frm' 2> /dev/null | wc -l)
+  _tbl=$(find -H /var/lib/mysql -mindepth 2 -maxdepth 2 -name '*.frm' 2> /dev/null | wc -l)
   if [ "${_tbl}" -eq 0 ]; then
-    _tbl=$(find /var/lib/mysql -mindepth 2 -maxdepth 2 \( -name '*.ibd' -o -name '*.MYD' \) 2> /dev/null | wc -l)
+    _tbl=$(find -H /var/lib/mysql -mindepth 2 -maxdepth 2 \( -name '*.ibd' -o -name '*.MYD' \) 2> /dev/null | wc -l)
   fi
   _dbs=$(mysql -u root -N -e "SHOW DATABASES" 2> /dev/null | sort)
   _ndb=$(printf '%s\n' "${_dbs}" | grep -c .)

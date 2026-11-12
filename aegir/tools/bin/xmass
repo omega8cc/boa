@@ -6345,11 +6345,205 @@ _xmass_drop_repl_user() {
 
 ###-------------XTRABACKUP TRANSFER------###
 
+# The database folder is /var/lib/mysql, a real folder on the root disk
+# wherever the seed below was first written for. One more layout is
+# supported: that path as a symbolic link onto a folder of the attached
+# mount (/mnt/extra/mysql, say), for a box whose database outgrows its root
+# disk. A link is renamed as a link, never what it points to, and the kernel
+# refuses to rename a mount point; so on such a box the seed works on the
+# folder the link names: parked beside itself on its own filesystem, made
+# again there, the link left alone, and the stage beside it instead of on a
+# root that cannot hold it. A link is the supported form because it fails
+# safe: with the volume absent the path dangles and MySQL does not start. A
+# mount point at the path would leave an empty real folder there instead,
+# and is refused before anything is displaced.
+#
+# The body below reads that layout on the box it runs on, here or on the
+# target, as KEY=value lines: DD_SHAPE plain, link, mount (a mount point at
+# the path), badlink (a link naming no folder that can be parked), absent or
+# unread (a mount table that did not answer); DD_REAL the folder itself;
+# DD_WHY for a refused shape; DD_BASE where the stage folder is made;
+# DD_FREE_KB and DD_BASE_FREE_KB the room at each; DD_SAME_FS whether those
+# two are one filesystem; DD_STALE_KB the size of a target stage an earlier
+# seed left at DD_BASE, which the next seed clears before it writes its own.
+_xmass_dd_probe_sh() {
+  cat <<'PROBE'
+_p=/var/lib/mysql
+_shape=plain
+_real="${_p}"
+_why=""
+_base=/var/backups
+_mnt_of() { df -P "$1" 2>/dev/null | awk 'NR==2 { print $NF }'; }
+_free_of() { df -Pk "$1" 2>/dev/null | awk 'NR==2 { print $4 }'; }
+# 0 when the folder $1 is a mount point of its own, 1 when it is not, 2 unread
+_own_mount() { local _a _b; _a="$(_mnt_of "$1")"; _b="$(_mnt_of "${1%/*}/")"; [ -n "${_a}" ] && [ -n "${_b}" ] || return 2; [ "${_a}" != "${_b}" ]; }
+if [ -L "${_p}" ]; then
+  _shape=link
+  _real="$(readlink -f "${_p}" 2>/dev/null)"
+  if [ -z "${_real}" ] || [ ! -d "${_real}" ]; then
+    _shape=badlink
+    _why="the link names $(readlink "${_p}" 2>/dev/null), which is no folder there: is the volume mounted?"
+  elif [ "${_real}" = "/" ] || ! printf '%s' "${_real}" | grep -qE '^(/[A-Za-z0-9._-]+)+$'; then
+    _shape=badlink
+    _why="the link resolves to ${_real}: only letters, digits, dot, underscore and dash are taken in that path"
+  else
+    _own_mount "${_real}"
+    case "$?" in
+      0) _shape=badlink
+         _why="the link names ${_real}, a mount point of its own, which cannot be parked beside itself: link to a folder inside that mount" ;;
+      2) _shape=unread ;;
+    esac
+  fi
+elif [ -d "${_p}" ]; then
+  _own_mount "${_p}"
+  case "$?" in
+    0) _shape=mount
+       _why="a filesystem is mounted at ${_p} itself ($(_mnt_of "${_p}")), and a mount point cannot be renamed aside" ;;
+    2) _shape=unread ;;
+  esac
+else
+  _shape=absent
+fi
+if [ "${_shape}" = "link" ]; then
+  _a="$(_mnt_of "${_real}")"
+  _b="$(_mnt_of /var/backups)"
+  if [ -z "${_a}" ] || [ -z "${_b}" ]; then
+    _shape=unread
+  elif [ "${_a}" != "${_b}" ]; then
+    _base="${_real%/*}"
+    _base="${_base:-/}"
+  fi
+fi
+# a stage base the seed has yet to make is measured at the folder holding it
+_at="${_base}"
+[ -d "${_at}" ] || _at="${_at%/*}/"
+_same=""
+_a="$(_mnt_of "${_real}")"
+_b="$(_mnt_of "${_at}")"
+if [ -n "${_a}" ] && [ -n "${_b}" ]; then
+  _same=NO
+  [ "${_a}" = "${_b}" ] && _same=YES
+fi
+echo "DD_SHAPE=${_shape}"
+echo "DD_REAL=${_real}"
+echo "DD_WHY=${_why}"
+echo "DD_BASE=${_base}"
+echo "DD_FREE_KB=$(_free_of "${_real}")"
+echo "DD_BASE_FREE_KB=$(_free_of "${_at}")"
+echo "DD_SAME_FS=${_same}"
+_stale=0
+if [ -d "${_base%/}/xmass_restore" ] && [ ! -L "${_base%/}/xmass_restore" ]; then
+  _stale="$(du -sk "${_base%/}/xmass_restore" 2>/dev/null | awk '{ print $1 }')"
+fi
+echo "DD_STALE_KB=${_stale}"
+PROBE
+}
+
+# The layout of the database folder on this box, or on the box $1, read
+# into _XM_DD_SHAPE, _XM_DD_REAL, _XM_DD_WHY, _XM_DD_BASE, _XM_DD_FREE_KB,
+# _XM_DD_BASE_FREE_KB, _XM_DD_SAME_FS and _XM_DD_STALE_KB. Every value is
+# judged here: a probe that did not answer, or answered with a path or a
+# number that is not one, leaves the shape "unread" and the figures empty,
+# never a guess.
+_xmass_dd_read() {
+  local _o _v
+  if [ -n "${1:-}" ]; then
+    _o="$(_xmass_dd_probe_sh | ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${1}" bash 2> /dev/null)"
+  else
+    _o="$(_xmass_dd_probe_sh | bash 2> /dev/null)"
+  fi
+  _XM_DD_SHAPE="$(_xmass_kv "${_o}" DD_SHAPE)"
+  _XM_DD_REAL="$(_xmass_kv "${_o}" DD_REAL)"
+  _XM_DD_WHY="$(_xmass_kv "${_o}" DD_WHY)"
+  _XM_DD_BASE="$(_xmass_kv "${_o}" DD_BASE)"
+  _XM_DD_FREE_KB="$(_xmass_kv "${_o}" DD_FREE_KB)"
+  _XM_DD_BASE_FREE_KB="$(_xmass_kv "${_o}" DD_BASE_FREE_KB)"
+  _XM_DD_SAME_FS="$(_xmass_kv "${_o}" DD_SAME_FS)"
+  _XM_DD_STALE_KB="$(_xmass_kv "${_o}" DD_STALE_KB)"
+  [[ "${_XM_DD_STALE_KB}" =~ ^[0-9]+$ ]] || _XM_DD_STALE_KB=0
+  case "${_XM_DD_SHAPE}" in
+    plain|link|mount|badlink|absent) : ;;
+    *) _XM_DD_SHAPE=unread ;;
+  esac
+  for _v in _XM_DD_FREE_KB _XM_DD_BASE_FREE_KB; do
+    [[ "${!_v}" =~ ^[0-9]+$ ]] || printf -v "${_v}" '%s' ""
+  done
+  case "${_XM_DD_SAME_FS}" in
+    YES|NO) : ;;
+    *) _XM_DD_SAME_FS="" ;;
+  esac
+  case "${_XM_DD_SHAPE}" in
+    plain|link)
+      # the two paths go into command lines on both ends
+      [[ "${_XM_DD_REAL}" =~ ^(/[A-Za-z0-9._-]+)+$ ]] || _XM_DD_SHAPE=unread
+      [[ "${_XM_DD_BASE}" =~ ^(/|(/[A-Za-z0-9._-]+)+)$ ]] || _XM_DD_SHAPE=unread
+      [ "${_XM_DD_SHAPE}" != "plain" ] || [ "${_XM_DD_REAL}" = "/var/lib/mysql" ] || _XM_DD_SHAPE=unread
+    ;;
+  esac
+  return 0
+}
+
+# The folder MySQL's data lives in on this box: /var/lib/mysql, or the folder
+# that path links to. Prints it; status 1, with the reason printed instead,
+# for a link that resolves to no folder path. It resolves while the folder
+# itself is renamed aside, as long as the folder that holds it is there.
+_xmass_dd_here() {
+  local _r
+  if [ ! -L /var/lib/mysql ]; then
+    printf '%s' /var/lib/mysql
+    return 0
+  fi
+  _r="$(readlink -f /var/lib/mysql 2> /dev/null)"
+  if [[ "${_r}" =~ ^(/[A-Za-z0-9._-]+)+$ ]] && [ "${_r}" != "/var/lib/mysql" ]; then
+    printf '%s' "${_r}"
+    return 0
+  fi
+  printf '%s' "/var/lib/mysql is a link that resolves to no folder path (${_r:-nowhere}): is its volume mounted?"
+  return 1
+}
+
+# 0 when /var/lib/mysql is a link and neither the folder it names nor a
+# parked or kept copy beside that folder is there: its volume is not mounted
+# (the mount point's own empty folder is, on the root disk).
+_xmass_dd_volume_gone() {
+  local _r
+  [ -L /var/lib/mysql ] || return 1
+  _r="$(readlink -f /var/lib/mysql 2> /dev/null)"
+  [ -n "${_r}" ] || return 0
+  [ ! -d "${_r}" ] && ! ls -1d "${_r}".xmass_pre_* "${_r}".xmass_standby_* > /dev/null 2>&1
+}
+
+# 0 when the folder $1 is a mount point of its own: the kernel refuses to
+# rename one, and mv copies nothing then.
+_xmass_dd_own_mount() {
+  local _mpA _mpB
+  _mpA="$(df -P "${1}" 2> /dev/null | awk 'NR==2 { print $NF }')"
+  _mpB="$(df -P "${1%/*}/" 2> /dev/null | awk 'NR==2 { print $NF }')"
+  [ -n "${_mpA}" ] && [ -n "${_mpB}" ] && [ "${_mpA}" != "${_mpB}" ]
+}
+
 _xmass_decide_transfer_method() {
   # Stage locally if we have 1.5× the MySQL data size free on /; stream otherwise.
-  local _mysql_kb _free_kb _needed_kb
-  _mysql_kb=$(du -s /var/lib/mysql 2>/dev/null | awk '{print $1}')
-  _free_kb=$(df -P / 2>/dev/null | awk 'NR==2{print $4}')
+  local _mysql_kb _free_kb _needed_kb _on="/"
+  _xmass_dd_read
+  if [ "${_XM_DD_SHAPE}" = "link" ]; then
+    # du -s reads a link as nothing: the folder it names is what travels,
+    # and the stage lands on that folder's filesystem, so the room is read
+    # there.
+    _on="${_XM_DD_BASE}"
+    _XTRA_STAGE_SRC="${_XM_DD_BASE%/}/xmass_stage"
+    _mysql_kb=$(du -s "${_XM_DD_REAL}" 2>/dev/null | awk '{print $1}')
+    _free_kb=$(df -P "${_on}" 2>/dev/null | awk 'NR==2{print $4}')
+    _info "the database folder here is ${_XM_DD_REAL} (a link at /var/lib/mysql names it): a staged snapshot goes to ${_XTRA_STAGE_SRC}"
+  elif [ -L /var/lib/mysql ]; then
+    # a link this box serves from all the same (onto a mount's own root,
+    # say): its size is read through it, and the stage stays where it was
+    _mysql_kb=$(du -sL /var/lib/mysql 2>/dev/null | awk '{print $1}')
+    _free_kb=$(df -P / 2>/dev/null | awk 'NR==2{print $4}')
+  else
+    _mysql_kb=$(du -s /var/lib/mysql 2>/dev/null | awk '{print $1}')
+    _free_kb=$(df -P / 2>/dev/null | awk 'NR==2{print $4}')
+  fi
   _needed_kb=$(( _mysql_kb * 3 / 2 ))
   if [ "${_free_kb}" -gt "${_needed_kb}" ]; then
     _XTRA_METHOD="stage"
@@ -6365,11 +6559,175 @@ _xmass_decide_transfer_method() {
     # relocating it first is almost always worth it -- name the shortfall
     # and the usual suspects so that decision is informed, not discovered.
     _alrt "STREAM selected: the transfer is a single unresumable pipe. Shortfall:"
-    _alrt "  $(( (_needed_kb - _free_kb) / 1024 ))M more free on / would enable resumable STAGE."
-    _alrt "  Largest reclaim candidates (relocate, do not delete):"
-    du -sk /root/.cache /var/backups /opt/tmp 2>/dev/null \
-      | sort -rn | head -3 | awk '{ printf "ALRT:     %sM  %s\n", int($1/1024), $2 }'
+    _alrt "  $(( (_needed_kb - _free_kb) / 1024 ))M more free on ${_on} would enable resumable STAGE."
+    if [ "${_on}" = "/" ]; then
+      _alrt "  Largest reclaim candidates (relocate, do not delete):"
+      du -sk /root/.cache /var/backups /opt/tmp 2>/dev/null \
+        | sort -rn | head -3 | awk '{ printf "ALRT:     %sM  %s\n", int($1/1024), $2 }'
+    fi
   fi
+}
+
+# The target's database folder, judged before the point of no return: its
+# shape, and the room the seed needs on the filesystem each of the stage and
+# the folder lands on. The restore replaces the folder while the snapshot is
+# still on the target's disk, so one filesystem holding both needs room for
+# both plus growth margin; on two, each needs its own share. A stage an
+# earlier seed left where this one stages is cleared before the snapshot
+# lands, so its size counts as room. $1 = die: a shape that cannot be seeded
+# or a shortfall refuses, and the stage path and the folder the swap works
+# on are set; shape: the shape alone, read early, while a refusal costs
+# nothing; warn: every finding as a warning and nothing set. Override for
+# the room alone: _XMASS_SKIP_DISK_GATE=YES.
+_xmass_target_dd_gate() {
+  local _how="$1" _src_dd_kb _need_kb _bad="" _free_dd _free_base
+  _xmass_dd_read "${_tgt}"
+  case "${_XM_DD_SHAPE}" in
+    plain|link) : ;;
+    mount)
+      _bad="/var/lib/mysql on target ${_tgt} cannot be seeded as it is: ${_XM_DD_WHY}. Supported there: a real folder, or a symbolic link onto a folder of the attached mount."
+    ;;
+    badlink)
+      _bad="/var/lib/mysql on target ${_tgt} is a symbolic link that cannot be seeded: ${_XM_DD_WHY}"
+    ;;
+    absent)
+      _bad="target ${_tgt} has no database folder at /var/lib/mysql (after a restore-target run cut short there, finish it first: xmass restore-target --live)"
+    ;;
+    *)
+      _bad="could not read the layout of the database folder on target ${_tgt} (/var/lib/mysql, its mount table): re-check the target and re-run"
+    ;;
+  esac
+  if [ -n "${_bad}" ]; then
+    if [ "${_how}" != "warn" ]; then
+      _die "${_bad}" " -- nothing was displaced there."
+    fi
+    _alrt "${_bad}"
+    _alrt "  'xmass init' refuses this target until that is put right."
+    return 0
+  fi
+  [ "${_how}" != "shape" ] || return 0
+  if [ "${_XM_DD_SHAPE}" = "link" ]; then
+    _info "target ${_tgt}: /var/lib/mysql is a link onto ${_XM_DD_REAL}: the seed is staged at ${_XM_DD_BASE%/}/xmass_restore and that folder parked beside itself, the link kept"
+  fi
+  if [ "${_how}" = "die" ]; then
+    _XM_TGT_SHAPE="${_XM_DD_SHAPE}"
+    _XM_TGT_DD="${_XM_DD_REAL}"
+    _XTRA_STAGE_TGT="${_XM_DD_BASE%/}/xmass_restore"
+  fi
+  _src_dd_kb=$(du -sL /var/lib/mysql 2>/dev/null | awk '{print $1}')
+  if [ "${_XMASS_SKIP_DISK_GATE}" = "YES" ]; then
+    [ "${_how}" != "die" ] || _alrt "target datadir space gate SKIPPED by _XMASS_SKIP_DISK_GATE=YES"
+    return 0
+  fi
+  if [ -z "${_src_dd_kb}" ] || [ -z "${_XM_DD_FREE_KB}" ] \
+    || [ -z "${_XM_DD_SAME_FS}" ] || [ -z "${_XM_DD_BASE_FREE_KB}" ]; then
+    # Fail closed: an unmeasurable gate that prints OK is worse than none,
+    # because init's next steps displace the target's datadir.
+    if [ "${_how}" = "die" ]; then
+      _die "could not measure datadir space (source=${_src_dd_kb:-unknown}K" \
+           " target-free=${_XM_DD_FREE_KB:-unknown}K stage-free=${_XM_DD_BASE_FREE_KB:-unknown}K) -- re-check the target, or export" \
+           " _XMASS_SKIP_DISK_GATE=YES to proceed deliberately."
+    fi
+    _alrt "could not measure the room for the seed on target ${_tgt} (source=${_src_dd_kb:-unknown}K target-free=${_XM_DD_FREE_KB:-unknown}K): 'xmass init' refuses until it can"
+    return 0
+  fi
+  _free_dd="${_XM_DD_FREE_KB}"
+  _free_base=$(( _XM_DD_BASE_FREE_KB + _XM_DD_STALE_KB ))
+  if [ "${_XM_DD_STALE_KB}" -gt 0 ]; then
+    [ "${_XM_DD_SAME_FS}" != "YES" ] || _free_dd=$(( _XM_DD_FREE_KB + _XM_DD_STALE_KB ))
+    _info "target ${_tgt}: a stage of ${_XM_DD_STALE_KB}K an earlier seed left at ${_XM_DD_BASE%/}/xmass_restore is cleared before the snapshot lands: counted as room"
+  fi
+  if [ "${_XM_DD_SAME_FS}" = "YES" ]; then
+    _need_kb=$(( _src_dd_kb * 22 / 10 ))
+    if [ "${_free_dd}" -lt "${_need_kb}" ]; then
+      _bad="target ${_tgt} has ${_free_dd}K free at ${_XM_DD_REAL} but the restore transiently needs ~${_need_kb}K (2.2x the ${_src_dd_kb}K source datadir)."
+    elif [ "${_how}" = "die" ]; then
+      _info "Target datadir space check: OK (free=${_free_dd}K need~${_need_kb}K)"
+    fi
+  else
+    # the stage and the folder on two filesystems: a copy and its margin on each
+    _need_kb=$(( _src_dd_kb * 11 / 10 ))
+    if [ "${_free_dd}" -lt "${_need_kb}" ]; then
+      _bad="target ${_tgt} has ${_free_dd}K free at ${_XM_DD_REAL} but the restored datadir needs ~${_need_kb}K (1.1x the ${_src_dd_kb}K source datadir)."
+    elif [ "${_free_base}" -lt "${_need_kb}" ]; then
+      _bad="target ${_tgt} has ${_free_base}K free at ${_XM_DD_BASE}, where the snapshot is staged, but it needs ~${_need_kb}K (1.1x the ${_src_dd_kb}K source datadir)."
+    elif [ "${_how}" = "die" ]; then
+      _info "Target datadir space check: OK (free=${_free_dd}K at ${_XM_DD_REAL}, ${_free_base}K at ${_XM_DD_BASE}, need~${_need_kb}K each)"
+    fi
+  fi
+  [ -n "${_bad}" ] || return 0
+  if [ "${_how}" = "die" ]; then
+    _die "${_bad}" \
+         " Free space on the target, or export _XMASS_SKIP_DISK_GATE=YES to override."
+  fi
+  _alrt "${_bad}"
+  _alrt "  'xmass init' refuses this target until there is room (or _XMASS_SKIP_DISK_GATE=YES)."
+  return 0
+}
+
+# The folder the gate judged, read once more when the snapshot is done and
+# nothing is committed yet: a snapshot takes minutes to hours, and a refusal
+# here still unwinds the target to what it was. The target reads it a third
+# time itself, in the swap, for the seconds between this and the rename.
+_xmass_target_dd_recheck() {
+  case "${_XM_TGT_SHAPE}" in
+    plain|link) : ;;
+    *) _die "the layout of the database folder on target ${_tgt} was never judged (${_XM_TGT_SHAPE:-unset}): nothing was displaced there" ;;
+  esac
+  _xmass_dd_read "${_tgt}"
+  [ "${_XM_DD_SHAPE}" != "unread" ] \
+    || _die "could not read the database folder on target ${_tgt} again before the swap -- nothing was displaced there; re-run init."
+  if [ "${_XM_DD_SHAPE}" != "${_XM_TGT_SHAPE}" ] || [ "${_XM_DD_REAL}" != "${_XM_TGT_DD}" ]; then
+    _die "the database folder on target ${_tgt} changed while the snapshot was taken: it was ${_XM_TGT_DD} (${_XM_TGT_SHAPE})" \
+         " and reads ${_XM_DD_REAL:-unreadable} (${_XM_DD_SHAPE}) now${_XM_DD_WHY:+: ${_XM_DD_WHY}} -- nothing was displaced there; re-run init."
+  fi
+  return 0
+}
+
+# The seed is in the replica's own folder and nothing reads the stage again:
+# on the target it is a second whole copy of the database, on a source that
+# staged a third. Both go once the replica runs. A seed that stopped before
+# this keeps them for the reading, and the next one clears them before it
+# starts. A box whose folder was linked onto its mount after an earlier seed
+# still holds that seed's stage at the first path, on the root disk the link
+# was made to relieve: it goes too. _XMASS_KEEP_STAGE=YES keeps all of them
+# and says where.
+_xmass_drop_stages() {
+  local _p _ok=YES _tl="${_XTRA_STAGE_TGT}" _sl="${_XTRA_STAGE_SRC}"
+  [ "${_XTRA_STAGE_TGT}" = "/var/backups/xmass_restore" ] || _tl="${_tl} /var/backups/xmass_restore"
+  [ "${_XTRA_STAGE_SRC}" = "/var/backups/xmass_stage" ] || _sl="${_sl} /var/backups/xmass_stage"
+  for _p in "${_XTRA_STAGE_TGT}" "${_XTRA_STAGE_SRC}"; do
+    [[ "${_p}" =~ ^(/[A-Za-z0-9._-]+)*/xmass_(stage|restore)$ ]] || _ok=NO
+  done
+  if [ "${_ok}" != "YES" ]; then
+    _alrt "seed stage paths read oddly (${_XTRA_STAGE_TGT}, ${_XTRA_STAGE_SRC}): nothing removed -- look for the stage on both boxes by hand"
+    return 0
+  fi
+  if [ "${_XMASS_KEEP_STAGE}" = "YES" ]; then
+    _info "seed stage kept by _XMASS_KEEP_STAGE=YES: ${_tl// /, } on ${_tgt}, a whole copy of the database -- remove it by hand"
+    for _p in ${_sl}; do
+      [ ! -d "${_p}" ] \
+        || _info "seed stage kept by _XMASS_KEEP_STAGE=YES: ${_p} on this box -- remove it by hand"
+    done
+    return 0
+  fi
+  for _p in ${_tl}; do
+    case "$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" \
+      "if [ ! -e ${_p} ] && [ ! -L ${_p} ]; then echo NONE; else rm -rf ${_p}; [ ! -e ${_p} ] && [ ! -L ${_p} ] && echo GONE; fi" 2> /dev/null)" in
+      GONE) _info "seed stage removed on the target (${_p})" ;;
+      NONE) : ;;
+      *) _alrt "could not remove the seed stage ${_p} on ${_tgt}, a whole copy of the database: remove it there by hand" ;;
+    esac
+  done
+  for _p in ${_sl}; do
+    [ -e "${_p}" ] || [ -L "${_p}" ] || continue
+    rm -rf "${_p}"
+    if [ ! -e "${_p}" ] && [ ! -L "${_p}" ]; then
+      _info "seed stage removed on this box (${_p})"
+    else
+      _alrt "could not remove the seed stage ${_p} on this box: remove it by hand"
+    fi
+  done
 }
 
 # xtrabackup holds every tablespace of the datadir open at once while it
@@ -6498,14 +6856,37 @@ _xmass_take_backup() {
 }
 
 _xmass_restore_backup() {
+  # The folder the gate judged (_xmass_target_dd_gate): the path itself, or
+  # the folder a link there names. The target reads its own layout once
+  # more before it moves anything: a folder relinked or unlinked since the
+  # last read is no longer the one that was judged.
+  local _shape="${_XM_TGT_SHAPE}" _dd="/var/lib/mysql" _rc=0
+  case "${_shape}" in
+    plain) : ;;
+    link)
+      _dd="${_XM_TGT_DD}"
+      [[ "${_dd}" =~ ^(/[A-Za-z0-9._-]+)+$ ]] && [ "${_dd}" != "/var/lib/mysql" ] \
+        || _die "the folder /var/lib/mysql links to on target ${_tgt} reads oddly (${_dd:-unset}): nothing was displaced there"
+    ;;
+    *) _die "the layout of the database folder on target ${_tgt} was never judged (${_shape:-unset}): nothing was displaced there" ;;
+  esac
   _info "Stopping MySQL on target ${_tgt} via move_sql.sh ..."
   ssh root@"${_tgt}" "/var/xdrago/move_sql.sh stop" \
     || _die "MySQL stop on target failed"
 
   _info "Replacing MySQL data dir on target ..."
-  ssh root@"${_tgt}" bash <<'REMOTE'
+  ssh root@"${_tgt}" bash -s -- "${_shape}" "${_dd}" <<'REMOTE' || _rc=$?
 _ts=$(date +%Y%m%d%H%M%S)
-mv -f /var/lib/mysql /var/lib/mysql.xmass_pre_${_ts} &>/dev/null || true
+if [ "$1" = "link" ]; then
+  # The link stays as it is. The folder it names is parked beside itself,
+  # on its own filesystem, and made again further down.
+  [ -L /var/lib/mysql ] && [ "$(readlink -f /var/lib/mysql 2>/dev/null)" = "$2" ] \
+    && [ -d "$2" ] || exit 71
+  mv -f -T "$2" "$2.xmass_pre_${_ts}" || exit 72
+else
+  [ ! -L /var/lib/mysql ] || exit 71
+  mv -f /var/lib/mysql /var/lib/mysql.xmass_pre_${_ts} &>/dev/null || true
+fi
 # The parked data directory is only usable with the credentials that open
 # it: the copy-back brings the source's root password with it and the next
 # rotation moves on from there, so without this pair the parked copy could
@@ -6521,18 +6902,33 @@ for _f in /data/conf/*_db_broker.txt; do
     && chmod 700 "/data/conf/.xmass_pre_${_ts}.db_broker" \
     && mv -f "${_f}" "/data/conf/.xmass_pre_${_ts}.db_broker/"
 done
-mkdir -p /var/lib/mysql
+if [ "$1" = "link" ]; then
+  mkdir "$2" || exit 73
+else
+  mkdir -p /var/lib/mysql
+fi
 REMOTE
+  case "${_rc}" in
+    71) _die "the database folder on target ${_tgt} is not the one judged before the snapshot" \
+             " (/var/lib/mysql was linked, relinked or unlinked meanwhile, or the folder it names is gone): nothing was displaced." \
+             " MySQL is stopped there and the box is marked a committed standby: start MySQL with" \
+             " /var/xdrago/move_sql.sh start, put the folder right, then re-run init." ;;
+    72) _die "could not park ${_dd} beside itself on target ${_tgt}: nothing was displaced." \
+             " MySQL is stopped there and the box is marked a committed standby: start MySQL with" \
+             " /var/xdrago/move_sql.sh start, read why that folder cannot be renamed, then re-run init." ;;
+    73) _die "could not make ${_dd} again on target ${_tgt} after parking it as ${_dd}.xmass_pre_<stamp>:" \
+             " rename the parked folder back by hand, start MySQL there, then re-run init." ;;
+  esac
 
   _info "Running xtrabackup --copy-back on target ${_tgt} ..."
   ssh root@"${_tgt}" \
     "${_XMASS_NOFILE_REMOTE}; xtrabackup --copy-back \
       --target-dir=${_XTRA_STAGE_TGT} \
-      --datadir=/var/lib/mysql" \
+      --datadir=${_dd}" \
     || _die "xtrabackup --copy-back on target failed"
 
   _info "Fixing MySQL data dir ownership on target ..."
-  ssh root@"${_tgt}" "chown -R mysql:mysql /var/lib/mysql"
+  ssh root@"${_tgt}" "chown -R mysql:mysql ${_dd}"
 
   # Transfer credentials immediately so target MySQL client tools work
   _info "Transferring MySQL credentials to target ..."
@@ -6967,7 +7363,7 @@ _xmass_restore_rec_put() {   # 1 = stamp  2 = the parked data directory going ba
   if ( umask 077
     printf '%s\n' "# Put by xmass restore-target --live: a run again finishes from where this one stopped." \
       "_XMASS_RESTORE_STAMP=${1}" "_XMASS_RESTORE_PRE=${2}" "_XMASS_RESTORE_DATADIR=${_id}" \
-      "_XMASS_RESTORE_BROKER_KEEP=$(_xmass_broker_parked "${2#/var/lib/mysql.xmass_pre_}")" \
+      "_XMASS_RESTORE_BROKER_KEEP=$(_xmass_broker_parked "${2##*.xmass_pre_}")" \
       "_XMASS_RESTORE_LANE_ALL=${_XMASS_LANE_ALL# }" "_XMASS_RESTORE_LANE_HALF=${_XMASS_LANE_HALF# }" \
       "_XMASS_RESTORE_ACTIVE=${3:-}" > "${_t}" ) \
     && mv -f -T -- "${_t}" "${_XMASS_RESTORE_REC}"; then
@@ -6981,21 +7377,24 @@ _xmass_restore_rec_put() {   # 1 = stamp  2 = the parked data directory going ba
 # puts back (a later init or promotion puts another there): _XMASS_RESTORE_AT
 # is swapped. With $1 = swap (the standby marker still there) it is also the
 # one when /var/lib/mysql is gone and that directory still waits at its parked
-# name: _XMASS_RESTORE_AT is putback.
+# name: _XMASS_RESTORE_AT is putback. On a box whose /var/lib/mysql is a link
+# all of it is read of the folder the link names (_xmass_dd_here), the parked
+# names beside that folder: the link itself is there throughout.
 _xmass_restore_rec_read() {
-  local _r _s _id _l _w _a _p
+  local _r _s _id _l _w _a _p _dd
   [ -f "${_XMASS_RESTORE_REC}" ] && [ ! -L "${_XMASS_RESTORE_REC}" ] || return 1
   _r="$( cd -P -- "${_XMASS_RESTORE_REC%/*}" 2> /dev/null && _xmass_rootread_here "${_XMASS_RESTORE_REC##*/}" )" || return 1
   _s="$(_xmass_kv "${_r}" _XMASS_RESTORE_STAMP)"
   _id="$(_xmass_kv "${_r}" _XMASS_RESTORE_DATADIR)"
   _p="$(_xmass_kv "${_r}" _XMASS_RESTORE_PRE)"
   [[ "${_s}" =~ ^[0-9]{14}$ ]] && [[ "${_id}" =~ ^[0-9]+:[0-9]+$ ]] || return 1
-  [[ "${_p}" =~ ^/var/lib/mysql\.xmass_pre_[0-9]{14}$ ]] || return 1
-  [ -d "/var/lib/mysql.xmass_standby_${_s}" ] && [ ! -L "/var/lib/mysql.xmass_standby_${_s}" ] || return 1
-  if [ -d /var/lib/mysql ] && [ ! -L /var/lib/mysql ] \
-    && [ "$(stat -c '%i:%W' /var/lib/mysql 2> /dev/null)" = "${_id}" ]; then
+  _dd="$(_xmass_dd_here)" || return 1
+  [[ "${_p##*.xmass_pre_}" =~ ^[0-9]{14}$ ]] && [ "${_p}" = "${_dd}.xmass_pre_${_p##*.xmass_pre_}" ] || return 1
+  [ -d "${_dd}.xmass_standby_${_s}" ] && [ ! -L "${_dd}.xmass_standby_${_s}" ] || return 1
+  if [ -d "${_dd}" ] && [ ! -L "${_dd}" ] \
+    && [ "$(stat -c '%i:%W' "${_dd}" 2> /dev/null)" = "${_id}" ]; then
     _XMASS_RESTORE_AT=swapped
-  elif [ "${1:-}" = "swap" ] && [ ! -e /var/lib/mysql ] && [ ! -L /var/lib/mysql ] \
+  elif [ "${1:-}" = "swap" ] && [ ! -e "${_dd}" ] && [ ! -L "${_dd}" ] \
     && [ -d "${_p}" ] && [ ! -L "${_p}" ] && [ "$(stat -c '%i:%W' -- "${_p}" 2> /dev/null)" = "${_id}" ]; then
     _XMASS_RESTORE_AT=putback
   else
@@ -7147,6 +7546,8 @@ _xmass_restore_heal_panels() {
 # lane's lists the record kept, $5 the active this box replicated from.
 _xmass_restore_target_finish() {
   local _stamp="$1" _pre="$2" _act="${5:-}" _sro _svc _waited _a _rt _p
+  # the folder itself: /var/lib/mysql, or the one a link there names
+  local _dd="${_pre%.xmass_pre_*}"
   if mysqladmin --defaults-file=/root/.my.cnf ping > /dev/null 2>&1; then
     _info "MySQL answers already (a watchdog started it)"
   else
@@ -7202,11 +7603,11 @@ _xmass_restore_target_finish() {
   # cut short here marks again on its re-run, and logs once
   _xmass_restore_laid_accounts "${3:-}" "${4:-}"
   rm -f -- "${_XMASS_RESTORE_REC}"
-  echo "$(date -u '+%Y-%m-%d %H:%M:%S') restore-target: ${_pre} restored as /var/lib/mysql; replica copy kept as /var/lib/mysql.xmass_standby_${_stamp}" \
+  echo "$(date -u '+%Y-%m-%d %H:%M:%S') restore-target: ${_pre} restored as ${_dd}; replica copy kept as ${_dd}.xmass_standby_${_stamp}" \
     >> /var/log/boa/xmass-restore-target.log
   _info "restore-target COMPLETE: this box is a plain BOA box again (its pre-init data directory and"
   _info "  credentials back, no standby marker, the replication forgotten). The replica's data directory"
-  _info "  is kept as /var/lib/mysql.xmass_standby_${_stamp}; remove it by hand when no longer needed."
+  _info "  is kept as ${_dd}.xmass_standby_${_stamp}; remove it by hand when no longer needed."
   _info "  On the SOURCE, forget this target with 'xmass reset-phase init' before any new init."
   # The init ended the relay this box ran through its active: the active no longer
   # trusts it until the account is repaired. With no address of the active to
@@ -7236,15 +7637,23 @@ _xmass_restore_target_finish() {
 # again from the record repeats none of them wrongly.
 _xmass_restore_target_swap() {
   local _stamp="$1" _pre="$2" _at="$3" _keep="$4" _known="$5" _ts _cnf _d _inc_dir _p _f
-  _ts="${_pre#/var/lib/mysql.xmass_pre_}"
+  # the folder itself: /var/lib/mysql, or the one a link there names
+  local _dd="${_pre%.xmass_pre_*}"
+  _ts="${_pre##*.xmass_pre_}"
   for _cnf in /root/.my.cnf /root/.my.pass.txt; do
     [ -e "${_cnf}.xmass_pre_${_ts}" ] \
       || _die "no parked credential file ${_cnf}.xmass_pre_${_ts} beside ${_pre}: the parked data directory" \
               " cannot be opened without it -- put it back by hand, then run 'xmass restore-target --live' again"
   done
   if [ "${_at}" = "putback" ]; then
-    mv -f "${_pre}" /var/lib/mysql \
-      || _die "could not put ${_pre} back as /var/lib/mysql (the replica copy is at /var/lib/mysql.xmass_standby_${_stamp})"
+    if [ "${_dd}" = "/var/lib/mysql" ]; then
+      mv -f "${_pre}" /var/lib/mysql \
+        || _die "could not put ${_pre} back as /var/lib/mysql (the replica copy is at /var/lib/mysql.xmass_standby_${_stamp})"
+    else
+      # beside itself on its own filesystem, under the link that names it
+      mv -f -T "${_pre}" "${_dd}" \
+        || _die "could not put ${_pre} back as ${_dd} (the replica copy is at ${_dd}.xmass_standby_${_stamp})"
+    fi
   fi
   for _cnf in /root/.my.cnf /root/.my.pass.txt; do
     cp -a "${_cnf}.xmass_pre_${_ts}" "${_cnf}" && chmod 600 "${_cnf}"
@@ -7300,7 +7709,12 @@ _xmass_restore_target_swap() {
 }
 
 _xmass_restore_target() {
-  local _live="$1" _pre _ts _stamp _mk _ver _stop _reset _cnf _d _resume=NO _act=""
+  local _live="$1" _pre _ts _stamp _mk _ver _stop _reset _cnf _d _resume=NO _act="" _dd
+  # before any reading of what is parked: with the volume away every parked
+  # name is away with it, and "nothing to restore" would be the wrong answer
+  ! _xmass_dd_volume_gone \
+    || _die "/var/lib/mysql is a link onto $(readlink /var/lib/mysql 2> /dev/null), and neither that folder nor a parked copy" \
+            " beside it is there: mount its volume, then run this again -- nothing changed"
   if [ ! -e /root/.standby.cnf ]; then
     _xmass_restore_rec_read \
       || _die "this box carries no standby marker (/root/.standby.cnf): nothing to restore --" \
@@ -7338,7 +7752,7 @@ _xmass_restore_target() {
   done
   if [ "${_resume}" = "YES" ]; then
     _info "restore-target on $(hostname -f): the live run of ${_XMASS_RESTORE_STAMP} put ${_XMASS_RESTORE_PRE} back"
-    _info "  as /var/lib/mysql and stopped after the standby marker went: this run finishes it from MySQL's"
+    _info "  as ${_XMASS_RESTORE_PRE%.xmass_pre_*} and stopped after the standby marker went: this run finishes it from MySQL's"
     _info "  start (MySQL started unless it answers, super_read_only cleared, Solr re-armed, cron started)"
     [ -z "${_XMASS_RESTORE_LANE_ALL}" ] \
       || _info "  each account --fix-accounts laid here (${_XMASS_RESTORE_LANE_ALL}) marked CANCELLED unless the restored data directory holds its database"
@@ -7355,10 +7769,10 @@ _xmass_restore_target() {
   if [ "${_resume}" = "SWAP" ]; then
     _info "restore-target on $(hostname -f): the live run of ${_XMASS_RESTORE_STAMP} stopped during its data directory swap,"
     if [ "${_XMASS_RESTORE_AT}" = "putback" ]; then
-      _info "  with the replica's directory aside as /var/lib/mysql.xmass_standby_${_XMASS_RESTORE_STAMP} and ${_XMASS_RESTORE_PRE}"
-      _info "  not yet back: this run puts it back as /var/lib/mysql and goes on from there"
+      _info "  with the replica's directory aside as ${_XMASS_RESTORE_PRE%.xmass_pre_*}.xmass_standby_${_XMASS_RESTORE_STAMP} and ${_XMASS_RESTORE_PRE}"
+      _info "  not yet back: this run puts it back as ${_XMASS_RESTORE_PRE%.xmass_pre_*} and goes on from there"
     else
-      _info "  after ${_XMASS_RESTORE_PRE} went back as /var/lib/mysql: this run goes on from there"
+      _info "  after ${_XMASS_RESTORE_PRE} went back as ${_XMASS_RESTORE_PRE%.xmass_pre_*}: this run goes on from there"
     fi
     _info "  (the parked credentials, the database broker switches, the standby hold and every marker, then"
     _info "  MySQL's start, super_read_only cleared, Solr re-armed, cron started)"
@@ -7375,13 +7789,28 @@ _xmass_restore_target() {
       "${_XMASS_RESTORE_LANE_ALL}" "${_XMASS_RESTORE_LANE_HALF}" "${_XMASS_RESTORE_ACTIVE}"
     return 0
   fi
-  _pre=$(ls -1d /var/lib/mysql.xmass_pre_* 2>/dev/null | sort | tail -1)
+  # The folder itself: /var/lib/mysql, or the one a link there names. The
+  # parked folder waits beside it, on its own filesystem, and the replica's
+  # goes aside there too; a link stays where it is.
+  _dd="$(_xmass_dd_here)" || _die "${_dd} -- nothing changed"
+  _pre=$(ls -1d "${_dd}".xmass_pre_* 2>/dev/null | sort | tail -1)
   if [ -z "${_pre}" ] && [ -e "${_XMASS_RESTORE_REC}" ]; then
-    _die "no parked data directory (/var/lib/mysql.xmass_pre_<stamp>) on this box, and the record of a run" \
-         " that stopped (${_XMASS_RESTORE_REC}) names a data directory that is not at /var/lib/mysql: read both by hand"
+    _die "no parked data directory (${_dd}.xmass_pre_<stamp>) on this box, and the record of a run" \
+         " that stopped (${_XMASS_RESTORE_REC}) names a data directory that is not at ${_dd}: read both by hand"
   fi
-  [ -n "${_pre}" ] || _die "no parked data directory (/var/lib/mysql.xmass_pre_<stamp>) on this box"
-  _ts="${_pre#/var/lib/mysql.xmass_pre_}"
+  if [ -z "${_pre}" ] && [ "${_dd}" != "/var/lib/mysql" ]; then
+    _pre=$(ls -1d /var/lib/mysql.xmass_pre_* 2>/dev/null | sort | tail -1)
+    [ -z "${_pre}" ] \
+      || _die "the data directory here is ${_dd} (the link at /var/lib/mysql names it) and no parked one waits beside it," \
+              " while ${_pre} does on the root disk: the data directory was moved after the init. Move that parked" \
+              " directory beside it by hand, as ${_dd}.xmass_pre_${_pre##*.xmass_pre_}, then re-run -- nothing changed"
+  fi
+  [ -n "${_pre}" ] || _die "no parked data directory (${_dd}.xmass_pre_<stamp>) on this box"
+  [ -d "${_dd}" ] \
+    || _die "no data directory at ${_dd} on this box (is its volume mounted?) -- nothing changed"
+  ! _xmass_dd_own_mount "${_dd}" \
+    || _die "${_dd} is a mount point of its own and cannot be renamed aside -- nothing changed"
+  _ts="${_pre##*.xmass_pre_}"
   for _cnf in /root/.my.cnf /root/.my.pass.txt; do
     [ -e "${_cnf}.xmass_pre_${_ts}" ] \
       || _die "no parked credential file ${_cnf}.xmass_pre_${_ts} beside ${_pre}: the parked data directory" \
@@ -7397,7 +7826,10 @@ _xmass_restore_target() {
   _info "restore-target on $(hostname -f): $(head -1 /root/.standby.cnf 2>/dev/null)"
   _act="$(sed -n 's/^xmass replication target of \([0-9.]*\) since .*/\1/p' /root/.standby.cnf 2> /dev/null | head -n 1)"
   _info "  parked data directory: ${_pre} (credentials parked at the same stamp)"
-  _info "  the current replica data directory is kept aside as /var/lib/mysql.xmass_standby_${_stamp}"
+  if [ "${_dd}" != "/var/lib/mysql" ] && ls -1d /var/lib/mysql.xmass_pre_* > /dev/null 2>&1; then
+    _info "  older parked data directories on the root disk stay as they are: $(ls -1d /var/lib/mysql.xmass_pre_* 2> /dev/null | tr '\n' ' ')"
+  fi
+  _info "  the current replica data directory is kept aside as ${_dd}.xmass_standby_${_stamp}"
   _info "  the database broker switches the passes carried go; the ones parked with it come back"
   _info "  replication stopped and forgotten (${_stop}; ${_reset}); the standby hold, its cnf block and"
   _info "  every marker removed; Solr init scripts the init disarmed re-armed; cron started"
@@ -7417,8 +7849,13 @@ _xmass_restore_target() {
     || _alrt "  could not stop/reset the replica (mysql down or unauthable?) -- continuing with the data directory swap"
   _info "Stopping MySQL via move_sql.sh ..."
   /var/xdrago/move_sql.sh stop || _die "MySQL stop failed"
-  mv -f /var/lib/mysql "/var/lib/mysql.xmass_standby_${_stamp}" \
-    || _die "could not move the replica data directory aside"
+  if [ "${_dd}" = "/var/lib/mysql" ]; then
+    mv -f /var/lib/mysql "/var/lib/mysql.xmass_standby_${_stamp}" \
+      || _die "could not move the replica data directory aside"
+  else
+    mv -f -T "${_dd}" "${_dd}.xmass_standby_${_stamp}" \
+      || _die "could not move the replica data directory ${_dd} aside"
+  fi
   _xmass_restore_target_swap "${_stamp}" "${_pre}" putback "$(_xmass_broker_parked "${_ts}")" YES \
     "${_XMASS_LANE_ALL# }" "${_XMASS_LANE_HALF# }" "${_act}"
   return 0
@@ -16703,6 +17140,8 @@ _xmass_cmd_prep_target() {
   # Advisory sweeps while acting on them is still cheap.
   _xmass_check_le_health
   _xmass_decide_transfer_method
+  # what init will judge of the target's database folder, said days earlier
+  _xmass_target_dd_gate warn
 
   # The standby preparation mark before the first create: the INIT arm of
   # an armed target then leaves every account this run creates at no web
@@ -18112,6 +18551,9 @@ _xmass_cmd_init() {
   # every source Solr tree on the target, and a landed tree suppresses BOA's
   # installer for that version permanently.
   _xmass_solr_coverage_gate "${_tgt}" die
+  # A database folder on the target that cannot be seeded as it is (a mount
+  # point at the path, a link naming no folder) is a cheap read too.
+  _xmass_target_dd_gate shape
   # The datadir swap below must never land on a target mid-pass: a
   # prep-target minutes ago left every seeded account an octopus pass and
   # its queued verifies. Wait for real silence, bounded, fail-closed.
@@ -18141,9 +18583,12 @@ if [ "${_rc}" -ne "0" ]; then
   _r=$(mysql --defaults-file=/root/.my.cnf --connect-timeout=5 -e "SHOW SLAVE STATUS\G" 2>/dev/null); _rc=$?
 fi
 _s=$(mysql --defaults-file=/root/.my.cnf --connect-timeout=5 -sNe "SHOW VARIABLES LIKE 'super_read_only'" 2>/dev/null | awk '{print $2}')
+# a parked folder sits beside the folder itself: beside the one a link names
+_dd=/var/lib/mysql
+[ ! -L /var/lib/mysql ] || _dd=$(readlink -f /var/lib/mysql 2>/dev/null)
 if grep -q '^init-committed' /root/.standby.cnf 2>/dev/null \
   || [ -n "${_r}" ] \
-  || [ -n "$(find /var/lib/mysql.xmass_pre_* -maxdepth 0 -newer /root/.standby.cnf 2>/dev/null | head -1)" ]; then
+  || [ -n "$(find "${_dd:-/var/lib/mysql}".xmass_pre_* -maxdepth 0 -newer /root/.standby.cnf 2>/dev/null | head -1)" ]; then
   _w=YES
 fi
 if [ "${_rc}" -eq "0" ] && [ -z "${_r}" ] && [ "${_s}" = "OFF" ]; then
@@ -18351,26 +18796,10 @@ REMOTE
   # The restore replaces the target's datadir while the snapshot is still on
   # its disk, so the target transiently needs room for both plus growth
   # margin. Until now this was human arithmetic that failed AFTER the old
-  # datadir was displaced. Override: _XMASS_SKIP_DISK_GATE=YES.
-  local _src_dd_kb _tgt_free_kb _need_kb
-  _src_dd_kb=$(du -sL /var/lib/mysql 2>/dev/null | awk '{print $1}')
-  _tgt_free_kb=$(ssh root@"${_tgt}" "df -Pk /var/lib/mysql 2>/dev/null | awk 'NR==2{print \$4}'" 2>/dev/null)
-  _need_kb=$(( ${_src_dd_kb:-0} * 22 / 10 ))
-  if [ "${_XMASS_SKIP_DISK_GATE}" = "YES" ]; then
-    _alrt "target datadir space gate SKIPPED by _XMASS_SKIP_DISK_GATE=YES"
-  elif [ -z "${_src_dd_kb}" ] || [ -z "${_tgt_free_kb}" ]; then
-    # Fail closed: an unmeasurable gate that prints OK is worse than none,
-    # because init's next steps displace the target's datadir.
-    _die "could not measure datadir space (source=${_src_dd_kb:-unknown}K" \
-         " target-free=${_tgt_free_kb:-unknown}K) -- re-check the target, or export" \
-         " _XMASS_SKIP_DISK_GATE=YES to proceed deliberately."
-  elif [ "${_tgt_free_kb}" -lt "${_need_kb}" ]; then
-    _die "target ${_tgt} has ${_tgt_free_kb}K free at /var/lib/mysql but the restore" \
-         " transiently needs ~${_need_kb}K (2.2x the ${_src_dd_kb}K source datadir)." \
-         " Free space on the target, or export _XMASS_SKIP_DISK_GATE=YES to override."
-  else
-    _info "Target datadir space check: OK (free=${_tgt_free_kb}K need~${_need_kb}K)"
-  fi
+  # datadir was displaced. Override: _XMASS_SKIP_DISK_GATE=YES. The same
+  # read judges the shape of the folder there (a real folder, or a link onto
+  # a folder of the attached mount) and sets where the snapshot is staged.
+  _xmass_target_dd_gate die
 
   # The standby preparation mark, after every read-only gate above (the
   # server_id, patch and space gates among them: a failback refused there
@@ -18428,6 +18857,7 @@ REMOTE
   _xmass_wait_target_silent local "the datadir snapshot starts" die full
   _xmass_init_inflight_touch
   _xmass_take_backup
+  _xmass_target_dd_recheck
   # Rotated HERE, behind every leg that can still refuse: a re-init against a
   # standby whose replica runs must not cut that replica's credentials and
   # then unwind "leaving the box as it was".
@@ -18482,6 +18912,8 @@ REMOTE
   # The box is a committed standby: its preparation mark may now go by
   # itself at a promotion (second.sh), whoever promotes it.
   _xmass_prep_mark_commit "${_tgt}"
+  # The replica runs on its own copy: the snapshot's stage goes, on both ends.
+  _xmass_drop_stages
   # A stale autosync marker for a DIFFERENT target must not survive a fresh
   # init: the pair it described is gone, and every later cadence pass would
   # refuse loudly on the mismatch. A SAME-target re-init is the documented
