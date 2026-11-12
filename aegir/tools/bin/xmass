@@ -6062,6 +6062,68 @@ _xmass_binlog_plan() {
   return 0
 }
 
+###-------------TIME ZONE---------------###
+
+# A server's zone is not part of what a move carries: a target left on
+# another one serves the sites another local time after the cutover, in what
+# MySQL answers for NOW() and in every log. Nothing here sets a zone. The ends
+# are compared while setting the target's is still cheap, and a difference
+# is said with both values; a pair in two facilities may be meant to differ,
+# so it is never a refusal.
+
+# What one end runs on, as KEY=value lines: the zone's name, its offset now
+# and in six months (two zones that agree today may part at the next change
+# of the clocks), its short name, and MySQL's own setting with the offset it
+# answers at.
+_xmass_tz_probe_sh() {
+  cat <<'PROBE'
+_n="$(readlink -f /etc/localtime 2>/dev/null | sed -n 's|^.*/zoneinfo/||p')"
+[ -n "${_n}" ] || _n="$(head -n 1 /etc/timezone 2>/dev/null | tr -d '[:space:]')"
+echo "TZ_NAME=${_n}"
+echo "TZ_OFF=$(date +%z 2>/dev/null)/$(date -d '+6 months' +%z 2>/dev/null)"
+echo "TZ_ABBR=$(date +%Z 2>/dev/null)"
+echo "TZ_SQL=$(mysql --defaults-file=/root/.my.cnf --connect-timeout=5 -sNe "SELECT CONCAT_WS('|', @@global.time_zone, TIME_FORMAT(TIMEDIFF(NOW(), UTC_TIMESTAMP()), '%H:%i'))" 2>/dev/null)"
+PROBE
+}
+
+# $1 = the target. Always returns 0.
+_xmass_tz_compare() {
+  local _t="$1" _s _o _sn _so _sa _sq _tn _to _ta _tq _x _c
+  _s="$(_xmass_tz_probe_sh | bash 2> /dev/null)"
+  _o="$(_xmass_tz_probe_sh | ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_t}" bash 2> /dev/null)"
+  _sn="$(_xmass_kv "${_s}" TZ_NAME)"; _so="$(_xmass_kv "${_s}" TZ_OFF)"
+  _sa="$(_xmass_kv "${_s}" TZ_ABBR)"; _sq="$(_xmass_kv "${_s}" TZ_SQL)"
+  _tn="$(_xmass_kv "${_o}" TZ_NAME)"; _to="$(_xmass_kv "${_o}" TZ_OFF)"
+  _ta="$(_xmass_kv "${_o}" TZ_ABBR)"; _tq="$(_xmass_kv "${_o}" TZ_SQL)"
+  if ! [[ "${_so}" =~ ^[+-][0-9]{4}/[+-][0-9]{4}$ ]] || ! [[ "${_to}" =~ ^[+-][0-9]{4}/[+-][0-9]{4}$ ]]; then
+    _msg "time zone: not read on both ends, not compared"
+    return 0
+  fi
+  if [ "${_so}" != "${_to}" ]; then
+    _alrt "time zone: this server runs on ${_sn:-an unnamed zone} (${_sa}, UTC${_so%%/*}), the target ${_t} on ${_tn:-an unnamed zone} (${_ta}, UTC${_to%%/*}): after a cutover the sites would read another local time -- set the target's zone before 'xmass init' unless the difference is meant"
+  elif [ "${_sn}" != "${_tn}" ]; then
+    _msg "time zone: ${_sn:-an unnamed zone} here, ${_tn:-an unnamed zone} on the target ${_t}: the same clock today and in six months"
+  else
+    _msg "time zone: ${_sn:-${_sa}} on both ends"
+  fi
+  # MySQL keeps the zone it started with. Where this server's zone was set
+  # since, MySQL moves to it at its next start, and init restarts it where
+  # it switches the binary log on.
+  if [[ "${_sq}" =~ ^SYSTEM\|-?[0-9]{2}:[0-9]{2}$ ]]; then
+    _x="${_so%%/*}"
+    _c="${_x:1:2}:${_x:3:2}"
+    [ "${_x:0:1}" != "-" ] || _c="-${_c}"
+    if [ "${_sq#*|}" != "${_c}" ]; then
+      _alrt "time zone: MySQL here answers at ${_sq#*|} from UTC while this server's clock is at ${_c}: it started before the zone was set and moves to it at its next start, which 'xmass init' brings where it switches the binary log on"
+    fi
+  fi
+  # a zone set in MySQL's own configuration is not carried by the seed
+  if [ -n "${_sq}" ] && [ -n "${_tq}" ] && [ "${_sq%%|*}" != "${_tq%%|*}" ]; then
+    _alrt "time zone: MySQL's own time_zone is '${_sq%%|*}' here and '${_tq%%|*}' on the target ${_t}: the seed does not carry it -- set it in the target's MySQL configuration unless the difference is meant"
+  fi
+  return 0
+}
+
 ###-------------GTID SETUP---------------###
 
 _ip_to_server_id() {
@@ -17410,6 +17472,8 @@ _xmass_cmd_prep_target() {
   _xmass_target_dd_gate warn
   # and what the binary log will cost on each end
   _xmass_binlog_plan warn
+  # and the clock each end keeps
+  _xmass_tz_compare "${_tgt}"
 
   # The standby preparation mark before the first create: the INIT arm of
   # an armed target then leaves every account this run creates at no web
@@ -18822,6 +18886,8 @@ _xmass_cmd_init() {
   # A database folder on the target that cannot be seeded as it is (a mount
   # point at the path, a link naming no folder) is a cheap read too.
   _xmass_target_dd_gate shape
+  # The clock each end keeps, said while the target's is still cheap to set.
+  _xmass_tz_compare "${_tgt}"
   # The datadir swap below must never land on a target mid-pass: a
   # prep-target minutes ago left every seeded account an octopus pass and
   # its queued verifies. Wait for real silence, bounded, fail-closed.

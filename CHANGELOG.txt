@@ -123,6 +123,13 @@
       sets the days, _XMASS_BINLOG_DAY_KB=<K> plans with a known daily
       figure. The binary log and GTID stay on.
 
+    * xmass prep-target and init compare the time zone of the two servers.
+      Nothing in a move carries a server's zone, so a target left on another
+      one would serve the sites another local time after the cutover. A
+      difference is said with both values, as a warning and never a refusal;
+      so are a MySQL still running on the zone it started with and a
+      time_zone set in one server's MySQL configuration alone.
+
 @=> Security
 
     * The limited shell writes each log record on one line, a control
