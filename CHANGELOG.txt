@@ -744,6 +744,14 @@
       queues those verifies and they run once post-mig starts cron again,
       so their results were seen only in the control panel.
 
+    * xcopy noproxy, which ends a copy on the source, clears the export and
+      transfer stamps and the panel dump there once the account was
+      transferred. The source keeps serving the account, and the stamps
+      stayed: the nightly took the export stamp for a move in flight and
+      left the account's ghost vhosts in place for good, and the next copy
+      was refused until they were removed by hand. The per-site dumps stay
+      until the next export replaces them.
+
     * edgetest's regression phase checks the IP lists' SSH anti-lockout
       source by running ip_access.sh's own reader, and says whether it
       sees the session edgetest runs in. It asked netstat, which the lists
