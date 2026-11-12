@@ -133,7 +133,7 @@ isd($s[2]) or refuse("control is not a directory");
 my ($n, @q) = (0, ["control", @s]);
 while (my $e = shift @q) {
   my ($f, @t) = @$e;
-  own($t[4]) or refuse(nm($f) . " is owned by uid $t[4]");
+  own($t[4]) or refuse(nm($f) . " is owned by uid $t[4]" . (defined(getpwuid($t[4])) ? "" : ", which no user has and root never recorded for this account: if the file is its own, give it to its .ftp login"));
   next unless isd($t[2]);
   opendir(my $h, "./$f") or refuse(nm($f) . " cannot be read");
   for my $b (readdir($h)) {

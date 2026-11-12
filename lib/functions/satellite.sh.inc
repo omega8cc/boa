@@ -8405,9 +8405,10 @@ _satellite_chmod_nofollow() {
 # account itself is in passwd. The numbers of the account's removed
 # identities that root recorded in /data/conf/acct-uids/<oN>.gone (the ltd
 # worker, before deluser frees one) are listed too while no user has them.
-# Root's reads, hand-overs and owner checks take a uid no passwd entry names
-# only when it is listed: another account's removed login leaves files under
-# such a number too. Its removal walks still take any.
+# Root's check of the control folder, its reads of the control files and its
+# hand-overs into that folder take a uid no passwd entry names only when it
+# is listed: another account's removed login leaves files under such a number
+# too. Its other hand-overs, mode walks and removal walks still take any.
 _acct_walk_uids() {
   local _a="${1}" _n _p _u _r _x="0" _self=NO
   case "${_a}" in

@@ -604,8 +604,8 @@ _acct_read_in() {
 # its own in a group-writable directory below it, for root to act on as the
 # account's. A name is taken only when it, the directory it is in and every
 # directory above that up to / are root's or one of the account's
-# identities' (the uids given second, _acct_walk_uids; a uid no passwd entry
-# names counts too); otherwise it reads as not there. Status 0 taken, 2 no
+# identities' (the uids given second, _acct_walk_uids, with the account's
+# recorded removed identities); otherwise it reads as not there. Status 0 taken, 2 no
 # such name in a place of the account's, 1 refused.
 #   e  the name exists (lstat; a link of the account's only when it leads
 #      somewhere) and is the account's
@@ -669,7 +669,7 @@ isd($s[2]) or refuse("control is not a directory");
 my ($n, @q) = (0, ["control", @s]);
 while (my $e = shift @q) {
   my ($f, @t) = @$e;
-  own($t[4]) or refuse(nm($f) . " is owned by uid $t[4]");
+  own($t[4]) or refuse(nm($f) . " is owned by uid $t[4]" . (defined(getpwuid($t[4])) ? "" : ", which no user has and root never recorded for this account: if the file is its own, give it to its .ftp login"));
   next unless isd($t[2]);
   opendir(my $h, "./$f") or refuse(nm($f) . " cannot be read");
   for my $b (readdir($h)) {

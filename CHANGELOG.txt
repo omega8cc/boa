@@ -216,12 +216,14 @@
       Root took any file whose owner no user has as the account's own, and
       read it, handed it over or set its owner, so an IP list or backup
       credentials planted in the control folder, or staged elsewhere and
-      moved in later, applied to the account. Root now takes such a number
-      only when it was one of the account's own identities: the ltd worker
-      and the Octopus upgrade record each removed identity's number in
-      /data/conf/acct-uids/<oN>.gone before deluser frees it. A control
-      folder holding any other such file is left unread with an ALERT, as
-      one another account made is.
+      moved in later, applied to the account. Root's check of the control
+      folder, its readers of the control files and its hand-overs into that
+      folder now take such a number only when it was one of the account's
+      own identities: the ltd worker and the Octopus upgrade record each
+      removed identity's number in /data/conf/acct-uids/<oN>.gone before
+      deluser frees it. A control folder holding any other such file is
+      left unread with an ALERT that says how to give it back, as one
+      another account made is.
 
     * Before the ltd worker removes a client login, it ends every process
       the login runs, in any root: a process in a chroot or a user

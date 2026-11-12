@@ -1936,10 +1936,11 @@ _ltd_acct_gone_prune_all() {
 # passwd entry names, the gate files in it go and each name removed is
 # printed, the folder first closed to group and other writers (another
 # login of the account that made it could put a gate back before root hands
-# it over). A login removed from another account leaves its folder under such
-# a number, and root's walks take that number as the account's own and hand
-# the folder over; a gate left in it would then hold the account's sites.
-# The worker is parked through a move, so no gate of a move is lost here.
+# it over). A removed login's folder is under such a number; root's walks
+# take it as the account's own, and hand the folder over, only when the
+# number was one of the account's identities (_acct_walk_uids), and a gate
+# left in it would then hold the account's sites. The worker is parked
+# through a move, so no gate of a move is lost here.
 _ACCT_GONE_GATE_PL='my @s = lstat("./control") or exit 0;
 exit 0 unless ($s[2] & 0170000) == 0040000;
 {
@@ -2010,7 +2011,7 @@ isd($s[2]) or refuse("control is not a directory");
 my ($n, @q) = (0, ["control", @s]);
 while (my $e = shift @q) {
   my ($f, @t) = @$e;
-  own($t[4]) or refuse(nm($f) . " is owned by uid $t[4]");
+  own($t[4]) or refuse(nm($f) . " is owned by uid $t[4]" . (defined(getpwuid($t[4])) ? "" : ", which no user has and root never recorded for this account: if the file is its own, give it to its .ftp login"));
   next unless isd($t[2]);
   opendir(my $h, "./$f") or refuse(nm($f) . " cannot be read");
   for my $b (readdir($h)) {
@@ -2050,9 +2051,11 @@ _acct_ctrl_own() {
 # unless the account itself is in passwd. The numbers of the account's
 # removed identities that root recorded in /data/conf/acct-uids/<oN>.gone
 # (the ltd worker, before deluser frees one) are listed too while no user
-# has them. Root's reads, hand-overs and owner checks take a uid no passwd
-# entry names only when it is listed: another account's removed login
-# leaves files under such a number too. Its removal walks still take any.
+# has them. Root's check of the control folder, its reads of the control
+# files and its hand-overs into that folder take a uid no passwd entry names
+# only when it is listed: another account's removed login leaves files under
+# such a number too. Its other hand-overs, mode walks and removal walks
+# still take any.
 _acct_walk_uids() {
   local _a="${1}" _n _p _u _r _x="0" _self=NO
   case "${_a}" in

@@ -186,8 +186,8 @@ _acct_copy_here() {
 # its own in a group-writable directory below it, for root to act on as the
 # account's. A name is taken only when it, the directory it is in and every
 # directory above that up to / are root's or one of the account's
-# identities' (the uids given second, _acct_walk_uids; a uid no passwd entry
-# names counts too); otherwise it reads as not there. Status 0 taken, 2 no
+# identities' (the uids given second, _acct_walk_uids, with the account's
+# recorded removed identities); otherwise it reads as not there. Status 0 taken, 2 no
 # such name in a place of the account's, 1 refused.
 #   e  the name exists (lstat; a link of the account's only when it leads
 #      somewhere) and is the account's

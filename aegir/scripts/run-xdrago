@@ -194,9 +194,10 @@ _grav_site_socket() {
 # account itself is in passwd. The numbers of the account's removed
 # identities that root recorded in /data/conf/acct-uids/<oN>.gone (the ltd
 # worker, before deluser frees one) are listed too while no user has them.
-# Root's reads, hand-overs and owner checks take a uid no passwd entry names
-# only when it is listed: another account's removed login leaves files under
-# such a number too. Its removal walks still take any.
+# Root's check of the control folder, its reads of the control files and its
+# hand-overs into that folder take a uid no passwd entry names only when it
+# is listed: another account's removed login leaves files under such a number
+# too. Its other hand-overs, mode walks and removal walks still take any.
 _acct_walk_uids() {
   local _a="${1}" _n _p _u _r _x="0" _self=NO
   case "${_a}" in
@@ -250,7 +251,7 @@ isd($s[2]) or refuse("control is not a directory");
 my ($n, @q) = (0, ["control", @s]);
 while (my $e = shift @q) {
   my ($f, @t) = @$e;
-  own($t[4]) or refuse(nm($f) . " is owned by uid $t[4]");
+  own($t[4]) or refuse(nm($f) . " is owned by uid $t[4]" . (defined(getpwuid($t[4])) ? "" : ", which no user has and root never recorded for this account: if the file is its own, give it to its .ftp login"));
   next unless isd($t[2]);
   opendir(my $h, "./$f") or refuse(nm($f) . " cannot be read");
   for my $b (readdir($h)) {

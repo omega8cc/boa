@@ -362,7 +362,7 @@ isd($s[2]) or refuse("control is not a directory");
 my ($n, @q) = (0, ["control", @s]);
 while (my $e = shift @q) {
   my ($f, @t) = @$e;
-  own($t[4]) or refuse(nm($f) . " is owned by uid $t[4]");
+  own($t[4]) or refuse(nm($f) . " is owned by uid $t[4]" . (defined(getpwuid($t[4])) ? "" : ", which no user has and root never recorded for this account: if the file is its own, give it to its .ftp login"));
   next unless isd($t[2]);
   opendir(my $h, "./$f") or refuse(nm($f) . " cannot be read");
   for my $b (readdir($h)) {
@@ -667,9 +667,11 @@ _reown_tree_here() {
 ### .ftp login, its client sub-accounts and their -dev logins, its PHP-FPM
 ### users oN.web and oN.<ver>.web); status 1, and nothing, unless the
 ### account itself is in passwd. A uid no passwd entry names counts as the
-### account's own only when it is one of the account's removed identities
-### root recorded (/data/conf/acct-uids/<oN>.gone): the hand-over below
-### takes no other, the mode and removal walks still take any.
+### account's own in the walkers below, whether root recorded it as one of
+### the account's removed identities (/data/conf/acct-uids/<oN>.gone) or not:
+### they hand over and set site files, not the control files root reads as
+### the account's settings, whose hand-overs (the ltd worker, the Octopus
+### upgrade) take only recorded ones.
 _acct_walk_uids() {
   local _a="${1}" _n _p _u _r _x="0" _self=NO
   case "${_a}" in
