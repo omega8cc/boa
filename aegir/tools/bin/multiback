@@ -1677,12 +1677,70 @@ while args:
 # the worst case (all output is captured, so a stall is silent).
 config.num_retries = 2
 
+
+def b2_wipe(b2):
+    # On b2, every version of every duplicity-named file goes by the id one
+    # version listing gives (a list call for each thousand versions), never
+    # by name: deleting by name makes the backend look each id up first, a
+    # download-class request the provider caps per day, so a large wipe
+    # spends that cap and every delete after it fails. An upload that never
+    # finished is cancelled: its parts are stored, though no listing of
+    # names shows them. The verified claim rests on a version listing that
+    # comes back with no duplicity-named version left.
+    prefix = b2.path or ""
+
+    def versions():
+        mine, foreign = [], 0
+        for fv, _ in b2.bucket.ls(prefix, latest_only=False, recursive=True):
+            rel = fv.file_name[len(prefix):] if fv.file_name.startswith(prefix) else fv.file_name
+            if file_naming.parse(rel.encode()):
+                mine.append(fv)
+            else:
+                foreign += 1
+        return mine, foreign
+
+    doomed, foreign = versions()
+    if foreign:
+        print(f"wipe driver: leaving {foreign} version(s) of non-duplicity files untouched")
+    if not doomed:
+        print("wipe driver: no duplicity files at the target, nothing to delete")
+        return 0
+    issued = 0
+    passes = 0
+    while True:
+        passes += 1
+        print(f"wipe driver: deleting {len(doomed)} version(s) of duplicity files by id")
+        for fv in doomed:
+            print(f"wipe driver: deleting {fv.file_name} ({fv.action})")
+            try:
+                if fv.action == "start":
+                    b2.bucket.api.cancel_large_file(fv.id_)
+                else:
+                    b2.bucket.delete_file_version(fv.id_, fv.file_name)
+                issued += 1
+            except Exception as e:
+                print(f"wipe driver: {fv.file_name}: {e.__class__.__name__}: {e}")
+        doomed, foreign = versions()
+        if not doomed:
+            break
+        if passes == 5:
+            print(f"wipe driver: FAILED: {len(doomed)} version(s) of duplicity files still listed after {passes} delete passes")
+            print("wipe driver: re-running purge continues the wipe if deletions were succeeding")
+            return 1
+        print(f"wipe driver: {len(doomed)} version(s) still listed; deleting again")
+    print(f"wipe driver: verified: no version of any duplicity-named file remains at the target ({issued} deletion(s) in {passes} pass(es))")
+    return 0
+
+
 try:
     backend.import_backends()
     remote = backend.get_backend(url)
     if remote is None:
         print("wipe driver: target is not a recognized backend URL")
         sys.exit(2)
+    b2 = getattr(remote, "backend", None)
+    if b2 is not None and b2.__class__.__name__ == "B2Backend" and getattr(b2, "bucket", None) is not None:
+        sys.exit(b2_wipe(b2))
     names = remote.list()
     doomed = [f for f in names if file_naming.parse(f)]
     foreign = len(names) - len(doomed)
