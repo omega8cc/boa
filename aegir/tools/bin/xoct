@@ -4355,10 +4355,11 @@ _migrate_sites() {
           _DB_FRESH=NO
           if [ ! -d "/var/lib/mysql/${_DBN}" ]; then
             _DB_FRESH=YES
-            ### The connection is the one set before the import: the host
-            ### from barracuda.cnf, the port from the account's own octopus.cnf
-            ### (ProxySQL's, 6033, for an account boa in-oct installed). No
-            ### marker picks another here.
+            ### The CREATE DATABASE below uses the connection set before the
+            ### import: the host from barracuda.cnf, the port from the
+            ### octopus.cnf of the account name given (the source's name on a
+            ### renamed import; ProxySQL's 6033 for an account boa in-oct
+            ### installed). No marker picks another here.
             mysqladmin -u root flush-privileges &> /dev/null
             [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL3 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
             if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
@@ -10952,10 +10953,12 @@ _migrate_init() {
   if [ "${_cmd}" = "create" ] || [ "${_cmd}" = "export" ]; then
     _xoct_le_kept_warn
   fi
-  ### No ProxySQL marker picks a connection here: the account's own
-  ### octopus.cnf, sourced below before the export and import, sets the port
-  ### (ProxySQL's for an account boa in-oct installed); mydumper and myloader
-  ### always use this box's own server.
+  ### No ProxySQL marker picks a connection here: the octopus.cnf of the
+  ### account name given (the source's name on a renamed import), sourced
+  ### below before the export and import, sets the port of the calls that
+  ### name one (ProxySQL's for an account boa in-oct installed); mydumper,
+  ### myloader and the mysql and mysqladmin calls that name no port use this
+  ### box's own server.
   ### With no target the usage records leg would address this box itself.
   if [ "${_oct}" = "xusage" ] && [ -z "${_tgt}" ]; then
     echo "ERROR: ${_cmd} xusage needs a target: xoct ${_cmd} xusage <target>"
