@@ -1417,6 +1417,7 @@ _restore() {
   _final_restore_target="${_restore_target%/}/${_last_part}"
 
   echo "MyBackup Restore for [${_user}] on [$(date)]" >> ${_LOGFILE}
+  _RST_OK=NO
   if ! _rst_setup "${_DCY_MN_CMD} restore --no-restore-owner" \
     "${_DCY_MN_CMD} list-current-files" "${_restore_time}" acct "${_user}" \
     "${_LOGFILE}" "mybackup restore ${_SERVICE}"; then
@@ -1424,6 +1425,7 @@ _restore() {
   elif _rst_path "${_clean_restore_path}" "${_final_restore_target}"; then
     _RST_GIVEN="${_clean_restore_path}"
     _RST_DONE="${_RST_LAST}"
+    _RST_OK=YES
     _rst_links "${_final_restore_target}"
   fi
   # --no-restore-owner lands the tree root-owned: hand it to the account,
@@ -1809,16 +1811,18 @@ _main_script() {
         _acct_in_real_dir "${_ctl_rb_dir}" _unlink_link_here credentials
         _acct_in_real_dir "${_user_credentials_dir}" \
           _cred_window_open_here "${_user}" "${_cred_name}"
-        # Pass the validated args positionally via -- so each arg arrives at
-        # the inner mybackup as a separate $1/$2/$3/$4. No shell-interpolation
-        # of attacker-controlled bytes; metacharacters in any arg are inert.
+        # Pass the validated args positionally after -- so each arg arrives at
+        # the inner mybackup as a separate $1/$2/$3/$4: su hands what follows
+        # -- to bash -c, which takes the first word as $0, so a word stands in
+        # that place. No shell-interpolation of attacker-controlled bytes;
+        # metacharacters in any arg are inert.
         # The restore runs as the account, which can stall its own run while
         # this pass holds the queue and every backup gate: one restore gets
         # at most 24 hours. su then ends only the account's shell, so what
         # that shell started is ended with the session it led, by the pid it
         # wrote, the account's own processes alone.
         local _rs_t0="${SECONDS}" _rs_rc=0 _rs_sid=""
-        timeout -k 60 24h su -s /bin/bash - "${_user}" -c 'exec mybackup "$@"' -- "${_queued_args[@]}" 9>&-
+        timeout -k 60 24h su -s /bin/bash - "${_user}" -c 'exec mybackup "$@"' -- mybackup "${_queued_args[@]}" 9>&-
         _rs_rc=$?
         wait
         # Clean up the command file
@@ -1831,6 +1835,9 @@ _main_script() {
           if [[ "${_rs_sid}" =~ ^[1-9][0-9]{0,9}$ ]] && [ "${_rs_sid}" -gt 1 ]; then
             pkill -KILL -u "${_user}" -U "${_user}" -s "${_rs_sid}" 2> /dev/null
           fi
+        elif [ "${_rs_rc}" -ne 0 ]; then
+          # refused, or its duplicity failed: nothing or not all came back
+          _command_log="${_command_log}(exit ${_rs_rc})"
         fi
         echo "[$(date)] Command was run for user ${_user}: ${_command_log}" >> /var/log/mybackup_commands_history.log
         # log/ is the account's own: appended inside the real directory
@@ -1910,11 +1917,6 @@ export _PIDFILE="/data/disk/${_user}/log/mybackup_${_SERVICE}_${_user}.pid"
 export _LOGPTH="/data/disk/${_user}/log"
 export _LOGFILE="${_LOGPTH}/mybackup_${_SERVICE}_${_user}.log"
 
-export _DCY_MN_CMD="/usr/local/bin/duplicity \
-    --name=${_NAME} \
-    --allow-source-mismatch \
-    --concurrency 4"
-
 _create_pid_file "${_PIDFILE}"
 # Set only after the lock is ours -- an exit on a held lock must not
 # remove the owner's file; a signal death re-enters the EXIT trap.
@@ -1939,7 +1941,16 @@ _print_env "mybackup_main"
 case "${_ACTION}" in
   restore)
     _set_backup_target "${_SERVICE}" "${_user}"
+    # built once the target set the account's name: duplicity keeps the
+    # restore's cache in a folder of that name, never at its cache root
+    export _DCY_MN_CMD="/usr/local/bin/duplicity \
+    --name=${_NAME} \
+    --allow-source-mismatch \
+    --concurrency 4"
     _restore "${_RESTORE_PATH}" "${_RESTORE_TIME}"
+    # a restore that did not restore what was asked ends with a failing
+    # status, which the queue pass records
+    [ "${_RST_OK}" = "YES" ] || _MYB_RC=1
     ;;
   *)
     _usage
@@ -1970,4 +1981,4 @@ esac
   export _userEmail=
 
 _print_env "mybackup_exit"
-exit 0
+exit "${_MYB_RC:-0}"
