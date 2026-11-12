@@ -5008,13 +5008,30 @@ _xcopy_realdir_here() {
   [ -L "./${1}" ] && rm -f -- "./${1}"
   [ -d "./${1}" ] || mkdir -p -- "./${1}"
 }
-# The dumps in the current (pinned) src/ directory removed: the glob expands
-# here, never in a directory a link put in its place names.
+# The dumps in the current (pinned) src/ directory removed, whatever stands at
+# each name: the glob expands here, never in a directory a link put in its
+# place names, and rm -r removes a link as a link.
 _xcopy_rm_sql_dumps_here() {
-  rm -f -- ./*.sql
+  rm -rf -- ./*.sql
+}
+# The per-site dump folders in the current (pinned) src/ directory removed: a
+# real directory holding mydumper's metadata file. The transfer adds to the
+# target's folders and never removes from them, and the import loads every
+# file there, so a folder left from an earlier copy would load that copy's
+# tables and chunks with the new ones. A link is never followed.
+_xcopy_rm_site_dumps_here() {
+  local _e
+  for _e in ./*/; do
+    _e="${_e%/}"
+    [ -L "${_e}" ] && continue
+    if [ -d "${_e}" ] && [ -f "${_e}/metadata" ] && [ ! -L "${_e}/metadata" ]; then
+      rm -rf -- "${_e}"
+    fi
+  done
 }
 # The names among "$@" still in the current (pinned) directory, each after a
-# space; a *.sql argument stands for every dump there.
+# space; a *.sql argument stands for every dump there, a site-dumps argument
+# for every per-site dump folder.
 _xcopy_names_left_here() {
   local _n _f
   for _n in "$@"; do
@@ -5022,6 +5039,14 @@ _xcopy_names_left_here() {
       for _f in ./*.sql; do
         if [ -e "${_f}" ] || [ -L "${_f}" ]; then
           printf ' %s' "${_f#./}"
+        fi
+      done
+    elif [ "${_n}" = "site-dumps" ]; then
+      for _f in ./*/; do
+        _f="${_f%/}"
+        [ -L "${_f}" ] && continue
+        if [ -d "${_f}" ] && [ -f "${_f}/metadata" ] && [ ! -L "${_f}/metadata" ]; then
+          printf ' %s/' "${_f#./}"
         fi
       done
     elif [ -e "./${_n}" ] || [ -L "./${_n}" ]; then
@@ -5034,14 +5059,17 @@ _xcopy_names_left_here() {
 # new one only while none is there, so a refresh would ship the panel as it
 # was at the first copy) and the export and transfer stamps, which refuse a
 # new export and transfer. On a target: the import stamp, which refuses a new
-# import, and the recorded panel database. Either side: the failure latches.
-# Kept: the per-site dumps (the next export replaces each), the list of the
-# stop markers a copy put (log/xcopy_le_kept.txt, as the markers stay),
-# log/sourcefqdn.txt (written by every export) and the state of an xoct move
-# (log/proxied.pid and the root proxied marker are xoct's). src/ and log/ are
-# oN's: each name is removed inside the real directory, never through a link
-# put there, and a link at src or log itself refuses the whole reset before
-# anything is removed.
+# import, and the recorded panel database. Either side: the failure latches,
+# every dump directly in src/ and the per-site dump folders (on a target the
+# next transfer adds to a folder left there, and the import would load both
+# copies' files). Kept: the list of the stop markers a copy put
+# (log/xcopy_le_kept.txt, as the markers stay), log/sourcefqdn.txt (written by
+# every export) and xoct's proxy records (log/proxied.pid and the root proxied
+# marker). xoct keeps its move state in the same stamps, so this is never run
+# on an account in the middle of an xoct move. src/ and log/ are oN's: each
+# name is removed inside the real directory, never through a link put there,
+# and a link at src or log itself refuses the whole reset before anything is
+# removed.
 _xcopy_reset_state() {
   local _U="/data/disk/${_oct}" _d _left="" _bad="" _l
   local -a _log=(exported.pid transferred.pid imported.pid export_failed.pid import_failed.pid panel_db.txt)
@@ -5060,35 +5088,49 @@ _xcopy_reset_state() {
     exit 1
   fi
   echo "ALRT: clearing the copy state of ${_oct} on this box:"
-  echo "ALRT:   src/*.sql (the panel dump, prev_hostmaster.sql),"
+  echo "ALRT:   src/*.sql (the panel dump, prev_hostmaster.sql) and the per-site"
+  echo "ALRT:   dump folders in src/ (each holding mydumper's metadata file),"
   echo "ALRT:   log/{exported,transferred,imported}.pid,"
   echo "ALRT:   log/{export_failed,import_failed}.pid and"
   echo "ALRT:   log/panel_db.txt (the recorded import panel database)"
+  ### Each check reads the real directory again: one that cannot be entered
+  ### now (a link swapped in since the check above) is named, never read as
+  ### cleared.
   if [ -d "${_U}/src" ]; then
     _xcopy_in_real_dir "${_U}/src" _xcopy_rm_sql_dumps_here
-    _l="$(_xcopy_in_real_dir "${_U}/src" _xcopy_names_left_here '*.sql')"
-    [ -z "${_l}" ] || _left="${_left}${_l// / src/}"
+    _xcopy_in_real_dir "${_U}/src" _xcopy_rm_site_dumps_here
+    if _l="$(_xcopy_in_real_dir "${_U}/src" _xcopy_names_left_here '*.sql' site-dumps)"; then
+      [ -z "${_l}" ] || _left="${_left}${_l// / src/}"
+    else
+      _left="${_left} src/ (not entered)"
+    fi
   fi
   if [ -d "${_U}/log" ]; then
     _xcopy_in_real_dir "${_U}/log" rm -f -- "${_log[@]/#/./}"
-    _l="$(_xcopy_in_real_dir "${_U}/log" _xcopy_names_left_here "${_log[@]}")"
-    [ -z "${_l}" ] || _left="${_left}${_l// / log/}"
+    if _l="$(_xcopy_in_real_dir "${_U}/log" _xcopy_names_left_here "${_log[@]}")"; then
+      [ -z "${_l}" ] || _left="${_left}${_l// / log/}"
+    else
+      _left="${_left} log/ (not entered)"
+    fi
   fi
   if [ -n "${_left}" ]; then
     echo "ERROR: still there in ${_U}:${_left}"
     exit 1
   fi
-  echo "INFO: copy state cleared for ${_oct}; the per-site dumps in src/ stay until the next export replaces them"
+  echo "INFO: copy state cleared for ${_oct}, the dumps in src/ with it"
   echo "INFO: on a target, clear it before a new transfer, never between that transfer and its import:"
-  echo "INFO: it would remove the panel dump the transfer brought"
+  echo "INFO: it would remove the dumps the transfer brought"
+  echo "INFO: an account copied onward from a server that received it as a copy: clear it there before its export"
 }
 # noproxy ends a copy on its source, which keeps serving the account: the
-# export and transfer stamps and the panel dump go. Left in place, the stamp
-# kept the nightly from removing the account's ghost vhosts for good (it reads
-# an export stamp as a move in flight), refused the next copy, and the dump
-# went out again with a later export. Only after a transfer from here: an
-# account that never left this box keeps its export. The per-site dumps stay
-# until the next export replaces them. A failure to clear fails the verb.
+# export and transfer stamps and the export's dumps (the panel dump and the
+# per-site dump folders, about the size of the account's databases) go. Left
+# in place, the stamp kept the nightly from removing the account's ghost vhosts
+# for good (it reads an export stamp as a move in flight), refused the next
+# copy, and the panel dump went out again with a later export. Only after a
+# transfer from here: an account that never left this box keeps its export.
+# Another dump in src/ is not the export's and stays. A failure to clear
+# fails the verb.
 _xcopy_source_done() {
   local _l _left=""
   local -a _st=(exported.pid transferred.pid export_failed.pid)
@@ -5103,21 +5145,29 @@ _xcopy_source_done() {
     _XCOPY_RUN_FAIL=YES
     return 1
   fi
+  ### Each check reads the real directory again: one that cannot be entered
+  ### now is named, never read as cleared.
   if [ -d "${_USR}/src" ]; then
-    _xcopy_in_real_dir "${_USR}/src" rm -f -- ./prev_hostmaster.sql
-    _l="$(_xcopy_in_real_dir "${_USR}/src" _xcopy_names_left_here prev_hostmaster.sql)"
-    [ -z "${_l}" ] || _left="${_left}${_l// / src/}"
+    _xcopy_in_real_dir "${_USR}/src" rm -rf -- ./prev_hostmaster.sql
+    _xcopy_in_real_dir "${_USR}/src" _xcopy_rm_site_dumps_here
+    if _l="$(_xcopy_in_real_dir "${_USR}/src" _xcopy_names_left_here prev_hostmaster.sql site-dumps)"; then
+      [ -z "${_l}" ] || _left="${_left}${_l// / src/}"
+    else
+      _left="${_left} src/ (not entered)"
+    fi
   fi
   _xcopy_in_real_dir "${_USR}/log" rm -f -- "${_st[@]/#/./}"
-  _l="$(_xcopy_in_real_dir "${_USR}/log" _xcopy_names_left_here "${_st[@]}")"
-  [ -z "${_l}" ] || _left="${_left}${_l// / log/}"
+  if _l="$(_xcopy_in_real_dir "${_USR}/log" _xcopy_names_left_here "${_st[@]}")"; then
+    [ -z "${_l}" ] || _left="${_left}${_l// / log/}"
+  else
+    _left="${_left} log/ (not entered)"
+  fi
   if [ -n "${_left}" ]; then
     echo "ALRT: the copy of ${_oct} ended, but these are still there in ${_USR}:${_left}"
     _XCOPY_RUN_FAIL=YES
     return 1
   fi
-  echo "INFO: the copy of ${_oct} ended here: its export and transfer stamps and the panel dump are cleared"
-  echo "INFO: the per-site dumps in src/ stay until the next export replaces them"
+  echo "INFO: the copy of ${_oct} ended here: its export and transfer stamps and its dumps in src/ are cleared"
 }
 # The whole regular file ./$1 of the current (pinned) directory streamed to
 # stdout without following a link (unbounded, for a DB dump): a link put at the
