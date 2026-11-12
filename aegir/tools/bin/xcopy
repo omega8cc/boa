@@ -5082,6 +5082,43 @@ _xcopy_reset_state() {
   echo "INFO: on a target, clear it before a new transfer, never between that transfer and its import:"
   echo "INFO: it would remove the panel dump the transfer brought"
 }
+# noproxy ends a copy on its source, which keeps serving the account: the
+# export and transfer stamps and the panel dump go. Left in place, the stamp
+# kept the nightly from removing the account's ghost vhosts for good (it reads
+# an export stamp as a move in flight), refused the next copy, and the dump
+# went out again with a later export. Only after a transfer from here: an
+# account that never left this box keeps its export. The per-site dumps stay
+# until the next export replaces them. A failure to clear fails the verb.
+_xcopy_source_done() {
+  local _l _left=""
+  local -a _st=(exported.pid transferred.pid export_failed.pid)
+  if [ ! -e "${_USR}/log/transferred.pid" ] && [ ! -L "${_USR}/log/transferred.pid" ]; then
+    echo "INFO: ${_oct} was not transferred from this box: its export state stays"
+    return 0
+  fi
+  if ! _xcopy_in_real_dir "${_USR}/log" true \
+    || { { [ -e "${_USR}/src" ] || [ -L "${_USR}/src" ]; } \
+      && ! _xcopy_in_real_dir "${_USR}/src" true; }; then
+    echo "ALRT: ${_USR}/log or ${_USR}/src is not the account's own directory: its export state stays"
+    _XCOPY_RUN_FAIL=YES
+    return 1
+  fi
+  if [ -d "${_USR}/src" ]; then
+    _xcopy_in_real_dir "${_USR}/src" _xcopy_rm_sql_dumps_here
+    _l="$(_xcopy_in_real_dir "${_USR}/src" _xcopy_names_left_here '*.sql')"
+    [ -z "${_l}" ] || _left="${_left}${_l// / src/}"
+  fi
+  _xcopy_in_real_dir "${_USR}/log" rm -f -- "${_st[@]/#/./}"
+  _l="$(_xcopy_in_real_dir "${_USR}/log" _xcopy_names_left_here "${_st[@]}")"
+  [ -z "${_l}" ] || _left="${_left}${_l// / log/}"
+  if [ -n "${_left}" ]; then
+    echo "ALRT: the copy of ${_oct} ended, but these are still there in ${_USR}:${_left}"
+    _XCOPY_RUN_FAIL=YES
+    return 1
+  fi
+  echo "INFO: the copy of ${_oct} ended here: its export and transfer stamps and the panel dump are cleared"
+  echo "INFO: the per-site dumps in src/ stay until the next export replaces them"
+}
 # The whole regular file ./$1 of the current (pinned) directory streamed to
 # stdout without following a link (unbounded, for a DB dump): a link put at the
 # name yields nothing, a FIFO never blocks past the read.
@@ -6509,6 +6546,9 @@ _migrate_init() {
           service nginx reload
           # log/ is oN's: stamped inside the real directory, never through a link
           echo COMPLETE | _xcopy_in_real_dir "${_USR}/log" _xcopy_write_here proxied.pid
+        fi
+        if [ "${_cmd}" = "noproxy" ]; then
+          _xcopy_source_done
         fi
       fi
       if [ "${_XCOPY_RUN_FAIL}" = "YES" ]; then
