@@ -98,6 +98,29 @@
       window, so a monitor whose name also reads as a crawler cannot be
       shown a crawler's stored copy while the site is down.
 
+    * A server whose database outgrows its root disk can keep it on the
+      attached mount and still be a migration target, a standing mirror or
+      a source: /var/lib/mysql as a symbolic link onto a folder of the
+      mount. xmass init then stages the seed and parks the earlier folder
+      beside that folder, on the mount, and leaves the link alone, so
+      nothing of the seed lands on root; restore-target puts the parked
+      folder back the same way. A filesystem mounted at /var/lib/mysql
+      itself, a link whose volume is away and a link onto a mount's own
+      root are refused while nothing is displaced, and prep-target says so
+      days earlier.
+
+    * A move's binary log is sized to each server's disk. From xmass init
+      on both servers keep a binary log, until now with full row images and
+      for seven days whatever the disks held, which on a busy server could
+      take root past 90%, where BOA's own runs stop, before the cutover.
+      It is now written with minimal row images, and prep-target and init
+      say what it may cost a day (from the redo log's rate) and how many
+      days each server keeps: seven at most, one at least, as many as fit
+      under the 90% line there. init refuses a server that cannot hold one
+      day, while nothing is displaced. _XMASS_BINLOG_DAYS=<1-7> sets the
+      days, _XMASS_BINLOG_DAY_KB=<K> plans with a known daily figure. The
+      binary log and GTID stay on.
+
 @=> Security
 
     * The limited shell writes each log record on one line, a control
@@ -1675,6 +1698,29 @@
       a later pass got the file. The new copy is now unpacked beside the old
       one and swapped in only when it holds the file that runs it; a failure
       says so in an OOPS line and the next pass tries again.
+
+    * xmass init removes the snapshot's stage on both servers once the
+      replica runs. It stayed under /var/backups, a second whole copy of
+      the database on the target and a third on a source that staged,
+      until the next seed. _XMASS_KEEP_STAGE=YES keeps it.
+
+    * xmass init judges the room for its seed on the filesystem each of
+      the stage and the database folder lands on: 2.2 times the source's
+      folder where they share one, 1.1 times on each of two. A stage an
+      earlier seed left counts as room, since the next seed clears it
+      first.
+
+    * xtrim finalize --drop-datadir drops the folder a link at
+      /var/lib/mysql names, then the link. It removed the link, left the
+      data where it was and said the folder was dropped.
+
+    * xmass restore-target keeps the MySQL watchdog out while it swaps the
+      data directories. The watchdog could start MySQL between the stop
+      and the renames, on the replica's directory or on none.
+
+    * The wait for MySQL during an install or an upgrade reads a database
+      folder that is a symbolic link: its stall test and its table counts
+      stopped at the link.
 
 @=> New Features
 
