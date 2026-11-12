@@ -414,6 +414,16 @@
       leaves the mode when tools/le goes, as before; the pins a deleted
       file held are dropped like any other change of the file.
 
+    * The ltd worker's page check still moves a site onto a PHP its code
+      can run at once when the server's own state changed. A move the
+      account's own code drives, with the server's PHP versions, pools and
+      the check itself unchanged, waits out the account's 15 minutes like
+      its other changes: a login switching its platform's core files back
+      and forth no longer has its site moved, and nginx reloaded, on every pass.
+
+    * A newrelic.info longer than 64 characters is no key. One over 128 KiB
+      made the ltd worker reload the account's PHP-FPM pools on every pass.
+
     * The pass that writes the quic_bpf fragment no longer reads Nginx's
       error log after a reload. A reload never runs that setting's eBPF
       init, so only a line it did not cause, such as a site's own PHP
