@@ -197,6 +197,19 @@
       root's own entries behind the accounts'. Under an older wrapper the
       old rule stays. The STALLED alert names every stream stuck past its limit.
 
+    * A restore queued with mybackup runs again. Since May the queue
+      handed the restore its arguments one short, so every queued restore
+      was refused as an invalid command and nothing was restored.
+
+    * A queued restore keeps its Duplicity cache in a folder named for the
+      account and service: it ran without a name and kept its cache at the
+      top of the account's Duplicity cache folder.
+
+    * A queued restore that does not restore what was asked now ends with a
+      failing status, and both command histories, root's and the account's
+      own, add it to the run's line; they said the command was run either
+      way, which hid that every queued restore failed.
+
     * Another account can no longer put its own files in an account's
       ~/static/control, and root acts on that folder only when it is the
       account's own. On an account not yet on its own group, ~/static was
