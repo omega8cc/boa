@@ -148,6 +148,14 @@
 
 @=> Security
 
+    * xoct, xcopy and xmass copy a client's Ruby gems or npm tree only into
+      a folder on the target that root or the account itself owns. Any
+      account there could make another login's name first in the shared
+      /opt/user/gems or /opt/user/npm, and the move filled that folder,
+      which the other account owned and could add its own files to. Such a
+      folder is now refused with a DENY naming its owner: the dry run is not
+      clean, and the live transfer, or the xmass pass, does not complete.
+
     * The limited shell writes each log record on one line, a control
       character in a command as \xNN: a command sent over SSH with a
       newline in it started a second log line that read as a record of
@@ -685,6 +693,11 @@
       every quiet tick, and every gate of the server's own backup counts a
       live pass as a backup in flight, so a pass with nothing to do could
       refuse backboa's run at 03:15, which shares clear.sh's minute.
+
+    * xoct and xcopy no longer mark a transfer complete when the copy of
+      the client's Ruby gems or npm tree failed (a full disk, a file in the
+      way): the run names it with a DENY, as it does a failed backups copy,
+      and a run after the cause is fixed copies what is missing.
 
     * multiback purge empties a Backblaze B2 bucket even when the account's
       daily cap on download-class requests is spent: it deletes every
