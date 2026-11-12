@@ -155,8 +155,9 @@
     * The room a seed needs is measured without the binary log in the
       source's database folder, which no snapshot carries, on the source
       and on the target. The source stages its snapshot only where that
-      also keeps its filesystem under the 90% line where BOA's own runs
-      stop; otherwise it streams and says how much more room staging needs.
+      also keeps the filesystem it lands on under the 90% line where BOA's
+      own runs stop, judged as they judge it; otherwise it streams and says
+      how much more room staging needs.
 
     * xmass init says the space that stands once the seed is in, names in
       its closing lines the folder it parked on the target with its size
@@ -172,19 +173,22 @@
     * A manual xmass sync that moves an account's store off the target's
       attached mount onto its root names the copy it leaves on the mount,
       and xmass verify lists every such copy with its size and the command
-      to remove it once the move is verified. Nothing is removed for you.
+      to remove it once the move is verified, or, when a site's link still
+      reads the copy, that link instead. Nothing is removed for you.
 
     * xmass restore-target finishes an init that stopped between parking
       the database folder and making a new one, and a box an older xmass
       seeded over a link (which parked the link itself and seeded a folder
       on the root disk), where it named hand steps; a run of either cut
-      short is taken up again.
+      short is taken up again, and a parked link whose volume is not
+      mounted is refused before anything changes.
 
     * MySQL runs from a database folder linked onto the attached mount
       under enforced AppArmor profiles: the MySQL profiles include a local
       file, and BOA names the linked folder there on every barracuda pass
-      and before move_sql.sh starts MySQL. A real folder at the path, and
-      the lines an operator keeps in that file, are left as they are.
+      and before move_sql.sh starts MySQL, which loads again only the MySQL
+      profiles the kernel holds. A real folder at the path, and the lines
+      an operator keeps in that file, are left as they are.
 
 @=> Security
 
@@ -767,9 +771,10 @@
     * Sums that can pass two billion are printed whole: the awk on BOA
       servers prints them in exponent form (3e+09) and caps %d there. It
       hit loadreport's window start after some 248 days of uptime, the
-      firewall monitor's SYNPROXY packet counter, the catalogue's byte
-      check of a tarball over 2 GiB, and the Solr document counts of
-      solrtrim and xmass.
+      firewall monitor's SYNPROXY packet counter (its baseline starts once
+      afresh, so the whole counter never reads as one sample's), the
+      catalogue's byte check of a tarball over 2 GiB, and the Solr
+      document counts of solrtrim and xmass.
 
     * multiback purge empties a Backblaze B2 bucket even when the account's
       daily cap on download-class requests is spent: it deletes every
