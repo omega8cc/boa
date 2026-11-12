@@ -298,15 +298,20 @@ _metrics_pass() {
 ###
 _counter_delta() {
   # args: key current-value -> prints delta since the previous sample.
-  # No previous baseline (first run) and counter resets both floor to 0.
+  # No previous baseline (first run) and counter resets both floor to 0. A
+  # current value that is no whole number reads 0 and leaves the baseline as
+  # it was: written as 0, the next good sample would count the whole counter.
   local _key="$1" _cur="$2" _prev=0 _had=0
   local _prev_f="${_pthSta}/.prev_${_key}"
+  if ! [[ "${_cur}" =~ ^[0-9]+$ ]]; then
+    echo 0
+    return 0
+  fi
   if [ -f "${_prev_f}" ]; then
     _had=1
     read -r _prev < "${_prev_f}"
   fi
-  [[ "${_prev}" =~ ^[0-9]+$ ]] || _prev=0
-  [[ "${_cur}"  =~ ^[0-9]+$ ]] || _cur=0
+  [[ "${_prev}" =~ ^[0-9]+$ ]] || _had=0
   echo "${_cur}" > "${_prev_f}"
   if (( _had == 0 )); then
     echo 0
@@ -347,9 +352,11 @@ _sample_pass() {
   _tx_d=$(_counter_delta "net_tx" "${_tx:-0}")
   local _syn=0 _syn_d=0
   if iptables -nvxL SYNPROXY_EARLY &> /dev/null; then
-    # whole, never as awk prints a sum: past 2^31 packets mawk prints 3e+09
+    # whole, never as awk prints a sum: past 2^31 packets mawk prints 3e+09.
+    # Its baseline under a key of its own: the one before kept 0 for a sum
+    # printed that way, and would count a whole counter as one sample's.
     _syn=$(iptables -nvxL SYNPROXY_EARLY 2>/dev/null | awk 'NR>2 {s+=$1} END {printf "%.0f\n", s}')
-    _syn_d=$(_counter_delta "synproxy" "${_syn}")
+    _syn_d=$(_counter_delta "synproxy_whole" "${_syn}")
   fi
   local _deny=0 _tban=0
   [ -f "/etc/csf/csf.deny" ] \
