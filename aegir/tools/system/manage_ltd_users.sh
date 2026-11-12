@@ -6232,6 +6232,13 @@ _site_socket_inc_gen() {
         # which tests the config first; the stamp above owes it
         [ "${_mltAct}" = "APPLY" ] && _ltdNgxReloaded=
       fi
+    elif ! _ltd_applied_get mfpm > /dev/null 2>&1; then
+      # No record yet (the file unchanged since this release, so no rebuild
+      # wrote one): the text is recorded when it gives exactly the includes
+      # in force, so the account's first change of its own opens its window
+      # like any later one. A text they do not come from is never recorded.
+      _ltd_fpm_site_want "${_mltFpmBody}"
+      _ltd_fpm_site_same && _ltd_applied_put mfpm "${_mltFpmBody}"
     fi
   else
     if [ -f "${_mltNgx}" ]; then
