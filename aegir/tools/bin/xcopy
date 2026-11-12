@@ -1538,10 +1538,10 @@ _migrate_sites() {
           _DB_FRESH=NO
           if [ ! -d "/var/lib/mysql/${_DBN}" ]; then
             _DB_FRESH=YES
-            # A copy makes, loads and dumps on this box's own server, an
-            # account that uses ProxySQL too: BOA's own dumps go through it
-            # only on the operator's opt-in, and a dump's snapshot holds only
-            # when all its connections reach one server.
+            # The connection is the one set before the import: the host
+            # from barracuda.cnf, the port from the account's own octopus.cnf
+            # (ProxySQL's, 6033, for an account boa in-oct installed). No
+            # marker picks another here.
             mysqladmin -u root flush-privileges
             [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL3 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
             if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
@@ -6161,8 +6161,10 @@ _migrate_init() {
     echo
     exit 1
   fi
-  ### The export and import talk to this box's own database server, as they
-  ### always have, also for an account that uses ProxySQL (see _migrate_sites).
+  ### No ProxySQL marker picks a connection here: the account's own
+  ### octopus.cnf, sourced below before the export and import, sets the port
+  ### (ProxySQL's for an account boa in-oct installed); mydumper and myloader
+  ### always use this box's own server.
   ### With no target the usage records leg would address this box itself.
   if [ "${_oct}" = "xusage" ] && [ -z "${_tgt}" ]; then
     echo "ERROR: ${_cmd} xusage needs a target: xcopy ${_cmd} xusage <target>"
