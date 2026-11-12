@@ -2532,6 +2532,19 @@ _a2b_ctrl_dir_here() {
   [ -d ./control ] || mkdir -p ./control
 }
 
+# The ltd worker applies an account's own multi-fpm.info change at most once in
+# 15 minutes and tells it from the box's by root's record of the text it last
+# applied (/var/backups/ltd/fpmcore/<account>.mfpm.applied). A row this import
+# writes is root's: recorded as applied, so the worker's next pass puts it in
+# force at once, as the box's change. Only when the record holds the text this
+# write started from: an account's own change that waits keeps waiting (this
+# row with it), and with no record the worker holds nothing anyway.
+_a2b_ltd_applied() {   # 1 text before 2 text after
+  local _f="/var/backups/ltd/fpmcore/${_ACCOUNT}.mfpm.applied"
+  [[ -f "${_f}" && ! -L "${_f}" ]] || return 0
+  [[ "$(cat -- "${_f}" 2> /dev/null)" == "$1" ]] || return 0
+  printf '%s\n' "$2" > "${_f}.$$" && mv -f -- "${_f}.$$" "${_f}"
+}
 _FPM_WANT=""
 _t_fpm_map() {   # 1 uri 2 dmajor; sets _FPM_WANT ("" = no mapping wanted)
   local _uri="$1" _dmaj="$2"
@@ -2553,9 +2566,11 @@ _t_fpm_map() {   # 1 uri 2 dmajor; sets _FPM_WANT ("" = no mapping wanted)
   # so grep "^a.example.com " would false-match "aXexample.com" and
   # silently skip the second site's pool line
   if ! awk -v u="${_uri}" '$1==u{f=1} END{exit !f}' <<< "${_txt}" 2>/dev/null; then
-    if _a2b_in_real_dir "${_ctd}" _a2b_put_here multi-fpm.info \
-      "$(printf '%s\n%s\n' "${_txt}" "${_uri} ${_FPM_WANT}" | sed '/^$/d')" \
+    local _new
+    _new=$(printf '%s\n%s\n' "${_txt}" "${_uri} ${_FPM_WANT}" | sed '/^$/d')
+    if _a2b_in_real_dir "${_ctd}" _a2b_put_here multi-fpm.info "${_new}" \
       "${_ACCOUNT}:$(_acct_group "${_ACCOUNT}")"; then
+      _a2b_ltd_applied "${_txt}" "${_new}"
       _info "site ${_uri}: multi-fpm.info -> ${_FPM_WANT}"
     else
       _alrt "site ${_uri}: could not write its multi-fpm.info line"

@@ -2925,7 +2925,7 @@ _update_agents() {
     # post-install steps run only when the file actually changed.
     if ! _runner_parked manage_ltd_users.sh; then
       _ltdSum="$(md5sum /var/xdrago/manage_ltd_users.sh 2>/dev/null | cut -d' ' -f1)"
-      _fetch_versioned /var/xdrago/manage_ltd_users.sh "${_urlHmr}/tools/system/manage_ltd_users.sh" f97 --guard /xdrago/manage_ltd_users.sh
+      _fetch_versioned /var/xdrago/manage_ltd_users.sh "${_urlHmr}/tools/system/manage_ltd_users.sh" f96 --guard /xdrago/manage_ltd_users.sh
       if [ -s "/var/xdrago/manage_ltd_users.sh" ] \
         && [ "$(md5sum /var/xdrago/manage_ltd_users.sh 2>/dev/null | cut -d' ' -f1)" != "${_ltdSum}" ]; then
         [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
@@ -5826,7 +5826,7 @@ CSFSTANDBY
     # documented /usr/local/bin path stays a symlink to the fleet copy.
     _fetch_versioned ${_optBin}/aegir2boa-preflight "${_urlHmr}/${_tBn}/aegir2boa-preflight" f94 --guard /local/bin/aegir2boa-preflight
     _fetch_versioned ${_optBin}/aegir2boa-stage1 "${_urlHmr}/${_tBn}/aegir2boa-stage1" f95 --guard /local/bin/aegir2boa-stage1
-    _fetch_versioned ${_optBin}/aegir2boa-stage2 "${_urlHmr}/${_tBn}/aegir2boa-stage2" f56 --symlink ${_usrBin}/aegir2boa-stage2 --guard /local/bin/aegir2boa-stage2
+    _fetch_versioned ${_optBin}/aegir2boa-stage2 "${_urlHmr}/${_tBn}/aegir2boa-stage2" f55 --symlink ${_usrBin}/aegir2boa-stage2 --guard /local/bin/aegir2boa-stage2
     _fetch_versioned ${_optBin}/aptcleanup "${_urlHmr}/${_tBn}/aptcleanup" f91 --guard /local/bin/aptcleanup
     _fetch_versioned ${_optBin}/aptfast "${_urlHmr}/${_tBn}/aptfast" f95 --guard /local/bin/aptfast
     _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/${_tBn}/autobeowulf" f80 --guard /local/bin/autobeowulf

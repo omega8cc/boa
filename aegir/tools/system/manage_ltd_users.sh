@@ -5876,6 +5876,7 @@ _disable_newrelic() {
       wait
       if [ "$3" = "1" ] && [ -e "/etc/init.d/php$1-fpm" ]; then
         service php$1-fpm reload &> /dev/null
+        [ "${_ltdNrOwn:-}" = "YES" ] && _ltdOwnFpm=YES
       fi
     elif ! grep -q "^php_admin_value\[newrelic.enabled\]" ${_THIS_POOL_TPL}; then
       # a pool left without the lines while its PHP did not load New Relic
@@ -5887,6 +5888,7 @@ _disable_newrelic() {
       echo "php_admin_value[newrelic.enabled] = \"false\"" >> ${_THIS_POOL_TPL}
       if [ "$3" = "1" ] && [ -e "/etc/init.d/php$1-fpm" ]; then
         service php$1-fpm reload &> /dev/null
+        [ "${_ltdNrOwn:-}" = "YES" ] && _ltdOwnFpm=YES
       fi
     fi
   fi
@@ -5899,6 +5901,9 @@ _enable_newrelic() {
   else
     _LOC_NEW_RELIC_KEY=$(_ltd_ctrl_read newrelic.info)
     _LOC_NEW_RELIC_KEY=${_LOC_NEW_RELIC_KEY//[^0-9a-zA-Z]/}
+    # a key is 40 characters: anything far longer is no key (one over 128 KiB
+    # fails grep and sed as an argument, and the pool was reloaded every pass)
+    [[ "${_LOC_NEW_RELIC_KEY}" =~ ^[0-9a-zA-Z]{1,64}$ ]] || _LOC_NEW_RELIC_KEY=""
     _LOC_NEW_RELIC_KEY=$(echo -n ${_LOC_NEW_RELIC_KEY} | tr -d "\n" 2>&1)
   fi
   if [ -z "${_LOC_NEW_RELIC_KEY}" ]; then
@@ -5924,6 +5929,7 @@ _enable_newrelic() {
         fi
         if [ "$3" = "1" ] && [ -e "/etc/init.d/php$1-fpm" ]; then
           service php$1-fpm reload &> /dev/null
+          [ "${_ltdNrOwn:-}" = "YES" ] && _ltdOwnFpm=YES
         fi
       fi
     fi
@@ -6345,6 +6351,12 @@ _site_socket_inc_gen() {
   done
 
   _ltd_in_real_dir "${_dscUsr}/static/control" _desymlink_planted ./multi-fpm.info
+  # a folder at the name (never a link: rm does not follow one) goes, so the
+  # file is written back below and its pins drop like a deleted file's; left,
+  # it froze the account's includes with no file to read
+  if [ -d "${_mltFpm}" ] && [ ! -L "${_mltFpm}" ]; then
+    _ltd_in_real_dir "${_dscUsr}/static/control" rm -rf -- ./multi-fpm.info
+  fi
   # multi-fpm.info is the main login's: read without following a link or
   # blocking on a FIFO, edited here and put back as a fresh file (sed -i and
   # >> would write through a link put at the name, and sed -i would put a
@@ -6433,6 +6445,8 @@ _site_socket_inc_gen() {
       _sV=${_sV//[^0-9]/}
       [ -n "${_sN}" ] && [ -n "${_sV}" ] || continue
       [ "${_sN}" = "place.holder.dont.remove" ] && continue
+      # no include name over 255 bytes can exist (fpm_include_site_ + .inc)
+      [ "$(( ${#_sN} + 21 ))" -gt 255 ] && continue
       [ -e "${_fpmPth}/fpm_include_site_${_sN}.inc" ] && continue
       if [ -x "/opt/php${_sV}/bin/php" ] \
         && [ -e "${_dscUsr}/.drush/${_sN}.alias.drushrc.php" ] \
@@ -6684,6 +6698,7 @@ _ltd_fpm_site_want() {
     _SOCKET_L_NAME="${_USER}.${_SITE_SOCKET}"
     if [ ! -z "${_SITE_NAME}" ] \
       && [ ! -z "${_SITE_SOCKET}" ] \
+      && [ "$(( ${#_SITE_NAME} + 21 ))" -le 255 ] \
       && [ -x "/opt/php${_SITE_SOCKET}/bin/php" ] \
       && [ -e "${_dscUsr}/.drush/${_SITE_NAME}.alias.drushrc.php" ] \
       && [ -e "/run/${_SOCKET_L_NAME}.fpm.socket" ]; then
@@ -6728,6 +6743,7 @@ _ltd_nr_decide() {
   if [ -e "${_dscUsr}/static/control/newrelic.info" ]; then
     _k=$(_ltd_ctrl_read newrelic.info)
     _k=${_k//[^0-9a-zA-Z]/}
+    [[ "${_k}" =~ ^[0-9a-zA-Z]{1,64}$ ]] || _k=""
   fi
   _ltdNrUse="${_k}"
   _app=$(_ltd_applied_get nr) || return 0
@@ -6738,7 +6754,9 @@ _ltd_nr_decide() {
     _ltd_rld_note fpm "the newrelic.info change"
     return 0
   fi
-  _ltdOwnFpm=YES
+  # the account's own change: it opens the PHP-FPM window once a pool takes it
+  # (a reload sent), not on a box whose PHP loads no New Relic
+  _ltdNrOwn=YES
 }
 # The box's state the account's platform include is built against, root's
 # only: the pass's FPM mode and, per PHP version, its binary, the account's
@@ -6752,6 +6770,12 @@ _ltd_fpm_sys_key() {
     [ -f "/opt/php${_e}/etc/pool.d/${_USER}.${_e}.conf" ] && _k+=p
     [ -S "/run/${_USER}.${_e}.fpm.socket" ] && _k+=s
   done
+  # the generator itself (an upgrade changing what it builds) and BOA's shared
+  # trees a line can name: the box's too
+  _k+=" g:$(declare -f _ltd_fpm_plat_gen _ltd_fpm_plat_row _ltd_fpm_plat_flush 2> /dev/null \
+    | md5sum | cut -c1-12)"
+  _k+=" a:$(find /data/all -mindepth 1 -maxdepth 1 -type d 2> /dev/null | LC_ALL=C sort \
+    | md5sum | cut -c1-12)"
   printf '%s' "${_k}"
 }
 # Status 0 when the platform include's change is the account's own and
@@ -6762,7 +6786,6 @@ _ltd_fpm_plat_held() {
     _ltd_rld_note nginx "the fpm-per-platform.info change"
     return 0
   fi
-  _ltdOwnNgx=YES
   return 1
 }
 # An FPM include nginx has not read yet outlives the pass that wrote it: a pass
@@ -6782,6 +6805,9 @@ _ltd_ngx_pass_reload() {
     return 0
   fi
   [ -e "${_own}" ] || [ "$(_ltd_ngx_fpm_fp)" != "${_ltdNgxFpBefore}" ] || return 0
+  # nginx refused these includes once this pass: asked again only when they
+  # changed since
+  [ -n "${_ltdNgxTestFail:-}" ] && [ "$(_ltd_ngx_fpm_fp)" = "${_ltdNgxTestFail}" ] && return 0
   if nginx -t &> /dev/null; then
     service nginx reload &> /dev/null
     rm -f "${_own}"
@@ -6789,6 +6815,7 @@ _ltd_ngx_pass_reload() {
     _ltdNgxFpBefore="$(_ltd_ngx_fpm_fp)"
   else
     _ltd_ngx_owe
+    _ltdNgxTestFail="$(_ltd_ngx_fpm_fp)"
     _ltd_notice "nginx-configtest-${_USER}" \
       "nginx -t FAILED after the FPM includes of ${_USER} changed -- NOT reloaded" \
       "$(nginx -t 2>&1 | tail -3 | tr '\n' ' ')"
@@ -6985,6 +7012,7 @@ _ltd_fpm_plat_gen() {
       _ltd_rm_in "${_inc}" "${_nm}"
       _ltd_ngx_owe
       _ltdNgxReloaded=
+      [ "${_pSys}" = "NO" ] && _ltdOwnNgx=YES
     fi
     [ -n "${_pKey}" ] && _ltd_applied_put fppkey "${_pKey}"
     return 0
@@ -7030,6 +7058,8 @@ _ltd_fpm_plat_gen() {
     # the pass's own reload must still run
     _ltd_ngx_owe
     _ltdNgxReloaded=
+    # the account's own change opens its window once nginx can take it
+    [ "${_pSys}" = "NO" ] && _ltdOwnNgx=YES
     return 0
   fi
   _err="$(printf '%s\n' "${_err}" | tail -3 | tr '\n' ' ')"
@@ -7607,8 +7637,15 @@ _switch_php() {
       # login wrote it. A version the box lost (the file asks for the one in
       # use, and it resolves elsewhere now) is never held.
       _ltdVrnHeld=NO
+      # the account's own move is a change of the file's text since root last
+      # judged it: in multi-FPM mode the file keeps a version the box has not
+      # installed, and its install moves the account with no change of the
+      # account's (no record: no hold)
+      _fpvApp=""
+      _fpvApp=$(_ltd_applied_get fpv 2> /dev/null) || _fpvApp="${_T_FPM_ASKED}"
       if [ -n "${_T_FPM_VRN}" ] && [ "${_T_FPM_VRN}" != "${_PHP_FPM_VERSION}" ] \
         && [ "${_T_FPM_ASKED}" != "${_PHP_FPM_VERSION}" ] \
+        && [ "${_fpvApp}" != "${_T_FPM_ASKED}" ] \
         && _ltd_php_vrn_ok "${_PHP_FPM_VERSION}" \
         && [ -x "/opt/php${_PHP_FPM_VERSION//./}/bin/php" ]; then
         _ltdVrnKind=fpm
@@ -7623,6 +7660,7 @@ _switch_php() {
           _ltdOwnNgx=YES
         fi
       fi
+      [ "${_ltdVrnHeld}" = "YES" ] || _ltd_applied_put fpv "${_T_FPM_ASKED}" 2> /dev/null
 
       if [ "${_T_FPM_VRN}" != "${_PHP_FPM_VERSION}" ] || [ "${_FORCE_FPM_SETUP}" = "YES" ]; then
         if [ -n "${_T_FPM_VRN}" ]; then
@@ -8607,6 +8645,8 @@ _manage_user() {
       _ltdOwnFpm=
       _ltd_fpm_multi_mode
       _ltdNrSet=
+      _ltdNrOwn=
+      _ltdNgxTestFail=
       [ "${_ltdCtrlOwn}" = "YES" ] && _ltd_nr_decide
       _ltdNgxFpBefore="$(_ltd_ngx_fpm_fp)"
       [ "${_ltdCtrlOwn}" = "YES" ] && _switch_php
@@ -9751,16 +9791,27 @@ _ltd_fpm_move_fpm() {
     [ -n "${_LTD_MR_S}" ] && [ -n "${_to[${_LTD_MR_S}]+x}" ] || continue
     _cur["${_LTD_MR_S}"]="${_LTD_MR_V}"
   done <<< "${_body}"
+  local _named=""
   for _s in "${!_to[@]}"; do
     _v="${_cur[${_s}]:-}"
     case "${_v}" in
       56|70|71|72|73|74|80|81|82|83|84|85|86)
-        [ "${_v}" = "${_was[${_s}]//./}" ] || continue
+        if [ "${_v}" != "${_was[${_s}]//./}" ]; then
+          # its last row already names the version the judge moves it to
+          # (an account's row that waits out its window): the move is that
+          # row, put in force by this pass with nothing written
+          [ "${_v}" = "${_to[${_s}]}" ] && _named+="${_s}"$'\n'
+          continue
+        fi
         ;;
     esac
     _done+="${_s}"$'\n'
   done
   _done=$(printf '%s' "${_done}" | LC_ALL=C sort)
+  while read -r _s; do
+    [ -n "${_s}" ] || continue
+    printf '%s\n' "${_s} ${_was[${_s}]:-?} ${_to[${_s}]:0:1}.${_to[${_s}]:1:1} ${_why[${_s}]:-}"
+  done <<< "${_named}"
   [ -n "${_done}" ] || return 0
   if [ -n "${_body}" ]; then
     while LC_ALL=C IFS= read -r _line; do
@@ -9921,6 +9972,7 @@ _ltd_fpm_core_check() {
   local IFS=$' \t\n'
   local _st="/var/backups/ltd/fpmcore" _sig _old _age _out _rc _d _n _ro _rn
   local _ft _ci _fl _mv="" _mc="" _ok="" _nok="" _dt="" _s _v _t _w _sub _pf=""
+  local _mk _mvOwn=NO _mvHeld=NO
   mkdir -p "${_st}" && chmod 700 "${_st}"
   _d=$(_ltd_read_in "${_dscUsr}/log" fpm.txt | tr -cd '0-9')
   [[ "${_d}" =~ ^[5-9][0-9]$ ]] || _d=84
@@ -9962,7 +10014,22 @@ _ltd_fpm_core_check() {
     while read -r _s; do
       [ -n "${_s}" ] && echo "INFO: cli-per-platform.info line of ${_USER} for ${_s}, a folder that is gone, removed"
     done <<< "$(_ltd_fpm_prune cli)"
-    _mv=$(_ltd_fpm_move_fpm "$(printf '%s\n' "${_out}" | grep -E '^> ' | head -n 500)" "${_fl}")
+    # A move the box's state did not drive (its PHP versions, the account's
+    # pools and sockets, the mode and the judge itself as when the check last
+    # ran) comes from the account's own code: it counts as the account's
+    # change in its nginx window, waiting inside it and opening it otherwise,
+    # or a login switching its own core files would move a site, and reload
+    # nginx, on every pass. A move the box's state drove is made at once.
+    _mk="$(_ltd_fpm_sys_key 2> /dev/null) j:$(declare -f _ltd_fpm_judge _ltd_fpm_why \
+      _ltd_fpm_nearest 2> /dev/null | md5sum | cut -c1-12)"
+    [ "$(_ltd_applied_get mvkey 2> /dev/null)" = "${_mk}" ] && _mvOwn=YES
+    if [ "${_mvOwn}" = "YES" ] && grep -q '^> ' <<< "${_out}" && _ltd_rld_held nginx; then
+      _mvHeld=YES
+      _ltd_rld_note nginx "the page check's move of a site its own code changed"
+    else
+      _mv=$(_ltd_fpm_move_fpm "$(printf '%s\n' "${_out}" | grep -E '^> ' | head -n 500)" "${_fl}")
+    fi
+    _ltd_applied_put mvkey "${_mk}" 2> /dev/null
     _mc=$(_ltd_fpm_move_cli "$(printf '%s\n' "${_out}" | grep -E '^~ ' | head -n 200)")
   fi
   if [ -n "${_mv}" ]; then
@@ -9975,9 +10042,12 @@ _ltd_fpm_core_check() {
   # no include (its site is gone) and is judged as the account's file
   if [ -n "${_mv}" ]; then
     _site_socket_inc_gen sys
+    [ "${_mvOwn}" = "YES" ] && _ltdOwnNgx=YES
   elif [ -n "${_pf}" ]; then
     _site_socket_inc_gen
   fi
+  # a held move is judged again on the first pass after the window
+  [ "${_mvHeld}" = "YES" ] && rm -f "${_st}/${_USER}.sig"
   _ok=$(printf '%s\n' "${_mc}" | grep -v -e '^! ' -e '^$')
   _nok=$(printf '%s\n' "${_mc}" | grep '^! ')
   if [ -n "${_mv}${_ok}" ]; then
@@ -10003,6 +10073,8 @@ _ltd_fpm_core_check() {
       _sub="not moved on a standby box"
     elif [ -z "${_ft}" ]; then
       _sub="not moved: one PHP-FPM pool serves every site of the account"
+    elif [ "${_mvHeld}" = "YES" ]; then
+      _sub="not moved yet: a change of the account's own reloaded nginx under $(( _LTD_RELOAD_SECS / 60 )) minutes ago, and the first pass after that moves them"
     else
       _sub="not moved: no PHP installed with a pool of the account can run them, or the line moving them waits in .multi-fpm-skipped.info"
     fi
