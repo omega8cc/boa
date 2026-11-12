@@ -5867,10 +5867,12 @@ _xmass_install_xtrabackup_target() {
 # at least, planned to 85% of the disk so that five points stay for
 # everything else. An end where one day does not fit refuses the seed while
 # nothing is displaced. The rate is read from the source's redo log, which
-# the binary log follows closely with full row images (1.09 times on a busy
-# box); minimal images only lower it, so the figure errs high. The log an
-# end holds already is not counted against it: the days planned here
-# replace it.
+# the binary log followed closely with full row images on one busy box (1.09
+# times). Minimal images write less for the same changes, yet the figure is
+# an estimate and no ceiling: a box that mostly inserts wide rows, or writes
+# tables without a key, can pass it. The log a source holds already is not
+# counted against it, since the days planned here replace it; a target's
+# is, because it stays inside the folder the seed parks.
 #   _XMASS_BINLOG_DAYS=<1-7>       pins the days on both ends
 #   _XMASS_BINLOG_DAY_KB=<K>       plans with a known daily figure
 #   _XMASS_SKIP_BINLOG_GATE=YES    passes an end that cannot hold a day
@@ -5983,8 +5985,10 @@ _xmass_binlog_plan() {
       continue
     fi
     [[ "${_lg}" =~ ^[0-9]+$ ]] && [ "${_lg}" -le "${_us}" ] && [ "${_lg}" -le "${_ddk}" ] || _lg=0
-    # the room to the planning line, the log held now given back: it is replaced
-    _room=$(( _sz * 85 / 100 - _us + _lg ))
+    # the room to the planning line; a source's own log is given back (the
+    # days planned replace it), a target's stays in the folder the seed parks
+    _room=$(( _sz * 85 / 100 - _us ))
+    [ "${_e}" != "source" ] || _room=$(( _room + _lg ))
     # what this end holds beside its database, on the filesystem of the accounts
     _other=""
     if [[ "${_dus}" =~ ^[0-9]+$ ]]; then
@@ -6052,7 +6056,13 @@ _xmass_binlog_plan() {
       fi
     fi
     _v="kept ${_n} day(s), about $(( _n * _day / 1048576 )) G standing; $(( _room > 0 ? _room / 1048576 : 0 )) G of room to 85% of ${_mnt}"
-    [ "${_lg}" -lt 1048576 ] || _v="${_v}, the $(( _lg / 1048576 )) G of log there now counted as replaced"
+    if [ "${_lg}" -ge 1048576 ]; then
+      if [ "${_e}" = "source" ]; then
+        _v="${_v}, the $(( _lg / 1048576 )) G of log there now counted as replaced"
+      else
+        _v="${_v}, the $(( _lg / 1048576 )) G of log there now counted as kept (they stay in the folder the seed parks)"
+      fi
+    fi
     [ "${_n}" -ge 7 ] || [ -n "${_pin}" ] || _v="${_v} (a replica away for longer needs a new init)"
     if [ "${_e}" = "source" ]; then
       _info "binary log on this box: ${_v}"
@@ -6875,8 +6885,9 @@ _xmass_decide_transfer_method() {
   _info "xtrabackup method: ${_XTRA_METHOD}" \
     "(mysql=${_mysql_kb}K free=${_free_kb}K needed=${_needed_kb}K)"
   if [ "${_XTRA_METHOD}" = "stream" ]; then
-    # Stream is one unresumable pipe with the target datadir already moved
-    # aside; stage can resume an interrupted transfer. When reclaimable bulk
+    # Stream is one unresumable pipe (a break leaves the target's datadir in
+    # place: it is moved aside only once the whole snapshot is there and
+    # prepared); stage can resume an interrupted transfer. When reclaimable bulk
     # (duplicity caches, old backups, build trees) is what forces stream,
     # relocating it first is almost always worth it -- name the shortfall
     # and the usual suspects so that decision is informed, not discovered.
