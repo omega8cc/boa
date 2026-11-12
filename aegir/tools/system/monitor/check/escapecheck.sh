@@ -45,6 +45,8 @@ readonly _LOCK_FILE="/var/run/escapecheck.lock"
 readonly _QUEUE_MAX=1000
 readonly _QUEUE_PER_LOG=100
 readonly _QUEUE_LINE_MAX=2000
+# A longer line is never read as routine.
+readonly _ROUTINE_LINE_MAX=4096
 readonly _DROPPED_FILE="${_BOA_LOG_DIR}/last-shell-escape-dropped"
 
 _SERVER=$(uname -n)
@@ -198,35 +200,87 @@ _send_alert() {
 # long or many the logs, a run reads at most 20 MiB for each owner.
 _LSH_FORBIDDEN_PL='use Fcntl; my ($dir, $a, $b) = @ARGV; opendir(my $dh, $dir) or exit 0; my @f = sort grep { /\A[A-Za-z0-9._-]+\.log\z/ } readdir $dh; closedir($dh); my (%n, %o); for my $f (@f) { my $p = "$dir/$f"; my @l = lstat($p); next unless @l && -f _; next if ($n{$l[4]} // 0) >= 999 || ($o{$l[4]} // 0) >= 20; sysopen(my $h, $p, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next; my @s = stat($h); unless (@s && -f _ && $s[0] == $l[0] && $s[1] == $l[1]) { close($h); next } my $u = $s[4]; $o{$u}++; my $off = $s[7] > 1048576 ? $s[7] - 1048577 : 0; my $d = ""; if (sysseek($h, $off, 0)) { my $b2; while (length($d) < 1048577 && sysread($h, $b2, 65536)) { $d .= $b2 } } close($h); $d =~ s/\A[^\n]*\n// if $off; for my $line (split /\n/, $d) { next unless $line =~ /forbidden/i; my $t = $line; $t =~ s/\A[ \t]+//; $t = substr($t, 0, 16); next unless $t eq $a || $t eq $b; last if ++$n{$u} > 999; print "$u $p:$line\n" } } exit 0'
 
+# A shell's name, or a word that starts a shell or another user.
+_is_launch_word() {
+  case "${1}" in
+    sh|bash|bash-static|dash|ash|zsh|zsh-static|ksh|ksh93|mksh|mksh-static|pdksh|oksh|lksh|rksh|rksh93|csh|bsd-csh|tcsh|fish|posh|yash|sash|rzsh|busybox|rbash) return 0 ;;
+    exec|env|nohup|setsid|su|sudo|doas|pkexec) return 0 ;;
+  esac
+  return 1
+}
+
+# The whole line of a refusal, as lshell 0.11.16 and later log it: plain
+# words (letters, digits, . _ = + , : @ - and quotes), none a shell or a
+# launcher once its quotes are dropped, and no path but /dev/null, alone or
+# as the target of a redirect (2>/dev/null, > /dev/null, &>/dev/null and
+# </dev/null), with 2>&1 and the like beside it. Anything else, a pipe, a
+# list, an expansion, another path or a control char lshell wrote as \xNN,
+# is no plain line.
+_is_plain_line() {
+  local _w _bare _want_null=0
+  local -a _words=()
+  local _re_null='^([0-9]?>>?|&>>?|<)?/dev/null$'
+  local _re_op='^([0-9]?>>?|&>>?|<)$'
+  local _re_dup='^[0-9]?>&[0-9]$'
+  local _re_word="^[A-Za-z0-9._=+,:@\"'-]+\$"
+  read -r -a _words <<< "${1}"
+  (( ${#_words[@]} )) || return 1
+  for _w in "${_words[@]}"; do
+    if (( _want_null )); then
+      [[ "${_w}" == "/dev/null" ]] || return 1
+      _want_null=0
+    elif [[ "${_w}" =~ ${_re_null} || "${_w}" =~ ${_re_dup} ]]; then
+      :
+    elif [[ "${_w}" =~ ${_re_op} ]]; then
+      _want_null=1
+    elif [[ "${_w}" =~ ${_re_word} ]]; then
+      _bare="${_w//[\"\']/}"
+      _is_launch_word "${_bare}" && return 1
+    else
+      return 1
+    fi
+  done
+  (( ! _want_null ))
+}
+
 # A refusal that grants nothing and shows no attempt to get round the shell:
 # lshell turned down a command that is one plain word (letters, digits and
 # . _ = + -), not a shell's name nor a word that starts a shell or another
-# user (exec, env, su, sudo and the like), or the path /dev/null exactly. Both stay in
-# the lshell logs only. Only the two kinds lshell logs as one parsed word are
-# read so: a command over SSH, a shell escape or a control char is logged as
-# the whole line its sender wrote, newlines included, so its first physical
-# line can show any text in its quotes. The kind is read before the first
-# quote, which lshell writes. lshell logs the first word or path of a line it
-# refuses, not the line: a line whose first refusal is such a word or
-# /dev/null is left out with it.
+# user (exec, env, su, sudo and the like), or the path /dev/null exactly. Both
+# stay in the lshell logs only. Only the two kinds lshell logs as one parsed
+# word are read so: a command over SSH, a shell escape or a control char is
+# logged as the whole line its sender wrote, so its quotes can show any text.
+# The kind is read before the first quote, which lshell writes. From lshell
+# 0.11.16 a refusal that names one word of a longer line ends with
+# in "<line>", and that line must be plain too (_is_plain_line). An older
+# lshell logs the first word or path of a line it refuses, not the line: a
+# line whose first refusal is such a word or /dev/null is left out with it.
 _is_routine() {
-  local _l="${1}" _head _cmd
+  local _l="${1}" _head _rest _word _after _typed=""
+  # A routine line is short; the pattern cuts below take minutes on a line
+  # of hundreds of thousands of characters.
+  (( ${#_l} <= _ROUTINE_LINE_MAX )) || return 1
   [[ "${_l}" == *\"*\"* ]] || return 1
   _head="${_l%%\"*}"
-  _cmd="${_l#*\"}"
-  _cmd="${_cmd%\"*}"
+  _rest="${_l#*\"}"
+  _word="${_rest%%\"*}"
+  _after="${_rest#*\"}"
+  if [[ -n "${_after}" ]]; then
+    # The refused word ends at its closing quote; only the line may follow.
+    [[ "${_after}" == ' in "'*'"' ]] || return 1
+    _typed="${_after#' in "'}"
+    _typed="${_typed%\"}"
+  fi
   case "${_head}" in
     *"): lshell: forbidden path: ")
-      [[ "${_cmd}" == "/dev/null" ]] ;;
+      [[ "${_word}" == "/dev/null" ]] || return 1 ;;
     *"): lshell: forbidden command: ")
-      case "${_cmd}" in
-        sh|bash|bash-static|dash|ash|zsh|zsh-static|ksh|ksh93|mksh|mksh-static|pdksh|oksh|lksh|rksh|rksh93|csh|bsd-csh|tcsh|fish|posh|yash|sash|rzsh|busybox|rbash) return 1 ;;
-        exec|env|nohup|setsid|su|sudo|doas|pkexec) return 1 ;;
-      esac
-      [[ "${_cmd}" =~ ^[A-Za-z0-9][A-Za-z0-9._=+-]*$ ]] ;;
+      _is_launch_word "${_word}" && return 1
+      [[ "${_word}" =~ ^[A-Za-z0-9][A-Za-z0-9._=+-]*$ ]] || return 1 ;;
     *)
       return 1 ;;
   esac
+  [[ -z "${_after}" ]] || _is_plain_line "${_typed}"
 }
 
 _makeactions() {
