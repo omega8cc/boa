@@ -7831,6 +7831,7 @@ _switch_php() {
           done
         fi
 
+        _ltdNrIn=" "
         for m in ${_PHP_M_V}; do
           if [ -x "/opt/php${m}/bin/php" ]; then
             if [ "${_PHP_FPM_MULTI}" = "YES" ] && [ -d "${_dscUsr}/tools/le" ]; then
@@ -7907,10 +7908,16 @@ _switch_php() {
             else
               mv -f -- "${_pNew}" "${_pFile}"
               _ltd_fpm_reload_mark "${m}"
+              # a pool file put in place takes the key when its PHP loads New Relic
+              _newrelic_in_ini "${m}" && _ltdNrIn="${_ltdNrIn}${m} "
             fi
             # a pool file in place that its master never took up (a pass cut
             # off before its reload)
-            [ -S "/run/${_POOL}.fpm.socket" ] || _ltd_fpm_reload_mark "${m}"
+            if [ ! -S "/run/${_POOL}.fpm.socket" ]; then
+              _ltd_fpm_reload_mark "${m}"
+              # its master takes the pool, and the key in it, on this reload
+              _newrelic_in_ini "${m}" && _ltdNrIn="${_ltdNrIn}${m} "
+            fi
 
             mkdir -p /var/www/phpcache/${_USER}/${_POOL}
             _T_WG=$(_web_group "${_USER}")
@@ -7921,8 +7928,9 @@ _switch_php() {
         _perhost_anon_cap_write "${_USER}"
         for m in ${_FPM_RLD}; do
           [ -e "/etc/init.d/php${m}-fpm" ] && service php${m}-fpm reload &> /dev/null
-          # a pool built with the account's own new New Relic key went in
-          [ "${_ltdNrOwn:-}" = "YES" ] && _newrelic_in_ini "${m}" && _ltdOwnFpm=YES
+          # a pool built with the account's own new New Relic key went in (a
+          # version reloaded only for a pool dropped from it took no key)
+          [ "${_ltdNrOwn:-}" = "YES" ] && [[ "${_ltdNrIn:-}" == *" ${m} "* ]] && _ltdOwnFpm=YES
         done
         # After a switch between single- and multi-FPM mode: nginx sends the
         # account's sites to the other mode's pools until it reloads, so they
@@ -7959,7 +7967,6 @@ _switch_php() {
             done
             for m in ${_FPM_RLD}; do
               [ -e "/etc/init.d/php${m}-fpm" ] && service "php${m}-fpm" reload &> /dev/null
-              [ "${_ltdNrOwn:-}" = "YES" ] && _newrelic_in_ini "${m}" && _ltdOwnFpm=YES
             done
           else
             _ltd_notice "nginx-configtest-${_USER}" \
@@ -10009,6 +10016,9 @@ _ltd_fpm_core_check() {
   _rc="$?"
   if [ "${_rc}" -ge 124 ]; then
     echo "${_sig}" > "${_st}/${_USER}.sig"
+    # a held move's run cut off after the window waits for a change or a day,
+    # like any other; one cut off inside it is due on the first pass after it
+    _ltd_rld_held nginx || rm -f "${_st}/${_USER}.mvheld"
     echo "ALRT: the page check of ${_USER} did not finish; ${_dscUsr}/static/control/.fpm-core.info is left as it was"
     _ltd_notice_daily "fpm-core-timeout-${_USER}" \
       "the page check of ${_USER} did not finish" \
