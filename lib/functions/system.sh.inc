@@ -13790,7 +13790,7 @@ _lshell_install_upgrade() {
         cp -af ${_bldPth}/aegir/tools/system/conf/lshell.conf \
           /var/xdrago/conf/lshell.conf
       fi
-      _mrun "bash /var/xdrago/manage_ltd_users.sh"
+      _mrun "_ACCT_RELOAD_HOLD=NO bash /var/xdrago/manage_ltd_users.sh"
       wait
     fi
     _fix_node_in_lshell_access

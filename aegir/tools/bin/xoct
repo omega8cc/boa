@@ -4884,10 +4884,10 @@ _xoct_heal_fpm_pins() {
   ### import runs with cron stopped, so the parked copy is run here.
   [ -e "${_ltd}" ] || _ltd=/var/xdrago/.manage_ltd_users.sh.off
   if [ -e "${_ltd}" ]; then
-    bash "${_ltd}" &> /dev/null
+    _ACCT_RELOAD_HOLD=NO bash "${_ltd}" &> /dev/null
     ### The sockets exist now; re-arm the include generator for pass two.
     _xoct_in_real_dir "${_ctl}" rm -f -- ./.multi-nginx-fpm.pid
-    bash "${_ltd}" &> /dev/null
+    _ACCT_RELOAD_HOLD=NO bash "${_ltd}" &> /dev/null
   else
     _ltd=/var/xdrago/manage_ltd_users.sh
   fi
@@ -4907,7 +4907,7 @@ _xoct_heal_fpm_pins() {
     echo "ALRT: account ${_acct}: pinned PHP pool(s) NOT live after heal:${_missing}"
     echo "ALRT: those sites are being served by the account default pool --"
     echo "ALRT: check /opt/php<NN>/bin/php exists here and re-run:"
-    echo "ALRT:   bash ${_ltd}"
+    echo "ALRT:   _ACCT_RELOAD_HOLD=NO bash ${_ltd}"
   else
     echo "INFO: account ${_acct}: every pinned PHP pool is live"
   fi

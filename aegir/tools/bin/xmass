@@ -19752,8 +19752,8 @@ REMOTE
     _xmass_restore_site_auto_import
     _info "Regenerating the per-site PHP-FPM includes on ${_tgt} (one synchronous sub-user pass) ..."
     ssh -o ConnectTimeout=15 root@"${_tgt}" \
-      "[ -e /var/xdrago/manage_ltd_users.sh ] && bash /var/xdrago/manage_ltd_users.sh &> /dev/null; nginx -t &> /dev/null && service nginx reload &> /dev/null" 2>/dev/null \
-      || _alrt "the sub-user pass or the nginx configtest failed on ${_tgt} -- run there: bash /var/xdrago/manage_ltd_users.sh; nginx -t"
+      "[ -e /var/xdrago/manage_ltd_users.sh ] && _ACCT_RELOAD_HOLD=NO bash /var/xdrago/manage_ltd_users.sh &> /dev/null; nginx -t &> /dev/null && service nginx reload &> /dev/null" 2>/dev/null \
+      || _alrt "the sub-user pass or the nginx configtest failed on ${_tgt} -- run there: _ACCT_RELOAD_HOLD=NO bash /var/xdrago/manage_ltd_users.sh; nginx -t"
 
     # Step 15.2: the sites deferred at step 12.92 are renamed now: convert
     # them, their old names answering a 301 to the new ones. A failure keeps
@@ -20852,11 +20852,11 @@ _xmass_heal_fpm_pins() {
   [ "${_healed}" = "0" ] && return 0
   _info "Rebuilding pinned PHP pools for ${_healed} migrated account(s) ..."
   if [ -e "/var/xdrago/manage_ltd_users.sh" ]; then
-    bash /var/xdrago/manage_ltd_users.sh &> /dev/null
+    _ACCT_RELOAD_HOLD=NO bash /var/xdrago/manage_ltd_users.sh &> /dev/null
     for _root in $(find /data/disk/ -maxdepth 1 -mindepth 1 -type d 2>/dev/null | sort); do
       _xmass_in_real_dir "${_root}/static/control" rm -f -- ./.multi-nginx-fpm.pid
     done
-    bash /var/xdrago/manage_ltd_users.sh &> /dev/null
+    _ACCT_RELOAD_HOLD=NO bash /var/xdrago/manage_ltd_users.sh &> /dev/null
   fi
   ### Name every pin that is still not live: a silent wrong-interpreter
   ### site is the failure this heal exists to prevent, so it must never
@@ -20877,7 +20877,7 @@ _xmass_heal_fpm_pins() {
     if [ ! -z "${_missing}" ]; then
       _alrt "account ${_acct}: pinned PHP pool(s) NOT live:${_missing}"
       _alrt "  those sites are served by the account default pool right now"
-      _alrt "  check /opt/php<NN>/bin/php here, then: bash /var/xdrago/manage_ltd_users.sh"
+      _alrt "  check /opt/php<NN>/bin/php here, then: _ACCT_RELOAD_HOLD=NO bash /var/xdrago/manage_ltd_users.sh"
     else
       _info "  ${_acct}: every pinned PHP pool is live"
     fi
