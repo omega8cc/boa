@@ -5939,7 +5939,52 @@ echo "BL_USED_KB=${_r%% *}"
 echo "BL_MNT=${_d##* }"
 echo "BL_DATA_USED_KB=${_a%% *}"
 echo "BL_DATA_MNT=${_a##* }"
-echo "BL_DD_KB=$(du -sLk /var/lib/mysql 2>/dev/null | awk '{ print $1 }')"
+_dd="$(du -sLk /var/lib/mysql 2>/dev/null | awk '{ print $1 }')"
+echo "BL_DD_KB=${_dd}"
+# The stores kept on filesystems apart from the accounts' one: each account's
+# files link, the archive, the Solr data. Each filesystem once, by its used K,
+# the database folder's own share left out where it lives there too.
+_xm=""
+_xk=0
+for _xp in /data/disk/*/static/files /data/disk/arch /var/solr7/data /var/solr9/data; do
+  [ -e "${_xp}" ] || continue
+  _xf="$(df -Pk "${_xp}/" 2>/dev/null | awk 'NR==2 { print $NF }')"
+  [ -n "${_xf}" ] && [ "${_xf}" != "${_a##* }" ] || continue
+  case " ${_xm} " in *" ${_xf} "*) continue ;; esac
+  _xu="$(df -Pk "${_xf}" 2>/dev/null | awk 'NR==2 { print $3 }')"
+  case "${_xu}" in ""|*[!0-9]*) continue ;; esac
+  [ "${_xf}" != "${_d##* }" ] || [ -z "${_dd}" ] || _xu=$(( _xu - _dd ))
+  [ "${_xu}" -gt 0 ] || _xu=0
+  _xm="${_xm} ${_xf}"
+  _xk=$(( _xk + _xu ))
+done
+echo "BL_XFS_KB=${_xk}"
+echo "BL_XFS_MNTS=${_xm# }"
+# The one filesystem mounted under /mnt that a sync places stores on (the
+# same test the syncs make), with its used K, the database folder's share out.
+_xp0="$(stat -c '%d' /mnt 2>/dev/null)"
+_xn=0
+_xh=""
+for _xp in /mnt/*; do
+  [ -d "${_xp}" ] || continue
+  if mountpoint -q "${_xp}" 2>/dev/null || { [ -n "${_xp0}" ] && [ "$(stat -c '%d' "${_xp}" 2>/dev/null)" != "${_xp0}" ]; }; then
+    _xh="${_xp}"
+    _xn=$(( _xn + 1 ))
+  fi
+done
+if [ "${_xn}" -gt 1 ]; then
+  echo "BL_ONE_MNT=MULTI"
+elif [ "${_xn}" -eq 1 ]; then
+  echo "BL_ONE_MNT=${_xh}"
+  _xu="$(df -Pk "${_xh}/" 2>/dev/null | awk 'NR==2 { print $3, $NF }')"
+  _xf="${_xu##* }"
+  _xu="${_xu%% *}"
+  case "${_xu}" in ""|*[!0-9]*) _xu="" ;; esac
+  [ -z "${_xu}" ] || [ "${_xf}" != "${_d##* }" ] || [ -z "${_dd}" ] || _xu=$(( _xu - _dd ))
+  echo "BL_ONE_MNT_USED_KB=${_xu}"
+else
+  echo "BL_ONE_MNT=NONE"
+fi
 _q() { mysql --defaults-file=/root/.my.cnf --connect-timeout=5 -sNe "$1" 2>/dev/null; }
 echo "BL_LOG_KB=$(_q 'SHOW BINARY LOGS' | awk '{ s += $2 } END { printf "%.0f\n", s / 1024 }')"
 _v="$(_q "SHOW GLOBAL VARIABLES WHERE Variable_name IN ('expire_logs_days','binlog_expire_logs_seconds')")"
@@ -5957,6 +6002,7 @@ _xmass_binlog_plan() {
   local _how="$1" _st _up _lw _day="" _why="" _pin="" _e _o _k _v _bad=""
   local _sz _us _mnt _dus _dmnt _ddk _lg _now _rd _room _n _hard _seed=0 _files=0 _other _sother=""
   local _ns=7 _nt=7 _sv _sd _oth
+  local _xk _xms _om _omu _sxk=0 _sxms="" _xto="" _xin=0 _fw=""
   case "${_XMASS_BINLOG_DAYS:-}" in
     "") : ;;
     [1-7]) _pin="${_XMASS_BINLOG_DAYS}" ;;
@@ -6017,6 +6063,9 @@ _xmass_binlog_plan() {
     _dmnt="$(_xmass_kv "${_o}" BL_DATA_MNT)"; _ddk="$(_xmass_kv "${_o}" BL_DD_KB)"
     _lg="$(_xmass_kv "${_o}" BL_LOG_KB)"; _now="$(_xmass_kv "${_o}" BL_DAYS_NOW)"
     _rd="$(_xmass_kv "${_o}" BL_READERS)"
+    _xk="$(_xmass_kv "${_o}" BL_XFS_KB)"; _xms="$(_xmass_kv "${_o}" BL_XFS_MNTS)"
+    _om="$(_xmass_kv "${_o}" BL_ONE_MNT)"; _omu="$(_xmass_kv "${_o}" BL_ONE_MNT_USED_KB)"
+    [[ "${_xk}" =~ ^[0-9]+$ ]] || _xk=0
     if ! [[ "${_sz}" =~ ^[0-9]+$ ]] || ! [[ "${_us}" =~ ^[0-9]+$ ]] || ! [[ "${_ddk}" =~ ^[0-9]+$ ]]; then
       _bad="${_bad} ${_e}"
       continue
@@ -6039,15 +6088,48 @@ _xmass_binlog_plan() {
       # the seed is the folder without its log, which no snapshot carries
       _seed=$(( _ddk - _lg ))
       _sother="${_other}"
+      _sxk="${_xk}"
+      _sxms="${_xms}"
       _files=0
     else
       # the seed lands beside what is there (the folder it replaces is kept),
-      # and the accounts' files follow on the syncs when they share its disk
+      # and the accounts' files follow on the syncs when they share its disk:
+      # a source's stores on a mount go to the target's one mount under /mnt,
+      # or onto its root when it has none (the placement the syncs use)
       _files=0
-      if [ -n "${_other}" ] && [ -n "${_sother}" ] && [ "${_sother}" -gt "${_other}" ]; then
-        _files=$(( _sother - _other ))
+      _xin=0
+      _xto=""
+      if [ "${_sxk}" -gt 0 ]; then
+        case "${_om}" in
+          NONE) _xto="root" ;;
+          /mnt/*) _xto="${_om}" ;;
+        esac
+      fi
+      _xin="${_sother}"
+      [ -z "${_xin}" ] || [ "${_xto}" != "root" ] || _xin=$(( _xin + _sxk ))
+      if [ -n "${_other}" ] && [ -n "${_xin}" ] && [ "${_xin}" -gt "${_other}" ]; then
+        _files=$(( _xin - _other ))
+      fi
+      _xin=0
+      if [ -n "${_xto}" ] && [ "${_xto}" != "root" ] && [ "${_xto}" = "${_mnt}" ]; then
+        # that mount holds this end's database folder too
+        [[ "${_omu}" =~ ^[0-9]+$ ]] || _omu=0
+        [ "${_sxk}" -le "${_omu}" ] || _xin=$(( _sxk - _omu ))
+        _files=$(( _files + _xin ))
       fi
       _room=$(( _room - _seed ))
+      # what the files figure covers, said with it
+      _fw=""
+      [ -z "${_sother}" ] || [ -z "${_other}" ] || _fw="the source's root share counted whole beside its database, an upper guess"
+      if [ "${_sxk}" -gt 0 ]; then
+        _v="its stores on ${_sxms} (about $(( _sxk / 1048576 )) G)"
+        case "${_xto}" in
+          root) [ -n "${_other}" ] && _v="${_v} come onto the root here" || _v="${_v} come onto the root here, apart from the database" ;;
+          "") _v="${_v} have no one mount under /mnt to go to here (${_om:-not read}), not counted" ;;
+          *) [ "${_xto}" = "${_mnt}" ] && _v="${_v} come onto ${_xto}, beside the database" || _v="${_v} go to ${_xto}, apart from the database" ;;
+        esac
+        _fw="${_fw:+${_fw}; }${_v}"
+      fi
     fi
     # the days that fit beside what is certain, and beside the files too:
     # those are an estimate, which lowers the days and never refuses a seed
@@ -6105,7 +6187,7 @@ _xmass_binlog_plan() {
       _info "binary log on this box: ${_v}"
       _ns="${_n}"
     else
-      _info "binary log on target ${_tgt}: ${_v}, after the seed ($(( _seed / 1048576 )) G) and about $(( _files / 1048576 )) G of files still to arrive"
+      _info "binary log on target ${_tgt}: ${_v}, after the seed ($(( _seed / 1048576 )) G) and about $(( _files / 1048576 )) G of files still to arrive${_fw:+ (${_fw})}"
       _nt="${_n}"
     fi
   done
