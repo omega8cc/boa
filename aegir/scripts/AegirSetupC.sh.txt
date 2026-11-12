@@ -629,7 +629,7 @@ _tb_capture() {
     # lock leaves it (core/drupal-10.1.8: vendor/symfony/console/Input), the
     # instance user cannot enter it, so _tb_record could never count it
     _TB_BYTES="$(tar -tvzf "${2}" 2> /dev/null \
-      | awk '!/\/vendor\/(drush|symfony\/console\/(Input|Style))\// { s += $3 } END { print s + 0 }')"
+      | awk '!/\/vendor\/(drush|symfony\/console\/(Input|Style))\// { s += $3 } END { printf "%.0f\n", s }')"
   fi
 }
 
@@ -660,7 +660,7 @@ _tb_record() {
     # the nightly permission walk): left out on both sides of the compare
     _have="$(find "${1}" \( -path "*/vendor/drush" -o -path "*/vendor/symfony/console/Input" \
       -o -path "*/vendor/symfony/console/Style" \) -prune -o -type f -printf '%s\n' 2> /dev/null \
-      | awk '{ s += $1 } END { print s + 0 }')"
+      | awk '{ s += $1 } END { printf "%.0f\n", s }')"
     if [[ "${_TB_BYTES}" =~ ^[0-9]+$ ]] && [ "${_have}" -lt "${_TB_BYTES}" ]; then
       # No record at all (an older one could describe an earlier tree), so
       # the next pass refreshes it

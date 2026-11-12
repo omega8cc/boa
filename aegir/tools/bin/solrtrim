@@ -300,7 +300,7 @@ _classify() {
     _C_RAW=$(curl -sf --max-time 15 -A iCab \
       "http://127.0.0.1:${_V_PORT}/solr/admin/cores?action=STATUS&wt=json" 2>/dev/null)
     if [ $? -eq 0 ] && [ -n "${_C_RAW}" ] && [[ "${_C_RAW}" == *'"status"'* ]]; then
-      _C_DOCS=$(printf '%s' "${_C_RAW}" | grep -o '"numDocs":[0-9]*' | awk -F: '{ _s += $2 } END { print _s + 0 }')
+      _C_DOCS=$(printf '%s' "${_C_RAW}" | grep -o '"numDocs":[0-9]*' | awk -F: '{ _s += $2 } END { printf "%.0f\n", _s }')
       _C_DOCSREAD=OK
     else
       _C_DOCS=0

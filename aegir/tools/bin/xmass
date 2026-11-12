@@ -3184,7 +3184,7 @@ _xmass_solr_classify_source() {
         "http://127.0.0.1:${_prt}/solr/admin/cores?action=STATUS&wt=json" 2>/dev/null)
       if [ $? -eq 0 ] && [ -n "${_raw}" ] && [[ "${_raw}" == *'"status"'* ]]; then
         _docs=$(printf '%s' "${_raw}" | grep -o '"numDocs":[0-9]*' \
-          | awk -F: '{ _s += $2 } END { print _s + 0 }')
+          | awk -F: '{ _s += $2 } END { printf "%.0f\n", _s }')
         _docsread=OK
       else
         _docs=0

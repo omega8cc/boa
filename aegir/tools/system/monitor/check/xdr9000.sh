@@ -347,7 +347,8 @@ _sample_pass() {
   _tx_d=$(_counter_delta "net_tx" "${_tx:-0}")
   local _syn=0 _syn_d=0
   if iptables -nvxL SYNPROXY_EARLY &> /dev/null; then
-    _syn=$(iptables -nvxL SYNPROXY_EARLY 2>/dev/null | awk 'NR>2 {s+=$1} END {print s+0}')
+    # whole, never as awk prints a sum: past 2^31 packets mawk prints 3e+09
+    _syn=$(iptables -nvxL SYNPROXY_EARLY 2>/dev/null | awk 'NR>2 {s+=$1} END {printf "%.0f\n", s}')
     _syn_d=$(_counter_delta "synproxy" "${_syn}")
   fi
   local _deny=0 _tban=0
