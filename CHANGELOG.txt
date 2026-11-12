@@ -112,16 +112,17 @@
     * A move's binary log is sized to each server's disk. From xmass init
       on both servers keep a binary log, until now with full row images and
       for seven days whatever the disks held, which on a busy server could
-      take root past 90%, where BOA's own runs stop, before the cutover.
-      It is now written with minimal row images, and prep-target and init
-      say what it may cost a day (from the redo log's rate) and how many
-      days each server keeps: seven at most, one at least, as many as fit
-      on its disk, planned to 85% so that room stays for everything else.
-      init refuses a server that cannot hold one day, while nothing is
-      displaced (_XMASS_SKIP_BINLOG_GATE=YES passes it). A source another
-      replica reads keeps the days it runs with. _XMASS_BINLOG_DAYS=<1-7>
-      sets the days, _XMASS_BINLOG_DAY_KB=<K> plans with a known daily
-      figure. The binary log and GTID stay on.
+      take root past 90%, where BOA's own runs stop, before the cutover. It
+      is now written with minimal row images, and prep-target and init say
+      what it may cost a day (from the redo log's rate) and how many days
+      each server keeps: seven at most, one at least, as many as fit on its
+      disk, planned to 85% so that room stays for everything else. init
+      refuses a server that cannot hold one day, while nothing is displaced
+      (_XMASS_SKIP_BINLOG_GATE=YES passes it). A target seeded again counts
+      the log it holds already, which stays in the folder the seed parks. A
+      source another replica reads keeps the days it runs with.
+      _XMASS_BINLOG_DAYS=<1-7> sets the days, _XMASS_BINLOG_DAY_KB=<K>
+      plans with a known daily figure. The binary log and GTID stay on.
 
     * xmass prep-target and init compare the time zone of the two servers.
       Nothing in a move carries a server's zone, so a target left on another
