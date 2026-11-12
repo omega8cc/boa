@@ -1721,7 +1721,7 @@ _dbctl_report() {
 # left that no one holds, the run says so in an ALERT.
 _NIGHT_UNSWEPT_PL='use Fcntl; use POSIX ();
 my %m;
-for (split(/,/, shift(@ARGV) // "")) {
+for (split(/,/, $ENV{_UNSWEPT_MAP} // "")) {
   my ($u, $t, $g, $c) = split(/:/);
   next unless defined($c) && $u =~ /^[1-9][0-9]*$/ && $t =~ /^[0-9]+$/ && $g =~ /^-?[0-9]+$/;
   $m{$u} = [$t, $g, $c];
@@ -1744,6 +1744,12 @@ for my $e (@ARGV) {
   # find listed it as one of these numbers: gone since, it was moved or removed
   my @l = lstat($e);
   unless (@l) {
+    $f{$w}++;
+    next;
+  }
+  # another owner since find listed it for this number: swapped, or a
+  # second name of an inode handed over already
+  if ($w && $l[4] != $w) {
     $f{$w}++;
     next;
   }
@@ -1899,12 +1905,14 @@ _acct_unswept_walk() {
   [ "${_left}" -gt 0 ] || return 1
   touch -c /run/daily-fix.pid 2> /dev/null
   # each number its own branch: an entry gone since find listed it is
-  # counted for that number
+  # counted for that number; the program and the map go once, in the
+  # environment, so the command line grows by a few words a number
   for _u in ${_swl}; do
-    _x2+=( -o \( -uid "${_u}" -execdir perl -e "${_NIGHT_UNSWEPT_PL}" "${_m}" "${_u}" {} + \) )
+    _x2+=( -o \( -uid "${_u}" -execdir perl -e 'eval($ENV{_UNSWEPT_PL}); die($@) if $@;' "${_u}" {} + \) )
   done
   _e=$(mktemp /var/tmp/.acct-unswept.XXXXXX) || return 1
   _out=$(_acct_unswept_in "${_p}" timeout "${_left}" env PATH=/usr/local/bin:/usr/bin:/bin LC_ALL=C \
+    _UNSWEPT_PL="${_NIGHT_UNSWEPT_PL}" _UNSWEPT_MAP="${_m}" \
     find -P . -xdev \( -false "${_x2[@]}" \) 2> "${_e}")
   _rc=$?
   if [ "${_rc}" -ne 0 ]; then

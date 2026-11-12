@@ -241,10 +241,13 @@ _acct_purged_add() {
   (
     flock -w 60 9 || exit 1
     _c=$(cat -- "${_d}/.purged" 2> /dev/null)
-    _acct_gone_write "${_d}/.purged" "$(printf '%s\n' "${_c}"
+    # a number added again was freed again: it takes the current time
+    _acct_gone_write "${_d}/.purged" "$(while read -r _u _t; do
+        [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+        grep -qx -- "${_u}" <<< "${_n}" || echo "${_u} ${_t}"
+      done <<< "${_c}"
       while IFS= read -r _u; do
-        [ -n "${_u}" ] || continue
-        grep -q -- "^${_u} " <<< "${_c}" || echo "${_u} ${_now}"
+        [ -n "${_u}" ] && echo "${_u} ${_now}"
       done <<< "${_n}")"
   ) 9> "${_d}/.unswept.lock" || _r=1
   while IFS= read -r _u; do
@@ -4408,7 +4411,7 @@ _octopus_cleanup() {
             echo "WARNING: the numbers of ${_usEr}'s removed identities could not all be listed in /data/conf/acct-uids/.purged"
           fi
         fi
-        rm -f -- "/data/conf/acct-uids/${_usEr}"
+        # its uid list goes once its identities' numbers are listed (below)
         # So does its aegir2boa import state, beside the create marker, once
         # the database users its import made and still names are looked at.
         _boa_purge_a2b_users "${_usEr}"
@@ -4572,8 +4575,11 @@ _octopus_cleanup() {
         # Its numbers are no account's from here on: held from every account's
         # next identity but as the last resort (_acct_pick_uid in the ltd
         # worker), and swept each night; written before deluser frees them.
-        _acct_purged_add "${_tmpUs[@]}" \
-          || echo "WARNING: the numbers of ${_usEr}'s identities could not all be listed in /data/conf/acct-uids/.purged"
+        if _acct_purged_add "${_tmpUs[@]}"; then
+          rm -f -- "/data/conf/acct-uids/${_usEr}"
+        else
+          echo "WARNING: the numbers of ${_usEr}'s identities could not all be listed in /data/conf/acct-uids/.purged; its uid list stays for the ltd worker's prune"
+        fi
         # The numbers this purge frees leave every other account's record of
         # removed identities: a number the ltd worker had not pruned yet
         # (another login took it since) would name no one again here.

@@ -609,10 +609,13 @@ _acct_purged_add() {
   (
     flock -w 60 9 || exit 1
     _c=$(cat -- "${_d}/.purged" 2> /dev/null)
-    _acct_gone_write "${_d}/.purged" "$(printf '%s\n' "${_c}"
+    # a number added again was freed again: it takes the current time
+    _acct_gone_write "${_d}/.purged" "$(while read -r _u _t; do
+        [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+        grep -qx -- "${_u}" <<< "${_n}" || echo "${_u} ${_t}"
+      done <<< "${_c}"
       while IFS= read -r _u; do
-        [ -n "${_u}" ] || continue
-        grep -q -- "^${_u} " <<< "${_c}" || echo "${_u} ${_now}"
+        [ -n "${_u}" ] && echo "${_u} ${_now}"
       done <<< "${_n}")"
   ) 9> "${_d}/.unswept.lock" || _r=1
   while IFS= read -r _u; do
@@ -4603,8 +4606,10 @@ _satellite_add_user_dirs() {
     _acct_new_identity low "${_USER}" \
       adduser --system --home ${_ROOT} --ingroup ${_ACCG} ${_USER} &> /dev/null
     if ! id -u "${_USER}" > /dev/null 2>&1; then
-      _msg "ERROR: ${_USER} was not made: no system uid free of other accounts' (see /var/log/boa/manage_ltd.incident.log)"
-      _clean_pid_exit
+      _msg "${_STATUS} A: FATAL ERROR: ${_USER} was not made: no system uid free of other accounts' (see /var/log/boa/manage_ltd.incident.log)"
+      _msg "${_STATUS} A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
+      touch "/opt/tmp/state/.root/${_USER}/status-AegirSetupA-FAIL"
+      exit 1
     fi
     adduser ${_USER} ${_USRG} &> /dev/null
     adduser ${_USER} ${_WEBG} &> /dev/null
@@ -6814,8 +6819,10 @@ _satellite_if_add_ftps_lshell_access() {
       useradd -d /home/${_USERFTP} -s ${_PATH_LSHELL} -m -N -r \
       -g ${_ACCG:-users} ${_USERFTP} &> /dev/null
     if ! id -u "${_USERFTP}" > /dev/null 2>&1; then
-      _msg "ERROR: ${_USERFTP} was not made: no system uid free of other accounts' (see /var/log/boa/manage_ltd.incident.log)"
-      _clean_pid_exit
+      _msg "${_STATUS} A: FATAL ERROR: ${_USERFTP} was not made: no system uid free of other accounts' (see /var/log/boa/manage_ltd.incident.log)"
+      _msg "${_STATUS} A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
+      touch "/opt/tmp/state/.root/${_USER}/status-AegirSetupA-FAIL"
+      exit 1
     fi
     # The file which contains the password is private from the start: made
     # 0600 below as a fresh file inside the real log/ (the instance user's),

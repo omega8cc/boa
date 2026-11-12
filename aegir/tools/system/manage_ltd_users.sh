@@ -1974,10 +1974,13 @@ _acct_purged_add() {
   (
     flock -w 60 9 || exit 1
     _c=$(cat -- "${_d}/.purged" 2> /dev/null)
-    _acct_gone_write "${_d}/.purged" "$(printf '%s\n' "${_c}"
+    # a number added again was freed again: it takes the current time
+    _acct_gone_write "${_d}/.purged" "$(while read -r _u _t; do
+        [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+        grep -qx -- "${_u}" <<< "${_n}" || echo "${_u} ${_t}"
+      done <<< "${_c}"
       while IFS= read -r _u; do
-        [ -n "${_u}" ] || continue
-        grep -q -- "^${_u} " <<< "${_c}" || echo "${_u} ${_now}"
+        [ -n "${_u}" ] && echo "${_u} ${_now}"
       done <<< "${_n}")"
   ) 9> "${_d}/.unswept.lock" || _r=1
   while IFS= read -r _u; do
@@ -2152,27 +2155,41 @@ _acct_new_identity() {
 # Every number a user has again leaves the lists (its files are that user's
 # now), and so does the list of an account no longer in passwd.
 _ltd_acct_gone_prune_all() {
-  local _f _a _u _keep _gone _d=/data/conf/acct-uids
+  local _f _a _u _keep _gone _c _x _d=/data/conf/acct-uids
+  local -A _seen=()
   # an account counts as gone only while passwd answers for root
   getent passwd root > /dev/null 2>&1 || return 0
-  for _f in "${_d}"/*.gone; do
+  for _f in "${_d}"/*; do
     [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
     _a="${_f##*/}"
     _a="${_a%.gone}"
+    [[ "${_a}" =~ ^[a-z0-9-]+$ ]] || continue
+    [ -n "${_seen[${_a}]:-}" ] && continue
+    _seen[${_a}]=1
     if ! id -u -- "${_a}" > /dev/null 2>&1; then
       # the account is gone (removed other than by boa cleanup purge): the
       # numbers it recorded and those its identities held (its uid list) no
-      # user has stay held, for no account
+      # user has stay held, for no account; nothing goes unless both read
+      _c=""
+      if [ -f "${_d}/${_a}.gone" ] && [ ! -L "${_d}/${_a}.gone" ]; then
+        _c=$(cat -- "${_d}/${_a}.gone") || continue
+      fi
+      if [ -f "${_d}/${_a}" ] && [ ! -L "${_d}/${_a}" ]; then
+        _x=$(tr ',' '\n' < "${_d}/${_a}") || continue
+        _c="${_c}"$'\n'"${_x}"
+      fi
       _gone=""
       while IFS= read -r _u; do
         [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
         getent passwd "${_u}" > /dev/null 2>&1 && continue
         _gone="${_gone} ${_u}"
-      done < <(cat -- "${_f}"; [ -f "${_d}/${_a}" ] && [ ! -L "${_d}/${_a}" ] && tr ',' '\n' < "${_d}/${_a}")
+      done <<< "${_c}"
       # shellcheck disable=SC2086
-      _acct_purged_add ${_gone} && rm -f -- "${_f}"
+      _acct_purged_add ${_gone} && rm -f -- "${_d}/${_a}.gone" "${_d}/${_a}"
       continue
     fi
+    _f="${_d}/${_a}.gone"
+    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
     _keep=""
     while IFS= read -r _u; do
       [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
