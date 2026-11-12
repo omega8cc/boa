@@ -287,6 +287,12 @@
       like any change. Where ss or pgrep is missing or fails, every
       established peer still counts.
 
+    * ip_access.sh and user_admin_access.sh take an account's reload
+      stamp back when its run fails configtest or its reload. Such a run
+      drops the account's HTTPS front copies, and the stamp then held
+      their rebuild for 15 minutes: once nginx loaded that state, a site's
+      whole-site list did not hold over HTTPS for that long.
+
     * The web abuse guard spares only the address of a logged-in SSH
       session from its bans, told the same way. Anyone who held a
       connection to the SSH port open, with no login, kept their address
