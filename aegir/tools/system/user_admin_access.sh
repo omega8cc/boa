@@ -1114,6 +1114,13 @@ _acct_reload_stamp() {
   date +%s > "${_ACCT_REQ_DIR}/${_RELOAD_TOOL}.${1}"
   rm -f "${_ACCT_REQ_DIR}/${_RELOAD_TOOL}.${1}.noted"
 }
+# The account $1's stamp taken back after a run whose configtest or reload
+# failed: that run applied nothing and dropped the account's front copies, so
+# the next pass must be free to rebuild them at once, not 15 minutes on. A
+# config that fails configtest stops every reload, so nothing can loop on it.
+_acct_reload_unstamp() {
+  rm -f "${_ACCT_REQ_DIR}/${_RELOAD_TOOL}.${1}" "${_ACCT_REQ_DIR}/${_RELOAD_TOOL}.${1}.noted"
+}
 # The SSH addresses the account $1's lists now carry (the server's own with
 # them), one a line, recorded by root beside its stamp when a reload applied
 # them or a standby whose web tier is held wrote them. Never when the run
@@ -1423,8 +1430,9 @@ _process_instance() {
       _acct_in_real_dir "${_map_path}" _confs_drop_here > /dev/null
     fi
     # The front copies were dropped: forget the front state so the next pass
-    # rebuilds them.
+    # rebuilds them, held by nothing.
     _acct_in_real_dir "${_srv_path}" rm -f -- ./.ua_front_hash
+    _acct_reload_unstamp "${_root##*/}"
     return 1
   fi
 
@@ -1445,6 +1453,7 @@ _process_instance() {
       _acct_ssh_forget "${_root##*/}"
     fi
     _acct_in_real_dir "${_srv_path}" rm -f -- ./.ua_front_hash
+    _acct_reload_unstamp "${_root##*/}"
     return 1
   fi
 
