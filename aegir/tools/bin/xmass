@@ -6186,15 +6186,15 @@ _xmass_write_gtid_conf_local() {
     echo "enforce_gtid_consistency = ON"
     echo "log_slave_updates        = ON"
     echo "binlog_format            = ROW"
-    # Only the key and the changed columns of a row: as BOA's own binary
-    # log switch writes it, and what keeps the log's size near the writes.
-    echo "binlog_row_image         = minimal"
     # With the binary log on, a site's own login creates its triggers and
     # functions only with this (ERROR 1419), and a replica's applier stops on
     # a function its source took under it (ERROR 1418): both ends carry it,
     # above the target's hold block. The runtime half is _xmass_trust_pair's,
     # the mirror first.
     echo "log_bin_trust_function_creators = 1"
+    # Only the key and the changed columns of a row: as BOA's own binary
+    # log switch writes it, and what keeps the log's size near the writes.
+    echo "binlog_row_image         = minimal"
     # expire_logs_days was REMOVED in MySQL/Percona 8.4 (deprecated in 8.0);
     # its presence aborts mysqld at startup ("unknown variable"). Use the
     # replacement binlog_expire_logs_seconds on 8.0+; keep the old name on 5.7
@@ -6315,9 +6315,9 @@ _keep_logbin=NO
   echo "enforce_gtid_consistency = ON"
   echo "log_slave_updates        = ON"
   echo "binlog_format            = ROW"
-  echo "binlog_row_image         = minimal"
   # Above the hold block, which every strip removes by position.
   echo "log_bin_trust_function_creators = 1"
+  echo "binlog_row_image         = minimal"
   if [ "${_XMASS_PERCONA_V}" = "5.7" ]; then
     echo "expire_logs_days             = ${_XM_BINLOG_DAYS_TGT:-7}"
     echo "slave_parallel_type          = LOGICAL_CLOCK"
