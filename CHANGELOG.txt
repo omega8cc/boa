@@ -116,10 +116,12 @@
       It is now written with minimal row images, and prep-target and init
       say what it may cost a day (from the redo log's rate) and how many
       days each server keeps: seven at most, one at least, as many as fit
-      under the 90% line there. init refuses a server that cannot hold one
-      day, while nothing is displaced. _XMASS_BINLOG_DAYS=<1-7> sets the
-      days, _XMASS_BINLOG_DAY_KB=<K> plans with a known daily figure. The
-      binary log and GTID stay on.
+      on its disk, planned to 85% so that room stays for everything else.
+      init refuses a server that cannot hold one day, while nothing is
+      displaced (_XMASS_SKIP_BINLOG_GATE=YES passes it). A source another
+      replica reads keeps the days it runs with. _XMASS_BINLOG_DAYS=<1-7>
+      sets the days, _XMASS_BINLOG_DAY_KB=<K> plans with a known daily
+      figure. The binary log and GTID stay on.
 
 @=> Security
 
