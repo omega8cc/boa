@@ -101,6 +101,19 @@ _restore_queued() {
   done
   return 1
 }
+# A queue pass has work: any account's queued restore (the pass itself
+# leaves one its account's own backup holds for a later pass), or a window
+# record a pass that died left open, which the next pass closes. A pass
+# with neither serves nothing, and while it lives every gate of the
+# server's own backup counts it as a backup in flight.
+_pass_has_work() {
+  local _q=""
+  for _q in /data/disk/*/static/control/.run/command.txt; do
+    [ -f "${_q}" ] && return 0
+  done
+  [ -n "$(find /root/.remote_backups/restore_windows -maxdepth 1 -type f \
+    \( -name '*.cred' -o -name '*.rb' \) -print -quit 2> /dev/null)" ]
+}
 
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
@@ -688,7 +701,9 @@ if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ]; then
   else
     [ -x "/usr/local/bin/dcysetup" ] && bash /usr/local/bin/dcysetup update &> /dev/null
     wait
-    [ -x "/usr/local/bin/mybackup" ] && nohup /usr/local/bin/mybackup > /dev/null 2>&1 &
+    if _pass_has_work; then
+      [ -x "/usr/local/bin/mybackup" ] && nohup /usr/local/bin/mybackup > /dev/null 2>&1 &
+    fi
   fi
 fi
 
