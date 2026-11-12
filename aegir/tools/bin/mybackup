@@ -1756,7 +1756,8 @@ _backups_first_old() {
 # duobackboa or root's own entry. With an account, that account's own entry,
 # running or marked, holds its restore alone (_acct_bup_first): no restore
 # holds another account's entry, so another account's backup, running or
-# waiting, holds neither. Under an older wrapper, the older rule.
+# waiting, holds neither. With no account under an older wrapper, the older
+# rule (the pass asks it first, so the account form never holds beyond it).
 _backups_first() {
   local _a="${1:-}" _m="" _e="" _t="" _v="" _s="" _g=""
   if [ -n "${_a}" ]; then
@@ -1795,8 +1796,9 @@ _backups_first() {
 _main_script() {
   # One queue pass at a time (the launcher starts one every few minutes
   # while no duplicity runs, which includes the pauses between accounts, and
-  # under the wrapper that caps the accounts' streams also for a restore it
-  # can serve while only accounts' own entries run).
+  # under the wrapper that caps the accounts' streams also for a queued
+  # restore its account's own backup does not hold while only accounts' own
+  # entries run; the server's own holds may still end the pass at once).
   # The lock is fd 9, never handed to the restore run: su gets it closed.
   exec 9>> /run/mybackup_queue.lock || exit 1
   flock -n 9 || exit 0
@@ -1936,14 +1938,24 @@ _main_script() {
         _acct_in_real_dir "${_ctl_rb_dir}" _unlink_link_here credentials
         _acct_in_real_dir "${_user_credentials_dir}" \
           _cred_window_open_here "${_user}" "${_cred_name}"
+        # The account's own entry may have started since the check above:
+        # with the window records in place an entry starting from here waits
+        # for this restore, and one that started in between keeps the queue
+        # for a later pass.
+        if _acct_bup_first "${_user}"; then
+          echo "[$(date)] ${_user}'s own backup started, its restore waits..." >> /var/log/mybackup_waiting_queue.log
+          _win_close "${_user}"
+          continue
+        fi
         # Pass the validated args positionally after -- so each arg arrives at
         # the inner mybackup as a separate $1/$2/$3/$4: su hands what follows
         # -- to bash -c, which takes the first word as $0, so a word stands in
         # that place. No shell-interpolation of attacker-controlled bytes;
         # metacharacters in any arg are inert.
         # The restore runs as the account, which can stall its own run while
-        # this pass holds the queue and every backup gate: one restore gets
-        # at most 24 hours. su then ends only the account's shell, so what
+        # this pass holds the queue, the server's own backup gates and the
+        # account's own entry (every backup gate under an older wrapper): one
+        # restore gets at most 24 hours. su then ends only the account's shell, so what
         # that shell started is ended with the session it led, by the pid it
         # wrote, the account's own processes alone.
         local _rs_t0="${SECONDS}" _rs_rc=0 _rs_sid=""

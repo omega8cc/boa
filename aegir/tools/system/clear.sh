@@ -82,8 +82,8 @@ _acct_bup_first() {
 _wrapper_caps_accounts() {
   grep -q '^_live_account_streams()' /root/.remote_backups/run/sequential_backups.sh 2> /dev/null
 }
-# A restore the pass can serve now waits in an account's queue: its command
-# file, a regular file reached through no link, of an account whose own backup
+# A queued restore its account's own backup does not hold: its command file,
+# a regular file reached through no link, of an account whose own backup
 # neither runs nor waits (the pass leaves such a queue for a later pass).
 _restore_queued() {
   local _q="" _a=""
@@ -674,9 +674,10 @@ if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ]; then
   # the word (an editor, a tail, an operator probe).
   # The quiet tick also rewrites the wrapper a live run reads, so it keeps
   # the full count. Under the wrapper that caps the accounts' streams, with
-  # only accounts' own entries running, a pass starts for a restore it can
-  # serve: the pass serves it beside them (no restore holds another
-  # account's entry there).
+  # only accounts' own entries running, a pass starts for a queued restore
+  # its account's own backup does not hold, and serves it beside them (no
+  # restore holds another account's entry there); the server's own holds
+  # may still end that pass at once.
   _CNT=$(_dcy_live_count)
   if (( _CNT > 0 )); then
     if _wrapper_caps_accounts && (( $(_dcy_box_count) == 0 )) && _restore_queued; then

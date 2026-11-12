@@ -395,11 +395,14 @@ _acct_stream_room() {
 }
 # A restore of this account is under way: mybackup's records of the window
 # that hands the account its credentials and secret, put before anything is
-# handed over and removed once all is given back (one a pass could not close
-# stays until the next pass closes it).
+# handed over and removed once the give-back is done or logged as failed,
+# while a queue pass is live. A record a pass that died left behind holds
+# nothing: the next pass closes it before its first restore.
 _acct_window_open() {
   [ -e "/root/.remote_backups/restore_windows/${1}.rb" ] \
-    || [ -e "/root/.remote_backups/restore_windows/${1}.cred" ]
+    || [ -e "/root/.remote_backups/restore_windows/${1}.cred" ] || return 1
+  pgrep -u root -U root -f '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*mybackup( |$)' \
+    > /dev/null 2>&1
 }
 # The installed wrapper caps the accounts' streams alone and never defers
 # root's own entries; an older wrapper caps every stream and would defer
@@ -448,7 +451,9 @@ if (( _CNT > 0 )) || [ "${_BOX_FIRST}" = "YES" ] || [ -n "${_ACCT_HOLD}" ]; then
     echo "[$(date)] ${_ACCT_HOLD}, ${2} ${3} will try again later..." >> /var/log/mybackup_waiting_queue.log
   fi
   # a backup run waits: mybackup's queue starts no restore until this
-  # entry's next run gets through, for a day from the first hold
+  # entry's next run gets through, for a day from the first hold (an
+  # account's entry under the wrapper that caps the accounts' streams: no
+  # restore of that account alone)
   [ "${1}" = "backup" ] && [ -n "${2}" ] && { [ -e "${_HELD_MARK}" ] || touch "${_HELD_MARK}"; }
   _waiting_notify
   exit 1
