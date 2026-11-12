@@ -653,6 +653,19 @@
 
 @=> Important Fixes
 
+    * The migration completion notice gives the client the account's new
+      control panel address in full, with the SQL Adminer address beside
+      it where the new server has Adminer, and the start notice says what
+      it will be. Before, both told the client to replace the old server
+      name with the new one in the addresses used so far, yet named only
+      the two IP addresses, so the new panel could not be found from the
+      mail. The address is printed only when the new server's own record
+      of the account agrees with the rename the move applies to the old
+      name. A panel that keeps its name is said to keep it, with the DNS
+      record that decides which server answers. Otherwise the notice says
+      the address is not given and to ask support, and the run names the
+      cause. The same notice goes out for every account of an xmass move.
+
     * A KEEP_WITHIN in days or weeks keeps at least what it asks: one
       longer than the default becomes the whole 30-day months that cover it
       (120D keeps 4M), a shorter one keeps the default 3M as before, and the
