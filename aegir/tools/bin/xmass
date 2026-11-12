@@ -2233,7 +2233,7 @@ _xmass_pin_rpath() {
     /opt/user/*/*) ;;
     /opt/user/?*)
       _m="[ -L /opt/user ] || [ -d /opt/user ] || mkdir -m 755 /opt/user; [ -L '${_p}' ] || [ -d '${_p}' ] || { mkdir -m 1777 '${_p}' && chown root:root '${_p}'; }; "
-      _c="case \"\$(stat -c %U .)\" in root|'${_n%%.*}'|'${_n%%.*}'.*) ;; *) echo \"DENY: ${_d} is owned by \$(stat -c %U .), not by ${_n%%.*} or root -- not entered\" >&2; false ;; esac && "
+      _c="case \"\$(stat -c %U .)\" in root|'${_n%%.*}'|'${_n%%.*}'.*) ;; *) echo \"${_d} is owned by \$(stat -c %U .), not by ${_n%%.*} or root: not entered\" >&2; false ;; esac && "
       ;;
   esac
   printf '%s' "${_m}_a=\"\$(cd -P ${_a} && /bin/pwd -P)\"; cd -P -- '${_p}' && [ \"\$(/bin/pwd -P)\" = \"\${_a}${_p#"${_a}"}\" ] && { [ -L './${_n}' ] && rm -f './${_n}'; [ -d './${_n}' ] || mkdir './${_n}'; } && cd -P -- './${_n}' && [ \"\$(/bin/pwd -P)\" = \"\${_a}${_d#"${_a}"}\" ] && ${_c}rsync"
