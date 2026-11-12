@@ -226,8 +226,13 @@ _ACCT_REOWN_PL='use Fcntl; my ($u, $g, @f) = @ARGV; for my $f (@f) { sysopen(my 
 # listed the name for, the way chown --from= checks them: $3 the uid and $4
 # the gid, each a number to match, -1 for any, or x for one that names
 # nobody (-nouser, -nogroup). A name swapped after find listed it, for
-# another file of a living owner or group, is left alone.
-_ACCT_REOWN_FROM_PL='use Fcntl; my ($u, $g, $fu, $fg, @f) = @ARGV; for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); chown($u, $g, $h) if @s && (-d _ || (-f _ && $s[3] == 1)) && ($fu eq "-1" || ($fu eq "x" ? !defined(getpwuid($s[4])) : $s[4] == $fu)) && ($fg eq "-1" || ($fg eq "x" ? !defined(getgrgid($s[5])) : $s[5] == $fg)); close($h); } exit 0'
+# another file of a living owner or group, is left alone. What it gives to
+# root ($1 = 0) loses its set-ID bits and group and other write, the mode
+# read again once root holds it: root is the owner every check trusts, so
+# nothing it now owns may be changed, or renamed out of a folder it now
+# owns, by anyone else (a directory moved to a new parent needs write on
+# itself).
+_ACCT_REOWN_FROM_PL='use Fcntl; my ($u, $g, $fu, $fg, @f) = @ARGV; for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); if (@s && (-d _ || (-f _ && $s[3] == 1)) && ($fu eq "-1" || ($fu eq "x" ? !defined(getpwuid($s[4])) : $s[4] == $fu)) && ($fg eq "-1" || ($fg eq "x" ? !defined(getgrgid($s[5])) : $s[5] == $fg)) && chown($u, $g, $h) && "$u" eq "0") { my @t = stat($h); chmod($t[2] & 01755, $h) if @t; } close($h); } exit 0'
 # What _ACCT_REOWN_FROM_PL leaves alone, for the purge's freed numbers:
 # each name given that is not a directory (a regular file with more than one
 # link, a link, a FIFO, a socket, a device) whose uid ($1 = u) or gid

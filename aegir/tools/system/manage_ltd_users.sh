@@ -3279,11 +3279,13 @@ EOF
 # A login's files in its account's trees go to the account before deluser
 # frees its number: useradd -r gives out the highest free system uid, so the
 # next login made, of any account, would own them. Each directory and
-# single-link file the login owns there is handed over through a handle that
-# re-checks the owner and never follows a link; the group stays. A
-# hard-linked file goes to root instead: another name of it may sit outside
-# these trees. $1 = the login, $2 = the account.
-_LTD_REOWN_FROM_PL='use Fcntl; my ($f, $u, @n) = @ARGV; for my $n (@n) { sysopen(my $h, $n, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); chown((-d _ || $s[3] == 1) ? $u : 0, -1, $h) if @s && $s[4] == $f && (-d _ || -f _); close($h); } exit 0'
+# file the login owns there is handed over through a handle that re-checks
+# the owner and never follows a link; the group stays. A hard-linked file
+# goes to the account too: another name of it may sit outside these trees,
+# where the account is another account's user (and the login could write
+# that file already), while root is trusted everywhere. $1 = the login,
+# $2 = the account.
+_LTD_REOWN_FROM_PL='use Fcntl; my ($f, $u, @n) = @ARGV; for my $n (@n) { sysopen(my $h, $n, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); chown($u, -1, $h) if @s && $s[4] == $f && (-d _ || -f _); close($h); } exit 0'
 _ltd_reap_hand_over() {
   local _gu _ou _d
   _gu=$(id -u -- "${1}" 2> /dev/null)
@@ -3407,12 +3409,12 @@ _ltd_account_trees() {
 # pass makes any login, each directory and single-link file there whose owner
 # is one of the account's removed identities root recorded
 # (/data/conf/acct-uids/<oN>.gone) and still names nobody goes to the account,
-# a hard-linked one to root, the group kept; a link keeps its number. Any other
-# number no user has stays as it is: another account's removed login leaves
-# files under such a number too, and handing them over would make them the
-# account's. The owner is read through the handle and looked up as the walks'
+# a hard-linked one too (as at the reap), the group kept; a link keeps its
+# number. Any other number no user has stays as it is: another account's
+# removed login leaves files under such a number too, and handing them over
+# would make them the account's. The owner is read through the handle and looked up as the walks'
 # own() does: a lookup that fails for another reason hands nothing over.
-_LTD_REOWN_GONE_PL='use Fcntl; my ($t, $ok, @n) = @ARGV; my %ok = map { $_ => 1 } grep { /^[1-9][0-9]*$/ } split(/,/, $ok); my %g; for my $n (@n) { sysopen(my $h, $n, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); if (@s && (-d _ || -f _)) { my $d = -d _; my $u = $s[4]; unless (exists $g{$u}) { local $! = 0; $g{$u} = !$ok{$u} ? 0 : defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } chown(($d || $s[3] == 1) ? $t : 0, -1, $h) if $g{$u}; } close($h); } exit 0'
+_LTD_REOWN_GONE_PL='use Fcntl; my ($t, $ok, @n) = @ARGV; my %ok = map { $_ => 1 } grep { /^[1-9][0-9]*$/ } split(/,/, $ok); my %g; for my $n (@n) { sysopen(my $h, $n, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); if (@s && (-d _ || -f _)) { my $d = -d _; my $u = $s[4]; unless (exists $g{$u}) { local $! = 0; $g{$u} = !$ok{$u} ? 0 : defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } chown($t, -1, $h) if $g{$u}; } close($h); } exit 0'
 _ltd_gone_hand_over() {
   local _ou _d _u _ok=""
   local -a _k=()
@@ -3486,8 +3488,10 @@ _ltd_reap_account() {
   # this pass removes has its own number still)
   _ltd_in_real_dir "/home/${_acct}" _ltd_rm_glob_own_here \
     "$(_acct_walk_uids "${_acct%%.*}" || echo 0),$(id -u -- "${_acct}" 2> /dev/null || echo 0)" .gnupg
-  _ltd_reap_hand_over "${_acct}" "${_parent}"
+  # its names in other accounts' control folders go first: the hand-over
+  # below changes the owner of a file it linked there from its own tree
   _ltd_reap_foreign_ctrl "${_acct}" "${_parent}"
+  _ltd_reap_hand_over "${_acct}" "${_parent}"
   # its number stays the account's once freed (_acct_gone_add)
   _acct_gone_add "${_parent}" "$(id -u -- "${_acct}" 2> /dev/null)" \
     || echo "$(date) LTD account ${_acct}: its number could not be recorded for ${_parent}" >> /var/log/boa/manage_ltd.incident.log

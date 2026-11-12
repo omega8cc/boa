@@ -240,6 +240,14 @@
       left unread with an ALERT that says how to give it back, as one
       another account made is.
 
+    * A removed login's hard-linked file is no longer given to root, which
+      every check trusts: the ltd worker gives it to the login's account,
+      as it does a single-link one, and it now removes the login's files in
+      other accounts' control folders before that hand-over. What boa
+      cleanup purge gives to root of a removed account's leftovers loses
+      its set-ID bits and group and other write, so no one else can change
+      it or move it out of a folder root now owns.
+
     * Before the ltd worker removes a client login, it ends every process
       the login runs, in any root: a process in a chroot or a user
       namespace outlived the removal and went on writing as the freed
