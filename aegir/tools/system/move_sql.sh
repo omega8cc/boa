@@ -117,11 +117,16 @@ _start_sql() {
     || [ -e "/run/mysqld/mysqlx.sock" ]; then
     rm -f /run/mysqld/mysql*
   fi
-  # a folder linked since the profiles were last loaded is allowed before the start
-  if [ -n "$(_apparmor_mysql_local)" ] && [ -d /sys/kernel/security/apparmor ] \
+  # a folder linked since the profiles were last loaded is allowed before the
+  # start: each profile the kernel holds now is loaded again, and none other
+  # (a box BOA keeps AppArmor off on, or one a pass took the profiles off for
+  # its run, stays as BOA left it)
+  if [ -n "$(_apparmor_mysql_local)" ] && [ -r /sys/kernel/security/apparmor/profiles ] \
     && command -v apparmor_parser > /dev/null 2>&1; then
     for _aap in usr.sbin.mysqld usr.bin.mysqld_safe usr.bin.mysql; do
-      [ ! -f "/etc/apparmor.d/${_aap}" ] || apparmor_parser -r "/etc/apparmor.d/${_aap}" &> /dev/null
+      [ -f "/etc/apparmor.d/${_aap}" ] || continue
+      grep -q "^/${_aap//.//} (" /sys/kernel/security/apparmor/profiles 2> /dev/null || continue
+      apparmor_parser -r "/etc/apparmor.d/${_aap}" &> /dev/null
     done
   fi
   service mysql start &> /dev/null
