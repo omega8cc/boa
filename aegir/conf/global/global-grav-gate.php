@@ -10,7 +10,8 @@
  * user/setup.php. A file of its own, so a barracuda pass of a tree that does
  * not know the gate leaves it as it is, and a Grav vhost that names it keeps
  * the gate. While this file or the gate file is missing, such a vhost tests
- * the gate files in nginx by path.
+ * the gate files in nginx by path (nginx's open file cache keeps the answer up
+ * to open_file_cache_valid: reload nginx after moving either by hand).
  * Deployed by barracuda; an edit here is overwritten.
  */
 if (is_file('/data/conf/global/global-http-off.php')) {

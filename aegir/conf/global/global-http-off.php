@@ -9,7 +9,8 @@
  * this file first. Their vhosts leave the gate to it once verified with a
  * provision that knows it; an older vhost still tests both gate files in
  * nginx, by path, and so does a newer one while this file or Grav's
- * global-grav-gate.php is missing.
+ * global-grav-gate.php is missing (nginx's open file cache keeps the answer
+ * up to open_file_cache_valid: reload nginx after moving either by hand).
  *
  * static/control/http-off.pid holds every site of the account (its content
  * the TTL, 30 to 86400 seconds, else 300); static/control/http-off-host.pid
