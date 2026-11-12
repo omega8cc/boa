@@ -122,13 +122,21 @@ _verify_boa_keys() {
       _allw=YES
     fi
     mkdir -p /var/opt
-    rm -f /var/opt/_encN*
-    curl ${_crlGet} "${_urlEnc}/${_encName}" -o /var/opt/_encN.${_encName}.tmp
-    wait
-    echo "${_hName}.${_encName}" > /var/opt/_encN_local.${_encName}.tmp
-    wait
-    if [ -e "/var/opt/_encN.${_encName}.tmp" ] && [ -e "/var/opt/_encN_local.${_encName}.tmp" ]; then
-      _diffTestIf=$(diff -w -B /var/opt/_encN.${_encName}.tmp /var/opt/_encN_local.${_encName}.tmp 2>&1)
+    # Each check keeps its files in a folder of its own and removes it when
+    # done, so checks that overlap (an account's backup starting beside
+    # root's) never remove each other's files; a folder a killed check left
+    # behind is removed an hour later.
+    find /var/opt -maxdepth 1 -type d -name '_enck.*' -mmin +60 \
+      -exec rm -rf -- {} + 2> /dev/null
+    _encDir="$(mktemp -d /var/opt/_enck.XXXXXXXX 2> /dev/null)"
+    if [ -n "${_encDir}" ] && [ -d "${_encDir}" ]; then
+      curl ${_crlGet} "${_urlEnc}/${_encName}" -o "${_encDir}/_encN.${_encName}.tmp"
+      wait
+      echo "${_hName}.${_encName}" > "${_encDir}/_encN_local.${_encName}.tmp"
+      wait
+    fi
+    if [ -e "${_encDir}/_encN.${_encName}.tmp" ] && [ -e "${_encDir}/_encN_local.${_encName}.tmp" ]; then
+      _diffTestIf=$(diff -w -B "${_encDir}/_encN.${_encName}.tmp" "${_encDir}/_encN_local.${_encName}.tmp" 2>&1)
       if [ ! -z "${_diffTestIf}" ] && [ "${_allw}" = "NO" ]; then
         echo
         echo "Your system requires valid license to use this function"
@@ -137,15 +145,15 @@ _verify_boa_keys() {
         if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
           && [ ! -e "/var/aegir/key/barracuda_key.txt" ]; then
           mkdir -p /var/aegir/key
-          cat /var/opt/_encN_local.${_encName}.tmp > /var/aegir/key/barracuda_key.txt
+          cat "${_encDir}/_encN_local.${_encName}.tmp" > /var/aegir/key/barracuda_key.txt
         fi
-        rm -f /var/opt/_encN*
+        if [ -n "${_encDir}" ]; then rm -rf -- "${_encDir}"; fi
         exit 0
       else
         if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
           && [ ! -e "/var/aegir/key/barracuda_key.txt" ]; then
           mkdir -p /var/aegir/key
-          cat /var/opt/_encN_local.${_encName}.tmp > /var/aegir/key/barracuda_key.txt
+          cat "${_encDir}/_encN_local.${_encName}.tmp" > /var/aegir/key/barracuda_key.txt
         fi
       fi
     elif [ "${_allw}" = "YES" ]; then
@@ -155,15 +163,17 @@ _verify_boa_keys() {
       echo
       echo "NOTE: the key server could not be reached; ${_hName} is allowed by its hostname"
       echo
-      rm -f /var/opt/_encN*
+      if [ -n "${_encDir}" ]; then rm -rf -- "${_encDir}"; fi
     else
       echo
       echo "Your system requires valid license to use this BOA feature"
       echo "Unfortunately it was not possible to verify your system status"
       echo "Please contact our support but visit https://omega8.cc/licenses first"
       echo
+      if [ -n "${_encDir}" ]; then rm -rf -- "${_encDir}"; fi
       exit 0
     fi
+    if [ -n "${_encDir}" ]; then rm -rf -- "${_encDir}"; fi
   fi
 }
 
