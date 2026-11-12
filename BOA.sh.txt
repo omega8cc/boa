@@ -7396,7 +7396,12 @@ if [ "$(id -u)" -eq 0 ]; then
       [ "${_bupOkT}" -gt 0 ] && _bupOkD="$(date -d @${_bupOkT} 2>/dev/null)"
       _bupErD="never"
       [ "${_bupErT}" -gt 0 ] && _bupErD="$(date -d @${_bupErT} 2>/dev/null)"
-      echo "$(date) ${_bupKind}: ${_bupSvc} ${_bupUsr} last OK ${_bupOkD}; last ERR ${_bupErD}" \
+      # an entry multiback holds after its duplicity ran out of memory
+      # (multiback's memory hold, the same name)
+      _bupMemH="/root/.remote_backups/memory_holds/$(printf '%s.%s' "${_bupSvc}" "${_bupUsr}" | tr -dc 'A-Za-z0-9_.-')"
+      _bupMemT=""
+      [ -e "${_bupMemH}" ] && _bupMemT="$(head -c 19 "${_bupMemH}" 2>/dev/null)"
+      echo "$(date) ${_bupKind}: ${_bupSvc} ${_bupUsr} last OK ${_bupOkD}; last ERR ${_bupErD}${_bupMemT:+; memory hold since ${_bupMemT}}" \
         >> /var/log/boa/backup-freshness.log
       if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" != "OFF" ]; then
         {
@@ -7406,6 +7411,12 @@ if [ "$(id -u)" -eq 0 ]; then
           echo "Last OK:  ${_bupOkD}"
           echo "Last ERR: ${_bupErD}"
           echo
+          if [ -e "${_bupMemH}" ]; then
+            echo "This entry ran out of memory at ${_bupMemT} and waits seven days"
+            echo "from then before it runs again. Remove ${_bupMemH}"
+            echo "to let it run sooner, for example once the box has more memory."
+            echo
+          fi
           echo "Every scheduled run mails its own report, but this box has had"
           echo "no completed backup past the alert floor. Check first:"
           echo "  ${_bupErF}"
