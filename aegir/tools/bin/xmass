@@ -98,6 +98,10 @@ _XMASS_ADMAIL_FILE="/data/conf/xmass_admail.txt"
 _REPL_USER="xmass_repl"
 _XTRA_STAGE_SRC="/var/backups/xmass_stage"
 _XTRA_STAGE_TGT="/var/backups/xmass_restore"
+# set by init: the snapshot's GTID set, read before the swap, and whether the
+# swap moves the snapshot into place (one copy) or copies it (two)
+_XM_BACKUP_GTID=""
+_XM_SEED_MOVE=""
 _SOLR_DENY_FILE="/root/.deny.java.cnf"
 _XMASS_SOLR_SET_FILE="/data/conf/xmass_solr_used.cnf"
 _PERM_PROXY_FLAG="/data/conf/xmass_permanent_proxy.pid"
@@ -6879,12 +6883,20 @@ if [ -d "${_base%/}/xmass_restore" ] && [ ! -L "${_base%/}/xmass_restore" ]; the
   _stale="$(du -sk "${_base%/}/xmass_restore" 2>/dev/null | awk '{ print $1 }')"
 fi
 echo "DD_STALE_KB=${_stale}"
+# the folder's own size (a seed parks it whole) and the standby marker's
+# first line (a box that is a replica already)
+_k=""
+[ ! -d "${_real}" ] || _k="$(du -sk "${_real}" 2>/dev/null | awk '{ print $1 }')"
+echo "DD_KB=${_k}"
+echo "DD_STANDBY=$(head -n 1 /root/.standby.cnf 2>/dev/null | tr -cd 'A-Za-z0-9 .:_-' | cut -c1-120)"
 PROBE
 }
 
 # The layout of the database folder on this box, or on the box $1, read
 # into _XM_DD_SHAPE, _XM_DD_REAL, _XM_DD_WHY, _XM_DD_BASE, _XM_DD_FREE_KB,
-# _XM_DD_BASE_FREE_KB, _XM_DD_SAME_FS and _XM_DD_STALE_KB. Every value is
+# _XM_DD_BASE_FREE_KB, _XM_DD_SAME_FS, _XM_DD_STALE_KB, _XM_DD_KB (the
+# folder's own size) and _XM_DD_STANDBY (the standby marker's first line,
+# empty on a box that is no replica). Every value is
 # judged here: a probe that did not answer, or answered with a path or a
 # number that is not one, leaves the shape "unread" and the figures empty,
 # never a guess.
@@ -6904,6 +6916,9 @@ _xmass_dd_read() {
   _XM_DD_SAME_FS="$(_xmass_kv "${_o}" DD_SAME_FS)"
   _XM_DD_STALE_KB="$(_xmass_kv "${_o}" DD_STALE_KB)"
   [[ "${_XM_DD_STALE_KB}" =~ ^[0-9]+$ ]] || _XM_DD_STALE_KB=0
+  _XM_DD_KB="$(_xmass_kv "${_o}" DD_KB)"
+  [[ "${_XM_DD_KB}" =~ ^[0-9]+$ ]] || _XM_DD_KB=""
+  _XM_DD_STANDBY="$(_xmass_kv "${_o}" DD_STANDBY)"
   case "${_XM_DD_SHAPE}" in
     plain|link|mount|badlink|absent) : ;;
     *) _XM_DD_SHAPE=unread ;;
@@ -6973,9 +6988,22 @@ _xmass_dd_own_mount() {
   [ -n "${_mpA}" ] && [ -n "${_mpB}" ] && [ "${_mpA}" != "${_mpB}" ]
 }
 
+# The binary log this box's MySQL holds, in K (its files sit in the database
+# folder and no snapshot carries them); 0 when there is none or no answer.
+_xmass_src_log_kb() {
+  local _k
+  _k="$(mysql --defaults-file=/root/.my.cnf --connect-timeout=5 -sNe 'SHOW BINARY LOGS' 2> /dev/null \
+    | awk '{ s += $2 } END { printf "%.0f\n", s / 1024 }')"
+  [[ "${_k}" =~ ^[0-9]+$ ]] || _k=0
+  printf '%s' "${_k}"
+}
+
 _xmass_decide_transfer_method() {
-  # Stage locally if we have 1.5× the MySQL data size free on /; stream otherwise.
-  local _mysql_kb _free_kb _needed_kb _on="/"
+  # Stage locally when the filesystem the stage lands on has 1.5 times the
+  # snapshot free (the folder without its binary log, which no snapshot
+  # carries) and stays under the 90% line BOA's own runs stop at with the
+  # snapshot on it; stream otherwise.
+  local _mysql_kb _free_kb _needed_kb _on="/" _log_kb _snap_kb _size_kb _used_kb _why=""
   _xmass_dd_read
   if [ "${_XM_DD_SHAPE}" = "link" ]; then
     # du -s reads a link as nothing: the folder it names is what travels,
@@ -6995,14 +7023,26 @@ _xmass_decide_transfer_method() {
     _mysql_kb=$(du -s /var/lib/mysql 2>/dev/null | awk '{print $1}')
     _free_kb=$(df -P / 2>/dev/null | awk 'NR==2{print $4}')
   fi
-  _needed_kb=$(( _mysql_kb * 3 / 2 ))
-  if [ "${_free_kb}" -gt "${_needed_kb}" ]; then
-    _XTRA_METHOD="stage"
-  else
+  _log_kb="$(_xmass_src_log_kb)"
+  [[ "${_mysql_kb}" =~ ^[0-9]+$ ]] || _mysql_kb=0
+  [[ "${_log_kb}" =~ ^[0-9]+$ ]] && [ "${_log_kb}" -le "${_mysql_kb}" ] || _log_kb=0
+  _snap_kb=$(( _mysql_kb - _log_kb ))
+  _needed_kb=$(( _snap_kb * 3 / 2 ))
+  _size_kb="$(df -Pk "${_on}" 2> /dev/null | awk 'NR==2 { print $2 }')"
+  _used_kb="$(df -Pk "${_on}" 2> /dev/null | awk 'NR==2 { print $3 }')"
+  [[ "${_free_kb}" =~ ^[0-9]+$ ]] || _free_kb=0
+  if [ "${_free_kb}" -le "${_needed_kb}" ]; then
     _XTRA_METHOD="stream"
+  elif [[ "${_size_kb}" =~ ^[0-9]+$ ]] && [[ "${_used_kb}" =~ ^[0-9]+$ ]] \
+    && [ $(( _used_kb + _snap_kb * 11 / 10 )) -gt $(( _size_kb * 9 / 10 )) ]; then
+    _XTRA_METHOD="stream"
+    _why="the snapshot would take ${_on} past the 90% line where BOA's own runs stop"
+  else
+    _XTRA_METHOD="stage"
   fi
   _info "xtrabackup method: ${_XTRA_METHOD}" \
-    "(mysql=${_mysql_kb}K free=${_free_kb}K needed=${_needed_kb}K)"
+    "(mysql=${_mysql_kb}K, of it ${_log_kb}K binary log no snapshot carries; free=${_free_kb}K needed=${_needed_kb}K)"
+  [ -z "${_why}" ] || _alrt "  ${_why}"
   if [ "${_XTRA_METHOD}" = "stream" ]; then
     # Stream is one unresumable pipe (a break leaves the target's datadir in
     # place: it is moved aside only once the whole snapshot is there and
@@ -7011,7 +7051,11 @@ _xmass_decide_transfer_method() {
     # relocating it first is almost always worth it -- name the shortfall
     # and the usual suspects so that decision is informed, not discovered.
     _alrt "STREAM selected: the transfer is a single unresumable pipe. Shortfall:"
-    _alrt "  $(( (_needed_kb - _free_kb) / 1024 ))M more free on ${_on} would enable resumable STAGE."
+    if [ -n "${_why}" ]; then
+      _alrt "  $(( (_used_kb + _snap_kb * 11 / 10 - _size_kb * 9 / 10) / 1024 ))M more free on ${_on} would enable resumable STAGE under the 90% line."
+    else
+      _alrt "  $(( (_needed_kb - _free_kb) / 1024 ))M more free on ${_on} would enable resumable STAGE."
+    fi
     if [ "${_on}" = "/" ]; then
       _alrt "  Largest reclaim candidates (relocate, do not delete):"
       du -sk /root/.cache /var/backups /opt/tmp 2>/dev/null \
@@ -7032,7 +7076,7 @@ _xmass_decide_transfer_method() {
 # nothing; warn: every finding as a warning and nothing set. Override for
 # the room alone: _XMASS_SKIP_DISK_GATE=YES.
 _xmass_target_dd_gate() {
-  local _how="$1" _src_dd_kb _need_kb _bad="" _free_dd _free_base
+  local _how="$1" _src_dd_kb _need_kb _bad="" _free_dd _free_base _move _log_kb
   _xmass_dd_read "${_tgt}"
   case "${_XM_DD_SHAPE}" in
     plain|link) : ;;
@@ -7066,7 +7110,22 @@ _xmass_target_dd_gate() {
     _XM_TGT_DD="${_XM_DD_REAL}"
     _XTRA_STAGE_TGT="${_XM_DD_BASE%/}/xmass_restore"
   fi
+  # The snapshot is moved into place (xtrabackup --move-back) when it is
+  # staged on the folder's own filesystem: one copy there at the peak. It is
+  # copied (--copy-back, two copies there) when the stage is to be kept, or
+  # when _XMASS_SEED_COPY=YES asks for it.
+  _move=NO
+  if [ "${_XM_DD_SAME_FS}" = "YES" ] && [ "${_XMASS_KEEP_STAGE}" != "YES" ] \
+    && [ "${_XMASS_SEED_COPY}" != "YES" ]; then
+    _move=YES
+  fi
+  [ "${_how}" != "die" ] || _XM_SEED_MOVE="${_move}"
   _src_dd_kb=$(du -sL /var/lib/mysql 2>/dev/null | awk '{print $1}')
+  # the binary log in the source's folder never travels with a snapshot
+  _log_kb="$(_xmass_src_log_kb)"
+  if [[ "${_src_dd_kb}" =~ ^[0-9]+$ ]] && [[ "${_log_kb}" =~ ^[0-9]+$ ]] && [ "${_log_kb}" -le "${_src_dd_kb}" ]; then
+    _src_dd_kb=$(( _src_dd_kb - _log_kb ))
+  fi
   if [ "${_XMASS_SKIP_DISK_GATE}" = "YES" ]; then
     [ "${_how}" != "die" ] || _alrt "target datadir space gate SKIPPED by _XMASS_SKIP_DISK_GATE=YES"
     return 0
@@ -7089,12 +7148,22 @@ _xmass_target_dd_gate() {
     [ "${_XM_DD_SAME_FS}" != "YES" ] || _free_dd=$(( _XM_DD_FREE_KB + _XM_DD_STALE_KB ))
     _info "target ${_tgt}: a stage of ${_XM_DD_STALE_KB}K an earlier seed left at ${_XM_DD_BASE%/}/xmass_restore is cleared before the snapshot lands: counted as room"
   fi
-  if [ "${_XM_DD_SAME_FS}" = "YES" ]; then
+  if [ "${_XM_DD_SAME_FS}" = "YES" ] && [ "${_move}" = "YES" ]; then
+    # the stage, then the same files renamed into the folder
+    _need_kb=$(( _src_dd_kb * 11 / 10 ))
+    if [ "${_free_dd}" -lt "${_need_kb}" ]; then
+      _bad="target ${_tgt} has ${_free_dd}K free at ${_XM_DD_REAL} but the seed needs ~${_need_kb}K (1.1x the ${_src_dd_kb}K source snapshot, moved into place)."
+    elif [ "${_how}" = "die" ]; then
+      _info "Target datadir space check: OK (free=${_free_dd}K need~${_need_kb}K: the snapshot staged and moved into place, one copy)"
+    else
+      _info "target ${_tgt}: the seed needs about ${_need_kb}K at ${_XM_DD_REAL} (one copy: the snapshot is moved into place; _XMASS_SEED_COPY=YES copies it, two copies), ${_free_dd}K free"
+    fi
+  elif [ "${_XM_DD_SAME_FS}" = "YES" ]; then
     _need_kb=$(( _src_dd_kb * 22 / 10 ))
     if [ "${_free_dd}" -lt "${_need_kb}" ]; then
-      _bad="target ${_tgt} has ${_free_dd}K free at ${_XM_DD_REAL} but the restore transiently needs ~${_need_kb}K (2.2x the ${_src_dd_kb}K source datadir)."
+      _bad="target ${_tgt} has ${_free_dd}K free at ${_XM_DD_REAL} but the restore transiently needs ~${_need_kb}K (2.2x the ${_src_dd_kb}K source snapshot, copied into place)."
     elif [ "${_how}" = "die" ]; then
-      _info "Target datadir space check: OK (free=${_free_dd}K need~${_need_kb}K)"
+      _info "Target datadir space check: OK (free=${_free_dd}K need~${_need_kb}K: the snapshot staged and copied into place, two copies)"
     fi
   else
     # the stage and the folder on two filesystems: a copy and its margin on each
@@ -7107,7 +7176,18 @@ _xmass_target_dd_gate() {
       _info "Target datadir space check: OK (free=${_free_dd}K at ${_XM_DD_REAL}, ${_free_base}K at ${_XM_DD_BASE}, need~${_need_kb}K each)"
     fi
   fi
-  [ -n "${_bad}" ] || return 0
+  if [ -z "${_bad}" ]; then
+    # what stays once the seed is in: the new folder, and the one it parks
+    [ -z "${_XM_DD_KB}" ] \
+      || _info "  standing after init on target ${_tgt}: about ${_src_dd_kb}K of new database folder, beside ${_XM_DD_REAL}.xmass_pre_<stamp> (the folder there now, ${_XM_DD_KB}K), which init parks and never removes"
+    return 0
+  fi
+  # A box that is a replica already: a new seed parks its whole folder, which
+  # is no room. The route that fits is to return it to its pre-init folder
+  # first and remove the replica copy that keeps aside.
+  if [ -n "${_XM_DD_STANDBY}" ]; then
+    _bad="${_bad} Target ${_tgt} is a standing replica (${_XM_DD_STANDBY}): a new seed parks its folder (${_XM_DD_KB:-?}K) whole, which counts as no room. What fits: on the target 'xmass restore-target --live', then remove the replica copy it keeps aside (${_XM_DD_REAL}.xmass_standby_<stamp>) once it is no longer needed, then init again."
+  fi
   if [ "${_how}" = "die" ]; then
     _die "${_bad}" \
          " Free space on the target, or export _XMASS_SKIP_DISK_GATE=YES to override."
@@ -7380,12 +7460,18 @@ REMOTE
              " /var/xdrago/move_sql.sh start, then re-run init." ;;
   esac
 
-  _info "Running xtrabackup --copy-back on target ${_tgt} ..."
+  # One copy on the folder's filesystem: the prepared files are renamed into
+  # place (the gate chose it: stage and folder on one filesystem, the stage
+  # not kept). A move cut short leaves the stage partly emptied, and a new
+  # init seeds afresh as it always does.
+  local _back=--copy-back
+  [ "${_XM_SEED_MOVE}" != "YES" ] || _back=--move-back
+  _info "Running xtrabackup ${_back} on target ${_tgt} ..."
   ssh root@"${_tgt}" \
-    "${_XMASS_NOFILE_REMOTE}; xtrabackup --copy-back \
+    "${_XMASS_NOFILE_REMOTE}; xtrabackup ${_back} \
       --target-dir=${_XTRA_STAGE_TGT} \
       --datadir=${_dd}" \
-    || _die "xtrabackup --copy-back on target failed"
+    || _die "xtrabackup ${_back} on target failed"
 
   _info "Fixing MySQL data dir ownership on target ..."
   ssh root@"${_tgt}" "chown -R mysql:mysql ${_dd}"
@@ -7469,9 +7555,30 @@ _xmass_backup_gtid_set() {
   _XM_BACKUP_GTID="${_gtid_set}"
 }
 
+# init's closing line on the folder it parked on the target, with its size,
+# and when it can go: restore-target puts it back while the target is a
+# standby; once the cutover is verified nothing reads it, and it is removed
+# by hand (never by this tool). Older parked folders beside it are counted.
+_xmass_parked_note() {
+  local _q _o _w _n _k _p
+  _q="$(_shq "${_XM_TGT_DD:-/var/lib/mysql}")"
+  _o="$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" \
+    "d='${_q}'; p=\$(ls -1d \"\${d}\".xmass_pre_* 2>/dev/null | sort | tail -n 1); n=\$(ls -1d \"\${d}\".xmass_pre_* 2>/dev/null | wc -l); k=''; [ -z \"\${p}\" ] || k=\$(timeout 120 du -sk -- \"\${p}\" 2>/dev/null | awk '{ print \$1 }'); echo \"XMPARK \${n} \${k:-?} \${p}\"" \
+    2> /dev/null | grep -m1 '^XMPARK ')"
+  read -r _w _n _k _p <<< "${_o}"
+  [ "${_w}" = "XMPARK" ] && [ -n "${_p}" ] || return 0
+  _info "  Parked on the target: ${_p} (${_k}K), its database folder before this seed. 'xmass restore-target'"
+  _info "  puts it back while the target is a standby; once the cutover is verified nothing reads it: remove it by hand."
+  [[ "${_n}" =~ ^[0-9]+$ ]] && [ "${_n}" -gt 1 ] \
+    && _info "  $(( _n - 1 )) older parked folder(s) wait beside it the same way."
+  return 0
+}
+
 _xmass_setup_slave() {
   local _gtid_set
-  _xmass_backup_gtid_set
+  # the set the snapshot carries, read from its stage before the swap: a
+  # snapshot moved into place takes the stage's files with it
+  [ -n "${_XM_BACKUP_GTID}" ] || _xmass_backup_gtid_set
   _gtid_set="${_XM_BACKUP_GTID}"
 
   # Runtime half of the 5.7 parallel-apply setup (the conf half persists it):
@@ -19559,6 +19666,7 @@ REMOTE
   _info "  Run 'xmass sync ${_tgt}' to sync files (repeat as often as needed)."
   _info "  Run 'xmass status ${_tgt}' to check replication lag."
   _info "  Binary log: kept ${_XM_BINLOG_DAYS_SRC:-7} day(s) here, ${_XM_BINLOG_DAYS_TGT:-7} on the target (minimal row images)."
+  _xmass_parked_note
   _info "  When ready: 'xmass cutover ${_tgt} [--proxy-mode=...] [--proxy-deadline=...]$(_xmass_admail_hint)'"
   if [ -n "${_XMASS_MODE_UNDECLARED}" ]; then
     _info "  NB: undeclared proxy modes above must be resolved before cutover --live."
