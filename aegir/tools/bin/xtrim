@@ -1869,6 +1869,31 @@ _stage_b() {
   _info "${_oN}: stage B complete; dumps retained under ${_dumps}"
 }
 
+### --drop-datadir removes MySQL's data. /var/lib/mysql is a real folder, or a
+### symbolic link onto a folder of the attached mount: rm -rf of a link takes
+### the link and leaves the data where it is, so there the folder the link
+### names is what goes, then the link. Never a mount's own root (every store
+### of the volume lives under it), nor a folder that holds no MySQL data:
+### such a link is named and left for a removal by hand.
+_xtrim_drop_datadir() {
+  local _dd _mpA _mpB
+  if [ ! -L /var/lib/mysql ]; then
+    rm -rf /var/lib/mysql && _info "finalize: /var/lib/mysql DROPPED (--drop-datadir)"
+    return 0
+  fi
+  _dd="$(readlink -f /var/lib/mysql 2> /dev/null)"
+  _mpA="$(df -P "${_dd}" 2> /dev/null | awk 'NR==2 { print $NF }')"
+  _mpB="$(df -P "${_dd%/*}/" 2> /dev/null | awk 'NR==2 { print $NF }')"
+  if [[ "${_dd}" =~ ^(/[A-Za-z0-9._-]+)+$ ]] && [ -d "${_dd}" ] \
+    && [ -n "${_mpA}" ] && [ "${_mpA}" = "${_mpB}" ] \
+    && { [ -e "${_dd}/ibdata1" ] || [ -d "${_dd}/mysql" ]; }; then
+    rm -rf "${_dd}" && rm -f /var/lib/mysql \
+      && _info "finalize: ${_dd} DROPPED, with the link at /var/lib/mysql (--drop-datadir)"
+  else
+    _alrt "finalize: /var/lib/mysql is a link onto ${_dd:-nowhere}, which this run does not drop (a mount's own root, a folder without MySQL data, or a volume that is away): left as it is -- remove it by hand"
+  fi
+}
+
 ### ------------------------------------------------------------ stage C ---
 
 _finalize() {
@@ -1958,7 +1983,7 @@ _finalize() {
     update-rc.d mysql disable &> /dev/null
     _info "finalize: mysql stopped + disabled"
     if [ "${_drop_datadir}" = "YES" ]; then
-      rm -rf /var/lib/mysql && _info "finalize: /var/lib/mysql DROPPED (--drop-datadir)"
+      _xtrim_drop_datadir
     fi
   fi
   ### FPM: keep only the panel-front master + its www pool; a master with
