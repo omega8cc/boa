@@ -1214,7 +1214,16 @@ _satellite_check_id() {
     || [ "${_USER}" = "barracuda" ] \
     || [ "${_USER}" = "octopus" ] \
     || [ "${_USER}" = "boa" ] \
-    || [ "${_USER}" = "all" ]; then
+    || [ "${_USER}" = "all" ] \
+    || [ "${_USER}" = "global" ] \
+    || [ "${_USER}" = "data" ] \
+    || [ "${_USER}" = "custom" ] \
+    || [ "${_USER}" = "static" ] \
+    || [ "${_USER}" = "arch" ]; then
+    # global, data and custom name the server's own backup targets, and
+    # /data/disk/static and /data/disk/arch are folders of their own that
+    # the server's backup leaves out: an account so named would be backed
+    # up under root's rules or not at all.
     _msg "ERROR: ${_USER} is a restricted username"
     _msg "ERROR: Please choose a different _USER"
     _clean_pid_exit
