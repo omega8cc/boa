@@ -460,6 +460,10 @@ _mem_hold_check() {
 if [ "${1}" = "backup" ] && [ -n "${2}" ] && [ -n "${3}" ] && [ -e "${_MEM_HOLD}" ]; then
   if [ -n "$(find "${_MEM_HOLD}" -mmin "-$(( _MEM_HOLD_DAYS * 1440 ))" 2> /dev/null)" ]; then
     echo "[$(date)] ${2} ${3} ran out of memory at $(head -c 19 "${_MEM_HOLD}" 2> /dev/null) and waits ${_MEM_HOLD_DAYS} days from then (remove ${_MEM_HOLD} to try sooner)..." >> /var/log/mybackup_waiting_queue.log
+    # a held entry runs no backup for days: a held mark left from the run
+    # that ran out of memory would hold the account's restores (a root
+    # entry's, every restore) for a day
+    rm -f "${_HELD_MARK}"
     exit 1
   fi
   rm -f "${_MEM_HOLD}"
