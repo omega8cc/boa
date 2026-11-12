@@ -7815,6 +7815,7 @@ _xmass_restore_laid_accounts() {
 # written before anything changes and removed at the end.
 _XMASS_RESTORE_REC="/etc/boa/control/xmass-restore-target.rec"
 _xmass_restore_rec_put() {   # 1 = stamp  2 = the parked data directory going back  3 = the active
+  # 4 = accounts whose broker switch in /data/conf stays beside the parked ones
   local _id _t="${_XMASS_RESTORE_REC}.put.$$"
   _id="$(stat -c '%i:%W' -- "${2}" 2> /dev/null)"
   [[ "${_id}" =~ ^[0-9]+:[0-9]+$ ]] || return 1
@@ -7823,7 +7824,7 @@ _xmass_restore_rec_put() {   # 1 = stamp  2 = the parked data directory going ba
   if ( umask 077
     printf '%s\n' "# Put by xmass restore-target --live: a run again finishes from where this one stopped." \
       "_XMASS_RESTORE_STAMP=${1}" "_XMASS_RESTORE_PRE=${2}" "_XMASS_RESTORE_DATADIR=${_id}" \
-      "_XMASS_RESTORE_BROKER_KEEP=$(_xmass_broker_parked "${2##*.xmass_pre_}")" \
+      "_XMASS_RESTORE_BROKER_KEEP=$(_xmass_broker_parked "${2##*.xmass_pre_}")${4:+ ${4}}" \
       "_XMASS_RESTORE_LANE_ALL=${_XMASS_LANE_ALL# }" "_XMASS_RESTORE_LANE_HALF=${_XMASS_LANE_HALF# }" \
       "_XMASS_RESTORE_ACTIVE=${3:-}" > "${_t}" ) \
     && mv -f -T -- "${_t}" "${_XMASS_RESTORE_REC}"; then
@@ -7849,13 +7850,22 @@ _xmass_restore_rec_read() {
   _p="$(_xmass_kv "${_r}" _XMASS_RESTORE_PRE)"
   [[ "${_s}" =~ ^[0-9]{14}$ ]] && [[ "${_id}" =~ ^[0-9]+:[0-9]+$ ]] || return 1
   _dd="$(_xmass_dd_here)" || return 1
+  # the link an init by older bytes moved aside is parked at the root path,
+  # and goes back there: its own name is the one judged, link or not
+  case "${_p}" in
+    /var/lib/mysql.xmass_pre_*) _dd=/var/lib/mysql ;;
+  esac
   [[ "${_p##*.xmass_pre_}" =~ ^[0-9]{14}$ ]] && [ "${_p}" = "${_dd}.xmass_pre_${_p##*.xmass_pre_}" ] || return 1
   [ -d "${_dd}.xmass_standby_${_s}" ] && [ ! -L "${_dd}.xmass_standby_${_s}" ] || return 1
   if [ -d "${_dd}" ] && [ ! -L "${_dd}" ] \
     && [ "$(stat -c '%i:%W' "${_dd}" 2> /dev/null)" = "${_id}" ]; then
     _XMASS_RESTORE_AT=swapped
-  elif [ "${1:-}" = "swap" ] && [ ! -e "${_dd}" ] && [ ! -L "${_dd}" ] \
-    && [ -d "${_p}" ] && [ ! -L "${_p}" ] && [ "$(stat -c '%i:%W' -- "${_p}" 2> /dev/null)" = "${_id}" ]; then
+  elif [ "${_dd}" = /var/lib/mysql ] && [ -L "${_dd}" ] \
+    && [ "$(stat -c '%i:%W' -- "${_dd}" 2> /dev/null)" = "${_id}" ]; then
+    _XMASS_RESTORE_AT=swapped
+  elif [ "${1:-}" = "swap" ] && [ ! -e "${_dd}" ] && [ ! -L "${_dd}" ] && [ -d "${_p}" ] \
+    && { [ ! -L "${_p}" ] || [ "${_dd}" = /var/lib/mysql ]; } \
+    && [ "$(stat -c '%i:%W' -- "${_p}" 2> /dev/null)" = "${_id}" ]; then
     _XMASS_RESTORE_AT=putback
   else
     return 1
@@ -8065,12 +8075,22 @@ _xmass_restore_target_finish() {
   # the marking before the record goes, the record before the log line: a run
   # cut short here marks again on its re-run, and logs once
   _xmass_restore_laid_accounts "${3:-}" "${4:-}"
+  # the empty folder that stood for a replica's directory an init never made
+  local _kept="replica copy kept as ${_dd}.xmass_standby_${_stamp}"
+  if [ -d "${_dd}.xmass_standby_${_stamp}" ] && [ ! -L "${_dd}.xmass_standby_${_stamp}" ] \
+    && rmdir -- "${_dd}.xmass_standby_${_stamp}" 2> /dev/null; then
+    _kept="no replica copy (the init had stopped before it made one)"
+  fi
   rm -f -- "${_XMASS_RESTORE_REC}"
-  echo "$(date -u '+%Y-%m-%d %H:%M:%S') restore-target: ${_pre} restored as ${_dd}; replica copy kept as ${_dd}.xmass_standby_${_stamp}" \
+  echo "$(date -u '+%Y-%m-%d %H:%M:%S') restore-target: ${_pre} restored as ${_dd}; ${_kept}" \
     >> /var/log/boa/xmass-restore-target.log
   _info "restore-target COMPLETE: this box is a plain BOA box again (its pre-init data directory and"
-  _info "  credentials back, no standby marker, the replication forgotten). The replica's data directory"
-  _info "  is kept as ${_dd}.xmass_standby_${_stamp}; remove it by hand when no longer needed."
+  _info "  credentials back, no standby marker, the replication forgotten)."
+  if [ "${_kept#no }" = "${_kept}" ]; then
+    _info "  The replica's data directory is kept as ${_dd}.xmass_standby_${_stamp}; remove it by hand when no longer needed."
+  else
+    _info "  There was no replica's data directory to keep: the init had stopped before it made one."
+  fi
   _info "  On the SOURCE, forget this target with 'xmass reset-phase init' before any new init."
   # The init ended the relay this box ran through its active: the active no longer
   # trusts it until the account is repaired. With no address of the active to
@@ -8173,6 +8193,7 @@ _xmass_restore_target_swap() {
 
 _xmass_restore_target() {
   local _live="$1" _pre _ts _stamp _mk _ver _stop _reset _cnf _d _resume=NO _act="" _dd
+  local _cut=NO _keep="" _a
   # before any reading of what is parked: with the volume away every parked
   # name is away with it, and "nothing to restore" would be the wrong answer
   ! _xmass_dd_volume_gone \
@@ -8231,7 +8252,11 @@ _xmass_restore_target() {
   fi
   if [ "${_resume}" = "SWAP" ]; then
     _info "restore-target on $(hostname -f): the live run of ${_XMASS_RESTORE_STAMP} stopped during its data directory swap,"
-    if [ "${_XMASS_RESTORE_AT}" = "putback" ]; then
+    if [ "${_XMASS_RESTORE_AT}" = "putback" ] \
+      && ! compgen -G "${_XMASS_RESTORE_PRE%.xmass_pre_*}.xmass_standby_${_XMASS_RESTORE_STAMP}/*" > /dev/null; then
+      _info "  with no replica's directory (the init it undoes had stopped before making one) and ${_XMASS_RESTORE_PRE}"
+      _info "  not yet back: this run puts it back as ${_XMASS_RESTORE_PRE%.xmass_pre_*} and goes on from there"
+    elif [ "${_XMASS_RESTORE_AT}" = "putback" ]; then
       _info "  with the replica's directory aside as ${_XMASS_RESTORE_PRE%.xmass_pre_*}.xmass_standby_${_XMASS_RESTORE_STAMP} and ${_XMASS_RESTORE_PRE}"
       _info "  not yet back: this run puts it back as ${_XMASS_RESTORE_PRE%.xmass_pre_*} and goes on from there"
     else
@@ -8271,16 +8296,30 @@ _xmass_restore_target() {
               " directory beside it by hand, as ${_dd}.xmass_pre_${_pre##*.xmass_pre_}, then re-run -- nothing changed"
   fi
   [ -n "${_pre}" ] || _die "no parked data directory (${_dd}.xmass_pre_<stamp>) on this box"
-  [ -d "${_dd}" ] \
-    || _die "no data directory at ${_dd} on this box, while ${_pre} waits beside it: an init stopped between" \
-            " parking it and making the directory again. This verb puts a parked directory back in place of a" \
-            " replica's, and there is none: rename it back by hand (mv -T ${_pre} ${_dd}), its credentials are" \
-            " /root/.my.cnf.xmass_pre_${_pre##*.xmass_pre_} and /root/.my.pass.txt.xmass_pre_${_pre##*.xmass_pre_} -- nothing changed"
+  _ts="${_pre##*.xmass_pre_}"
+  # An init stopped between parking the folder and making it again: nothing
+  # at its name (the link there names nothing), no replica's folder to set
+  # aside. The parked one goes back as it would after a whole run.
+  if [ ! -d "${_dd}" ]; then
+    { [ ! -e "${_dd}" ] && [ ! -L "${_dd}" ] && [ -d "${_pre}" ] && [ ! -L "${_pre}" ]; } \
+      || _die "no data directory at ${_dd} on this box, while ${_pre} waits beside it, and the name ${_dd}" \
+              " holds something else: read both by hand -- nothing changed"
+    _cut=YES
+  fi
+  # A box seeded by older bytes over a link: they moved the link itself aside
+  # as the parked name and made a real folder on the root disk. The link goes
+  # back in place of that folder, which is kept aside like any replica's.
+  if [ -L "${_pre}" ]; then
+    [ "${_dd}" = "/var/lib/mysql" ] && [ -d "${_dd}" ] \
+      || _die "${_pre} is a link while the data directory here is ${_dd}: read both by hand -- nothing changed"
+    [ -d "$(readlink -f "${_pre}" 2> /dev/null)" ] \
+      || _die "${_pre} is the link an init by older bytes moved aside, and the folder it names ($(readlink "${_pre}" 2> /dev/null))" \
+              " is not there: mount its volume, then run this again -- nothing changed"
+  fi
   ! _xmass_dd_own_mount "${_dd}" \
     || _die "${_dd} is a mount point of its own and cannot be renamed aside -- nothing changed"
-  _ts="${_pre##*.xmass_pre_}"
   for _cnf in /root/.my.cnf /root/.my.pass.txt; do
-    [ -e "${_cnf}.xmass_pre_${_ts}" ] \
+    [ -e "${_cnf}.xmass_pre_${_ts}" ] || [ "${_cut}" = "YES" ] \
       || _die "no parked credential file ${_cnf}.xmass_pre_${_ts} beside ${_pre}: the parked data directory" \
               " cannot be opened without it (an init by older bytes parked none) -- reimage this box instead"
   done
@@ -8293,12 +8332,34 @@ _xmass_restore_target() {
   _stamp=$(date +%Y%m%d%H%M%S)
   _info "restore-target on $(hostname -f): $(head -1 /root/.standby.cnf 2>/dev/null)"
   _act="$(sed -n 's/^xmass replication target of \([0-9.]*\) since .*/\1/p' /root/.standby.cnf 2> /dev/null | head -n 1)"
-  _info "  parked data directory: ${_pre} (credentials parked at the same stamp)"
+  if [ "${_cut}" = "YES" ]; then
+    _info "  an init stopped between parking ${_pre} and making ${_dd} again: there is no replica's"
+    _info "  data directory, and the parked one goes back as ${_dd}"
+    if [ -e "/root/.my.cnf.xmass_pre_${_ts}" ] && [ -e "/root/.my.pass.txt.xmass_pre_${_ts}" ]; then
+      _info "  its credentials were parked at the same stamp and come back"
+    else
+      _info "  its credentials were not parked yet: the ones in place are the ones that init left, and stay"
+    fi
+    # no pass ran after it: every switch in /data/conf is this box's own
+    for _d in /data/conf/*_db_broker.txt; do
+      [ -f "${_d}" ] && [ ! -L "${_d}" ] || continue
+      _a="${_d##*/}"
+      _a="${_a%_db_broker.txt}"
+      _mig_valid_acct "${_a}" && _keep="${_keep} ${_a}"
+    done
+    _info "  the database broker switches here stay (no pass ran since); any the init parked come back"
+  elif [ -L "${_pre}" ]; then
+    _info "  parked: ${_pre} is the link an init by older bytes moved aside (it names $(readlink "${_pre}" 2> /dev/null));"
+    _info "  it goes back at ${_dd}, and that init's folder on the root disk is kept aside as ${_dd}.xmass_standby_${_stamp}"
+    _info "  the database broker switches the passes carried go; the ones parked with it come back"
+  else
+    _info "  parked data directory: ${_pre} (credentials parked at the same stamp)"
+    _info "  the current replica data directory is kept aside as ${_dd}.xmass_standby_${_stamp}"
+    _info "  the database broker switches the passes carried go; the ones parked with it come back"
+  fi
   if [ "${_dd}" != "/var/lib/mysql" ] && ls -1d /var/lib/mysql.xmass_pre_* > /dev/null 2>&1; then
     _info "  older parked data directories on the root disk stay as they are: $(ls -1d /var/lib/mysql.xmass_pre_* 2> /dev/null | tr '\n' ' ')"
   fi
-  _info "  the current replica data directory is kept aside as ${_dd}.xmass_standby_${_stamp}"
-  _info "  the database broker switches the passes carried go; the ones parked with it come back"
   _info "  replication stopped and forgotten (${_stop}; ${_reset}); the standby hold, its cnf block and"
   _info "  every marker removed; Solr init scripts the init disarmed re-armed; cron started"
   _info "  the holds of aegir2boa imports the active carried here (/var/backups/a2b/<oN>/failover-hold) removed"
@@ -8310,7 +8371,16 @@ _xmass_restore_target() {
     _info "DRY RUN -- nothing changed. Re-run with --live to return this box to its pre-init state."
     return 0
   fi
-  _xmass_restore_rec_put "${_stamp}" "${_pre}" "${_act}" \
+  if [ "${_cut}" = "YES" ]; then
+    # the credentials in place are the parked folder's when the init stopped
+    # before parking them: parked now, so the swap puts back what it reads
+    for _cnf in /root/.my.cnf /root/.my.pass.txt; do
+      [ -e "${_cnf}.xmass_pre_${_ts}" ] || [ ! -e "${_cnf}" ] && continue
+      cp -a "${_cnf}" "${_cnf}.xmass_pre_${_ts}" && chmod 600 "${_cnf}.xmass_pre_${_ts}" \
+        || _die "could not park ${_cnf} as ${_cnf}.xmass_pre_${_ts}: nothing changed"
+    done
+  fi
+  _xmass_restore_rec_put "${_stamp}" "${_pre}" "${_act}" "${_keep# }" \
     || _die "could not write ${_XMASS_RESTORE_REC}, which a run stopped at MySQL's start needs: nothing changed"
   _info "Stopping and forgetting the replication ..."
   mysql --defaults-file=/root/.my.cnf -e "${_stop}; ${_reset};" 2>/dev/null \
@@ -8320,15 +8390,23 @@ _xmass_restore_target() {
   # the replica's directory, or on none.
   : > /run/boa_sql_maintenance.pid
   _info "Stopping MySQL via move_sql.sh ..."
-  /var/xdrago/move_sql.sh stop || _die "MySQL stop failed"
-  if [ "${_dd}" = "/var/lib/mysql" ]; then
+  if [ "${_cut}" = "YES" ]; then
+    # with no data directory MySQL is down already, and its stop may say so
+    /var/xdrago/move_sql.sh stop || ! pgrep -x mysqld > /dev/null || _die "MySQL stop failed"
+    # an empty folder stands for the replica's there was none of, so a run
+    # cut short finishes as any other; the finish removes it
+    mkdir -- "${_dd}.xmass_standby_${_stamp}" \
+      || _die "could not make ${_dd}.xmass_standby_${_stamp} beside the parked directory: nothing was moved"
+  elif [ "${_dd}" = "/var/lib/mysql" ]; then
+    /var/xdrago/move_sql.sh stop || _die "MySQL stop failed"
     mv -f /var/lib/mysql "/var/lib/mysql.xmass_standby_${_stamp}" \
       || _die "could not move the replica data directory aside"
   else
+    /var/xdrago/move_sql.sh stop || _die "MySQL stop failed"
     mv -f -T "${_dd}" "${_dd}.xmass_standby_${_stamp}" \
       || _die "could not move the replica data directory ${_dd} aside"
   fi
-  _xmass_restore_target_swap "${_stamp}" "${_pre}" putback "$(_xmass_broker_parked "${_ts}")" YES \
+  _xmass_restore_target_swap "${_stamp}" "${_pre}" putback "$(_xmass_broker_parked "${_ts}")${_keep}" YES \
     "${_XMASS_LANE_ALL# }" "${_XMASS_LANE_HALF# }" "${_act}"
   return 0
 }
