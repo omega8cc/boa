@@ -5874,13 +5874,16 @@ _xmass_install_xtrabackup_target() {
 # its own to read, and one read over a quiet night alone would err low.
 _XMASS_BINLOG_DAY_FILE="/etc/boa/control/xmass-binlog-day.cnf"
 
+# Sums are printed with %.0f: the awk of a BOA box (mawk) prints a sum above
+# 2^31 in exponent form and caps %d there, which a filesystem over 2 TiB
+# in K, or a log over 2 GiB in bytes, passes.
 # What one end holds, as KEY=value lines: the filesystem of the database
 # folder (its mount point, its size as used plus free, its use), the one
 # that holds the accounts, the folder's own size, the binary log there now,
 # the days it is kept now, and the addresses reading it now.
 _xmass_binlog_probe_sh() {
   cat <<'PROBE'
-_d="$(df -Pk /var/lib/mysql/ 2>/dev/null | awk 'NR==2 { print $3 + $4, $3, $NF }')"
+_d="$(df -Pk /var/lib/mysql/ 2>/dev/null | awk 'NR==2 { printf "%.0f %s %s\n", $3 + $4, $3, $NF }')"
 _a="$(df -Pk /data/disk 2>/dev/null | awk 'NR==2 { print $3, $NF }')"
 echo "BL_SIZE_KB=${_d%% *}"
 _r="${_d#* }"
@@ -5890,7 +5893,7 @@ echo "BL_DATA_USED_KB=${_a%% *}"
 echo "BL_DATA_MNT=${_a##* }"
 echo "BL_DD_KB=$(du -sLk /var/lib/mysql 2>/dev/null | awk '{ print $1 }')"
 _q() { mysql --defaults-file=/root/.my.cnf --connect-timeout=5 -sNe "$1" 2>/dev/null; }
-echo "BL_LOG_KB=$(_q 'SHOW BINARY LOGS' | awk '{ s += $2 } END { printf "%d\n", s / 1024 }')"
+echo "BL_LOG_KB=$(_q 'SHOW BINARY LOGS' | awk '{ s += $2 } END { printf "%.0f\n", s / 1024 }')"
 _v="$(_q "SHOW GLOBAL VARIABLES WHERE Variable_name IN ('expire_logs_days','binlog_expire_logs_seconds')")"
 _n="$(printf '%s\n' "${_v}" | awk '$1 == "binlog_expire_logs_seconds" && $2 > 0 { printf "%d\n", ($2 + 86399) / 86400; f = 1 } END { if (!f) print "" }')"
 [ -n "${_n}" ] || _n="$(printf '%s\n' "${_v}" | awk '$1 == "expire_logs_days" { print $2 }')"
