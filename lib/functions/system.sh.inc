@@ -8373,6 +8373,37 @@ _if_enforce_apparmor_profiles() {
 }
 
 #
+# AppArmor judges the path a link resolves to: with /var/lib/mysql a link onto
+# a folder of the attached mount, the MySQL profiles allow that folder through
+# their local include. Each local file is always there (a profile names it):
+# BOA's lines sit between its markers, anything else in it is left as it is,
+# and a real folder at the path leaves no BOA lines. Prints CHANGED when a
+# file changed. Kept in step with the copy in move_sql.sh.
+_apparmor_mysql_local() {
+  local _r="" _p _f _old _new _blk=""
+  [ -d /etc/apparmor.d ] || return 0
+  mkdir -p /etc/apparmor.d/local 2> /dev/null || return 0
+  if [ -L /var/lib/mysql ]; then
+    _r="$(readlink -f /var/lib/mysql 2> /dev/null)"
+    { [[ "${_r}" =~ ^(/[A-Za-z0-9._-]+)+$ ]] && [ "${_r}" != "/var/lib/mysql" ] && [ -d "${_r}" ]; } || _r=""
+  fi
+  [ -z "${_r}" ] || _blk="# BOA: the database folder BEGIN"$'\n'"  ${_r}/ rwk,"$'\n'"  ${_r}/** rwk,"$'\n'"# BOA: the database folder END"
+  for _p in usr.sbin.mysqld usr.bin.mysqld_safe usr.bin.mysql; do
+    _f="/etc/apparmor.d/local/${_p}"
+    _old=""
+    [ ! -f "${_f}" ] || _old="$(cat "${_f}" 2> /dev/null)"
+    _new="$(printf '%s\n' "${_old}" | sed '/^# BOA: the database folder BEGIN$/,/^# BOA: the database folder END$/d')"
+    if [ -n "${_blk}" ]; then
+      [ -z "${_new}" ] && _new="${_blk}" || _new="${_new}"$'\n'"${_blk}"
+    fi
+    if [ ! -f "${_f}" ] || [ "${_new}" != "${_old}" ]; then
+      printf '%s\n' "${_new}" > "${_f}.boa.$$" && mv -f "${_f}.boa.$$" "${_f}" && echo CHANGED
+    fi
+  done
+  return 0
+}
+
+#
 # Sync AppArmor profiles.
 _sync_apparmor_profiles() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -8420,6 +8451,9 @@ _sync_apparmor_profiles() {
         [ -f "${_profArm}" ] && mv -f "${_profArm}" ${_backArmr} &> /dev/null
       done
       cp -af ${_locCnf}/apparmor/* /etc/apparmor.d/
+      # the MySQL profiles include their local file: it must be there, with
+      # the folder a link at /var/lib/mysql names, before any of them is read
+      _apparmor_mysql_local > /dev/null
       # BOA's dhclient profile takes the name its package uses on this system:
       # with two files for one program aa-enforce and aa-complain refuse the set.
       if [ -e "/etc/apparmor.d/usr.sbin.dhclient" ]; then

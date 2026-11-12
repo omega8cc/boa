@@ -57,6 +57,36 @@ _check_running() {
   fi
 }
 
+# AppArmor judges the path a link resolves to: with /var/lib/mysql a link onto
+# a folder of the attached mount, the MySQL profiles allow that folder through
+# their local include. Each local file is always there (a profile names it):
+# BOA's lines sit between its markers, anything else in it is left as it is,
+# and a real folder at the path leaves no BOA lines. Prints CHANGED when a
+# file changed.
+_apparmor_mysql_local() {
+  local _r="" _p _f _old _new _blk=""
+  [ -d /etc/apparmor.d ] || return 0
+  mkdir -p /etc/apparmor.d/local 2> /dev/null || return 0
+  if [ -L /var/lib/mysql ]; then
+    _r="$(readlink -f /var/lib/mysql 2> /dev/null)"
+    { [[ "${_r}" =~ ^(/[A-Za-z0-9._-]+)+$ ]] && [ "${_r}" != "/var/lib/mysql" ] && [ -d "${_r}" ]; } || _r=""
+  fi
+  [ -z "${_r}" ] || _blk="# BOA: the database folder BEGIN"$'\n'"  ${_r}/ rwk,"$'\n'"  ${_r}/** rwk,"$'\n'"# BOA: the database folder END"
+  for _p in usr.sbin.mysqld usr.bin.mysqld_safe usr.bin.mysql; do
+    _f="/etc/apparmor.d/local/${_p}"
+    _old=""
+    [ ! -f "${_f}" ] || _old="$(cat "${_f}" 2> /dev/null)"
+    _new="$(printf '%s\n' "${_old}" | sed '/^# BOA: the database folder BEGIN$/,/^# BOA: the database folder END$/d')"
+    if [ -n "${_blk}" ]; then
+      [ -z "${_new}" ] && _new="${_blk}" || _new="${_new}"$'\n'"${_blk}"
+    fi
+    if [ ! -f "${_f}" ] || [ "${_new}" != "${_old}" ]; then
+      printf '%s\n' "${_new}" > "${_f}.boa.$$" && mv -f "${_f}.boa.$$" "${_f}" && echo CHANGED
+    fi
+  done
+  return 0
+}
+
 _start_sql() {
   # In a chain the stop phase already checked and still HOLDS the locks --
   # re-checking here would read our own lock as a foreign run and abort;
@@ -86,6 +116,13 @@ _start_sql() {
     || [ -e "/run/mysqld/mysqld.sock" ] \
     || [ -e "/run/mysqld/mysqlx.sock" ]; then
     rm -f /run/mysqld/mysql*
+  fi
+  # a folder linked since the profiles were last loaded is allowed before the start
+  if [ -n "$(_apparmor_mysql_local)" ] && [ -d /sys/kernel/security/apparmor ] \
+    && command -v apparmor_parser > /dev/null 2>&1; then
+    for _aap in usr.sbin.mysqld usr.bin.mysqld_safe usr.bin.mysql; do
+      [ ! -f "/etc/apparmor.d/${_aap}" ] || apparmor_parser -r "/etc/apparmor.d/${_aap}" &> /dev/null
+    done
   fi
   service mysql start &> /dev/null
   _mysqld_wait=0
