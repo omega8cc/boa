@@ -100,6 +100,12 @@
 
 @=> Security
 
+    * The limited shell writes each log record on one line, a control
+      character in a command as \xNN: a command sent over SSH with a
+      newline in it started a second log line that read as a record of
+      its own. A refusal of one word in a longer line now names that line
+      too, so the log says what was typed around it (lshell 0.11.16).
+
     * The scheduled cron watchdog counts only the control panel's own cron
       requests once the account has a cron key. Any site's PHP on the server
       could send a request with the panel's agent and another site's name,
