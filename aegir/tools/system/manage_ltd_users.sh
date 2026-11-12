@@ -6481,7 +6481,8 @@ _site_socket_inc_gen() {
       _mltFpmUpdate=HOLD
     elif [ ! -f "${_mltNgx}" ] \
       || [ "${_mltFpmUpdate}" = "YES" ] \
-      || [ "${_mltFpmUpdateForce}" = "YES" ]; then
+      || [ "${_mltFpmUpdateForce}" = "YES" ] \
+      || [ "${1:-}" = "sys" ]; then
       # local: a bare IFS= here stayed a newline for the rest of the pass,
       # and every later "for x in ${list}" saw one word
       local IFS=$'\12'
@@ -7920,6 +7921,8 @@ _switch_php() {
         _perhost_anon_cap_write "${_USER}"
         for m in ${_FPM_RLD}; do
           [ -e "/etc/init.d/php${m}-fpm" ] && service php${m}-fpm reload &> /dev/null
+          # a pool built with the account's own new New Relic key went in
+          [ "${_ltdNrOwn:-}" = "YES" ] && _newrelic_in_ini "${m}" && _ltdOwnFpm=YES
         done
         # After a switch between single- and multi-FPM mode: nginx sends the
         # account's sites to the other mode's pools until it reloads, so they
@@ -7956,6 +7959,7 @@ _switch_php() {
             done
             for m in ${_FPM_RLD}; do
               [ -e "/etc/init.d/php${m}-fpm" ] && service "php${m}-fpm" reload &> /dev/null
+              [ "${_ltdNrOwn:-}" = "YES" ] && _newrelic_in_ini "${m}" && _ltdOwnFpm=YES
             done
           else
             _ltd_notice "nginx-configtest-${_USER}" \
@@ -9793,14 +9797,22 @@ _ltd_fpm_move_fpm() {
   done <<< "${_body}"
   local _named=""
   for _s in "${!_to[@]}"; do
+    # no include name over 255 bytes can exist (fpm_include_site_ + .inc): a
+    # row for the site would never take effect
+    [ "$(( ${#_s} + 21 ))" -le 255 ] || continue
     _v="${_cur[${_s}]:-}"
     case "${_v}" in
       56|70|71|72|73|74|80|81|82|83|84|85|86)
         if [ "${_v}" != "${_was[${_s}]//./}" ]; then
           # its last row already names the version the judge moves it to
           # (an account's row that waits out its window): the move is that
-          # row, put in force by this pass with nothing written
-          [ "${_v}" = "${_to[${_s}]}" ] && _named+="${_s}"$'\n'
+          # row, put in force by this pass with nothing written, when it
+          # can give an include as the rebuild builds them
+          [ "${_v}" = "${_to[${_s}]}" ] \
+            && [ -x "/opt/php${_v}/bin/php" ] \
+            && [ -e "${_dscUsr}/.drush/${_s}.alias.drushrc.php" ] \
+            && [ -e "/run/${_USER}.${_v}.fpm.socket" ] \
+            && _named+="${_s}"$'\n'
           continue
         fi
         ;;
@@ -9983,8 +9995,16 @@ _ltd_fpm_core_check() {
   _age=$(stat -c %Y "${_st}/${_USER}.sig" 2> /dev/null)
   if [ "${_sig}" = "${_old}" ] && [[ "${_age}" =~ ^[0-9]+$ ]] \
     && [ "$(( $(date +%s) - _age ))" -lt 86400 ]; then
-    return 0
+    # a move that waited out the account's window is judged once after it
+    if [ ! -e "${_st}/${_USER}.mvheld" ] || _ltd_rld_held nginx; then
+      return 0
+    fi
   fi
+  # the box's state as the judge starts: its PHP versions, the account's
+  # pools and sockets, the mode, and the judge and the moves themselves
+  _mk="$(_ltd_fpm_sys_key 2> /dev/null) j:$(declare -f _ltd_fpm_head _ltd_fpm_why \
+    _ltd_fpm_nearest _ltd_fpm_judge _ltd_fpm_judge_as _ltd_fpm_served _ltd_fpm_usable \
+    _ltd_fpm_move_fpm 2> /dev/null | md5sum | cut -c1-12)"
   _out=$(_ltd_fpm_judge_as "${_d}" "${_ft}" "${_ci}")
   _rc="$?"
   if [ "${_rc}" -ge 124 ]; then
@@ -10020,8 +10040,6 @@ _ltd_fpm_core_check() {
     # change in its nginx window, waiting inside it and opening it otherwise,
     # or a login switching its own core files would move a site, and reload
     # nginx, on every pass. A move the box's state drove is made at once.
-    _mk="$(_ltd_fpm_sys_key 2> /dev/null) j:$(declare -f _ltd_fpm_judge _ltd_fpm_why \
-      _ltd_fpm_nearest 2> /dev/null | md5sum | cut -c1-12)"
     [ "$(_ltd_applied_get mvkey 2> /dev/null)" = "${_mk}" ] && _mvOwn=YES
     if [ "${_mvOwn}" = "YES" ] && grep -q '^> ' <<< "${_out}" && _ltd_rld_held nginx; then
       _mvHeld=YES
@@ -10046,8 +10064,13 @@ _ltd_fpm_core_check() {
   elif [ -n "${_pf}" ]; then
     _site_socket_inc_gen
   fi
-  # a held move is judged again on the first pass after the window
-  [ "${_mvHeld}" = "YES" ] && rm -f "${_st}/${_USER}.sig"
+  # a held move is judged again on the first pass after the window, not on
+  # every pass inside it (the judge runs as the account, up to two minutes)
+  if [ "${_mvHeld}" = "YES" ]; then
+    : > "${_st}/${_USER}.mvheld"
+  else
+    rm -f "${_st}/${_USER}.mvheld"
+  fi
   _ok=$(printf '%s\n' "${_mc}" | grep -v -e '^! ' -e '^$')
   _nok=$(printf '%s\n' "${_mc}" | grep '^! ')
   if [ -n "${_mv}${_ok}" ]; then
