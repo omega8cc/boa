@@ -5104,8 +5104,8 @@ _xcopy_source_done() {
     return 1
   fi
   if [ -d "${_USR}/src" ]; then
-    _xcopy_in_real_dir "${_USR}/src" _xcopy_rm_sql_dumps_here
-    _l="$(_xcopy_in_real_dir "${_USR}/src" _xcopy_names_left_here '*.sql')"
+    _xcopy_in_real_dir "${_USR}/src" rm -f -- ./prev_hostmaster.sql
+    _l="$(_xcopy_in_real_dir "${_USR}/src" _xcopy_names_left_here prev_hostmaster.sql)"
     [ -z "${_l}" ] || _left="${_left}${_l// / src/}"
   fi
   _xcopy_in_real_dir "${_USR}/log" rm -f -- "${_st[@]/#/./}"
