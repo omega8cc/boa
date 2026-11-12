@@ -5990,7 +5990,18 @@ else
   echo "BL_ONE_MNT=NONE"
 fi
 _q() { mysql --defaults-file=/root/.my.cnf --connect-timeout=5 -sNe "$1" 2>/dev/null; }
-echo "BL_LOG_KB=$(_q 'SHOW BINARY LOGS' | awk '{ s += $2 } END { printf "%.0f\n", s / 1024 }')"
+# the log counts as the folder's only where its files are written inside it
+_lb="$(_q 'SELECT @@log_bin_basename')"
+_lr="$(readlink -f /var/lib/mysql 2>/dev/null)"
+case "${_lb}" in
+  /var/lib/mysql/*) _lin=YES ;;
+  *) _lin=NO; [ -n "${_lr}" ] && [ "${_lb#"${_lr}"/}" != "${_lb}" ] && _lin=YES ;;
+esac
+if [ "${_lin}" = "YES" ]; then
+  echo "BL_LOG_KB=$(_q 'SHOW BINARY LOGS' | awk '{ s += $2 } END { printf "%.0f\n", s / 1024 }')"
+else
+  echo "BL_LOG_KB=0"
+fi
 _v="$(_q "SHOW GLOBAL VARIABLES WHERE Variable_name IN ('expire_logs_days','binlog_expire_logs_seconds')")"
 _n="$(printf '%s\n' "${_v}" | awk '$1 == "binlog_expire_logs_seconds" && $2 > 0 { printf "%d\n", ($2 + 86399) / 86400; f = 1 } END { if (!f) print "" }')"
 [ -n "${_n}" ] || _n="$(printf '%s\n' "${_v}" | awk '$1 == "expire_logs_days" { print $2 }')"
@@ -6988,10 +6999,17 @@ _xmass_dd_own_mount() {
   [ -n "${_mpA}" ] && [ -n "${_mpB}" ] && [ "${_mpA}" != "${_mpB}" ]
 }
 
-# The binary log this box's MySQL holds, in K (its files sit in the database
-# folder and no snapshot carries them); 0 when there is none or no answer.
+# The binary log this box's MySQL holds inside its database folder, in K
+# (no snapshot carries it); 0 when there is none, no answer, or the log is
+# written elsewhere (then the folder's size never held it).
 _xmass_src_log_kb() {
-  local _k
+  local _k _b _r
+  _b="$(mysql --defaults-file=/root/.my.cnf --connect-timeout=5 -sNe 'SELECT @@log_bin_basename' 2> /dev/null)"
+  _r="$(readlink -f /var/lib/mysql 2> /dev/null)"
+  case "${_b}" in
+    /var/lib/mysql/*) : ;;
+    *) [ -n "${_r}" ] && [ "${_b#"${_r}"/}" != "${_b}" ] || { printf '0'; return 0; } ;;
+  esac
   _k="$(mysql --defaults-file=/root/.my.cnf --connect-timeout=5 -sNe 'SHOW BINARY LOGS' 2> /dev/null \
     | awk '{ s += $2 } END { printf "%.0f\n", s / 1024 }')"
   [[ "${_k}" =~ ^[0-9]+$ ]] || _k=0
