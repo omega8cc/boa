@@ -3382,14 +3382,23 @@ _xoct_rsync_path_in() {
 ### first (a link the account put there is removed, a missing directory
 ### created): for a leg whose target directory the install does not create.
 _xoct_rsync_path_mk_in() {
-  local _d="${1}" _a=/data/disk _p _n
+  local _d="${1}" _a=/data/disk _p _n _m
   case "${_d}" in
     /home/?*) _a=/home ;;
     /opt/user/?*) _a=/opt/user ;;
   esac
   _p="${_d%/*}"
   _n="${_d##*/}"
-  printf '%s' "_a=\"\$(cd -P ${_a} && /bin/pwd -P)\"; cd -P -- '${_p}' && [ \"\$(/bin/pwd -P)\" = \"\${_a}${_p#"${_a}"}\" ] && { [ -L './${_n}' ] && rm -f './${_n}'; [ -d './${_n}' ] || mkdir './${_n}'; } && cd -P -- './${_n}' && [ \"\$(/bin/pwd -P)\" = \"\${_a}${_d#"${_a}"}\" ] && rsync"
+  # The client toolchain trees' parents are shared and BOA's own: root's,
+  # sticky and world-writable, as the ltd worker makes them. A target where
+  # Ruby or Node was never set up has none, and the account's tree would not
+  # travel: the parent is made there first (never through a link).
+  _m=""
+  case "${_p}" in
+    /opt/user/*/*) ;;
+    /opt/user/?*) _m="[ -L /opt/user ] || [ -d /opt/user ] || mkdir -m 755 /opt/user; [ -L '${_p}' ] || [ -d '${_p}' ] || { mkdir -m 1777 '${_p}' && chown root:root '${_p}'; }; " ;;
+  esac
+  printf '%s' "${_m}_a=\"\$(cd -P ${_a} && /bin/pwd -P)\"; cd -P -- '${_p}' && [ \"\$(/bin/pwd -P)\" = \"\${_a}${_p#"${_a}"}\" ] && { [ -L './${_n}' ] && rm -f './${_n}'; [ -d './${_n}' ] || mkdir './${_n}'; } && cd -P -- './${_n}' && [ \"\$(/bin/pwd -P)\" = \"\${_a}${_d#"${_a}"}\" ] && rsync"
 }
 ### The entries of the current (pinned) directory the glob $3 names copied
 ### into the real directory $2 on the target $1, as _xoct_copy_here does it,

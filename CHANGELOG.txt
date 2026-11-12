@@ -605,6 +605,12 @@
     * xcopy's transfer carries the account's Ruby gems and npm trees under
       /opt/user, as xoct's does.
 
+    * xoct's and xcopy's transfer carry the client's Ruby gems and npm trees
+      onto a target where Ruby or Node was never set up: /opt/user/gems or
+      /opt/user/npm is made there the way BOA makes it (root's, sticky,
+      world-writable). Such a target had none, the copy failed with "No such
+      file or directory", and the transfer still ended complete.
+
     * xcopy and xoct no longer print an rsync error for each empty folder of
       the account they copy (an account with no platforms of its own, or no
       nginx pre.d, subdir.d or platform.d files, showed four in every
