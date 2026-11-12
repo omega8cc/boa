@@ -57,6 +57,28 @@ _dcy_box_count() {
       print m + 0
     }'
 }
+# The server's own duplicity: _dcy_box_count less its mybackup arm, so a
+# restore pass is not counted either. The same text as mybackup's.
+_dcy_srv_count() {
+  ps -e -ww -o pid= -o ppid= -o ruid= -o euid= -o args= 2> /dev/null | awk '
+    $3 == 0 && $4 == 0 {
+      a = $0; sub(/^ *[0-9]+ +[0-9]+ +[0-9]+ +[0-9]+ */, "", a)
+      n++; k[n] = $1; p[$1] = $2; c[$1] = a
+      if (a ~ /^([^ ]*\/)?bash \/(opt|usr)\/local\/bin\/multiback backup [^ ]+ [^ ]+$/ &&
+        a !~ / (global|data|custom)$/) e[$1] = 1
+    }
+    END {
+      for (i = 1; i <= n; i++) {
+        a = c[k[i]]
+        if (a !~ /^([^ ]*\/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)/ &&
+          a !~ /^[^ ]*duplicity( |$)/) continue
+        q = p[k[i]]; d = 0
+        while ((q in p) && !(q in e) && d < 64) { q = p[q]; d++ }
+        if (!(q in e)) m++
+      }
+      print m + 0
+    }'
+}
 
 # Function to print env for debugging
 _print_env() {
@@ -371,6 +393,14 @@ _acct_stream_room() {
   _dsk=$(df -Pm / 2> /dev/null | awk 'NR == 2 { print $4 }')
   [ "${_mem:-0}" -ge 1536 ] && [ "${_dsk:-0}" -ge 2048 ]
 }
+# A restore of this account is under way: mybackup's records of the window
+# that hands the account its credentials and secret, put before anything is
+# handed over and removed once all is given back (one a pass could not close
+# stays until the next pass closes it).
+_acct_window_open() {
+  [ -e "/root/.remote_backups/restore_windows/${1}.rb" ] \
+    || [ -e "/root/.remote_backups/restore_windows/${1}.cred" ]
+}
 # The installed wrapper caps the accounts' streams alone and never defers
 # root's own entries; an older wrapper caps every stream and would defer
 # the server's own entries behind two account runs, so an account's entry
@@ -381,8 +411,9 @@ _wrapper_caps_accounts() {
 _CNT=$(_dcy_live_count)
 # root's own entry backs up (and repairs its own chain, as backchain does
 # first) beside an account's entry (_dcy_box_count); an account's entry
-# waits on the server's own backup and on any other duplicity, and runs
-# beside one other account's entry when there is room for it
+# waits on the server's own backup and its duplicity and on a restore of its
+# own account, and runs beside other accounts' restores and beside one other
+# account's entry when there is room for it
 _BOX_FIRST=NO
 _ACCT_HOLD=""
 case "${3:-}" in
@@ -395,9 +426,11 @@ case "${3:-}" in
     if [ "${1}" = "backup" ] && [ -n "${2}" ]; then
       _box_bup_live && _BOX_FIRST=YES
       if [ "${_BOX_FIRST}" = "NO" ] && _wrapper_caps_accounts; then
-        _CNT=$(_dcy_box_count)
+        _CNT=$(_dcy_srv_count)
         _OTHERS=$(_acct_bup_others "${2}" "${3}")
-        if [ "${_OTHERS:-0}" -ge 2 ]; then
+        if _acct_window_open "${3}"; then
+          _ACCT_HOLD="${3}'s own restore runs"
+        elif [ "${_OTHERS:-0}" -ge 2 ]; then
           _ACCT_HOLD="Two account entries already back up"
         elif [ "${_OTHERS:-0}" -ge 1 ] && ! _acct_stream_room; then
           _ACCT_HOLD="Not enough free memory or disk for a second account backup stream"

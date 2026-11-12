@@ -1658,13 +1658,81 @@ _validate_restore_command() {
 # Check if run as root
 export _run_as_user=$(whoami)
 
-# True while root's backups go first: root's own duplicity, a run of backboa,
+# Root's duplicity of the server's own, in both command forms: the duplicity
+# in flight less what an account's own backup entry runs (root's multiback
+# backup <service> <account>, the account not global, data or custom), from
+# one snapshot of root's processes alone, read by their own argument lists.
+# The same walk as the backup tools' _dcy_box_count, less its mybackup arm:
+# this pass is the mybackup run it would count. The same text in multiback.
+_dcy_srv_count() {
+  ps -e -ww -o pid= -o ppid= -o ruid= -o euid= -o args= 2> /dev/null | awk '
+    $3 == 0 && $4 == 0 {
+      a = $0; sub(/^ *[0-9]+ +[0-9]+ +[0-9]+ +[0-9]+ */, "", a)
+      n++; k[n] = $1; p[$1] = $2; c[$1] = a
+      if (a ~ /^([^ ]*\/)?bash \/(opt|usr)\/local\/bin\/multiback backup [^ ]+ [^ ]+$/ &&
+        a !~ / (global|data|custom)$/) e[$1] = 1
+    }
+    END {
+      for (i = 1; i <= n; i++) {
+        a = c[k[i]]
+        if (a !~ /^([^ ]*\/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)/ &&
+          a !~ /^[^ ]*duplicity( |$)/) continue
+        q = p[k[i]]; d = 0
+        while ((q in p) && !(q in e) && d < 64) { q = p[q]; d++ }
+        if (!(q in e)) m++
+      }
+      print m + 0
+    }'
+}
+# Root's runs of the backup tools, one "<tool> <verb> <service> <target>" a
+# line (backboa and duobackboa carry their verb alone), root's processes
+# alone, read by their own argument lists: the tool's path first, or right
+# after a shell running it. The same text in clear.sh.
+_bup_runs() {
+  ps -e -ww -o ruid= -o euid= -o args= 2> /dev/null | awk '
+    $1 == 0 && $2 == 0 {
+      for (i = 3; i <= NF && i <= 6; i++) {
+        if ($i ~ /^\/(opt|usr)\/local\/bin\/(backboa|duobackboa|multiback)$/ &&
+          (i == 3 || $(i - 1) ~ /^([^ ]*\/)?(ba|da)?sh$/)) {
+          t = $i; sub(/.*\//, "", t)
+          print t, $(i + 1), $(i + 2), $(i + 3)
+          break
+        }
+      }
+    }'
+}
+# An account's own backup entry runs or waits: a root run of its multiback
+# entry (any verb), or its mark made less than a day ago while the entry is on
+# the backup schedule. The same text in clear.sh.
+_acct_bup_first() {
+  local _a="${1}" _t="" _v="" _s="" _g="" _m="" _e=""
+  while read -r _t _v _s _g; do
+    [ "${_t}" = "multiback" ] && [ "${_g}" = "${_a}" ] && return 0
+  done <<< "$(_bup_runs)"
+  for _m in $(find /run -maxdepth 1 -name 'boa_backup_held.multiback.*' -type f -mmin -1440 2> /dev/null); do
+    _e="${_m##*/boa_backup_held.multiback.}"
+    [ "${_e#*.}" = "${_a}" ] || continue
+    grep -qxF "${_e%%.*} ${_e#*.}" /root/.remote_backups/schedule/backup_schedule.txt 2> /dev/null \
+      && return 0
+  done
+  return 1
+}
+# The installed wrapper caps the accounts' streams alone: an account's entry
+# then runs beside other accounts' entries and their restores, and this pass
+# beside accounts' entries. Under an older wrapper an account's entry waits for
+# any duplicity, a restore pass included, so the pass keeps the older rules.
+# The same text in multiback and clear.sh.
+_wrapper_caps_accounts() {
+  grep -q '^_live_account_streams()' /root/.remote_backups/run/sequential_backups.sh 2> /dev/null
+}
+# Under an older interval wrapper (an account's entry then waits for any
+# duplicity): true while root's backups go first: root's own duplicity, a run of backboa,
 # duobackboa or multiback, or a configured backup run one of them marked held
 # when a restore held it off. Each tool and multiback entry has its own mark,
 # made at the first hold and cleared when that one next gets through; a mark
 # holds for a day from that first hold, and an entry's only while the entry is
 # on the backup schedule.
-_backups_first() {
+_backups_first_old() {
   local _m="" _e=""
   (( $(pgrep -u root -U root -fc '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)') \
     + $(pgrep -u root -U root -fc '^[^ ]*duplicity( |$)') > 0 )) && return 0
@@ -1682,17 +1750,67 @@ _backups_first() {
   return 1
 }
 
+# Backups go first. With no account, the server's own backup holds the whole
+# pass: its duplicity, a root run of backboa or duobackboa, a root run of
+# multiback that is not an account's own backup entry, or a mark of backboa,
+# duobackboa or root's own entry. With an account, that account's own entry,
+# running or marked, holds its restore alone (_acct_bup_first): no restore
+# holds another account's entry, so another account's backup, running or
+# waiting, holds neither. Under an older wrapper, the older rule.
+_backups_first() {
+  local _a="${1:-}" _m="" _e="" _t="" _v="" _s="" _g=""
+  if [ -n "${_a}" ]; then
+    _acct_bup_first "${_a}"
+    return
+  fi
+  _wrapper_caps_accounts || { _backups_first_old; return; }
+  (( $(_dcy_srv_count) > 0 )) && return 0
+  while read -r _t _v _s _g; do
+    case "${_t}" in
+      backboa|duobackboa) return 0 ;;
+      multiback)
+        case "${_g}" in global|data|custom|"") return 0 ;; esac
+        [ "${_v}" = "backup" ] || return 0
+        ;;
+    esac
+  done <<< "$(_bup_runs)"
+  for _m in $(find /run -maxdepth 1 -name 'boa_backup_held.*' -type f -mmin -1440 2> /dev/null); do
+    case "${_m##*/}" in
+      boa_backup_held.multiback.*)
+        _e="${_m##*/boa_backup_held.multiback.}"
+        case "${_e#*.}" in
+          global|data|custom) ;;
+          *) continue ;;
+        esac
+        grep -qxF "${_e%%.*} ${_e#*.}" /root/.remote_backups/schedule/backup_schedule.txt 2> /dev/null \
+          && return 0
+        ;;
+      *) return 0 ;;
+    esac
+  done
+  return 1
+}
+
 # Main script
 _main_script() {
   # One queue pass at a time (the launcher starts one every few minutes
-  # while no duplicity runs, which includes the pauses between accounts).
+  # while no duplicity runs, which includes the pauses between accounts, and
+  # under the wrapper that caps the accounts' streams also for a restore it
+  # can serve while only accounts' own entries run).
   # The lock is fd 9, never handed to the restore run: su gets it closed.
   exec 9>> /run/mybackup_queue.lock || exit 1
   flock -n 9 || exit 0
   _win_close_stale
   # root's own duplicity alone: an account's process is never counted (its
-  # site code runs as its backend user), and this pass runs the restores
-  _CNT=$(( $(pgrep -u root -U root -fc '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)') + $(pgrep -u root -U root -fc '^[^ ]*duplicity( |$)') ))
+  # site code runs as its backend user), and this pass runs the restores.
+  # Under the wrapper that caps the accounts' streams the pass runs beside
+  # accounts' own entries (the server's own duplicity alone holds it);
+  # otherwise any of root's holds it
+  if _wrapper_caps_accounts; then
+    _CNT=$(_dcy_srv_count)
+  else
+    _CNT=$(( $(pgrep -u root -U root -fc '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)') + $(pgrep -u root -U root -fc '^[^ ]*duplicity( |$)') ))
+  fi
   if (( _CNT > 0 )); then
     echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
     exit 1
@@ -1726,10 +1844,17 @@ _main_script() {
       export _user_cmd_file="${_user_run_dir}/${_CMD_FILE}"
       if [[ -f "${_user_cmd_file}" ]]; then
         # Backups go first between restores too: this pass ends, the queue
-        # stays, and the next pass starts with this account.
+        # stays, and the next pass starts after the account it served last.
         if _backups_first; then
           echo "[$(date)] A backup runs or waits first, ${_user}'s restore waits..." >> /var/log/mybackup_waiting_queue.log
           break
+        fi
+        # The account's own backup, running or held, goes first for its own
+        # restore alone: this account's restore waits for a later pass, and
+        # the pass serves the next account.
+        if _backups_first "${_user}"; then
+          echo "[$(date)] ${_user}'s own backup runs or waits first, its restore waits..." >> /var/log/mybackup_waiting_queue.log
+          continue
         fi
         # These paths hang off static/control, which the tenant owns, so every
         # component here is a name it can replace with a symlink. The leaf is

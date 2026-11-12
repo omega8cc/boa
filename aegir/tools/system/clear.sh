@@ -22,6 +22,86 @@ _dcy_live_count() {
   echo $(( ${_a:-0} + ${_b:-0} + ${_c:-0} ))
 }
 
+# The duplicity in flight less what an account's own backup entry runs
+# (root's multiback backup <service> <account>, the account not global, data
+# or custom), from one snapshot of root's processes alone, read by their own
+# argument lists; root's mybackup pass counts. The same text as the backup
+# tools' own copies.
+_dcy_box_count() {
+  ps -e -ww -o pid= -o ppid= -o ruid= -o euid= -o args= 2> /dev/null | awk '
+    $3 == 0 && $4 == 0 {
+      a = $0; sub(/^ *[0-9]+ +[0-9]+ +[0-9]+ +[0-9]+ */, "", a)
+      n++; k[n] = $1; p[$1] = $2; c[$1] = a
+      if (a ~ /^([^ ]*\/)?bash \/(opt|usr)\/local\/bin\/multiback backup [^ ]+ [^ ]+$/ &&
+        a !~ / (global|data|custom)$/) e[$1] = 1
+    }
+    END {
+      for (i = 1; i <= n; i++) {
+        a = c[k[i]]
+        if (a !~ /^([^ ]*\/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*(duplicity|mybackup)( |$)/ &&
+          a !~ /^[^ ]*duplicity( |$)/) continue
+        q = p[k[i]]; d = 0
+        while ((q in p) && !(q in e) && d < 64) { q = p[q]; d++ }
+        if (!(q in e)) m++
+      }
+      print m + 0
+    }'
+}
+# Root's runs of the backup tools, one "<tool> <verb> <service> <target>" a
+# line, root's processes alone, read by their own argument lists. The same
+# text as mybackup's.
+_bup_runs() {
+  ps -e -ww -o ruid= -o euid= -o args= 2> /dev/null | awk '
+    $1 == 0 && $2 == 0 {
+      for (i = 3; i <= NF && i <= 6; i++) {
+        if ($i ~ /^\/(opt|usr)\/local\/bin\/(backboa|duobackboa|multiback)$/ &&
+          (i == 3 || $(i - 1) ~ /^([^ ]*\/)?(ba|da)?sh$/)) {
+          t = $i; sub(/.*\//, "", t)
+          print t, $(i + 1), $(i + 2), $(i + 3)
+          break
+        }
+      }
+    }'
+}
+# An account's own backup entry runs or waits. The same text as mybackup's.
+_acct_bup_first() {
+  local _a="${1}" _t="" _v="" _s="" _g="" _m="" _e=""
+  while read -r _t _v _s _g; do
+    [ "${_t}" = "multiback" ] && [ "${_g}" = "${_a}" ] && return 0
+  done <<< "$(_bup_runs)"
+  for _m in $(find /run -maxdepth 1 -name 'boa_backup_held.multiback.*' -type f -mmin -1440 2> /dev/null); do
+    _e="${_m##*/boa_backup_held.multiback.}"
+    [ "${_e#*.}" = "${_a}" ] || continue
+    grep -qxF "${_e%%.*} ${_e#*.}" /root/.remote_backups/schedule/backup_schedule.txt 2> /dev/null \
+      && return 0
+  done
+  return 1
+}
+# The installed wrapper caps the accounts' streams alone. The same text as
+# mybackup's and multiback's.
+_wrapper_caps_accounts() {
+  grep -q '^_live_account_streams()' /root/.remote_backups/run/sequential_backups.sh 2> /dev/null
+}
+# A restore the pass can serve now waits in an account's queue: its command
+# file, a regular file reached through no link, of an account whose own backup
+# neither runs nor waits (the pass leaves such a queue for a later pass).
+_restore_queued() {
+  local _q="" _a=""
+  for _q in /data/disk/*/static/control/.run/command.txt; do
+    _a="${_q#/data/disk/}"
+    _a="${_a%%/*}"
+    [ -f "${_q}" ] || continue
+    if [ -L "${_q}" ] || [ -L "/data/disk/${_a}/static" ] \
+      || [ -L "/data/disk/${_a}/static/control" ] \
+      || [ -L "/data/disk/${_a}/static/control/.run" ]; then
+      continue
+    fi
+    _acct_bup_first "${_a}" && continue
+    return 0
+  done
+  return 1
+}
+
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
     # shellcheck disable=SC1091
@@ -592,9 +672,18 @@ if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ]; then
   # console script as the script argument, and a bare substring match
   # also deferred this arm whenever any command line merely mentioned
   # the word (an editor, a tail, an operator probe).
+  # The quiet tick also rewrites the wrapper a live run reads, so it keeps
+  # the full count. Under the wrapper that caps the accounts' streams, with
+  # only accounts' own entries running, a pass starts for a restore it can
+  # serve: the pass serves it beside them (no restore holds another
+  # account's entry there).
   _CNT=$(_dcy_live_count)
   if (( _CNT > 0 )); then
-    echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
+    if _wrapper_caps_accounts && (( $(_dcy_box_count) == 0 )) && _restore_queued; then
+      [ -x "/usr/local/bin/mybackup" ] && nohup /usr/local/bin/mybackup > /dev/null 2>&1 &
+    else
+      echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
+    fi
   else
     [ -x "/usr/local/bin/dcysetup" ] && bash /usr/local/bin/dcysetup update &> /dev/null
     wait
