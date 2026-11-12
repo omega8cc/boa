@@ -1711,11 +1711,14 @@ _dbctl_report() {
 # the handle shows what lstat saw. A number leaves the list only when every
 # place was walked whole within two hours, nothing it owned was found gone
 # or left unchanged, no process runs as it, and it was not freed again
-# meanwhile. Leaving the list gives it to no other account: a live
+# meanwhile; a number whose own entries could not all be handed over (one
+# gone since find listed it, one left unchanged) stays for another night,
+# and the others go. Leaving the list gives it to no other account: a live
 # account's freed numbers stay its own (<oN>.gone), and a gone account's
 # (.purged) are given again only when no other number is free
 # (_acct_pick_uid in the ltd worker), since no walk of folders other users
-# can rename into proves a number owns nothing.
+# can rename into proves a number owns nothing. With fewer than 50 numbers
+# left that no one holds, the run says so in an ALERT.
 _NIGHT_UNSWEPT_PL='use Fcntl; use POSIX ();
 my %m;
 for (split(/,/, shift(@ARGV) // "")) {
@@ -1723,10 +1726,12 @@ for (split(/,/, shift(@ARGV) // "")) {
   next unless defined($c) && $u =~ /^[1-9][0-9]*$/ && $t =~ /^[0-9]+$/ && $g =~ /^-?[0-9]+$/;
   $m{$u} = [$t, $g, $c];
 }
+my $w = shift(@ARGV) // "";
+$w = 0 unless $w =~ /^[1-9][0-9]*$/;
 exit 0 unless %m;
 my $p = (POSIX::uname())[4] =~ /^(x86_64|aarch64)$/ ? 010000000 : 0;
-my (%gone, $n, $f);
-($n, $f) = (0, 0);
+my (%gone, %f, $n);
+$n = 0;
 sub gone {
   my $u = shift;
   unless (exists $gone{$u}) {
@@ -1739,7 +1744,7 @@ for my $e (@ARGV) {
   # find listed it as one of these numbers: gone since, it was moved or removed
   my @l = lstat($e);
   unless (@l) {
-    $f++;
+    $f{$w}++;
     next;
   }
   my $r = $m{$l[4]} or next;
@@ -1748,18 +1753,18 @@ for my $e (@ARGV) {
   my ($h, $x);
   if (-d _ || -f _) {
     unless (sysopen($h, $e, O_RDONLY|O_NOFOLLOW|O_NONBLOCK)) {
-      $f++;
+      $f{$l[4]}++;
       next;
     }
     $x = $h;
   } elsif ($p) {
     unless (sysopen($h, $e, $p|O_NOFOLLOW)) {
-      $f++;
+      $f{$l[4]}++;
       next;
     }
     $x = "/proc/self/fd/" . fileno($h);
   } else {
-    $f++;
+    $f{$l[4]}++;
     next;
   }
   my @s = stat($h);
@@ -1767,15 +1772,15 @@ for my $e (@ARGV) {
     $n++;
     if ($c) {
       my @a = stat($h);
-      $f++ unless @a && (($a[2] & 0170000) == 0120000 || chmod($a[2] & 01755, $x));
+      $f{$l[4]}++ unless @a && (($a[2] & 0170000) == 0120000 || chmod($a[2] & 01755, $x));
     }
   } else {
-    $f++;
+    $f{$l[4]}++;
   }
   close($h);
 }
 print "$n\n" if $n;
-print "F$f\n" if $f;
+print "F$_\n" for sort keys %f;
 exit 0;'
 
 _acct_gone_write() {
@@ -1858,25 +1863,49 @@ _acct_unswept_places() {
   done < /proc/mounts | sort -u
   return 0
 }
+# How many system uids (100 to 999) no user, record or list holds.
+_acct_unswept_free() {
+  local _u _t _f _n=0 _d=/data/conf/acct-uids
+  local -A _x=()
+  while IFS=: read -r _ _ _u _; do
+    [[ "${_u}" =~ ^[0-9]+$ ]] && _x[${_u}]=1
+  done < <(getent passwd 2> /dev/null)
+  for _f in "${_d}"/*.gone "${_d}/.unswept" "${_d}/.purged"; do
+    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
+    while read -r _u _t; do
+      [[ "${_u}" =~ ^[0-9]+$ ]] && _x[${_u}]=1
+    done < "${_f}"
+  done
+  for (( _u = 100; _u <= 999; _u++ )); do
+    [ -n "${_x[${_u}]:-}" ] || _n=$(( _n + 1 ))
+  done
+  echo "${_n}"
+}
 # Every number a process or thread runs as.
 _acct_unswept_busy() {
   ps -eL -o ruid= -o euid= -o suid= -o fsuid= 2> /dev/null | tr -s ' \t' '\n' | grep -E '^[0-9]+$' | sort -un
 }
 # The place $2 walked for the map $1 (_NIGHT_UNSWEPT_PL), within what is
-# left of the run's time, the count handed over added to _all. Status 1 when
-# it could not be entered, the time ran out, find met anything but entries
-# removed while it walked, or an entry of these numbers could not be handed
-# over or was gone by then. The nightly's own marker is kept fresh: clear.sh
-# drops one three hours old.
+# left of the run's time, the count handed over added to _all and each
+# number with an entry it could not hand over (gone since find listed it,
+# left unchanged) named in _failed. Status 1 when it could not be entered,
+# the time ran out, or find met anything but entries removed while it
+# walked. The nightly's own marker is kept fresh: clear.sh drops one three
+# hours old.
 _acct_unswept_walk() {
-  local _m="${1}" _p="${2}" _left _out _rc _e _x _bad=0
+  local _m="${1}" _p="${2}" _left _out _rc _e _x _u _bad=0
+  local -a _x2=()
   _left=$(( _UNSWEPT_END - $(date +%s) ))
   [ "${_left}" -gt 0 ] || return 1
   touch -c /run/daily-fix.pid 2> /dev/null
+  # each number its own branch: an entry gone since find listed it is
+  # counted for that number
+  for _u in ${_swl}; do
+    _x2+=( -o \( -uid "${_u}" -execdir perl -e "${_NIGHT_UNSWEPT_PL}" "${_m}" "${_u}" {} + \) )
+  done
   _e=$(mktemp /var/tmp/.acct-unswept.XXXXXX) || return 1
   _out=$(_acct_unswept_in "${_p}" timeout "${_left}" env PATH=/usr/local/bin:/usr/bin:/bin LC_ALL=C \
-    find -P . -xdev \( -false "${_k[@]}" \) \
-    -execdir perl -e "${_NIGHT_UNSWEPT_PL}" "${_m}" {} + 2> "${_e}")
+    find -P . -xdev \( -false "${_x2[@]}" \) 2> "${_e}")
   _rc=$?
   if [ "${_rc}" -ne 0 ]; then
     # entries removed while find walked are no failure; anything else is
@@ -1889,7 +1918,9 @@ _acct_unswept_walk() {
   for _x in ${_out}; do
     if [[ "${_x}" =~ ^[0-9]+$ ]]; then
       _all=$(( _all + _x ))
-    elif [[ "${_x}" =~ ^F[0-9]+$ ]]; then
+    elif [[ "${_x}" =~ ^F[1-9][0-9]*$ ]]; then
+      _failed[${_x#F}]=1
+    elif [[ "${_x}" =~ ^F ]]; then
       _bad=1
     fi
   done
@@ -1902,11 +1933,14 @@ _acct_unswept_walk() {
 _acct_unswept_sweep() {
   local IFS=$' \t\n'
   local _d=/data/conf/acct-uids _j _v _u _f _a _t _nb _ng _p _rel _rc _b
-  local _mapc="" _sw="" _swl="" _bad="" _all=0 _UNSWEPT_END
-  local -A _busy=() _own=()
-  local -a _k=()
+  local _mapc="" _sw="" _swl="" _bad="" _all=0 _UNSWEPT_END _fr
+  local -A _busy=() _own=() _failed=()
   _j="${_d}/.unswept"
   [ -d "${_d}" ] && [ ! -L "${_d}" ] || return 0
+  _fr=$(_acct_unswept_free)
+  if [[ "${_fr}" =~ ^[0-9]+$ ]] && [ "${_fr}" -lt 50 ]; then
+    echo "acct-unswept: ALERT only ${_fr} system uids are free of every user, record and list"
+  fi
   if [ -L "${_j}" ] || { [ -e "${_j}" ] && [ ! -f "${_j}" ]; }; then
     echo "acct-unswept: ALERT ${_j} is not a plain file, nothing swept"
     return 0
@@ -1956,9 +1990,8 @@ _acct_unswept_sweep() {
     fi
     _sw="${_sw} ${_u}"
     _swl="${_swl}${_u}"$'\n'
-    _k+=( -o -uid "${_u}" )
   done <<< "${_v}"
-  [ "${#_k[@]}" -gt 0 ] || return 0
+  [ -n "${_swl}" ] || return 0
   _UNSWEPT_END=$(( $(date +%s) + 7200 ))
   echo "acct-unswept: start, numbers${_sw}"
   for _a in "${!_own[@]}"; do
@@ -1973,8 +2006,11 @@ _acct_unswept_sweep() {
     echo "acct-unswept: ALERT ${_all} entries handed over, not walked whole:${_bad}; numbers${_sw} kept listed"
     return 0
   fi
-  # off the list, under its lock: each number swept that still names nobody,
-  # no process or thread runs as, and was not freed again meanwhile
+  for _u in "${!_failed[@]}"; do
+    echo "acct-unswept: number ${_u} kept for another night: an entry of it was gone or could not be handed over"
+  done
+  # off the list, under its lock: each number swept whole that still names
+  # nobody, no process or thread runs as, and was not freed again meanwhile
   _b=$(_acct_unswept_busy)
   _rel=$( ( flock -w 60 9 || exit 1
     if [ -f "${_j}" ] && [ ! -L "${_j}" ]; then
@@ -1986,6 +2022,7 @@ _acct_unswept_sweep() {
     _f=""
     while IFS= read -r _u; do
       [ -n "${_u}" ] || continue
+      [ -n "${_failed[${_u}]:-}" ] && continue
       getent passwd "${_u}" > /dev/null 2>&1 && continue
       grep -qx -- "${_u}" <<< "${_b}" && continue
       grep -qx -- "${_u}" <<< "${_p}" && continue

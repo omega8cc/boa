@@ -184,10 +184,10 @@ if ($mine && !$left && rmdir("./control")) {
   print "removed $rm entries of theirs from control/\n";
 }
 exit 0;'
-# The numbers a purge frees wait in /data/conf/acct-uids/.unswept, as the
-# ltd worker's do, until the nightly sweep has handed over what they still
-# own: no identity of another account is made under them meanwhile. These
-# three are the ltd worker's text.
+# The numbers a purge frees are listed in /data/conf/acct-uids/.purged and
+# .unswept: no account's identity is made under one but as the last resort
+# (_acct_pick_uid in the ltd worker), and the nightly sweep hands over what
+# they still own. These four are the ltd worker's text.
 _acct_gone_write() {
   local _f="${1}" _t="${1}.tmp.$$" _rc
   rm -f -- "${_t}"
@@ -233,7 +233,8 @@ _acct_purged_add() {
   local _d=/data/conf/acct-uids _u _c _n="" _now _r=0
   _now=$(date +%s)
   for _u in "$@"; do
-    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] && _n="${_n}${_u}"$'\n'
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    grep -qx -- "${_u}" <<< "${_n}" || _n="${_n}${_u}"$'\n'
   done
   [ -n "${_n}" ] || return 0
   mkdir -p "${_d}" && chown root:root "${_d}" && chmod 0711 "${_d}" || return 1
@@ -4391,7 +4392,8 @@ _octopus_cleanup() {
         # So does the list of its identities' uids the sites' PHP reads (the
         # ltd worker writes it again for an account made later by the name),
         # and the record of its removed identities' numbers, which stay held
-        # back until the nightly sweep (.unswept) while no user has them.
+        # (.purged) while no user has them; a record that could not be
+        # moved there stays for the ltd worker's prune.
         if [ -f "/data/conf/acct-uids/${_usEr}.gone" ] \
           && [ ! -L "/data/conf/acct-uids/${_usEr}.gone" ]; then
           _gPg=""
@@ -4400,10 +4402,13 @@ _octopus_cleanup() {
             getent passwd "${_gU}" > /dev/null 2>&1 || _gPg="${_gPg} ${_gU}"
           done < "/data/conf/acct-uids/${_usEr}.gone"
           # shellcheck disable=SC2086
-          _acct_purged_add ${_gPg} \
-            || echo "WARNING: the numbers of ${_usEr}'s removed identities could not all be listed in /data/conf/acct-uids/.purged"
+          if _acct_purged_add ${_gPg}; then
+            rm -f -- "/data/conf/acct-uids/${_usEr}.gone"
+          else
+            echo "WARNING: the numbers of ${_usEr}'s removed identities could not all be listed in /data/conf/acct-uids/.purged"
+          fi
         fi
-        rm -f -- "/data/conf/acct-uids/${_usEr}" "/data/conf/acct-uids/${_usEr}.gone"
+        rm -f -- "/data/conf/acct-uids/${_usEr}"
         # So does its aegir2boa import state, beside the create marker, once
         # the database users its import made and still names are looked at.
         _boa_purge_a2b_users "${_usEr}"

@@ -3884,25 +3884,15 @@ _xmass_verify_target_accounts() {
        " Run '${_fix}' to install and seed them first${_idonly:+ (installed but missing only a system user: ${_idonly} -- 'xmass prep-target ${_t} --fix-users$(_xmass_admail_hint)')}."
 }
 
-# An identity made without the number its tree carries gets one that no
-# other account's removed identity left files under (_acct_pick_uid): the
-# ltd worker's text, as is _acct_unswept_seed.
-_acct_unswept_seed() {
-  local _f _u
-  for _f in /data/conf/acct-uids/*.gone; do
-    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
-    while IFS= read -r _u; do
-      [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
-      getent passwd "${_u}" > /dev/null 2>&1 || echo "${_u}"
-    done < "${_f}"
-  done
-  return 0
-}
+# An identity made without the number its tree carries gets one no other
+# account freed (_acct_pick_uid; a gone account's only as the last resort):
+# the ltd worker's text.
 _acct_pick_uid() {
   local IFS=$' \t\n'
   local _w="${1}" _a="${2}" _lo="" _hi="" _um="" _k _v _u _f _t _old="" _oldt=""
   local _d=/data/conf/acct-uids _uns=""
-  local -A _h=() _l=() _own=()
+  local _pso=NO
+  local -A _h=() _l=() _own=() _g=()
   [[ "${_a}" =~ ^[a-z0-9-]+$ ]] || _a=""
   case "${_w}" in
     high)
@@ -3942,12 +3932,17 @@ _acct_pick_uid() {
   # no passwd read, no pick: every number would look free
   [ -n "${_h[0]:-}" ] || return 1
   for _u in $(ps -eL -o ruid= -o euid= -o suid= -o fsuid= 2> /dev/null); do
-    [[ "${_u}" =~ ^[0-9]+$ ]] && _h[${_u}]=1
+    [[ "${_u}" =~ ^[0-9]+$ ]] || continue
+    _h[${_u}]=1
+    [ "${_u}" = "0" ] && _pso=YES
   done
+  # no process list read, no pick: a number something runs as would look free
+  [ "${_pso}" = "YES" ] || return 1
   for _f in "${_d}"/*.gone; do
     [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
     while IFS= read -r _u; do
       [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+      _g[${_u}]=1
       if [ -n "${_a}" ] && [ "${_f}" = "${_d}/${_a}.gone" ]; then
         _own[${_u}]=1
       else
@@ -3981,11 +3976,13 @@ _acct_pick_uid() {
       [ -n "${_h[${_u}]:-}${_l[${_u}]:-}${_own[${_u}]:-}" ] || { echo "${_u}"; return 0; }
     done
   fi
-  # the last resort: a gone account's number the sweep has walked
+  # the last resort: a gone account's number the sweep has walked, never one
+  # an account has recorded since; without the list nothing counts as walked
+  [ -f "${_d}/.unswept" ] && [ ! -L "${_d}/.unswept" ] || return 1
   while read -r _u _t; do
     [[ "${_u}" =~ ^[1-9][0-9]*$ && "${_t}" =~ ^[0-9]+$ ]] || continue
     [ "${_u}" -ge "${_lo}" ] && [ "${_u}" -le "${_hi}" ] || continue
-    [ -z "${_h[${_u}]:-}" ] || continue
+    [ -z "${_h[${_u}]:-}${_g[${_u}]:-}" ] || continue
     grep -qx -- "${_u}" <<< "${_uns}" && continue
     if [ -z "${_oldt}" ] || [ "${_t}" -lt "${_oldt}" ]; then
       _old="${_u}"
@@ -4072,7 +4069,7 @@ _xmass_repair_target_identities() {
     # the helpers ride ahead of the body: the account's web group is derived
     # there, by the same rules as every writer, and a new identity's number
     # is picked there (_acct_new_identity)
-    _out=$( { declare -f _web_group_state _web_group_conv _acct_unswept_seed _acct_pick_uid _acct_new_identity; cat; } <<'REMOTE' \
+    _out=$( { declare -f _web_group_state _web_group_conv _acct_pick_uid _acct_new_identity; cat; } <<'REMOTE' \
       | ssh -o BatchMode=yes -o ConnectTimeout=30 root@"${_t}" \
       "_A='${_oct}' _SRCSH='${_srcsh}' _NEW='${_new}' _SRCG='${_srcg}' bash -s"
 if [ -z "${_NEW}" ]; then
@@ -4149,8 +4146,7 @@ for _I in "${_A}" "${_A}.ftp"; do
     useradd -u "${_U}" -d "${_H}" -s "${_S}" "${_MK}" -N -r -g "${_G}" "${_I}" \
       || { echo "XMID-FAILED: useradd ${_I}"; continue; }
   else
-    # no number to re-adopt: one no other account's removed identity left
-    # files under
+    # no number to re-adopt: one no other account freed
     _acct_new_identity high "${_A}" useradd -d "${_H}" -s "${_S}" "${_MK}" -N -r -g "${_G}" "${_I}" \
       || { echo "XMID-FAILED: useradd ${_I}"; continue; }
   fi

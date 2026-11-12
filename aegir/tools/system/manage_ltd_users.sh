@@ -1957,15 +1957,17 @@ _acct_unswept_add() {
   ) 9> "${_d}/.unswept.lock"
 }
 # The numbers of an account that is gone (boa cleanup purge, or one removed
-# some other way) are listed in /data/conf/acct-uids/.purged, each with the
-# time it joined, and in .unswept: no account takes one, except as the last
-# resort when no other number is free, the oldest swept one first
+# some other way, which the ltd worker's prune finds by its records) are
+# listed in /data/conf/acct-uids/.purged, each with the time it joined, and
+# in .unswept: no account takes one, except as the last resort when no other
+# number is free and the nightly sweep has walked it, the oldest first
 # (_acct_pick_uid).
 _acct_purged_add() {
   local _d=/data/conf/acct-uids _u _c _n="" _now _r=0
   _now=$(date +%s)
   for _u in "$@"; do
-    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] && _n="${_n}${_u}"$'\n'
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    grep -qx -- "${_u}" <<< "${_n}" || _n="${_n}${_u}"$'\n'
   done
   [ -n "${_n}" ] || return 0
   mkdir -p "${_d}" && chown root:root "${_d}" && chmod 0711 "${_d}" || return 1
@@ -1991,17 +1993,18 @@ _acct_purged_add() {
 # number the account itself freed (<oN>.gone) before any other, then one no
 # account holds (in no other account's record, not waiting for the sweep in
 # .unswept, not a gone account's in .purged); only when none is left, the
-# number of a gone account the sweep has walked, the oldest first, with
-# status 2. A number freed from a live account is never given to another:
+# number of a gone account the sweep has walked and no account has recorded
+# since, the oldest first, with status 2. A number freed from a live account is never given to another:
 # what it left outside the account's trees would be that account's, and no
-# walk proves it left nothing. Status 1, and nothing, when the range or the
-# users cannot be read or no number is free. A name that cannot be an
-# account's takes no number back.
+# walk proves it left nothing. Status 1, and nothing, when the range, the
+# users or the processes cannot be read or no number is free. A name that
+# cannot be an account's takes no number back.
 _acct_pick_uid() {
   local IFS=$' \t\n'
   local _w="${1}" _a="${2}" _lo="" _hi="" _um="" _k _v _u _f _t _old="" _oldt=""
   local _d=/data/conf/acct-uids _uns=""
-  local -A _h=() _l=() _own=()
+  local _pso=NO
+  local -A _h=() _l=() _own=() _g=()
   [[ "${_a}" =~ ^[a-z0-9-]+$ ]] || _a=""
   case "${_w}" in
     high)
@@ -2041,12 +2044,17 @@ _acct_pick_uid() {
   # no passwd read, no pick: every number would look free
   [ -n "${_h[0]:-}" ] || return 1
   for _u in $(ps -eL -o ruid= -o euid= -o suid= -o fsuid= 2> /dev/null); do
-    [[ "${_u}" =~ ^[0-9]+$ ]] && _h[${_u}]=1
+    [[ "${_u}" =~ ^[0-9]+$ ]] || continue
+    _h[${_u}]=1
+    [ "${_u}" = "0" ] && _pso=YES
   done
+  # no process list read, no pick: a number something runs as would look free
+  [ "${_pso}" = "YES" ] || return 1
   for _f in "${_d}"/*.gone; do
     [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
     while IFS= read -r _u; do
       [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+      _g[${_u}]=1
       if [ -n "${_a}" ] && [ "${_f}" = "${_d}/${_a}.gone" ]; then
         _own[${_u}]=1
       else
@@ -2080,11 +2088,13 @@ _acct_pick_uid() {
       [ -n "${_h[${_u}]:-}${_l[${_u}]:-}${_own[${_u}]:-}" ] || { echo "${_u}"; return 0; }
     done
   fi
-  # the last resort: a gone account's number the sweep has walked
+  # the last resort: a gone account's number the sweep has walked, never one
+  # an account has recorded since; without the list nothing counts as walked
+  [ -f "${_d}/.unswept" ] && [ ! -L "${_d}/.unswept" ] || return 1
   while read -r _u _t; do
     [[ "${_u}" =~ ^[1-9][0-9]*$ && "${_t}" =~ ^[0-9]+$ ]] || continue
     [ "${_u}" -ge "${_lo}" ] && [ "${_u}" -le "${_hi}" ] || continue
-    [ -z "${_h[${_u}]:-}" ] || continue
+    [ -z "${_h[${_u}]:-}${_g[${_u}]:-}" ] || continue
     grep -qx -- "${_u}" <<< "${_uns}" && continue
     if [ -z "${_oldt}" ] || [ "${_t}" -lt "${_oldt}" ]; then
       _old="${_u}"
@@ -2142,19 +2152,23 @@ _acct_new_identity() {
 # Every number a user has again leaves the lists (its files are that user's
 # now), and so does the list of an account no longer in passwd.
 _ltd_acct_gone_prune_all() {
-  local _f _a _u _t _keep _gone _c _d=/data/conf/acct-uids
+  local _f _a _u _keep _gone _d=/data/conf/acct-uids
+  # an account counts as gone only while passwd answers for root
+  getent passwd root > /dev/null 2>&1 || return 0
   for _f in "${_d}"/*.gone; do
     [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
     _a="${_f##*/}"
     _a="${_a%.gone}"
     if ! id -u -- "${_a}" > /dev/null 2>&1; then
-      # the account is gone: its numbers no user has stay held, for no one
+      # the account is gone (removed other than by boa cleanup purge): the
+      # numbers it recorded and those its identities held (its uid list) no
+      # user has stay held, for no account
       _gone=""
       while IFS= read -r _u; do
         [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
         getent passwd "${_u}" > /dev/null 2>&1 && continue
         _gone="${_gone} ${_u}"
-      done < "${_f}"
+      done < <(cat -- "${_f}"; [ -f "${_d}/${_a}" ] && [ ! -L "${_d}/${_a}" ] && tr ',' '\n' < "${_d}/${_a}")
       # shellcheck disable=SC2086
       _acct_purged_add ${_gone} && rm -f -- "${_f}"
       continue
@@ -2168,20 +2182,6 @@ _ltd_acct_gone_prune_all() {
     [ "$(grep -E '^[1-9][0-9]*$' "${_f}")" = "${_keep%$'\n'}" ] && continue
     _acct_gone_write "${_f}" "${_keep%$'\n'}"
   done
-  # a gone account's number a user has now is that user's
-  [ -f "${_d}/.purged" ] && [ ! -L "${_d}/.purged" ] || return 0
-  (
-    flock -w 60 9 || exit 1
-    _c=$(cat -- "${_d}/.purged") || exit 1
-    _keep=""
-    while read -r _u _t; do
-      [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
-      getent passwd "${_u}" > /dev/null 2>&1 && continue
-      _keep="${_keep}${_u} ${_t}"$'\n'
-    done <<< "${_c}"
-    [ "${_c}" = "${_keep%$'\n'}" ] && exit 0
-    _acct_gone_write "${_d}/.purged" "${_keep%$'\n'}"
-  ) 9> "${_d}/.unswept.lock"
   return 0
 }
 # Run inside the real static/: when control/ is a folder whose own owner no
@@ -3530,8 +3530,8 @@ EOF
 #
 # A login's files in its account's trees go to the account before deluser
 # frees its number, which the account's own next identity may take back at
-# once (_acct_pick_uid) and any other once the nightly sweep has released it:
-# that identity would own them. Each directory and
+# once (_acct_pick_uid), and no other account's ever: that identity would
+# own them. Each directory and
 # file the login owns there is handed over through a handle that re-checks
 # the owner and never follows a link; the group stays. A hard-linked file
 # goes to the account too: another name of it may sit outside these trees,
@@ -6056,8 +6056,8 @@ _satellite_remove_web_user() {
       # could not be recorded is not freed
       if id -u "${_WEB}" &> /dev/null \
         && ! _acct_gone_add "${_WEB%%.*}" "$(id -u -- "${_WEB}")"; then
-        echo "$(date) ${_WEB}: its number could not be recorded, its removal left for the next pass" \
-          >> /var/log/boa/manage_ltd.incident.log
+        _ltd_notice "web-record-${_WEB}" \
+          "${_WEB}: its number could not be recorded, its removal left for the next pass" "" > /dev/null
         return 0
       fi
       deluser \

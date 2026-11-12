@@ -254,7 +254,8 @@
       removed identity left outside the account (in another account's open
       folder, in /tmp) became the new holder's. The account takes its own
       freed numbers back first; the numbers of an account that is gone are
-      given again only when no other number is free, the oldest first. A
+      given again only when no other number is free and the nightly sweep
+      has walked them, the oldest first, each time with an incident line. A
       nightly sweep of the server's own filesystems gives what such numbers
       still own to their account (closed to other writers outside its home
       and files store), or to nobody when the account is gone. With no

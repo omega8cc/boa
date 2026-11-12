@@ -592,15 +592,17 @@ _acct_unswept_add() {
   ) 9> "${_d}/.unswept.lock"
 }
 # The numbers of an account that is gone (boa cleanup purge, or one removed
-# some other way) are listed in /data/conf/acct-uids/.purged, each with the
-# time it joined, and in .unswept: no account takes one, except as the last
-# resort when no other number is free, the oldest swept one first
+# some other way, which the ltd worker's prune finds by its records) are
+# listed in /data/conf/acct-uids/.purged, each with the time it joined, and
+# in .unswept: no account takes one, except as the last resort when no other
+# number is free and the nightly sweep has walked it, the oldest first
 # (_acct_pick_uid).
 _acct_purged_add() {
   local _d=/data/conf/acct-uids _u _c _n="" _now _r=0
   _now=$(date +%s)
   for _u in "$@"; do
-    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] && _n="${_n}${_u}"$'\n'
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    grep -qx -- "${_u}" <<< "${_n}" || _n="${_n}${_u}"$'\n'
   done
   [ -n "${_n}" ] || return 0
   mkdir -p "${_d}" && chown root:root "${_d}" && chmod 0711 "${_d}" || return 1
@@ -626,17 +628,18 @@ _acct_purged_add() {
 # number the account itself freed (<oN>.gone) before any other, then one no
 # account holds (in no other account's record, not waiting for the sweep in
 # .unswept, not a gone account's in .purged); only when none is left, the
-# number of a gone account the sweep has walked, the oldest first, with
-# status 2. A number freed from a live account is never given to another:
+# number of a gone account the sweep has walked and no account has recorded
+# since, the oldest first, with status 2. A number freed from a live account is never given to another:
 # what it left outside the account's trees would be that account's, and no
-# walk proves it left nothing. Status 1, and nothing, when the range or the
-# users cannot be read or no number is free. A name that cannot be an
-# account's takes no number back.
+# walk proves it left nothing. Status 1, and nothing, when the range, the
+# users or the processes cannot be read or no number is free. A name that
+# cannot be an account's takes no number back.
 _acct_pick_uid() {
   local IFS=$' \t\n'
   local _w="${1}" _a="${2}" _lo="" _hi="" _um="" _k _v _u _f _t _old="" _oldt=""
   local _d=/data/conf/acct-uids _uns=""
-  local -A _h=() _l=() _own=()
+  local _pso=NO
+  local -A _h=() _l=() _own=() _g=()
   [[ "${_a}" =~ ^[a-z0-9-]+$ ]] || _a=""
   case "${_w}" in
     high)
@@ -676,12 +679,17 @@ _acct_pick_uid() {
   # no passwd read, no pick: every number would look free
   [ -n "${_h[0]:-}" ] || return 1
   for _u in $(ps -eL -o ruid= -o euid= -o suid= -o fsuid= 2> /dev/null); do
-    [[ "${_u}" =~ ^[0-9]+$ ]] && _h[${_u}]=1
+    [[ "${_u}" =~ ^[0-9]+$ ]] || continue
+    _h[${_u}]=1
+    [ "${_u}" = "0" ] && _pso=YES
   done
+  # no process list read, no pick: a number something runs as would look free
+  [ "${_pso}" = "YES" ] || return 1
   for _f in "${_d}"/*.gone; do
     [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
     while IFS= read -r _u; do
       [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+      _g[${_u}]=1
       if [ -n "${_a}" ] && [ "${_f}" = "${_d}/${_a}.gone" ]; then
         _own[${_u}]=1
       else
@@ -715,11 +723,13 @@ _acct_pick_uid() {
       [ -n "${_h[${_u}]:-}${_l[${_u}]:-}${_own[${_u}]:-}" ] || { echo "${_u}"; return 0; }
     done
   fi
-  # the last resort: a gone account's number the sweep has walked
+  # the last resort: a gone account's number the sweep has walked, never one
+  # an account has recorded since; without the list nothing counts as walked
+  [ -f "${_d}/.unswept" ] && [ ! -L "${_d}/.unswept" ] || return 1
   while read -r _u _t; do
     [[ "${_u}" =~ ^[1-9][0-9]*$ && "${_t}" =~ ^[0-9]+$ ]] || continue
     [ "${_u}" -ge "${_lo}" ] && [ "${_u}" -le "${_hi}" ] || continue
-    [ -z "${_h[${_u}]:-}" ] || continue
+    [ -z "${_h[${_u}]:-}${_g[${_u}]:-}" ] || continue
     grep -qx -- "${_u}" <<< "${_uns}" && continue
     if [ -z "${_oldt}" ] || [ "${_t}" -lt "${_oldt}" ]; then
       _old="${_u}"
@@ -4592,6 +4602,10 @@ _satellite_add_user_dirs() {
     fi
     _acct_new_identity low "${_USER}" \
       adduser --system --home ${_ROOT} --ingroup ${_ACCG} ${_USER} &> /dev/null
+    if ! id -u "${_USER}" > /dev/null 2>&1; then
+      _msg "ERROR: ${_USER} was not made: no system uid free of other accounts' (see /var/log/boa/manage_ltd.incident.log)"
+      _clean_pid_exit
+    fi
     adduser ${_USER} ${_USRG} &> /dev/null
     adduser ${_USER} ${_WEBG} &> /dev/null
     _ACCG=$(_acct_group "${_USER}")
@@ -6799,6 +6813,10 @@ _satellite_if_add_ftps_lshell_access() {
     _acct_new_identity high "${_USER}" \
       useradd -d /home/${_USERFTP} -s ${_PATH_LSHELL} -m -N -r \
       -g ${_ACCG:-users} ${_USERFTP} &> /dev/null
+    if ! id -u "${_USERFTP}" > /dev/null 2>&1; then
+      _msg "ERROR: ${_USERFTP} was not made: no system uid free of other accounts' (see /var/log/boa/manage_ltd.incident.log)"
+      _clean_pid_exit
+    fi
     # The file which contains the password is private from the start: made
     # 0600 below as a fresh file inside the real log/ (the instance user's),
     # never through a link or a FIFO put at the name
