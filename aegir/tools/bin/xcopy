@@ -1538,13 +1538,11 @@ _migrate_sites() {
           _DB_FRESH=NO
           if [ ! -d "/var/lib/mysql/${_DBN}" ]; then
             _DB_FRESH=YES
-            if [ -e "/data/conf/${_USR}_use_proxysql.txt" ]; then
-              _SQL_CONNECT=127.0.0.1
-              _THIS_DB_PORT=6033
-              mysqladmin -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
-            else
-              mysqladmin -u root flush-privileges
-            fi
+            # A copy makes, loads and dumps on this box's own server, an
+            # account that uses ProxySQL too: BOA's own dumps go through it
+            # only on the operator's opt-in, and a dump's snapshot holds only
+            # when all its connections reach one server.
+            mysqladmin -u root flush-privileges
             [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL3 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
             if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
               _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>/dev/null | tr -d '\n')
@@ -1573,13 +1571,7 @@ ALTER USER '${_DBN}'@'%' IDENTIFIED BY '${_DBP}';
 EOFMYSQL
             _xcopy_db_revoke_wildcard "${_DBN}" localhost
             _xcopy_db_revoke_wildcard "${_DBN}" %
-            if [ -e "/data/conf/${_USR}_use_proxysql.txt" ]; then
-              _SQL_CONNECT=127.0.0.1
-              _THIS_DB_PORT=6033
-              mysqladmin -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
-            else
-              mysqladmin -u root flush-privileges
-            fi
+            mysqladmin -u root flush-privileges
             echo "INFO: site ${_Dom} db setup on ${_oct} complete"
           else
             echo "ALRT: site ${_Dom} db ${_DBN} already exists!"
@@ -1603,10 +1595,6 @@ EOFMYSQL
             _XCOPY_IMPORT_FAILED_DBS="${_XCOPY_IMPORT_FAILED_DBS} ${_DBN}:not-owned"
             echo "ALRT: site ${_Dom} db ${_DBN} exists but the account cannot prove it owns it -- NOT loaded"
           elif [ -e "${_USR}/src/${_DBN}" ]; then
-            if [ -e "/data/conf/${_USR}_use_proxysql.txt" ]; then
-              _SQL_CONNECT=127.0.0.1
-              _THIS_DB_PORT=6033
-            fi
             [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL4 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp"
             if [ -x "/usr/local/bin/mydumper" ]; then
               _MYQUICK_ITD=$(mydumper -V 2>&1 \
@@ -6114,10 +6102,8 @@ _migrate_init() {
     echo
     exit 1
   fi
-  if [ -e "/data/conf/${_USR}_use_proxysql.txt" ]; then
-    _SQL_CONNECT=127.0.0.1
-    _THIS_DB_PORT=6033
-  fi
+  ### The export and import talk to this box's own database server, as they
+  ### always have, also for an account that uses ProxySQL (see _migrate_sites).
   ### With no target the usage records leg would address this box itself.
   if [ "${_oct}" = "xusage" ] && [ -z "${_tgt}" ]; then
     echo "ERROR: ${_cmd} xusage needs a target: xcopy ${_cmd} xusage <target>"
