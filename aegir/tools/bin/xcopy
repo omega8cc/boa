@@ -4401,7 +4401,7 @@ _xcopy_glob_names() {
 # first (a link the account put there is removed, a missing directory made):
 # for a leg whose target directory the install does not create.
 _xcopy_rsync_path_mk_in() {
-  local _d="${1}" _a=/data/disk _p _n _m
+  local _d="${1}" _a=/data/disk _p _n _m _c
   case "${_d}" in
     /home/?*) _a=/home ;;
     /opt/user/?*) _a=/opt/user ;;
@@ -4411,13 +4411,20 @@ _xcopy_rsync_path_mk_in() {
   # The client toolchain trees' parents are shared and BOA's own: root's,
   # sticky and world-writable, as the ltd worker makes them. A target where
   # Ruby or Node was never set up has none, and the account's tree would not
-  # travel: the parent is made there first (never through a link).
+  # travel: the parent is made there first (never through a link). Any
+  # account there can make the login's name in them first, so the copy goes
+  # only into a tree root or one of the account's own identities (the
+  # account, <account>.<name>) owns, read from inside it.
   _m=""
+  _c=""
   case "${_p}" in
     /opt/user/*/*) ;;
-    /opt/user/?*) _m="[ -L /opt/user ] || [ -d /opt/user ] || mkdir -m 755 /opt/user; [ -L '${_p}' ] || [ -d '${_p}' ] || { mkdir -m 1777 '${_p}' && chown root:root '${_p}'; }; " ;;
+    /opt/user/?*)
+      _m="[ -L /opt/user ] || [ -d /opt/user ] || mkdir -m 755 /opt/user; [ -L '${_p}' ] || [ -d '${_p}' ] || { mkdir -m 1777 '${_p}' && chown root:root '${_p}'; }; "
+      _c="case \"\$(stat -c %U .)\" in root|'${_n%%.*}'|'${_n%%.*}'.*) ;; *) echo \"DENY: ${_d} is owned by \$(stat -c %U .), not by ${_n%%.*} or root -- not entered\" >&2; false ;; esac && "
+      ;;
   esac
-  printf '%s' "${_m}_a=\"\$(cd -P ${_a} && /bin/pwd -P)\"; cd -P -- '${_p}' && [ \"\$(/bin/pwd -P)\" = \"\${_a}${_p#"${_a}"}\" ] && { [ -L './${_n}' ] && rm -f './${_n}'; [ -d './${_n}' ] || mkdir './${_n}'; } && cd -P -- './${_n}' && [ \"\$(/bin/pwd -P)\" = \"\${_a}${_d#"${_a}"}\" ] && rsync"
+  printf '%s' "${_m}_a=\"\$(cd -P ${_a} && /bin/pwd -P)\"; cd -P -- '${_p}' && [ \"\$(/bin/pwd -P)\" = \"\${_a}${_p#"${_a}"}\" ] && { [ -L './${_n}' ] && rm -f './${_n}'; [ -d './${_n}' ] || mkdir './${_n}'; } && cd -P -- './${_n}' && [ \"\$(/bin/pwd -P)\" = \"\${_a}${_d#"${_a}"}\" ] && ${_c}rsync"
 }
 # The entries of the current (pinned) directory the glob $3 names copied into
 # the real directory $2 on the target $1, the target directory created when
@@ -4811,16 +4818,47 @@ _xcopy_backups_leg() {
   fi
   return 0
 }
+### The client toolchain tree $2 (/opt/user/<tree>/<login>) on the target
+### $1, read before its leg, dry or live. Its parent is sticky and
+### world-writable, so another account there can make the login's name
+### first: the copy would fill a tree that account owns, and the ltd worker
+### never hands such a tree over. The leg goes ahead when the name is not
+### there or is a link (the receiver makes the tree, or removes the link
+### first), or when root or one of the account's own identities (the
+### account, <account>.<name>) owns it; anything else, a parent that is not
+### a real directory, or a target that does not answer, is a DENY. The
+### receiver reads the owner again from inside the tree before it copies.
+_xcopy_toolchain_leaf_ok() {   # 1 = target  2 = the tree there
+  local _h="${1}" _d="${2}" _p _n _o _r _why
+  _p="${_d%/*}"
+  _n="${_d##*/}"
+  _o="${_n%%.*}"
+  _r=$(ssh -n -o BatchMode=yes -o ConnectTimeout=15 root@"${_h}" \
+    "_a=\"\$(cd -P /opt/user 2> /dev/null && /bin/pwd -P)\"; cd -P -- '${_p}' 2> /dev/null || { echo XTL:none; exit 0; }; [ \"\$(/bin/pwd -P)\" = \"\${_a}${_p#/opt/user}\" ] || { echo XTL:parent; exit 0; }; if [ -L './${_n}' ] || [ ! -e './${_n}' ]; then echo XTL:none; else echo \"XTL:own:\$(stat -c %U -- './${_n}')\"; fi" \
+    2> /dev/null | grep -a '^XTL:' | tail -n 1)
+  case "${_r}" in
+    XTL:none|XTL:own:root|"XTL:own:${_o}"|"XTL:own:${_o}".*) return 0 ;;
+    XTL:own:?*) _why="it is owned by ${_r#XTL:own:}, not by ${_o} or root" ;;
+    XTL:parent) _why="${_p} there is not a real directory" ;;
+    *) _why="it could not be read there" ;;
+  esac
+  echo "DENY: ${_d} on ${_h}: ${_why} -- not entered, the tree of ${_n} does not travel"
+  _XCOPY_NOT_CLEAN=YES
+  [ "${_MODE}" = "LIVE" ] && _XCOPY_STORE_RC=1
+  return 1
+}
 ### The client toolchain tree $3 here copied to $4 on the target $1 ($2 the
 ### rsync error option): from inside the real directory into the real one
-### there. A copy that fails counts as a failed backups copy does: named,
-### and the live transfer is not marked complete; a run after the cause is
-### gone copies what is missing. 24 (files that vanished while the copy ran,
-### the client's own tool at work) is no failure. A tree this box does not
-### have is nothing to copy.
+### there, once that tree is the account's (_xcopy_toolchain_leaf_ok). A
+### copy that fails counts as a failed backups copy does: named, and the
+### live transfer is not marked complete; a run after the cause is gone
+### copies what is missing. 24 (files that vanished while the copy ran, the
+### client's own tool at work) is no failure. A tree this box does not have
+### is nothing to copy.
 _xcopy_toolchain_leg() {   # 1 = target  2 = rsync error option  3 = tree here  4 = tree there
   local _h="${1}" _ie="${2}" _s="${3}" _d="${4}" _rc
   _xcopy_leg_ok "${_s}" || return 0
+  _xcopy_toolchain_leaf_ok "${_h}" "${_d}" || return 1
   # shellcheck disable=SC2086
   _xcopy_in_real_dir "${_s}" _xcopy_copy_mk_here "${_h}" "${_d}" '' -aEAXqu ${_ie}
   _rc=$?
@@ -6457,8 +6495,8 @@ _migrate_init() {
           # Client-installed toolchains live outside /data/disk in the lshell
           # jail's writable trees: copied AS-IS (as in xoct). The parents are
           # sticky and world-writable, so each leaf is its owner's to replace:
-          # pinned as the account legs are; a copy that fails keeps the
-          # transfer from completing (_xcopy_toolchain_leg).
+          # pinned as the account legs are, and entered on the target only
+          # when it is the account's (_xcopy_toolchain_leg).
           _xcopy_toolchain_leg "${_tgt}" "${_ieni}" \
             "/opt/user/gems/${_oct}.ftp" "/opt/user/gems/${_DST##*/}.ftp"
           _xcopy_toolchain_leg "${_tgt}" "${_ieni}" \

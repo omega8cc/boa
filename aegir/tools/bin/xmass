@@ -2213,7 +2213,7 @@ _xmass_sed_here() {
 ### the copy lands in ./ only once pwd -P says where that is. The receiver
 ### never writes through a link put on the way.
 _xmass_pin_rpath() {
-  local _d="${1}" _a=/data/disk _p _n _m
+  local _d="${1}" _a=/data/disk _p _n _m _c
   case "${_d}" in
     /home/?*) _a=/home ;;
     /opt/user/?*) _a=/opt/user ;;
@@ -2223,13 +2223,20 @@ _xmass_pin_rpath() {
   # The client toolchain trees' parents are shared and BOA's own: root's,
   # sticky and world-writable, as the ltd worker makes them. A target where
   # Ruby or Node was never set up has none, and the account's tree would not
-  # travel: the parent is made there first (never through a link).
+  # travel: the parent is made there first (never through a link). Any
+  # account there can make the login's name in them first, so the copy goes
+  # only into a tree root or one of the account's own identities (the
+  # account, <account>.<name>) owns, read from inside it.
   _m=""
+  _c=""
   case "${_p}" in
     /opt/user/*/*) ;;
-    /opt/user/?*) _m="[ -L /opt/user ] || [ -d /opt/user ] || mkdir -m 755 /opt/user; [ -L '${_p}' ] || [ -d '${_p}' ] || { mkdir -m 1777 '${_p}' && chown root:root '${_p}'; }; " ;;
+    /opt/user/?*)
+      _m="[ -L /opt/user ] || [ -d /opt/user ] || mkdir -m 755 /opt/user; [ -L '${_p}' ] || [ -d '${_p}' ] || { mkdir -m 1777 '${_p}' && chown root:root '${_p}'; }; "
+      _c="case \"\$(stat -c %U .)\" in root|'${_n%%.*}'|'${_n%%.*}'.*) ;; *) echo \"DENY: ${_d} is owned by \$(stat -c %U .), not by ${_n%%.*} or root -- not entered\" >&2; false ;; esac && "
+      ;;
   esac
-  printf '%s' "${_m}_a=\"\$(cd -P ${_a} && /bin/pwd -P)\"; cd -P -- '${_p}' && [ \"\$(/bin/pwd -P)\" = \"\${_a}${_p#"${_a}"}\" ] && { [ -L './${_n}' ] && rm -f './${_n}'; [ -d './${_n}' ] || mkdir './${_n}'; } && cd -P -- './${_n}' && [ \"\$(/bin/pwd -P)\" = \"\${_a}${_d#"${_a}"}\" ] && rsync"
+  printf '%s' "${_m}_a=\"\$(cd -P ${_a} && /bin/pwd -P)\"; cd -P -- '${_p}' && [ \"\$(/bin/pwd -P)\" = \"\${_a}${_p#"${_a}"}\" ] && { [ -L './${_n}' ] && rm -f './${_n}'; [ -d './${_n}' ] || mkdir './${_n}'; } && cd -P -- './${_n}' && [ \"\$(/bin/pwd -P)\" = \"\${_a}${_d#"${_a}"}\" ] && ${_c}rsync"
 }
 ### The helpers above, as shell text for a script run as root on the other
 ### box: the same rules hold on both sides of a migration.
@@ -2246,6 +2253,36 @@ _xmass_leg_refused() {
   _alrt "DENY: ${1} is missing or not a real directory (a link on its path) -- not followed: ${2} does not travel until it is one again"
   _XMASS_RSYNC_RC=23
   _XMASS_NOT_CLEAN=YES
+}
+### The client toolchain tree $2 (/opt/user/<tree>/<login>) on the target
+### $1, read before its leg, dry or live. Its parent is sticky and
+### world-writable, so another account there can make the login's name
+### first: the copy would fill a tree that account owns, and the ltd worker
+### never hands such a tree over. The leg goes ahead when the name is not
+### there or is a link (the receiver makes the tree, or removes the link
+### first), or when root or one of the account's own identities (the
+### account, <account>.<name>) owns it; anything else, a parent that is not
+### a real directory, or a target that does not answer, fails the pass as a
+### refused leg does. The receiver reads the owner again from inside the
+### tree before it copies (_xmass_pin_rpath).
+_xmass_toolchain_leaf_ok() {   # 1 = target  2 = the tree there
+  local _h="${1}" _d="${2}" _p _n _o _r _why
+  _p="${_d%/*}"
+  _n="${_d##*/}"
+  _o="${_n%%.*}"
+  _r=$(ssh -n -o BatchMode=yes -o ConnectTimeout=15 root@"${_h}" \
+    "_a=\"\$(cd -P /opt/user 2> /dev/null && /bin/pwd -P)\"; cd -P -- '${_p}' 2> /dev/null || { echo XTL:none; exit 0; }; [ \"\$(/bin/pwd -P)\" = \"\${_a}${_p#/opt/user}\" ] || { echo XTL:parent; exit 0; }; if [ -L './${_n}' ] || [ ! -e './${_n}' ]; then echo XTL:none; else echo \"XTL:own:\$(stat -c %U -- './${_n}')\"; fi" \
+    2> /dev/null | grep -a '^XTL:' | tail -n 1)
+  case "${_r}" in
+    XTL:none|XTL:own:root|"XTL:own:${_o}"|"XTL:own:${_o}".*) return 0 ;;
+    XTL:own:?*) _why="it is owned by ${_r#XTL:own:}, not by ${_o} or root" ;;
+    XTL:parent) _why="${_p} there is not a real directory" ;;
+    *) _why="it could not be read there" ;;
+  esac
+  _alrt "DENY: ${_d} on ${_h}: ${_why} -- not entered, the tree of ${_n} does not travel"
+  _XMASS_RSYNC_RC=23
+  _XMASS_NOT_CLEAN=YES
+  return 1
 }
 ### Whether the resolved (canonical) path $2 belongs to the account $1: its
 ### own tree, or its own part of an attached store, <mount>/files/<oN>/, the
@@ -11283,14 +11320,17 @@ _xmass_sync_account() {
   # Client-installed toolchains live outside /data/disk in the lshell jail's
   # writable trees and never travelled before -- migrate AS-IS. The parents
   # are sticky and world-writable, so each leaf is its owner's to replace:
-  # pinned as the account legs are.
+  # pinned as the account legs are, and entered on the target only when it
+  # is the account's (_xmass_toolchain_leaf_ok).
   if [ -e "/opt/user/gems/${_oct}.ftp" ] || [ -L "/opt/user/gems/${_oct}.ftp" ]; then
-    _xmass_pinned_leg "/opt/user/gems/${_oct}.ftp" "/opt/user/gems/${_oct}.ftp" \
-      "the gems of ${_oct}.ftp" -aEAXqu $(_xmass_leg_args "/opt/user/gems/${_oct}.ftp")
+    _xmass_toolchain_leaf_ok "${_tgt}" "/opt/user/gems/${_oct}.ftp" \
+      && _xmass_pinned_leg "/opt/user/gems/${_oct}.ftp" "/opt/user/gems/${_oct}.ftp" \
+        "the gems of ${_oct}.ftp" -aEAXqu $(_xmass_leg_args "/opt/user/gems/${_oct}.ftp")
   fi
   if [ -e "/opt/user/npm/${_oct}.ftp" ] || [ -L "/opt/user/npm/${_oct}.ftp" ]; then
-    _xmass_pinned_leg "/opt/user/npm/${_oct}.ftp" "/opt/user/npm/${_oct}.ftp" \
-      "the npm tree of ${_oct}.ftp" -aEAXqu $(_xmass_leg_args "/opt/user/npm/${_oct}.ftp")
+    _xmass_toolchain_leaf_ok "${_tgt}" "/opt/user/npm/${_oct}.ftp" \
+      && _xmass_pinned_leg "/opt/user/npm/${_oct}.ftp" "/opt/user/npm/${_oct}.ftp" \
+        "the npm tree of ${_oct}.ftp" -aEAXqu $(_xmass_leg_args "/opt/user/npm/${_oct}.ftp")
   fi
 
   # Plan/identity stamps forced over the fresh install's newer defaults
