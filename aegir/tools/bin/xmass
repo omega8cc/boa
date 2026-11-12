@@ -9573,6 +9573,30 @@ _xmass_fit_warn() {   # 1 = side (space|inodes|count)  2 = dest  3 = message
 ### ($2): M when it is the link a mirror placed onto the mount copy ($3), L
 ### another link (a dangling one too), D a real directory, N nothing (one
 ### remote read, no stdin; empty when the target could not be asked).
+# The script verify runs on the target, with its one mount under /mnt as $1:
+# a "LEFT <K> <copy> <store>" line for each account's files store and the
+# archive whose copy on the mount nothing reads, since the store's own path
+# there is a real directory (a manual pass moved it onto the root, taking
+# the link and leaving the copy), then DONE. The size waits at most two
+# minutes ('?' after that).
+_xmass_left_store_copies_sh() {
+  cat <<'LEFT'
+_m="$1"
+case "${_m}" in /mnt/?*) ;; *) echo DONE; exit 0 ;; esac
+for _d in "${_m}"/files/*/static/files "${_m}"/files/system/arch; do
+  [ -d "${_d}" ] && [ ! -L "${_d}" ] || continue
+  case "${_d}" in
+    "${_m}"/files/system/arch) _u=/data/disk/arch ;;
+    *) _a="${_d#"${_m}"/files/}"; _a="${_a%%/*}"; _u="/data/disk/${_a}/static/files" ;;
+  esac
+  [ -d "${_u}" ] && [ ! -L "${_u}" ] || continue
+  _k="$(timeout 120 du -sk -- "${_d}" 2>/dev/null | awk '{ print $1 }')"
+  echo "LEFT ${_k:-?} ${_d} ${_u}"
+done
+echo DONE
+LEFT
+}
+
 _xmass_tgt_kind() {
   local _qd _qm
   _qd="$(_shq "$2")"
@@ -9923,8 +9947,11 @@ _xmass_handle_store() {
         _xmass_put_on_root "${_th}" "${_real}" "${_dstRoot}" "${_ie}" "${_dacct}" \
           || { _rc=$?; _XMASS_NOT_CLEAN=YES; return "${_rc}"; }
         _info "${_lbl}: real dir on target root ${_dstRoot}"
+        # the move off the mount takes the link only: the copy it named stays
+        [ "${_kind}" != "M" ] \
+          || _alrt "  ${_lbl}: its earlier copy stays on the target mount at ${_mntDest}, unused now: remove it once the move is verified ('xmass verify' names it with its size)"
       else
-        _info "[DRY-PLAN] ${_lbl}: would place real dir on target root ${_dstRoot} (source ${_sz:-?}K)"
+        _info "[DRY-PLAN] ${_lbl}: would place real dir on target root ${_dstRoot} (source ${_sz:-?}K)$([ "${_kind}" != "M" ] || printf '%s' ", its copy on the target mount (${_mntDest}) left there unused")"
       fi
       ;;
   esac
@@ -18333,6 +18360,24 @@ _xmass_cmd_verify() {
     done
   else
     _info "No dangling symlinks under the synced roots (and mount) on ${_tgt}: OK"
+  fi
+  # A store a manual pass moved off the target's mount onto its root leaves
+  # the copy it had there: named here with its size, never removed by this
+  # tool (advisory, like the sweep above).
+  if [ -n "${_tmv}" ]; then
+    local _lc _lw _lk _ld _lu _ln=0
+    _lc="$(_xmass_left_store_copies_sh \
+      | ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" "bash -s -- '$(_shq "${_tmv}")'" 2> /dev/null)"
+    if ! printf '%s\n' "${_lc}" | grep -qx 'DONE'; then
+      _alrt "could not read ${_tgt}'s mount ${_tmv} for store copies left unused -- re-run verify"
+    else
+      while read -r _lw _lk _ld _lu; do
+        [ "${_lw}" = "LEFT" ] || continue
+        _ln=$(( _ln + 1 ))
+        _alrt "a store copy left unused on the target mount: ${_ld} (${_lk}K): ${_lu} is a real directory on the root now and nothing reads this copy -- remove it once the move is verified: rm -rf -- '${_ld}'"
+      done <<< "${_lc}"
+      [ "${_ln}" -gt 0 ] || _info "No store copy left unused on the target mount (${_tmv}): OK"
+    fi
   fi
   # A platform's link into the shared store that dangles on the target is a
   # site with no code there: the store did not travel, or went where nothing
