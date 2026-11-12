@@ -2543,7 +2543,7 @@ _xcopy_import_precheck() {
   elif [ ! -e "${_USR}/src/prev_hostmaster.sql" ]; then
     _why="${_USR}/src/prev_hostmaster.sql is missing; export and transfer have not completed"
   elif [ -z "$(_xcopy_read_in "${_USR}/log" sourcefqdn.txt | tr -cd 'a-zA-Z0-9.-')" ]; then
-    _why="${_USR}/log/sourcefqdn.txt is missing or empty; on the source remove src/prev_hostmaster.sql, log/exported.pid and log/transferred.pid of ${_oct}, then export and transfer again"
+    _why="${_USR}/log/sourcefqdn.txt is missing or empty; on the source run 'xcopy reset-state ${_oct}', then export and transfer again"
   elif [ -z "${_THIS_HM_SITE}" ] || [ ! -e "${_THIS_HM_SITE}/drushrc.php" ]; then
     _why="the hostmaster alias names ${_THIS_HM_SITE:-no site_path}, which has no drushrc.php on this box"
   else
@@ -5008,6 +5008,80 @@ _xcopy_realdir_here() {
   [ -L "./${1}" ] && rm -f -- "./${1}"
   [ -d "./${1}" ] || mkdir -p -- "./${1}"
 }
+# The dumps in the current (pinned) src/ directory removed: the glob expands
+# here, never in a directory a link put in its place names.
+_xcopy_rm_sql_dumps_here() {
+  rm -f -- ./*.sql
+}
+# The names among "$@" still in the current (pinned) directory, each after a
+# space; a *.sql argument stands for every dump there.
+_xcopy_names_left_here() {
+  local _n _f
+  for _n in "$@"; do
+    if [ "${_n}" = "*.sql" ]; then
+      for _f in ./*.sql; do
+        if [ -e "${_f}" ] || [ -L "${_f}" ]; then
+          printf ' %s' "${_f#./}"
+        fi
+      done
+    elif [ -e "./${_n}" ] || [ -L "./${_n}" ]; then
+      printf ' %s' "${_n}"
+    fi
+  done
+}
+# The copy state of the account on this box cleared, so a copy can start
+# again or a copy be refreshed. On the source: the panel dump (export takes a
+# new one only while none is there, so a refresh would ship the panel as it
+# was at the first copy) and the export and transfer stamps, which refuse a
+# new export and transfer. On a target: the import stamp, which refuses a new
+# import, and the recorded panel database. Either side: the failure latches.
+# Kept: the per-site dumps (the next export replaces each), the list of the
+# stop markers a copy put (log/xcopy_le_kept.txt, as the markers stay),
+# log/sourcefqdn.txt (written by every export) and the state of an xoct move
+# (log/proxied.pid and the root proxied marker are xoct's). src/ and log/ are
+# oN's: each name is removed inside the real directory, never through a link
+# put there, and a link at src or log itself refuses the whole reset before
+# anything is removed.
+_xcopy_reset_state() {
+  local _U="/data/disk/${_oct}" _d _left="" _bad="" _l
+  local -a _log=(exported.pid transferred.pid imported.pid export_failed.pid import_failed.pid panel_db.txt)
+  if [[ ! "${_oct}" =~ ^[a-zA-Z0-9][a-zA-Z0-9._-]*$ ]] \
+    || [ ! -d "${_U}" ] || [ ! -e "/root/.${_oct}.octopus.cnf" ]; then
+    echo "Usage: xcopy reset-state {o1} (an Octopus account on this box)"
+    exit 1
+  fi
+  for _d in src log; do
+    if [ -e "${_U}/${_d}" ] || [ -L "${_U}/${_d}" ]; then
+      _xcopy_in_real_dir "${_U}/${_d}" true || _bad="${_bad} ${_d}"
+    fi
+  done
+  if [ -n "${_bad}" ]; then
+    echo "ERROR: not this account's own directory in ${_U}:${_bad}; nothing was removed"
+    exit 1
+  fi
+  echo "ALRT: clearing the copy state of ${_oct} on this box:"
+  echo "ALRT:   src/*.sql (the panel dump, prev_hostmaster.sql),"
+  echo "ALRT:   log/{exported,transferred,imported}.pid,"
+  echo "ALRT:   log/{export_failed,import_failed}.pid and"
+  echo "ALRT:   log/panel_db.txt (the recorded import panel database)"
+  if [ -d "${_U}/src" ]; then
+    _xcopy_in_real_dir "${_U}/src" _xcopy_rm_sql_dumps_here
+    _l="$(_xcopy_in_real_dir "${_U}/src" _xcopy_names_left_here '*.sql')"
+    [ -z "${_l}" ] || _left="${_left}${_l// / src/}"
+  fi
+  if [ -d "${_U}/log" ]; then
+    _xcopy_in_real_dir "${_U}/log" rm -f -- "${_log[@]/#/./}"
+    _l="$(_xcopy_in_real_dir "${_U}/log" _xcopy_names_left_here "${_log[@]}")"
+    [ -z "${_l}" ] || _left="${_left}${_l// / log/}"
+  fi
+  if [ -n "${_left}" ]; then
+    echo "ERROR: still there in ${_U}:${_left}"
+    exit 1
+  fi
+  echo "INFO: copy state cleared for ${_oct}; the per-site dumps in src/ stay until the next export replaces them"
+  echo "INFO: on a target, clear it before a new transfer, never between that transfer and its import:"
+  echo "INFO: it would remove the panel dump the transfer brought"
+}
 # The whole regular file ./$1 of the current (pinned) directory streamed to
 # stdout without following a link (unbounded, for a DB dump): a link put at the
 # name yields nothing, a FIFO never blocks past the read.
@@ -7003,7 +7077,10 @@ _check_root() {
     NR==1 { for (i=1; i<=NF; i++) if ($i=="Use%" || $i=="Capacity") u=i }
     NR==2 && u { gsub(/%/,"",$u); print $u }')"
   [[ "${_DF_TEST}" =~ ^[0-9]+$ ]] || _DF_TEST=""
-  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ]; then
+  # reset-state only removes files (the copy stamps, the panel dump): refusing
+  # it on a full disk would keep the dump that may be filling it.
+  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ] \
+    && [ "${_cmd}" != "reset-state" ]; then
     echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
     echo "ERROR: We can not proceed until it is below 90/100"
     exit 1
@@ -7012,7 +7089,9 @@ _check_root() {
     NR==1 { for (i=1; i<=NF; i++) if ($i=="IUse%") u=i }
     NR==2 && u { gsub(/%/,"",$u); print $u }')"
   [[ "${_DI_TEST}" =~ ^[0-9]+$ ]] || _DI_TEST=""
-  if [ ! -z "${_DI_TEST}" ] && [ "${_DI_TEST}" -gt 90 ]; then
+  # Out of inodes is as full as out of space; the same verb runs.
+  if [ ! -z "${_DI_TEST}" ] && [ "${_DI_TEST}" -gt 90 ] \
+    && [ "${_cmd}" != "reset-state" ]; then
     echo "ERROR: Your disk is almost out of inodes !!! ${_DI_TEST}/100"
     echo "ERROR: We can not proceed until inode use is below 90/100"
     echo "ERROR: Every file takes an inode, free space alone is not enough: df -i /"
@@ -7480,7 +7559,7 @@ _xcopy_sql_maint_release() {
 }
 
 case "$1" in
-  export|create|import|pretransfer|transfer|noproxy|pre-mig|post-mig|ssl-gen)
+  export|create|import|pretransfer|transfer|noproxy|reset-state|pre-mig|post-mig|ssl-gen)
     _take_verb_lock "$1"
   ;;
 esac
@@ -7529,6 +7608,11 @@ case "$1" in
             _check_root
             _migrate_init
   ;;
+  reset-state) _cmd="$1"
+            _oct="$2"
+            _check_root
+            _xcopy_reset_state
+  ;;
   pre-mig)  _cmd="$1"
             _hst="$2"
             _check_root
@@ -7552,6 +7636,7 @@ case "$1" in
             echo "       (the account keeps its name: xoct moves an account under a new one)"
             echo "Usage: xcopy {create} {o1} {target-ip} [--fix-php] (installs the PHP versions in force here that the target lacks)"
             echo "Usage: xcopy {import} {o1} {target-ip} (target vms)"
+            echo "Usage: xcopy {reset-state} {o1} (clear the copy state here for a new or refreshed copy)"
             echo "Usage: xcopy {post-mig} {fqdn} (source+target vms)"
             echo
             echo "Usage: xcopy {ssl-gen}"
