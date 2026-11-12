@@ -5353,6 +5353,225 @@ _xmass_install_xtrabackup_target() {
   _info "Installed ${_pkg} on target ${_tgt}: OK"
 }
 
+###-------------BINARY LOG SIZING--------###
+
+# From init on both ends write a binary log, the target too (it logs what it
+# applies), and keep it for days. On a busy box that is tens of gigabytes a
+# day: kept for seven days it can take a source's root past the 90% line,
+# where BOA's runners, its backups and every verb of this tool stop, days
+# before the cutover, and fill a target sized for its data. So the log is
+# written with minimal row images, as BOA's own switch for it writes them,
+# and each end keeps it for as many days as fit there, seven at most and one
+# at least, planned to 85% of the disk so that five points stay for
+# everything else. An end where one day does not fit refuses the seed while
+# nothing is displaced. The rate is read from the source's redo log, which
+# the binary log follows closely with full row images (1.09 times on a busy
+# box); minimal images only lower it, so the figure errs high. The log an
+# end holds already is not counted against it: the days planned here
+# replace it.
+#   _XMASS_BINLOG_DAYS=<1-7>       pins the days on both ends
+#   _XMASS_BINLOG_DAY_KB=<K>       plans with a known daily figure
+#   _XMASS_SKIP_BINLOG_GATE=YES    passes an end that cannot hold a day
+# Never off: the binary log and GTID are what a replica and a later seed
+# from this box stand on. Seven days is how long a replica may stay away
+# before it needs a new seed; fewer days shorten that, which the output says.
+
+# The daily figure a run read is kept here for a week: a run again within
+# the hour after the restart that switched the binary log on has no rate of
+# its own to read, and one read over a quiet night alone would err low.
+_XMASS_BINLOG_DAY_FILE="/etc/boa/control/xmass-binlog-day.cnf"
+
+# Sums are printed with %.0f: the awk of a BOA box (mawk) prints a sum above
+# 2^31 in exponent form and caps %d there, which a filesystem over 2 TiB
+# in K, or a log over 2 GiB in bytes, passes.
+# What one end holds, as KEY=value lines: the filesystem of the database
+# folder (its mount point, its size as used plus free, its use), the one
+# that holds the accounts, the folder's own size, the binary log there now,
+# the days it is kept now, and the addresses reading it now.
+_xmass_binlog_probe_sh() {
+  cat <<'PROBE'
+_d="$(df -Pk /var/lib/mysql/ 2>/dev/null | awk 'NR==2 { printf "%.0f %s %s\n", $3 + $4, $3, $NF }')"
+_a="$(df -Pk /data/disk 2>/dev/null | awk 'NR==2 { print $3, $NF }')"
+echo "BL_SIZE_KB=${_d%% *}"
+_r="${_d#* }"
+echo "BL_USED_KB=${_r%% *}"
+echo "BL_MNT=${_d##* }"
+echo "BL_DATA_USED_KB=${_a%% *}"
+echo "BL_DATA_MNT=${_a##* }"
+echo "BL_DD_KB=$(du -sLk /var/lib/mysql 2>/dev/null | awk '{ print $1 }')"
+_q() { mysql --defaults-file=/root/.my.cnf --connect-timeout=5 -sNe "$1" 2>/dev/null; }
+echo "BL_LOG_KB=$(_q 'SHOW BINARY LOGS' | awk '{ s += $2 } END { printf "%.0f\n", s / 1024 }')"
+_v="$(_q "SHOW GLOBAL VARIABLES WHERE Variable_name IN ('expire_logs_days','binlog_expire_logs_seconds')")"
+_n="$(printf '%s\n' "${_v}" | awk '$1 == "binlog_expire_logs_seconds" && $2 > 0 { printf "%d\n", ($2 + 86399) / 86400; f = 1 } END { if (!f) print "" }')"
+[ -n "${_n}" ] || _n="$(printf '%s\n' "${_v}" | awk '$1 == "expire_logs_days" { print $2 }')"
+echo "BL_DAYS_NOW=${_n}"
+echo "BL_READERS=$(_q "SELECT SUBSTRING_INDEX(HOST, ':', 1) FROM information_schema.PROCESSLIST WHERE COMMAND LIKE 'Binlog Dump%'" | tr '\n' ' ')"
+PROBE
+}
+
+# $1 = die: sets _XM_BINLOG_DAYS_SRC and _XM_BINLOG_DAYS_TGT for the two
+# conf writers and refuses an end that cannot hold one day; warn: says the
+# same and sets nothing.
+_xmass_binlog_plan() {
+  local _how="$1" _st _up _lw _day="" _why="" _pin="" _e _o _k _v _bad=""
+  local _sz _us _mnt _dus _dmnt _ddk _lg _now _rd _room _n _hard _seed=0 _files=0 _other _sother=""
+  local _ns=7 _nt=7 _sv _sd _oth
+  case "${_XMASS_BINLOG_DAYS:-}" in
+    "") : ;;
+    [1-7]) _pin="${_XMASS_BINLOG_DAYS}" ;;
+    *)
+      [ "${_how}" != "die" ] || _die "_XMASS_BINLOG_DAYS is '${_XMASS_BINLOG_DAYS}': a number of days from 1 to 7 -- nothing was displaced."
+      _alrt "_XMASS_BINLOG_DAYS is '${_XMASS_BINLOG_DAYS}': a number of days from 1 to 7; 'xmass init' refuses it"
+      return 0
+    ;;
+  esac
+  if [[ "${_XMASS_BINLOG_DAY_KB:-}" =~ ^[1-9][0-9]*$ ]]; then
+    _day="${_XMASS_BINLOG_DAY_KB}"
+    _why="given by _XMASS_BINLOG_DAY_KB"
+  else
+    _st="$(mysql --defaults-file=/root/.my.cnf --connect-timeout=5 -sNe \
+      "SHOW GLOBAL STATUS WHERE Variable_name IN ('Innodb_os_log_written','Uptime')" 2> /dev/null)"
+    _lw="$(printf '%s\n' "${_st}" | awk '$1 == "Innodb_os_log_written" { print $2 }')"
+    _up="$(printf '%s\n' "${_st}" | awk '$1 == "Uptime" { print $2 }')"
+    if [[ "${_lw}" =~ ^[0-9]+$ ]] && [[ "${_up}" =~ ^[0-9]+$ ]] && [ "${_up}" -ge 3600 ]; then
+      _day=$(( _lw / 1024 * 86400 / _up * 11 / 10 ))
+      [ "${_day}" -gt 0 ] || _day=1
+      _why="1.1 times the redo log written over $(( _up / 3600 )) h of uptime"
+      [ "${_up}" -ge 86400 ] || _why="${_why}, under a day: a quiet or a busy stretch may skew it"
+    fi
+    # the figure an earlier run read here, while it is under a week old
+    _sv="$(cat "${_XMASS_BINLOG_DAY_FILE}" 2> /dev/null | head -n 1)"
+    _sd="${_sv#* }"
+    _sv="${_sv%% *}"
+    if [[ "${_sv}" =~ ^[0-9]+$ ]] && [[ "${_sd}" =~ ^[1-9][0-9]*$ ]] \
+      && [ $(( $(date +%s) - _sv )) -lt 604800 ] && [ $(( $(date +%s) - _sv )) -ge 0 ]; then
+      if [ -z "${_day}" ] || [ "${_sd}" -gt "${_day}" ]; then
+        _day="${_sd}"
+        _why="the figure a run read here on $(date -d "@${_sv}" '+%Y-%m-%d' 2> /dev/null), the higher one"
+      fi
+    elif [ -n "${_day}" ] && [ "${_how}" = "die" ]; then
+      mkdir -p "${_XMASS_BINLOG_DAY_FILE%/*}" 2> /dev/null
+      echo "$(date +%s) ${_day}" > "${_XMASS_BINLOG_DAY_FILE}" 2> /dev/null
+    fi
+  fi
+  if [ -z "${_day}" ]; then
+    _alrt "binary log: its daily size could not be read here (MySQL up for under an hour, or no answer): kept ${_pin:-7} day(s) on both ends, unjudged against the disks -- plan with _XMASS_BINLOG_DAY_KB=<K a day>"
+    if [ "${_how}" = "die" ]; then
+      _XM_BINLOG_DAYS_SRC="${_pin:-7}"
+      _XM_BINLOG_DAYS_TGT="${_pin:-7}"
+    fi
+    return 0
+  fi
+  _info "binary log: about $(( _day / 1048576 )).$(( _day % 1048576 * 10 / 1048576 )) G a day on each end (${_why}), written with minimal row images"
+  for _e in source target; do
+    if [ "${_e}" = "source" ]; then
+      _o="$(_xmass_binlog_probe_sh | bash 2> /dev/null)"
+    else
+      # the target is judged beside the source's seed: no seed read, no judgement
+      case " ${_bad} " in *" source "*) _bad="${_bad} target"; continue ;; esac
+      _o="$(_xmass_binlog_probe_sh | ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" bash 2> /dev/null)"
+    fi
+    _sz="$(_xmass_kv "${_o}" BL_SIZE_KB)"; _us="$(_xmass_kv "${_o}" BL_USED_KB)"
+    _mnt="$(_xmass_kv "${_o}" BL_MNT)"; _dus="$(_xmass_kv "${_o}" BL_DATA_USED_KB)"
+    _dmnt="$(_xmass_kv "${_o}" BL_DATA_MNT)"; _ddk="$(_xmass_kv "${_o}" BL_DD_KB)"
+    _lg="$(_xmass_kv "${_o}" BL_LOG_KB)"; _now="$(_xmass_kv "${_o}" BL_DAYS_NOW)"
+    _rd="$(_xmass_kv "${_o}" BL_READERS)"
+    if ! [[ "${_sz}" =~ ^[0-9]+$ ]] || ! [[ "${_us}" =~ ^[0-9]+$ ]] || ! [[ "${_ddk}" =~ ^[0-9]+$ ]]; then
+      _bad="${_bad} ${_e}"
+      continue
+    fi
+    [[ "${_lg}" =~ ^[0-9]+$ ]] && [ "${_lg}" -le "${_us}" ] && [ "${_lg}" -le "${_ddk}" ] || _lg=0
+    # the room to the planning line, the log held now given back: it is replaced
+    _room=$(( _sz * 85 / 100 - _us + _lg ))
+    # what this end holds beside its database, on the filesystem of the accounts
+    _other=""
+    if [[ "${_dus}" =~ ^[0-9]+$ ]]; then
+      if [ -n "${_mnt}" ] && [ "${_mnt}" = "${_dmnt}" ]; then
+        _other=$(( _dus - _ddk ))
+      elif [ "${_e}" = "source" ]; then
+        _other="${_dus}"
+      fi
+    fi
+    if [ "${_e}" = "source" ]; then
+      # the seed is the folder without its log, which no snapshot carries
+      _seed=$(( _ddk - _lg ))
+      _sother="${_other}"
+      _files=0
+    else
+      # the seed lands beside what is there (the folder it replaces is kept),
+      # and the accounts' files follow on the syncs when they share its disk
+      _files=0
+      if [ -n "${_other}" ] && [ -n "${_sother}" ] && [ "${_sother}" -gt "${_other}" ]; then
+        _files=$(( _sother - _other ))
+      fi
+      _room=$(( _room - _seed ))
+    fi
+    # the days that fit beside what is certain, and beside the files too:
+    # those are an estimate, which lowers the days and never refuses a seed
+    _hard=$(( _room / _day ))
+    _n=$(( (_room - _files) / _day ))
+    [ "${_n}" -le 7 ] || _n=7
+    if [ -n "${_pin}" ]; then
+      if [ "${_hard}" -ge "${_pin}" ]; then _k="${_n}"; _n="${_pin}"; else _k=7; _n=0; fi
+    else
+      _k="${_n}"
+      [ "${_n}" -ge 1 ] || [ "${_hard}" -lt 1 ] || _n=1
+    fi
+    if [ "${_n}" -ge 1 ] && [ "${_k}" -lt "${_n}" ]; then
+      _alrt "binary log on target ${_tgt}: ${_n} day(s) of it fit beside the seed, but about $(( _files / 1048576 )) G of files still to arrive may not fit with them: read the sync plans before the cutover"
+    fi
+    if [ "${_n}" -lt 1 ]; then
+      _v="${_pin:-one} day(s) of binary log, about $(( ${_pin:-1} * _day / 1048576 )) G, do not fit on the ${_e}"
+      [ "${_e}" = "source" ] || _v="${_v} ${_tgt} beside the seed ($(( _seed / 1048576 )) G)"
+      _v="${_v}: $(( _room > 0 ? _room / 1048576 : 0 )) G are left to 85% of ${_mnt}"
+      if [ "${_XMASS_SKIP_BINLOG_GATE}" = "YES" ]; then
+        _alrt "${_v} -- passed by _XMASS_SKIP_BINLOG_GATE=YES"
+        _n="${_pin:-1}"
+      elif [ "${_how}" = "die" ]; then
+        _die "${_v}." " Free space there or grow the disk (BOA's runners, its backups and this tool stop above 90%)," \
+             " or export _XMASS_SKIP_BINLOG_GATE=YES to override -- nothing was displaced."
+      else
+        _alrt "${_v}: 'xmass init' refuses until there is room (or _XMASS_SKIP_BINLOG_GATE=YES)"
+        continue
+      fi
+    fi
+    # Another replica reading this source's log now may stay away as long as
+    # the days it runs with: they are not lowered under it without a pin.
+    if [ "${_e}" = "source" ] && [ -z "${_pin}" ]; then
+      _oth=""
+      for _k in ${_rd}; do
+        [ "${_k}" = "${_tgt}" ] || _oth="${_oth} ${_k}"
+      done
+      # no expiry, or one past a week, runs as the seven this tool writes
+      [[ "${_now}" =~ ^[1-7]$ ]] || _now=7
+      if [ -n "${_oth}" ] && [ "${_now}" -gt "${_n}" ]; then
+        _alrt "binary log on this box: another replica reads it now (${_oth# }), so its ${_now} day(s) are kept, where ${_n} would fit: about $(( _now * _day / 1048576 )) G standing against $(( _room > 0 ? _room / 1048576 : 0 )) G of room -- set _XMASS_BINLOG_DAYS to lower them knowingly"
+        _n="${_now}"
+      fi
+    fi
+    _v="kept ${_n} day(s), about $(( _n * _day / 1048576 )) G standing; $(( _room > 0 ? _room / 1048576 : 0 )) G of room to 85% of ${_mnt}"
+    [ "${_lg}" -lt 1048576 ] || _v="${_v}, the $(( _lg / 1048576 )) G of log there now counted as replaced"
+    [ "${_n}" -ge 7 ] || [ -n "${_pin}" ] || _v="${_v} (a replica away for longer needs a new init)"
+    if [ "${_e}" = "source" ]; then
+      _info "binary log on this box: ${_v}"
+      _ns="${_n}"
+    else
+      _info "binary log on target ${_tgt}: ${_v}, after the seed ($(( _seed / 1048576 )) G) and about $(( _files / 1048576 )) G of files still to arrive"
+      _nt="${_n}"
+    fi
+  done
+  if [ -n "${_bad}" ]; then
+    _alrt "binary log: the disk of the${_bad} could not be read: kept ${_pin:-7} day(s) there, unjudged"
+    case " ${_bad} " in *" source "*) _ns="${_pin:-7}" ;; esac
+    case " ${_bad} " in *" target "*) _nt="${_pin:-7}" ;; esac
+  fi
+  if [ "${_how}" = "die" ]; then
+    _XM_BINLOG_DAYS_SRC="${_ns}"
+    _XM_BINLOG_DAYS_TGT="${_nt}"
+  fi
+  return 0
+}
+
 ###-------------GTID SETUP---------------###
 
 _ip_to_server_id() {
@@ -5416,23 +5635,38 @@ _xmass_write_gtid_conf_local() {
     # above the target's hold block. The runtime half is _xmass_trust_pair's,
     # the mirror first.
     echo "log_bin_trust_function_creators = 1"
+    # Only the key and the changed columns of a row: as BOA's own binary
+    # log switch writes it, and what keeps the log's size near the writes.
+    echo "binlog_row_image         = minimal"
     # expire_logs_days was REMOVED in MySQL/Percona 8.4 (deprecated in 8.0);
     # its presence aborts mysqld at startup ("unknown variable"). Use the
     # replacement binlog_expire_logs_seconds on 8.0+; keep the old name on 5.7
     # where the new one does not exist.
     if [ "${_XMASS_PERCONA_V}" = "5.7" ]; then
-      echo "expire_logs_days             = 7"
+      echo "expire_logs_days             = ${_XM_BINLOG_DAYS_SRC:-7}"
       # 5.7 applies the relay log single-threaded by default; on a
       # write-heavy source the replica drifts and blows the cutover lag
       # wait. 8.0.27+ already defaults to LOGICAL_CLOCK with 4 workers.
       echo "slave_parallel_type          = LOGICAL_CLOCK"
       echo "slave_parallel_workers       = ${_XMASS_PARALLEL_WORKERS:-4}"
     else
-      echo "binlog_expire_logs_seconds   = 604800"
+      echo "binlog_expire_logs_seconds   = $(( ${_XM_BINLOG_DAYS_SRC:-7} * 86400 ))"
     fi
     [ "${_keep_logbin}" = "YES" ] && echo "log_bin = /var/lib/mysql/mysql-bin"
   } > "${_cnf}"
   chmod 644 "${_cnf}"
+}
+
+# The two values of the conf above that a running server takes at once: a
+# source whose GTID and binary log are on already is not restarted, and
+# would keep full row images and its earlier days until its next start.
+# Printed for the mysql client of either end; $1 = the days.
+_xmass_binlog_runtime_sql() {
+  if [ "${_XMASS_PERCONA_V}" = "5.7" ]; then
+    echo "SET GLOBAL binlog_row_image = 'MINIMAL'; SET GLOBAL expire_logs_days = ${1};"
+  else
+    echo "SET GLOBAL binlog_row_image = 'MINIMAL'; SET GLOBAL binlog_expire_logs_seconds = $(( ${1} * 86400 ));"
+  fi
 }
 
 _xmass_check_gtid_enabled_local() {
@@ -5453,6 +5687,9 @@ _xmass_configure_gtid_local() {
   _src_id=$(_ip_to_server_id \
     "${_MY_OWNIP:-$(hostname -I 2>/dev/null | awk '{print $1}')}")
   _xmass_write_gtid_conf_local "${_src_id}"
+  mysql --defaults-file=/root/.my.cnf --connect-timeout=5 \
+    -e "$(_xmass_binlog_runtime_sql "${_XM_BINLOG_DAYS_SRC:-7}")" 2> /dev/null \
+    || _alrt "could not set the binary log's row image and days on the running source (they apply at its next start)"
   # A source is a replication MASTER: it needs the binlog as much as GTID.
   # Gating the restart on gtid_mode alone left a promoted failback box
   # (gtid ON from its replica days, binlog dead since the conf rewrite)
@@ -5523,12 +5760,13 @@ _keep_logbin=NO
   echo "binlog_format            = ROW"
   # Above the hold block, which every strip removes by position.
   echo "log_bin_trust_function_creators = 1"
+  echo "binlog_row_image         = minimal"
   if [ "${_XMASS_PERCONA_V}" = "5.7" ]; then
-    echo "expire_logs_days             = 7"
+    echo "expire_logs_days             = ${_XM_BINLOG_DAYS_TGT:-7}"
     echo "slave_parallel_type          = LOGICAL_CLOCK"
     echo "slave_parallel_workers       = ${_XMASS_PARALLEL_WORKERS:-4}"
   else
-    echo "binlog_expire_logs_seconds   = 604800"
+    echo "binlog_expire_logs_seconds   = $(( ${_XM_BINLOG_DAYS_TGT:-7} * 86400 ))"
   fi
   # Standby hold: a replica takes writes from exactly one actor -- the
   # appliers, which super_read_only exempts by definition. Everything else
@@ -5543,6 +5781,9 @@ _keep_logbin=NO
 } > "\${_cnf}"
 chmod 644 "\${_cnf}"
 REMOTEBASH
+  ssh -o ConnectTimeout=10 root@"${_tgt}" \
+    "mysql --defaults-file=/root/.my.cnf --connect-timeout=5 -e \"$(_xmass_binlog_runtime_sql "${_XM_BINLOG_DAYS_TGT:-7}")\"" &> /dev/null \
+    || _alrt "could not set the binary log's row image and days on the running target (they apply at its next start)"
   if [ "${_mode}" = "ON" ]; then
     # No restart on this path, so the hold block just persisted is not live
     # yet: assert the runtime half again. The marker write set it, but a
@@ -5877,6 +6118,52 @@ _xmass_decide_transfer_method() {
     du -sk /root/.cache /var/backups /opt/tmp 2>/dev/null \
       | sort -rn | head -3 | awk '{ printf "ALRT:     %sM  %s\n", int($1/1024), $2 }'
   fi
+}
+
+# The seed is in the replica's own folder and nothing reads the stage again:
+# on the target it is a second whole copy of the database, on a source that
+# staged a third. Both go once the replica runs. A seed that stopped before
+# this keeps them for the reading, and the next one clears them before it
+# starts. A box whose folder was linked onto its mount after an earlier seed
+# still holds that seed's stage at the first path, on the root disk the link
+# was made to relieve: it goes too. _XMASS_KEEP_STAGE=YES keeps all of them
+# and says where.
+_xmass_drop_stages() {
+  local _p _ok=YES _tl="${_XTRA_STAGE_TGT}" _sl="${_XTRA_STAGE_SRC}"
+  [ "${_XTRA_STAGE_TGT}" = "/var/backups/xmass_restore" ] || _tl="${_tl} /var/backups/xmass_restore"
+  [ "${_XTRA_STAGE_SRC}" = "/var/backups/xmass_stage" ] || _sl="${_sl} /var/backups/xmass_stage"
+  for _p in "${_XTRA_STAGE_TGT}" "${_XTRA_STAGE_SRC}"; do
+    [[ "${_p}" =~ ^(/[A-Za-z0-9._-]+)*/xmass_(stage|restore)$ ]] || _ok=NO
+  done
+  if [ "${_ok}" != "YES" ]; then
+    _alrt "seed stage paths read oddly (${_XTRA_STAGE_TGT}, ${_XTRA_STAGE_SRC}): nothing removed -- look for the stage on both boxes by hand"
+    return 0
+  fi
+  if [ "${_XMASS_KEEP_STAGE}" = "YES" ]; then
+    _info "seed stage kept by _XMASS_KEEP_STAGE=YES: ${_tl// /, } on ${_tgt}, a whole copy of the database -- remove it by hand"
+    for _p in ${_sl}; do
+      [ ! -d "${_p}" ] \
+        || _info "seed stage kept by _XMASS_KEEP_STAGE=YES: ${_p} on this box -- remove it by hand"
+    done
+    return 0
+  fi
+  for _p in ${_tl}; do
+    case "$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" \
+      "if [ ! -e ${_p} ] && [ ! -L ${_p} ]; then echo NONE; else rm -rf ${_p}; [ ! -e ${_p} ] && [ ! -L ${_p} ] && echo GONE; fi" 2> /dev/null)" in
+      GONE) _info "seed stage removed on the target (${_p})" ;;
+      NONE) : ;;
+      *) _alrt "could not remove the seed stage ${_p} on ${_tgt}, a whole copy of the database: remove it there by hand" ;;
+    esac
+  done
+  for _p in ${_sl}; do
+    [ -e "${_p}" ] || [ -L "${_p}" ] || continue
+    rm -rf "${_p}"
+    if [ ! -e "${_p}" ] && [ ! -L "${_p}" ]; then
+      _info "seed stage removed on this box (${_p})"
+    else
+      _alrt "could not remove the seed stage ${_p} on this box: remove it by hand"
+    fi
+  done
 }
 
 # xtrabackup holds every tablespace of the datadir open at once while it
@@ -16053,6 +16340,8 @@ _xmass_cmd_prep_target() {
   # Advisory sweeps while acting on them is still cheap.
   _xmass_check_le_health
   _xmass_decide_transfer_method
+  # what the binary log will cost on each end, said days before init judges it
+  _xmass_binlog_plan warn
 
   # The standby preparation mark before the first create: the INIT arm of
   # an armed target then leaves every account this run creates at no web
@@ -17604,6 +17893,8 @@ REMOTE
   else
     _info "Target datadir space check: OK (free=${_tgt_free_kb}K need~${_need_kb}K)"
   fi
+  # The binary log both ends write from here on, sized against each disk.
+  _xmass_binlog_plan die
 
   # The standby preparation mark, after every read-only gate above (the
   # server_id, patch and space gates among them: a failback refused there
@@ -17715,6 +18006,8 @@ REMOTE
   # The box is a committed standby: its preparation mark may now go by
   # itself at a promotion (second.sh), whoever promotes it.
   _xmass_prep_mark_commit "${_tgt}"
+  # The replica runs on its own copy: the snapshot's stage goes, on both ends.
+  _xmass_drop_stages
   # A stale autosync marker for a DIFFERENT target must not survive a fresh
   # init: the pair it described is gone, and every later cadence pass would
   # refuse loudly on the mismatch. A SAME-target re-init is the documented
@@ -17752,6 +18045,7 @@ REMOTE
   _info "  Replication from ${_XMASS_SRC_IP} to ${_tgt} is running."
   _info "  Run 'xmass sync ${_tgt}' to sync files (repeat as often as needed)."
   _info "  Run 'xmass status ${_tgt}' to check replication lag."
+  _info "  Binary log: kept ${_XM_BINLOG_DAYS_SRC:-7} day(s) here, ${_XM_BINLOG_DAYS_TGT:-7} on the target (minimal row images)."
   _info "  When ready: 'xmass cutover ${_tgt} [--proxy-mode=...] [--proxy-deadline=...]$(_xmass_admail_hint)'"
   if [ -n "${_XMASS_MODE_UNDECLARED}" ]; then
     _info "  NB: undeclared proxy modes above must be resolved before cutover --live."
