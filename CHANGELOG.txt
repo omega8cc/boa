@@ -249,15 +249,15 @@
       write, so no one else can change it or move it out of a folder root
       now owns.
 
-    * A number freed by removing an account's login, web user or the
-      account itself is no longer given to another account's next login
-      or user while it still owns files: what a removed login left outside
-      its account (in another account's open folder, in /tmp) became the
-      new holder's. Such numbers wait in a list until a nightly sweep of
-      the server's own filesystems has given what they own to their
-      account (closed to other writers outside its own folders), or to
-      nobody when the account is gone, and only then are given again; an
-      account may take its own freed numbers back at once. With no free
+    * A number freed by removing an account's login or web user is no
+      longer given to another account's next login or user: what the
+      removed identity left outside the account (in another account's open
+      folder, in /tmp) became the new holder's. The account takes its own
+      freed numbers back first; the numbers of an account that is gone are
+      given again only when no other number is free, the oldest first. A
+      nightly sweep of the server's own filesystems gives what such numbers
+      still own to their account (closed to other writers outside its home
+      and files store), or to nobody when the account is gone. With no
       number left, a login or user is not made, and the incident log says
       so. xmass's repair of a target's missing users picks its numbers the
       same way.

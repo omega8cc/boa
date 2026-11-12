@@ -189,10 +189,12 @@ exit 0;'
 # own: no identity of another account is made under them meanwhile. These
 # three are the ltd worker's text.
 _acct_gone_write() {
-  local _f="${1}" _t="${1}.tmp.$$"
+  local _f="${1}" _t="${1}.tmp.$$" _rc
   rm -f -- "${_t}"
-  if ( umask 077; printf '%s\n' "${2}" | grep -E '^[1-9][0-9]*$' > "${_t}" ) \
-    || [ -e "${_t}" ]; then
+  # grep says 1 for no line (an empty list), 2 for a failed read or write
+  ( umask 077; printf '%s\n' "${2}" | grep -E '^[1-9][0-9]*( [0-9]+)?$' > "${_t}" )
+  _rc=$?
+  if [ "${_rc}" -le 1 ] && [ -f "${_t}" ] && [ ! -L "${_t}" ]; then
     chown root:root "${_t}" && chmod 0600 "${_t}" && mv -f -T -- "${_t}" "${_f}" && return 0
   fi
   rm -f -- "${_t}"
@@ -226,6 +228,29 @@ _acct_unswept_add() {
     fi
     _acct_gone_write "${_f}" "$(printf '%s\n%s\n' "${_c}" "${_u}" | sort -un)"
   ) 9> "${_d}/.unswept.lock"
+}
+_acct_purged_add() {
+  local _d=/data/conf/acct-uids _u _c _n="" _now _r=0
+  _now=$(date +%s)
+  for _u in "$@"; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] && _n="${_n}${_u}"$'\n'
+  done
+  [ -n "${_n}" ] || return 0
+  mkdir -p "${_d}" && chown root:root "${_d}" && chmod 0711 "${_d}" || return 1
+  (
+    flock -w 60 9 || exit 1
+    _c=$(cat -- "${_d}/.purged" 2> /dev/null)
+    _acct_gone_write "${_d}/.purged" "$(printf '%s\n' "${_c}"
+      while IFS= read -r _u; do
+        [ -n "${_u}" ] || continue
+        grep -q -- "^${_u} " <<< "${_c}" || echo "${_u} ${_now}"
+      done <<< "${_n}")"
+  ) 9> "${_d}/.unswept.lock" || _r=1
+  while IFS= read -r _u; do
+    [ -n "${_u}" ] || continue
+    _acct_unswept_add "${_u}" || _r=1
+  done <<< "${_n}"
+  return "${_r}"
 }
 # The account $1's identities' entries in every other account's control/
 # (_ACCT_FOREIGN_CTRL_PL), the uids $2 comma-separated: run while those
@@ -4369,10 +4394,14 @@ _octopus_cleanup() {
         # back until the nightly sweep (.unswept) while no user has them.
         if [ -f "/data/conf/acct-uids/${_usEr}.gone" ] \
           && [ ! -L "/data/conf/acct-uids/${_usEr}.gone" ]; then
+          _gPg=""
           while IFS= read -r _gU; do
             [[ "${_gU}" =~ ^[1-9][0-9]*$ ]] || continue
-            getent passwd "${_gU}" > /dev/null 2>&1 || _acct_unswept_add "${_gU}"
+            getent passwd "${_gU}" > /dev/null 2>&1 || _gPg="${_gPg} ${_gU}"
           done < "/data/conf/acct-uids/${_usEr}.gone"
+          # shellcheck disable=SC2086
+          _acct_purged_add ${_gPg} \
+            || echo "WARNING: the numbers of ${_usEr}'s removed identities could not all be listed in /data/conf/acct-uids/.purged"
         fi
         rm -f -- "/data/conf/acct-uids/${_usEr}" "/data/conf/acct-uids/${_usEr}.gone"
         # So does its aegir2boa import state, beside the create marker, once
@@ -4535,12 +4564,11 @@ _octopus_cleanup() {
           [[ "${_fcU}" =~ ^[1-9][0-9]*$ ]] && _fcUs="${_fcUs:+${_fcUs},}${_fcU}"
         done
         _boa_purge_foreign_ctrl "${_usEr}" "${_fcUs}"
-        # Its numbers are held back from every other account's next identity
-        # until the nightly sweep has handed over what they still own outside
-        # its trees; written before deluser frees them.
-        for _fcU in "${_tmpUs[@]}"; do
-          [[ "${_fcU}" =~ ^[1-9][0-9]*$ ]] && _acct_unswept_add "${_fcU}"
-        done
+        # Its numbers are no account's from here on: held from every account's
+        # next identity but as the last resort (_acct_pick_uid in the ltd
+        # worker), and swept each night; written before deluser frees them.
+        _acct_purged_add "${_tmpUs[@]}" \
+          || echo "WARNING: the numbers of ${_usEr}'s identities could not all be listed in /data/conf/acct-uids/.purged"
         # The numbers this purge frees leave every other account's record of
         # removed identities: a number the ltd worker had not pruned yet
         # (another login took it since) would name no one again here.

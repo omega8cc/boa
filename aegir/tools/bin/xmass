@@ -3900,9 +3900,9 @@ _acct_unswept_seed() {
 }
 _acct_pick_uid() {
   local IFS=$' \t\n'
-  local _w="${1}" _a="${2}" _lo="" _hi="" _um="" _k _v _u _d=/data/conf/acct-uids
-  local -A _h=()
-  # a name that cannot be an account's takes no number back
+  local _w="${1}" _a="${2}" _lo="" _hi="" _um="" _k _v _u _f _t _old="" _oldt=""
+  local _d=/data/conf/acct-uids _uns=""
+  local -A _h=() _l=() _own=()
   [[ "${_a}" =~ ^[a-z0-9-]+$ ]] || _a=""
   case "${_w}" in
     high)
@@ -3941,33 +3941,64 @@ _acct_pick_uid() {
   done < <(getent passwd 2> /dev/null)
   # no passwd read, no pick: every number would look free
   [ -n "${_h[0]:-}" ] || return 1
-  for _u in $(ps -e -o ruid= -o euid= -o suid= 2> /dev/null); do
+  for _u in $(ps -eL -o ruid= -o euid= -o suid= -o fsuid= 2> /dev/null); do
     [[ "${_u}" =~ ^[0-9]+$ ]] && _h[${_u}]=1
   done
+  for _f in "${_d}"/*.gone; do
+    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
+    while IFS= read -r _u; do
+      [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+      if [ -n "${_a}" ] && [ "${_f}" = "${_d}/${_a}.gone" ]; then
+        _own[${_u}]=1
+      else
+        _l[${_u}]=1
+      fi
+    done < "${_f}"
+  done
+  # (no list yet: every number it would take is in a record above)
   if [ -f "${_d}/.unswept" ] && [ ! -L "${_d}/.unswept" ]; then
-    _v=$(cat -- "${_d}/.unswept") || return 1
-  else
-    _v=$(_acct_unswept_seed)
+    _uns=$(cat -- "${_d}/.unswept") || return 1
   fi
   while IFS= read -r _u; do
     [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
-    [ -n "${_a}" ] && grep -qsx -- "${_u}" "${_d}/${_a}.gone" && continue
-    _h[${_u}]=1
-  done <<< "${_v}"
+    [ -n "${_own[${_u}]:-}" ] || _l[${_u}]=1
+  done <<< "${_uns}"
+  while read -r _u _t; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] && _l[${_u}]=1
+  done 2> /dev/null < "${_d}/.purged"
   if [ "${_w}" = "high" ]; then
     for (( _u = _hi; _u >= _lo; _u-- )); do
-      [ -n "${_h[${_u}]:-}" ] || { echo "${_u}"; return 0; }
+      [ -n "${_own[${_u}]:-}" ] && [ -z "${_h[${_u}]:-}" ] && { echo "${_u}"; return 0; }
+    done
+    for (( _u = _hi; _u >= _lo; _u-- )); do
+      [ -n "${_h[${_u}]:-}${_l[${_u}]:-}${_own[${_u}]:-}" ] || { echo "${_u}"; return 0; }
     done
   else
     for (( _u = _lo; _u <= _hi; _u++ )); do
-      [ -n "${_h[${_u}]:-}" ] || { echo "${_u}"; return 0; }
+      [ -n "${_own[${_u}]:-}" ] && [ -z "${_h[${_u}]:-}" ] && { echo "${_u}"; return 0; }
+    done
+    for (( _u = _lo; _u <= _hi; _u++ )); do
+      [ -n "${_h[${_u}]:-}${_l[${_u}]:-}${_own[${_u}]:-}" ] || { echo "${_u}"; return 0; }
     done
   fi
-  return 1
+  # the last resort: a gone account's number the sweep has walked
+  while read -r _u _t; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ && "${_t}" =~ ^[0-9]+$ ]] || continue
+    [ "${_u}" -ge "${_lo}" ] && [ "${_u}" -le "${_hi}" ] || continue
+    [ -z "${_h[${_u}]:-}" ] || continue
+    grep -qx -- "${_u}" <<< "${_uns}" && continue
+    if [ -z "${_oldt}" ] || [ "${_t}" -lt "${_oldt}" ]; then
+      _old="${_u}"
+      _oldt="${_t}"
+    fi
+  done 2> /dev/null < "${_d}/.purged"
+  [ -n "${_old}" ] || return 1
+  echo "${_old}"
+  return 2
 }
 # _acct_new_identity, the ltd worker's text.
 _acct_new_identity() {
-  local _w="${1}" _a="${2}" _o _n _i _r _m
+  local _w="${1}" _a="${2}" _o _n _i _r _m _p
   shift 2
   case "${_w}" in
     high) _o="-u" ;;
@@ -3976,10 +4007,19 @@ _acct_new_identity() {
   esac
   [ "$#" -ge 2 ] || return 1
   for _i in 1 2 3; do
-    _n=$(_acct_pick_uid "${_w}" "${_a}") || break
+    _n=$(_acct_pick_uid "${_w}" "${_a}")
+    _p=$?
+    [ "${_p}" -eq 0 ] || [ "${_p}" -eq 2 ] || break
     "${@:1:$#-1}" "${_o}" "${_n}" "${@: -1}"
     _r=$?
-    [ "${_r}" -eq 0 ] && return 0
+    if [ "${_r}" -eq 0 ]; then
+      if [ "${_p}" -eq 2 ]; then
+        _m="${_a}: ${*: -1} made under ${_n}, a number of an account that is gone: no other was free"
+        mkdir -p /var/log/boa
+        echo "$(date) ${_m}" >> /var/log/boa/manage_ltd.incident.log
+      fi
+      return 0
+    fi
     # failed for another reason than its number (refused, or made and then
     # failed): as the tool alone would
     _m=$(getent passwd "${_n}" 2> /dev/null) || return "${_r}"
