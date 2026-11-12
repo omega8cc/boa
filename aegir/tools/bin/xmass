@@ -6098,15 +6098,15 @@ _xmass_tz_compare() {
   _tn="$(_xmass_kv "${_o}" TZ_NAME)"; _to="$(_xmass_kv "${_o}" TZ_OFF)"
   _ta="$(_xmass_kv "${_o}" TZ_ABBR)"; _tq="$(_xmass_kv "${_o}" TZ_SQL)"
   if ! [[ "${_so}" =~ ^[+-][0-9]{4}/[+-][0-9]{4}$ ]] || ! [[ "${_to}" =~ ^[+-][0-9]{4}/[+-][0-9]{4}$ ]]; then
-    _msg "time zone: not read on both ends, not compared"
+    _info "time zone: not read on both ends, not compared"
     return 0
   fi
   if [ "${_so}" != "${_to}" ]; then
     _alrt "time zone: this server runs on ${_sn:-an unnamed zone} (${_sa}, UTC${_so%%/*}), the target ${_t} on ${_tn:-an unnamed zone} (${_ta}, UTC${_to%%/*}): after a cutover the sites would read another local time -- set the target's zone before 'xmass init' unless the difference is meant"
   elif [ "${_sn}" != "${_tn}" ]; then
-    _msg "time zone: ${_sn:-an unnamed zone} here, ${_tn:-an unnamed zone} on the target ${_t}: the same clock today and in six months"
+    _info "time zone: ${_sn:-an unnamed zone} here, ${_tn:-an unnamed zone} on the target ${_t}: the same clock today and in six months"
   else
-    _msg "time zone: ${_sn:-${_sa}} on both ends"
+    _info "time zone: ${_sn:-${_sa}} on both ends"
   fi
   # MySQL keeps the zone it started with. Where this server's zone was set
   # since, MySQL moves to it at its next start, which init brings only where
