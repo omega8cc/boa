@@ -629,6 +629,14 @@
 
 @=> Important Fixes
 
+    * multiback purge empties a Backblaze B2 bucket even when the account's
+      daily cap on download-class requests is spent: it deletes every
+      version of the backup files, and cancels their unfinished uploads, by
+      the ids one version listing gives. Before, it looked each file up by
+      name first, one capped request a file, so a large purge could spend
+      the cap itself and then leave the rest of the bucket in place. Older
+      versions of the backup files go too, so a versioned bucket ends empty.
+
     * xmass moves a server whose accounts use Ruby gems or npm onto a
       target where Ruby or Node was never set up: /opt/user/gems or
       /opt/user/npm is made there the way BOA makes it (root's, sticky,
