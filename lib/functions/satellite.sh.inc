@@ -531,10 +531,9 @@ _acct_gone_write() {
   return 1
 }
 _acct_gone_add() {
-  local _a="${1}" _u="${2}" _d=/data/conf/acct-uids _f
+  local _a="${1}" _u="${2}" _d=/data/conf/acct-uids _f _r=0
   [[ "${_a}" =~ ^[a-z0-9-]+$ && "${_u}" =~ ^[1-9][0-9]*$ ]] || return 1
   mkdir -p "${_d}" && chown root:root "${_d}" && chmod 0711 "${_d}" || return 1
-  _acct_unswept_add "${_u}" || return 1
   for _f in "${_d}"/*.gone; do
     [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
     [ "${_f}" = "${_d}/${_a}.gone" ] && continue
@@ -542,16 +541,21 @@ _acct_gone_add() {
     _acct_gone_write "${_f}" "$(grep -vx -- "${_u}" "${_f}")"
   done
   _f="${_d}/${_a}.gone"
-  grep -qsx -- "${_u}" "${_f}" && return 0
-  _acct_gone_write "${_f}" "$( { cat -- "${_f}" 2> /dev/null; echo "${_u}"; } | sort -un)"
+  if ! grep -qsx -- "${_u}" "${_f}"; then
+    _acct_gone_write "${_f}" "$( { cat -- "${_f}" 2> /dev/null; echo "${_u}"; } | sort -un)" || _r=1
+  fi
+  # held back from every other account's next identity (_acct_pick_uid)
+  _acct_unswept_add "${_u}" || _r=1
+  return "${_r}"
 }
 # A number freed for an account identity is listed in
 # /data/conf/acct-uids/.unswept (root's, 0600) until the nightly sweep has
-# handed over what it still owns outside its account's trees (a file left in
-# another account's open folder, in /tmp): no identity of another account is
-# made under it meanwhile (_acct_pick_uid), or those files would be that
-# identity's. The list, when first made, takes every recorded number no user
-# has: those were freed before it existed and nothing has swept them.
+# handed over what it still owns anywhere on the server's own filesystems (a
+# file left in another account's open folder, in /tmp): no identity of
+# another account is made under it meanwhile (_acct_pick_uid), or those
+# files would be that identity's. The list, when first made, takes every
+# recorded number no user has: those were freed before it existed and
+# nothing has swept them.
 _acct_unswept_seed() {
   local _f _u
   for _f in /data/conf/acct-uids/*.gone; do
@@ -563,8 +567,9 @@ _acct_unswept_seed() {
   done
   return 0
 }
-# The list is read and written under its lock, which the nightly sweep
-# holds while it takes the numbers it swept off.
+# The list is read and written under its lock. Every add also names the
+# number in .unswept.again, which the nightly sweep empties as it starts: a
+# number freed again while the sweep walks stays listed.
 _acct_unswept_add() {
   local _u="${1}" _d=/data/conf/acct-uids _f _c
   [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || return 1
@@ -572,6 +577,8 @@ _acct_unswept_add() {
   _f="${_d}/.unswept"
   (
     flock -w 60 9 || exit 1
+    _c=$(cat -- "${_d}/.unswept.again" 2> /dev/null)
+    _acct_gone_write "${_d}/.unswept.again" "$(printf '%s\n%s\n' "${_c}" "${_u}" | sort -un)" || exit 1
     if [ -f "${_f}" ] && [ ! -L "${_f}" ]; then
       grep -qx -- "${_u}" "${_f}" && exit 0
       _c=$(cat -- "${_f}") || exit 1
@@ -583,19 +590,22 @@ _acct_unswept_add() {
 }
 # The number a new identity of account $2 is made under: the highest free
 # system uid ($1 high, as useradd -r picks one) or the lowest ($1 low, as
-# adduser --system does). Free means no user has it, no process runs as it,
-# and no sweep waits for it (.unswept; before that list exists, any recorded
-# number no user has) unless the account itself recorded it (<oN>.gone): a
-# number may go back to the account that freed it, never to another one.
-# Status 1, and nothing, when the range or the users cannot be read or no
-# number is free.
+# adduser --system does). Free means no user has it, no process runs as it
+# (real, effective or saved uid), and no sweep waits for it (.unswept;
+# before that list exists, any recorded number no user has) unless the
+# account itself recorded it (<oN>.gone): a number may go back to the
+# account that freed it, never to another one. Status 1, and nothing, when
+# the range or the users cannot be read or no number is free.
 _acct_pick_uid() {
+  local IFS=$' \t\n'
   local _w="${1}" _a="${2}" _lo="" _hi="" _um="" _k _v _u _d=/data/conf/acct-uids
   local -A _h=()
-  [[ "${_a}" =~ ^[a-z0-9-]+$ ]] || return 1
+  # a name that cannot be an account's takes no number back
+  [[ "${_a}" =~ ^[a-z0-9-]+$ ]] || _a=""
   case "${_w}" in
     high)
       while read -r _k _v _; do
+        _v="${_v%%#*}"
         case "${_k}" in
           SYS_UID_MIN) _lo="${_v}" ;;
           SYS_UID_MAX) _hi="${_v}" ;;
@@ -610,6 +620,7 @@ _acct_pick_uid() {
     low)
       while IFS='=' read -r _k _v; do
         _k="${_k//[[:space:]]/}"
+        _v="${_v%%#*}"
         _v="${_v//[[:space:]\"\']/}"
         case "${_k}" in
           FIRST_SYSTEM_UID) _lo="${_v}" ;;
@@ -638,7 +649,7 @@ _acct_pick_uid() {
   fi
   while IFS= read -r _u; do
     [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
-    grep -qsx -- "${_u}" "${_d}/${_a}.gone" && continue
+    [ -n "${_a}" ] && grep -qsx -- "${_u}" "${_d}/${_a}.gone" && continue
     _h[${_u}]=1
   done <<< "${_v}"
   if [ "${_w}" = "high" ]; then
@@ -654,10 +665,12 @@ _acct_pick_uid() {
 }
 # Make an identity of account $2 under the number _acct_pick_uid gives ($1
 # high, then the rest is a useradd -r command, or low, an adduser --system
-# one), the name last. A number taken meanwhile is picked again; with none
-# to pick, the tool picks, and the incident log says so.
+# one), the name last. A number taken meanwhile is picked again. With no
+# number to pick nothing is made, since the tool alone could take one held
+# back for another account: the incident log says so (and the ltd worker
+# mails it once a day), and the next pass tries again.
 _acct_new_identity() {
-  local _w="${1}" _a="${2}" _o _n _i _r
+  local _w="${1}" _a="${2}" _o _n _i _r _m
   shift 2
   case "${_w}" in
     high) _o="-u" ;;
@@ -670,13 +683,19 @@ _acct_new_identity() {
     "${@:1:$#-1}" "${_o}" "${_n}" "${@: -1}"
     _r=$?
     [ "${_r}" -eq 0 ] && return 0
-    # failed for another reason than its number: as the tool alone would
-    getent passwd "${_n}" > /dev/null 2>&1 || return "${_r}"
+    # failed for another reason than its number (refused, or made and then
+    # failed): as the tool alone would
+    _m=$(getent passwd "${_n}" 2> /dev/null) || return "${_r}"
+    [ "${_m%%:*}" = "${*: -1}" ] && return "${_r}"
   done
-  mkdir -p /var/log/boa
-  echo "$(date) ${_a}: no uid free of the removed identities for ${*: -1}, ${1} picks it" \
-    >> /var/log/boa/manage_ltd.incident.log
-  "$@"
+  _m="${_a}: no uid free of other accounts' removed identities for ${*: -1}, not made"
+  if declare -F _ltd_notice > /dev/null 2>&1; then
+    _ltd_notice "uid-hold-${_a}" "${_m}" "" > /dev/null
+  else
+    mkdir -p /var/log/boa
+    echo "$(date) ${_m}" >> /var/log/boa/manage_ltd.incident.log
+  fi
+  return 1
 }
 #
 # Remove web user.

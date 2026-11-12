@@ -1694,20 +1694,25 @@ _dbctl_report() {
 # /data/conf/acct-uids/.unswept (the ltd worker, the Octopus upgrade and boa
 # cleanup purge write them before deluser), held back from every other
 # account's next identity, until this sweep has handed over what each still
-# owns where a login can leave files: every account's static/ and distro/,
-# the files stores on attached storage, /tmp, /var/tmp, /dev/shm and
-# /opt/user. An entry of a number an account recorded as one of its removed
-# identities (<oN>.gone) goes to that account, its group and mode kept, as
-# the ltd worker's hand-over gives it; an entry of a number no account
-# recorded (a purged account's) goes to nobody, closed to group and other
-# writers and without set-ID bits: every check of a control folder trusts
-# root, none trusts nobody. A number a user has, or a process runs as, waits
-# for a later night. Directories and regular files are handed over through a
-# handle opened without following a link, re-checked against what find saw;
-# any other entry (a link, a socket, a FIFO) by name, with lchown, which
-# never follows a link. Each place is walked on its own filesystem from
-# inside the real directory. The numbers swept leave the list (the record
-# <oN>.gone keeps them), and may be given again.
+# owns on the server's own filesystems: every mount of a disk filesystem and
+# every tmpfs but /run's, each walked on its own. First the own trees of the
+# account that recorded a number as one of its removed identities
+# (<oN>.gone; its static/, distro/ and files store, as the ltd worker hands
+# a login's files over) give what it owns there to that account, modes kept;
+# then everywhere else an entry goes to that account, or to nobody when no
+# account recorded the number (a purged account's), closed to group and
+# other writers and without set-ID bits: another account's login could
+# otherwise still write it, or move it into a control folder. Every check of
+# a control folder trusts root, none trusts nobody. A number a user has, or
+# a process runs as (real, effective or saved uid), waits for a later night,
+# and the program checks again that it still names nobody. Directories and
+# regular files are handed over through a handle opened without following a
+# link, any other entry (a link, a FIFO, a socket) through a path-only one,
+# each only while the handle shows what lstat saw. A number is released only
+# when every place was walked whole within three hours (else it stays listed
+# for another night), unless it was freed again meanwhile; once released it
+# also leaves the record and the list of identities of the account that
+# freed it, since nothing it owned is left, and may be given again.
 _NIGHT_UNSWEPT_PL='use Fcntl; use POSIX ();
 my %m;
 for (split(/,/, shift(@ARGV) // "")) {
@@ -1716,25 +1721,41 @@ for (split(/,/, shift(@ARGV) // "")) {
   $m{$u} = [$t, $g, $c];
 }
 exit 0 unless %m;
-my $n = 0;
+my $p = (POSIX::uname())[4] =~ /^(x86_64|aarch64)$/ ? 010000000 : 0;
+my (%gone, $n);
+$n = 0;
+sub gone {
+  my $u = shift;
+  unless (exists $gone{$u}) {
+    local $! = 0;
+    $gone{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0;
+  }
+  return $gone{$u};
+}
 for my $e (@ARGV) {
   my @l = lstat($e) or next;
   my $r = $m{$l[4]} or next;
+  next unless gone($l[4]);
   my ($t, $g, $c) = @$r;
+  my ($h, $x);
   if (-d _ || -f _) {
-    sysopen(my $h, $e, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next;
-    my @s = stat($h);
-    if (@s && $s[0] == $l[0] && $s[1] == $l[1] && $s[4] == $l[4] && chown($t, $g, $h)) {
-      $n++;
-      if ($c) {
-        my @a = stat($h);
-        chmod($a[2] & 01755, $h) if @a;
-      }
-    }
-    close($h);
-  } elsif (POSIX::lchown($t, $g, $e)) {
-    $n++;
+    sysopen($h, $e, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next;
+    $x = $h;
+  } elsif ($p) {
+    sysopen($h, $e, $p|O_NOFOLLOW) or next;
+    $x = "/proc/self/fd/" . fileno($h);
+  } else {
+    next;
   }
+  my @s = stat($h);
+  if (@s && $s[0] == $l[0] && $s[1] == $l[1] && $s[4] == $l[4] && chown($t, $g, $x)) {
+    $n++;
+    if ($c) {
+      my @a = stat($h);
+      chmod($a[2] & 01755, $x) if @a && ($a[2] & 0170000) != 0120000;
+    }
+  }
+  close($h);
 }
 print "$n\n" if $n;
 exit 0;'
@@ -1749,7 +1770,6 @@ _acct_gone_write() {
   rm -f -- "${_t}"
   return 1
 }
-
 _acct_unswept_seed() {
   local _f _u
   for _f in /data/conf/acct-uids/*.gone; do
@@ -1761,7 +1781,23 @@ _acct_unswept_seed() {
   done
   return 0
 }
-
+_ltd_account_trees() {
+  local _d _s _m
+  for _d in "/data/disk/${1}/static" "/data/disk/${1}/distro"; do
+    [ -d "${_d}" ] && [ ! -L "${_d}" ] && echo "${_d}"
+  done
+  _s=$(realpath -e -- "/data/disk/${1}/static/files" 2> /dev/null) || return 0
+  case "${_s}" in
+    /mnt/?*/files/"${1}"/static/files)
+      _m="${_s%/files/"${1}"/static/files}"
+      case "${_m}" in
+        */files/*|*/static/*|*[!A-Za-z0-9._/-]*) return 0 ;;
+      esac
+      echo "${_s}"
+      ;;
+  esac
+  return 0
+}
 # Run "$@" inside the real directory $1, its last name checked against its
 # resolved parent: a link put at that name is never followed.
 _acct_unswept_in() {
@@ -1771,28 +1807,100 @@ _acct_unswept_in() {
   _up=$(cd -P -- "${_up:-/}" 2> /dev/null && /bin/pwd -P) || return 1
   ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_up%/}/${_d##*/}" ] && "$@" )
 }
+# Every mount point of a disk filesystem, and of a tmpfs but /run's.
 _acct_unswept_places() {
-  local _p
-  for _p in /data/disk/*/static /data/disk/*/distro /mnt/*/files \
-    /tmp /var/tmp /dev/shm /opt/user; do
-    [ -d "${_p}" ] && [ ! -L "${_p}" ] || continue
-    case "${_p}" in
-      /data/disk/*) [ -L "${_p%/*}" ] && continue ;;
+  local _dv _mp _fs _r
+  while read -r _dv _mp _fs _r; do
+    case "${_fs}" in
+      ext2|ext3|ext4|xfs|btrfs|zfs|f2fs|jfs|reiserfs) ;;
+      tmpfs)
+        case "${_mp}" in
+          /run|/run/*|/sys|/sys/*) continue ;;
+        esac
+        ;;
+      *) continue ;;
     esac
-    echo "${_p}"
+    case "${_mp}" in
+      /*) ;;
+      *) continue ;;
+    esac
+    # /proc/mounts writes a blank as \040
+    _mp="${_mp//\\040/ }"
+    [ -d "${_mp}" ] && [ ! -L "${_mp}" ] && echo "${_mp}"
+  done < /proc/mounts | sort -u
+  return 0
+}
+# The place $2 walked for the map $1 (_NIGHT_UNSWEPT_PL), within what is
+# left of the run's time, the count handed over added to _all. Status 1 when
+# it could not be entered, the time ran out, or find met anything but
+# entries removed while it walked.
+_acct_unswept_walk() {
+  local _m="${1}" _p="${2}" _left _out _rc _e _x
+  _left=$(( _UNSWEPT_END - $(date +%s) ))
+  [ "${_left}" -gt 0 ] || return 1
+  _e=$(mktemp /var/tmp/.acct-unswept.XXXXXX) || return 1
+  _out=$(_acct_unswept_in "${_p}" timeout "${_left}" env PATH=/usr/local/bin:/usr/bin:/bin LC_ALL=C \
+    find -P . -xdev \( -false "${_k[@]}" \) \
+    -execdir perl -e "${_NIGHT_UNSWEPT_PL}" "${_m}" {} + 2> "${_e}")
+  _rc=$?
+  if [ "${_rc}" -ne 0 ]; then
+    if [ "${_rc}" -eq 124 ] || [ ! -s "${_e}" ] \
+      || grep -qv 'No such file or directory$' "${_e}"; then
+      rm -f -- "${_e}"
+      echo "acct-unswept: ${_p} not walked whole (status ${_rc})"
+      return 1
+    fi
+  fi
+  rm -f -- "${_e}"
+  for _x in ${_out}; do
+    [[ "${_x}" =~ ^[0-9]+$ ]] && _all=$(( _all + _x ))
   done
   return 0
 }
+# A released number leaves the record (<oN>.gone) and the list of
+# identities (<oN>) of the account $1 that freed it, $2.
+_acct_unswept_forget() {
+  local _a="${1}" _u="${2}" _d=/data/conf/acct-uids _f _l _o
+  _f="${_d}/${_a}.gone"
+  if [ -f "${_f}" ] && [ ! -L "${_f}" ] && grep -qx -- "${_u}" "${_f}"; then
+    _acct_gone_write "${_f}" "$(grep -vx -- "${_u}" "${_f}")"
+  fi
+  _f="${_d}/${_a}"
+  [ -f "${_f}" ] && [ ! -L "${_f}" ] || return 0
+  _l=$(head -n 1 -- "${_f}")
+  [[ ",${_l}," == *",${_u},"* ]] || return 0
+  _o=",${_l},"
+  _o="${_o//,${_u},/,}"
+  _o="${_o#,}"
+  _o="${_o%,}"
+  rm -f -- "${_f}.tmp"
+  if ( umask 022; printf '%s\n' "${_o}" > "${_f}.tmp" ) \
+    && chown root:root "${_f}.tmp" && chmod 0644 "${_f}.tmp" \
+    && mv -f -T -- "${_f}.tmp" "${_f}"; then
+    return 0
+  fi
+  rm -f -- "${_f}.tmp"
+  return 1
+}
 _acct_unswept_sweep() {
-  local _d=/data/conf/acct-uids _j _v _u _f _a _t _nb _ng _map="" _sw="" _swl="" _p _n _all=0
+  local IFS=$' \t\n'
+  local _d=/data/conf/acct-uids _j _v _u _f _a _t _nb _ng _p _rel _rc
+  local _mapc="" _sw="" _swl="" _bad="" _all=0 _UNSWEPT_END
+  local -A _busy=() _own=() _rec=()
   local -a _k=()
   _j="${_d}/.unswept"
   [ -d "${_d}" ] && [ ! -L "${_d}" ] || return 0
-  if [ -f "${_j}" ] && [ ! -L "${_j}" ]; then
-    _v=$(cat -- "${_j}") || return 0
-  elif [ -e "${_j}" ] || [ -L "${_j}" ]; then
+  if [ -L "${_j}" ] || { [ -e "${_j}" ] && [ ! -f "${_j}" ]; }; then
     echo "acct-unswept: ${_j} is not a plain file, nothing swept"
     return 0
+  fi
+  # a number freed again from here on stays listed (_acct_unswept_add)
+  if ! ( flock -w 60 9 || exit 1; rm -f -- "${_d}/.unswept.again" ) 9> "${_d}/.unswept.lock"; then
+    echo "acct-unswept: the list is locked, nothing swept"
+    return 0
+  fi
+  if [ -f "${_j}" ]; then
+    _v=$(cat -- "${_j}") || return 0
   else
     _v=$(_acct_unswept_seed)
   fi
@@ -1802,52 +1910,80 @@ _acct_unswept_sweep() {
     echo "acct-unswept: no nobody user or nogroup group, nothing swept"
     return 0
   fi
+  for _u in $(ps -e -o ruid= -o euid= -o suid= 2> /dev/null); do
+    [[ "${_u}" =~ ^[0-9]+$ ]] && _busy[${_u}]=1
+  done
+  if [ -z "${_busy[0]:-}" ]; then
+    echo "acct-unswept: no process list read, nothing swept"
+    return 0
+  fi
   while IFS= read -r _u; do
     [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
-    # a user has it again, or something still runs as it: a later night
     getent passwd "${_u}" > /dev/null 2>&1 && continue
-    pgrep -u "${_u}" > /dev/null 2>&1 && continue
-    pgrep -U "${_u}" > /dev/null 2>&1 && continue
+    [ -n "${_busy[${_u}]:-}" ] && continue
+    _a=""
     _t=""
     for _f in "${_d}"/*.gone; do
       [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
       grep -qx -- "${_u}" "${_f}" || continue
       _a="${_f##*/}"
       _a="${_a%.gone}"
-      [[ "${_a}" =~ ^[a-z0-9-]+$ ]] && _t=$(id -u -- "${_a}" 2> /dev/null)
       break
     done
+    [[ "${_a}" =~ ^[a-z0-9-]+$ ]] && _t=$(id -u -- "${_a}" 2> /dev/null)
     if [[ "${_t}" =~ ^[1-9][0-9]*$ ]]; then
-      _map="${_map:+${_map},}${_u}:${_t}:-1:0"
+      _mapc="${_mapc:+${_mapc},}${_u}:${_t}:-1:1"
+      _own[${_a}]="${_own[${_a}]:+${_own[${_a}]},}${_u}:${_t}:-1:0"
+      _rec[${_u}]="${_a}"
     else
-      _map="${_map:+${_map},}${_u}:${_nb}:${_ng}:1"
+      _mapc="${_mapc:+${_mapc},}${_u}:${_nb}:${_ng}:1"
     fi
     _sw="${_sw} ${_u}"
     _swl="${_swl}${_u}"$'\n'
     _k+=( -o -uid "${_u}" )
   done <<< "${_v}"
   [ "${#_k[@]}" -gt 0 ] || return 0
+  _UNSWEPT_END=$(( $(date +%s) + 10800 ))
   echo "acct-unswept: start, numbers${_sw}"
+  for _a in "${!_own[@]}"; do
+    while IFS= read -r _p; do
+      _acct_unswept_walk "${_own[${_a}]}" "${_p}" || _bad="${_bad} ${_p}"
+    done < <(_ltd_account_trees "${_a}")
+  done
   while IFS= read -r _p; do
-    _n=$(_acct_unswept_in "${_p}" env PATH=/usr/local/bin:/usr/bin:/bin \
-      find -P . -xdev \( -false "${_k[@]}" \) \
-      -execdir perl -e "${_NIGHT_UNSWEPT_PL}" "${_map}" {} + 2> /dev/null \
-      | awk '{ s += $1 } END { print s + 0 }')
-    [[ "${_n}" =~ ^[0-9]+$ ]] || _n=0
-    [ "${_n}" -gt 0 ] && echo "acct-unswept: ${_n} entries handed over in ${_p}"
-    _all=$(( _all + _n ))
+    _acct_unswept_walk "${_mapc}" "${_p}" || _bad="${_bad} ${_p}"
   done < <(_acct_unswept_places)
-  # off the list, under its lock: what was swept; what was added meanwhile
-  # stays
-  (
-    flock -w 60 9 || exit 1
+  if [ -n "${_bad}" ]; then
+    echo "acct-unswept: ALERT ${_all} entries handed over, not walked whole:${_bad}; numbers${_sw} kept for another night"
+    return 0
+  fi
+  # off the list, under its lock: each number swept that still names nobody
+  # and was not freed again meanwhile
+  _rel=$( ( flock -w 60 9 || exit 1
     if [ -f "${_j}" ] && [ ! -L "${_j}" ]; then
       _v=$(cat -- "${_j}") || exit 1
     else
       _v=$(_acct_unswept_seed)
     fi
-    _acct_gone_write "${_j}" "$(printf '%s\n' "${_v}" | grep -vxF -f <(printf '%s' "${_swl}"))"
-  ) 9> "${_d}/.unswept.lock"
-  echo "acct-unswept: done, ${_all} entries handed over, numbers${_sw} released"
+    _p=$(cat -- "${_d}/.unswept.again" 2> /dev/null)
+    _f=""
+    while IFS= read -r _u; do
+      [ -n "${_u}" ] || continue
+      getent passwd "${_u}" > /dev/null 2>&1 && continue
+      grep -qx -- "${_u}" <<< "${_p}" && continue
+      _f="${_f}${_u}"$'\n'
+    done <<< "${_swl}"
+    _acct_gone_write "${_j}" "$(printf '%s\n' "${_v}" | grep -vxF -f <(printf '%s' "${_f}"))" || exit 1
+    printf '%s' "${_f}" ) 9> "${_d}/.unswept.lock" )
+  _rc=$?
+  if [ "${_rc}" -ne 0 ]; then
+    echo "acct-unswept: ALERT ${_all} entries handed over, the list not written; numbers${_sw} kept"
+    return 0
+  fi
+  for _u in ${_rel}; do
+    [ -n "${_rec[${_u}]:-}" ] && _acct_unswept_forget "${_rec[${_u}]}" "${_u}"
+  done
+  _rel="${_rel//$'\n'/ }"
+  echo "acct-unswept: done, ${_all} entries handed over, numbers released: ${_rel% }"
   return 0
 }

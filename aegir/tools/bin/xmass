@@ -3884,6 +3884,116 @@ _xmass_verify_target_accounts() {
        " Run '${_fix}' to install and seed them first${_idonly:+ (installed but missing only a system user: ${_idonly} -- 'xmass prep-target ${_t} --fix-users$(_xmass_admail_hint)')}."
 }
 
+# An identity made without the number its tree carries gets one that no
+# other account's removed identity left files under (_acct_pick_uid): the
+# ltd worker's text, as is _acct_unswept_seed.
+_acct_unswept_seed() {
+  local _f _u
+  for _f in /data/conf/acct-uids/*.gone; do
+    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
+    while IFS= read -r _u; do
+      [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+      getent passwd "${_u}" > /dev/null 2>&1 || echo "${_u}"
+    done < "${_f}"
+  done
+  return 0
+}
+_acct_pick_uid() {
+  local IFS=$' \t\n'
+  local _w="${1}" _a="${2}" _lo="" _hi="" _um="" _k _v _u _d=/data/conf/acct-uids
+  local -A _h=()
+  # a name that cannot be an account's takes no number back
+  [[ "${_a}" =~ ^[a-z0-9-]+$ ]] || _a=""
+  case "${_w}" in
+    high)
+      while read -r _k _v _; do
+        _v="${_v%%#*}"
+        case "${_k}" in
+          SYS_UID_MIN) _lo="${_v}" ;;
+          SYS_UID_MAX) _hi="${_v}" ;;
+          UID_MIN) _um="${_v}" ;;
+        esac
+      done < <(grep -E '^[[:space:]]*(SYS_)?UID_M(IN|AX)[[:space:]]' /etc/login.defs 2> /dev/null)
+      [ -n "${_lo}" ] || _lo=101
+      if [ -z "${_hi}" ]; then
+        [[ "${_um}" =~ ^[1-9][0-9]*$ ]] && _hi=$(( _um - 1 )) || _hi=999
+      fi
+      ;;
+    low)
+      while IFS='=' read -r _k _v; do
+        _k="${_k//[[:space:]]/}"
+        _v="${_v%%#*}"
+        _v="${_v//[[:space:]\"\']/}"
+        case "${_k}" in
+          FIRST_SYSTEM_UID) _lo="${_v}" ;;
+          LAST_SYSTEM_UID) _hi="${_v}" ;;
+        esac
+      done < <(grep -E '^[[:space:]]*(FIRST|LAST)_SYSTEM_UID[[:space:]]*=' /etc/adduser.conf 2> /dev/null)
+      [ -n "${_lo}" ] || _lo=100
+      [ -n "${_hi}" ] || _hi=999
+      ;;
+    *) return 1 ;;
+  esac
+  [[ "${_lo}" =~ ^[1-9][0-9]*$ && "${_hi}" =~ ^[1-9][0-9]*$ ]] || return 1
+  [ "${_lo}" -le "${_hi}" ] || return 1
+  while IFS=: read -r _k _v _u _; do
+    [[ "${_u}" =~ ^[0-9]+$ ]] && _h[${_u}]=1
+  done < <(getent passwd 2> /dev/null)
+  # no passwd read, no pick: every number would look free
+  [ -n "${_h[0]:-}" ] || return 1
+  for _u in $(ps -e -o ruid= -o euid= -o suid= 2> /dev/null); do
+    [[ "${_u}" =~ ^[0-9]+$ ]] && _h[${_u}]=1
+  done
+  if [ -f "${_d}/.unswept" ] && [ ! -L "${_d}/.unswept" ]; then
+    _v=$(cat -- "${_d}/.unswept") || return 1
+  else
+    _v=$(_acct_unswept_seed)
+  fi
+  while IFS= read -r _u; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    [ -n "${_a}" ] && grep -qsx -- "${_u}" "${_d}/${_a}.gone" && continue
+    _h[${_u}]=1
+  done <<< "${_v}"
+  if [ "${_w}" = "high" ]; then
+    for (( _u = _hi; _u >= _lo; _u-- )); do
+      [ -n "${_h[${_u}]:-}" ] || { echo "${_u}"; return 0; }
+    done
+  else
+    for (( _u = _lo; _u <= _hi; _u++ )); do
+      [ -n "${_h[${_u}]:-}" ] || { echo "${_u}"; return 0; }
+    done
+  fi
+  return 1
+}
+# _acct_new_identity, the ltd worker's text.
+_acct_new_identity() {
+  local _w="${1}" _a="${2}" _o _n _i _r _m
+  shift 2
+  case "${_w}" in
+    high) _o="-u" ;;
+    low) _o="--uid" ;;
+    *) return 1 ;;
+  esac
+  [ "$#" -ge 2 ] || return 1
+  for _i in 1 2 3; do
+    _n=$(_acct_pick_uid "${_w}" "${_a}") || break
+    "${@:1:$#-1}" "${_o}" "${_n}" "${@: -1}"
+    _r=$?
+    [ "${_r}" -eq 0 ] && return 0
+    # failed for another reason than its number (refused, or made and then
+    # failed): as the tool alone would
+    _m=$(getent passwd "${_n}" 2> /dev/null) || return "${_r}"
+    [ "${_m%%:*}" = "${*: -1}" ] && return "${_r}"
+  done
+  _m="${_a}: no uid free of other accounts' removed identities for ${*: -1}, not made"
+  if declare -F _ltd_notice > /dev/null 2>&1; then
+    _ltd_notice "uid-hold-${_a}" "${_m}" "" > /dev/null
+  else
+    mkdir -p /var/log/boa
+    echo "$(date) ${_m}" >> /var/log/boa/manage_ltd.incident.log
+  fi
+  return 1
+}
 ### Re-create a MISSING system identity (<acct>, <acct>.ftp) of an account that
 ### IS a real install on the target. The gate above names two remedies for two
 ### shapes; this is the second one's: an installed account whose passwd entry
@@ -3919,9 +4029,10 @@ _xmass_repair_target_identities() {
     fi
     _srcg="$(id -gn "${_oct}" 2>/dev/null)"
     case "${_srcg}" in *[!a-zA-Z0-9._-]*) _srcg="" ;; esac
-    # the helper rides ahead of the body: the account's web group is derived
-    # there, by the same rules as every writer
-    _out=$( { declare -f _web_group_state _web_group_conv; cat; } <<'REMOTE' \
+    # the helpers ride ahead of the body: the account's web group is derived
+    # there, by the same rules as every writer, and a new identity's number
+    # is picked there (_acct_new_identity)
+    _out=$( { declare -f _web_group_state _web_group_conv _acct_unswept_seed _acct_pick_uid _acct_new_identity; cat; } <<'REMOTE' \
       | ssh -o BatchMode=yes -o ConnectTimeout=30 root@"${_t}" \
       "_A='${_oct}' _SRCSH='${_srcsh}' _NEW='${_new}' _SRCG='${_srcg}' bash -s"
 if [ -z "${_NEW}" ]; then
@@ -3992,11 +4103,15 @@ for _I in "${_A}" "${_A}.ftp"; do
     *) getent passwd "${_U}" > /dev/null 2>&1 && _U="" ;;
   esac
   find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -f {} \; &> /dev/null
-  if [ -d "${_H}" ]; then
-    useradd ${_U:+-u ${_U}} -d "${_H}" -s "${_S}" -M -N -r -g "${_G}" "${_I}" \
+  _MK=-m
+  [ -d "${_H}" ] && _MK=-M
+  if [ -n "${_U}" ]; then
+    useradd -u "${_U}" -d "${_H}" -s "${_S}" "${_MK}" -N -r -g "${_G}" "${_I}" \
       || { echo "XMID-FAILED: useradd ${_I}"; continue; }
   else
-    useradd ${_U:+-u ${_U}} -d "${_H}" -s "${_S}" -m -N -r -g "${_G}" "${_I}" \
+    # no number to re-adopt: one no other account's removed identity left
+    # files under
+    _acct_new_identity high "${_A}" useradd -d "${_H}" -s "${_S}" "${_MK}" -N -r -g "${_G}" "${_I}" \
       || { echo "XMID-FAILED: useradd ${_I}"; continue; }
   fi
   if [ -n "${_NEW}" ] && [ "${_I}" = "${_A}" ]; then

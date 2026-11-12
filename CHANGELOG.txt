@@ -244,18 +244,23 @@
       every check trusts: the ltd worker gives it to the login's account,
       as it does a single-link one, and it now removes the login's files in
       other accounts' control folders before that hand-over. What boa
-      cleanup purge gives to root of a removed account's leftovers loses
-      its set-ID bits and group and other write, so no one else can change
-      it or move it out of a folder root now owns.
+      cleanup purge gives to root of a removed account's leftover gem, npm
+      and files store folders loses its set-ID bits and group and other
+      write, so no one else can change it or move it out of a folder root
+      now owns.
 
     * A number freed by removing an account's login, web user or the
       account itself is no longer given to another account's next login
       or user while it still owns files: what a removed login left outside
       its account (in another account's open folder, in /tmp) became the
-      new holder's. Such numbers wait in a list until a nightly sweep has
-      given what they own to their account, or to nobody when the account
-      is gone, and only then are given again; an account may take its own
-      freed numbers back at once.
+      new holder's. Such numbers wait in a list until a nightly sweep of
+      the server's own filesystems has given what they own to their
+      account (closed to other writers outside its own folders), or to
+      nobody when the account is gone, and only then are given again; an
+      account may take its own freed numbers back at once. With no free
+      number left, a login or user is not made, and the incident log says
+      so. xmass's repair of a target's missing users picks its numbers the
+      same way.
 
     * Before the ltd worker removes a client login, it ends every process
       the login runs, in any root: a process in a chroot or a user

@@ -216,6 +216,8 @@ _acct_unswept_add() {
   _f="${_d}/.unswept"
   (
     flock -w 60 9 || exit 1
+    _c=$(cat -- "${_d}/.unswept.again" 2> /dev/null)
+    _acct_gone_write "${_d}/.unswept.again" "$(printf '%s\n%s\n' "${_c}" "${_u}" | sort -un)" || exit 1
     if [ -f "${_f}" ] && [ ! -L "${_f}" ]; then
       grep -qx -- "${_u}" "${_f}" && exit 0
       _c=$(cat -- "${_f}") || exit 1
