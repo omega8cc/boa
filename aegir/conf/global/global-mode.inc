@@ -232,8 +232,10 @@ if (!$is_backend && !$is_install && isset($_SERVER['DOCUMENT_ROOT'])) {
  * they put a gate, make root's where there is none, and refuse a move on a
  * folder the account does not own; the worker removes the gate files from
  * a folder a removed login left before root hands it to the account. Grav
- * and Textpattern vhosts read the gate in nginx, by path. The test runs
- * only while a gate file is there.
+ * and Textpattern sites run the same rule from global-http-off.php once
+ * verified with a provision that knows it (keep the two copies equal); an
+ * older vhost reads the gate in nginx, by path. The test runs only while a
+ * gate file is there.
  */
 if (!$is_backend && !$is_install && isset($_SERVER['DOCUMENT_ROOT'])) {
   if (preg_match('#^(/data/disk/([^/]+))/#', $_SERVER['DOCUMENT_ROOT'], $_http_off_m)) {

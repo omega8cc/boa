@@ -1176,6 +1176,11 @@ _global_inc_conf_update() {
   fi
   _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
     "${_locCnf}/global/global-bd.inc" global-bd.inc
+  ### The migration gate for Grav and Textpattern sites lands BEFORE Grav's
+  ### setup file, which includes it: a setup file never names a gate file
+  ### that is not there yet.
+  _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
+    "${_locCnf}/global/global-http-off.php" global-http-off.php
   ### Grav's setup file: a Grav vhost names it in GRAV_SETUP_PATH while nginx
   ### finds it, so web requests create group-writable folders.
   _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \

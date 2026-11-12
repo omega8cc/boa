@@ -10548,6 +10548,68 @@ _satellite_queue_unanswered_site_verifies() {
   fi
 }
 
+### Run inside the real vhost.d: ./$1 when it is a site vhost that still tests
+### the account's http-off.pid in nginx by its path ($2 = the account's root,
+### $3 = the hostmaster's name, never judged). Only Grav and Textpattern
+### vhosts carry that test; one rendered with the gate left to PHP names no
+### such path. The file is read as _satellite_unanswered_here reads it.
+_satellite_http_off_path_here() {
+  [ -f "./${1}" ] && [ ! -L "./${1}" ] || return 1
+  case "${1}" in .*|https.*) return 1 ;; esac
+  [ "${1}" = "${3}" ] && return 1
+  case "${1}" in *[!A-Za-z0-9.-]*) return 1 ;; esac
+  _acct_read_here "${1}" | grep -qF "if (-f ${2}/static/control/http-off.pid)"
+}
+
+### Each such site printed as "<name>", for the PHP array below.
+_satellite_http_off_path_list_here() {
+  local _v _d
+  for _v in ./*; do
+    _d="${_v#./}"
+    if _satellite_http_off_path_here "${_d}" "${1}" "${2}"; then
+      printf '"%s",' "${_d}"
+    fi
+  done
+}
+
+### Grav and Textpattern sites test the migration's 503 gate in nginx by
+### path, which a control folder another account's login made holds as well
+### as the account's own. A vhost a Verify renders once BOA's gate file
+### (global-http-off.php) is there and Grav's setup file includes it leaves
+### the gate to PHP, by the own-folder rule Drupal and Backdrop sites follow;
+### nothing re-verifies such a site by itself, so queue one Verify for every
+### vhost still testing the path, once the account's provision renders the
+### PHP form. Self-limiting: a vhost rendered so is never queued again.
+_satellite_queue_http_off_site_verifies() {
+  local _vhd="${_ROOT}/config/server_master/nginx/vhost.d"
+  local _prv="${_ROOT}/.drush/sys/provision"
+  local _gl=/data/conf/global
+  local _list="" _n
+  local _hmDrush="${_DRUSHCMD:-drush8}"
+  [ -d "${_vhd}" ] || return 0
+  { [ -f "${_gl}/global-http-off.php" ] && [ ! -L "${_gl}/global-http-off.php" ]; } \
+    || return 0
+  _acct_read_in "${_gl}" global-grav-setup.php | grep -qF "${_gl}/global-http-off.php" \
+    || return 0
+  _acct_read_in "${_prv}/grav/templates" grav_locations.tpl.php \
+    | grep -qF "provision_http_off_in_php" || return 0
+  _acct_read_in "${_prv}/txp/templates" vhost_txp.tpl.php \
+    | grep -qF "provision_http_off_in_php" || return 0
+  _list="$(_acct_in_real_dir "${_vhd}" _satellite_http_off_path_list_here "${_ROOT}" "${_DOMAIN}")"
+  [ -n "${_list}" ] || return 0
+  _n=$(su -s /bin/bash - ${_USER} -c "${_hmDrush} @hostmaster php-eval '\$n = 0; foreach (array(${_list}) as \$u) { \$s = hosting_get_site_by_url(\$u); if (\$s && !empty(\$s->nid)) { \$t = hosting_add_task(\$s->nid, \"verify\"); if (is_object(\$t) && !empty(\$t->nid)) { \$n++; } } } print \"queued=\" . \$n;'" 2>/dev/null)
+  case "${_n}" in
+    *queued=*) ;;
+    *) _msg "INFO: the frontend did not answer the migration-gate Verify queueing; the next pass retries"
+       return 0 ;;
+  esac
+  _n="${_n##*queued=}"
+  _n="${_n%%[^0-9]*}"
+  if [ -n "${_n}" ] && [ "${_n}" -gt 0 ]; then
+    _msg "INFO: queued a Verify for ${_n} Grav or Textpattern site(s) whose vhost tests the migration gate by path"
+  fi
+}
+
 _satellite_post_cleanup() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _satellite_post_cleanup"

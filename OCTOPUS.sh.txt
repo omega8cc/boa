@@ -570,6 +570,9 @@ _satellite_queue_dbvars_site_verifies
 if declare -F _satellite_queue_unanswered_site_verifies > /dev/null 2>&1; then
   _satellite_queue_unanswered_site_verifies
 fi
+if declare -F _satellite_queue_http_off_site_verifies > /dev/null 2>&1; then
+  _satellite_queue_http_off_site_verifies
+fi
 _satellite_post_cleanup
 
 

@@ -279,6 +279,18 @@
       refuses the move. Grav and Textpattern sites still read the gate in
       nginx by path.
 
+    * Grav and Textpattern sites now follow the same rule: another account's
+      control folder no longer takes them offline. Their vhosts tested the
+      gate files in nginx, which cannot tell who owns the folder; a site
+      verified with this release runs the Drupal sites' own-folder rule in
+      PHP instead (the new /data/conf/global/global-http-off.php, included
+      first by BOA's Grav setup file and by the private/config.php provision
+      writes for a Textpattern site), and nginx tests the gate files by path
+      only while one of those files is missing. The Octopus upgrade queues a
+      Verify for each Grav or Textpattern site whose vhost still tests the
+      path. The master's own sites keep the nginx test. A held request now
+      carries the gate's own time in Retry-After, as Drupal's does.
+
     * A file another account's login left in an account not yet on its own
       group no longer becomes that account's once the login is removed.
       Root took any file whose owner no user has as the account's own, and
@@ -1740,8 +1752,7 @@
     * xmass init judges the room for its seed on the filesystem each of
       the stage and the database folder lands on: 2.2 times the source's
       folder where they share one, 1.1 times on each of two. A stage an
-      earlier seed left counts as room, since the next seed clears it
-      first.
+      earlier seed left counts as room, since the next seed clears it first.
 
     * xtrim finalize --drop-datadir drops the folder a link at
       /var/lib/mysql names, then the link. It removed the link, left the

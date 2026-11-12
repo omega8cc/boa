@@ -22,8 +22,16 @@
  * does not reach its web requests. nginx's open file cache can keep a removed
  * file's answer for up to open_file_cache_valid, and Grav stops on a
  * GRAV_SETUP_PATH that names no file: reload nginx after removing it by hand.
+ *
+ * First of all, the migration's 503 gate (global-http-off.php), by the rule
+ * Drupal and Backdrop sites follow: Grav reaches this file before any plugin,
+ * session or page runs. A Grav vhost verified with a provision that knows
+ * the gate leaves it to this include while nginx finds both files.
  * Deployed by barracuda; an edit here is overwritten.
  */
+if (is_file('/data/conf/global/global-http-off.php')) {
+  include '/data/conf/global/global-http-off.php';
+}
 umask(0002);
 $boa_grav_setup = GRAV_WEBROOT . '/setup.php';
 if (!is_file($boa_grav_setup)) {
