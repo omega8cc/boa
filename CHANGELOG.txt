@@ -146,6 +146,46 @@
       so are a MySQL still running on the zone it started with and a
       time_zone set in one server's MySQL configuration alone.
 
+    * xmass init seeds the target with one copy of the database instead of
+      two: where the snapshot's stage and the database folder share a
+      filesystem, the prepared snapshot is moved into place (xtrabackup
+      --move-back) and the room check asks 1.1 times the snapshot, not 2.2.
+      _XMASS_SEED_COPY=YES, or _XMASS_KEEP_STAGE=YES, copies it as before.
+
+    * The room a seed needs is measured without the binary log in the
+      source's database folder, which no snapshot carries, on the source
+      and on the target. The source stages its snapshot only where that
+      also keeps its filesystem under the 90% line where BOA's own runs
+      stop; otherwise it streams and says how much more room staging needs.
+
+    * xmass init says the space that stands once the seed is in, names in
+      its closing lines the folder it parked on the target with its size
+      and when it can go, and tells a target that is a standing replica
+      short of room the route that fits: restore-target, the replica copy
+      removed, init again.
+
+    * The estimate of files still to arrive on a target, which lowers the
+      days of binary log it keeps, counts the source's stores on
+      filesystems of their own (files volumes, the archive, Solr data)
+      where the syncs will place them, and says what it covers.
+
+    * A manual xmass sync that moves an account's store off the target's
+      attached mount onto its root names the copy it leaves on the mount,
+      and xmass verify lists every such copy with its size and the command
+      to remove it once the move is verified. Nothing is removed for you.
+
+    * xmass restore-target finishes an init that stopped between parking
+      the database folder and making a new one, and a box an older xmass
+      seeded over a link (which parked the link itself and seeded a folder
+      on the root disk), where it named hand steps; a run of either cut
+      short is taken up again.
+
+    * MySQL runs from a database folder linked onto the attached mount
+      under enforced AppArmor profiles: the MySQL profiles include a local
+      file, and BOA names the linked folder there on every barracuda pass
+      and before move_sql.sh starts MySQL. A real folder at the path, and
+      the lines an operator keeps in that file, are left as they are.
+
 @=> Security
 
     * xoct, xcopy and xmass copy a client's Ruby gems or npm tree only into
@@ -723,6 +763,13 @@
       the client's Ruby gems or npm tree failed (a full disk, a file in the
       way): the run names it with a DENY, as it does a failed backups copy,
       and a run after the cause is fixed copies what is missing.
+
+    * Sums that can pass two billion are printed whole: the awk on BOA
+      servers prints them in exponent form (3e+09) and caps %d there. It
+      hit loadreport's window start after some 248 days of uptime, the
+      firewall monitor's SYNPROXY packet counter, the catalogue's byte
+      check of a tarball over 2 GiB, and the Solr document counts of
+      solrtrim and xmass.
 
     * multiback purge empties a Backblaze B2 bucket even when the account's
       daily cap on download-class requests is spent: it deletes every
