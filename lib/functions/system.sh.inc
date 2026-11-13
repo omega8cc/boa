@@ -1659,6 +1659,25 @@ _valkey_ceiling_derive() {
   fi
 }
 
+# A finalized proxy (/root/.proxy.cnf) keeps MySQL for its local control
+# panels alone, and the plan under it is cut to a small one afterwards.
+# mysqld touches about a tenth of its configured buffer pool as it starts,
+# whatever data it holds, so a pool written from this box's RAM for the
+# hosting it used to do, or pinned for it, gets mysqld killed for memory
+# on the small plan before it answers. The pool stays at the floor on such
+# a box, a pin included; xtrim finalize writes the same figure into my.cnf.
+_SQL_POOL_PROXY_FLOOR=256
+_sql_pool_proxy_floor() {
+  if [ -e "/root/.proxy.cnf" ] \
+    && [ -n "${_USE_POOL_SQL}" ] \
+    && [ "${_USE_POOL_SQL}" -gt "${_SQL_POOL_PROXY_FLOOR}" ]; then
+    if [ -n "${_SQL_BUFFER_POOL_FORCE}" ]; then
+      _msg "NOTE: _SQL_BUFFER_POOL_FORCE=${_SQL_BUFFER_POOL_FORCE} is not used on a finalized proxy"
+    fi
+    _USE_POOL_SQL="${_SQL_POOL_PROXY_FLOOR}"
+  fi
+}
+
 # _USE_POOL_SQL carries the buffer pool budget separately from
 # _USE_SQL so a pool pin can never inflate the per-session
 # tmp_table/max_heap budget, and the log file size keeps deriving
@@ -1681,6 +1700,7 @@ _sql_pin_overrides() {
       _msg "NOTE: Ignoring invalid _SQL_BUFFER_POOL_FORCE=${_SQL_BUFFER_POOL_FORCE}"
     fi
   fi
+  _sql_pool_proxy_floor
   if [ -n "${_SQL_TMP_TABLE_FORCE}" ]; then
     if _sql_pin_valid "${_SQL_TMP_TABLE_FORCE}" "16" "${_RAW_RAM}"; then
       _TMP_SQL="${_SQL_TMP_TABLE_FORCE}M"

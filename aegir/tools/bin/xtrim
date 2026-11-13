@@ -2065,6 +2065,73 @@ _xtrim_drop_datadir() {
 
 ### ------------------------------------------------------------ stage C ---
 
+### The buffer pool a finalized proxy's MySQL starts with. mysqld touches
+### about a tenth of its configured pool as it starts, whatever data it
+### holds, and this box's pool was written from its RAM for the hosting it
+### used to do: on the small plan that follows a trim the kernel kills it
+### for memory before it answers. The kept MySQL serves local control panels
+### alone, so my.cnf takes the floor the system tuning keeps on a proxy from
+### here on. The file alone, written as the tuning writes it: the running
+### server keeps its pool until its next start.
+_XTRIM_PROXY_POOL_MB=256
+_XTRIM_MYCNF="/etc/mysql/my.cnf"
+### The pool my.cnf names, in MB; status 1 when the line is missing or is no
+### plain M or G figure.
+_proxy_sql_pool_read() {
+  local _v
+  _v=$(grep -m1 -E '^innodb_buffer_pool_size[[:space:]]*=' "${_XTRIM_MYCNF}" 2>/dev/null \
+    | sed 's/^[^=]*=[[:space:]]*//' | tr -d '[:space:]')
+  if [[ "${_v}" =~ ^([0-9]{1,9})[Mm]$ ]]; then
+    echo "$(( 10#${BASH_REMATCH[1]} ))"
+  elif [[ "${_v}" =~ ^([0-9]{1,6})[Gg]$ ]]; then
+    echo "$(( 10#${BASH_REMATCH[1]} * 1024 ))"
+  else
+    return 1
+  fi
+}
+_proxy_sql_pool() {
+  local _mode="$1" _cur _keep="${_XTRIM_BASE}/finalize/my.cnf.before-proxy-pool"
+  if ! _cur="$(_proxy_sql_pool_read)"; then
+    _alrt "finalize: no plain innodb_buffer_pool_size line in ${_XTRIM_MYCNF} -- MySQL's buffer pool is left as it is; read it before a smaller plan"
+    return 0
+  fi
+  if [ "${_cur}" -le "${_XTRIM_PROXY_POOL_MB}" ]; then
+    _info "finalize: MySQL's buffer pool in ${_XTRIM_MYCNF} is ${_cur}M -- left as it is"
+    return 0
+  fi
+  if [ "${_mode}" != "LIVE" ]; then
+    _info "[DRY-PLAN] would lower MySQL's buffer pool in ${_XTRIM_MYCNF} from ${_cur}M to ${_XTRIM_PROXY_POOL_MB}M, taken at its next start (the kept MySQL serves local control panels alone, and mysqld touches about a tenth of its pool as it starts)"
+    return 0
+  fi
+  mkdir -p "${_XTRIM_BASE}/finalize"
+  if [ ! -e "${_keep}" ] && ! cp -p "${_XTRIM_MYCNF}" "${_keep}"; then
+    _alrt "finalize: could not keep a copy of ${_XTRIM_MYCNF} -- MySQL's buffer pool is left at ${_cur}M; lower it before a smaller plan"
+    return 0
+  fi
+  sed -i "s/^innodb_buffer_pool_size.*/innodb_buffer_pool_size = ${_XTRIM_PROXY_POOL_MB}M/g" "${_XTRIM_MYCNF}"
+  if [ "$(_proxy_sql_pool_read)" = "${_XTRIM_PROXY_POOL_MB}" ]; then
+    _info "finalize: MySQL's buffer pool in ${_XTRIM_MYCNF} lowered from ${_cur}M to ${_XTRIM_PROXY_POOL_MB}M, taken at its next start (the file as it was: ${_keep})"
+  else
+    _alrt "finalize: could not lower MySQL's buffer pool in ${_XTRIM_MYCNF} -- lower it before a smaller plan"
+  fi
+}
+### One line for status on a finalized proxy whose MySQL runs: the pool its
+### next start takes, and what a larger one means for a smaller plan.
+_proxy_sql_pool_status() {
+  local _cur
+  [ -e "/root/.proxy.cnf" ] || return 0
+  pgrep -x mysqld > /dev/null 2>&1 || return 0
+  _cur="$(_proxy_sql_pool_read)" || {
+    echo "box: MySQL runs here; no plain innodb_buffer_pool_size line in ${_XTRIM_MYCNF} -- read it before a smaller plan"
+    return 0
+  }
+  if [ "${_cur}" -le "${_XTRIM_PROXY_POOL_MB}" ]; then
+    echo "box: MySQL kept for the local control panel(s), buffer pool in ${_XTRIM_MYCNF} ${_cur}M"
+  else
+    echo "box: MySQL kept for the local control panel(s), buffer pool in ${_XTRIM_MYCNF} ${_cur}M -- mysqld touches about a tenth of it as it starts and may not start on a smaller plan: run xtrim finalize --live again, it lowers it to ${_XTRIM_PROXY_POOL_MB}M"
+  fi
+}
+
 _finalize() {
   local _mode="$1" _drop_datadir="$2" _n _nn _panel _p
   ### Only when every real account is shrunk. A panel-only account (its
@@ -2112,6 +2179,7 @@ _finalize() {
     _info "[DRY-PLAN] would remove shared codebases /data/all"
     if [ -n "${_keep_sql}" ]; then
       _info "[DRY-PLAN] would KEEP mysql running for the local control panel database(s):${_keep_sql}"
+      _proxy_sql_pool DRY
     else
       _info "[DRY-PLAN] would stop + disable mysql (datadir kept$( [ "${_drop_datadir}" = "YES" ] && echo ", then DROPPED"))"
     fi
@@ -2147,6 +2215,7 @@ _finalize() {
   ### control panel still needs its database here.
   if [ -n "${_keep_sql}" ]; then
     _info "finalize: mysql KEPT running for the local control panel database(s):${_keep_sql}"
+    _proxy_sql_pool LIVE
   else
     service mysql stop &> /dev/null
     update-rc.d mysql disable &> /dev/null
@@ -2199,6 +2268,7 @@ _cmd_status() {
   _load_cnf_defaults
   echo "xtrim status -- $(hostname -f 2>/dev/null) $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
   [ -e "/root/.proxy.cnf" ] && echo "box: /root/.proxy.cnf PRESENT (finalized proxy node)"
+  _proxy_sql_pool_status
   for _n in $(_list_accounts); do
     _USR="/data/disk/${_n}"
     _VHD="${_USR}/config/server_master/nginx/vhost.d"

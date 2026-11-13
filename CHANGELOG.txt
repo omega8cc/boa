@@ -1703,6 +1703,17 @@
       only as root's own file that no other user can write; one that is
       there and is not read is named in the plan.
 
+    * An old server trimmed to a web proxy starts MySQL again after its
+      provider plan is cut to a small one. mysqld touches about a tenth of
+      its configured buffer pool as it starts, whatever data it holds, so
+      the pool written from the old server's RAM got it killed for memory
+      on the small plan before it answered. xtrim finalize now lowers the
+      pool in my.cnf to 256M where it keeps MySQL for local control panels
+      (a dry run says what it would do, the file as it was is kept), xtrim
+      status names the pool a finalized server will start with, and the
+      system tuning keeps that pool on a server marked as a finalized
+      proxy, a _SQL_BUFFER_POOL_FORCE pin included.
+
     * solrtrim status, and the Solr check before an xmass move, no longer
       warn that an alias could not be read ("alias site_path parse failed")
       when no site uses Solr and the first alias listed is a platform or
