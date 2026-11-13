@@ -6490,7 +6490,12 @@ _migrate_init() {
           # instance-group.txt records the SOURCE box's conversion (its gid);
           # it must never travel, the destination pass writes its own, and
           # web-group-notes.txt (a temp copy of it too) names the source
-          # box's web-group state.
+          # box's web-group state. imported.pid, import_failed.pid and
+          # panel_db.txt record an import this box once received (the
+          # account came here as a copy or a move): sent on, the target's
+          # import would refuse the account as already imported, or take
+          # the recorded panel database where one of that name exists there.
+          # The target's own import writes its own.
           # log/ is oN's on both boxes: copied from inside the real directory
           # into the real directory, the glob expanded there. The account's
           # own log/email.txt then goes over the install's copy (one address,
@@ -6499,7 +6504,8 @@ _migrate_init() {
           if _xcopy_leg_ok "${_USR}/log"; then
             _xcopy_in_real_dir "${_USR}/log" _xcopy_copy_here "${_tgt}" "${_DST}/log" '*' \
               -aEAXqu ${_ieni} --exclude=instance-group.txt '--exclude=.instance-group.txt.put.*' --exclude=proxy-failed.pid \
-              --exclude=web-group-notes.txt '--exclude=.web-group-notes.txt.put.*'
+              --exclude=web-group-notes.txt '--exclude=.web-group-notes.txt.put.*' \
+              --exclude=imported.pid --exclude=import_failed.pid --exclude=panel_db.txt
             _xcopy_in_real_dir "${_USR}/log" _xcopy_copy_here "${_tgt}" "${_DST}/log" 'email.txt' \
               -aEAXq --no-links ${_ieni}
           fi
