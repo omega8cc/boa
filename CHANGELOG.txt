@@ -811,15 +811,20 @@
       dispatcher of an account with no cli.info and wrote the two files
       back only for an account it did not park, so the account's queue
       (its tasks and certificate renewals) stayed stopped until its next
-      Octopus upgrade. The pass now writes both back first, with the PHP
-      versions the account's log/fpm.txt and log/cli.txt record, as an
-      Octopus pass does, and hands the dispatcher back; a missing fpm.info
-      was written with the server's default version before. A cancelled
-      account, one relayed to another server or left by a failed
-      conversion, one with no main login, and every account on a standby
-      keep theirs parked, and so does an account xmass --return-accounts
-      is laying on the server, until that run's last step hands it back.
-      The pass runs once more when this BOA.sh.txt arrives.
+      Octopus upgrade. The pass now writes the missing files back first,
+      with the PHP versions the account's log/fpm.txt and log/cli.txt
+      record, as an Octopus pass does, makes again a control folder
+      removed whole, and hands the dispatcher back. A lone missing
+      cli.info takes the recorded command-line version, owned by the main
+      login, where it was a root-owned copy of fpm.info; a missing
+      fpm.info is no longer the server's default when a version is
+      recorded. A cancelled account, one relayed to another server or
+      left by a failed conversion, one with no main login, one with
+      neither cli.info nor a recorded version (an install that stopped
+      early), and every account on a standby keep theirs parked, and so
+      does an account xmass --return-accounts is laying on the server,
+      until that run's last step hands it back. The pass runs once more
+      when this BOA.sh.txt arrives.
 
     * The migration completion notice gives the client the account's new
       control panel address in full, with the SQL Adminer address beside
