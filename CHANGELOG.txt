@@ -7,10 +7,11 @@
     * xoct notice-to {oN|--all} prints who each client notice of a move
       would go to: the account's address, the visible copy where the server
       adds one, and the hidden copy. The dry run of xmass cutover prints
-      the same line for every account it moves. An account with no plain
-      address, which gets no notice at all, is named there before the
-      cutover instead of in its log. It only reads, and an account in a
-      test run answers as every verb does without its admail=.
+      the same line for every account it will convert and names the ones
+      that relay already. An account with no plain address, which gets no
+      notice at all, is named there before the cutover instead of in its
+      log. It sends nothing and changes no migration state, and an account
+      in a test run answers as every verb does without its admail=.
 
     * xtrim names [<oN>|all] lists every name a moved account's vhosts on
       the old server answer for (its relay vhosts, and every name of a site
