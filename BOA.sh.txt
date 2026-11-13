@@ -3343,16 +3343,21 @@ _update_agents() {
         # neither seeded nor read: its cli.info never parks the dispatcher
         _ctlOwn=YES
         _acct_ctrl_own "${_tUsr}" > /dev/null || _ctlOwn=NO
-        [ "${_ctlOwn}" = "YES" ] \
-          && _acct_in_real_dir "${_pthSysUsr}/static/control" _ctrl_seed_here
-        ### fpm.info and cli.info the account lost go back before the park
-        ### test below, with the versions its log/ records: put back only
-        ### after it, they never came back for an account that lost both,
-        ### and its dispatcher stayed parked for good. Not for an account
-        ### cancelled, relayed elsewhere or left by a failed conversion (each
-        ### stays parked), one with no main login (a removed account's
-        ### leftovers), nor on a standby, whose account trees come from the
-        ### active with every sync.
+        ### fpm.info and cli.info the account lost go back before the seed and
+        ### the park test below, with the versions its log/ records, as an
+        ### Octopus pass puts them back: put back only after the park test,
+        ### they never came back for an account that lost both, and its
+        ### dispatcher stayed parked for good. Not for an account cancelled,
+        ### relayed elsewhere or left by a failed conversion (each stays
+        ### parked), one with no main login, nor on a standby, whose account
+        ### trees come from the active with every sync; and with no cli.info,
+        ### only where log/ records a version (a removed account's leftovers
+        ### and an install that stopped before its control panel was made have
+        ### none). A control folder removed whole is made again first, as the
+        ### hand-back below makes one, and judged again.
+        _logFpm=
+        _logCli=
+        _ctlPin=NO
         if [ "${_ctlOwn}" = "YES" ] \
           && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
           && [ ! -e "${_pthSysUsr}/log/CANCELLED" ] \
@@ -3365,8 +3370,23 @@ _update_agents() {
             _acct_read_here fpm.txt)")
           _logCli=$(_ctrl_php_vrn "$(_acct_in_real_dir "${_pthSysUsr}/log" \
             _acct_read_here cli.txt)")
-          _acct_in_real_dir "${_pthSysUsr}/static/control" _ctrl_pins_here
+          if [ -n "${_logFpm}${_logCli}" ] \
+            || [ -e "${_pthSysUsr}/static/control/cli.info" ]; then
+            _ctlPin=YES
+          fi
         fi
+        if [ "${_ctlPin}" = "YES" ]; then
+          if [ ! -e "${_pthSysUsr}/static/control" ] \
+            && [ ! -L "${_pthSysUsr}/static/control" ] \
+            && [ -e "/home/${_tUsr}.ftp/clients" ]; then
+            _acct_in_real_dir "${_pthSysUsr}/static" _acct_ctrl_dir_here
+            _acct_ctrl_own "${_tUsr}" > /dev/null || _ctlOwn=NO
+          fi
+          [ "${_ctlOwn}" = "YES" ] \
+            && _acct_in_real_dir "${_pthSysUsr}/static/control" _ctrl_pins_here
+        fi
+        [ "${_ctlOwn}" = "YES" ] \
+          && _acct_in_real_dir "${_pthSysUsr}/static/control" _ctrl_seed_here
         ### proxy-failed.pid: a cutover could not convert the account, and its
         ### panel database lives on the target; its dispatcher would run the
         ### travelled queue against the stale local copy until xoct repairs it
