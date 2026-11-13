@@ -30,7 +30,9 @@ SHELL=/bin/bash
 ###                                   once stage B has started)
 ###   xtrim names [<oN>|all]          read-only: where DNS points every name
 ###                                   the relay answers for (this box, the
-###                                   target, elsewhere, nowhere)
+###                                   target, elsewhere, nowhere), and how
+###                                   many requests the target logged as
+###                                   relayed from this box for it
 ###   xtrim space                     read-only: what the root filesystem
 ###                                   holds, largest trees first, for the
 ###                                   read before a smaller plan
@@ -2412,6 +2414,64 @@ _names_one() {
   printf '  %-10s %s %s%s\n' "${_NAMES_W}" "$1" "${_ad:--}" "$2"
 }
 
+### The requests the target logged as relayed from this box, a name a line
+### ("<count> <name>") in _NAMES_CNT. The target's access log carries the
+### address that opened each connection in its peer field; for a request this
+### box relayed that is one of this box's own addresses, whatever front the
+### request passed here or there, and a visitor who reaches the target
+### directly never carries it. So the count also shows a name behind a CDN
+### whose origin is still this box, which DNS cannot. A request this box
+### makes itself (a tool's own probe of a site, on the target or through the
+### relay) is no visitor's: its first field is this box too, and it is left
+### out. The day's log and the
+### one before are read (one to two days), from the first line that carries
+### the field: _NAMES_CNT_SINCE, in the target's own time. _NAMES_CNT_STATE is
+### ok, nofield (the target's log has no peer field yet: its next system
+### upgrade and server Verify add it) or noread (no answer, no log there, or
+### an answer cut short, which is never read as a count).
+_names_counts() {
+  local _t="$1" _a _pat="" _own=" " _out
+  _NAMES_CNT=""; _NAMES_CNT_STATE=noread; _NAMES_CNT_SINCE=""
+  for _a in $(hostname -I 2>/dev/null); do
+    case "${_a}" in
+      *[!0-9a-fA-F:.]*) continue ;;
+    esac
+    _pat="${_pat} -e ' peer=\"${_a}\"'"
+    _own="${_own}${_a} "
+  done
+  [ -n "${_pat}" ] || return 0
+  _out="$(ssh -o BatchMode=yes -o ConnectTimeout=15 "root@${_t}" "
+    _f=
+    for _x in /var/log/nginx/access.log.1 /var/log/nginx/access.log; do
+      [ -s \"\${_x}\" ] && _f=\"\${_f} \${_x}\"
+    done
+    [ -n \"\${_f}\" ] || exit 4
+    _s=\$(LC_ALL=C grep -a -h -m1 ' peer=\"' \${_f} | sed -n '1s/^[^[]*\\[\\([^]]*\\)\\].*/\\1/p')
+    [ -n \"\${_s}\" ] || { echo XT-NOFIELD; exit 0; }
+    echo \"XT-SINCE \${_s}\"
+    LC_ALL=C nice -n 19 grep -a -h -F${_pat} \${_f} \
+      | awk -v own=\"${_own}\" '{ a = \$1; gsub(/\"/, \"\", a); if (index(own, \" \" a \" \")) next
+          c[tolower(\$2)]++ } END { for (h in c) printf \"%.0f %s\\n\", c[h], h }'
+    echo XT-END
+  " 2>/dev/null)"
+  if [ "${_out}" = "XT-NOFIELD" ]; then
+    _NAMES_CNT_STATE=nofield
+    return 0
+  fi
+  [ "$(printf '%s\n' "${_out}" | tail -n 1)" = "XT-END" ] || return 0
+  _NAMES_CNT_SINCE="$(printf '%s\n' "${_out}" | sed -n '1s/^XT-SINCE //p')"
+  [ -n "${_NAMES_CNT_SINCE}" ] || return 0
+  _NAMES_CNT="$(printf '%s\n' "${_out}" | grep -E '^[0-9]+ [a-z0-9._:-]+$')"
+  _NAMES_CNT_STATE=ok
+}
+
+### The count of one name in _NAMES_CNT, 0 when it has no line there.
+_names_count_of() {
+  local _c
+  _c="$(printf '%s\n' "${_NAMES_CNT}" | awk -v n="$1" '$2 == n { print $1; exit }')"
+  echo "${_c:-0}"
+}
+
 ### xtrim names [<oN>|all]: for every name a proxied account's vhosts answer
 ### for, where its DNS points today. It reads, asks DNS and the target for
 ### its own addresses, and changes nothing. A name that resolves to this box
@@ -2421,6 +2481,7 @@ _names_one() {
 _cmd_names() {
   local _sel="${1:-all}" _n _d _nm _c _box=0 _accts="" _seen _unk=0
   local _nh _nt _ne _nn _nw _nb _nu _pn _rn _bn _bx
+  local _cfor="" _cs _cq _ar _call="" _cseen="" _cbad=0 _csince="" _ct _cm _cx
   command -v dig > /dev/null 2>&1 || _die "names needs dig on this box (the dnsutils package)"
   _load_cnf_defaults
   _bx="$(hostname -f 2>/dev/null | tr 'A-Z' 'a-z' | tr -d '\n')"
@@ -2463,6 +2524,26 @@ _cmd_names() {
     _c="${_c# }"
     _c="${_c% }"
     echo "${_n}: relay to ${_MAP_TGT} | contact: ${_c:-none in log/email.txt}"
+    if [ "${_cfor}" != "${_MAP_TGT}" ]; then
+      _names_counts "${_MAP_TGT}"
+      _cfor="${_MAP_TGT}"
+      if [ "${_NAMES_CNT_STATE}" = "ok" ]; then
+        _call="${_call}${_NAMES_CNT}"$'\n'
+        _csince="${_csince:+${_csince}, }${_NAMES_CNT_SINCE} at ${_MAP_TGT}"
+      fi
+    fi
+    case "${_NAMES_CNT_STATE}" in
+      ok) echo "${_n}: relayed = the requests the target logged as coming through this box, since ${_NAMES_CNT_SINCE} (the target's time)" ;;
+      nofield)
+        echo "${_n}: no request counts -- the target's access log does not name the connecting address yet (its next system upgrade and server Verify add the field)"
+        _cbad=$(( _cbad + 1 ))
+      ;;
+      *)
+        echo "${_n}: no request counts -- the target's access log was not read over ssh"
+        _cbad=$(( _cbad + 1 ))
+      ;;
+    esac
+    _ar=0
     _nh=0; _nt=0; _ne=0; _nn=0; _nw=0; _nb=0; _nu=0
     ### Every name once an account, in lower case, whatever its spelling and
     ### however many vhosts carry it. A site named under this box's own name
@@ -2500,10 +2581,19 @@ _cmd_names() {
         _nb=$(( _nb + 1 ))
         continue
       fi
+      ### Every single name carries its count where the target's log was
+      ### read; one answered here with a 301 is not relayed and reads 0.
+      _cs=""
+      if [ "${_NAMES_CNT_STATE}" = "ok" ] && _name_plain "${_nm}"; then
+        _cq="$(_names_count_of "${_nm}")"
+        _cs=" | relayed: ${_cq}"
+        _ar=$(( _ar + _cq ))
+        _cseen="${_cseen}${_nm}"$'\n'
+      fi
       if printf '%s\n' "${_rn}" | grep -qxF -- "${_nm}" && ! printf '%s\n' "${_pn}" | grep -qxF -- "${_nm}"; then
-        _names_one "${_nm}" " (a renamed site's name: answered here with a 301)"
+        _names_one "${_nm}" " (a renamed site's name: answered here with a 301)${_cs}"
       else
-        _names_one "${_nm}" ""
+        _names_one "${_nm}" "${_cs}"
       fi
       case "${_NAMES_W}" in
         HERE) _nh=$(( _nh + 1 )) ;;
@@ -2514,7 +2604,7 @@ _cmd_names() {
         *) _nn=$(( _nn + 1 )) ;;
       esac
     done <<< "$(printf '%s\n%s\n' "${_pn}" "${_rn}" | sed '/^$/d' | LC_ALL=C sort -u)"
-    echo "${_n}: ${_nh} here, ${_nt} on the target, ${_ne} elsewhere, ${_nn} with no address, ${_nw} patterns, ${_nb} box-named, ${_nu} lookups failed"
+    echo "${_n}: ${_nh} here, ${_nt} on the target, ${_ne} elsewhere, ${_nn} with no address, ${_nw} patterns, ${_nb} box-named, ${_nu} lookups failed$( [ "${_NAMES_CNT_STATE}" = "ok" ] && echo "; ${_ar} requests relayed to its names" )"
     _unk=$(( _unk + _nu ))
     if [ "${_nh}" -gt 0 ]; then
       _box=$(( _box + _nh ))
@@ -2525,7 +2615,26 @@ _cmd_names() {
   echo "box: ${_box} names still resolve to this box$( [ -n "${_accts}" ] && echo ", in:${_accts}" )"
   [ "${_unk}" -gt 0 ] \
     && echo "box: ${_unk} lookups FAILED (UNKNOWN above): those names are in no count -- run this again before relying on it"
-  echo "note: HERE names go dark whenever this box is down; ELSEWHERE names sit behind a CDN or another front, or on another server, and DNS cannot say whether that front still sends them here."
+  ### What the targets logged as relayed from this box, whole: a request to
+  ### a name no line above carries (a wildcard's name, a name of an account
+  ### left out of this run) is counted here and named, most requests first.
+  if [ -n "${_csince}" ]; then
+    _call="$(printf '%s' "${_call}" | sed '/^$/d')"
+    _ct="$(printf '%s\n' "${_call}" | awk '{ t += $1 } END { printf "%.0f", t }')"
+    ### (the first list is never empty, so the second is never read as it)
+    _cx="$(printf '%s\n' "${_call}" | awk 'NR == FNR { s[$0] = 1; next } NF == 2 && !($2 in s) { print }' \
+      <(printf 'xt-listed-names\n%s' "${_cseen}") - | LC_ALL=C sort -k1,1nr -k2,2)"
+    _cm="$(printf '%s\n' "${_cx}" | sed '/^$/d' | wc -l | tr -d ' ')"
+    echo "box: ${_ct} requests reached a target through this box (since ${_csince})"
+    if [ "${_cm}" -gt 0 ]; then
+      echo "box: ${_cm} more names got relayed requests and are on no line above (a wildcard's name, or an account left out of this run), most requests first:"
+      printf '%s\n' "${_cx}" | head -n 20 | awk '{ printf "  %-10s %s\n", $1, $2 }'
+      [ "${_cm}" -gt 20 ] && echo "  ... and $(( _cm - 20 )) more"
+    fi
+  fi
+  [ "${_cbad}" -gt 0 ] \
+    && echo "box: ${_cbad} account(s) with no request counts (said above): a name with no count is not a name with no requests"
+  echo "note: HERE names go dark whenever this box is down; ELSEWHERE names sit behind a CDN or another front, or on another server, and DNS cannot say whether that front still sends them here: a relayed count above 0 says it does."
 }
 
 ### xtrim space: what the root filesystem holds, for the read before a
