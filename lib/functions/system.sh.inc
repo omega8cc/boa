@@ -9106,6 +9106,47 @@ _if_heal_logind_leak() {
   _trim_session_cgroups
 }
 
+#
+# Answer the ACPI power button with an ordinary halt. A provider's console,
+# a hypervisor's shutdown and a host's own reboot press that button and
+# wait; since systemd is gone nothing on a Devuan box answers it, so the box
+# runs on through the grace time and has its power cut, and MySQL recovers
+# from a crash at the next start. acpid carries the event and the
+# distribution's acpi-support-base carries the rule: its script runs
+# shutdown -h -P now, which stops every service through its init script,
+# clean-boa-env among them. Left alone where there is no button to press: a
+# machine without ACPI tables, an OpenVZ or VServer guest, a container.
+_has_acpi_power_button() {
+  [ -e "/sys/firmware/acpi/tables/FACP" ] || return 1
+  case "${_VMFAMILY:-}" in
+    VZ|VS) return 1 ;;
+  esac
+  ! grep -qa 'container=' /proc/1/environ 2> /dev/null
+}
+_acpi_power_button_ensure() {
+  local _PKG
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _acpi_power_button_ensure"
+  fi
+  _has_acpi_power_button || return 0
+  for _PKG in acpid acpi-support-base; do
+    if ! _pkg_installed "${_PKG}"; then
+      _mrun "${_INSTAPP} ${_PKG}"
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "apt-get install ${_PKG} -y -qq"
+      fi
+    fi
+  done
+  # The rule counts only while the daemon runs.
+  if _pkg_installed "acpid" && ! pgrep -x acpid > /dev/null 2>&1; then
+    _mrun "service acpid start"
+  fi
+  if ! pgrep -x acpid > /dev/null 2>&1 \
+    || ! ls /etc/acpi/events/powerbtn* > /dev/null 2>&1; then
+    _msg "NOTE: no ACPI power button rule is active here, so a provider's power-off cuts this system after its grace time"
+  fi
+}
+
 _run_aptitude_deps_install() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _run_aptitude_deps_install"
@@ -9152,6 +9193,9 @@ _run_aptitude_deps_install() {
       _mrun "dpkg --purge ${_lgcySlgd}"
     fi
   done
+  # FAST upgrades skip the package section below, so the power button's
+  # rule is ensured on every run as well.
+  _acpi_power_button_ensure
   # A box that already carries elogind's PAM module leaks a cgroup per login
   # session whatever brought it, and the FULL-mode removal of the polkit
   # stack below runs only on a fresh install, so heal it on every run.
