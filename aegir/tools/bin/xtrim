@@ -2075,19 +2075,24 @@ _xtrim_drop_datadir() {
 ### server keeps its pool until its next start.
 _XTRIM_PROXY_POOL_MB=256
 _XTRIM_MYCNF="/etc/mysql/my.cnf"
-### The pool my.cnf names, in MB; status 1 when the line is missing or is no
-### plain M or G figure.
+### The pool my.cnf names, in MB: every such line is read and the largest
+### counts, since mysqld takes the last one and the write below sets them
+### all. Status 1 when there is no line, or one is no plain M or G figure.
 _proxy_sql_pool_read() {
-  local _v
-  _v=$(grep -m1 -E '^innodb_buffer_pool_size[[:space:]]*=' "${_XTRIM_MYCNF}" 2>/dev/null \
-    | sed 's/^[^=]*=[[:space:]]*//' | tr -d '[:space:]')
-  if [[ "${_v}" =~ ^([0-9]{1,9})[Mm]$ ]]; then
-    echo "$(( 10#${BASH_REMATCH[1]} ))"
-  elif [[ "${_v}" =~ ^([0-9]{1,6})[Gg]$ ]]; then
-    echo "$(( 10#${BASH_REMATCH[1]} * 1024 ))"
-  else
-    return 1
-  fi
+  local _v _m _max=""
+  while IFS= read -r _v; do
+    if [[ "${_v}" =~ ^([0-9]{1,9})[Mm]$ ]]; then
+      _m="$(( 10#${BASH_REMATCH[1]} ))"
+    elif [[ "${_v}" =~ ^([0-9]{1,6})[Gg]$ ]]; then
+      _m="$(( 10#${BASH_REMATCH[1]} * 1024 ))"
+    else
+      return 1
+    fi
+    [ -n "${_max}" ] && [ "${_max}" -ge "${_m}" ] || _max="${_m}"
+  done < <(grep -E '^innodb_buffer_pool_size[[:space:]]*=' "${_XTRIM_MYCNF}" 2>/dev/null \
+    | sed 's/^[^=]*=//' | tr -d ' \t\r')
+  [ -n "${_max}" ] || return 1
+  echo "${_max}"
 }
 _proxy_sql_pool() {
   local _mode="$1" _cur _keep="${_XTRIM_BASE}/finalize/my.cnf.before-proxy-pool"
@@ -2104,9 +2109,14 @@ _proxy_sql_pool() {
     return 0
   fi
   mkdir -p "${_XTRIM_BASE}/finalize"
-  if [ ! -e "${_keep}" ] && ! cp -p "${_XTRIM_MYCNF}" "${_keep}"; then
-    _alrt "finalize: could not keep a copy of ${_XTRIM_MYCNF} -- MySQL's buffer pool is left at ${_cur}M; lower it before a smaller plan"
-    return 0
+  ### The copy takes its name only when it is whole: a copy cut short would
+  ### pass for the file as it was on the next run.
+  if [ ! -s "${_keep}" ]; then
+    if ! cp -p "${_XTRIM_MYCNF}" "${_keep}.new" || ! mv -f "${_keep}.new" "${_keep}"; then
+      rm -f "${_keep}.new"
+      _alrt "finalize: could not keep a copy of ${_XTRIM_MYCNF} -- MySQL's buffer pool is left at ${_cur}M; lower it before a smaller plan"
+      return 0
+    fi
   fi
   sed -i "s/^innodb_buffer_pool_size.*/innodb_buffer_pool_size = ${_XTRIM_PROXY_POOL_MB}M/g" "${_XTRIM_MYCNF}"
   if [ "$(_proxy_sql_pool_read)" = "${_XTRIM_PROXY_POOL_MB}" ]; then
@@ -2128,7 +2138,7 @@ _proxy_sql_pool_status() {
   if [ "${_cur}" -le "${_XTRIM_PROXY_POOL_MB}" ]; then
     echo "box: MySQL kept for the local control panel(s), buffer pool in ${_XTRIM_MYCNF} ${_cur}M"
   else
-    echo "box: MySQL kept for the local control panel(s), buffer pool in ${_XTRIM_MYCNF} ${_cur}M -- mysqld touches about a tenth of it as it starts and may not start on a smaller plan: run xtrim finalize --live again, it lowers it to ${_XTRIM_PROXY_POOL_MB}M"
+    echo "box: MySQL kept for the local control panel(s), buffer pool in ${_XTRIM_MYCNF} ${_cur}M -- mysqld touches about a tenth of it as it starts and may not start on a smaller plan: run xtrim finalize, then xtrim finalize --live (it lowers it to ${_XTRIM_PROXY_POOL_MB}M)"
   fi
 }
 
