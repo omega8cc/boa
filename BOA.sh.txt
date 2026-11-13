@@ -603,23 +603,40 @@ _ctrl_seed_here() {
   fi
   return 0
 }
+# One PHP version in the text $1, dotted (8.4) or two digits (84), printed
+# dotted; any other text, or more than 64 characters, prints nothing. Read
+# as satellite.sh.inc's _satellite_php_vrn reads one.
+_ctrl_php_vrn() {
+  [ "${#1}" -le 64 ] || return 0
+  local _t="${1//[^0-9.]/}" _d="${1//[^0-9]/}"
+  case "${_t}" in
+    [0-9].[0-9]|[0-9][0-9]) ;;
+    *) return 0 ;;
+  esac
+  case "${_d}" in
+    56|70|71|72|73|74|80|81|82|83|84|85|86) echo "${_d:0:1}.${_d:1:1}" ;;
+  esac
+}
 # fpm.info and cli.info of an account that has none (run inside the real
-# control directory), handed to the main login: fpm.info the default
-# version, cli.info the fpm.info version or the default. Each is a fresh
-# 0644 file owned through its handle (_acct_put_own_here): the main login
-# can rename a hard link over a name between a put and a chown by name.
+# control directory), handed to the main login, as an Octopus pass writes
+# them back: fpm.info the version the account runs (_logFpm, its
+# log/fpm.txt) or the default, cli.info its CLI version (_logCli, its
+# log/cli.txt), the fpm.info version or the default. Each is a fresh 0644
+# file owned through its handle (_acct_put_own_here): the main login can
+# rename a hard link over a name between a put and a chown by name.
 _ctrl_pins_here() {
   local _v
-  if [ ! -e ./fpm.info ] && [ -n "${_useFpm}" ]; then
-    printf '%s\n' "${_useFpm}" \
+  _v="${_logFpm:-${_useFpm}}"
+  if [ ! -e ./fpm.info ] && [ -n "${_v}" ]; then
+    printf '%s\n' "${_v}" \
       | _acct_put_own_here fpm.info "${_tUsr}.ftp:${_usrGroup}" 644
   fi
   if [ ! -e ./cli.info ]; then
-    if [ -e ./fpm.info ]; then
+    _v="${_logCli}"
+    if [ -z "${_v}" ] && [ -e ./fpm.info ]; then
       _v="$(_acct_read_here fpm.info)"
-    else
-      _v="${_useCli}"
     fi
+    _v="${_v:-${_useCli}}"
     [ -n "${_v}" ] && printf '%s\n' "${_v}" \
       | _acct_put_own_here cli.info "${_tUsr}.ftp:${_usrGroup}" 644
   fi
@@ -3298,8 +3315,25 @@ _update_agents() {
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -d "/data/u" ] \
     && [ -e "/usr/sbin/csf" ] \
-    && [ ! -e "${_pthLog}/fpm-cli.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/fpm-cli.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
     _usrGroup=users
+    _useCli=
+    _useFpm=
+    for _version in 84 85 86 83 82 81 74 56; do
+      if [ -x "/opt/php${_version}/bin/php" ]; then
+        if [ "${_version}" = "74" ]; then
+          _useCli="7.4"
+          _useFpm="7.4"
+        elif [ "${_version}" = "56" ]; then
+          _useCli="5.6"
+          _useFpm="5.6"
+        else
+          _useCli="8.${_version:1}"
+          _useFpm="8.${_version:1}"
+        fi
+        break
+      fi
+    done
     for _pthSysUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
       _tUsr=
       _tUsr=$(echo ${_pthSysUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
@@ -3311,6 +3345,28 @@ _update_agents() {
         _acct_ctrl_own "${_tUsr}" > /dev/null || _ctlOwn=NO
         [ "${_ctlOwn}" = "YES" ] \
           && _acct_in_real_dir "${_pthSysUsr}/static/control" _ctrl_seed_here
+        ### fpm.info and cli.info the account lost go back before the park
+        ### test below, with the versions its log/ records: put back only
+        ### after it, they never came back for an account that lost both,
+        ### and its dispatcher stayed parked for good. Not for an account
+        ### cancelled, relayed elsewhere or left by a failed conversion (each
+        ### stays parked), one with no main login (a removed account's
+        ### leftovers), nor on a standby, whose account trees come from the
+        ### active with every sync.
+        if [ "${_ctlOwn}" = "YES" ] \
+          && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
+          && [ ! -e "${_pthSysUsr}/log/CANCELLED" ] \
+          && [ ! -e "${_pthSysUsr}/log/proxied.pid" ] \
+          && [ ! -e "${_pthSysUsr}/log/proxy-failed.pid" ] \
+          && [ ! -e "/root/.standby.cnf" ] \
+          && [ ! -e "/root/.standby.prep.cnf" ] \
+          && id -u -- "${_tUsr}.ftp" > /dev/null 2>&1; then
+          _logFpm=$(_ctrl_php_vrn "$(_acct_in_real_dir "${_pthSysUsr}/log" \
+            _acct_read_here fpm.txt)")
+          _logCli=$(_ctrl_php_vrn "$(_acct_in_real_dir "${_pthSysUsr}/log" \
+            _acct_read_here cli.txt)")
+          _acct_in_real_dir "${_pthSysUsr}/static/control" _ctrl_pins_here
+        fi
         ### proxy-failed.pid: a cutover could not convert the account, and its
         ### panel database lives on the target; its dispatcher would run the
         ### travelled queue against the stale local copy until xoct repairs it
@@ -3343,6 +3399,10 @@ _update_agents() {
               # an unfinished aegir2boa db-import holds it: only the
               # import's success or revert hands a dispatcher back
               :
+            elif grep -sqx returning "/root/.${_tUsr}.fix-accounts.txt"; then
+              # xmass --return-accounts laid it here parked: its own last
+              # step hands it back once the account's panel names this box
+              :
             elif [ ! -e "/var/xdrago/run-${_tUsr}" ]; then
               mv -f "/var/backups/off-run/run-${_tUsr}" /var/xdrago/ &> /dev/null
             else
@@ -3357,25 +3417,6 @@ _update_agents() {
           _ngxCnf="${_dscUsr}/config/includes/nginx_vhost_common.conf"
           _acct_in_real_dir "${_ngxCnf%/*}" _acct_sed_here "${_ngxCnf##*/}" \
             "s/args.*q=/args ~* \"foobaroff=/g" foobaroff
-          for _version in 84 85 86 83 82 81 74 56; do
-            if [ -x "/opt/php${_version}/bin/php" ]; then
-              if [ "${_version}" = "74" ]; then
-                _useCli="7.4"
-                _useFpm="7.4"
-              elif [ "${_version}" = "56" ]; then
-                _useCli="5.6"
-                _useFpm="5.6"
-              else
-                _useCli="8.${_version:1}"
-                _useFpm="8.${_version:1}"
-              fi
-              break
-            fi
-          done
-          if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-            && [ "${_ctlOwn}" = "YES" ]; then
-            _acct_in_real_dir "${_dscUsr}/static/control" _ctrl_pins_here
-          fi
           if [ "${_ctlOwn}" = "YES" ] \
             && [ ! -e "${_dscUsr}/static/control/.ctrl.${_tRee}.${_xSrl}.pid" ] \
             && [ -e "/home/${_tUsr}.ftp/clients" ]; then
@@ -3388,7 +3429,7 @@ _update_agents() {
         fi
       fi
     done
-    touch ${_pthLog}/fpm-cli.ctrl.${_tRee}.${_xSrl}.pid
+    touch ${_pthLog}/fpm-cli.ctrl.f99.${_tRee}.${_xSrl}.pid
   fi
 
   # Create the destination directory if it doesn't exist
