@@ -666,6 +666,15 @@
       the address is not given and to ask support, and the run names the
       cause. The same notice goes out for every account of an xmass move.
 
+    * The migration notices tell a client with off-site backups of their
+      own which buckets those now go to. A bucket's name includes the
+      server's name, so after a move each backup entry writes to a new
+      bucket, and a provider on the S3 backend (every one but Backblaze B2
+      and Azure) refuses a bucket that is not there: such an entry failed
+      on every run on the new server. The completion notice names each new
+      bucket and says which the client must create, the start notice says
+      what to prepare, and an account with no entry of its own gets neither.
+
     * A KEEP_WITHIN in days or weeks keeps at least what it asks: one
       longer than the default becomes the whole 30-day months that cover it
       (120D keeps 4M), a shorter one keeps the default 3M as before, and the
