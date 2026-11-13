@@ -1533,6 +1533,16 @@ _if_new_kernel_reboot() {
         echo "NOTE: kernel reboot pending, deferred: xmass window in flight"
         return 0
       fi
+      ### A migration's runner park (xoct and xcopy pre-mig until post-mig,
+      ### an xmass cutover until its unpark, the source's relay window
+      ### included) lives in /run: a reboot would end it, and the next
+      ### tools refresh would fetch the parked runners back on a box that
+      ### is being moved. The marker's existence is the test, as for the
+      ### park itself; clear.sh expires it after 24 hours.
+      if [ -e "/run/boa_migration_park.pid" ]; then
+        echo "NOTE: kernel reboot pending, deferred: a migration park stands"
+        return 0
+      fi
       ### A staged kernel is activated only inside the silent night
       ### maintenance window (04:00-04:59 server time): an apt security
       ### run staging a kernel mid-day must never reboot a box mid-day.
