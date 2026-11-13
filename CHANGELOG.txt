@@ -866,6 +866,27 @@
       a move in flight and left the account's ghost vhosts in place for
       good, and the next copy was refused until the stamps were removed by hand.
 
+    * xcopy post-mig names, for each copied site whose verify failed, the
+      first error line of that verify's log as the control panel shows it.
+
+    * xoct and xcopy give a load the Percona 5.7 default collation for
+      utf8mb4 only where the target takes that setting for a session: they
+      asked only whether the server knew it, and Percona 8.4 warns that
+      the setting will become read-only, which would fail every load. A
+      target that refuses it is named, and the load goes on with that
+      server's own default.
+
+    * A Restore of a backup made on Percona 5.7, on a server since upgraded
+      to 8.0 or 8.4, keeps the backup's utf8mb4_general_ci tables and
+      columns as they were. A 5.7 dump names that character set with no
+      collation, and the load gave such tables and columns the newer
+      server's default, utf8mb4_0900_ai_ci. The load now reads a copy that
+      names the 5.7 one on those lines, kept beside the account's backups
+      for the load only and made only with room for itself and the load
+      that follows; without that room the backup loads as before, with a
+      warning. A stored routine's parameters and return type, which no dump
+      names a collation for, take the newer server's default as before.
+
     * edgetest's regression phase checks the IP lists' SSH anti-lockout
       source by running ip_access.sh's own reader, and says whether it
       sees the session edgetest runs in. It asked netstat, which the lists

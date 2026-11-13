@@ -1232,6 +1232,19 @@ _xcopy_verify_list_put() {
     printf '%s\n' ${_XCOPY_VERIFY_SITES} | sed 's/^\(.*\):\([0-9]*\)$/site=\1 \2/'; } \
     | _xcopy_in_real_dir "${_USR}/log" _xcopy_write_here import_verifies.txt
 }
+### The first error line of the task $2's current run in the panel database
+### $1, as the panel's task log shows it: the client's escapes undone (a line
+### break or tab read as a space), tags and anything not printable taken out,
+### cut to 300 characters; nothing when there is none. The task id is digits
+### only and the database name a plain identifier, as the list that names
+### them is read.
+_xcopy_verify_first_error() {
+  [[ "${1}" =~ ^[A-Za-z0-9_]{1,64}$ ]] && [[ "${2}" =~ ^[0-9]{1,12}$ ]] || return 0
+  mysql --silent -u root -N -B "${1}" -e "SELECT l.message FROM hosting_task_log l JOIN node n ON n.vid = l.vid WHERE n.nid = ${2} AND l.type = 'error' ORDER BY l.lid LIMIT 1" 2> /dev/null \
+    | head -n 1 \
+    | sed -e 's/\\\\/\x1f/g' -e 's/\\[ntr0]/ /g' -e 's/\x1f/\\/g' -e 's/<[^>]*>//g' \
+    | tr -c '[:print:]' ' ' | tr -s ' ' | cut -c1-300 | sed 's/^ *//; s/ *$//'
+}
 ### Run by post-mig on the target: each copied site's verify that an import
 ### scheduled, waited for up to 30 minutes once cron runs again (not at all
 ### when cron is down: the verifies cannot run), and its result printed and
@@ -1244,7 +1257,7 @@ _xcopy_verify_list_put() {
 ### post-mig.
 _xcopy_verify_report() {
   local _l _a _u _txt _db _pairs _ids _rows _p _s _id _st _pend _end _rep
-  local _ok _warn _fail _left _n _next _cron=YES _gone _qf _sch _src
+  local _ok _warn _fail _left _n _next _cron=YES _gone _qf _sch _src _why
   pgrep -x cron > /dev/null 2>&1 || _cron=NO
   for _l in /data/disk/*/log/import_verifies.txt; do
     [ -f "${_l}" ] || continue
@@ -1327,7 +1340,8 @@ _xcopy_verify_report() {
         3) _warn=$(( _warn + 1 ))
            _rep="${_rep}WARN: ${_a}: site ${_s} verify ended with warnings (task ${_id})"$'\n' ;;
         2) _fail=$(( _fail + 1 ))
-           _rep="${_rep}ALRT: ${_a}: site ${_s} verify FAILED (task ${_id}): read its log in the panel"$'\n' ;;
+           _why=$(_xcopy_verify_first_error "${_db}" "${_id}")
+           _rep="${_rep}ALRT: ${_a}: site ${_s} verify FAILED (task ${_id}): ${_why:-read its log in the panel}"$'\n' ;;
         0|-1) _left=$(( _left + 1 ))
            _rep="${_rep}ALRT: ${_a}: site ${_s} verify still queued or running (task ${_id})"$'\n' ;;
         *) _fail=$(( _fail + 1 ))
@@ -5281,22 +5295,41 @@ _myloader_binlog_opts() {
 ### default, utf8mb4_0900_ai_ci: the copy no longer matched its source, nor
 ### what an in-place upgrade of the source keeps, and a join on columns of
 ### two collations fails (error 1267). A dump made on 8.0 or later names the
-### collation of every utf8mb4 table, so the old default changes nothing for
-### it. On a server that has the setting, _MYLOADER_UTF8MB4 is the option
-### file that adds the old default to myloader's own session settings (it
-### replaces none of them; written when missing or different); on 5.7 it
-### stays empty. Worked out once per run, and a myloader that cannot be given
-### the file is named once. A client load asks its own server
-### (_mig_utf8mb4_client_opt).
+### collation of every utf8mb4 table and column, so the old default changes
+### nothing for them. No dump names one for a stored routine's parameters
+### and return type: they take the loading session's default, the old one
+### here, which is what a server upgraded in place from 5.7 still holds for
+### its older routines; one made on 8.x with 8.x's default comes back with
+### the old one. The old default is given only where the server takes it for
+### a session (_mig_utf8mb4_takes): 8.4 warns the setting is deprecated and
+### will become read-only, and a session that cannot set it would fail the
+### whole load. _MYLOADER_UTF8MB4 is then the option file that adds the old
+### default to myloader's own session settings (it replaces none of them;
+### written when missing or different); otherwise it stays empty. Worked out
+### once per run, and a myloader that cannot be given the file is named once.
+### A client load asks its own server (_mig_utf8mb4_client_opt).
 _MIG_UTF8MB4_DONE=""
 _MYLOADER_UTF8MB4=()
+### Whether the server the client options "$@" name takes the old default
+### for a session (0), or not (1, with a warning unless it is a 5.x server,
+### whose own default it is).
+_mig_utf8mb4_takes() {
+  local _v
+  _v=$(mysql --silent "$@" -N -B -e "SET SESSION default_collation_for_utf8mb4 = utf8mb4_general_ci; SELECT @@SESSION.default_collation_for_utf8mb4" 2> /dev/null)
+  [ "${_v}" = "utf8mb4_general_ci" ] && return 0
+  _v=$(mysql --silent "$@" -N -B -e "SELECT VERSION()" 2> /dev/null)
+  case "${_v}" in
+    5.*) ;;
+    *) echo "WARN: the database server here does not take default_collation_for_utf8mb4 for a session: a utf8mb4 table a Percona 5.7 dump names no collation for loads with this server's default, not utf8mb4_general_ci" ;;
+  esac
+  return 1
+}
 _myloader_utf8mb4_opts() {
   local _f=/etc/boa/myloader-utf8mb4.cnf _want _tmp
   [ -n "${_MIG_UTF8MB4_DONE}" ] && return 0
   _MIG_UTF8MB4_DONE=YES
   _MYLOADER_UTF8MB4=()
-  [ -n "$(mysql --silent -u root -N -B -e 'SELECT @@SESSION.default_collation_for_utf8mb4' 2> /dev/null)" ] \
-    || return 0
+  _mig_utf8mb4_takes -u root || return 0
   _want=$'[myloader_session_variables]\ndefault_collation_for_utf8mb4 = utf8mb4_general_ci'
   if myloader --help 2>&1 | grep -qE -- '^[[:space:]]+--defaults-extra-file([[:space:]]|=|$)' \
     && [[ ! -d "${_f}" ]]; then
@@ -5320,13 +5353,12 @@ _myloader_utf8mb4_opts() {
 }
 ### The same for a client load into the server named by the client options
 ### "$@": sets _MYSQL_UTF8MB4 to the --init-command that gives the session the
-### old default when that server has the setting, to nothing otherwise, so
-### the option never reaches a server that would refuse the connection.
+### old default when that server takes it, to nothing otherwise, so the
+### option never reaches a server that would refuse the connection.
 _MYSQL_UTF8MB4=()
 _mig_utf8mb4_client_opt() {
   _MYSQL_UTF8MB4=()
-  [ -n "$(mysql --silent "$@" -N -B -e 'SELECT @@SESSION.default_collation_for_utf8mb4' 2> /dev/null)" ] \
-    || return 0
+  _mig_utf8mb4_takes "$@" || return 0
   _MYSQL_UTF8MB4=(--init-command="SET SESSION default_collation_for_utf8mb4 = utf8mb4_general_ci")
   return 0
 }
