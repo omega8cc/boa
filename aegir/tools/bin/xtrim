@@ -2431,8 +2431,10 @@ _names_one() {
 ### one before are read (one to two days), from the first line that carries
 ### the field: _NAMES_CNT_SINCE, in the target's own time. _NAMES_CNT_STATE is
 ### ok, nofield (the target's log has no peer field yet: its next system
-### upgrade and server Verify add it) or noread (no answer, no log there, or
-### an answer cut short, which is never read as a count).
+### upgrade and server Verify add it) or noread (no answer, no log there, a
+### read that failed on the target, or an answer cut short: none of them is
+### ever read as a count; the closing mark is printed only when the search
+### ended with status 0, or 1 for no line found, and the count with 0).
 _names_counts() {
   local _t="$1" _a _pat="" _own=" " _tru="" _out _tr
   _NAMES_CNT=""; _NAMES_CNT_STATE=noread; _NAMES_CNT_SINCE=""; _NAMES_CNT_OWN=out
@@ -2451,7 +2453,7 @@ _names_counts() {
       [ -s \"\${_x}\" ] && _f=\"\${_f} \${_x}\"
     done
     [ -n \"\${_f}\" ] || exit 4
-    _s=\$(LC_ALL=C grep -a -h -m1 ' peer=\"' \${_f} | sed -n '1s/^[^[]*\\[\\([^]]*\\)\\].*/\\1/p')
+    _s=\$(LC_ALL=C grep -a -h -m1 ' peer=\"' \${_f} | sed -n '1s/^\"[^\"]*\" [^ ]* \\[\\([^]]*\\)\\].*/\\1/p')
     [ -n \"\${_s}\" ] || { echo XT-NOFIELD; exit 0; }
     echo \"XT-SINCE \${_s}\"
     if grep -q -x -F${_tru} /data/conf/nginx_cloudflare_real_ip.cmig 2>/dev/null; then echo 'XT-TRUST yes'; else echo 'XT-TRUST no'; fi
@@ -2459,7 +2461,7 @@ _names_counts() {
       | awk -v own=\"${_own}\" '{ a = \$1; gsub(/\"/, \"\", a); h = tolower(\$2); s[h] = 1
           if (index(own, \" \" a \" \")) o[h]++; else v[h]++ }
           END { for (h in s) printf \"%.0f %.0f %s\\n\", v[h], o[h], h }'
-    echo XT-END
+    case \"\${PIPESTATUS[*]}\" in '0 0'|'1 0') echo XT-END ;; esac
   " 2>/dev/null)"
   if [ "${_out}" = "XT-NOFIELD" ]; then
     _NAMES_CNT_STATE=nofield
@@ -2471,7 +2473,7 @@ _names_counts() {
   ### Each line: visitors' requests, this box's own, the name. The target
   ### resolves the visitor behind this box when its trust include says so
   ### or a line shows a visitor; otherwise the two cannot be told apart.
-  _out="$(printf '%s\n' "${_out}" | grep -E '^(XT-TRUST (yes|no)|[0-9]+ [0-9]+ [a-z0-9._:-]+)$')"
+  _out="$(printf '%s\n' "${_out}" | LC_ALL=C grep -E '^(XT-TRUST (yes|no)|[0-9]+ [0-9]+ [!-~]+)$')"
   _tr="$(printf '%s\n' "${_out}" | awk '$1 == "XT-TRUST" { t = $2 } $1 != "XT-TRUST" && $1 > 0 { t = "yes" } END { print (t == "yes") ? "yes" : "no" }')"
   [ "${_tr}" = "yes" ] || _NAMES_CNT_OWN=in
   _NAMES_CNT="$(printf '%s\n' "${_out}" | awk -v t="${_tr}" '$1 != "XT-TRUST" { n = (t == "yes") ? $1 : $1 + $2; if (n > 0) printf "%.0f %s\n", n, $3 }')"
@@ -2494,7 +2496,8 @@ _names_count_of() {
 _cmd_names() {
   local _sel="${1:-all}" _n _d _nm _c _box=0 _accts="" _seen _unk=0
   local _nh _nt _ne _nn _nw _nb _nu _pn _rn _bn _bx
-  local _cfor="" _cs _cq _ar _call="" _cseen="" _cbad=0 _csince="" _ct _cm _cx
+  local _ci _cfound _cs _cq _ar _call="" _cseen="" _cbad=0 _csince="" _ct _cm _cx
+  local -a _tk=() _tst=() _tsi=() _tow=() _tcn=()
   command -v dig > /dev/null 2>&1 || _die "names needs dig on this box (the dnsutils package)"
   _load_cnf_defaults
   _bx="$(hostname -f 2>/dev/null | tr 'A-Z' 'a-z' | tr -d '\n')"
@@ -2537,9 +2540,23 @@ _cmd_names() {
     _c="${_c# }"
     _c="${_c% }"
     echo "${_n}: relay to ${_MAP_TGT} | contact: ${_c:-none in log/email.txt}"
-    if [ "${_cfor}" != "${_MAP_TGT}" ]; then
+    ### A target's log is read once, wherever its accounts stand in the
+    ### list: a second read would add its requests to the total again.
+    _ci=0; _cfound=""
+    while [ "${_ci}" -lt "${#_tk[@]}" ]; do
+      if [ "${_tk[${_ci}]}" = "${_MAP_TGT}" ]; then
+        _cfound=YES
+        break
+      fi
+      _ci=$(( _ci + 1 ))
+    done
+    if [ -n "${_cfound}" ]; then
+      _NAMES_CNT_STATE="${_tst[${_ci}]}"; _NAMES_CNT_SINCE="${_tsi[${_ci}]}"
+      _NAMES_CNT_OWN="${_tow[${_ci}]}"; _NAMES_CNT="${_tcn[${_ci}]}"
+    else
       _names_counts "${_MAP_TGT}"
-      _cfor="${_MAP_TGT}"
+      _tk[${_ci}]="${_MAP_TGT}"; _tst[${_ci}]="${_NAMES_CNT_STATE}"; _tsi[${_ci}]="${_NAMES_CNT_SINCE}"
+      _tow[${_ci}]="${_NAMES_CNT_OWN}"; _tcn[${_ci}]="${_NAMES_CNT}"
       if [ "${_NAMES_CNT_STATE}" = "ok" ]; then
         _call="${_call}${_NAMES_CNT}"$'\n'
         _csince="${_csince:+${_csince}, }${_NAMES_CNT_SINCE} at ${_MAP_TGT}"
