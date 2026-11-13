@@ -998,8 +998,10 @@
       there, and its export stamps too where the import stopped short: a
       transfer from there sent them, and a pretransfer sent the old dumps ahead
       of the export, which the import then loaded with the new ones. An export
-      also stops before it changes anything when the control panel names no
-      database, and stamps the account only over a panel dump it made itself.
+      now starts by removing an earlier run's failure latch and every site
+      dump folder in src/, stops before it changes anything when the control
+      panel names no database, and stamps the account only over a panel dump
+      it made itself.
 
     * xcopy post-mig names, for each copied site whose verify failed, the
       first error line of that verify's log as the control panel shows it.
