@@ -806,6 +806,21 @@
       one capped request a file, and a capped account kept its old chains,
       and their storage, past the retention.
 
+    * An account that lost both fpm.info and cli.info gets its task
+      dispatcher back. The first pass of a new BOA.sh.txt parked the
+      dispatcher of an account with no cli.info and wrote the two files
+      back only for an account it did not park, so the account's queue
+      (its tasks and certificate renewals) stayed stopped until its next
+      Octopus upgrade. The pass now writes both back first, with the PHP
+      versions the account's log/fpm.txt and log/cli.txt record, as an
+      Octopus pass does, and hands the dispatcher back; a missing fpm.info
+      was written with the server's default version before. A cancelled
+      account, one relayed to another server or left by a failed
+      conversion, one with no main login, and every account on a standby
+      keep theirs parked, and so does an account xmass --return-accounts
+      is laying on the server, until that run's last step hands it back.
+      The pass runs once more when this BOA.sh.txt arrives.
+
     * The migration completion notice gives the client the account's new
       control panel address in full, with the SQL Adminer address beside
       it where the new server has Adminer, and the start notice says what
