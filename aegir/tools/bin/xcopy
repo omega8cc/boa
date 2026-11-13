@@ -3604,6 +3604,29 @@ _migrate_prepare() {
   # src/ belongs to oN: make it a real directory (a link the account put at the
   # name is removed) so the dump below cannot be steered elsewhere.
   _xcopy_in_real_dir "${_USR}" _xcopy_realdir_here src
+  ### An export makes its state afresh. An earlier run's failure latch goes, so
+  ### a run that stops at the panel leaves none for a transfer to take for an
+  ### export; and every per-site dump folder in src/ goes (an earlier copy's,
+  ### or one a killed run left), so a site this run does not dump has no
+  ### folder for the transfer to send and the import to load as current.
+  if [ "${_cmd}" = "export" ]; then
+    _xcopy_in_real_dir "${_USR}/log" rm -f -- ./export_failed.pid
+    _xcopy_in_real_dir "${_USR}/src" _xcopy_rm_site_dumps_here
+    _XCOPY_LEFT=""
+    if [ -e "${_USR}/log/export_failed.pid" ] || [ -L "${_USR}/log/export_failed.pid" ]; then
+      _XCOPY_LEFT=" log/export_failed.pid"
+    fi
+    if _XCOPY_LEFT_SRC="$(_xcopy_in_real_dir "${_USR}/src" _xcopy_names_left_here site-dumps)"; then
+      _XCOPY_LEFT="${_XCOPY_LEFT}${_XCOPY_LEFT_SRC// / src/}"
+    else
+      _XCOPY_LEFT="${_XCOPY_LEFT} src/ (not entered)"
+    fi
+    if [ -n "${_XCOPY_LEFT}" ]; then
+      echo "ERROR: export for ${_oct}: an earlier export's state stays in ${_USR}:${_XCOPY_LEFT}"
+      echo "ERROR: nothing was dumped; fix the cause and re-run"
+      exit 1
+    fi
+  fi
   ### Every export takes the panel afresh, as it takes every site: a copy's
   ### source keeps serving, so a panel dump already in src/ (left by an import
   ### this box once received, an export killed or retried, or a stamp removed
@@ -6448,7 +6471,8 @@ _migrate_init() {
         != "$(_xcopy_this_fqdn | tr -cd 'a-zA-Z0-9.-')" ]; then
       echo "_USR ${_oct} is not eligible for migration: exported on another server"
       echo "INFO: log/sourcefqdn.txt names '$(_xcopy_read_in "${_USR}/log" sourcefqdn.txt | tr -cd 'a-zA-Z0-9.-')', this server is '$(_xcopy_this_fqdn | tr -cd 'a-zA-Z0-9.-')'"
-      echo "INFO: run 'xcopy reset-state ${_oct}', then 'xcopy export ${_oct} ${_tgt}${_dst:+ ${_dst}}'"
+      echo "INFO: a copy this server received and did not finish importing: finish that import here first"
+      echo "INFO: otherwise run 'xcopy reset-state ${_oct}', then 'xcopy export ${_oct} ${_tgt}${_dst:+ ${_dst}}'"
       exit 1
     elif [ "${_cmd}" = "import" ] && [ -e "${_USR}/log/export_failed.pid" ] \
       && [ "${_XCOPY_FORCE}" != "YES" ]; then
