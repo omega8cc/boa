@@ -1580,28 +1580,77 @@ _reregister_solr_core() {
   fi
 }
 
-# True when Solr version $1 (solr7, solr9 or jetty9) is denied on this box,
-# read as autoupboa reads it when it parks the service: the box-wide Java
-# deny or the version's own, as a setting (sourced by _load_control) or as
-# a marker file. A denied version has no server here, so its bin/solr CLI
-# would only start a JVM to fail on a closed port, every pass.
-_solr_ver_denied() {
-  [ "${_DENY_JAVA}" = "YES" ] && return 0
-  [ -e "/root/.deny.java.cnf" ] && return 0
+# True when Solr version $1 (solr7, solr9 or jetty9) has no service on this
+# box, with _SOLR_OFF_WHY saying why: denied, read as autoupboa reads it when
+# it parks the service (the box-wide Java deny or the version's own, as a
+# setting sourced by _load_control or as a marker file); parked, its init
+# script moved away, which autoupboa does not undo when a deny is lifted; or
+# disarmed, the script left without its exec bit. The last two are the test
+# the box-wide steps of this pass use. Its CLI would only start a JVM to fail
+# on a closed port, every pass. _SOLR_OFF_PORT is the version's port.
+_solr_ver_off() {
+  local _dv _mk
+  _SOLR_OFF_WHY=""
   case "${1}" in
-    solr7)
-      [ "${_DENY_SOLR7}" = "YES" ] || [ -e "/etc/boa/.deny.solr7.cnf" ]
-      ;;
-    solr9)
-      [ "${_DENY_SOLR9}" = "YES" ] || [ -e "/etc/boa/.deny.solr9.cnf" ]
-      ;;
-    jetty9)
-      [ "${_DENY_JETTY9}" = "YES" ] || [ -e "/etc/boa/.deny.jetty9.cnf" ]
-      ;;
-    *)
-      return 1
-      ;;
+    solr7) _dv="${_DENY_SOLR7}"; _mk=/etc/boa/.deny.solr7.cnf; _SOLR_OFF_PORT=9077 ;;
+    solr9) _dv="${_DENY_SOLR9}"; _mk=/etc/boa/.deny.solr9.cnf; _SOLR_OFF_PORT=9099 ;;
+    jetty9) _dv="${_DENY_JETTY9}"; _mk=/etc/boa/.deny.jetty9.cnf; _SOLR_OFF_PORT=8099 ;;
+    *) return 1 ;;
   esac
+  if [ "${_DENY_JAVA}" = "YES" ] || [ -e "/root/.deny.java.cnf" ] \
+    || [ "${_dv}" = "YES" ] || [ -e "${_mk}" ]; then
+    _SOLR_OFF_WHY="denied"
+    return 0
+  fi
+  if [ ! -e "/etc/init.d/${1}" ]; then
+    _SOLR_OFF_WHY="parked, with no /etc/init.d/${1}"
+    return 0
+  fi
+  if [ ! -x "/etc/init.d/${1}" ]; then
+    _SOLR_OFF_WHY="disarmed, /etc/init.d/${1} not executable"
+    return 0
+  fi
+  return 1
+}
+
+# The site's solr.php ($_Dir) removed when it is BOA's info file for this
+# site's core ($_SolrCoreID, named on its own line) and that core is not on
+# disk, so it gives the owner details of a core that is not there. With a
+# port $1, only a file naming that port goes, and only that port's version
+# is looked at: a file for a live core on another version names that
+# version's port and stays. Without one (a teardown), no core of that name
+# may be on disk under any version. One line says what happened; a file
+# that stays is reported, never claimed removed.
+_solr_info_drop() {
+  local _txt _b
+  [ -n "${_Dir}" ] && [ -n "${_SolrCoreID}" ] || return 1
+  case "${1}" in
+    9077) _b="/var/solr7/data" ;;
+    9099) _b="/var/solr9/data" ;;
+    8099) _b="/opt/solr4" ;;
+    "") _b="" ;;
+    *) return 1 ;;
+  esac
+  if [ -n "${_b}" ]; then
+    [ -e "${_b}/${_SolrCoreID}" ] && return 1
+  else
+    [ -e "/opt/solr4/${_SolrCoreID}" ] && return 1
+    [ -e "/var/solr7/data/${_SolrCoreID}" ] && return 1
+    [ -e "/var/solr9/data/${_SolrCoreID}" ] && return 1
+  fi
+  _txt=$(_acct_in_resolved_dir "${_Dir}" _acct_read_plain_here solr.php) \
+    || return 1
+  grep -qxF "  Solr core ........: ${_SolrCoreID}" <<< "${_txt}" || return 1
+  if [ -n "${1}" ]; then
+    grep -qxF "  Solr port ........: ${1}" <<< "${_txt}" || return 1
+  fi
+  _acct_in_resolved_dir "${_Dir}" rm -f -- ./solr.php &> /dev/null
+  if _acct_in_resolved_dir "${_Dir}" test ! -e ./solr.php; then
+    echo "SOLR-INFO: removed ${_Dir}/solr.php, which named core ${_SolrCoreID}${1:+ on port ${1}}, not on this server"
+    return 0
+  fi
+  echo "SOLR-INFO: could not remove ${_Dir}/solr.php, which names core ${_SolrCoreID}${1:+ on port ${1}}, not on this server"
+  return 1
 }
 
 _check_solr() {
@@ -1757,22 +1806,16 @@ _setup_solr() {
       [ -n "${_SolrCoreID}" ] \
         && _acct_in_real_dir "${_usEr}/.boa-ctrl" \
           rm -f -- "./solr-reseeded.${_SolrCoreID}" &> /dev/null
-      # A version denied on this box gets no core work at all: nothing is
-      # created, refreshed, re-registered or protected, and an existing core
-      # stays as it is until the deny is lifted. Blanking the version here
-      # also holds legs 2 and 3. A teardown is not affected.
-      if [ -n "${_SOLR_VER}" ] && _solr_ver_denied "${_SOLR_VER}"; then
-        echo "SOLR-DENIED: ${_Dom} binds ${_SOLR_MODULE} to ${_SOLR_VER}, which is denied on this server -- core ${_SolrCoreID} left as it is"
-        # A solr.php naming a core that was never made (an earlier pass wrote
-        # it after a create the closed port refused) sends the site to a
-        # server that is not there. It is removed, and comes back with the
-        # core once the deny is lifted.
-        if [ ! -e "${_SOLR_DIR}" ] && [ -n "${_Dir}" ] \
-          && _acct_in_resolved_dir "${_Dir}" _acct_read_plain_here solr.php \
-            | grep -qF "${_SolrCoreID}"; then
-          _acct_in_resolved_dir "${_Dir}" rm -f -- ./solr.php &> /dev/null
-          echo "SOLR-DENIED: removed ${_Dir}/solr.php, which named the missing core ${_SolrCoreID}"
-        fi
+      # A version with no service on this box (denied, or parked) gets no
+      # core work at all: nothing is created, refreshed, re-registered or
+      # protected, and an existing core stays as it is until the version is
+      # back. Blanking the version here also holds legs 2 and 3. A solr.php
+      # an earlier pass wrote for this version after a create the closed port
+      # refused is removed when that version has no such core; it comes back
+      # with the core. A teardown is not affected.
+      if [ -n "${_SOLR_VER}" ] && _solr_ver_off "${_SOLR_VER}"; then
+        echo "SOLR-OFF: ${_Dom} binds ${_SOLR_MODULE} to ${_SOLR_VER}, which is ${_SOLR_OFF_WHY} on this server -- core ${_SolrCoreID} left as it is"
+        _solr_info_drop "${_SOLR_OFF_PORT}"
         _SOLR_VER=
       fi
       # A core this same text protects is protected before the check, which
@@ -1804,6 +1847,9 @@ _setup_solr() {
         _delete_solr "${_SOLR_DIR_DEL}"
         _SOLR_DIR_DEL="/var/solr9/data/${_Old_SolrCoreID}"
         _delete_solr "${_SOLR_DIR_DEL}"
+        # _delete_solr removes solr.php only with a core it deletes; one left
+        # naming a core that is on disk nowhere goes too.
+        _solr_info_drop ""
       fi
     fi
   fi
