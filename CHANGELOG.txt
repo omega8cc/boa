@@ -659,21 +659,24 @@
       it will be. Before, both told the client to replace the old server
       name with the new one in the addresses used so far, yet named only
       the two IP addresses, so the new panel could not be found from the
-      mail. The address is printed only when the new server's own record
-      of the account agrees with the rename the move applies to the old
-      name. A panel that keeps its name is said to keep it, with the DNS
-      record that decides which server answers. Otherwise the notice says
-      the address is not given and to ask support, and the run names the
-      cause. The same notice goes out for every account of an xmass move.
+      mail. The address is printed only when the new server confirms the
+      account there as the one that moved and its own record of it agrees
+      with the rename the move applies to the old name. A panel that keeps
+      its name is said to keep it, with the DNS record that decides which
+      server answers. Otherwise the notice says the address is not given
+      and to ask support, and the run names the cause. The same notice
+      goes out for every account of an xmass move.
 
     * The migration notices tell a client with off-site backups of their
       own which buckets those now go to. A bucket's name includes the
       server's name, so after a move each backup entry writes to a new
       bucket, and a provider on the S3 backend (every one but Backblaze B2
       and Azure) refuses a bucket that is not there: such an entry failed
-      on every run on the new server. The completion notice names each new
-      bucket and says which the client must create, the start notice says
-      what to prepare, and an account with no entry of its own gets neither.
+      on every run on the new server. The completion notice names each
+      bucket there and says which the client must create, the start notice
+      says what to prepare, and an account with no entry of its own gets
+      neither. A bucket the new server used for the account before is said
+      to be used again.
 
     * A KEEP_WITHIN in days or weeks keeps at least what it asks: one
       longer than the default becomes the whole 30-day months that cover it
