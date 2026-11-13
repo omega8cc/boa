@@ -1043,6 +1043,19 @@ for _R in "/data/disk/\${_A}" "/home/\${_A}.ftp" /home/"\${_A}".* "/opt/user/gem
   # the FPM pool users' homes (oN.web, oN.NN.web) are www-data's, never the
   # account's: the same root set the tool walks
   case "\${_R}" in /home/*.web) continue ;; esac
+  # a folder in the shared toolchain parents (root's, sticky, open to every
+  # user) is the account's only when root or one of its own identities owns
+  # it: another account can make the name first, and its files are left as
+  # they are (the parent being sticky, no one else can swap such a folder)
+  case "\${_R}" in
+    /opt/user/*)
+      _O="\$(stat -c %U -- "\${_R}" 2>/dev/null)"
+      case "\${_O}" in
+        root|"\${_A}"|"\${_A}".*) ;;
+        *) echo "INFO: target group pass for \${_A}: \${_R} is owned by \${_O:-an owner that cannot be read}, not by \${_A} or root: left out"; continue ;;
+      esac
+      ;;
+  esac
   # regrouped through a no-follow handle on each name inside the directory
   # find holds, never by name: only a directory, or a regular file with one
   # link, whose handle is still in none of those groups, so a hard link to
@@ -2284,6 +2297,26 @@ _xmass_toolchain_leaf_ok() {   # 1 = target  2 = the tree there
     *) _why="it could not be read there" ;;
   esac
   _alrt "DENY: ${_d} on ${_h}: ${_why} -- not entered, the tree of ${_n} does not travel"
+  _XMASS_RSYNC_RC=23
+  _XMASS_NOT_CLEAN=YES
+  return 1
+}
+### The same rule on this box, before the copy: the parents here are as open,
+### so another account can have made the login's name first here too, and the
+### copy would carry that owner to the target, where the ltd worker never
+### hands the tree over. A tree that is missing or a link is the leg's own to
+### skip. The parent is sticky, so a tree root or the account owns cannot be
+### swapped for another's between this read and the copy.
+_xmass_toolchain_src_ok() {   # 1 = the tree here
+  local _s="${1}" _n _o _u
+  _n="${_s##*/}"
+  _o="${_n%%.*}"
+  [ -d "${_s}" ] && [ ! -L "${_s}" ] || return 0
+  _u="$(stat -c %U -- "${_s}" 2> /dev/null)"
+  case "${_u}" in
+    root|"${_o}"|"${_o}".*) return 0 ;;
+  esac
+  _alrt "DENY: ${_s} here is owned by ${_u:-an owner that cannot be read}, not by ${_o} or root -- the tree of ${_n} does not travel"
   _XMASS_RSYNC_RC=23
   _XMASS_NOT_CLEAN=YES
   return 1
@@ -11996,15 +12029,18 @@ _xmass_sync_account() {
   # Client-installed toolchains live outside /data/disk in the lshell jail's
   # writable trees and never travelled before -- migrate AS-IS. The parents
   # are sticky and world-writable, so each leaf is its owner's to replace:
-  # pinned as the account legs are, and entered on the target only when it
-  # is the account's (_xmass_toolchain_leaf_ok).
+  # pinned as the account legs are, and copied only when root or the account
+  # owns it here (_xmass_toolchain_src_ok) and it is entered on the target
+  # only when it is the account's there (_xmass_toolchain_leaf_ok).
   if [ -e "/opt/user/gems/${_oct}.ftp" ] || [ -L "/opt/user/gems/${_oct}.ftp" ]; then
-    _xmass_toolchain_leaf_ok "${_tgt}" "/opt/user/gems/${_oct}.ftp" \
+    _xmass_toolchain_src_ok "/opt/user/gems/${_oct}.ftp" \
+      && _xmass_toolchain_leaf_ok "${_tgt}" "/opt/user/gems/${_oct}.ftp" \
       && _xmass_pinned_leg "/opt/user/gems/${_oct}.ftp" "/opt/user/gems/${_oct}.ftp" \
         "the gems of ${_oct}.ftp" -aEAXqu $(_xmass_leg_args "/opt/user/gems/${_oct}.ftp")
   fi
   if [ -e "/opt/user/npm/${_oct}.ftp" ] || [ -L "/opt/user/npm/${_oct}.ftp" ]; then
-    _xmass_toolchain_leaf_ok "${_tgt}" "/opt/user/npm/${_oct}.ftp" \
+    _xmass_toolchain_src_ok "/opt/user/npm/${_oct}.ftp" \
+      && _xmass_toolchain_leaf_ok "${_tgt}" "/opt/user/npm/${_oct}.ftp" \
       && _xmass_pinned_leg "/opt/user/npm/${_oct}.ftp" "/opt/user/npm/${_oct}.ftp" \
         "the npm tree of ${_oct}.ftp" -aEAXqu $(_xmass_leg_args "/opt/user/npm/${_oct}.ftp")
   fi

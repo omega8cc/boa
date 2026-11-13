@@ -4172,7 +4172,7 @@ _xoct_leg_ok() {
 ### which carries it once, fit-checked. backup-exports/ travels only as the
 ### mover link, as it always did.
 _xoct_backups_leg() {
-  local _u="${1}" _d="${2}" _h="${3}" _ie="${4}" _n="${5}" _l _b _r _to _rc
+  local _u="${1}" _d="${2}" _h="${3}" _ie="${4}" _n="${5}" _l _b _r _to _rc _XOCT_RSYNC_ERR=""
   _l="$(readlink "${_u}/${_n}" 2> /dev/null)"
   _b="${_l#"${_u}/static/files/"}"
   if [ -L "${_u}/${_n}" ] && [ "${_b}" != "${_l}" ] \
@@ -4218,11 +4218,13 @@ _xoct_backups_leg() {
   ### an empty backups/ has nothing for the glob to name
   [ -n "$(_xoct_in_canon_dir "${_r}" find . -mindepth 1 -maxdepth 1 \
     -name '[!.]*' -print -quit 2> /dev/null)" ] || return 0
+  [ "${_MODE}" = "LIVE" ] && _XOCT_RSYNC_ERR="$(mktemp /tmp/xmig-leg-err.XXXXXX 2> /dev/null)"
   # shellcheck disable=SC2086
   _xoct_in_canon_dir "${_r}" _xoct_copy_canon_here "${_h}" "${_to:-${_d}/${_n}}" '*' \
     -aEAXqu ${_ie} > /dev/null
-  _rc=$?
-  ### 24: files that vanished while the copy ran (a rotated backup)
+  _rc="$(_xoct_leg_rc "$?")"
+  ### 24, or a 23 only vanished files caused: files gone while the copy ran
+  ### (a rotated backup)
   if [ "${_rc}" != "0" ] && [ "${_rc}" != "24" ] && [ "${_MODE}" = "LIVE" ]; then
     echo "DENY: ${_u}/${_n} copy to ${_h} failed (rc ${_rc})"
     _XOCT_NOT_CLEAN=YES
@@ -4230,6 +4232,47 @@ _xoct_backups_leg() {
     return 1
   fi
   return 0
+}
+### rsync exit 23 ("some files/attrs were not transferred") is the same
+### benign event as 24 when every error rsync printed is a sender-side ENOENT:
+### a file that vanished after rsync listed it is reported through whichever
+### call met it first (the xattr or ACL read, the lstat, the open, the
+### opendir) and the run exits 23, not 24. A client's own gem or npm run, or a
+### backup rotated during the copy, does exactly that. link_stat is a source
+### argument that never existed, never a vanished file; any receiver-side
+### error and any other errno keep 23 as the failure it is. xmass reads its
+### copies the same way (_xmass_rsync_vanished_only).
+### $1 = the captured rsync stderr; returns 0 when 23 may be read as 24.
+_xoct_rsync_vanished_only() {
+  local _err="$1" _bad
+  [ -s "${_err}" ] || return 1
+  grep -q 'No such file or directory' "${_err}" || return 1
+  grep -qE 'rsync: (\[sender\] )?link_stat ' "${_err}" && return 1
+  # rsync before 3.2.3 (a legacy source) prints no [sender] role tag, so the
+  # untagged form is accepted only for the sender's own listing calls
+  _bad=$(grep -E '^rsync(:| error:| warning:)' "${_err}" \
+    | grep -vE '^rsync: \[sender\] .*No such file or directory \(2\)$' \
+    | grep -vE '^rsync: (get_xattr_names|get_xattr_data|get_acl|readlink_stat|send_files|opendir)[ :(].*No such file or directory \(2\)$' \
+    | grep -vE '^rsync error: some files/attrs were not transferred \(see previous errors\) \(code 23\)' \
+    | grep -vE '^rsync warning: some files vanished before they could be transferred \(code 24\)' \
+    | head -1)
+  [ -z "${_bad}" ]
+}
+### The status a leg's copy counts as. $1 = the copy's status; the errors
+### the leg kept in _XOCT_RSYNC_ERR are printed (on stderr, as rsync printed
+### them) and the file removed. A 23 that only vanished files caused is 24.
+### Prints the status, and nothing else on stdout.
+_xoct_leg_rc() {
+  local _rc="${1}"
+  if [ -n "${_XOCT_RSYNC_ERR:-}" ]; then
+    [ -s "${_XOCT_RSYNC_ERR}" ] && cat "${_XOCT_RSYNC_ERR}" >&2
+    if [ "${_rc}" = "23" ] && _xoct_rsync_vanished_only "${_XOCT_RSYNC_ERR}"; then
+      _rc=24
+      echo "INFO: rsync rc=23 carried only vanished-file errors (a file gone between listing and read), read as rc=24" >&2
+    fi
+    rm -f -- "${_XOCT_RSYNC_ERR}"
+  fi
+  echo "${_rc}"
 }
 ### The client toolchain tree $2 (/opt/user/<tree>/<login>) on the target
 ### $1, read before its leg, dry or live. Its parent is sticky and
@@ -4260,21 +4303,44 @@ _xoct_toolchain_leaf_ok() {   # 1 = target  2 = the tree there
   [ "${_MODE}" = "LIVE" ] && _XOCT_STORE_RC=1
   return 1
 }
+### The same rule on this box, before the copy: the parents here are as open,
+### so another account can have made the login's name first here too, and the
+### copy would carry that owner to the target, where the ltd worker never
+### hands the tree over. A tree that is missing or a link is the leg's own to
+### skip. The parent is sticky, so a tree root or the account owns cannot be
+### swapped for another's between this read and the copy.
+_xoct_toolchain_src_ok() {   # 1 = the tree here
+  local _s="${1}" _n _o _u
+  _n="${_s##*/}"
+  _o="${_n%%.*}"
+  [ -d "${_s}" ] && [ ! -L "${_s}" ] || return 0
+  _u="$(stat -c %U -- "${_s}" 2> /dev/null)"
+  case "${_u}" in
+    root|"${_o}"|"${_o}".*) return 0 ;;
+  esac
+  echo "DENY: ${_s} here is owned by ${_u:-an owner that cannot be read}, not by ${_o} or root -- the tree of ${_n} does not travel"
+  _XOCT_NOT_CLEAN=YES
+  [ "${_MODE}" = "LIVE" ] && _XOCT_STORE_RC=1
+  return 1
+}
 ### The client toolchain tree $3 here copied to $4 on the target $1 ($2 the
 ### rsync error option): from inside the real directory into the real one
-### there, once that tree is the account's (_xoct_toolchain_leaf_ok). A
+### there, once that tree is the account's here (_xoct_toolchain_src_ok)
+### and there (_xoct_toolchain_leaf_ok). A
 ### copy that fails counts as a failed backups copy does: named, and the
 ### live transfer is not marked complete; a run after the cause is gone
 ### copies what is missing. 24 (files that vanished while the copy ran, the
-### client's own tool at work) is no failure. A tree this box does not have
-### is nothing to copy.
+### client's own tool at work) is no failure, nor a 23 only such files caused
+### (_xoct_leg_rc). A tree this box does not have is nothing to copy.
 _xoct_toolchain_leg() {   # 1 = target  2 = rsync error option  3 = tree here  4 = tree there
-  local _h="${1}" _ie="${2}" _s="${3}" _d="${4}" _rc
+  local _h="${1}" _ie="${2}" _s="${3}" _d="${4}" _rc _XOCT_RSYNC_ERR=""
   _xoct_leg_ok "${_s}" || return 0
+  _xoct_toolchain_src_ok "${_s}" || return 1
   _xoct_toolchain_leaf_ok "${_h}" "${_d}" || return 1
+  [ "${_MODE}" = "LIVE" ] && _XOCT_RSYNC_ERR="$(mktemp /tmp/xmig-leg-err.XXXXXX 2> /dev/null)"
   # shellcheck disable=SC2086
   _xoct_in_real_dir "${_s}" _xoct_copy_mk_here "${_h}" "${_d}" '' -aEAXqu ${_ie}
-  _rc=$?
+  _rc="$(_xoct_leg_rc "$?")"
   if [ "${_rc}" != "0" ] && [ "${_rc}" != "24" ] && [ "${_MODE}" = "LIVE" ]; then
     echo "DENY: ${_s} copy to ${_h} failed (rc ${_rc})"
     _XOCT_NOT_CLEAN=YES
@@ -4786,7 +4852,7 @@ _migrate_sites() {
             _DB_FRESH=YES
             ### The CREATE DATABASE below uses the connection set before the
             ### import: the host from barracuda.cnf, the port from the
-            ### octopus.cnf of the account name given (the source's name on a
+            ### account's own octopus.cnf here (the name it lands on, on a
             ### renamed import; ProxySQL's 6033 for an account boa in-oct
             ### installed). No marker picks another here.
             mysqladmin -u root flush-privileges &> /dev/null
@@ -5500,6 +5566,19 @@ for _R in "/data/disk/\${_A}" "/home/\${_A}.ftp" /home/"\${_A}".* "/opt/user/gem
   # the FPM pool users' homes (oN.web, oN.NN.web) are www-data's, never the
   # account's: the same root set the tool walks
   case "\${_R}" in /home/*.web) continue ;; esac
+  # a folder in the shared toolchain parents (root's, sticky, open to every
+  # user) is the account's only when root or one of its own identities owns
+  # it: another account can make the name first, and its files are left as
+  # they are (the parent being sticky, no one else can swap such a folder)
+  case "\${_R}" in
+    /opt/user/*)
+      _O="\$(stat -c %U -- "\${_R}" 2>/dev/null)"
+      case "\${_O}" in
+        root|"\${_A}"|"\${_A}".*) ;;
+        *) echo "INFO: target group pass for \${_A}: \${_R} is owned by \${_O:-an owner that cannot be read}, not by \${_A} or root: left out"; continue ;;
+      esac
+      ;;
+  esac
   # regrouped through a no-follow handle on each name inside the directory
   # find holds, never by name: only a directory, or a regular file with one
   # link, whose handle is still in none of those groups, so a hard link to
@@ -8843,6 +8922,12 @@ _xoct_rsync() {
     # _XOCT_GMAP maps the account's own group and its web group (see
     # _xoct_acct_gmap, _xoct_webgroup_gate); _XOCT_UMAP its identities
     # (see _xoct_acct_umap).
+    # A leg that reads a status 23 itself names a file in _XOCT_RSYNC_ERR:
+    # the errors go there, and the leg prints them (_xoct_leg_rc)
+    if [ -n "${_XOCT_RSYNC_ERR:-}" ]; then
+      rsync "$@" ${_XOCT_GMAP:+"--groupmap=${_XOCT_GMAP}"} ${_XOCT_UMAP:+"--usermap=${_XOCT_UMAP}"} --no-devices --no-specials 2>> "${_XOCT_RSYNC_ERR}"
+      return
+    fi
     rsync "$@" ${_XOCT_GMAP:+"--groupmap=${_XOCT_GMAP}"} ${_XOCT_UMAP:+"--usermap=${_XOCT_UMAP}"} --no-devices --no-specials
   else
     echo "[DRY-PLAN] would rsync: $*"
@@ -11452,12 +11537,12 @@ _migrate_init() {
   if [ "${_cmd}" = "create" ] || [ "${_cmd}" = "export" ]; then
     _xoct_le_kept_warn
   fi
-  ### No ProxySQL marker picks a connection here: the octopus.cnf of the
-  ### account name given (the source's name on a renamed import), sourced
-  ### below before the export and import, sets the port of the calls that
-  ### name one (ProxySQL's for an account boa in-oct installed); mydumper,
-  ### myloader and the mysql and mysqladmin calls that name no port use this
-  ### box's own server.
+  ### No ProxySQL marker picks a connection here: the account's own
+  ### octopus.cnf (on a renamed import, the name it lands on), sourced below
+  ### before the export and import, sets the port of the calls that name one
+  ### (ProxySQL's for an account boa in-oct installed); mydumper, myloader
+  ### and the mysql and mysqladmin calls that name no port use this box's own
+  ### server.
   ### With no target the usage records leg would address this box itself.
   if [ "${_oct}" = "xusage" ] && [ -z "${_tgt}" ]; then
     echo "ERROR: ${_cmd} xusage needs a target: xoct ${_cmd} xusage <target>"
@@ -12055,8 +12140,13 @@ _migrate_init() {
           fi
         fi
       else
-        # shellcheck disable=SC1091
-        [ -e "/root/.${_oct}.octopus.cnf" ] && source /root/.${_oct}.octopus.cnf
+        ### The settings of the account this run works on: on a renamed
+        ### import the name it lands on here (_xoct_runtime_oct), never the
+        ### source's name, which this box may hold as another account of
+        ### its own, or not at all
+        _RT_OCT="$(_xoct_runtime_oct)"
+        # shellcheck disable=SC1090
+        [ -e "/root/.${_RT_OCT}.octopus.cnf" ] && source "/root/.${_RT_OCT}.octopus.cnf"
         ### Policy resolution, record writes, peer push and target trust all
         ### happen BEFORE any vhost is touched; a peer that cannot take the
         ### record refuses the whole conversion.

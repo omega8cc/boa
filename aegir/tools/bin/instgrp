@@ -857,8 +857,15 @@ _acct_roots() {
   for _u in $(_acct_subusers "${_a}" 2> /dev/null); do
     [ -d "/home/${_u}" ] && printf '%s\n' "/home/${_u}"
   done
+  # the shared toolchain parents are root's, sticky and open to every user:
+  # a folder at the account's names there is its own only when root or one
+  # of its identities owns it, since another account can make the name
+  # first; such a folder is left out of every walk, its files as they are
   for _r in /opt/user/gems/"${_a}" /opt/user/gems/"${_a}".* /opt/user/npm/"${_a}" /opt/user/npm/"${_a}".*; do
-    [ -d "${_r}" ] && [ ! -L "${_r}" ] && printf '%s\n' "${_r}"
+    [ -d "${_r}" ] && [ ! -L "${_r}" ] || continue
+    case "$(stat -c %U -- "${_r}" 2> /dev/null)" in
+      root|"${_a}"|"${_a}".*) printf '%s\n' "${_r}" ;;
+    esac
   done
   _acct_store "${_a}"
   return 0
