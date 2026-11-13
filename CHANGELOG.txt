@@ -989,6 +989,14 @@
       refresh fetched the parked runners back. autoupboa now defers the
       reboot while the park marker exists, and says so.
 
+    * On a hosted server a new release no longer removes the firewall lines
+      that let a one-account move's source in. xoct asks for them on the
+      target as "<source ip> # Legacy Proxy" in csf.allow and csf.ignore,
+      and autoupboa's once-per-release clean-up removed every line marked
+      Legacy, so a release in the middle of a move ended that trust. The
+      clean-up now leaves Legacy Proxy lines alone; the operator removes
+      them once the proxy is no longer needed.
+
     * nginx's country lookup reads current data, and knows visitors on
       IPv6 too. The X-GeoIP-Country headers and the GEOIP_COUNTRY_CODE,
       GEOIP_COUNTRY_CODE3 and GEOIP_COUNTRY_NAME values PHP gets came from

@@ -1851,9 +1851,12 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
   	  rm -f /etc/csf/csf.conf-pre*
   	else
   	  if [ ! -e "/var/log/boa/.csf_legacy_cleanup.${_xSrl}.pid" ]; then
-  	    sed -i "s/.*Legacy.*//g"    /etc/csf/csf.ignore
+  	    ### A move's own trust, "<source ip> # Legacy Proxy" as xoct asks for it
+  	    ### on the target, stays until the operator removes it once the proxy is
+  	    ### no longer needed: a release in the middle of a move must not end it.
+  	    sed -i "/Legacy Proxy/!s/.*Legacy.*//g"    /etc/csf/csf.ignore
   	    wait
-  	    sed -i "s/.*Legacy.*//g"    /etc/csf/csf.allow
+  	    sed -i "/Legacy Proxy/!s/.*Legacy.*//g"    /etc/csf/csf.allow
   	    wait
   	    sed -i "s/.*Manually.*//g"  /etc/csf/csf.ignore
   	    wait
