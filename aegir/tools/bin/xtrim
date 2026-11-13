@@ -2340,7 +2340,7 @@ _cmd_names() {
     *.*) ;;
     *) _bx="" ;;
   esac
-  echo "xtrim names --$(hostname -f 2>/dev/null) $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+  echo "xtrim names -- $(hostname -f 2>/dev/null) $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
   echo "this box's addresses: $(hostname -I 2>/dev/null | tr -s ' ' | sed 's/ $//')"
   for _n in $(_list_accounts); do
     [ "${_sel}" = "all" ] || [ "${_sel}" = "${_n}" ] || continue
