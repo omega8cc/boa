@@ -3016,6 +3016,55 @@ _t_drop_made_db() {   # 1 dbn
   mysql --silent -u root -e "DROP DATABASE IF EXISTS \`$1\`" >/dev/null 2>&1
 }
 
+# A dump made on MySQL 5.x or MariaDB before 11.5 names no collation on a
+# utf8mb4 table or column that kept that server's default, utf8mb4_general_ci,
+# and MySQL 8 gives such a table its own default, utf8mb4_0900_ai_ci, unless
+# the loading session holds the old one. The dump's header names the server it
+# was made on ("-- Server version" and a tab). Sets _T_UTF8MB4 to the client
+# option that gives the load's session the old default, where the server the
+# client options $3... name takes the setting; to nothing for a dump made on
+# another version or with no header, or for a server that refuses the setting
+# (said, unless it is a 5.x server, whose own default it is). A dump made on
+# MariaDB 11.5 or later is named: its default, utf8mb4_uca1400_ai_ci, is not
+# MySQL's, and its load is left as it is.
+_t_utf8mb4_opt() {   # 1 dumpfile 2 label 3... client options
+  local _f="$1" _lbl="$2" _l _i=0 _old="" _ver="" _v
+  shift 2
+  _T_UTF8MB4=()
+  [[ -f "${_f}" && -r "${_f}" ]] || return 0
+  while [[ "${_i}" -lt 12 ]] && IFS= read -r _l; do
+    _i=$(( _i + 1 ))
+    if [[ "${_l}" =~ ^--\ Server\ version[[:space:]]+(([0-9]+)\.([0-9]+)[^[:space:]]*) ]]; then
+      _ver="${BASH_REMATCH[1]}"
+      if [[ "${BASH_REMATCH[2]}" = "5" ]]; then
+        _old=YES
+      elif [[ "${_l}" == *MariaDB* ]]; then
+        if [[ "${BASH_REMATCH[2]}" = "10" ]] \
+          || { [[ "${BASH_REMATCH[2]}" = "11" ]] && [[ "${BASH_REMATCH[3]}" -lt 5 ]]; }; then
+          _old=YES
+        else
+          _alrt "${_lbl}: its dump was made on MariaDB ${_ver}, whose utf8mb4 default utf8mb4_uca1400_ai_ci is not MySQL's: its utf8mb4 tables and columns that name no collation load with this server's default"
+        fi
+      fi
+      break
+    fi
+  done < "${_f}"
+  [[ "${_old}" = "YES" ]] || return 0
+  # the caller's options first: mysql takes --defaults-file only there
+  _v="$(mysql "$@" --silent -N -B -e "SET SESSION default_collation_for_utf8mb4 = utf8mb4_general_ci; SELECT @@SESSION.default_collation_for_utf8mb4" 2>/dev/null)"
+  if [[ "${_v}" = "utf8mb4_general_ci" ]]; then
+    _T_UTF8MB4=(--init-command="SET SESSION default_collation_for_utf8mb4 = utf8mb4_general_ci")
+    _info "${_lbl}: its dump was made on ${_ver}: utf8mb4 tables and columns that name no collation load as utf8mb4_general_ci, the one they had there"
+    return 0
+  fi
+  _v="$(mysql "$@" --silent -N -B -e "SELECT VERSION()" 2>/dev/null)"
+  case "${_v}" in
+    5.*) ;;
+    *) _alrt "${_lbl}: this database server does not take default_collation_for_utf8mb4 for a session: the utf8mb4 tables and columns its ${_ver} dump names no collation for load with this server's default, not utf8mb4_general_ci" ;;
+  esac
+  return 0
+}
+
 # create db+user with the site's own creds (xoct:279-285 model, utf8mb4)
 _t_site_db_create_load() {   # 1 dbn 2 dbp 3 dumpfile 4 dmajor
   local _dbn="$1" _dbp="$2" _dump="$3" _dmaj="$4" _dbe _st _ev _sch _had _urc
@@ -3102,7 +3151,9 @@ EOFMYSQL6
   # definer or a sql_mode are changed, never a row of data. The load is
   # judged on both sides of the pipe (a dump sed cannot read hands mysql
   # nothing, which it takes as done), and one that fails drops the database
-  # made above, so a re-run lands it fresh.
+  # made above, so a re-run lands it fresh. A dump made on 5.x or an older
+  # MariaDB keeps its utf8mb4 collations (_t_utf8mb4_opt).
+  _t_utf8mb4_opt "${_dump}" "db ${_dbn}" -u root
   sed -E -e '1{/^\/\*M!999999/d;}' \
     -e "s#^(/\\*!50013 DEFINER=)(\`[^\`]*\`|\"[^\"]*\")@(\`[^\`]*\`|\"[^\"]*\")#\\1\`${_dbn}\`@\`localhost\`#" \
     -e "s#^(/\\*!50003 CREATE\\*/ /\\*!50017 DEFINER=)(\`[^\`]*\`|\"[^\"]*\")@(\`[^\`]*\`|\"[^\"]*\")#\\1\`${_dbn}\`@\`localhost\`#" \
@@ -3112,7 +3163,7 @@ EOFMYSQL6
     -e "/^\\/\\*!50003 SET sql_mode/s/NO_AUTO_CREATE_USER,//" \
     -e "/^\\/\\*!50003 SET sql_mode/s/,NO_AUTO_CREATE_USER//" \
     -e "/^\\/\\*!50003 SET sql_mode/s/'NO_AUTO_CREATE_USER'/''/" \
-    "${_dump}" | mysql --silent -u root "${_dbn}"
+    "${_dump}" | mysql --silent -u root "${_T_UTF8MB4[@]}" "${_dbn}"
   _st="${PIPESTATUS[*]}"
   if [[ "${_st}" != "0 0" ]]; then
     if _t_drop_made_db "${_dbn}"; then
@@ -3225,9 +3276,11 @@ _import_db_route() {
   if [[ ! -e "${_step}.3.done" ]]; then
     _as_octo "drush8 @hostmaster sql-drop -y" >>"${_LOG}" 2>&1 || _die "sql-drop failed"
     _info "step 2: target hostmaster tables dropped"
-    # 3. import with sandbox strip
+    # 3. import with sandbox strip, keeping a 5.x or older MariaDB dump's
+    # utf8mb4 collations (_t_utf8mb4_opt)
+    _t_utf8mb4_opt "${_src}/hostmaster.sql" "hostmaster db" --defaults-file=/root/.my.cnf
     sed '1{/^\/\*M!999999/d}' "${_src}/hostmaster.sql" \
-      | mysql --defaults-file=/root/.my.cnf "${_hdb}" || _die "hostmaster import failed - restore from ${_undo}/a2b-pre-import.sql"
+      | mysql --defaults-file=/root/.my.cnf "${_T_UTF8MB4[@]}" "${_hdb}" || _die "hostmaster import failed - restore from ${_undo}/a2b-pre-import.sql"
     _measure_and_log "${_hdb}" --defaults-file=/root/.my.cnf
     touch "${_step}.3.done"
     _info "step 3: vanilla hostmaster db imported"

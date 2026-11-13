@@ -998,6 +998,22 @@
       warning. A stored routine's parameters and return type, which no dump
       names a collation for, take the newer server's default as before.
 
+    * A Migrate of a site from a database server on Percona 5.7 to one on
+      8.0 or 8.4 keeps the site's utf8mb4_general_ci tables and columns as
+      they were. The fast database import loaded the 5.7 dump, which names
+      no collation on them, with the newer server's default,
+      utf8mb4_0900_ai_ci. The dump's table files now name the 5.7 one on
+      those lines before either loader reads them, the database broker
+      included; a dump made on 8.x is loaded as it is.
+
+    * aegir2boa keeps a site's utf8mb4_general_ci tables and columns when
+      its database comes from MySQL 5.7 or MariaDB before 11.5, as a vanilla
+      Aegir server's does, and so does the panel's own database import: both
+      loads gave them the BOA server's default, utf8mb4_0900_ai_ci. The load
+      now holds the old default for its session where the server takes it,
+      read from the dump's header. A dump from MariaDB 11.5 or later is
+      named and loads as before.
+
     * edgetest's regression phase checks the IP lists' SSH anti-lockout
       source by running ip_access.sh's own reader, and says whether it
       sees the session edgetest runs in. It asked netstat, which the lists
