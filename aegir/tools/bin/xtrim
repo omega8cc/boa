@@ -28,6 +28,12 @@ SHELL=/bin/bash
 ###                                   account is shrunk
 ###   xtrim restore <oN>              undo stage A from quarantine (refused
 ###                                   once stage B has started)
+###   xtrim names [<oN>|all]          read-only: where DNS points every name
+###                                   the relay answers for (this box, the
+###                                   target, elsewhere, nowhere)
+###   xtrim space                     read-only: what the root filesystem
+###                                   holds, largest trees first, for the
+###                                   read before a smaller plan
 ###
 ### DRY/--live token is PER VERB: a clean DRY of one verb never arms a live
 ### run of another (the historical xoct/xmass defect is not inherited).
@@ -2020,6 +2026,7 @@ _finalize() {
     _alrt "finalize: /root/.proxy.cnf already existed -- left as found"
   fi
   _info "finalize: COMPLETE. To retire the proxy itself later, use the boa cleanup sequence -- xtrim never does that."
+  _info "finalize: before a smaller plan at the provider, read 'xtrim space' (what the root disk holds) and 'xtrim names all' (the names that still resolve here go dark while this box is off)"
 }
 
 ### ------------------------------------------------------------- verbs ----
@@ -2056,6 +2063,168 @@ _cmd_status() {
     [ -n "${_MAP_VHOST_TGT}" ] && _tg="? (its vhost target is not the root policy record's)"
     echo "${_n}: proxied -> ${_tg} | phase=${_ph:-none} | cert-horizon=$( [ "${_hz}" = "999999" ] && echo n/a || echo "${_hz}d (${_hzd})" )${_hzx} | reclaimable~${_sz}"
   done
+}
+
+### ------------------------------------------------------------- names ----
+
+### Every name the live vhost $1 of the mapped account answers for, one a
+### line: the words of its server_name lines, read inside the real vhost.d.
+_vhost_names() {
+  _read_file "${_VHD}/${1}" \
+    | sed -n 's/^[[:space:]]*server_name[[:space:]]\{1,\}\([^;]*\);.*$/\1/p' \
+    | tr -s '[:space:]' '\n' | sed '/^$/d' | LC_ALL=C sort -u
+}
+### A plain host name, one DNS can be asked about: no wildcard, no regex
+### name, not the catch-all.
+_name_plain() {
+  printf '%s' "$1" | grep -qE '^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$'
+}
+### The addresses DNS gives for the name $1, on one line: the A and AAAA
+### answers as this box's resolver follows them to their end (a CNAME's own
+### line is dropped), asked once more when nothing came back.
+_name_addrs() {
+  local _o="" _i
+  for _i in 1 2; do
+    _o="$( { dig +short +time=3 +tries=2 A "$1"; dig +short +time=3 +tries=2 AAAA "$1"; } 2> /dev/null \
+      | grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}$|^[0-9A-Fa-f:]*:[0-9A-Fa-f:.]*$' \
+      | LC_ALL=C sort -u | tr '\n' ' ')"
+    [ -n "${_o// /}" ] && break
+    sleep 2
+  done
+  printf '%s' "${_o% }"
+}
+### Where the addresses $1 lead: HERE when one of them is this box's (the name
+### still arrives here, wholly or in part), otherwise ELSEWHERE when one is
+### neither this box's nor the target's, otherwise TARGET, and NONE without
+### any. _NAMES_TGT_ADDRS holds the target's addresses.
+_name_where() {
+  local _a _h=NO _t=NO _o=NO
+  for _a in $1; do
+    if _mig_own_addr "${_a}"; then
+      _h=YES
+    elif [[ " ${_NAMES_TGT_ADDRS} " == *" ${_a} "* ]]; then
+      _t=YES
+    else
+      _o=YES
+    fi
+  done
+  if [ "${_h}" = "YES" ]; then
+    echo HERE
+  elif [ "${_o}" = "YES" ]; then
+    echo ELSEWHERE
+  elif [ "${_t}" = "YES" ]; then
+    echo TARGET
+  else
+    echo NONE
+  fi
+}
+
+### xtrim names [<oN>|all]: for every name a proxied account's vhosts answer
+### for, where its DNS points today. It reads, asks DNS and the target for
+### its own addresses, and changes nothing. A name that resolves to this box
+### is reached through the relay and goes dark with it; one that resolves to
+### the target is done; one that resolves elsewhere sits behind a CDN or
+### another front, whose origin DNS cannot show.
+_cmd_names() {
+  local _sel="${1:-all}" _n _d _nm _ad _w _c _box=0 _accts="" _seen
+  local _nh _nt _ne _nn _nw _nb
+  command -v dig > /dev/null 2>&1 || _die "names needs dig on this box (the dnsutils package)"
+  _load_cnf_defaults
+  echo "xtrim names -- $(hostname -f 2>/dev/null) $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+  echo "this box's addresses: $(hostname -I 2>/dev/null | tr -s ' ' | sed 's/ $//')"
+  for _n in $(_list_accounts); do
+    [ "${_sel}" = "all" ] || [ "${_sel}" = "${_n}" ] || continue
+    if ! _mig_is_proxied "${_n}"; then
+      [ "${_sel}" = "all" ] || _die "${_n}: not a proxied account (no root proxied marker)"
+      continue
+    fi
+    _seen=YES
+    if _panel_only "${_n}"; then
+      echo "${_n}: panel-only (its control panel is local, no proxied domain)"
+      continue
+    fi
+    _map_account "${_n}"
+    if [ -z "${_MAP_TGT}" ]; then
+      echo "${_n}: no target named by a root policy record -- names not judged (see xtrim status)"
+      continue
+    fi
+    ### The target's own addresses, IPv6 with them: the record names one
+    ### IPv4 only, and an AAAA at the target would otherwise read as elsewhere.
+    _NAMES_TGT_ADDRS="$(ssh -o BatchMode=yes -o ConnectTimeout=10 "root@${_MAP_TGT}" 'hostname -I' 2>/dev/null | tr -s '[:space:]' ' ')"
+    case " ${_NAMES_TGT_ADDRS} " in
+      *" ${_MAP_TGT} "*) ;;
+      *)
+        [ -z "${_NAMES_TGT_ADDRS// /}" ] \
+          && echo "${_n}: the target ${_MAP_TGT} did not give its addresses over ssh -- judged by that address alone (an AAAA at the target reads ELSEWHERE)"
+        _NAMES_TGT_ADDRS="${_MAP_TGT} ${_NAMES_TGT_ADDRS}"
+      ;;
+    esac
+    _c="$(_read_file "${_USR}/log/email.txt" | tr -s '[:space:]' ' ' | cut -c1-200)"
+    _c="${_c# }"
+    echo "${_n}: relay to ${_MAP_TGT} | contact: ${_c:-none in log/email.txt}"
+    _nh=0; _nt=0; _ne=0; _nn=0; _nw=0; _nb=0
+    for _d in ${_MAP_DOMS}; do
+      case " ${_MAP_REDIR} " in
+        *" ${_d} "*)
+          ### A site named under this box's own name: renamed on the target
+          ### by the move, its old name answered here with a 301.
+          printf '  %-10s %s\n' BOX-NAMED "${_d} (answered here with a 301 to its new name)"
+          _nb=$(( _nb + 1 ))
+          continue
+        ;;
+      esac
+      for _nm in $(_vhost_names "${_d}"); do
+        if ! _name_plain "${_nm}"; then
+          printf '  %-10s %s\n' PATTERN "${_nm} (no single name to ask DNS about)"
+          _nw=$(( _nw + 1 ))
+          continue
+        fi
+        _ad="$(_name_addrs "${_nm}")"
+        _w="$(_name_where "${_ad}")"
+        printf '  %-10s %s %s\n' "${_w}" "${_nm}" "${_ad:--}"
+        case "${_w}" in
+          HERE) _nh=$(( _nh + 1 )) ;;
+          TARGET) _nt=$(( _nt + 1 )) ;;
+          ELSEWHERE) _ne=$(( _ne + 1 )) ;;
+          *) _nn=$(( _nn + 1 )) ;;
+        esac
+      done
+    done
+    echo "${_n}: ${_nh} here, ${_nt} on the target, ${_ne} elsewhere, ${_nn} with no address, ${_nw} patterns, ${_nb} box-named"
+    if [ "${_nh}" -gt 0 ]; then
+      _box=$(( _box + _nh ))
+      _accts="${_accts} ${_n}"
+    fi
+  done
+  [ -n "${_seen}" ] || [ "${_sel}" = "all" ] || _die "${_sel}: no such account"
+  echo "box: ${_box} names still resolve to this box$( [ -n "${_accts}" ] && echo ", in:${_accts}" )"
+  echo "note: HERE names go dark whenever this box is down; ELSEWHERE names sit behind a CDN or another front, or on another server, and DNS cannot say whether that front still sends them here."
+}
+
+### xtrim space: what the root filesystem holds, for the read before a
+### smaller plan: a provider shrinks a disk no further than the space in use.
+### One pass over the root filesystem alone (other mounts are named, not
+### walked), the largest trees two levels deep first. Read-only.
+_cmd_space() {
+  local _m
+  echo "xtrim space -- $(hostname -f 2>/dev/null) $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+  [ -e "/root/.proxy.cnf" ] && echo "box: /root/.proxy.cnf PRESENT (finalized proxy node)"
+  LC_ALL=C df -Pk / 2>/dev/null \
+    | awk 'NR == 2 { printf "root filesystem: %.1fG used of %.1fG (%s), %.1fG free\n", $3/1048576, $2/1048576, $5, $4/1048576 }'
+  LC_ALL=C df -Pi / 2>/dev/null \
+    | awk 'NR == 2 { printf "root filesystem inodes: %s used\n", $5 }'
+  echo "largest trees on the root filesystem (two levels, other mounts not walked):"
+  LC_ALL=C du -xk --max-depth=2 / 2>/dev/null | sort -rn \
+    | awk 'NR > 1 && NR <= 26 { printf "  %8.1fG %s\n", $1/1048576, $2 }'
+  echo "what a trim leaves and never removes, where present:"
+  for _m in "${_XTRIM_BASE}" /var/lib/mysql /var/solr9 /var/solr7 /opt/solr4 /opt/jetty9 /data/disk/arch; do
+    [ -e "${_m}" ] || continue
+    LC_ALL=C du -sk "$(readlink -f "${_m}")" 2>/dev/null \
+      | awk -v p="${_m}" '{ printf "  %8.1fG %s\n", $1/1048576, p }'
+  done
+  echo "other mounts (not part of a root disk shrink):"
+  LC_ALL=C df -Pk 2>/dev/null \
+    | awk 'NR > 1 && $6 != "/" && $1 ~ /^\/dev\// { printf "  %s %.1fG used of %.1fG\n", $6, $3/1048576, $2/1048576; n++ } END { if (!n) print "  none" }'
 }
 
 _run_one() {
@@ -2345,6 +2514,13 @@ case "$1" in
     _manage_single_lock
     _cmd_status
   ;;
+  names)
+    ### Read-only, and no lock: it must run beside a long shrink too.
+    _cmd_names "$2"
+  ;;
+  space)
+    _cmd_space
+  ;;
   plan|quiesce|shrink)
     _verb="$1"
     _acct="$2"
@@ -2445,6 +2621,8 @@ case "$1" in
     echo "       xtrim restore  <oN>                undo a quiesce from quarantine"
     echo "       xtrim shrink   <oN|all> [--live]   stage A (if needed) + stage B -- ONE-WAY"
     echo "       xtrim finalize [--live] [--drop-datadir]   box-wide, all accounts shrunk"
+    echo "       xtrim names    [<oN>|all]          where DNS points each relayed name -- read-only"
+    echo "       xtrim space                        what the root filesystem holds -- read-only"
     exit 1
   ;;
 esac
