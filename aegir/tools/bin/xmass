@@ -5931,7 +5931,8 @@ _XMASS_BINLOG_DAY_FILE="/etc/boa/control/xmass-binlog-day.cnf"
 # in K, or a log over 2 GiB in bytes, passes.
 # What one end holds, as KEY=value lines: the filesystem of the database
 # folder (its mount point, its size as used plus free, its use), the one
-# that holds the accounts, the folder's own size, the binary log there now,
+# that holds the accounts, the folder's own share of its filesystem, the
+# snapshot a seed takes of it, the binary log held on that filesystem now,
 # the days it is kept now, and the addresses reading it now.
 _xmass_binlog_probe_sh() {
   cat <<'PROBE'
@@ -5943,7 +5944,9 @@ echo "BL_USED_KB=${_r%% *}"
 echo "BL_MNT=${_d##* }"
 echo "BL_DATA_USED_KB=${_a%% *}"
 echo "BL_DATA_MNT=${_a##* }"
-_dd="$(du -sLk /var/lib/mysql 2>/dev/null | awk '{ print $1 }')"
+# the folder's share of its own filesystem (a subfolder linked onto another
+# disk is not on it)
+_dd="$(du -sLkx /var/lib/mysql 2>/dev/null | awk '{ print $1 }')"
 echo "BL_DD_KB=${_dd}"
 # The stores kept on filesystems apart from the accounts' one: each account's
 # files store, the archive, the Solr data. Each filesystem once, by its used K,
@@ -5954,6 +5957,7 @@ echo "BL_DD_KB=${_dd}"
 # (BL_XFS_ROOT_KB), the Solr data into /var/solrN there (BL_XFS_SOLR_KB).
 _xm=""
 _xa=""
+_xc=""
 _xk=0
 _xr=0
 _xs=0
@@ -5970,14 +5974,36 @@ for _xp in /data/disk/*/static/files /data/disk/arch /var/solr7/data /var/solr9/
   _xl=""
   [ ! -L "${_xp}" ] || _xl="$(readlink "${_xp}" 2>/dev/null)"
   case "${_xp}" in
-    */solr7/data|*/solr9/data) _xs=$(( _xs + _xu )) ;;
+    */solr7/data|*/solr9/data) _xs=$(( _xs + _xu )); _xc="${_xc} ${_xf}=s" ;;
     *)
       case "${_xl}" in
-        /mnt/?*) _xm="${_xm} ${_xf}"; _xk=$(( _xk + _xu )) ;;
-        *) _xr=$(( _xr + _xu )) ;;
+        /mnt/?*) _xm="${_xm} ${_xf}"; _xk=$(( _xk + _xu )); _xc="${_xc} ${_xf}=m" ;;
+        *) _xr=$(( _xr + _xu )); _xc="${_xc} ${_xf}=r" ;;
       esac
     ;;
   esac
+done
+# Solr data on a filesystem a store there was counted for first: its own share
+# goes with the Solr data, which lands in /var/solrN on the other end
+for _xp in /var/solr7/data /var/solr9/data; do
+  [ -d "${_xp}" ] || continue
+  _xf="$(df -Pk "${_xp}/" 2>/dev/null | awk 'NR==2 { print $NF }')"
+  [ -n "${_xf}" ] || continue
+  case " ${_xc} " in
+    *" ${_xf}=m "*) _xg=m ;;
+    *" ${_xf}=r "*) _xg=r ;;
+    *) continue ;;
+  esac
+  _xu="$(timeout 120 du -sk "${_xp}/" 2>/dev/null | awk '{ print $1 }')"
+  case "${_xu}" in ""|*[!0-9]*) continue ;; esac
+  if [ "${_xg}" = "m" ]; then
+    [ "${_xu}" -le "${_xk}" ] || _xu="${_xk}"
+    _xk=$(( _xk - _xu ))
+  else
+    [ "${_xu}" -le "${_xr}" ] || _xu="${_xr}"
+    _xr=$(( _xr - _xu ))
+  fi
+  _xs=$(( _xs + _xu ))
 done
 echo "BL_XFS_KB=${_xk}"
 echo "BL_XFS_MNTS=${_xm# }"
@@ -6024,17 +6050,26 @@ else
   echo "BL_ONE_MNT=NONE"
 fi
 _q() { mysql --defaults-file=/root/.my.cnf --connect-timeout=5 -sNe "$1" 2>/dev/null; }
-# the log counts as the folder's only where its files are written inside it,
-# as du -L measures the folder (a log subfolder linked elsewhere is in it): its
-# whole size, and its newest file, which a snapshot carries
+# The snapshot a seed takes, as a backup copies it: the folder as du -L reads
+# it, the log's files left out by their name wherever they lie under it (a
+# log folder linked in from outside included), its newest file added back,
+# as xtrabackup 8 copies the one written at the backup's end.
 _lb="$(_q 'SELECT @@log_bin_basename')"
-_lr="$(readlink -f /var/lib/mysql 2>/dev/null)"
+_ls="$(_q 'SHOW BINARY LOGS' | awk '{ s += $2; l = $2 } END { printf "%.0f %.0f\n", s / 1024, l / 1024 }')"
+_ll="${_ls#* }"
+case "${_ll}" in ""|*[!0-9]*) _ll=0 ;; esac
 case "${_lb}" in
-  /var/lib/mysql/*) _lin=YES ;;
-  *) _lin=NO; [ -n "${_lr}" ] && [ "${_lb#"${_lr}"/}" != "${_lb}" ] && _lin=YES ;;
+  ""|NULL|*/) _sn="$(du -sLk /var/lib/mysql 2>/dev/null | awk '{ print $1 }')" ;;
+  *) _sn="$(du -sLk --exclude="${_lb##*/}.[0-9]*" /var/lib/mysql 2>/dev/null | awk '{ print $1 }')" ;;
 esac
-if [ "${_lin}" = "YES" ]; then
-  _q 'SHOW BINARY LOGS' | awk '{ s += $2; l = $2 } END { printf "BL_LOG_KB=%.0f\nBL_LOG_LAST_KB=%.0f\n", s / 1024, l / 1024 }'
+case "${_sn}" in ""|*[!0-9]*) echo "BL_SNAP_KB=" ;; *) echo "BL_SNAP_KB=$(( _sn + _ll ))" ;; esac
+# the log held on the database folder's filesystem, wherever it is written
+# there (a log folder linked onto another disk is not on it): its whole size
+_lf="$(df -Pk "${_lb%/*}/" 2>/dev/null | awk 'NR==2 { print $NF }')"
+_lk="${_ls%% *}"
+case "${_lk}" in ""|*[!0-9]*) _lk=0 ;; esac
+if [ "${_lb#/}" != "${_lb}" ] && [ -n "${_lf}" ] && [ "${_lf}" = "${_d##* }" ]; then
+  echo "BL_LOG_KB=${_lk}"
 else
   echo "BL_LOG_KB=0"
 fi
@@ -6053,7 +6088,7 @@ _xmass_binlog_plan() {
   local _how="$1" _st _up _lw _day="" _why="" _pin="" _e _o _k _v _bad=""
   local _sz _us _mnt _dus _dmnt _ddk _lg _now _rd _room _n _hard _seed=0 _files=0 _other _sother=""
   local _ns=7 _nt=7 _sv _sd _oth
-  local _xk _xms _om _omu _sxk=0 _sxms="" _xto="" _xin=0 _xhv="" _fw="" _ll _xr _xs _sxr=0 _sxs=0
+  local _xk _xms _om _omu _sxk=0 _sxms="" _xto="" _xin=0 _xhv="" _fw="" _sn _xr _xs _sxr=0 _sxs=0
   local _omf _sfs _xdb _ssr _sssr=0 _vs
   case "${_XMASS_BINLOG_DAYS:-}" in
     "") : ;;
@@ -6121,16 +6156,17 @@ _xmass_binlog_plan() {
     _xr="$(_xmass_kv "${_o}" BL_XFS_ROOT_KB)"; _xs="$(_xmass_kv "${_o}" BL_XFS_SOLR_KB)"
     _ssr="$(_xmass_kv "${_o}" BL_SOLR_ROOT_KB)"
     [[ "${_ssr}" =~ ^[0-9]+$ ]] || _ssr=0
-    _ll="$(_xmass_kv "${_o}" BL_LOG_LAST_KB)"
+    _sn="$(_xmass_kv "${_o}" BL_SNAP_KB)"
     [[ "${_xk}" =~ ^[0-9]+$ ]] || _xk=0
     [[ "${_xr}" =~ ^[0-9]+$ ]] || _xr=0
     [[ "${_xs}" =~ ^[0-9]+$ ]] || _xs=0
-    if ! [[ "${_sz}" =~ ^[0-9]+$ ]] || ! [[ "${_us}" =~ ^[0-9]+$ ]] || ! [[ "${_ddk}" =~ ^[0-9]+$ ]]; then
+    if ! [[ "${_sz}" =~ ^[0-9]+$ ]] || ! [[ "${_us}" =~ ^[0-9]+$ ]] || ! [[ "${_ddk}" =~ ^[0-9]+$ ]] \
+      || { [ "${_e}" = "source" ] && ! [[ "${_sn}" =~ ^[0-9]+$ ]]; }; then
       _bad="${_bad} ${_e}"
       continue
     fi
-    [[ "${_lg}" =~ ^[0-9]+$ ]] && [ "${_lg}" -le "${_us}" ] && [ "${_lg}" -le "${_ddk}" ] || _lg=0
-    [[ "${_ll}" =~ ^[0-9]+$ ]] && [ "${_ll}" -le "${_lg}" ] || _ll=0
+    # the log held on the database's filesystem (the probe counts no other)
+    [[ "${_lg}" =~ ^[0-9]+$ ]] && [ "${_lg}" -le "${_us}" ] || _lg=0
     # the room to the planning line; a source's own log is given back (the
     # days planned replace it), a target's stays in the folder the seed parks
     _room=$(( _sz * 85 / 100 - _us ))
@@ -6145,9 +6181,10 @@ _xmass_binlog_plan() {
       fi
     fi
     if [ "${_e}" = "source" ]; then
-      # the seed is the folder without its log, which no snapshot carries, but
-      # with the newest log file, which xtrabackup 8 copies at the backup's end
-      _seed=$(( _ddk - _lg + _ll ))
+      # the seed is the snapshot as a backup copies it: the folder without its
+      # log, which no snapshot carries, but with the newest log file, which
+      # xtrabackup 8 copies at the backup's end
+      _seed="${_sn}"
       _sother="${_other}"
       _sxk="${_xk}"
       _sxms="${_xms}"
@@ -7093,25 +7130,26 @@ _xmass_dd_own_mount() {
   [ -n "${_mpA}" ] && [ -n "${_mpB}" ] && [ "${_mpA}" != "${_mpB}" ]
 }
 
-# The binary log this box's MySQL holds inside its database folder, in K
-# (no snapshot carries it); 0 when there is none, no answer, or the log is
-# written elsewhere (then the folder's size never held it). The folder is
-# measured with du -L everywhere, so a log written under its path, a
-# subfolder linked onto another disk included, is part of that measure. The
-# newest file is left in: xtrabackup 8 copies the one written at the
-# backup's end, up to max_binlog_size.
-_xmass_src_log_kb() {
-  local _k _b _r
+# The snapshot a seed takes of this box's database folder $1, in K, measured
+# as the files a backup copies: the folder as du -L reads it (a subfolder
+# linked onto another disk included), the binary log's files left out
+# wherever they lie under it, by their file name, and its newest file added
+# back, as xtrabackup 8 copies the one written at the backup's end (up to
+# max_binlog_size). The log's path never decides it: a log_bin set to a
+# folder outside, reached through a link inside, is left out all the same.
+# Empty when the folder cannot be measured.
+_xmass_src_snap_kb() {
+  local _b _k _l
   _b="$(mysql --defaults-file=/root/.my.cnf --connect-timeout=5 -sNe 'SELECT @@log_bin_basename' 2> /dev/null)"
-  _r="$(readlink -f /var/lib/mysql 2> /dev/null)"
   case "${_b}" in
-    /var/lib/mysql/*) : ;;
-    *) [ -n "${_r}" ] && [ "${_b#"${_r}"/}" != "${_b}" ] || { printf '0'; return 0; } ;;
+    ""|NULL|*/) _k="$(du -sLk "$1" 2> /dev/null | awk '{ print $1 }')" ;;
+    *) _k="$(du -sLk --exclude="${_b##*/}.[0-9]*" "$1" 2> /dev/null | awk '{ print $1 }')" ;;
   esac
-  _k="$(mysql --defaults-file=/root/.my.cnf --connect-timeout=5 -sNe 'SHOW BINARY LOGS' 2> /dev/null \
-    | awk '{ s += $2; l = $2 } END { printf "%.0f\n", (s - l) / 1024 }')"
-  [[ "${_k}" =~ ^[0-9]+$ ]] || _k=0
-  printf '%s' "${_k}"
+  [[ "${_k}" =~ ^[0-9]+$ ]] || return 0
+  _l="$(mysql --defaults-file=/root/.my.cnf --connect-timeout=5 -sNe 'SHOW BINARY LOGS' 2> /dev/null \
+    | awk '{ l = $2 } END { printf "%.0f\n", l / 1024 }')"
+  [[ "${_l}" =~ ^[0-9]+$ ]] || _l=0
+  printf '%s' "$(( _k + _l ))"
 }
 
 _xmass_decide_transfer_method() {
@@ -7119,7 +7157,7 @@ _xmass_decide_transfer_method() {
   # snapshot free (the folder without its binary log, which no snapshot
   # carries) and stays under the 90% line BOA's own runs stop at with the
   # snapshot on it; stream otherwise.
-  local _mysql_kb _free_kb _needed_kb _on _onm _log_kb _snap_kb _size_kb _used_kb _why=""
+  local _mysql_kb _free_kb _needed_kb _on _onm _snap_kb _size_kb _used_kb _why=""
   local _short=0 _s90=0
   _xmass_dd_read
   # the room is read where the stage lands: /var/backups, its own mount or not
@@ -7146,10 +7184,15 @@ _xmass_decide_transfer_method() {
   read -r _size_kb _used_kb _free_kb _onm <<< "$(df -Pk "${_on}" 2> /dev/null \
     | awk 'NR==2 { printf "%.0f %s %s %s\n", $3 + $4, $3, $4, $NF }')"
   _onm="${_onm:-${_on}}"
-  _log_kb="$(_xmass_src_log_kb)"
   [[ "${_mysql_kb}" =~ ^[0-9]+$ ]] || _mysql_kb=0
-  [[ "${_log_kb}" =~ ^[0-9]+$ ]] && [ "${_log_kb}" -le "${_mysql_kb}" ] || _log_kb=0
-  _snap_kb=$(( _mysql_kb - _log_kb ))
+  # the snapshot as a backup copies it, read through the same folder: what
+  # stages, not the folder with its binary log
+  if [ "${_XM_DD_SHAPE}" = "link" ]; then
+    _snap_kb="$(_xmass_src_snap_kb "${_XM_DD_REAL}")"
+  else
+    _snap_kb="$(_xmass_src_snap_kb /var/lib/mysql)"
+  fi
+  [[ "${_snap_kb}" =~ ^[0-9]+$ ]] || _snap_kb="${_mysql_kb}"
   _needed_kb=$(( _snap_kb * 3 / 2 ))
   [[ "${_free_kb}" =~ ^[0-9]+$ ]] || _free_kb=0
   # what freeing would take to stage: more free than 1.5 times the snapshot,
@@ -7169,7 +7212,7 @@ _xmass_decide_transfer_method() {
   fi
   [ "${_s90}" -le "${_short}" ] || _short="${_s90}"
   _info "xtrabackup method: ${_XTRA_METHOD}" \
-    "(mysql=${_mysql_kb}K, of it ${_log_kb}K binary log no snapshot carries; free=${_free_kb}K needed=${_needed_kb}K)"
+    "(mysql=${_mysql_kb}K, snapshot=${_snap_kb}K: the binary log left out, its newest file in; free=${_free_kb}K needed=${_needed_kb}K)"
   [ -z "${_why}" ] || _alrt "  ${_why}"
   if [ "${_XTRA_METHOD}" = "stream" ]; then
     # Stream is one unresumable pipe (a break leaves the target's datadir in
@@ -7200,7 +7243,7 @@ _xmass_decide_transfer_method() {
 # nothing; warn: every finding as a warning and nothing set. Override for
 # the room alone: _XMASS_SKIP_DISK_GATE=YES.
 _xmass_target_dd_gate() {
-  local _how="$1" _src_dd_kb _need_kb _bad="" _free_dd _free_base _move _log_kb
+  local _how="$1" _src_dd_kb _need_kb _bad="" _free_dd _free_base _move
   _xmass_dd_read "${_tgt}"
   case "${_XM_DD_SHAPE}" in
     plain|link) : ;;
@@ -7244,12 +7287,9 @@ _xmass_target_dd_gate() {
     _move=YES
   fi
   [ "${_how}" != "die" ] || _XM_SEED_MOVE="${_move}"
-  _src_dd_kb=$(du -sL /var/lib/mysql 2>/dev/null | awk '{print $1}')
-  # the binary log in the source's folder never travels with a snapshot
-  _log_kb="$(_xmass_src_log_kb)"
-  if [[ "${_src_dd_kb}" =~ ^[0-9]+$ ]] && [[ "${_log_kb}" =~ ^[0-9]+$ ]] && [ "${_log_kb}" -le "${_src_dd_kb}" ]; then
-    _src_dd_kb=$(( _src_dd_kb - _log_kb ))
-  fi
+  # the snapshot as a backup copies it: the source's binary log never
+  # travels with one, apart from its newest file
+  _src_dd_kb="$(_xmass_src_snap_kb /var/lib/mysql)"
   if [ "${_XMASS_SKIP_DISK_GATE}" = "YES" ]; then
     [ "${_how}" != "die" ] || _alrt "target datadir space gate SKIPPED by _XMASS_SKIP_DISK_GATE=YES"
     return 0
