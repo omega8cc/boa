@@ -868,6 +868,13 @@
       solr.php come back on the first pass once the version's service is
       installed and running.
 
+    * A site's solr.php is written again when its directive moves the site
+      to another Solr version. The core keeps its name on every version, and
+      the file was rewritten only when that name was missing from it, so it
+      kept giving the old version's port after a switch. A file naming
+      another version's port is now rewritten once for the core's own;
+      a right one, or one naming no port, is left as it is.
+
     * The migration completion notice gives the client the account's new
       control panel address in full, with the SQL Adminer address beside
       it where the new server has Adminer, and the start notice says what

@@ -1130,9 +1130,27 @@ _update_solr() {
     _SOLR_CONFIG_INFO_UPDATE=NO
     if [ -e "${_fiLe}" ]; then
       # Read inside the site dir: never through a link or blocked on a FIFO.
-      _SOLR_CONFIG_INFO_TEST=$(_acct_in_resolved_dir "${_fiLe%/*}" \
-        _acct_read_plain_here "${_fiLe##*/}" | grep "${_SolrCoreID}" 2>&1)
+      # A file written for another core (a cloned site keeps its source's)
+      # or naming another Solr version's port (a switched directive keeps
+      # the core's name) is rewritten once; a right one, or one naming no
+      # port at all, is left alone.
+      _SOLR_CONFIG_INFO_TXT=$(_acct_in_resolved_dir "${_fiLe%/*}" \
+        _acct_read_plain_here "${_fiLe##*/}")
+      _SOLR_CONFIG_INFO_TEST=$(grep "${_SolrCoreID}" \
+        <<< "${_SOLR_CONFIG_INFO_TXT}" 2>&1)
       if [[ ! "${_SOLR_CONFIG_INFO_TEST}" =~ "${_SolrCoreID}" ]]; then
+        _SOLR_CONFIG_INFO_UPDATE=YES
+      fi
+      case "${_SERV}" in
+        jetty9) _SOLR_INFO_PRT=8099 ;;
+        solr7) _SOLR_INFO_PRT=9077 ;;
+        solr9) _SOLR_INFO_PRT=9099 ;;
+        *) _SOLR_INFO_PRT="" ;;
+      esac
+      if [ -n "${_SOLR_INFO_PRT}" ] \
+        && grep -qF "  Solr port ........: " <<< "${_SOLR_CONFIG_INFO_TXT}" \
+        && ! grep -qxF "  Solr port ........: ${_SOLR_INFO_PRT}" \
+          <<< "${_SOLR_CONFIG_INFO_TXT}"; then
         _SOLR_CONFIG_INFO_UPDATE=YES
       fi
     fi
