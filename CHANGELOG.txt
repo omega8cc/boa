@@ -872,8 +872,15 @@
       to another Solr version. The core keeps its name on every version, and
       the file was rewritten only when that name was missing from it, so it
       kept giving the old version's port after a switch. A file naming
-      another version's port is now rewritten once for the core's own;
-      a right one, or one naming no port, is left as it is.
+      another version's port is now rewritten once for the core on disk; a
+      right one, one naming no port, or one whose new core was never made
+      is left as it is. The core's name must end a line of the file, so a
+      cloned site whose name only starts its source's gets its own file;
+      and a solr.php that is a directory is no longer rewritten and its
+      core reloaded on every pass.
+
+    * An apachesolr site's solr.php links to the module's own project page
+      again, not to an empty one or to another site's module.
 
     * The migration completion notice gives the client the account's new
       control panel address in full, with the SQL Adminer address beside

@@ -714,6 +714,10 @@ _write_solr_config() {
       _PRT="8099"
       _VRS="4.9.1"
     fi
+    # The project the file links to: the module itself, every search_api
+    # flavour one project. Set for every write, so no earlier site's value
+    # is carried over.
+    _module="${1}"
     if [ "${1}" = "search_api_solr" ] || [ "${1}" = "search_api_solr7" ] || [ "${1}" = "search_api_solr9" ]; then
       _module=search_api_solr
     fi
@@ -1130,27 +1134,35 @@ _update_solr() {
     _SOLR_CONFIG_INFO_UPDATE=NO
     if [ -e "${_fiLe}" ]; then
       # Read inside the site dir: never through a link or blocked on a FIFO.
-      # A file written for another core (a cloned site keeps its source's)
-      # or naming another Solr version's port (a switched directive keeps
-      # the core's name) is rewritten once; a right one, or one naming no
-      # port at all, is left alone.
-      _SOLR_CONFIG_INFO_TXT=$(_acct_in_resolved_dir "${_fiLe%/*}" \
-        _acct_read_plain_here "${_fiLe##*/}")
-      _SOLR_CONFIG_INFO_TEST=$(grep "${_SolrCoreID}" \
-        <<< "${_SOLR_CONFIG_INFO_TXT}" 2>&1)
-      if [[ ! "${_SOLR_CONFIG_INFO_TEST}" =~ "${_SolrCoreID}" ]]; then
-        _SOLR_CONFIG_INFO_UPDATE=YES
-      fi
-      case "${_SERV}" in
-        jetty9) _SOLR_INFO_PRT=8099 ;;
-        solr7) _SOLR_INFO_PRT=9077 ;;
-        solr9) _SOLR_INFO_PRT=9099 ;;
-        *) _SOLR_INFO_PRT="" ;;
-      esac
-      if [ -n "${_SOLR_INFO_PRT}" ] \
-        && grep -qF "  Solr port ........: " <<< "${_SOLR_CONFIG_INFO_TXT}" \
-        && ! grep -qxF "  Solr port ........: ${_SOLR_INFO_PRT}" \
+      # A file that ends no line with this core's name (a cloned site keeps
+      # its source's, whose name may only start with this one) is rewritten
+      # once; so is one naming another Solr version's port while this core
+      # is on disk (a switched directive keeps the core's name; a create the
+      # platform refused leaves no core, and the file as it is). A right
+      # file, or one naming no port, is left alone. A name the read refuses
+      # is rewritten as before (the write replaces a link or a FIFO), unless
+      # it is a directory or the site dir is not the real one: the write
+      # cannot replace those, and a reload would follow on every pass.
+      if _SOLR_CONFIG_INFO_TXT=$(_acct_in_resolved_dir "${_fiLe%/*}" \
+        _acct_read_plain_here "${_fiLe##*/}"); then
+        if ! awk -v id="${_SolrCoreID}" '{ n = length(id); l = length($0); if (n && l >= n && substr($0, l - n + 1) == id && (l == n || substr($0, l - n, 1) ~ /[ :\/]/)) f = 1 } END { exit !f }' \
           <<< "${_SOLR_CONFIG_INFO_TXT}"; then
+          _SOLR_CONFIG_INFO_UPDATE=YES
+        fi
+        case "${_SERV}" in
+          jetty9) _SOLR_INFO_PRT=8099 ;;
+          solr7) _SOLR_INFO_PRT=9077 ;;
+          solr9) _SOLR_INFO_PRT=9099 ;;
+          *) _SOLR_INFO_PRT="" ;;
+        esac
+        if [ -n "${_SOLR_INFO_PRT}" ] && [ -d "${2}/conf" ] \
+          && grep -qF "  Solr port ........: " <<< "${_SOLR_CONFIG_INFO_TXT}" \
+          && ! grep -qxF "  Solr port ........: ${_SOLR_INFO_PRT}" \
+            <<< "${_SOLR_CONFIG_INFO_TXT}"; then
+          _SOLR_CONFIG_INFO_UPDATE=YES
+        fi
+      elif _acct_in_resolved_dir "${_fiLe%/*}" \
+        test -L "./${_fiLe##*/}" -o ! -d "./${_fiLe##*/}"; then
         _SOLR_CONFIG_INFO_UPDATE=YES
       fi
     fi
