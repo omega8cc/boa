@@ -3586,6 +3586,11 @@ _migrate_prepare() {
   ### this box once received, an export killed or retried, or a stamp removed
   ### by hand) is older than the sites dumped beside it, and the target would
   ### import that older panel. log/sourcefqdn.txt is written with it.
+  _XCOPY_HM_DUMP_OK=""
+  if [ "${_cmd}" = "export" ] && [ -z "${_HDB}" ]; then
+    echo "ERROR: export for ${_oct}: no panel database named in ${_THIS_HM_SITE:-the panel site}/drushrc.php; nothing was dumped"
+    exit 1
+  fi
   if [ "${_cmd}" = "export" ] \
     && [ ! -z "${_HDB}" ] \
     && [ ! -e "${_USR}/log/exported.pid" ]; then
@@ -4118,12 +4123,19 @@ _migrate_prepare() {
       echo "ALRT: export for ${_oct}: ${_XCOPY_EXPORT_FAIL} site database export(s) FAILED:${_XCOPY_EXPORT_FAILED_DBS}"
       echo "ERROR: NOT stamping exported.pid; transfer and import will refuse this account"
       echo "ERROR: fix the cause, then re-run 'xcopy export ${_oct} ${_tgt}${_dst:+ ${_dst}}'"
-      echo "ERROR: (site dumps are redone in place; the hostmaster dump is kept)"
+      echo "ERROR: (a re-run dumps the control panel and every site again)"
       _XCOPY_RUN_FAIL=YES
-    elif [ -s "${_USR}/src/prev_hostmaster.sql" ]; then
+    ### Stamped only over a panel dump this run made: one already in src/
+    ### is an older copy's (an import this box received, an earlier export).
+    elif [ "${_XCOPY_HM_DUMP_OK}" = "YES" ] \
+      && [ -s "${_USR}/src/prev_hostmaster.sql" ]; then
       _xcopy_in_real_dir "${_USR}/log" rm -f -- ./export_failed.pid
       _xcopy_in_real_dir "${_USR}/log" _xcopy_touch_here exported.pid
       echo "INFO: export for ${_oct}: every site database dump completed; exported.pid stamped"
+    else
+      echo "ERROR: export for ${_oct}: this run made no control panel dump"
+      echo "ERROR: NOT stamping exported.pid; transfer and import will refuse this account"
+      _XCOPY_RUN_FAIL=YES
     fi
   fi
   if [ "${_cmd}" = "import" ]; then
@@ -5120,10 +5132,9 @@ _xcopy_names_left_here() {
   done
 }
 # The copy state of the account on this box cleared, so a copy can start
-# again or a copy be refreshed. On the source: the panel dump (export takes a
-# new one only while none is there, so a refresh would ship the panel as it
-# was at the first copy) and the export and transfer stamps, which refuse a
-# new export and transfer. On a target: the import stamp, which refuses a new
+# again or a copy be refreshed. On the source: the export and transfer
+# stamps, which refuse a new export and transfer, and the panel dump, which
+# the next export replaces. On a target: the import stamp, which refuses a new
 # import, and the recorded panel database. Either side: the failure latches,
 # every dump directly in src/ and the per-site dump folders (on a target the
 # next transfer adds to a folder left there, and the import would load both
@@ -6400,6 +6411,14 @@ _migrate_init() {
     elif [ "${_cmd}" = "transfer" ] && [ -e "${_USR}/log/transferred.pid" ]; then
       echo "_USR ${_oct} is not eligible for migration: already transferred"
       exit 1
+    ### A transfer carries what this run's export made. With no export, src/
+    ### and log/ can hold an older copy's panel dump and source hostname (an
+    ### import this box once received), which the target would import.
+    elif [ "${_cmd}" = "transfer" ] && [ ! -e "${_USR}/log/exported.pid" ] \
+      && [ ! -e "${_USR}/log/export_failed.pid" ]; then
+      echo "_USR ${_oct} is not eligible for migration: not exported"
+      echo "INFO: run 'xcopy export ${_oct} ${_tgt}${_dst:+ ${_dst}}' first"
+      exit 1
     elif [ "${_cmd}" = "transfer" ] && [ -e "${_USR}/log/export_failed.pid" ] \
       && [ "${_XCOPY_FORCE}" != "YES" ]; then
       echo "_USR ${_oct} is not eligible for migration: export incomplete"
@@ -6463,7 +6482,13 @@ _migrate_init() {
           _xcopy_leg_ok "${_USR}/distro" \
             && _xcopy_in_real_dir "${_USR}/distro" _xcopy_copy_mk_here "${_tgt}" \
               "${_DST}/distro" '*' -aEAXqu ${_ieni}
-          _xcopy_leg_ok "${_USR}/src" \
+          ### src/ travels with the transfer alone, after this run's export:
+          ### before it, src/ can hold an older copy's panel dump and site
+          ### dump folders (an import this box once received), and the
+          ### transfer adds to the target's folders without removing from
+          ### them, so the import would load that copy's files with the new.
+          [ "${_cmd}" = "transfer" ] \
+            && _xcopy_leg_ok "${_USR}/src" \
             && _xcopy_in_real_dir "${_USR}/src" _xcopy_copy_mk_here "${_tgt}" \
               "${_DST}/src" '*' -aEAXqu ${_ieni}
           _xcopy_transfer_static_symlink_safe "${_USR}" "${_tgt}" "${_DST}" "${_ieni}" "${_TGT_MNT}"
