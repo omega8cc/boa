@@ -178,12 +178,17 @@
       --move-back) and the room check asks 1.1 times the snapshot, not 2.2.
       _XMASS_SEED_COPY=YES, or _XMASS_KEEP_STAGE=YES, copies it as before.
 
-    * The room a seed needs is measured without the binary log in the
-      source's database folder, which no snapshot carries, on the source
-      and on the target. The source stages its snapshot only where that
-      also keeps the filesystem it lands on under the 90% line where BOA's
-      own runs stop, judged as they judge it; otherwise it streams and says
-      how much more room staging needs.
+    * The room a seed needs is measured by the files a backup copies, on
+      the source, on the target and in the binary log plan: the database
+      folder without the binary log's files, which no snapshot carries,
+      left out by name wherever they lie under it (a log folder linked
+      onto another disk, a log_bin set outside but reached through a link
+      inside), with the newest log file, which xtrabackup copies, wherever
+      the log is written. A source's log gives room back only on the
+      database folder's own disk. The source stages its snapshot only
+      where that also keeps the filesystem it lands on under the 90% line
+      where BOA's own runs stop, judged as they judge it; otherwise it
+      streams and says how much more room staging needs.
 
     * xmass init says the space that stands once the seed is in, names in
       its closing lines the folder it parked on the target with its size
@@ -194,7 +199,8 @@
     * The estimate of files still to arrive on a target, which lowers the
       days of binary log it keeps, counts the source's stores on
       filesystems of their own (files volumes, the archive, Solr data)
-      where the syncs will place them, and says what it covers.
+      where the syncs will place them, and says what it covers. Solr data
+      on a filesystem a store is counted for is counted as Solr data.
 
     * A manual xmass sync that moves an account's store off the target's
       attached mount onto its root names the copy it leaves on the mount,
