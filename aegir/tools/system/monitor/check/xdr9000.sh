@@ -348,14 +348,15 @@ _sample_pass() {
     read -r _rx _tx < <(awk -v I="${_ifc}:" '$1 == I {print $2, $10}' /proc/net/dev)
   fi
   local _rx_d _tx_d
-  _rx_d=$(_counter_delta "net_rx" "${_rx:-0}")
-  _tx_d=$(_counter_delta "net_tx" "${_tx:-0}")
+  # a read that failed passes no number, which keeps each baseline
+  _rx_d=$(_counter_delta "net_rx" "${_rx:-}")
+  _tx_d=$(_counter_delta "net_tx" "${_tx:-}")
   local _syn=0 _syn_d=0
   if iptables -nvxL SYNPROXY_EARLY &> /dev/null; then
     # whole, never as awk prints a sum: past 2^31 packets mawk prints 3e+09.
     # Its baseline under a key of its own: the one before kept 0 for a sum
     # printed that way, and would count a whole counter as one sample's.
-    _syn=$(iptables -nvxL SYNPROXY_EARLY 2>/dev/null | awk 'NR>2 {s+=$1} END {printf "%.0f\n", s}')
+    _syn=$(iptables -nvxL SYNPROXY_EARLY 2>/dev/null | awk 'NR>2 {s+=$1} END {if (NR >= 2) printf "%.0f\n", s}')
     _syn_d=$(_counter_delta "synproxy_whole" "${_syn}")
   fi
   local _deny=0 _tban=0
@@ -366,7 +367,7 @@ _sample_pass() {
   printf '{"t":%s,"c":"smp","l1":%s,"l5":%s,"l15":%s,"mem":%s,"swp":%s,"dr":%s,"dd":%s,"tier":"%s","rx":%s,"tx":%s,"rxd":%s,"txd":%s,"syn":%s,"synd":%s,"deny":%s,"tban":%s}\n' \
     "${_now}" "${_l1:-0}" "${_l5:-0}" "${_l15:-0}" "${_mem_kb:-0}" "${_swp_used}" \
     "${_dsk_root:-0}" "${_dsk_data:-0}" "${_tier}" "${_rx:-0}" "${_tx:-0}" \
-    "${_rx_d}" "${_tx_d}" "${_syn}" "${_syn_d}" "${_deny:-0}" "${_tban:-0}" \
+    "${_rx_d}" "${_tx_d}" "${_syn:-0}" "${_syn_d}" "${_deny:-0}" "${_tban:-0}" \
     >> "${_SAMPLES}"
 }
 
