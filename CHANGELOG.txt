@@ -245,6 +245,18 @@
       folder is now refused with a DENY naming its owner: the dry run is not
       clean, and the live transfer, or the xmass pass, does not complete.
 
+    * The same rule holds on the source server: xoct, xcopy and xmass copy a
+      client's gems or npm tree only when root or the account itself owns it
+      there. Another account could make the login's name first on the source
+      too, and the move carried that account's folder, with its owner, to the
+      target, where it was never handed over.
+
+    * A move's group pass (xoct, xcopy and xmass, and instgrp's reclaim)
+      leaves out a folder at the account's names in /opt/user/gems or
+      /opt/user/npm that another account owns. It put that account's files
+      into the moved account's group, which could then read them by their
+      group bits.
+
     * The limited shell writes each log record on one line, a control
       character in a command as \xNN: a command sent over SSH with a
       newline in it started a second log line that read as a record of
@@ -961,6 +973,18 @@
       the client's Ruby gems or npm tree failed (a full disk, a file in the
       way): the run names it with a DENY, as it does a failed backups copy,
       and a run after the cause is fixed copies what is missing.
+
+    * xoct and xcopy read a gems, npm or backups copy that rsync ends with
+      status 23 only because files vanished while it ran (a client's own gem
+      or npm run, a backup rotated meanwhile) as the harmless 24, as xmass
+      already does: such a copy kept a live transfer from completing until a
+      run after it.
+
+    * An xoct import onto another account name reads the settings of the
+      name it lands on. It read the target's octopus.cnf for the source's
+      name: the import made its databases on port 3306 for an account that
+      runs through ProxySQL, or with another account's settings where the
+      target had an account of the source's name.
 
     * Sums that can pass two billion are printed whole: the awk on BOA
       servers prints them in exponent form (3e+09) and caps %d there. It
