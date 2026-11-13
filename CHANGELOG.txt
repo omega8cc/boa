@@ -799,6 +799,13 @@
       pass's, so the pass reloaded nginx again at its end, resetting every
       HTTP/3 transfer on the server a second time.
 
+    * Weekly retention passes and cleanups on Backblaze B2 delete old
+      backup files by the ids of one listing, as multiback purge already
+      does, so they finish when the account's daily cap on download-class
+      requests is spent. Before, each file was looked up by name first,
+      one capped request a file, and a capped account kept its old chains,
+      and their storage, past the retention.
+
     * The migration completion notice gives the client the account's new
       control panel address in full, with the SQL Adminer address beside
       it where the new server has Adminer, and the start notice says what
