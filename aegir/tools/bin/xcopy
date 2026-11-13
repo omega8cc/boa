@@ -2519,6 +2519,21 @@ _xcopy_panel_context_name() {
   return 0
 }
 
+# This server's name as export records it in log/sourcefqdn.txt: the account's
+# own server_master alias (a target keeps its own, so on a server that received
+# the account it names that server), else hostname -f. Read inside the real
+# .drush, never through a link put at it.
+_xcopy_this_fqdn() {
+  local _f
+  _f=$(_xcopy_read_in "${_USR}/.drush" server_master.alias.drushrc.php \
+    | grep "remote_host" \
+    | head -1 \
+    | sed "s/.*remote_host.*=>//; s/[' ,;]//g")
+  _f=${_f//[^a-zA-Z0-9.\-]/}
+  [ -z "${_f}" ] && _f=$(hostname -f 2>/dev/null | tr -d '\n')
+  printf '%s' "${_f}"
+}
+
 # The db_name line of the panel site $1's drushrc.php, as found: read inside
 # the real site directory, so a link or a FIFO at the name, or a link in the
 # account's part of the path, gives nothing. The callers keep only
@@ -3531,6 +3546,7 @@ _migrate_prepare() {
   # The panel site is the account's: drushrc.php is read inside its real
   # directory, never through a link or into a FIFO. Read before anything
   # below changes the box, so the refusal that follows leaves it as it was.
+  _HDB=""
   if [ -e "${_THIS_HM_SITE}/drushrc.php" ]; then
     _HDB=$(_xcopy_panel_db_line "${_THIS_HM_SITE}")
     echo "raw _HDB is ${_HDB}"
@@ -3546,6 +3562,13 @@ _migrate_prepare() {
     && [ -z "${_HDB}" ]; then
     echo "ERROR: import for ${_oct}: ${_THIS_HM_SITE}/drushrc.php names no panel database"
     echo "ERROR: nothing was imported and nothing on this box was changed; fix the cause and re-run"
+    exit 1
+  fi
+  # An export with no panel to dump would ship the sites alone, or beside a
+  # panel dump an older copy left in src/.
+  if [ "${_cmd}" = "export" ] && [ -z "${_HDB}" ]; then
+    echo "ERROR: export for ${_oct}: ${_THIS_HM_SITE:-the panel site}/drushrc.php names no panel database"
+    echo "ERROR: nothing was exported and nothing on this box was changed; fix the cause and re-run"
     exit 1
   fi
   # The create switched the upgrade notice off already under admail=; asked
@@ -3587,10 +3610,6 @@ _migrate_prepare() {
   ### by hand) is older than the sites dumped beside it, and the target would
   ### import that older panel. log/sourcefqdn.txt is written with it.
   _XCOPY_HM_DUMP_OK=""
-  if [ "${_cmd}" = "export" ] && [ -z "${_HDB}" ]; then
-    echo "ERROR: export for ${_oct}: no panel database named in ${_THIS_HM_SITE:-the panel site}/drushrc.php; nothing was dumped"
-    exit 1
-  fi
   if [ "${_cmd}" = "export" ] \
     && [ ! -z "${_HDB}" ] \
     && [ ! -e "${_USR}/log/exported.pid" ]; then
@@ -3633,12 +3652,7 @@ _migrate_prepare() {
       # refuses without it. Travels with the log/ transfer sync.
       # The alias is read and the record put inside the real .drush and
       # log/ (both oN's), never through a link put at either name.
-      _SRC_FQDN=$(_xcopy_read_in "${_USR}/.drush" server_master.alias.drushrc.php \
-        | grep "remote_host" \
-        | head -1 \
-        | sed "s/.*remote_host.*=>//; s/[' ,;]//g")
-      _SRC_FQDN=${_SRC_FQDN//[^a-zA-Z0-9.\-]/}
-      [ -z "${_SRC_FQDN}" ] && _SRC_FQDN=$(hostname -f 2>/dev/null | tr -d '\n')
+      _SRC_FQDN=$(_xcopy_this_fqdn)
       printf '%s' "${_SRC_FQDN}" \
         | _xcopy_in_real_dir "${_USR}/log" _xcopy_write_here sourcefqdn.txt
     else
@@ -6425,6 +6439,16 @@ _migrate_init() {
       echo "ALRT: log/export_failed.pid is present -- the last export left FAILED site dumps:"
       _xcopy_read_in "${_USR}/log" export_failed.pid | sed "s/^/ALRT:   /"
       echo "INFO: re-run 'xcopy export' after fixing the cause, or pass --force to transfer anyway"
+      exit 1
+    ### The stamps travel with the transfer and stay on a target whose import
+    ### stopped short: there they are the sending server's export, with its
+    ### dumps. Export records the server it ran on; --force passes no other.
+    elif [ "${_cmd}" = "transfer" ] \
+      && [ "$(_xcopy_read_in "${_USR}/log" sourcefqdn.txt | tr -cd 'a-zA-Z0-9.-')" \
+        != "$(_xcopy_this_fqdn | tr -cd 'a-zA-Z0-9.-')" ]; then
+      echo "_USR ${_oct} is not eligible for migration: exported on another server"
+      echo "INFO: log/sourcefqdn.txt names '$(_xcopy_read_in "${_USR}/log" sourcefqdn.txt | tr -cd 'a-zA-Z0-9.-')', this server is '$(_xcopy_this_fqdn | tr -cd 'a-zA-Z0-9.-')'"
+      echo "INFO: run 'xcopy reset-state ${_oct}', then 'xcopy export ${_oct} ${_tgt}${_dst:+ ${_dst}}'"
       exit 1
     elif [ "${_cmd}" = "import" ] && [ -e "${_USR}/log/export_failed.pid" ] \
       && [ "${_XCOPY_FORCE}" != "YES" ]; then
