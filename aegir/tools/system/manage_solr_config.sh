@@ -1580,6 +1580,30 @@ _reregister_solr_core() {
   fi
 }
 
+# True when Solr version $1 (solr7, solr9 or jetty9) is denied on this box,
+# read as autoupboa reads it when it parks the service: the box-wide Java
+# deny or the version's own, as a setting (sourced by _load_control) or as
+# a marker file. A denied version has no server here, so its bin/solr CLI
+# would only start a JVM to fail on a closed port, every pass.
+_solr_ver_denied() {
+  [ "${_DENY_JAVA}" = "YES" ] && return 0
+  [ -e "/root/.deny.java.cnf" ] && return 0
+  case "${1}" in
+    solr7)
+      [ "${_DENY_SOLR7}" = "YES" ] || [ -e "/etc/boa/.deny.solr7.cnf" ]
+      ;;
+    solr9)
+      [ "${_DENY_SOLR9}" = "YES" ] || [ -e "/etc/boa/.deny.solr9.cnf" ]
+      ;;
+    jetty9)
+      [ "${_DENY_JETTY9}" = "YES" ] || [ -e "/etc/boa/.deny.jetty9.cnf" ]
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
 _check_solr() {
   # ${1} is module
   # ${2} is solr core path
@@ -1733,6 +1757,24 @@ _setup_solr() {
       [ -n "${_SolrCoreID}" ] \
         && _acct_in_real_dir "${_usEr}/.boa-ctrl" \
           rm -f -- "./solr-reseeded.${_SolrCoreID}" &> /dev/null
+      # A version denied on this box gets no core work at all: nothing is
+      # created, refreshed, re-registered or protected, and an existing core
+      # stays as it is until the deny is lifted. Blanking the version here
+      # also holds legs 2 and 3. A teardown is not affected.
+      if [ -n "${_SOLR_VER}" ] && _solr_ver_denied "${_SOLR_VER}"; then
+        echo "SOLR-DENIED: ${_Dom} binds ${_SOLR_MODULE} to ${_SOLR_VER}, which is denied on this server -- core ${_SolrCoreID} left as it is"
+        # A solr.php naming a core that was never made (an earlier pass wrote
+        # it after a create the closed port refused) sends the site to a
+        # server that is not there. It is removed, and comes back with the
+        # core once the deny is lifted.
+        if [ ! -e "${_SOLR_DIR}" ] && [ -n "${_Dir}" ] \
+          && _acct_in_resolved_dir "${_Dir}" _acct_read_plain_here solr.php \
+            | grep -qF "${_SolrCoreID}"; then
+          _acct_in_resolved_dir "${_Dir}" rm -f -- ./solr.php &> /dev/null
+          echo "SOLR-DENIED: removed ${_Dir}/solr.php, which named the missing core ${_SolrCoreID}"
+        fi
+        _SOLR_VER=
+      fi
       # A core this same text protects is protected before the check, which
       # otherwise refreshes it once from a template or an upload before leg 2
       # writes the marker; a core the check creates is protected by

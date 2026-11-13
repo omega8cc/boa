@@ -854,6 +854,16 @@
       An account the Octopus installer creates is now marked as through
       that change from the start.
 
+    * The Solr core pass leaves alone a site bound to a Solr version that is
+      denied on the server. It ran that version's create_core on every
+      four-minute pass, each time starting a Java process that could only
+      fail on the closed port, and then wrote the site a solr.php naming a
+      core that was never made. It now logs one SOLR-DENIED line naming the
+      site and the version, creates, refreshes and re-registers nothing, and
+      removes a solr.php that names the missing core; the core and its
+      solr.php come back on the first pass after the deny is lifted. A site
+      whose directive is cleared is torn down as before.
+
     * The migration completion notice gives the client the account's new
       control panel address in full, with the SQL Adminer address beside
       it where the new server has Adminer, and the start notice says what
