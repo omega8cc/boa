@@ -5853,11 +5853,11 @@ _newrelic_pool_off() {
   if [ -e "${_THIS_POOL_TPL}" ] \
     && grep -q "^php_admin_value\[newrelic\." ${_THIS_POOL_TPL}; then
     echo "New Relic lines removed for $2: php$1 does not load New Relic"
+    # a live pool file: its master owes a reload until one has read it
+    [ "$3" = "1" ] && _ltd_fpm_owe "$1"
     sed -i "/^php_admin_value\[newrelic\./d" ${_THIS_POOL_TPL}
     wait
-    if [ "$3" = "1" ] && [ -e "/etc/init.d/php$1-fpm" ]; then
-      service php$1-fpm reload &> /dev/null
-    fi
+    [ "$3" = "1" ] && _ltd_fpm_reload "$1"
   fi
 }
 #
@@ -5870,25 +5870,27 @@ _disable_newrelic() {
     _CHECK_NEW_RELIC_KEY=$(grep "newrelic.enabled.*true" ${_THIS_POOL_TPL} 2>&1)
     if [[ "${_CHECK_NEW_RELIC_KEY}" =~ "newrelic.enabled" ]]; then
       echo "New Relic for $2 will be disabled because newrelic.info does not exist"
+      [ "$3" = "1" ] && _ltd_fpm_owe "$1"
       sed -i "s/^php_admin_value\[newrelic.license\].*/php_admin_value\[newrelic.license\] = \"\"/g" ${_THIS_POOL_TPL}
       wait
       sed -i "s/^php_admin_value\[newrelic.enabled\].*/php_admin_value\[newrelic.enabled\] = \"false\"/g" ${_THIS_POOL_TPL}
       wait
-      if [ "$3" = "1" ] && [ -e "/etc/init.d/php$1-fpm" ]; then
-        service php$1-fpm reload &> /dev/null
-        [ "${_ltdNrOwn:-}" = "YES" ] && _ltdOwnFpm=YES
+      if [ "$3" = "1" ]; then
+        [ -e "/etc/init.d/php$1-fpm" ] && [ "${_ltdNrOwn:-}" = "YES" ] && _ltdOwnFpm=YES
+        _ltd_fpm_reload "$1"
       fi
     elif ! grep -q "^php_admin_value\[newrelic.enabled\]" ${_THIS_POOL_TPL}; then
       # a pool left without the lines while its PHP did not load New Relic
       # keeps it off now that it does: the ini enables it for every pool
       echo "New Relic for $2 disabled in php$1"
+      [ "$3" = "1" ] && _ltd_fpm_owe "$1"
       sed -i "/^php_admin_value\[newrelic\./d" ${_THIS_POOL_TPL}
       wait
       echo "php_admin_value[newrelic.license] = \"\"" >> ${_THIS_POOL_TPL}
       echo "php_admin_value[newrelic.enabled] = \"false\"" >> ${_THIS_POOL_TPL}
-      if [ "$3" = "1" ] && [ -e "/etc/init.d/php$1-fpm" ]; then
-        service php$1-fpm reload &> /dev/null
-        [ "${_ltdNrOwn:-}" = "YES" ] && _ltdOwnFpm=YES
+      if [ "$3" = "1" ]; then
+        [ -e "/etc/init.d/php$1-fpm" ] && [ "${_ltdNrOwn:-}" = "YES" ] && _ltdOwnFpm=YES
+        _ltd_fpm_reload "$1"
       fi
     fi
   fi
@@ -5916,6 +5918,7 @@ _enable_newrelic() {
       if [[ "${_CHECK_NEW_RELIC_KEY}" =~ "${_LOC_NEW_RELIC_KEY}" ]]; then
         echo "New Relic integration is already active for $2"
       else
+        [ "$3" = "1" ] && _ltd_fpm_owe "$1"
         if [[ "${_CHECK_NEW_RELIC_TPL}" =~ "newrelic.license" ]]; then
           echo "New Relic for $2 update with key ${_LOC_NEW_RELIC_KEY} in php$1"
           sed -i "s/^php_admin_value\[newrelic.license\].*/php_admin_value\[newrelic.license\] = \"${_LOC_NEW_RELIC_KEY}\"/g" ${_THIS_POOL_TPL}
@@ -5927,9 +5930,9 @@ _enable_newrelic() {
           echo "php_admin_value[newrelic.license] = \"${_LOC_NEW_RELIC_KEY}\"" >> ${_THIS_POOL_TPL}
           echo "php_admin_value[newrelic.enabled] = \"true\"" >> ${_THIS_POOL_TPL}
         fi
-        if [ "$3" = "1" ] && [ -e "/etc/init.d/php$1-fpm" ]; then
-          service php$1-fpm reload &> /dev/null
-          [ "${_ltdNrOwn:-}" = "YES" ] && _ltdOwnFpm=YES
+        if [ "$3" = "1" ]; then
+          [ -e "/etc/init.d/php$1-fpm" ] && [ "${_ltdNrOwn:-}" = "YES" ] && _ltdOwnFpm=YES
+          _ltd_fpm_reload "$1"
         fi
       fi
     fi
@@ -6283,9 +6286,42 @@ _ltd_pool_deny_heal_skipped() {
   return 0
 }
 #
+# A reload of PHP version $1 (its digits) the account's pool files are owed,
+# recorded before a pool file is put in place or removed: a pass cut off
+# between that and its reload leaves a file the running master never read,
+# and the next pass, which finds the file as it would write it, has nothing
+# else to tell it by while the pool's socket is up. Cleared by the reload
+# (_ltd_fpm_reload); one a cut-off pass left is made by the next
+# (_ltd_fpm_owed_reload).
+_ltd_fpm_owe() {
+  mkdir -p /var/backups/ltd/fpmcore && chmod 700 /var/backups/ltd/fpmcore
+  : > "/var/backups/ltd/fpmcore/${_USER}.fpm-owed.${1}"
+}
+# PHP version $1 reloaded for the account's pool files: the init script sends
+# the reload whenever the master's pid file is there, and a master that is not
+# running reads every pool file when it starts, so the owed record goes.
+_ltd_fpm_reload() {
+  [ -e "/etc/init.d/php${1}-fpm" ] && service "php${1}-fpm" reload &> /dev/null
+  rm -f -- "/var/backups/ltd/fpmcore/${_USER}.fpm-owed.${1}"
+}
+# The reloads a cut-off pass owed the account's pool files, made now.
+_ltd_fpm_owed_reload() {
+  local _f _v
+  for _f in /var/backups/ltd/fpmcore/"${_USER}".fpm-owed.*; do
+    [ -f "${_f}" ] || continue
+    _v="${_f##*.}"
+    if [[ "${_v}" =~ ^[0-9]{2}$ ]]; then
+      _ltd_fpm_reload "${_v}"
+    else
+      rm -f -- "${_f}"
+    fi
+  done
+}
+#
 # A PHP version (its digits) whose FPM _switch_php reloads once, after every
-# pool file of the account is final.
+# pool file of the account is final; the reload is owed from now on.
 _ltd_fpm_reload_mark() {
+  _ltd_fpm_owe "${1}"
   case "${_FPM_RLD}" in
     *" ${1} "*) ;;
     *) _FPM_RLD="${_FPM_RLD}${1} " ;;
@@ -6293,15 +6329,15 @@ _ltd_fpm_reload_mark() {
 }
 #
 # One of the account's pool files (/opt/phpNN/etc/pool.d/...) removed, its
-# version marked for the reload; $2 = a version whose file is left, as it is
-# replaced in place.
+# version marked for the reload first; $2 = a version whose file is left, as
+# it is replaced in place.
 _ltd_pool_drop() {
   local _v="${1#/opt/php}"
   _v="${_v%%/*}"
   [ -e "${1}" ] || [ -L "${1}" ] || return 0
   [ -n "${2}" ] && [ "${_v}" = "${2}" ] && return 0
-  rm -f -- "${1}"
   _ltd_fpm_reload_mark "${_v}"
+  rm -f -- "${1}"
 }
 #
 # Every per-site include whose name is not in $1 (each between spaces) removed
@@ -6653,32 +6689,79 @@ _ltd_applied_put() {
   [ -f "${_f}" ] && [ "$(cat -- "${_f}" 2> /dev/null)" = "${2}" ] && return 0
   printf '%s\n' "${2}" > "${_f}.$$" && mv -f -- "${_f}.$$" "${_f}"
 }
-# The account's FPM mode this pass (_ltdFpmMulti): multi-FPM with tools/le and
-# multi-fpm.info. A multi-fpm.info the login deleted from an account whose
-# pools are multi-FPM ones (root's /opt/php*/etc/pool.d/<acct>.<NN>.conf) is
-# written back by this same pass (_site_socket_inc_gen) while PHP 7.4 or newer
-# is installed, so it does not take the account out of the mode: one pass left
-# it and the next entered it again, every pool and nginx reloaded twice, for a
-# file the login cannot keep away.
-_ltd_fpm_multi_mode() {
+# Multi-FPM mode by the account's files: tools/le and multi-fpm.info. A
+# multi-fpm.info the login deleted from an account whose pools are multi-FPM
+# ones (root's /opt/php*/etc/pool.d/<acct>.<NN>.conf) is written back by the
+# ltd worker while PHP 7.4 or newer is installed, so it does not take the
+# account out of the mode: one pass left it and the next entered it again,
+# every pool and nginx reloaded twice, for a file the login cannot keep away.
+# $1 = the account's home, $2 = its name.
+_fpm_multi_files() {
   local _e _p
-  _ltdFpmMulti=NO
-  [ -d "${_dscUsr}/tools/le" ] || return 0
-  if [ -f "${_dscUsr}/static/control/multi-fpm.info" ]; then
-    _ltdFpmMulti=YES
-    return 0
-  fi
-  [ -d "${_dscUsr}/static/control" ] || return 0
-  for _p in /opt/php*/etc/pool.d/"${_USER}".[0-9]*.conf; do
+  [ -d "${1}/tools/le" ] || return 1
+  [ -f "${1}/static/control/multi-fpm.info" ] && return 0
+  [ -d "${1}/static/control" ] || return 1
+  for _p in /opt/php*/etc/pool.d/"${2}".[0-9]*.conf; do
     [ -f "${_p}" ] || continue
     for _e in 86 85 84 83 82 81 74; do
-      if [ -x "/opt/php${_e}/bin/php" ]; then
-        _ltdFpmMulti=YES
-        return 0
-      fi
+      [ -x "/opt/php${_e}/bin/php" ] && return 0
     done
-    return 0
+    return 1
   done
+  return 1
+}
+# The PHP-FPM mode (multi or single) the ltd worker last made for account $1,
+# root's record; nothing without one.
+_fpm_mode_rec() {
+  local _f="/var/backups/ltd/fpmcore/${1}.mode.applied" _r=""
+  [ -f "${_f}" ] && [ ! -L "${_f}" ] || return 0
+  { IFS= read -r _r < "${_f}"; } 2> /dev/null
+  case "${_r}" in
+    multi|single) echo "${_r}" ;;
+  esac
+}
+# The account's FPM mode this pass (_ltdFpmMulti), by its files. A switch of
+# the mode reloads every PHP-FPM master of the box and nginx, and both files
+# are the account's (its backend user can remove tools/le and make it again,
+# its login writes multi-fpm.info), so a switch is the account's own change
+# of PHP-FPM kind: inside the account's window it is not made at all, the
+# pass runs whole in the mode root last made, and the first pass after the
+# window makes it. No record (an account that never had tools/le, such as a
+# young one), no hold: its first entry into multi-FPM mode is at once, and so
+# is a switch in root's own run (_ACCT_RELOAD_HOLD=NO). _ltdModeRec = the mode
+# to record once _switch_php makes it; _ltdModeOwn = the switch is the
+# account's own.
+_ltd_fpm_multi_mode() {
+  local _now=single _rec
+  _ltdFpmMulti=NO
+  _ltdModeRec=""
+  _ltdModeOwn=""
+  if _fpm_multi_files "${_dscUsr}" "${_USER}"; then
+    _ltdFpmMulti=YES
+    _now=multi
+  fi
+  _rec="$(_fpm_mode_rec "${_USER}")"
+  if [ -z "${_rec}" ]; then
+    [ -d "${_dscUsr}/tools/le" ] && _ltdModeRec="${_now}"
+    return 0
+  fi
+  [ "${_rec}" = "${_now}" ] && return 0
+  if _ltd_rld_held fpm; then
+    _ltd_rld_note fpm "the switch to ${_now}-FPM mode"
+    _ltdFpmMulti=NO
+    [ "${_rec}" = "multi" ] && _ltdFpmMulti=YES
+    return 0
+  fi
+  _ltdModeRec="${_now}"
+  _ltdModeOwn=YES
+}
+# The mode _ltd_fpm_multi_mode chose, recorded once _switch_php makes it; an
+# account's own switch opens its PHP-FPM window.
+_ltd_fpm_mode_made() {
+  [ -n "${_ltdModeRec:-}" ] || return 0
+  _ltd_applied_put mode "${_ltdModeRec}" 2> /dev/null
+  [ "${_ltdModeOwn:-}" = "YES" ] && _ltdOwnFpm=YES
+  _ltdModeRec=""
 }
 # The per-site includes the rows of multi-fpm.info text $1 give, as the
 # rebuild writes them: _LTD_SITE_WANT[<include>] = its body; the rows that do
@@ -6796,6 +6879,13 @@ _ltd_ngx_owe() {
   mkdir -p /var/backups/ltd/fpmcore && chmod 700 /var/backups/ltd/fpmcore
   : > "/var/backups/ltd/fpmcore/${_USER}.reload-owed"
 }
+# nginx has just reloaded on a config its test passed, so it read every
+# include of the account: a later reload in the same pass is owed only for
+# what changes after this.
+_ltd_ngx_read() {
+  rm -f "/var/backups/ltd/fpmcore/${_USER}.reload-owed"
+  _ltdNgxFpBefore="$(_ltd_ngx_fpm_fp)"
+}
 # Reload nginx once per pass, and only when the account's FPM includes changed
 # or a reload is owed: nginx reads them on reload alone, and a reload on every
 # pass reset every HTTP/3 transfer in flight.
@@ -6811,9 +6901,8 @@ _ltd_ngx_pass_reload() {
   [ -n "${_ltdNgxTestFail:-}" ] && [ "$(_ltd_ngx_fpm_fp)" = "${_ltdNgxTestFail}" ] && return 0
   if nginx -t &> /dev/null; then
     service nginx reload &> /dev/null
-    rm -f "${_own}"
     # a later call in the same pass reloads only for what changed since
-    _ltdNgxFpBefore="$(_ltd_ngx_fpm_fp)"
+    _ltd_ngx_read
   else
     _ltd_ngx_owe
     _ltdNgxTestFail="$(_ltd_ngx_fpm_fp)"
@@ -7203,6 +7292,9 @@ _ltd_hm_pool_apply() {
     _ngxW=""
     [ "$1" = "wait" ] && [ -n "${_ngx}" ] && _ngxW=$(pgrep -P "${_ngx}" 2> /dev/null | tr '\n' ' ')
     service nginx reload &> /dev/null
+    # the panel include is one of the account's includes nginx has now read:
+    # the pass's own reload is not owed for it again
+    _ltd_ngx_read
     while [ -n "${_ngxW}" ] && [ "${_wt}" -lt 30 ]; do
       _live=""
       for _w in ${_ngxW}; do
@@ -7269,8 +7361,9 @@ _ltd_hm_pool() {
     for _pFile in ${_old}; do
       _e="${_pFile#/opt/php}"
       _e="${_e%%/*}"
+      _ltd_fpm_owe "${_e}"
       rm -f -- "${_pFile}"
-      [ -e "/etc/init.d/php${_e}-fpm" ] && service "php${_e}-fpm" reload &> /dev/null
+      _ltd_fpm_reload "${_e}"
     done
     [ -d "/var/www/phpcache/${_USER}/${_pool}" ] && rm -rf "/var/www/phpcache/${_USER}/${_pool}"
     return 0
@@ -7366,19 +7459,21 @@ _ltd_hm_pool() {
     _ltd_hm_pool_apply wait || { rm -f -- "${_pNew}"; return 0; }
   fi
   for _e in ${_rldOld}; do
+    _ltd_fpm_owe "${_e}"
     rm -f -- "/opt/php${_e}/etc/pool.d/${_pool}.conf"
     _chg=YES
   done
   if [ -f "${_pFile}" ] && [ ! -L "${_pFile}" ] && cmp -s -- "${_pNew}" "${_pFile}"; then
     rm -f -- "${_pNew}"
   else
+    _ltd_fpm_owe "${_hv}"
     mv -f -- "${_pNew}" "${_pFile}"
     _rld="${_rld}${_hv} "
     _chg=YES
   fi
   if [ "${_rldOld}" != " " ]; then
     for _e in $(printf '%s\n' ${_rldOld} | sort -u); do
-      [ -e "/etc/init.d/php${_e}-fpm" ] && service "php${_e}-fpm" reload &> /dev/null
+      _ltd_fpm_reload "${_e}"
     done
     _pWt=0
     while _ltd_hm_sock_ok "${_pool}" "${_hv}" && [ "${_pWt}" -lt 20 ]; do
@@ -7394,7 +7489,7 @@ _ltd_hm_pool() {
   [ -n "${_T_WG}" ] && chgrp "${_T_WG}" "/var/www/phpcache/${_USER}/${_pool}"
   chmod 770 "/var/www/phpcache/${_USER}/${_pool}"
   for _e in $(printf '%s\n' ${_rld} | sort -u); do
-    [ -e "/etc/init.d/php${_e}-fpm" ] && service "php${_e}-fpm" reload &> /dev/null
+    _ltd_fpm_reload "${_e}"
   done
   _pWt=0
   while ! _ltd_hm_sock_ok "${_pool}" "${_hv}" && [ "${_pWt}" -lt 30 ]; do
@@ -7581,6 +7676,9 @@ _switch_php() {
           _FORCE_FPM_SETUP=YES
         fi
       fi
+      # the rest of the pass runs in this mode alone (the tests below do not
+      # read tools/le again, which can go mid-pass)
+      _ltd_fpm_mode_made
 
       # Read and sanitize the FPM version
       _T_FPM_VRN=$(_ltd_ctrl_read fpm.info | tr -d '\n' | tr -cd '0-9.')
@@ -7699,7 +7797,7 @@ _switch_php() {
       fi
       _FMP_D_INC="${_dscUsr}/config/server_master/nginx/post.d/fpm_include_default.inc"
 
-      if [ "${_PHP_FPM_MULTI}" = "YES" ] && [ -d "${_dscUsr}/tools/le" ]; then
+      if [ "${_PHP_FPM_MULTI}" = "YES" ]; then
         _PHP_M_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
         _D_POOL="${_USER}.${_PHP_SV}"
         if [ ! -e "${_FMP_D_INC}" ]; then
@@ -7740,7 +7838,7 @@ _switch_php() {
         [ -z "${_PHP_SV}" ] && _PHP_SV=84
 
         # Update or create special system user if needed
-        if [ "${_PHP_FPM_MULTI}" = "YES" ] && [ -d "${_dscUsr}/tools/le" ]; then
+        if [ "${_PHP_FPM_MULTI}" = "YES" ]; then
           _PHP_M_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
           _D_POOL="${_USER}.${_PHP_SV}"
           if [ ! -e "${_FMP_D_INC}" ] && [ -e "/run/${_D_POOL}.fpm.socket" ] && [ -x "/opt/php${_PHP_SV}/bin/php" ]; then
@@ -7767,7 +7865,7 @@ _switch_php() {
         # Update/create web users
         for m in ${_PHP_M_V}; do
           if [ -x "/opt/php${m}/bin/php" ]; then
-            if [ "${_PHP_FPM_MULTI}" = "YES" ] && [ -d "${_dscUsr}/tools/le" ]; then
+            if [ "${_PHP_FPM_MULTI}" = "YES" ]; then
               _WEB="${_USER}.${m}.web"
               _POOL="${_USER}.${m}"
             else
@@ -7803,7 +7901,7 @@ _switch_php() {
         # The other mode's pools (_pOld) are dropped after the loop, once
         # nginx is sent to the pools set up here (_pUp: the default one).
         _pOld=""
-        if [ "${_PHP_FPM_MULTI}" = "YES" ] && [ -d "${_dscUsr}/tools/le" ]; then
+        if [ "${_PHP_FPM_MULTI}" = "YES" ]; then
           _PHP_M_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
           _pUp="/run/${_USER}.${_PHP_SV}.fpm.socket"
           for _pf in /opt/php*/etc/pool.d/"${_USER}".conf; do
@@ -7834,7 +7932,7 @@ _switch_php() {
         _ltdNrIn=" "
         for m in ${_PHP_M_V}; do
           if [ -x "/opt/php${m}/bin/php" ]; then
-            if [ "${_PHP_FPM_MULTI}" = "YES" ] && [ -d "${_dscUsr}/tools/le" ]; then
+            if [ "${_PHP_FPM_MULTI}" = "YES" ]; then
               _WEB="${_USER}.${m}.web"
               _POOL="${_USER}.${m}"
               _pTpl=/var/xdrago/conf/fpm-pool-foo-multi.conf
@@ -7906,8 +8004,8 @@ _switch_php() {
               && cmp -s -- "${_pNew}" "${_pFile}"; then
               rm -f -- "${_pNew}"
             else
-              mv -f -- "${_pNew}" "${_pFile}"
               _ltd_fpm_reload_mark "${m}"
+              mv -f -- "${_pNew}" "${_pFile}"
               # a pool file put in place takes the key when its PHP loads New Relic
               _newrelic_in_ini "${m}" && _ltdNrIn="${_ltdNrIn}${m} "
             fi
@@ -7927,7 +8025,7 @@ _switch_php() {
         done
         _perhost_anon_cap_write "${_USER}"
         for m in ${_FPM_RLD}; do
-          [ -e "/etc/init.d/php${m}-fpm" ] && service php${m}-fpm reload &> /dev/null
+          _ltd_fpm_reload "${m}"
           # a pool built with the account's own new New Relic key went in (a
           # version reloaded only for a pool dropped from it took no key)
           [ "${_ltdNrOwn:-}" = "YES" ] && [[ "${_ltdNrIn:-}" == *" ${m} "* ]] && _ltdOwnFpm=YES
@@ -7951,7 +8049,7 @@ _switch_php() {
             _pNgxW=""
             [ -n "${_pNgx}" ] && _pNgxW=$(pgrep -P "${_pNgx}" 2> /dev/null | tr '\n' ' ')
             service nginx reload &> /dev/null
-            _ltdNgxFpBefore="$(_ltd_ngx_fpm_fp)"
+            _ltd_ngx_read
             _pWt=0
             while [ "${_pWt}" -lt 30 ]; do
               _pLive=""
@@ -7966,7 +8064,7 @@ _switch_php() {
               _ltd_pool_drop "${_pf}"
             done
             for m in ${_FPM_RLD}; do
-              [ -e "/etc/init.d/php${m}-fpm" ] && service "php${m}-fpm" reload &> /dev/null
+              _ltd_fpm_reload "${m}"
             done
           else
             _ltd_notice "nginx-configtest-${_USER}" \
@@ -7977,6 +8075,8 @@ _switch_php() {
       fi
     fi
   fi
+  # a reload a cut-off pass owed the account's pool files
+  _ltd_fpm_owed_reload
   # the control panel's own pool, after the account's pools are final
   _ltd_hm_pool
 }
@@ -9678,11 +9778,15 @@ _ltd_fpm_judge_as() {
 # The PHP versions installed, as NN in BOA's order; with $1 = fpm only those
 # a site of the account can be moved to: the account's pool for it up, and
 # only in multi-FPM mode, where a site can have a version of its own (the
-# pools' own mode test: multi-fpm.info and tools/le).
+# mode this pass runs in, _ltd_fpm_multi_mode).
 _ltd_fpm_usable() {
   local _e _out=""
   if [ "${1}" = "fpm" ]; then
-    [ -f "${_dscUsr}/static/control/multi-fpm.info" ] && [ -d "${_dscUsr}/tools/le" ] || return 0
+    if [ -n "${_ltdFpmMulti:-}" ]; then
+      [ "${_ltdFpmMulti}" = "YES" ] || return 0
+    else
+      [ -f "${_dscUsr}/static/control/multi-fpm.info" ] && [ -d "${_dscUsr}/tools/le" ] || return 0
+    fi
   fi
   for _e in 56 70 71 72 73 74 80 81 82 83 84 85 86; do
     [ -x "/opt/php${_e}/bin/php" ] || continue

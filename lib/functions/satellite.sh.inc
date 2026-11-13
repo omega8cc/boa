@@ -8397,9 +8397,7 @@ _satellite_make() {
     _PHP_FPM_MULTI=NO
     # a control/ that is not the account's own tells nothing: its pools
     # stay as they are
-    if _sat_ctrl_foreign \
-      || { [ -f "${_ROOT}/static/control/multi-fpm.info" ] \
-        && [ -d "${_ROOT}/tools/le" ]; }; then
+    if _sat_ctrl_foreign || _sat_fpm_multi; then
       _PHP_FPM_MULTI=YES
     fi
     if [ "${_PHP_FPM_MULTI}" = "NO" ]; then
@@ -8727,6 +8725,49 @@ _sat_ctrl_has() {
 _sat_ctrl_foreign() {
   _sat_ctrl_judge
   [ "${_SAT_CTRL_OWN}" = "NO" ]
+}
+# Multi-FPM mode by the account's files: tools/le and multi-fpm.info. A
+# multi-fpm.info the login deleted from an account whose pools are multi-FPM
+# ones (root's /opt/php*/etc/pool.d/<acct>.<NN>.conf) is written back by the
+# ltd worker while PHP 7.4 or newer is installed, so it does not take the
+# account out of the mode: one pass left it and the next entered it again,
+# every pool and nginx reloaded twice, for a file the login cannot keep away.
+# $1 = the account's home, $2 = its name.
+_fpm_multi_files() {
+  local _e _p
+  [ -d "${1}/tools/le" ] || return 1
+  [ -f "${1}/static/control/multi-fpm.info" ] && return 0
+  [ -d "${1}/static/control" ] || return 1
+  for _p in /opt/php*/etc/pool.d/"${2}".[0-9]*.conf; do
+    [ -f "${_p}" ] || continue
+    for _e in 86 85 84 83 82 81 74; do
+      [ -x "/opt/php${_e}/bin/php" ] && return 0
+    done
+    return 1
+  done
+  return 1
+}
+# The PHP-FPM mode (multi or single) the ltd worker last made for account $1,
+# root's record; nothing without one.
+_fpm_mode_rec() {
+  local _f="/var/backups/ltd/fpmcore/${1}.mode.applied" _r=""
+  [ -f "${_f}" ] && [ ! -L "${_f}" ] || return 0
+  { IFS= read -r _r < "${_f}"; } 2> /dev/null
+  case "${_r}" in
+    multi|single) echo "${_r}" ;;
+  esac
+}
+# The account's PHP-FPM mode as the ltd worker runs it: the mode it last made,
+# else the one its files give. The worker keeps an account in multi-FPM mode
+# with multi-fpm.info gone and holds a switch of the account's own for up to
+# 15 minutes, and a single pool set up here for such an account would run
+# beside its per-version ones.
+_sat_fpm_multi() {
+  local _r
+  _r="$(_fpm_mode_rec "${_USER}")"
+  [ "${_r}" = "multi" ] && return 0
+  [ "${_r}" = "single" ] && return 1
+  _fpm_multi_files "${_ROOT}" "${_USER}"
 }
 # As _SAT_NOFOLLOW_CHMOD_PL, given first the comma-separated uids it acts
 # for (_acct_walk_uids; a uid no passwd entry names counts too, sub own): a
