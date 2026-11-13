@@ -2423,21 +2423,26 @@ _names_one() {
 ### whose origin is still this box, which DNS cannot. A request this box
 ### makes itself (a tool's own probe of a site, on the target or through the
 ### relay) is no visitor's: its first field is this box too, and it is left
-### out. The day's log and the
+### out. That holds only where the target resolves the visitor behind this
+### box (a set_real_ip_from line for it in the migration trust include, or a
+### line in the log that shows it did). Where it does not, every relayed
+### request reads as this box's own, so all are counted and
+### _NAMES_CNT_OWN=in says the box's own are among them. The day's log and the
 ### one before are read (one to two days), from the first line that carries
 ### the field: _NAMES_CNT_SINCE, in the target's own time. _NAMES_CNT_STATE is
 ### ok, nofield (the target's log has no peer field yet: its next system
 ### upgrade and server Verify add it) or noread (no answer, no log there, or
 ### an answer cut short, which is never read as a count).
 _names_counts() {
-  local _t="$1" _a _pat="" _own=" " _out
-  _NAMES_CNT=""; _NAMES_CNT_STATE=noread; _NAMES_CNT_SINCE=""
+  local _t="$1" _a _pat="" _own=" " _tru="" _out _tr
+  _NAMES_CNT=""; _NAMES_CNT_STATE=noread; _NAMES_CNT_SINCE=""; _NAMES_CNT_OWN=out
   for _a in $(hostname -I 2>/dev/null); do
     case "${_a}" in
       *[!0-9a-fA-F:.]*) continue ;;
     esac
     _pat="${_pat} -e ' peer=\"${_a}\"'"
     _own="${_own}${_a} "
+    _tru="${_tru} -e 'set_real_ip_from ${_a};'"
   done
   [ -n "${_pat}" ] || return 0
   _out="$(ssh -o BatchMode=yes -o ConnectTimeout=15 "root@${_t}" "
@@ -2449,9 +2454,11 @@ _names_counts() {
     _s=\$(LC_ALL=C grep -a -h -m1 ' peer=\"' \${_f} | sed -n '1s/^[^[]*\\[\\([^]]*\\)\\].*/\\1/p')
     [ -n \"\${_s}\" ] || { echo XT-NOFIELD; exit 0; }
     echo \"XT-SINCE \${_s}\"
+    if grep -q -x -F${_tru} /data/conf/nginx_cloudflare_real_ip.cmig 2>/dev/null; then echo 'XT-TRUST yes'; else echo 'XT-TRUST no'; fi
     LC_ALL=C nice -n 19 grep -a -h -F${_pat} \${_f} \
-      | awk -v own=\"${_own}\" '{ a = \$1; gsub(/\"/, \"\", a); if (index(own, \" \" a \" \")) next
-          c[tolower(\$2)]++ } END { for (h in c) printf \"%.0f %s\\n\", c[h], h }'
+      | awk -v own=\"${_own}\" '{ a = \$1; gsub(/\"/, \"\", a); h = tolower(\$2); s[h] = 1
+          if (index(own, \" \" a \" \")) o[h]++; else v[h]++ }
+          END { for (h in s) printf \"%.0f %.0f %s\\n\", v[h], o[h], h }'
     echo XT-END
   " 2>/dev/null)"
   if [ "${_out}" = "XT-NOFIELD" ]; then
@@ -2461,7 +2468,13 @@ _names_counts() {
   [ "$(printf '%s\n' "${_out}" | tail -n 1)" = "XT-END" ] || return 0
   _NAMES_CNT_SINCE="$(printf '%s\n' "${_out}" | sed -n '1s/^XT-SINCE //p')"
   [ -n "${_NAMES_CNT_SINCE}" ] || return 0
-  _NAMES_CNT="$(printf '%s\n' "${_out}" | grep -E '^[0-9]+ [a-z0-9._:-]+$')"
+  ### Each line: visitors' requests, this box's own, the name. The target
+  ### resolves the visitor behind this box when its trust include says so
+  ### or a line shows a visitor; otherwise the two cannot be told apart.
+  _out="$(printf '%s\n' "${_out}" | grep -E '^(XT-TRUST (yes|no)|[0-9]+ [0-9]+ [a-z0-9._:-]+)$')"
+  _tr="$(printf '%s\n' "${_out}" | awk '$1 == "XT-TRUST" { t = $2 } $1 != "XT-TRUST" && $1 > 0 { t = "yes" } END { print (t == "yes") ? "yes" : "no" }')"
+  [ "${_tr}" = "yes" ] || _NAMES_CNT_OWN=in
+  _NAMES_CNT="$(printf '%s\n' "${_out}" | awk -v t="${_tr}" '$1 != "XT-TRUST" { n = (t == "yes") ? $1 : $1 + $2; if (n > 0) printf "%.0f %s\n", n, $3 }')"
   _NAMES_CNT_STATE=ok
 }
 
@@ -2533,7 +2546,11 @@ _cmd_names() {
       fi
     fi
     case "${_NAMES_CNT_STATE}" in
-      ok) echo "${_n}: relayed = the requests the target logged as coming through this box, since ${_NAMES_CNT_SINCE} (the target's time)" ;;
+      ok)
+        echo "${_n}: relayed = the requests the target logged as coming through this box, since ${_NAMES_CNT_SINCE} (the target's time)"
+        [ "${_NAMES_CNT_OWN}" = "in" ] \
+          && echo "${_n}: the target does not resolve the visitor behind this box (no set_real_ip_from for it there), so this box's own requests, a tool's probes among them, are counted too"
+      ;;
       nofield)
         echo "${_n}: no request counts -- the target's access log does not name the connecting address yet (its next system upgrade and server Verify add the field)"
         _cbad=$(( _cbad + 1 ))
