@@ -5946,24 +5946,47 @@ echo "BL_DATA_MNT=${_a##* }"
 _dd="$(du -sLk /var/lib/mysql 2>/dev/null | awk '{ print $1 }')"
 echo "BL_DD_KB=${_dd}"
 # The stores kept on filesystems apart from the accounts' one: each account's
-# files link, the archive, the Solr data. Each filesystem once, by its used K,
-# the database folder's own share left out where it lives there too.
+# files store, the archive, the Solr data. Each filesystem once, by its used K,
+# the database folder's own share left out where it lives there too, counted
+# by where a sync places it on the target: a store whose path is a link onto
+# /mnt goes to the target's one mount (BL_XFS_KB, its filesystems named in
+# BL_XFS_MNTS), any other store onto the target's accounts' filesystem
+# (BL_XFS_ROOT_KB), the Solr data into /var/solrN there (BL_XFS_SOLR_KB).
 _xm=""
+_xa=""
 _xk=0
+_xr=0
+_xs=0
 for _xp in /data/disk/*/static/files /data/disk/arch /var/solr7/data /var/solr9/data; do
   [ -e "${_xp}" ] || continue
   _xf="$(df -Pk "${_xp}/" 2>/dev/null | awk 'NR==2 { print $NF }')"
   [ -n "${_xf}" ] && [ "${_xf}" != "${_a##* }" ] || continue
-  case " ${_xm} " in *" ${_xf} "*) continue ;; esac
+  case " ${_xa} " in *" ${_xf} "*) continue ;; esac
   _xu="$(df -Pk "${_xf}" 2>/dev/null | awk 'NR==2 { print $3 }')"
   case "${_xu}" in ""|*[!0-9]*) continue ;; esac
   [ "${_xf}" != "${_d##* }" ] || [ -z "${_dd}" ] || _xu=$(( _xu - _dd ))
   [ "${_xu}" -gt 0 ] || _xu=0
-  _xm="${_xm} ${_xf}"
-  _xk=$(( _xk + _xu ))
+  _xa="${_xa} ${_xf}"
+  _xl=""
+  [ ! -L "${_xp}" ] || _xl="$(readlink "${_xp}" 2>/dev/null)"
+  case "${_xp}" in
+    */solr7/data|*/solr9/data) _xs=$(( _xs + _xu )) ;;
+    *)
+      case "${_xl}" in
+        /mnt/?*) _xm="${_xm} ${_xf}"; _xk=$(( _xk + _xu )) ;;
+        *) _xr=$(( _xr + _xu )) ;;
+      esac
+    ;;
+  esac
 done
 echo "BL_XFS_KB=${_xk}"
 echo "BL_XFS_MNTS=${_xm# }"
+echo "BL_XFS_ROOT_KB=${_xr}"
+echo "BL_XFS_SOLR_KB=${_xs}"
+# where this end's Solr data lands (the Solr leg writes into /var/solrN)
+_xv=/var
+for _xp in /var/solr9 /var/solr7; do [ -d "${_xp}" ] && { _xv="${_xp}"; break; }; done
+echo "BL_SOLR_FS=$(df -Pk "${_xv}/" 2>/dev/null | awk 'NR==2 { print $NF }')"
 # The one filesystem mounted under /mnt that a sync places stores on (the
 # same test the syncs make), with its used K, the database folder's share out.
 _xp0="$(stat -c '%d' /mnt 2>/dev/null)"
@@ -5986,22 +6009,22 @@ elif [ "${_xn}" -eq 1 ]; then
   case "${_xu}" in ""|*[!0-9]*) _xu="" ;; esac
   [ -z "${_xu}" ] || [ "${_xf}" != "${_d##* }" ] || [ -z "${_dd}" ] || _xu=$(( _xu - _dd ))
   echo "BL_ONE_MNT_USED_KB=${_xu}"
+  echo "BL_ONE_MNT_FS=${_xf}"
 else
   echo "BL_ONE_MNT=NONE"
 fi
 _q() { mysql --defaults-file=/root/.my.cnf --connect-timeout=5 -sNe "$1" 2>/dev/null; }
-# the log counts as the folder's only where its files are written inside it:
-# the folder they are written to, resolved, inside the folder, resolved
+# the log counts as the folder's only where its files are written inside it,
+# as du -L measures the folder (a log subfolder linked elsewhere is in it): its
+# whole size, and its newest file, which a snapshot carries
 _lb="$(_q 'SELECT @@log_bin_basename')"
 _lr="$(readlink -f /var/lib/mysql 2>/dev/null)"
-_lbd=""
-case "${_lb}" in /*/*) _lbd="$(readlink -f "${_lb%/*}" 2>/dev/null)" ;; esac
-_lin=NO
-if [ -n "${_lr}" ] && [ -n "${_lbd}" ]; then
-  { [ "${_lbd}" = "${_lr}" ] || [ "${_lbd#"${_lr}"/}" != "${_lbd}" ]; } && _lin=YES
-fi
+case "${_lb}" in
+  /var/lib/mysql/*) _lin=YES ;;
+  *) _lin=NO; [ -n "${_lr}" ] && [ "${_lb#"${_lr}"/}" != "${_lb}" ] && _lin=YES ;;
+esac
 if [ "${_lin}" = "YES" ]; then
-  echo "BL_LOG_KB=$(_q 'SHOW BINARY LOGS' | awk '{ s += $2 } END { printf "%.0f\n", s / 1024 }')"
+  _q 'SHOW BINARY LOGS' | awk '{ s += $2; l = $2 } END { printf "BL_LOG_KB=%.0f\nBL_LOG_LAST_KB=%.0f\n", s / 1024, l / 1024 }'
 else
   echo "BL_LOG_KB=0"
 fi
@@ -6020,7 +6043,8 @@ _xmass_binlog_plan() {
   local _how="$1" _st _up _lw _day="" _why="" _pin="" _e _o _k _v _bad=""
   local _sz _us _mnt _dus _dmnt _ddk _lg _now _rd _room _n _hard _seed=0 _files=0 _other _sother=""
   local _ns=7 _nt=7 _sv _sd _oth
-  local _xk _xms _om _omu _sxk=0 _sxms="" _xto="" _xin=0 _xhv="" _fw=""
+  local _xk _xms _om _omu _sxk=0 _sxms="" _xto="" _xin=0 _xhv="" _fw="" _ll _xr _xs _sxr=0 _sxs=0
+  local _omf _sfs _xdb
   case "${_XMASS_BINLOG_DAYS:-}" in
     "") : ;;
     [1-7]) _pin="${_XMASS_BINLOG_DAYS}" ;;
@@ -6083,12 +6107,18 @@ _xmass_binlog_plan() {
     _rd="$(_xmass_kv "${_o}" BL_READERS)"
     _xk="$(_xmass_kv "${_o}" BL_XFS_KB)"; _xms="$(_xmass_kv "${_o}" BL_XFS_MNTS)"
     _om="$(_xmass_kv "${_o}" BL_ONE_MNT)"; _omu="$(_xmass_kv "${_o}" BL_ONE_MNT_USED_KB)"
+    _omf="$(_xmass_kv "${_o}" BL_ONE_MNT_FS)"; _sfs="$(_xmass_kv "${_o}" BL_SOLR_FS)"
+    _xr="$(_xmass_kv "${_o}" BL_XFS_ROOT_KB)"; _xs="$(_xmass_kv "${_o}" BL_XFS_SOLR_KB)"
+    _ll="$(_xmass_kv "${_o}" BL_LOG_LAST_KB)"
     [[ "${_xk}" =~ ^[0-9]+$ ]] || _xk=0
+    [[ "${_xr}" =~ ^[0-9]+$ ]] || _xr=0
+    [[ "${_xs}" =~ ^[0-9]+$ ]] || _xs=0
     if ! [[ "${_sz}" =~ ^[0-9]+$ ]] || ! [[ "${_us}" =~ ^[0-9]+$ ]] || ! [[ "${_ddk}" =~ ^[0-9]+$ ]]; then
       _bad="${_bad} ${_e}"
       continue
     fi
     [[ "${_lg}" =~ ^[0-9]+$ ]] && [ "${_lg}" -le "${_us}" ] && [ "${_lg}" -le "${_ddk}" ] || _lg=0
+    [[ "${_ll}" =~ ^[0-9]+$ ]] && [ "${_ll}" -le "${_lg}" ] || _ll=0
     # the room to the planning line; a source's own log is given back (the
     # days planned replace it), a target's stays in the folder the seed parks
     _room=$(( _sz * 85 / 100 - _us ))
@@ -6103,11 +6133,14 @@ _xmass_binlog_plan() {
       fi
     fi
     if [ "${_e}" = "source" ]; then
-      # the seed is the folder without its log, which no snapshot carries
-      _seed=$(( _ddk - _lg ))
+      # the seed is the folder without its log, which no snapshot carries, but
+      # with the newest log file, which xtrabackup 8 copies at the backup's end
+      _seed=$(( _ddk - _lg + _ll ))
       _sother="${_other}"
       _sxk="${_xk}"
       _sxms="${_xms}"
+      _sxr="${_xr}"
+      _sxs="${_xs}"
       _files=0
     else
       # the seed lands beside what is there (the folder it replaces is kept),
@@ -6124,25 +6157,28 @@ _xmass_binlog_plan() {
         esac
       fi
       # what arrives on the database's filesystem here, less what that
-      # filesystem holds beside the database now, counted once: the accounts'
-      # root share when they share it, the stores when their place does
+      # filesystem holds beside the database now (its use less the folder),
+      # counted once: the accounts' root share and the stores placed on the
+      # accounts' filesystem when it is the database's, the stores bound for
+      # the one mount when that mount is, the Solr data when /var/solrN is
       _xin=0
-      _xhv=""
+      _xhv=$(( _us - _ddk ))
+      [ "${_xhv}" -gt 0 ] || _xhv=0
       if [ -n "${_other}" ]; then
-        _xhv="${_other}"
         [ -z "${_sother}" ] || _xin="${_sother}"
+        _xin=$(( _xin + _sxr ))
       fi
+      _xdb=NO
       if [ "${_sxk}" -gt 0 ]; then
         if { [ "${_xto}" = "root" ] && [ -n "${_other}" ]; } \
-          || { [ -n "${_xto}" ] && [ "${_xto}" != "root" ] && [ "${_xto}" = "${_mnt}" ]; }; then
+          || { [ -n "${_xto}" ] && [ "${_xto}" != "root" ] \
+            && { [ "${_xto}" = "${_mnt}" ] || [ "${_omf}" = "${_mnt}" ]; }; }; then
           _xin=$(( _xin + _sxk ))
-          if [ -z "${_xhv}" ]; then
-            [[ "${_omu}" =~ ^[0-9]+$ ]] || _omu=0
-            _xhv="${_omu}"
-          fi
+          _xdb=YES
         fi
       fi
-      [ -z "${_xhv}" ] || [ "${_xin}" -le "${_xhv}" ] || _files=$(( _xin - _xhv ))
+      [ "${_sxs}" -eq 0 ] || [ -z "${_sfs}" ] || [ "${_sfs}" != "${_mnt}" ] || _xin=$(( _xin + _sxs ))
+      [ "${_xin}" -le "${_xhv}" ] || _files=$(( _xin - _xhv ))
       _room=$(( _room - _seed ))
       # what the files figure covers, said with it
       _fw=""
@@ -6152,8 +6188,18 @@ _xmass_binlog_plan() {
         case "${_xto}" in
           root) [ -n "${_other}" ] && _v="${_v} come onto the root here" || _v="${_v} come onto the root here, apart from the database" ;;
           "") _v="${_v} have no one mount under /mnt to go to here (${_om:-not read}), not counted" ;;
-          *) [ "${_xto}" = "${_mnt}" ] && _v="${_v} come onto ${_xto}, beside the database" || _v="${_v} go to ${_xto}, apart from the database" ;;
+          *) [ "${_xdb}" = "YES" ] && _v="${_v} come onto ${_xto}, beside the database" || _v="${_v} go to ${_xto}, apart from the database" ;;
         esac
+        _fw="${_fw:+${_fw}; }${_v}"
+      fi
+      if [ "${_sxr}" -gt 0 ]; then
+        _v="its stores on disks of their own that no /mnt link names (about $(( _sxr / 1048576 )) G) come onto the accounts' filesystem here"
+        [ -n "${_other}" ] && _v="${_v}, beside the database" || _v="${_v}, apart from the database"
+        _fw="${_fw:+${_fw}; }${_v}"
+      fi
+      if [ "${_sxs}" -gt 0 ]; then
+        _v="its Solr data (about $(( _sxs / 1048576 )) G) comes into /var/solrN here"
+        [ -n "${_sfs}" ] && [ "${_sfs}" = "${_mnt}" ] && _v="${_v}, beside the database" || _v="${_v}, apart from the database"
         _fw="${_fw:+${_fw}; }${_v}"
       fi
     fi
@@ -6918,6 +6964,10 @@ if [ -f /root/.standby.cnf ] && { grep -q '^init-committed' /root/.standby.cnf 2
   _sb="$(head -n 1 /root/.standby.cnf 2>/dev/null | tr -cd 'A-Za-z0-9 .:_-' | cut -c1-120)"
 fi
 echo "DD_STANDBY=${_sb}"
+# whether a parked folder waits beside the folder or at the root path
+_pk=NO
+ls -1d /var/lib/mysql.xmass_pre_* "${_real}".xmass_pre_* > /dev/null 2>&1 && _pk=YES
+echo "DD_PARKED=${_pk}"
 PROBE
 }
 
@@ -6948,6 +6998,7 @@ _xmass_dd_read() {
   _XM_DD_KB="$(_xmass_kv "${_o}" DD_KB)"
   [[ "${_XM_DD_KB}" =~ ^[0-9]+$ ]] || _XM_DD_KB=""
   _XM_DD_STANDBY="$(_xmass_kv "${_o}" DD_STANDBY)"
+  _XM_DD_PARKED="$(_xmass_kv "${_o}" DD_PARKED)"
   case "${_XM_DD_SHAPE}" in
     plain|link|mount|badlink|absent) : ;;
     *) _XM_DD_SHAPE=unread ;;
@@ -7019,22 +7070,19 @@ _xmass_dd_own_mount() {
 
 # The binary log this box's MySQL holds inside its database folder, in K
 # (no snapshot carries it); 0 when there is none, no answer, or the log is
-# written elsewhere (then the folder's size never held it): the folder the
-# log's files are written to, resolved, must lie in the folder, resolved, so
-# a log subfolder linked onto another disk is no part of it. The newest file
-# is left in: xtrabackup 8 copies the one written at the backup's end, up to
-# max_binlog_size.
+# written elsewhere (then the folder's size never held it). The folder is
+# measured with du -L everywhere, so a log written under its path, a
+# subfolder linked onto another disk included, is part of that measure. The
+# newest file is left in: xtrabackup 8 copies the one written at the
+# backup's end, up to max_binlog_size.
 _xmass_src_log_kb() {
-  local _k _b _r _bd
+  local _k _b _r
   _b="$(mysql --defaults-file=/root/.my.cnf --connect-timeout=5 -sNe 'SELECT @@log_bin_basename' 2> /dev/null)"
   _r="$(readlink -f /var/lib/mysql 2> /dev/null)"
-  _bd=""
-  case "${_b}" in /*/*) _bd="$(readlink -f "${_b%/*}" 2> /dev/null)" ;; esac
-  if [ -z "${_r}" ] || [ -z "${_bd}" ] \
-    || { [ "${_bd}" != "${_r}" ] && [ "${_bd#"${_r}"/}" = "${_bd}" ]; }; then
-    printf '0'
-    return 0
-  fi
+  case "${_b}" in
+    /var/lib/mysql/*) : ;;
+    *) [ -n "${_r}" ] && [ "${_b#"${_r}"/}" != "${_b}" ] || { printf '0'; return 0; } ;;
+  esac
   _k="$(mysql --defaults-file=/root/.my.cnf --connect-timeout=5 -sNe 'SHOW BINARY LOGS' 2> /dev/null \
     | awk '{ s += $2; l = $2 } END { printf "%.0f\n", (s - l) / 1024 }')"
   [[ "${_k}" =~ ^[0-9]+$ ]] || _k=0
@@ -7058,14 +7106,14 @@ _xmass_decide_transfer_method() {
     # there.
     _on="${_XM_DD_BASE}"
     _XTRA_STAGE_SRC="${_XM_DD_BASE%/}/xmass_stage"
-    _mysql_kb=$(du -s "${_XM_DD_REAL}" 2>/dev/null | awk '{print $1}')
+    _mysql_kb=$(du -sL "${_XM_DD_REAL}" 2>/dev/null | awk '{print $1}')
     _info "the database folder here is ${_XM_DD_REAL} (a link at /var/lib/mysql names it): a staged snapshot goes to ${_XTRA_STAGE_SRC}"
   elif [ -L /var/lib/mysql ]; then
     # a link this box serves from all the same (onto a mount's own root,
     # say): its size is read through it, and the stage stays where it was
     _mysql_kb=$(du -sL /var/lib/mysql 2>/dev/null | awk '{print $1}')
   else
-    _mysql_kb=$(du -s /var/lib/mysql 2>/dev/null | awk '{print $1}')
+    _mysql_kb=$(du -sL /var/lib/mysql 2>/dev/null | awk '{print $1}')
   fi
   # one read of that filesystem: its size as BOA's own runs judge the 90%
   # line (df's Use%, used against used plus available: the blocks reserved
@@ -7236,7 +7284,9 @@ _xmass_target_dd_gate() {
   # A box that is a replica already: a new seed parks its whole folder, which
   # is no room. The route that fits is to return it to its pre-init folder
   # first and remove the replica copy that keeps aside.
-  if [ -n "${_XM_DD_STANDBY}" ]; then
+  if [ -n "${_XM_DD_STANDBY}" ] && [ "${_XM_DD_PARKED}" = "NO" ]; then
+    _bad="${_bad} Target ${_tgt} is a standing replica (${_XM_DD_STANDBY}) whose pre-init folder is no longer parked beside it, so restore-target cannot return it: a new seed parks the replica's folder (${_XM_DD_KB:-?}K) whole, which counts as no room. Free room on the target, or rebuild it as a plain box, then init again."
+  elif [ -n "${_XM_DD_STANDBY}" ]; then
     _bad="${_bad} Target ${_tgt} is a standing replica (${_XM_DD_STANDBY}): a new seed parks its folder (${_XM_DD_KB:-?}K) whole, which counts as no room. What fits: on the target 'xmass restore-target --live', then remove the replica copy it keeps aside (${_XM_DD_REAL}.xmass_standby_<stamp>) once it is no longer needed, then init again."
   fi
   if [ "${_how}" = "die" ]; then
@@ -7974,6 +8024,7 @@ _xmass_restore_laid_accounts() {
 _XMASS_RESTORE_REC="/etc/boa/control/xmass-restore-target.rec"
 _xmass_restore_rec_put() {   # 1 = stamp  2 = the parked data directory going back  3 = the active
   # 4 = accounts whose broker switch in /data/conf stays beside the parked ones
+  # 5 = EMPTY when what goes aside is the empty folder standing for a replica's
   local _id _t="${_XMASS_RESTORE_REC}.put.$$"
   _id="$(stat -c '%i:%W' -- "${2}" 2> /dev/null)"
   [[ "${_id}" =~ ^[0-9]+:[0-9]+$ ]] || return 1
@@ -7984,7 +8035,7 @@ _xmass_restore_rec_put() {   # 1 = stamp  2 = the parked data directory going ba
       "_XMASS_RESTORE_STAMP=${1}" "_XMASS_RESTORE_PRE=${2}" "_XMASS_RESTORE_DATADIR=${_id}" \
       "_XMASS_RESTORE_BROKER_KEEP=$(_xmass_broker_parked "${2##*.xmass_pre_}")${4:+ ${4}}" \
       "_XMASS_RESTORE_LANE_ALL=${_XMASS_LANE_ALL# }" "_XMASS_RESTORE_LANE_HALF=${_XMASS_LANE_HALF# }" \
-      "_XMASS_RESTORE_ACTIVE=${3:-}" > "${_t}" ) \
+      "_XMASS_RESTORE_ACTIVE=${3:-}" "_XMASS_RESTORE_STANDIN=${5:-REPLICA}" > "${_t}" ) \
     && mv -f -T -- "${_t}" "${_XMASS_RESTORE_REC}"; then
     return 0
   fi
@@ -8037,6 +8088,7 @@ _xmass_restore_rec_read() {
   _XMASS_RESTORE_STAMP="${_s}"
   _XMASS_RESTORE_PRE="${_p}"
   _XMASS_RESTORE_ACTIVE="$(_xmass_kv "${_r}" _XMASS_RESTORE_ACTIVE)"
+  _XMASS_RESTORE_STANDIN="$(_xmass_kv "${_r}" _XMASS_RESTORE_STANDIN)"
   _mig_quad "${_XMASS_RESTORE_ACTIVE}" || _XMASS_RESTORE_ACTIVE=""
   # a record by older bytes names no broker switches: unknown, not none
   _XMASS_RESTORE_KEEP_KNOWN=NO
@@ -8242,8 +8294,13 @@ _xmass_restore_target_finish() {
   # the empty folder that stood for a replica's directory an init never made
   local _kept="replica copy kept as ${_dd}.xmass_standby_${_stamp}"
   if [ ! -e "${_dd}.xmass_standby_${_stamp}" ] && [ ! -L "${_dd}.xmass_standby_${_stamp}" ]; then
-    # removed by this finish already, in a run cut before the record went
-    _kept="no replica copy (the init had stopped before it made one)"
+    # gone before this run's end: the empty stand-in this finish removed in a
+    # run cut before the record went, or a replica's copy removed by hand
+    if [ "${_XMASS_RESTORE_STANDIN:-}" = "EMPTY" ]; then
+      _kept="no replica copy (the init had stopped before it made one)"
+    else
+      _kept="no replica copy left (the one kept aside as ${_dd}.xmass_standby_${_stamp} was removed)"
+    fi
   elif [ -d "${_dd}.xmass_standby_${_stamp}" ] && [ ! -L "${_dd}.xmass_standby_${_stamp}" ] \
     && rmdir -- "${_dd}.xmass_standby_${_stamp}" 2> /dev/null; then
     _kept="no replica copy (the init had stopped before it made one)"
@@ -8253,7 +8310,9 @@ _xmass_restore_target_finish() {
     >> /var/log/boa/xmass-restore-target.log
   _info "restore-target COMPLETE: this box is a plain BOA box again (its pre-init data directory and"
   _info "  credentials back, no standby marker, the replication forgotten)."
-  if [ "${_kept#no }" = "${_kept}" ]; then
+  if [ "${_kept#no replica copy left}" != "${_kept}" ]; then
+    _info "  The replica's data directory kept aside was removed before this run's end."
+  elif [ "${_kept#no }" = "${_kept}" ]; then
     _info "  The replica's data directory is kept as ${_dd}.xmass_standby_${_stamp}; remove it by hand when no longer needed."
   else
     _info "  There was no replica's data directory to keep: the init had stopped before it made one."
@@ -8561,7 +8620,9 @@ _xmass_restore_target() {
         || _die "could not park ${_cnf} as ${_cnf}.xmass_pre_${_ts}: nothing changed"
     done
   fi
-  _xmass_restore_rec_put "${_stamp}" "${_pre}" "${_act}" "${_keep# }" \
+  _XMASS_RESTORE_STANDIN=REPLICA
+  [ "${_cut}" != "YES" ] || _XMASS_RESTORE_STANDIN=EMPTY
+  _xmass_restore_rec_put "${_stamp}" "${_pre}" "${_act}" "${_keep# }" "${_XMASS_RESTORE_STANDIN}" \
     || _die "could not write ${_XMASS_RESTORE_REC}, which a run stopped at MySQL's start needs: nothing changed"
   _info "Stopping and forgetting the replication ..."
   mysql --defaults-file=/root/.my.cnf -e "${_stop}; ${_reset};" 2>/dev/null \
@@ -9839,7 +9900,8 @@ _xmass_fit_warn() {   # 1 = side (space|inodes|count)  2 = dest  3 = message
 # taking the link and leaving the copy), then DONE:
 #   LEFT <K> <copy> <store>          nothing under /data/disk links into it
 #   USED <K> <copy> <store> <link>   that link still reads it (a site's files
-#                                    link written with the mount's own path)
+#                                    link written with the mount's own path,
+#                                    or a link onto a folder that holds it)
 #   UNSURE <K> <copy> <store>        the link scan did not finish in ten minutes
 # A store whose path reaches the copy itself (/data/disk/<oN>/static, or the
 # account, a link onto the mount) is the live store: no line. The size waits
@@ -9852,9 +9914,14 @@ case "${_m}" in /mnt/?*) ;; *) echo DONE; exit 0 ;; esac
 _L="$(mktemp)" || exit 1
 trap 'rm -f "${_L}"' EXIT
 # every link under /data/disk whose text names a mount, with what it reaches
-timeout 600 find /data/disk -type l \( -lname '/mnt/*' -o -lname '*/mnt/*' \) -print0 2> /dev/null \
+# (-H: /data/disk itself may be a link onto another disk; a tab or newline in a
+# path is written as '?', so each link stays one line and names its reader)
+timeout 600 find -H /data/disk -type l \( -lname '/mnt/*' -o -lname '*/mnt/*' \) -print0 2> /dev/null \
   | while LC_ALL=C IFS= read -r -d '' _l; do
-      _r="$(readlink -e -- "${_l}")" && printf '%s\t%s\n' "${_r}" "${_l}"
+      _r="$(readlink -e -- "${_l}")" || continue
+      _r="${_r//[$'\t\n']/?}"
+      _l="${_l//[$'\t\n']/?}"
+      printf '%s\t%s\n' "${_r}" "${_l:-?}"
     done > "${_L}"
 _fr="${PIPESTATUS[0]}"
 _scan=DONE
@@ -9871,7 +9938,8 @@ for _d in "${_m}"/files/*/static/files "${_m}"/files/system/arch; do
   [ -n "${_rd}" ] && [ -n "${_ru}" ] || continue
   case "${_ru}/" in "${_rd}/"*) continue ;; esac
   case "${_rd}/" in "${_ru}/"*) continue ;; esac
-  _via="$(P="${_rd}" awk -F'\t' '$1 == ENVIRON["P"] || index($1, ENVIRON["P"] "/") == 1 { print $2; exit }' "${_L}")"
+  # a link into the copy, or onto a folder that holds it
+  _via="$(P="${_rd}" awk -F'\t' '$1 == ENVIRON["P"] || index($1, ENVIRON["P"] "/") == 1 || index(ENVIRON["P"], $1 "/") == 1 { print $2; exit }' "${_L}")"
   _k="$(timeout 120 du -sk -- "${_d}" 2> /dev/null | awk '{ print $1 }')"
   if [ -n "${_via}" ]; then
     printf 'USED\t%s\t%s\t%s\t%s\n' "${_k:-?}" "${_d}" "${_u}" "${_via}"
