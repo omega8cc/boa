@@ -521,6 +521,19 @@
       leaves the mode when tools/le goes, as before; the pins a deleted
       file held are dropped like any other change of the file.
 
+    * A switch between single- and multi-FPM mode that an account's own
+      files make is its own PHP-FPM change and waits out its 15 minutes
+      whole. The account's backend user owns tools/le and can remove it and
+      make it again, and each switch reloads every PHP-FPM master on the
+      server and nginx, so site code run by a backend task could switch the
+      mode on every pass. The ltd worker keeps the mode it last made in
+      /var/backups/ltd/fpmcore/<oN>.mode.applied and runs a pass whole in
+      that mode while a switch waits; an Octopus upgrade reads the same
+      record and no longer sets up a single pool beside an account's
+      per-version pools. An account with no record yet, such as a new one
+      getting its tools/le, and root's own run with _ACCT_RELOAD_HOLD=NO
+      switch at once.
+
     * The ltd worker's page check still moves a site onto a PHP its code
       can run at once when the server's own state changed. A move the
       account's own code drives, with the server's PHP versions, pools and
@@ -741,6 +754,20 @@
       under the restore's date and time, and the restore notice names the
       folder. Before, the second restore failed until the first was moved
       away. A restore that fails no longer leaves an empty folder behind.
+
+    * A PHP-FPM pool change the ltd worker made reaches its master even when
+      the pass is cut short before the reload. A pool file put in place or
+      removed, a live pool's New Relic key, and the control panel pool's
+      move to another version are each recorded as a reload owed before the
+      change, and the reload clears it; the next pass makes any reload a cut
+      pass left owed. Before, a master kept running on the old pool file,
+      or the old key, until something else reloaded it, since the next pass
+      found the file as it would write it.
+
+    * A pass in which the control panel pool's include changes reloads
+      nginx once for it. The panel's own reload did not count as the
+      pass's, so the pass reloaded nginx again at its end, resetting every
+      HTTP/3 transfer on the server a second time.
 
     * The migration completion notice gives the client the account's new
       control panel address in full, with the SQL Adminer address beside
