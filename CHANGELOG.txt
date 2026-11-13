@@ -826,6 +826,25 @@
       until that run's last step hands it back. The pass runs once more
       when this BOA.sh.txt arrives.
 
+    * A whole-server move's database snapshot and the night SQL backup wait
+      for each other. xmass init copies the live database while the server
+      runs, and the backup changes tables under it: on Percona 5.7 a table
+      the backup rebuilds (on its optimise and InnoDB conversion nights)
+      ended the snapshot with xtrabackup's "optimized (without redo
+      logging) DDL" error, and on 8.x every statement that empties or
+      rebuilds a table waited for the snapshot's end, the backup hanging
+      meanwhile. Only the clock kept the two apart, and the restart of
+      MySQL init makes on a source whose GTID or binary log is off could
+      cut a dump in flight. Now init waits for an SQL backup that runs or
+      is about to start, up to 3 hours (_XMASS_SQL_BACKUP_MAX_WAIT
+      seconds), before it touches either server, and refuses past that
+      with nothing displaced. From just before that restart until the
+      snapshot's copy has ended it holds the backups off:
+      mysql_backup.sh and mysql_cluster_backup.sh wait for it, up to 3
+      hours, and then skip the run with a Backup SKIPPED notice, the wait
+      logged in /var/log/boa/mysql.backup.wait.log. The snapshot's
+      prepare and its transfer hold no backup off.
+
     * The migration completion notice gives the client the account's new
       control panel address in full, with the SQL Adminer address beside
       it where the new server has Adminer, and the start notice says what
