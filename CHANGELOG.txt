@@ -4,14 +4,17 @@
 
 @=> New Features
 
-    * xtrim names [<oN>|all] lists every name the relay vhosts of a moved
-      account answer for, with the addresses DNS gives and where they lead:
+    * xtrim names [<oN>|all] lists every name a moved account's vhosts on
+      the old server answer for (its relay vhosts, and every name of a site
+      the move renamed), with the addresses DNS gives and where they lead:
       this server, the new server, elsewhere (a CDN or another front, whose
       origin DNS cannot show) or nowhere, with a count per account and for
-      the server. A name that still resolves to the old server goes dark
-      whenever that server is powered off, as a provider's disk shrink
-      needs, so this is the read before such a window and before its notice
-      to clients. It only reads.
+      the server. A lookup that fails is said to have failed and is in no
+      count, and a name that carries the old server's own hostname is named
+      as the server's own, never counted as a client's. A name that still
+      resolves to the old server goes dark whenever that server is powered
+      off, as a provider's disk shrink needs, so this is the read before
+      such a window and before its notice to clients. It only reads.
 
     * xtrim space prints what the root filesystem of a trimmed server
       holds, largest trees first, with what a trim leaves and never removes
@@ -1696,7 +1699,9 @@
       such an answer (one 4xx or 5xx status, the same on both routes): the
       plan says so and the manifest keeps the name. No answer, a catch-all
       page and two different answers still refuse, and the proofs of the
-      account's databases on the new server still follow.
+      account's databases on the new server still follow. The list is read
+      only as root's own file that no other user can write; one that is
+      there and is not read is named in the plan.
 
     * solrtrim status, and the Solr check before an xmass move, no longer
       warn that an alias could not be read ("alias site_path parse failed")

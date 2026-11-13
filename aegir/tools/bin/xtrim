@@ -984,13 +984,27 @@ _probe_catchall_baseline() {
   _BASE_RELAY=$(curl -s -A iCab --max-time 30 \
     -H "Host: ${_bogus}" "http://127.0.0.1/" 2>/dev/null \
     | md5sum | cut -d' ' -f1)
+  ### The status of the same answers: a target whose default page is missing
+  ### or refused answers an error for any unknown name, with one body.
+  _BASE_DIRECT_CODE=$(curl -s -o /dev/null -w '%{http_code}' -A iCab --max-time 30 \
+    --resolve "${_bogus}:80:${_t}" "http://${_bogus}/" 2>/dev/null)
+  _BASE_RELAY_CODE=$(curl -s -o /dev/null -w '%{http_code}' -A iCab --max-time 30 \
+    -H "Host: ${_bogus}" "http://127.0.0.1/" 2>/dev/null)
 }
 
 _is_catchall_body() {
-  ### $1 body file, $2 status, $3 baseline hash. Only meaningful for a 200:
-  ### a legitimate 301/302 body is an nginx stub and carries no site content
-  ### either way, and those are accepted by status for SSL-required sites.
-  [ "$2" = "200" ] || return 1
+  ### $1 body file, $2 status, $3 baseline hash, $4 the baseline's own
+  ### status. Meaningful for a 200: a legitimate 301/302 body is an nginx stub
+  ### and carries no site content either way, and those are accepted by
+  ### status for SSL-required sites. And for the one error the baseline
+  ### itself answers (a 4xx or 5xx with the same body): then the default
+  ### server gives that error for any name it does not hold, and a name
+  ### answering it is not a site refusing.
+  case "$2" in
+    200) ;;
+    4??|5??) [ -n "$4" ] && [ "$2" = "$4" ] || return 1 ;;
+    *) return 1 ;;
+  esac
   [ -n "$3" ] || return 1
   [ "$(md5sum < "$1" | cut -d' ' -f1)" = "$3" ]
 }
@@ -1022,14 +1036,14 @@ _probe_dom() {
   ### "the target answers" and "the target serves THIS site", and the caller
   ### is about to drop databases on the strength of it.
   local _catch=""
-  if _is_catchall_body "${_b1}" "${_c1}" "${_BASE_DIRECT}"; then
+  if _is_catchall_body "${_b1}" "${_c1}" "${_BASE_DIRECT}" "${_BASE_DIRECT_CODE}"; then
     _catch=" direct=CATCH-ALL"
     _c1="catchall"
   fi
   ### The relay carries the target's answer, so the target's catch-all is one
   ### too: the two boxes' pages differ after a pass on one of them alone.
-  if _is_catchall_body "${_br}" "${_cr}" "${_BASE_RELAY}" \
-    || _is_catchall_body "${_br}" "${_cr}" "${_BASE_DIRECT}"; then
+  if _is_catchall_body "${_br}" "${_cr}" "${_BASE_RELAY}" "${_BASE_RELAY_CODE}" \
+    || _is_catchall_body "${_br}" "${_cr}" "${_BASE_DIRECT}" "${_BASE_DIRECT_CODE}"; then
     _catch="${_catch} relay=CATCH-ALL"
     _cr="catchall"
   fi
@@ -1077,7 +1091,7 @@ _probe_dom_direct() {
   local _b1="/tmp/.xtrim-probe-n.$$"
   _c1=$(curl -s -o "${_b1}" -w '%{http_code}' -A iCab --max-time 30 \
     --resolve "${_d}:80:${_t}" "http://${_d}/" 2>/dev/null)
-  if _is_catchall_body "${_b1}" "${_c1}" "${_BASE_DIRECT}"; then
+  if _is_catchall_body "${_b1}" "${_c1}" "${_BASE_DIRECT}" "${_BASE_DIRECT_CODE}"; then
     _c1="catchall"
   fi
   rm -f "${_b1}"
@@ -1149,6 +1163,17 @@ _probe_all_doms() {
   local _oN="$1" _d _r _rc=0 _nd _nr _af
   _MAP_ACCEPTED=""
   _af="$(_accept_file "${_oN}")"
+  ### A list that is there and is not read says so: a link, a file of
+  ### another owner or one others can write is never taken, and the hint
+  ### below would otherwise send the operator to a list that already names
+  ### the site.
+  if [ -n "${_af}" ]; then
+    _mig_hread "${_MIG_REC_DIR}" "${_af##*/}" root > /dev/null 2>&1
+    case "$?" in
+      0|3) ;;
+      *) _alrt "${_oN}: ${_af} is there and is NOT read: the list must be root's own regular file that no other user can write (chown root:root, chmod 600)" ;;
+    esac
+  fi
   _probe_catchall_baseline "${_MAP_TGT}"
   _probe_rename_map
   for _d in ${_MAP_DOMS}; do
@@ -1268,9 +1293,12 @@ _target_proof_vhosts() {
 ### policy record names, this account's name when it names none) holds no
 ### set for the name, or one that ends no later. Then the daily mirror has
 ### nothing to pull and nothing on this box can renew the set, since the
-### target is the only issuer. Read strictly: a store that is no real
-### directory there, a set whose end cannot be read, a newer set (the mirror
-### is behind) and a target that does not answer are all "no".
+### target is the only issuer. Read strictly, inside the set's own real
+### directory (the store is the account's there: a link at the set's name,
+### or a fullchain.pem that leads out of it, is never followed; the dated
+### file dehydrated links it to in the same directory is): a store or a set
+### that is no real directory, a set whose end cannot be read, a newer set
+### (the mirror is behind) and a target that does not answer are all "no".
 _target_cert_not_newer() {
   local _oN="$1" _dom="$2" _lend="$3" _po _out
   printf '%s' "${_dom}" | grep -qE '^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$' || return 1
@@ -1283,7 +1311,13 @@ _target_cert_not_newer() {
     _s=/data/disk/${_po}/tools/le/certs
     [ -n \"\${_b}\" ] && [ \"\$(cd -P -- \"\${_s}\" 2>/dev/null && /bin/pwd -P)\" = \"\${_b}/${_po}/tools/le/certs\" ] || exit 4
     [ -e \"\${_s}/${_dom}\" ] || [ -L \"\${_s}/${_dom}\" ] || { echo none; exit 0; }
-    _e=\$(timeout 10 dd if=\"\${_s}/${_dom}/fullchain.pem\" iflag=nonblock,fullblock bs=1048576 count=1 status=none 2>/dev/null \
+    cd -P -- \"\${_s}/${_dom}\" 2>/dev/null && [ \"\$(/bin/pwd -P)\" = \"\${_b}/${_po}/tools/le/certs/${_dom}\" ] || exit 4
+    _f=fullchain.pem
+    if [ -L \"\${_f}\" ]; then
+      _f=\$(readlink -- \"\${_f}\")
+      case \"\${_f}\" in ''|*/*) exit 5 ;; esac
+    fi
+    _e=\$(timeout 10 dd if=\"./\${_f}\" iflag=nofollow,nonblock,fullblock bs=1048576 count=1 status=none 2>/dev/null \
       | openssl x509 -noout -enddate 2>/dev/null | cut -d= -f2)
     [ -n \"\${_e}\" ] || exit 5
     date -ud \"\${_e}\" +%s
@@ -1317,6 +1351,9 @@ _cert_horizon() {
     _end=$(date -d "${_end}" +%s 2>/dev/null)
     [ -z "${_end}" ] && continue
     _days=$(( (_end - _now) / 86400 ))
+    ### A set that ended within the last day divides to 0 days: it has
+    ### expired all the same, and reads as a day past its end.
+    [ "${_end}" -le "${_now}" ] && [ "${_days}" -ge 0 ] && _days=-1
     ### An expired set of a site disabled in the panel on the target is that
     ### site's state, not a mirror to fix: the target's nightly renews no
     ### disabled site, so it would hold the account's shrink for good. Only
@@ -1496,6 +1533,7 @@ _preflight() {
     _rend=$(date -d "${_rend}" +%s 2>/dev/null)
     [ -n "${_rend}" ] || continue
     _rdays=$(( (_rend - $(date +%s)) / 86400 ))
+    [ "${_rend}" -le "$(date +%s)" ] && [ "${_rdays}" -ge 0 ] && _rdays=-1
     if [ "${_rdays}" -lt "14" ]; then
       _alrt "${_oN}: retired name ${_rd} still answers HTTPS here on a certificate nothing renews ($( [ "${_rdays}" -lt "0" ] && echo "EXPIRED ${_rdays#-}d ago" || echo "${_rdays}d left")) -- reported, not refused"
     fi
@@ -2214,25 +2252,42 @@ _name_plain() {
   printf '%s' "$1" | grep -qE '^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$'
 }
 ### The addresses DNS gives for the name $1, on one line: the A and AAAA
-### answers as this box's resolver follows them to their end (a CNAME's own
-### line is dropped), asked once more when nothing came back.
+### records at the end of whatever chain this box's resolver follows (a
+### CNAME's own line is no address). A lookup that fails (no reply, or an
+### answer that is neither "no error" nor "no such name") is asked once
+### more, and then printed as "?": a name that could not be asked about is
+### never read as a name with no address.
 _name_addrs() {
-  local _o="" _i
-  for _i in 1 2; do
-    _o="$( { dig +short +time=3 +tries=2 A "$1"; dig +short +time=3 +tries=2 AAAA "$1"; } 2> /dev/null \
-      | grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}$|^[0-9A-Fa-f:]*:[0-9A-Fa-f:.]*$' \
-      | LC_ALL=C sort -u | tr '\n' ' ')"
-    [ -n "${_o// /}" ] && break
-    sleep 2
+  local _o _t _i _ok _out=""
+  for _t in A AAAA; do
+    _ok=NO
+    for _i in 1 2; do
+      if _o="$(dig +noall +comments +answer +time=3 +tries=2 "$1" "${_t}" 2> /dev/null)" \
+        && printf '%s\n' "${_o}" | grep -qE 'status: (NOERROR|NXDOMAIN)'; then
+        _out="${_out}$(printf '%s\n' "${_o}" | awk -v t="${_t}" '$3 == "IN" && $4 == t { print $5 }')"$'\n'
+        _ok=YES
+        break
+      fi
+      sleep 2
+    done
+    if [ "${_ok}" != "YES" ]; then
+      printf '?'
+      return 0
+    fi
   done
-  printf '%s' "${_o% }"
+  printf '%s' "${_out}" | sed '/^$/d' | LC_ALL=C sort -u | tr '\n' ' ' | sed 's/ $//'
 }
 ### Where the addresses $1 lead: HERE when one of them is this box's (the name
 ### still arrives here, wholly or in part), otherwise ELSEWHERE when one is
 ### neither this box's nor the target's, otherwise TARGET, and NONE without
-### any. _NAMES_TGT_ADDRS holds the target's addresses.
+### any; UNKNOWN for a lookup that failed. _NAMES_TGT_ADDRS holds the
+### target's addresses.
 _name_where() {
   local _a _h=NO _t=NO _o=NO
+  if [ "$1" = "?" ]; then
+    echo UNKNOWN
+    return 0
+  fi
   for _a in $1; do
     if _mig_own_addr "${_a}"; then
       _h=YES
@@ -2253,6 +2308,20 @@ _name_where() {
   fi
 }
 
+### One name of the report: $1 the name, $2 a note for its line. Prints the
+### line and sets _NAMES_W to its verdict.
+_names_one() {
+  local _ad
+  if ! _name_plain "$1"; then
+    printf '  %-10s %s\n' PATTERN "$1 (no single name to ask DNS about)"
+    _NAMES_W=PATTERN
+    return 0
+  fi
+  _ad="$(_name_addrs "$1")"
+  _NAMES_W="$(_name_where "${_ad}")"
+  printf '  %-10s %s %s%s\n' "${_NAMES_W}" "$1" "${_ad:--}" "$2"
+}
+
 ### xtrim names [<oN>|all]: for every name a proxied account's vhosts answer
 ### for, where its DNS points today. It reads, asks DNS and the target for
 ### its own addresses, and changes nothing. A name that resolves to this box
@@ -2260,10 +2329,11 @@ _name_where() {
 ### the target is done; one that resolves elsewhere sits behind a CDN or
 ### another front, whose origin DNS cannot show.
 _cmd_names() {
-  local _sel="${1:-all}" _n _d _nm _ad _w _c _box=0 _accts="" _seen
-  local _nh _nt _ne _nn _nw _nb
+  local _sel="${1:-all}" _n _d _nm _c _box=0 _accts="" _seen _unk=0
+  local _nh _nt _ne _nn _nw _nb _nu _pn _rn _bn _bx
   command -v dig > /dev/null 2>&1 || _die "names needs dig on this box (the dnsutils package)"
   _load_cnf_defaults
+  _bx="$(hostname -f 2>/dev/null | tr 'A-Z' 'a-z' | tr -d '\n')"
   echo "xtrim names -- $(hostname -f 2>/dev/null) $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
   echo "this box's addresses: $(hostname -I 2>/dev/null | tr -s ' ' | sed 's/ $//')"
   for _n in $(_list_accounts); do
@@ -2296,35 +2366,59 @@ _cmd_names() {
     _c="$(_read_file "${_USR}/log/email.txt" | tr -s '[:space:]' ' ' | cut -c1-200)"
     _c="${_c# }"
     echo "${_n}: relay to ${_MAP_TGT} | contact: ${_c:-none in log/email.txt}"
-    _nh=0; _nt=0; _ne=0; _nn=0; _nw=0; _nb=0
+    _nh=0; _nt=0; _ne=0; _nn=0; _nw=0; _nb=0; _nu=0
+    ### Every name once an account, in lower case, whatever its spelling and
+    ### however many vhosts carry it. A site named under this box's own name
+    ### was renamed on the target by the move, and its old vhost answers here
+    ### with a 301 for ALL its names: the site's own (BOX-NAMED, this box's
+    ### by its name) and every other name it carried, a client's own domain
+    ### among them, which is judged like any relayed name.
+    _pn=""; _rn=""; _bn=""
     for _d in ${_MAP_DOMS}; do
       case " ${_MAP_REDIR} " in
         *" ${_d} "*)
-          ### A site named under this box's own name: renamed on the target
-          ### by the move, its old name answered here with a 301.
-          printf '  %-10s %s\n' BOX-NAMED "${_d} (answered here with a 301 to its new name)"
-          _nb=$(( _nb + 1 ))
-          continue
+          _bn="${_bn}${_d,,}"$'\n'
+          _rn="${_rn}${_d,,}"$'\n'"$(_vhost_names "${_d}" | tr 'A-Z' 'a-z')"$'\n'
+        ;;
+        *)
+          _pn="${_pn}$(_vhost_names "${_d}" | tr 'A-Z' 'a-z')"$'\n'
         ;;
       esac
-      for _nm in $(_vhost_names "${_d}"); do
-        if ! _name_plain "${_nm}"; then
-          printf '  %-10s %s\n' PATTERN "${_nm} (no single name to ask DNS about)"
-          _nw=$(( _nw + 1 ))
-          continue
-        fi
-        _ad="$(_name_addrs "${_nm}")"
-        _w="$(_name_where "${_ad}")"
-        printf '  %-10s %s %s\n' "${_w}" "${_nm}" "${_ad:--}"
-        case "${_w}" in
-          HERE) _nh=$(( _nh + 1 )) ;;
-          TARGET) _nt=$(( _nt + 1 )) ;;
-          ELSEWHERE) _ne=$(( _ne + 1 )) ;;
-          *) _nn=$(( _nn + 1 )) ;;
-        esac
-      done
     done
-    echo "${_n}: ${_nh} here, ${_nt} on the target, ${_ne} elsewhere, ${_nn} with no address, ${_nw} patterns, ${_nb} box-named"
+    _pn="$(printf '%s' "${_pn}" | sed '/^$/d' | LC_ALL=C sort -u)"
+    _rn="$(printf '%s' "${_rn}" | sed '/^$/d' | LC_ALL=C sort -u)"
+    while IFS= read -r _nm; do
+      [ -n "${_nm}" ] || continue
+      ### This box's own by its name, and in no DNS count: a renamed site's
+      ### own name, and any other name that carries this box's hostname (the
+      ### rule the move renames by). It resolves here by this box's own
+      ### records and is never a client's to move.
+      if printf '%s' "${_bn}" | grep -qxF -- "${_nm}"; then
+        printf '  %-10s %s\n' BOX-NAMED "${_nm} (answered here with a 301 to its new name)"
+        _nb=$(( _nb + 1 ))
+        continue
+      fi
+      if [ -n "${_bx}" ] && [ "${_nm}" != "${_nm//"${_bx}"/}" ]; then
+        printf '  %-10s %s\n' BOX-NAMED "${_nm} (carries this box's own name)"
+        _nb=$(( _nb + 1 ))
+        continue
+      fi
+      if printf '%s\n' "${_rn}" | grep -qxF -- "${_nm}" && ! printf '%s\n' "${_pn}" | grep -qxF -- "${_nm}"; then
+        _names_one "${_nm}" " (a renamed site's name: answered here with a 301)"
+      else
+        _names_one "${_nm}" ""
+      fi
+      case "${_NAMES_W}" in
+        HERE) _nh=$(( _nh + 1 )) ;;
+        TARGET) _nt=$(( _nt + 1 )) ;;
+        ELSEWHERE) _ne=$(( _ne + 1 )) ;;
+        PATTERN) _nw=$(( _nw + 1 )) ;;
+        UNKNOWN) _nu=$(( _nu + 1 )) ;;
+        *) _nn=$(( _nn + 1 )) ;;
+      esac
+    done <<< "$(printf '%s\n%s\n' "${_pn}" "${_rn}" | sed '/^$/d' | LC_ALL=C sort -u)"
+    echo "${_n}: ${_nh} here, ${_nt} on the target, ${_ne} elsewhere, ${_nn} with no address, ${_nw} patterns, ${_nb} box-named, ${_nu} lookups failed"
+    _unk=$(( _unk + _nu ))
     if [ "${_nh}" -gt 0 ]; then
       _box=$(( _box + _nh ))
       _accts="${_accts} ${_n}"
@@ -2332,6 +2426,8 @@ _cmd_names() {
   done
   [ -n "${_seen}" ] || [ "${_sel}" = "all" ] || _die "${_sel}: no such account"
   echo "box: ${_box} names still resolve to this box$( [ -n "${_accts}" ] && echo ", in:${_accts}" )"
+  [ "${_unk}" -gt 0 ] \
+    && echo "box: ${_unk} lookups FAILED (UNKNOWN above): those names are in no count -- run this again before relying on it"
   echo "note: HERE names go dark whenever this box is down; ELSEWHERE names sit behind a CDN or another front, or on another server, and DNS cannot say whether that front still sends them here."
 }
 
@@ -2349,7 +2445,7 @@ _cmd_space() {
     | awk 'NR == 2 { printf "root filesystem inodes: %s used\n", $5 }'
   echo "largest trees on the root filesystem (two levels, other mounts not walked):"
   LC_ALL=C du -xk --max-depth=2 / 2>/dev/null | sort -rn \
-    | awk 'NR > 1 && NR <= 26 { printf "  %8.1fG %s\n", $1/1048576, $2 }'
+    | awk 'NR > 1 && NR <= 26 { k = $1; sub(/^[0-9]+[ \t]+/, ""); printf "  %8.1fG %s\n", k/1048576, $0 }'
   echo "what a trim leaves and never removes, where present:"
   for _m in "${_XTRIM_BASE}" /var/lib/mysql /var/solr9 /var/solr7 /opt/solr4 /opt/jetty9 /data/disk/arch; do
     [ -e "${_m}" ] || continue
@@ -2357,8 +2453,14 @@ _cmd_space() {
       | awk -v p="${_m}" '{ printf "  %8.1fG %s\n", $1/1048576, p }'
   done
   echo "other mounts (not part of a root disk shrink):"
-  LC_ALL=C df -Pk 2>/dev/null \
-    | awk 'NR > 1 && $6 != "/" && $1 ~ /^\/dev\// { printf "  %s %.1fG used of %.1fG\n", $6, $3/1048576, $2/1048576; n++ } END { if (!n) print "  none" }'
+  ### Every mounted filesystem that holds data, by its type: a memory or
+  ### kernel filesystem is none, and a mount point may hold a blank.
+  LC_ALL=C df -PTk 2>/dev/null \
+    | awk 'NR > 1 && $2 !~ /^(tmpfs|devtmpfs|ramfs|overlay|squashfs|proc|sysfs|cgroup|cgroup2|efivarfs|devpts|securityfs|debugfs|tracefs|pstore|bpf|autofs|mqueue|hugetlbfs|fusectl|configfs)$/ {
+        m = $7; for (i = 8; i <= NF; i++) m = m " " $i
+        if (m == "/") next
+        printf "  %s (%s) %.1fG used of %.1fG\n", m, $2, $4/1048576, $3/1048576; n++
+      } END { if (!n) print "  none" }'
 }
 
 _run_one() {
