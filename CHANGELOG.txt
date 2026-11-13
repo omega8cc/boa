@@ -30,6 +30,19 @@
       and the attached mounts named, since a provider shrinks a disk no
       further than the space in use. It only reads.
 
+    * xtrim names prints on each name's line how many requests the new
+      server logged as relayed from the old one, with a sum per account and
+      for the server, and lists the names that got such requests and are on
+      no line (a wildcard's names). The new server's access log now carries
+      the address that opened each connection as its last field, peer=; for
+      a request the old server relayed that is the old server's own address,
+      whatever front the request passed on either side. So a name behind a
+      CDN whose origin is still the old server shows its count, which DNS
+      cannot show. The day's log and the one before are read. The old
+      server's own requests (a tool's probe of a site) are left out. A new
+      server whose log has no such field yet, one that does not answer and
+      an answer cut short are said, and never read as a count of 0.
+
     * xmass prep-target and init take --host-fp=SHA256:..., the fingerprint
       of the target's SSH host key, which the target's own pre-mig prints
       ready to paste. With it the source stores the target's key only when
