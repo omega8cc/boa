@@ -1393,11 +1393,46 @@ _rst_links() {
   return 0
 }
 
+# A restore target is free when it is missing, or an empty folder that is no
+# link: duplicity refuses one that exists and is not empty.
+_rst_target_free() {
+  if [ ! -e "${1}" ] && [ ! -L "${1}" ]; then
+    return 0
+  fi
+  [ -d "${1}" ] && [ ! -L "${1}" ] && [ -z "$(ls -A -- "${1}" 2> /dev/null)" ]
+}
+
+# The folder a restore lands in: $1 while it is free, else a name beside it
+# with the restore's date and time. An earlier restore of the same folder
+# still lying in restores/ would otherwise make this one fail; it is the
+# account's to keep or move, never ours to replace. A whole-account restore
+# ($2 = whole, $1 the restores folder itself) goes into
+# restores/everything-<date>-<time> instead.
+_rst_free_target() {
+  local _t="${1%/}" _b _c _n=1
+  if _rst_target_free "${_t}"; then
+    echo "${_t}"
+    return 0
+  fi
+  if [ "${2}" = whole ]; then
+    _b="${_t}/everything-$(date +%Y%m%d-%H%M%S)"
+  else
+    _b="${_t}-$(date +%Y%m%d-%H%M%S)"
+  fi
+  _c="${_b}"
+  while ! _rst_target_free "${_c}" && [ "${_n}" -lt 100 ]; do
+    _n=$((_n + 1))
+    _c="${_b}-${_n}"
+  done
+  echo "${_c}"
+}
+
 # Function to restore backup
 _restore() {
   local _restore_path=$1
   local _restore_time=$2
   local _restore_target="/data/disk/${_user}/static/restores"
+  local _whole="" _made=NO
 
   # Ensure _restore_target exists
   if [ ! -d "${_restore_target}" ]; then
@@ -1415,8 +1450,14 @@ _restore() {
   # Combine _restore_target with the extracted basename.
   # Also, remove any trailing slash from _restore_target to avoid double slashes.
   _final_restore_target="${_restore_target%/}/${_last_part}"
+  [ -n "${_last_part}" ] || _whole=whole
+  _final_restore_target="$(_rst_free_target "${_final_restore_target}" "${_whole}")"
+  if [ ! -e "${_final_restore_target}" ] && [ ! -L "${_final_restore_target}" ]; then
+    _made=YES
+  fi
 
   echo "MyBackup Restore for [${_user}] on [$(date)]" >> ${_LOGFILE}
+  echo "Restoring into ${_final_restore_target}" >> ${_LOGFILE}
   _RST_OK=NO
   if ! _rst_setup "${_DCY_MN_CMD} restore --no-restore-owner" \
     "${_DCY_MN_CMD} list-current-files" "${_restore_time}" acct "${_user}" \
@@ -1427,6 +1468,11 @@ _restore() {
     _RST_DONE="${_RST_LAST}"
     _RST_OK=YES
     _rst_links "${_final_restore_target}"
+  fi
+  # a failed restore leaves no empty folder of its own making behind
+  if [ "${_RST_OK}" != YES ] && [ "${_made}" = YES ] \
+    && [ -d "${_final_restore_target}" ] && [ ! -L "${_final_restore_target}" ]; then
+    rmdir -- "${_final_restore_target}" 2> /dev/null
   fi
   # --no-restore-owner lands the tree root-owned: hand it to the account,
   # owner and group, then the shared restore claim (every restored path,
