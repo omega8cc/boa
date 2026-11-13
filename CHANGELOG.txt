@@ -531,8 +531,17 @@
       that mode while a switch waits; an Octopus upgrade reads the same
       record and no longer sets up a single pool beside an account's
       per-version pools. An account with no record yet, such as a new one
-      getting its tools/le, and root's own run with _ACCT_RELOAD_HOLD=NO
-      switch at once.
+      until BOA has written its multi-fpm.info, and root's own run with
+      _ACCT_RELOAD_HOLD=NO switch at once; a record the account's pool files
+      do not bear out, such as one an earlier account of the name left, is
+      no record.
+
+    * The ltd worker's records of what it last applied for an account
+      (/var/backups/ltd/fpmcore), on which its 15-minute holds rest, are
+      kept while the account's user exists and removed with it. The nightly
+      cleanup removed every record a day old, and they are rewritten only
+      when they change, so each quiet account's next change of its own of
+      every kind went through unheld once a day.
 
     * The ltd worker's page check still moves a site onto a PHP its code
       can run at once when the server's own state changed. A move the
@@ -758,11 +767,13 @@
     * A PHP-FPM pool change the ltd worker made reaches its master even when
       the pass is cut short before the reload. A pool file put in place or
       removed, a live pool's New Relic key, and the control panel pool's
-      move to another version are each recorded as a reload owed before the
+      move to another version, and a pool's disable_functions list set back
+      to its template, are each recorded as a reload owed before the
       change, and the reload clears it; the next pass makes any reload a cut
-      pass left owed. Before, a master kept running on the old pool file,
-      or the old key, until something else reloaded it, since the next pass
-      found the file as it would write it.
+      pass left owed, the version that moved off a shared socket first.
+      Before, a master kept running on the old pool file, or the old key,
+      until something else reloaded it, since the next pass found the file
+      as it would write it.
 
     * A pass in which the control panel pool's include changes reloads
       nginx once for it. The panel's own reload did not count as the
