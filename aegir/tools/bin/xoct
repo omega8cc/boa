@@ -2222,9 +2222,11 @@ _xoct_notice_to_one() {
   return 0
 }
 ### xoct notice-to {oN [oN ...]|--all}: the line above for each account
-### named or for every account under /data/disk, changing nothing. A name
-### that is no account here is said and the others still answered. Status 1
-### when any of them is no account or can get no notice.
+### named or for every account under /data/disk, sending nothing and changing
+### no migration state. --all stands alone. A name that is no account here
+### (one that starts with a dot or a dash is none) is said and the others
+### still answered. Status 1 when any of them is no account or can get no
+### notice.
 _xoct_notice_to() {
   local _accts="" _a _rc=0
   if [ -z "${1:-}" ]; then
@@ -2232,6 +2234,10 @@ _xoct_notice_to() {
     exit 1
   fi
   if [ "$1" = "--all" ]; then
+    if [ "$#" -gt 1 ]; then
+      echo "ERROR: --all takes no account names: name the accounts, or --all alone"
+      exit 1
+    fi
     _accts="$(_mig_list_accounts)"
     if [ -z "${_accts}" ]; then
       echo "INFO: no Octopus accounts under /data/disk"
@@ -2239,7 +2245,7 @@ _xoct_notice_to() {
     fi
   else
     for _a in "$@"; do
-      if ! _mig_valid_acct "${_a}" || [ ! -d "/data/disk/${_a}" ]; then
+      if [[ "${_a}" == [.-]* ]] || ! _mig_valid_acct "${_a}" || [ ! -d "/data/disk/${_a}" ]; then
         echo "ERROR: no such account dir /data/disk/$(_xoct_shown "${_a}")"
         _rc=1
         continue

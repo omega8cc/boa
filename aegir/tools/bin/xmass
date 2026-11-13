@@ -22416,9 +22416,12 @@ _xmass_xoct_admail_ok() {
 # copy it adds on the vendor's own hosted servers, the hidden copy. Each
 # account is asked with the token its conversion will carry: one call for
 # the accounts that carry none, one for each token (the run's own, a
-# canary's). An xoct without the verb is not asked.
+# canary's). An account root's marker says relays already is not asked: the
+# cutover converts it no second time (its repair pass keeps quiet towards
+# the client unless the promise changed or the client was never told), so
+# it is only named. An xoct without the verb is not asked.
 _xmass_report_notice_rcpts() {
-  local _oct _tok _pairs="" _t _list
+  local _oct _tok _pairs="" _t _list _relay=""
   case "$(xoct 2> /dev/null)" in
     *'{notice-to}'*) ;;
     *)
@@ -22428,9 +22431,15 @@ _xmass_report_notice_rcpts() {
   esac
   _info "[DRY-PLAN] each account's client notice would go to:"
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    if _mig_is_proxied "${_oct}"; then
+      _relay="${_relay} ${_oct}"
+      continue
+    fi
     _tok="$(_xmass_xoct_token "${_oct}")"
     _pairs+="${_tok:--} ${_oct}"$'\n'
   done
+  [ -n "${_relay}" ] \
+    && _info "  relaying already, mailed again only if never told or the arrangement changed:${_relay}"
   for _t in $(printf '%s' "${_pairs}" | awk '{ print $1 }' | LC_ALL=C sort -u); do
     _list="$(printf '%s' "${_pairs}" | awk -v t="${_t}" '$1 == t { printf " %s", $2 }')"
     _tok=""
