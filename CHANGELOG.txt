@@ -992,12 +992,13 @@
       transfer still sends it: xoct's export keeps a panel dump already there,
       and the record makes the target refuse that older panel.
 
-    * xcopy transfer refuses an account that was not exported, and pretransfer
-      no longer sends src/. A server that once received the account as a copy
-      keeps that copy's panel dump, site dump folders and source name there: a
-      transfer with no export sent them, and a pretransfer sent the old dumps
-      ahead of the export, which the import then loaded with the new ones. An
-      export also stops before any dump when the control panel names no
+    * xcopy transfer refuses an account that this server did not export, and
+      pretransfer no longer sends src/. A server that once received the account
+      as a copy keeps that copy's panel dump, site dump folders and source name
+      there, and its export stamps too where the import stopped short: a
+      transfer from there sent them, and a pretransfer sent the old dumps ahead
+      of the export, which the import then loaded with the new ones. An export
+      also stops before it changes anything when the control panel names no
       database, and stamps the account only over a panel dump it made itself.
 
     * xcopy post-mig names, for each copied site whose verify failed, the
