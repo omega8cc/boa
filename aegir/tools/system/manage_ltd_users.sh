@@ -6247,8 +6247,9 @@ _ltd_pool_deny_heal() {
       fi
       chown --reference="${_pf}" "${_new}" 2> /dev/null
       chmod --reference="${_pf}" "${_new}" 2> /dev/null
+      # the master owes a reload until one has read the new file
       if [ -f "${_pf}" ] && [ ! -L "${_pf}" ] && cp -a -- "${_pf}" "${_old}" \
-        && mv -f -- "${_new}" "${_pf}"; then
+        && _ltd_fpm_owe "${_v}" && mv -f -- "${_new}" "${_pf}"; then
         _done="${_done}${_pf} "
       else
         rm -f -- "${_new}" "${_old}"
@@ -6260,7 +6261,7 @@ _ltd_pool_deny_heal() {
         rm -f -- "${_pf%/*}/.${_pf##*/}.deny.old"
         echo "Pool ${_pf} of ${_USER} disabled other functions than its template, set back"
       done
-      [ -e "/etc/init.d/php${_v}-fpm" ] && service "php${_v}-fpm" reload &> /dev/null 9>&-
+      _ltd_fpm_reload "${_v}"
     else
       for _pf in ${_done}; do
         mv -f -- "${_pf%/*}/.${_pf##*/}.deny.old" "${_pf}"
@@ -6299,22 +6300,81 @@ _ltd_fpm_owe() {
 }
 # PHP version $1 reloaded for the account's pool files: the init script sends
 # the reload whenever the master's pid file is there, and a master that is not
-# running reads every pool file when it starts, so the owed record goes.
+# running reads every pool file when it starts, so the owed record goes. A
+# lock the caller holds on fd 9 is never handed to the master.
 _ltd_fpm_reload() {
-  [ -e "/etc/init.d/php${1}-fpm" ] && service "php${1}-fpm" reload &> /dev/null
+  [ -e "/etc/init.d/php${1}-fpm" ] && service "php${1}-fpm" reload &> /dev/null 9>&-
   rm -f -- "/var/backups/ltd/fpmcore/${_USER}.fpm-owed.${1}"
 }
-# The reloads a cut-off pass owed the account's pool files, made now.
+# The PHP version (its digits) whose PHP-FPM master serves the unix socket
+# $1, read from the listening process's binary; nothing when none does.
+_ltd_fpm_sock_ver() {
+  local _pid _exe
+  for _pid in $(ss -xlpn 2> /dev/null | awk -v s="${1}" '$5 == s' \
+    | grep -o 'pid=[0-9]*' | cut -d= -f2 | sort -u); do
+    _exe=$(readlink "/proc/${_pid}/exe" 2> /dev/null)
+    case "${_exe}" in
+      /opt/php[0-9][0-9]/sbin/php-fpm)
+        _exe="${_exe#/opt/php}"
+        echo "${_exe%%/*}"
+        return 0
+        ;;
+    esac
+  done
+  return 0
+}
+# The reloads a cut-off pass owed the account's pool files, made now. The
+# account's single pool and its panel pool listen on one socket whatever
+# their version, and a master refuses a socket another one still serves,
+# failing every pool it has: as the setup does, the version that still
+# serves such a socket for a pool it no longer has is reloaded first, and
+# the one that took the pool over only once that socket is free (otherwise
+# its reload stays owed to the next pass).
 _ltd_fpm_owed_reload() {
-  local _f _v
+  local _f _v _p _w _wt _owed="" _first=""
   for _f in /var/backups/ltd/fpmcore/"${_USER}".fpm-owed.*; do
     [ -f "${_f}" ] || continue
     _v="${_f##*.}"
     if [[ "${_v}" =~ ^[0-9]{2}$ ]]; then
-      _ltd_fpm_reload "${_v}"
+      _owed="${_owed}${_v} "
     else
       rm -f -- "${_f}"
     fi
+  done
+  [ -n "${_owed}" ] || return 0
+  for _v in ${_owed}; do
+    for _p in "${_USER}" "${_USER}.hm"; do
+      [ -e "/opt/php${_v}/etc/pool.d/${_p}.conf" ] || continue
+      _w=$(_ltd_fpm_sock_ver "/run/${_p}.fpm.socket")
+      [ -n "${_w}" ] && [ "${_w}" != "${_v}" ] || continue
+      [ -e "/opt/php${_w}/etc/pool.d/${_p}.conf" ] && continue
+      case " ${_first} " in
+        *" ${_w} "*) ;;
+        *) _first="${_first}${_w} " ;;
+      esac
+    done
+  done
+  for _w in ${_first}; do
+    _ltd_fpm_reload "${_w}"
+  done
+  for _v in ${_owed}; do
+    case " ${_first} " in *" ${_v} "*) continue ;; esac
+    for _p in "${_USER}" "${_USER}.hm"; do
+      [ -e "/opt/php${_v}/etc/pool.d/${_p}.conf" ] || continue
+      _wt=0
+      while _w=$(_ltd_fpm_sock_ver "/run/${_p}.fpm.socket"); \
+        [ -n "${_w}" ] && [ "${_w}" != "${_v}" ] && [ "${_wt}" -lt 20 ]; do
+        sleep 0.5
+        _wt=$(( _wt + 1 ))
+      done
+      if [ -n "${_w}" ] && [ "${_w}" != "${_v}" ]; then
+        echo "NOTE: ${_USER}: the PHP ${_v} reload a cut-off pass owed waits: PHP ${_w} still serves /run/${_p}.fpm.socket"
+        continue 2
+      fi
+      # a socket file nothing serves is removed, as the panel pool's move does
+      [ -z "${_w}" ] && rm -f -- "/run/${_p}.fpm.socket"
+    done
+    _ltd_fpm_reload "${_v}"
   done
 }
 #
@@ -6711,14 +6771,27 @@ _fpm_multi_files() {
   return 1
 }
 # The PHP-FPM mode (multi or single) the ltd worker last made for account $1,
-# root's record; nothing without one.
+# root's record; nothing without one, and nothing when root's pool files of
+# the account do not bear it out (a record an earlier account of the name
+# left, or one its removal outlived): multi needs a per-version pool of the
+# account, single the account's own pool file.
 _fpm_mode_rec() {
-  local _f="/var/backups/ltd/fpmcore/${1}.mode.applied" _r=""
+  local _f="/var/backups/ltd/fpmcore/${1}.mode.applied" _r="" _p
   [ -f "${_f}" ] && [ ! -L "${_f}" ] || return 0
   { IFS= read -r _r < "${_f}"; } 2> /dev/null
   case "${_r}" in
-    multi|single) echo "${_r}" ;;
+    multi)
+      for _p in /opt/php*/etc/pool.d/"${1}".[0-9]*.conf; do
+        [ -f "${_p}" ] && { echo multi; return 0; }
+      done
+      ;;
+    single)
+      for _p in /opt/php*/etc/pool.d/"${1}".conf; do
+        [ -f "${_p}" ] && { echo single; return 0; }
+      done
+      ;;
   esac
+  return 0
 }
 # The account's FPM mode this pass (_ltdFpmMulti), by its files. A switch of
 # the mode reloads every PHP-FPM master of the box and nginx, and both files
@@ -6742,7 +6815,14 @@ _ltd_fpm_multi_mode() {
   fi
   _rec="$(_fpm_mode_rec "${_USER}")"
   if [ -z "${_rec}" ]; then
-    [ -d "${_dscUsr}/tools/le" ] && _ltdModeRec="${_now}"
+    # a first record once the account has tools/le and a multi-fpm.info,
+    # which BOA writes on every account after the account's first pass, or
+    # per-version pools: a young account's first entry into multi-FPM mode
+    # is that write of root's, never a switch of the account's own
+    if [ -d "${_dscUsr}/tools/le" ] && { [ -e "${_dscUsr}/static/control/multi-fpm.info" ] \
+      || ls /opt/php*/etc/pool.d/"${_USER}".[0-9]*.conf > /dev/null 2>&1; }; then
+      _ltdModeRec="${_now}"
+    fi
     return 0
   fi
   [ "${_rec}" = "${_now}" ] && return 0

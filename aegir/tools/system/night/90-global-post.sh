@@ -1227,7 +1227,20 @@ _global_cleanup() {
     echo "Permissions in sites/all tree just fixed"
   fi
   find /var/backups/old-sql* -mtime +1 -exec rm -rf {} \; &> /dev/null
-  find /var/backups/ltd/*/* -mtime +0 -type f -exec rm -f {} \; &> /dev/null
+  ### fpmcore holds root's records of what the ltd worker last applied for
+  ### each account, rewritten only when they change, and its PHP-FPM and
+  ### nginx holds rest on them: kept while the account's user exists, gone
+  ### with it (a day's age cleared every hold of a quiet account each night)
+  find /var/backups/ltd/*/* -mtime +0 -type f -not -path '/var/backups/ltd/fpmcore/*' \
+    -exec rm -f {} \; &> /dev/null
+  local _fcF _fcA
+  for _fcF in /var/backups/ltd/fpmcore/*; do
+    [ -f "${_fcF}" ] && [ ! -L "${_fcF}" ] || continue
+    _fcA="${_fcF##*/}"
+    _fcA="${_fcA%%.*}"
+    [[ "${_fcA}" =~ ^[a-z0-9-]+$ ]] || continue
+    id -u -- "${_fcA}" > /dev/null 2>&1 || rm -f -- "${_fcF}"
+  done
   find /var/backups/solr/*/* -mtime +0 -type f -exec rm -f {} \; &> /dev/null
   find /var/backups/solr-archive -mindepth 1 -maxdepth 1 -type f -mtime +30 -exec rm -f {} \; &> /dev/null
   ### Old jetty leftovers go after a day; the init scripts autoupboa moves

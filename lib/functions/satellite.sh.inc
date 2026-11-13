@@ -8748,14 +8748,27 @@ _fpm_multi_files() {
   return 1
 }
 # The PHP-FPM mode (multi or single) the ltd worker last made for account $1,
-# root's record; nothing without one.
+# root's record; nothing without one, and nothing when root's pool files of
+# the account do not bear it out (a record an earlier account of the name
+# left, or one its removal outlived): multi needs a per-version pool of the
+# account, single the account's own pool file.
 _fpm_mode_rec() {
-  local _f="/var/backups/ltd/fpmcore/${1}.mode.applied" _r=""
+  local _f="/var/backups/ltd/fpmcore/${1}.mode.applied" _r="" _p
   [ -f "${_f}" ] && [ ! -L "${_f}" ] || return 0
   { IFS= read -r _r < "${_f}"; } 2> /dev/null
   case "${_r}" in
-    multi|single) echo "${_r}" ;;
+    multi)
+      for _p in /opt/php*/etc/pool.d/"${1}".[0-9]*.conf; do
+        [ -f "${_p}" ] && { echo multi; return 0; }
+      done
+      ;;
+    single)
+      for _p in /opt/php*/etc/pool.d/"${1}".conf; do
+        [ -f "${_p}" ] && { echo single; return 0; }
+      done
+      ;;
   esac
+  return 0
 }
 # The account's PHP-FPM mode as the ltd worker runs it: the mode it last made,
 # else the one its files give. The worker keeps an account in multi-FPM mode
