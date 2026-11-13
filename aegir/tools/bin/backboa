@@ -351,11 +351,16 @@ _acquire_pid_file() {
 # backend burns the full spaced retry budget per file instead of taking
 # the no-need-to-retry branch; over one historically damaged chain that
 # stalled a weekly retention for hours and starved the whole backup
-# schedule on a hosted box. The pinned venv copy gets the backend's
-# _error_code hook appended: marker-guarded, exact-pin gated, and the
-# candidate is compile-checked before an atomic same-directory swap, so
-# a failed patch leaves the stock file untouched. Re-check the need at
-# the next duplicity pin bump.
+# schedule on a hosted box. And the backend deletes by name: it looks
+# each file's id up first, a download-class request B2 caps per day, so
+# a retention pass or cleanup on a capped account fails file by file and
+# leaves old chains holding storage. The pinned venv copy gets the
+# backend's _error_code hook and a _delete_list that deletes by version
+# id from one listing appended: marker-guarded (a copy that carries only
+# the first hook has it replaced), exact-pin gated, and the candidate is
+# compile-checked before an atomic same-directory swap, so a failed
+# patch leaves the file as it was. Re-check the need at the next
+# duplicity pin bump.
 _patch_duplicity_b2backend() {
   local _b2fLive _b2fTemp _dcyLive
   # Cheapest guards first: this also runs from the nightly dcysetup
@@ -363,13 +368,18 @@ _patch_duplicity_b2backend() {
   # path must cost a file read, not a duplicity --version subprocess
   _b2fLive="${_PIPX_VNV}/duplicity/lib/python${_PTN_MNR}/site-packages/duplicity/backends/b2backend.py"
   [ -f "${_b2fLive}" ] || return 0
-  if grep -q "BOA-b2-error-code" "${_b2fLive}"; then
+  if grep -q "BOA-b2-delete-list" "${_b2fLive}"; then
     return 0
   fi
   _dcyLive=$(/usr/local/bin/duplicity --version 2>&1)
   [[ "${_dcyLive}" =~ "duplicity ${_DCY_VRN} " ]] || return 0
   _b2fTemp="${_b2fLive%.py}_boapatch$$.py"
   cp -af "${_b2fLive}" "${_b2fTemp}" || return 0
+  # a copy patched before carries the first hook alone, appended at its
+  # end: that block goes, the whole block below replaces it
+  if grep -q "^# BOA-b2-error-code:" "${_b2fTemp}"; then
+    sed -i '/^# BOA-b2-error-code:/,$d' "${_b2fTemp}" || { rm -f "${_b2fTemp}"; return 0; }
+  fi
   cat >> "${_b2fTemp}" <<'B2NOTFOUND'
 
 
@@ -397,12 +407,39 @@ def _boa_b2_error_code(self, operation, e):
 
 
 B2Backend._error_code = _boa_b2_error_code
+
+
+# BOA-b2-delete-list: delete by version id from one listing of the target,
+# never by name: a name lookup is a download-class request B2 caps per
+# day, so a retention pass or cleanup on a capped account failed file by
+# file. Every version of each named file goes (a re-sent volume leaves
+# two); a name no longer listed is gone already, so a retried batch
+# finishes the rest. Hide mode keeps the stock path.
+def _boa_b2_delete_list(self, filename_list):
+    if config.b2_hide_files:
+        for _boa_f in filename_list:
+            self._delete(_boa_f)
+        return
+    _boa_want = set(self.path + os.fsdecode(_boa_f) for _boa_f in filename_list)
+    _boa_seen = [
+        _boa_fv
+        for (_boa_fv, _boa_dir) in self.bucket.ls(self.path, latest_only=False)
+        if _boa_fv is not None and _boa_fv.file_name in _boa_want
+    ]
+    for _boa_fv in _boa_seen:
+        log.Log(f"Delete: {_boa_fv.file_name} (version {_boa_fv.id_})", log.INFO)
+        self.bucket.delete_file_version(_boa_fv.id_, _boa_fv.file_name)
+    for _boa_n in sorted(_boa_want - set(_boa_fv.file_name for _boa_fv in _boa_seen)):
+        log.Log(f"Delete: {_boa_n} not listed, gone already", log.INFO)
+
+
+B2Backend._delete_list = _boa_b2_delete_list
 B2NOTFOUND
   if "${_PIPX_VNV}/duplicity/bin/python" -m py_compile "${_b2fTemp}" 2>/dev/null; then
     chmod 644 "${_b2fTemp}"
     mv -f "${_b2fTemp}" "${_b2fLive}"
     find "${_b2fLive%/*}/__pycache__" -name "b2backend*" -delete 2>/dev/null
-    echo "Patched duplicity b2backend: missing-file deletions no longer burn spaced retries"
+    echo "Patched duplicity b2backend: deletions by version id, missing files no longer burn spaced retries"
   else
     rm -f "${_b2fTemp}"
     echo "NOTE: duplicity b2backend patch did not compile; stock file left in place"
