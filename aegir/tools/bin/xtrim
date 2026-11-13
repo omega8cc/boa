@@ -2334,7 +2334,13 @@ _cmd_names() {
   command -v dig > /dev/null 2>&1 || _die "names needs dig on this box (the dnsutils package)"
   _load_cnf_defaults
   _bx="$(hostname -f 2>/dev/null | tr 'A-Z' 'a-z' | tr -d '\n')"
-  echo "xtrim names -- $(hostname -f 2>/dev/null) $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+  ### Only a full host name marks a name as this box's own: a bare label
+  ### would match inside a client's domain.
+  case "${_bx}" in
+    *.*) ;;
+    *) _bx="" ;;
+  esac
+  echo "xtrim names --$(hostname -f 2>/dev/null) $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
   echo "this box's addresses: $(hostname -I 2>/dev/null | tr -s ' ' | sed 's/ $//')"
   for _n in $(_list_accounts); do
     [ "${_sel}" = "all" ] || [ "${_sel}" = "${_n}" ] || continue
@@ -2365,6 +2371,7 @@ _cmd_names() {
     esac
     _c="$(_read_file "${_USR}/log/email.txt" | tr -s '[:space:]' ' ' | cut -c1-200)"
     _c="${_c# }"
+    _c="${_c% }"
     echo "${_n}: relay to ${_MAP_TGT} | contact: ${_c:-none in log/email.txt}"
     _nh=0; _nt=0; _ne=0; _nn=0; _nw=0; _nb=0; _nu=0
     ### Every name once an account, in lower case, whatever its spelling and
