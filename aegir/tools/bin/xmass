@@ -21689,6 +21689,7 @@ _xmass_cmd_cutover() {
     _xmass_declare_unadopted DRY
     [ -n "${_XMASS_MODE_UNDECLARED}" ] \
       && _alrt "[DRY] --live would REFUSE: undeclared proxy mode for:${_XMASS_MODE_UNDECLARED}"
+    _xmass_report_notice_rcpts
     if ! _xmass_gate_ready_all dry; then
       _alrt "DENY: a control folder the sites would not honour a 503 gate in (above)"
       _XMASS_NOT_CLEAN=YES
@@ -22408,6 +22409,36 @@ _xmass_xoct_admail_ok() {
   esac
   _die "the installed xoct does not take admail=: refusing a test run that would mail the clients" \
        "(refresh the migration tools first)"
+}
+
+# Who each account's client notice would go to in this cutover, as the
+# installed xoct gives it (its read-only notice-to): the address, the visible
+# copy it adds on the vendor's own hosted servers, the hidden copy. Each
+# account is asked with the token its conversion will carry: one call for
+# the accounts that carry none, one for each token (the run's own, a
+# canary's). An xoct without the verb is not asked.
+_xmass_report_notice_rcpts() {
+  local _oct _tok _pairs="" _t _list
+  case "$(xoct 2> /dev/null)" in
+    *'{notice-to}'*) ;;
+    *)
+      _info "[DRY-PLAN] the installed xoct cannot list who the client notices go to (refresh the migration tools)"
+      return 0
+      ;;
+  esac
+  _info "[DRY-PLAN] each account's client notice would go to:"
+  for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    _tok="$(_xmass_xoct_token "${_oct}")"
+    _pairs+="${_tok:--} ${_oct}"$'\n'
+  done
+  for _t in $(printf '%s' "${_pairs}" | awk '{ print $1 }' | LC_ALL=C sort -u); do
+    _list="$(printf '%s' "${_pairs}" | awk -v t="${_t}" '$1 == t { printf " %s", $2 }')"
+    _tok=""
+    [ "${_t}" != "-" ] && _tok="${_t}"
+    # shellcheck disable=SC2086  # _list is a blank-separated account list
+    xoct notice-to ${_list} ${_tok:+"admail=${_tok}"} 2>&1 | sed 's/^/  /'
+  done
+  return 0
 }
 
 # The admail= a printed prep-target or cutover line carries: this run's,

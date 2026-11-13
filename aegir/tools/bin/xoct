@@ -1884,20 +1884,44 @@ _xoct_plan_value() {
   [[ "${_v}" =~ ${_re} ]] && printf -v "${_var}" '%s' "${_v}"
   return 0
 }
-### Sets _MAIL_RCPT and _MAIL_BCC (the -b words, or none), the recipients of
-### a client notice. With admail= that address alone, no copy to anyone: a
-### test or canary run never mails a client. Otherwise the account's address
-### (_xoct_client_address) with the operator's -b copy. An account with no
-### plain address in either place gets no notice (status 1, a line naming
-### the cause): a stand-in address used to take it unread.
+### The visible copy of every client notice on the vendor's own hosted
+### servers, and the test for one: a server named under .aegir.cc, the name
+### read as BOA's hosted test reads it (_hName: /etc/hostname, else
+### hostname -f). A server that only carries /root/.host8.cnf is run for
+### another operator and gets no such copy: mail to its clients is that
+### operator's alone.
+_XOCT_HOSTED_CC="admin@omega8.cc"
+_xoct_own_hosted() {
+  local _h="${_hName//[[:space:]]/}"
+  _h="${_h,,}"
+  [[ "${_h}" == ?*.aegir.cc ]]
+}
+### Sets _MAIL_RCPT, _MAIL_CC and _MAIL_BCC (the -c and -b words, or none),
+### the recipients of a client notice. With admail= that address alone, no
+### copy to anyone: a test or canary run never mails a client. Otherwise the
+### account's address (_xoct_client_address) with the operator's -b copy,
+### and on the vendor's own hosted servers (_xoct_own_hosted) a visible -c
+### copy to _XOCT_HOSTED_CC, left out when the account's address is that
+### address already. An account with no plain address in either place gets
+### no notice (status 1, a line naming the cause): a stand-in address used
+### to take it unread.
 _xoct_mail_rcpt() {
+  local _w _cc
   _MAIL_RCPT=""
+  _MAIL_CC=()
   _MAIL_BCC=()
   if [ -n "${_XOCT_ADMAIL}" ]; then
     _MAIL_RCPT="${_XOCT_ADMAIL}"
   elif _xoct_email_ok "${_CLIENT_EMAIL}"; then
     _MAIL_RCPT="${_CLIENT_EMAIL}"
     [ -n "${_BCC_EMAIL}" ] && _MAIL_BCC=(-b "${_BCC_EMAIL}")
+    if _xoct_own_hosted; then
+      _cc="${_XOCT_HOSTED_CC}"
+      for _w in ${_MAIL_RCPT}; do
+        [ "${_w,,}" = "${_cc,,}" ] && _cc=""
+      done
+      [ -n "${_cc}" ] && _MAIL_CC=(-c "${_cc}")
+    fi
   else
     echo "ALRT: ${_THIS_HM_USER}: no plain address in log/email.txt ('$(_xoct_shown "${_XOCT_EMAIL_TXT}")') or in _CLIENT_EMAIL of its cnf; no notice is sent"
     return 1
@@ -2177,9 +2201,56 @@ _xoct_admail_upgrade_mail_off() {
 ### The tail of a sent notice's line: under admail= the account's own
 ### address was not mailed, and the migration log records the send as a
 ### test (testmail), which no later notice reads as what the client was told.
+### A notice that carried the visible copy names it.
 _xoct_mail_said() {
   [ -n "${_XOCT_ADMAIL}" ] && printf '%s' " (admail=; the account's own address was not mailed)"
+  [ -n "${_MAIL_CC[1]:-}" ] && printf '%s' " (Cc ${_MAIL_CC[1]})"
   return 0
+}
+### Who a client notice of account $1 would go to on this box, one line, read
+### only: the address, the visible copy and the hidden one, as _xoct_mail_rcpt
+### gives them to every sender. An account in a test run answers as every
+### verb does without its admail= (_xoct_admail_gate). Status 1 when no
+### notice can go out for it.
+_xoct_notice_to_one() {
+  local _a="$1"
+  _THIS_HM_USER="${_a}"
+  _xoct_admail_gate "${_a}" || return 1
+  _xoct_client_address "/data/disk/${_a}" "${_a}"
+  _xoct_mail_rcpt || return 1
+  echo "INFO: ${_a}: To: ${_MAIL_RCPT}; Cc: ${_MAIL_CC[1]:-none}; Bcc: ${_MAIL_BCC[1]:-none}"
+  return 0
+}
+### xoct notice-to {oN [oN ...]|--all}: the line above for each account
+### named or for every account under /data/disk, changing nothing. A name
+### that is no account here is said and the others still answered. Status 1
+### when any of them is no account or can get no notice.
+_xoct_notice_to() {
+  local _accts="" _a _rc=0
+  if [ -z "${1:-}" ]; then
+    echo "Usage: xoct notice-to {oN [oN ...]|--all} (read-only: who each client notice goes to, with its copies)"
+    exit 1
+  fi
+  if [ "$1" = "--all" ]; then
+    _accts="$(_mig_list_accounts)"
+    if [ -z "${_accts}" ]; then
+      echo "INFO: no Octopus accounts under /data/disk"
+      exit 0
+    fi
+  else
+    for _a in "$@"; do
+      if ! _mig_valid_acct "${_a}" || [ ! -d "/data/disk/${_a}" ]; then
+        echo "ERROR: no such account dir /data/disk/$(_xoct_shown "${_a}")"
+        _rc=1
+        continue
+      fi
+      _accts="${_accts} ${_a}"
+    done
+  fi
+  for _a in ${_accts}; do
+    _xoct_notice_to_one "${_a}" || _rc=1
+  done
+  exit "${_rc}"
 }
 ### This box's hostname as the renamed-site redirects read it: the master
 ### instance's name for the server, else the system's; nothing when neither
@@ -2481,7 +2552,7 @@ _send_notice_migration_complete() {
   _MAIL_SENT=NO
   _MAILX_TEST=$(s-nail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "built for Linux" ]] && _xoct_mail_rcpt; then
-  cat <<EOF | s-nail "${_MAIL_BCC[@]}" -s "IMPORTANT: Completed migration to ${_tgt} for ${_DOMAIN}" ${_MAIL_RCPT} && _MAIL_SENT=YES
+  cat <<EOF | s-nail "${_MAIL_CC[@]}" "${_MAIL_BCC[@]}" -s "IMPORTANT: Completed migration to ${_tgt} for ${_DOMAIN}" ${_MAIL_RCPT} && _MAIL_SENT=YES
 Hello,
 
 This is a notification to inform you that the migration of your Ægir hosting system has been successfully completed. Below are important details and instructions regarding the changes.
@@ -2541,7 +2612,7 @@ _send_notice_migration_start() {
   _MAIL_SENT=NO
   _MAILX_TEST=$(s-nail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "built for Linux" ]] && _xoct_mail_rcpt; then
-  cat <<EOF | s-nail "${_MAIL_BCC[@]}" -s "STATUS: Running migration to ${_tgt} for ${_DOMAIN}" ${_MAIL_RCPT} && _MAIL_SENT=YES
+  cat <<EOF | s-nail "${_MAIL_CC[@]}" "${_MAIL_BCC[@]}" -s "STATUS: Running migration to ${_tgt} for ${_DOMAIN}" ${_MAIL_RCPT} && _MAIL_SENT=YES
 Hello,
 
 This notification is to inform you that the migration of your Ægir hosting system to the new platform has started.
@@ -2607,7 +2678,7 @@ _send_notice_migration_change() {
   _MAIL_SENT=NO
   _MAILX_TEST=$(s-nail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "built for Linux" ]] && _xoct_mail_rcpt; then
-  cat <<EOF | s-nail "${_MAIL_BCC[@]}" -s "IMPORTANT: Update to the forwarding arrangement for ${_DOMAIN}" ${_MAIL_RCPT} && _MAIL_SENT=YES
+  cat <<EOF | s-nail "${_MAIL_CC[@]}" "${_MAIL_BCC[@]}" -s "IMPORTANT: Update to the forwarding arrangement for ${_DOMAIN}" ${_MAIL_RCPT} && _MAIL_SENT=YES
 Hello,
 
 This is a short follow-up to the migration message you received earlier. The forwarding arrangement for your old address has changed.
@@ -2648,7 +2719,7 @@ _send_notice_migration_retire() {
   fi
   _MAILX_TEST=$(s-nail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "built for Linux" ]] && _xoct_mail_rcpt; then
-  cat <<EOF | s-nail "${_MAIL_BCC[@]}" -s "NOTICE: forwarding from your old address is being withdrawn for ${_DOMAIN}" ${_MAIL_RCPT} && _MAIL_SENT=YES
+  cat <<EOF | s-nail "${_MAIL_CC[@]}" "${_MAIL_BCC[@]}" -s "NOTICE: forwarding from your old address is being withdrawn for ${_DOMAIN}" ${_MAIL_RCPT} && _MAIL_SENT=YES
 Hello,
 
 ${_para1}
@@ -12723,12 +12794,13 @@ _check_root() {
   # reset-state only removes files (the migration stamps, the export's panel
   # dump); abandon removes the export latch and the panel dump, lifts the 503
   # gate export put on the account and takes its panel out of maintenance
-  # mode (a small database write); the policy table only reads. Refusing them
-  # on a full disk keeps the account's sites on 503, or its stale state in
-  # place, exactly when a stalled move is the likely reason the disk filled.
+  # mode (a small database write); the policy table and notice-to only read.
+  # Refusing them on a full disk keeps the account's sites on 503, or its
+  # stale state in place, exactly when a stalled move is the likely reason
+  # the disk filled.
   if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ] \
     && [ "${_cmd}" != "reset-state" ] && [ "${_cmd}" != "abandon" ] \
-    && [ "${_cmd}" != "proxy-table" ]; then
+    && [ "${_cmd}" != "proxy-table" ] && [ "${_cmd}" != "notice-to" ]; then
     echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
     echo "ERROR: We can not proceed until it is below 90/100"
     exit 1
@@ -12740,7 +12812,7 @@ _check_root() {
   # Out of inodes is as full as out of space; the same verbs run.
   if [ ! -z "${_DI_TEST}" ] && [ "${_DI_TEST}" -gt 90 ] \
     && [ "${_cmd}" != "reset-state" ] && [ "${_cmd}" != "abandon" ] \
-    && [ "${_cmd}" != "proxy-table" ]; then
+    && [ "${_cmd}" != "proxy-table" ] && [ "${_cmd}" != "notice-to" ]; then
     echo "ERROR: Your disk is almost out of inodes !!! ${_DI_TEST}/100"
     echo "ERROR: We can not proceed until inode use is below 90/100"
     echo "ERROR: Every file takes an inode, free space alone is not enough: df -i /"
@@ -13522,6 +13594,10 @@ case "$1" in
             _check_root
             _xoct_proxy_retire "$2"
   ;;
+  notice-to) _cmd="$1"
+            _check_root
+            _xoct_notice_to "${@:2}"
+  ;;
   go-live)  _cmd="$1"
             _oct="$2"
             _tgt="$3"
@@ -13617,6 +13693,7 @@ case "$1" in
             echo "            [--deadline=YYYY-MM-DD|+Nd|--no-deadline] [--force-pinned] [--renotify|--no-notify]"
             echo "            (no mode = print the per-account proxy policy table)"
             echo "Usage: xoct {proxy-retire} {o1|--all} [--deadline=YYYY-MM-DD|+Nd] [--no-notify]"
+            echo "Usage: xoct {notice-to} {o1 [o2 ...]|--all} (read-only: who each client notice goes to, with its copies)"
             echo "Usage: xoct {go-live} {o1} {target-ip} {o2} (source vms, ends a canary run under admail=)"
             echo
             echo "Usage: xoct {ssl-gen}"
