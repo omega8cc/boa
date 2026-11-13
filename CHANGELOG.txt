@@ -736,6 +736,12 @@
       tables, an OpenVZ or VServer guest, a container. A halt or restart
       asked from inside the system is unchanged.
 
+    * A client can restore the same folder again while an earlier restore of
+      it still lies in ~/static/restores/: the new restore lands beside it,
+      under the restore's date and time, and the restore notice names the
+      folder. Before, the second restore failed until the first was moved
+      away. A restore that fails no longer leaves an empty folder behind.
+
     * The migration completion notice gives the client the account's new
       control panel address in full, with the SQL Adminer address beside
       it where the new server has Adminer, and the start notice says what
