@@ -723,6 +723,19 @@
 
 @=> Important Fixes
 
+    * A BOA server answers a provider's power-off signal. A provider's
+      console, a hypervisor's shutdown and a host's own restart press the
+      machine's ACPI power button and wait. On Devuan nothing answered it
+      (no acpid, or acpid with no rule for the button), so the server ran
+      on through the grace time and had its power cut, and MySQL recovered
+      from a crash at the next start. Every barracuda pass now ensures
+      acpid, the distribution's acpi-support-base, whose rule halts the
+      system the ordinary way with every service stopped by its init
+      script, and a running daemon, and says so when no rule is active.
+      A machine with no such button is left alone: one without ACPI
+      tables, an OpenVZ or VServer guest, a container. A halt or restart
+      asked from inside the system is unchanged.
+
     * The migration completion notice gives the client the account's new
       control panel address in full, with the SQL Adminer address beside
       it where the new server has Adminer, and the start notice says what
