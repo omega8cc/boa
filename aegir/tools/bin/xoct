@@ -2193,15 +2193,39 @@ _xoct_this_fqdn() {
   printf '%s' "${_f}"
 }
 ### What the target $1 says of the account $2 there, for a client notice, as
-### three lines: its hostname, the control panel name root's cnf of the
+### four lines: its hostname, the control panel name root's cnf of the
 ### account holds there (_DOMAIN: written for that box when the account is
 ### installed or laid there and never copied from the source, so it is the
-### panel's name there before any rename has run) and whether Adminer is
-### installed (the test the setup mail applies). Read-only; nothing when the
-### target does not answer.
+### panel's name there before any rename has run), whether Adminer is
+### installed (the test the setup mail applies) and the server name its
+### backup tool puts into a bucket's name (/etc/hostname, else the system's
+### name, never localhost). Read-only; nothing when the target does not
+### answer.
 _xoct_panel_facts_there() {
   _mig_valid_ip "${1}" && _mig_valid_acct "${2}" || return 1
-  ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${1}" "echo \"XOCT-HOST=\$(hostname -f 2> /dev/null | head -n 1)\"; echo \"XOCT-PANEL=\$(grep -a '^_DOMAIN=' '/root/.${2}.octopus.cnf' 2> /dev/null | tail -n 1 | cut -d= -f2- | tr -d '\"')\"; if [ -e /var/www/adminer/index.php ]; then echo XOCT-ADMINER=YES; else echo XOCT-ADMINER=NO; fi" 2> /dev/null
+  ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${1}" "echo \"XOCT-HOST=\$(hostname -f 2> /dev/null | head -n 1)\"; echo \"XOCT-PANEL=\$(grep -a '^_DOMAIN=' '/root/.${2}.octopus.cnf' 2> /dev/null | tail -n 1 | cut -d= -f2- | tr -d '\"')\"; if [ -e /var/www/adminer/index.php ]; then echo XOCT-ADMINER=YES; else echo XOCT-ADMINER=NO; fi; _h=\$(cat /etc/hostname 2> /dev/null | tr -d '[:space:]'); if [ -z \"\${_h}\" ]; then _h=\$(hostname -f 2> /dev/null | tr -d '[:space:]'); case \"\${_h}\" in localhost|localhost.*) _h='' ;; esac; fi; echo \"XOCT-BKHOST=\${_h}\"" 2> /dev/null
+}
+### This box's name as its backup tool puts it into a bucket's name.
+_xoct_backup_host_here() {
+  local _h
+  _h="$(cat /etc/hostname 2> /dev/null | tr -d '[:space:]')"
+  if [ -z "${_h}" ]; then
+    _h="$(hostname -f 2> /dev/null | tr -d '[:space:]')"
+    case "${_h}" in localhost|localhost.*) _h="" ;; esac
+  fi
+  printf '%s' "${_h}"
+}
+### The account's own off-site backup entries that are set up, as the backup
+### schedule judges them: in the current (pinned) credentials directory a
+### regular <service>.txt, never a link, that holds no template placeholder.
+### Space separated.
+_xoct_backup_services_here() {
+  local _s _b
+  for _s in aws aws_one_zone aws_standard_ia azure b2 cloudflare do_spaces gcs ibm linode wasabi; do
+    [ -f "./${_s}.txt" ] && [ ! -L "./${_s}.txt" ] || continue
+    _b="$(_xoct_read_here "${_s}.txt" && echo x)" || continue
+    [[ "${_b}" == *your_* ]] || printf '%s ' "${_s}"
+  done
 }
 ### Item 1 of the completion and start notices when the panel's new address
 ### is not known: said plainly, never a guess.
@@ -2222,11 +2246,14 @@ _MIG_PANEL_NONE_START="Your Ægir Control Panel and SQL Adminer will move to the
 ### names the cause. The Adminer address is the panel's /sqladmin/ (the
 ### setup mail's form), named only where the target has Adminer. $1 =
 ### context (complete|start), $2 = the new system's IP, $3 = the account
-### there. Sets _MIG_PANEL_BLOCK and _MIG_PANEL_STATE (new|same|unknown).
+### there. Sets _MIG_PANEL_BLOCK and _MIG_PANEL_STATE (new|same|unknown),
+### and _MIG_TGT_BKHOST, the target's name for a bucket, for the backup
+### paragraph built after it (empty when it was not read).
 _mig_build_panel_block() {
   local _ctx="$1" _ip="$2" _acct="$3"
   local _old _mf _tf="" _tp="" _ta="" _out="" _rule="" _why="" _was _adm=""
   _MIG_PANEL_STATE=unknown
+  _MIG_TGT_BKHOST=""
   _old="${_DOMAIN,,}"
   _mf="${_XOCT_MY_FQDN:-${_XOCT_DEFER_FQDN}}"
   _xoct_valid_host "${_mf}" || _mf="$(_xoct_this_fqdn)"
@@ -2241,6 +2268,8 @@ _mig_build_panel_block() {
     _tf="$(sed -n 's/^XOCT-HOST=//p' <<< "${_out}" | head -n 1 | tr -d '\r')"
     _tp="$(sed -n 's/^XOCT-PANEL=//p' <<< "${_out}" | head -n 1 | tr -d '\r')"
     _ta="$(sed -n 's/^XOCT-ADMINER=//p' <<< "${_out}" | head -n 1 | tr -d '\r')"
+    _MIG_TGT_BKHOST="$(sed -n 's/^XOCT-BKHOST=//p' <<< "${_out}" | head -n 1 | tr -d '\r')"
+    _xoct_valid_host "${_MIG_TGT_BKHOST}" || _MIG_TGT_BKHOST=""
     _tf="${_tf,,}"
     _tp="${_tp,,}"
     _xoct_valid_host "${_tf}" || _tf=""
@@ -2311,6 +2340,86 @@ _mig_build_panel_block() {
   esac
   return 0
 }
+### The own-backups item of the completion and start notices (item 9), only
+### for an account with off-site backup entries of its own set up. A bucket's
+### name carries the server's name and the account's
+### (back-to-<account>-<server, dots as dashes>-<service, underscores as
+### dashes>), so the entries write to new buckets on the new system. The
+### S3 backend refuses a bucket that is not there, so every service on it
+### fails each run until the client has made the bucket; Backblaze B2 and
+### Azure make theirs. Each entry is named with its exact new bucket and
+### whether it must be made by hand. Names that do not change (the target
+### names itself as this box does, the account keeps its name) need no item.
+### When the target's name was not read the item says the names are not
+### given. The entries are read only from the account's own control folder,
+### as the backup schedule takes them. $1 = context (complete|start), $2 =
+### the new system's IP, $3 = the account there; reads _MIG_TGT_BKHOST of
+### the panel paragraph's read. Sets _MIG_BACKUP_BLOCK, empty for no item.
+_mig_build_backup_block() {
+  local _ctx="$1" _ip="$2" _acct="$3"
+  local _svcs _s _sd _new _old _was _hh _th="${_MIG_TGT_BKHOST}" _lines="" _hand="" _said="" _head
+  local _more="   More about bucket names: https://docs.boa.io/using/backups/mybackup-and-quota#where-your-backups-land-the-bucket-name"
+  _MIG_BACKUP_BLOCK=""
+  _xoct_gate_own "${_USR}" > /dev/null 2>&1 || return 0
+  _svcs="$(_xoct_in_real_dir "${_USR}/static/control/remote_backups/credentials" _xoct_backup_services_here)"
+  _svcs="${_svcs% }"
+  [ -n "${_svcs}" ] || return 0
+  _mig_valid_acct "${_acct}" || _th=""
+  _hh="$(_xoct_backup_host_here)"
+  _xoct_valid_host "${_hh}" || _hh=""
+  if [ -z "${_th}" ]; then
+    if [ "${_ctx}" = "start" ]; then
+      _head="After the migration your account's own off-site backups (${_svcs// /, }) will run from the new server into new buckets, because a bucket's name includes the server's name. The new names will be given in the message you receive once the migration is complete."
+      echo "INFO: ${_oct}: the start notice names no new backup bucket (the name ${_ip} gives its buckets was not read); it says the completion notice gives them"
+    else
+      _head="Your account's own off-site backups (${_svcs// /, }) now run from the new server into new buckets, because a bucket's name includes the server's name. The new names could not be read when this message was sent: please ask your host's support for them. A provider that does not create buckets automatically (every S3-compatible one) needs the new bucket created by hand before a backup can run."
+      echo "ALRT: ${_oct}: the completion notice names NO new backup bucket for ${_svcs} (the name ${_ip} gives its buckets was not read):"
+      echo "ALRT: it tells the client to ask support for the names"
+    fi
+    _MIG_BACKUP_BLOCK=$'\n\n'"9. Your Own Off-site Backups"$'\n'"   ${_head}"$'\n'"${_more}"
+    return 0
+  fi
+  if [ "${_th}" = "${_hh}" ] && [ "${_acct}" = "${_oct}" ]; then
+    echo "INFO: ${_oct}: its own backups (${_svcs}) keep their bucket names: ${_ip} names itself ${_th}, as this box does"
+    return 0
+  fi
+  for _s in ${_svcs}; do
+    _sd="${_s//_/-}"
+    _new="back-to-${_acct}-${_th//./-}-${_sd}"
+    _was=""
+    if [ -n "${_hh}" ]; then
+      _old="back-to-${_oct}-${_hh//./-}-${_sd}"
+      _was=" (the old bucket is ${_old})"
+    fi
+    _said="${_said}${_said:+, }${_s}=${_new}"
+    case "${_s}" in
+      azure|b2)
+        if [ "${_ctx}" = "start" ]; then
+          _lines="${_lines}   - ${_s}: nothing to do, the bucket ${_new} will be created automatically."$'\n'
+        else
+          _lines="${_lines}   - ${_s}: nothing to do, the bucket ${_new} is created automatically${_was}."$'\n'
+        fi
+      ;;
+      *)
+        _hand="${_hand}${_hand:+ }${_s}"
+        if [ "${_ctx}" = "start" ]; then
+          _lines="${_lines}   - ${_s}: create the bucket ${_new} in your provider's console. This provider does not create it automatically, and no backup can run on the new server until it exists."$'\n'
+        else
+          _lines="${_lines}   - ${_s}: please create the bucket ${_new} in your provider's console now. This provider does not create it automatically, and every backup run fails until it exists${_was}."$'\n'
+        fi
+      ;;
+    esac
+  done
+  if [ "${_ctx}" = "start" ]; then
+    _head="After the migration your account's own off-site backups will run from the new server into new buckets, because a bucket's name includes the server's name. You can prepare them now:"
+  else
+    _head="Your account's own off-site backups now run from the new server into new buckets, because a bucket's name includes the server's name. The earlier backups stay in the old buckets, and the first run into each new one is a full backup."
+  fi
+  _MIG_BACKUP_BLOCK=$'\n\n'"9. Your Own Off-site Backups"$'\n'"   ${_head}"$'\n'"${_lines}${_more}"
+  echo "INFO: ${_oct}: the notice names the account's own backup buckets on ${_ip}: ${_said}"
+  [ -n "${_hand}" ] && echo "INFO: ${_oct}: the client has to create by hand: ${_hand}"
+  return 0
+}
 
 ### Every sender sets _MAIL_SENT and only reports success when s-nail actually
 ### accepted the message: the mail log is the record of what the customer was
@@ -2358,7 +2467,7 @@ Important Changes to Note:
    All scheduled tasks were paused during migration and will resume within 1-3 hours.
 
 8. Old Ægir Control Panel
-   The old control panel has been disabled to secure proxy configurations.
+   The old control panel has been disabled to secure proxy configurations.${_MIG_BACKUP_BLOCK}
 
 ---
 
@@ -2422,7 +2531,7 @@ Important Changes to Note:
    All scheduled tasks will be paused during migration and for an additional 1-3 hours afterward.
 
 8. Old Ægir Control Panel
-   The old control panel will be disabled to secure proxy configurations.
+   The old control panel will be disabled to secure proxy configurations.${_MIG_BACKUP_BLOCK}
 
 ---
 
@@ -7477,6 +7586,7 @@ _migrate_prepare() {
       ### forwarding block.
       if _mig_build_mail_blocks start "${_tgt}"; then
         _mig_build_panel_block start "${_tgt}" "${_dst:-${_oct}}"
+        _mig_build_backup_block start "${_tgt}" "${_dst:-${_oct}}"
         _send_notice_migration_start
         if [ "${_MAIL_SENT}" = "YES" ]; then
           _XOCT_START_MODE="${_MIG_MODE}"
@@ -11870,6 +11980,7 @@ _migrate_init() {
           if [ "${_XOCT_DO_MAIL}" = "YES" ]; then
             if [ "${_XOCT_MAIL_KIND}" = "complete" ]; then
               _mig_build_panel_block complete "${_tgt}" "${_XOCT_PEER_ACCT:-${_dst:-${_oct}}}"
+              _mig_build_backup_block complete "${_tgt}" "${_XOCT_PEER_ACCT:-${_dst:-${_oct}}}"
               _send_notice_migration_complete
             else
               _send_notice_migration_change
