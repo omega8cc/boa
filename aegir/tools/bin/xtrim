@@ -1113,8 +1113,42 @@ _target_vhost_disabled() {
   " 2>/dev/null)" = "disabled" ]
 }
 
+### The operator's list of names that do not serve on the target and are
+### accepted as they are: /root/.<oN>.xtrim.accept.cnf, one name a line, a
+### line starting with # a comment. Root's file alone (a regular file of
+### root's that no one else can write, read through one handle); a name that
+### is no host name is dropped. Prints the names, one a line.
+_accept_file() {
+  _mig_valid_acct "${1}" && [ "${1#.}" = "${1}" ] || return 1
+  printf '%s\n' "${_MIG_REC_DIR}/.${1}.xtrim.accept.cnf"
+}
+_accept_names() {
+  local _f _t
+  _f="$(_accept_file "${1}")" || return 0
+  _t="$(_mig_hread "${_MIG_REC_DIR}" "${_f##*/}" root)" || return 0
+  printf '%s\n' "${_t}" | sed 1d | tr -d '\r' | sed 's/[[:space:]]*$//; s/^[[:space:]]*//' \
+    | grep -E '^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$'
+}
+### True when the name $2 is on the list of the account $1.
+_accepted_down() {
+  [ -n "${2}" ] || return 1
+  _accept_names "${1}" | grep -qxF -- "${2}"
+}
+### True when the probe line $1 is the same refusal on both routes: one HTTP
+### status of the 4xx or 5xx class from the target itself and through the
+### relay. Then the relay hands on what the target answers, and the answer is
+### the site's own there (its maintenance mode, a site broken before the
+### move). No answer at all (000), a catch-all page and two different
+### answers are never that.
+_same_refusal() {
+  [[ "${1}" =~ ^direct=([45][0-9]{2})\ relay=([45][0-9]{2})$ ]] \
+    && [ "${BASH_REMATCH[1]}" = "${BASH_REMATCH[2]}" ]
+}
+
 _probe_all_doms() {
-  local _oN="$1" _d _r _rc=0 _nd _nr
+  local _oN="$1" _d _r _rc=0 _nd _nr _af
+  _MAP_ACCEPTED=""
+  _af="$(_accept_file "${_oN}")"
   _probe_catchall_baseline "${_MAP_TGT}"
   _probe_rename_map
   for _d in ${_MAP_DOMS}; do
@@ -1137,6 +1171,22 @@ _probe_all_doms() {
           sleep 6
           continue
         fi
+        ### A renamed site that answers a refusal of its own under its new
+        ### name is judged as any other below: only a name the operator
+        ### listed, and only on a status the target itself gives.
+        if [[ "${_nr}" =~ ^[45][0-9]{2}$ ]]; then
+          if _accepted_down "${_oN}" "${_d}"; then
+            _info "${_oN}: ${_d} retired by the rename; ${_nd} does not serve on the target (direct=${_nr}): accepted, named in ${_af}"
+            _MAP_ACCEPTED="${_MAP_ACCEPTED} ${_d}:${_nr}"
+            sleep 6
+            continue
+          fi
+          _alrt "${_oN}: ${_d} probe FAILED (${_r}) and its renamed form ${_nd} does not serve either (direct=${_nr})"
+          _alrt "${_oN}:   when that answer is the site's own state on the target (its maintenance mode, a site broken before the move), name ${_d} in ${_af}, one name a line, and run this again"
+          _rc=1
+          sleep 6
+          continue
+        fi
         _alrt "${_oN}: ${_d} probe FAILED (${_r}) and its renamed form ${_nd} does not serve either (direct=${_nr})"
         _rc=1
         sleep 6
@@ -1156,6 +1206,28 @@ _probe_all_doms() {
           fi
           ;;
       esac
+      ### A site in its own maintenance mode, or one that was broken before
+      ### the move, answers the same refusal from the target and through the
+      ### relay for as long as its owner leaves it so, and would hold the
+      ### account's shrink, and with it the box's finalize, for good. Nothing
+      ### here can tell that state from a move that broke the site, so only
+      ### the operator can: a name root listed is accepted on such an answer,
+      ### said in the plan and kept in the manifest. The target-side proofs
+      ### of its database still follow.
+      if _same_refusal "${_r}"; then
+        if _accepted_down "${_oN}" "${_d}"; then
+          _info "${_oN}: ${_d} does not serve on the target (${_r}): accepted, named in ${_af}"
+          _nr="${_r#direct=}"
+          _MAP_ACCEPTED="${_MAP_ACCEPTED} ${_d}:${_nr%% *}"
+          sleep 6
+          continue
+        fi
+        _alrt "${_oN}: ${_d} probe FAILED (${_r})"
+        _alrt "${_oN}:   the same answer on both routes: when it is the site's own state on the target (its maintenance mode, a site broken before the move), name ${_d} in ${_af}, one name a line, and run this again"
+        _rc=1
+        sleep 6
+        continue
+      fi
       _alrt "${_oN}: ${_d} probe FAILED (${_r})"
       _rc=1
     else
@@ -1440,6 +1512,7 @@ _write_manifest() {
     echo "panel_db=${_MAP_HM_DB}"
     echo "platform_roots=${_MAP_PLATS# }"
     echo "min_days=${_MIN_DAYS}"
+    echo "accepted_not_serving=${_MAP_ACCEPTED# }"
     echo "## dns snapshot"
     for _d in ${_MAP_DOMS}; do
       echo "dns ${_d} $(dig +short A "${_d}" 2>/dev/null | tr '\n' ' ')"
@@ -2288,6 +2361,8 @@ _run_one() {
     _info "${_oN}: PLAN (DRY): stage A would park run-${_oN}, quarantine FPM pools + post.d includes, unload+quarantine solr cores"
     _info "${_oN}: PLAN (DRY): stage B would dump+verify then DROP: ${_MAP_ALL_DBS}"
     _info "${_oN}: PLAN (DRY): stage B would remove backups/, src/, undo/, distro/, platforms, static trees (store resolved first)"
+    [ -n "${_MAP_ACCEPTED// /}" ] \
+      && _alrt "${_oN}: PLAN (DRY): accepted as not serving on the target, by the operator's list (name:answer):${_MAP_ACCEPTED} -- their data goes with the rest"
     _state_write plan "${_oN}" DRY CLEAN
     _info "${_oN}: plan CLEAN"
     return 0
