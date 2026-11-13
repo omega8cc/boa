@@ -977,6 +977,29 @@
       a move in flight and left the account's ghost vhosts in place for
       good, and the next copy was refused until the stamps were removed by hand.
 
+    * xcopy export always makes a new dump of the control panel, as it does
+      of every site. A panel dump already in src/ was kept and sent: one an
+      import left when the account came to this server as a copy or a move,
+      or one from an export killed, retried or whose stamp was removed by
+      hand. The source keeps serving, so that panel was older than the sites
+      beside it, and the target was told the old server's name.
+
+    * xcopy's transfer leaves behind the record a server keeps of an import
+      it once received (log/imported.pid, import_failed.pid and panel_db.txt).
+      Sent on, it made the next target's import refuse the account as already
+      imported, so an account a server received as a copy could not be copied
+      onward from it until xcopy reset-state cleared that record there. xoct's
+      transfer still sends it: xoct's export keeps a panel dump already there,
+      and the record makes the target refuse that older panel.
+
+    * xcopy transfer refuses an account that was not exported, and pretransfer
+      no longer sends src/. A server that once received the account as a copy
+      keeps that copy's panel dump, site dump folders and source name there: a
+      transfer with no export sent them, and a pretransfer sent the old dumps
+      ahead of the export, which the import then loaded with the new ones. An
+      export also stops before any dump when the control panel names no
+      database, and stamps the account only over a panel dump it made itself.
+
     * xcopy post-mig names, for each copied site whose verify failed, the
       first error line of that verify's log as the control panel shows it.
 
