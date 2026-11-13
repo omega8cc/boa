@@ -5983,6 +5983,16 @@ echo "BL_XFS_KB=${_xk}"
 echo "BL_XFS_MNTS=${_xm# }"
 echo "BL_XFS_ROOT_KB=${_xr}"
 echo "BL_XFS_SOLR_KB=${_xs}"
+# the Solr data kept on the accounts' filesystem itself (part of the root share)
+_xsr=0
+for _xp in /var/solr7/data /var/solr9/data; do
+  [ -d "${_xp}" ] || continue
+  [ "$(df -Pk "${_xp}/" 2>/dev/null | awk 'NR==2 { print $NF }')" = "${_a##* }" ] || continue
+  _xu="$(timeout 120 du -sk "${_xp}" 2>/dev/null | awk '{ print $1 }')"
+  case "${_xu}" in ""|*[!0-9]*) continue ;; esac
+  _xsr=$(( _xsr + _xu ))
+done
+echo "BL_SOLR_ROOT_KB=${_xsr}"
 # where this end's Solr data lands (the Solr leg writes into /var/solrN)
 _xv=/var
 for _xp in /var/solr9 /var/solr7; do [ -d "${_xp}" ] && { _xv="${_xp}"; break; }; done
@@ -6044,7 +6054,7 @@ _xmass_binlog_plan() {
   local _sz _us _mnt _dus _dmnt _ddk _lg _now _rd _room _n _hard _seed=0 _files=0 _other _sother=""
   local _ns=7 _nt=7 _sv _sd _oth
   local _xk _xms _om _omu _sxk=0 _sxms="" _xto="" _xin=0 _xhv="" _fw="" _ll _xr _xs _sxr=0 _sxs=0
-  local _omf _sfs _xdb
+  local _omf _sfs _xdb _ssr _sssr=0 _vs
   case "${_XMASS_BINLOG_DAYS:-}" in
     "") : ;;
     [1-7]) _pin="${_XMASS_BINLOG_DAYS}" ;;
@@ -6109,6 +6119,8 @@ _xmass_binlog_plan() {
     _om="$(_xmass_kv "${_o}" BL_ONE_MNT)"; _omu="$(_xmass_kv "${_o}" BL_ONE_MNT_USED_KB)"
     _omf="$(_xmass_kv "${_o}" BL_ONE_MNT_FS)"; _sfs="$(_xmass_kv "${_o}" BL_SOLR_FS)"
     _xr="$(_xmass_kv "${_o}" BL_XFS_ROOT_KB)"; _xs="$(_xmass_kv "${_o}" BL_XFS_SOLR_KB)"
+    _ssr="$(_xmass_kv "${_o}" BL_SOLR_ROOT_KB)"
+    [[ "${_ssr}" =~ ^[0-9]+$ ]] || _ssr=0
     _ll="$(_xmass_kv "${_o}" BL_LOG_LAST_KB)"
     [[ "${_xk}" =~ ^[0-9]+$ ]] || _xk=0
     [[ "${_xr}" =~ ^[0-9]+$ ]] || _xr=0
@@ -6141,6 +6153,7 @@ _xmass_binlog_plan() {
       _sxms="${_xms}"
       _sxr="${_xr}"
       _sxs="${_xs}"
+      _sssr="${_ssr}"
       _files=0
     else
       # the seed lands beside what is there (the folder it replaces is kept),
@@ -6157,14 +6170,15 @@ _xmass_binlog_plan() {
         esac
       fi
       # what arrives on the database's filesystem here, less what that
-      # filesystem holds beside the database now (its use less the folder),
-      # counted once: the accounts' root share and the stores placed on the
-      # accounts' filesystem when it is the database's, the stores bound for
-      # the one mount when that mount is, the Solr data when /var/solrN is
+      # filesystem holds already where it arrives, counted once: the accounts'
+      # root share and the stores placed on the accounts' filesystem when it
+      # is the database's (against what it holds beside the database), the
+      # stores bound for the one mount when that mount is (against what the
+      # mount holds), the Solr data when /var/solrN is (credited nothing)
       _xin=0
-      _xhv=$(( _us - _ddk ))
-      [ "${_xhv}" -gt 0 ] || _xhv=0
+      _xhv=0
       if [ -n "${_other}" ]; then
+        _xhv="${_other}"
         [ -z "${_sother}" ] || _xin="${_sother}"
         _xin=$(( _xin + _sxr ))
       fi
@@ -6175,9 +6189,18 @@ _xmass_binlog_plan() {
             && { [ "${_xto}" = "${_mnt}" ] || [ "${_omf}" = "${_mnt}" ]; }; }; then
           _xin=$(( _xin + _sxk ))
           _xdb=YES
+          if [ -z "${_other}" ]; then
+            [[ "${_omu}" =~ ^[0-9]+$ ]] || _omu=0
+            _xhv="${_omu}"
+          fi
         fi
       fi
-      [ "${_sxs}" -eq 0 ] || [ -z "${_sfs}" ] || [ "${_sfs}" != "${_mnt}" ] || _xin=$(( _xin + _sxs ))
+      if [ -n "${_sfs}" ] && [ "${_sfs}" = "${_mnt}" ]; then
+        _xin=$(( _xin + _sxs ))
+        # Solr data the source keeps on its accounts' disk is in its root share,
+        # counted above only where the accounts land here too
+        [ -n "${_other}" ] || _xin=$(( _xin + _sssr ))
+      fi
       [ "${_xin}" -le "${_xhv}" ] || _files=$(( _xin - _xhv ))
       _room=$(( _room - _seed ))
       # what the files figure covers, said with it
@@ -6197,8 +6220,10 @@ _xmass_binlog_plan() {
         [ -n "${_other}" ] && _v="${_v}, beside the database" || _v="${_v}, apart from the database"
         _fw="${_fw:+${_fw}; }${_v}"
       fi
-      if [ "${_sxs}" -gt 0 ]; then
-        _v="its Solr data (about $(( _sxs / 1048576 )) G) comes into /var/solrN here"
+      _vs="${_sxs}"
+      [ -n "${_other}" ] || _vs=$(( _vs + _sssr ))
+      if [ "${_vs}" -gt 0 ]; then
+        _v="its Solr data (about $(( _vs / 1048576 )) G) comes into /var/solrN here"
         [ -n "${_sfs}" ] && [ "${_sfs}" = "${_mnt}" ] && _v="${_v}, beside the database" || _v="${_v}, apart from the database"
         _fw="${_fw:+${_fw}; }${_v}"
       fi
@@ -6966,7 +6991,7 @@ fi
 echo "DD_STANDBY=${_sb}"
 # whether a parked folder waits beside the folder or at the root path
 _pk=NO
-ls -1d /var/lib/mysql.xmass_pre_* "${_real}".xmass_pre_* > /dev/null 2>&1 && _pk=YES
+{ compgen -G "/var/lib/mysql.xmass_pre_*" > /dev/null || compgen -G "${_real}.xmass_pre_*" > /dev/null; } && _pk=YES
 echo "DD_PARKED=${_pk}"
 PROBE
 }
@@ -9901,7 +9926,8 @@ _xmass_fit_warn() {   # 1 = side (space|inodes|count)  2 = dest  3 = message
 #   LEFT <K> <copy> <store>          nothing under /data/disk links into it
 #   USED <K> <copy> <store> <link>   that link still reads it (a site's files
 #                                    link written with the mount's own path,
-#                                    or a link onto a folder that holds it)
+#                                    or a link onto a folder that holds it,
+#                                    the account's own on the mount or deeper)
 #   UNSURE <K> <copy> <store>        the link scan did not finish in ten minutes
 # A store whose path reaches the copy itself (/data/disk/<oN>/static, or the
 # account, a link onto the mount) is the live store: no line. The size waits
@@ -9911,6 +9937,8 @@ _xmass_left_store_copies_sh() {
 _m="$1"
 case "${_m}" in /mnt/?*) ;; *) echo DONE; exit 0 ;; esac
 [ -d "${_m}" ] || exit 1
+_rm="$(cd -P -- "${_m}" 2> /dev/null && /bin/pwd -P)"
+[ -n "${_rm}" ] || exit 1
 _L="$(mktemp)" || exit 1
 trap 'rm -f "${_L}"' EXIT
 # every link under /data/disk whose text names a mount, with what it reaches
@@ -9938,8 +9966,9 @@ for _d in "${_m}"/files/*/static/files "${_m}"/files/system/arch; do
   [ -n "${_rd}" ] && [ -n "${_ru}" ] || continue
   case "${_ru}/" in "${_rd}/"*) continue ;; esac
   case "${_rd}/" in "${_ru}/"*) continue ;; esac
-  # a link into the copy, or onto a folder that holds it
-  _via="$(P="${_rd}" awk -F'\t' '$1 == ENVIRON["P"] || index($1, ENVIRON["P"] "/") == 1 || index(ENVIRON["P"], $1 "/") == 1 { print $2; exit }' "${_L}")"
+  # a link into the copy, or onto a folder that holds it below the mount's
+  # files folder (one onto the mount or that folder names every copy alike)
+  _via="$(P="${_rd}" F="${_rm}/files" awk -F'\t' '$1 == ENVIRON["P"] || index($1, ENVIRON["P"] "/") == 1 || (index(ENVIRON["P"], $1 "/") == 1 && index($1, ENVIRON["F"] "/") == 1) { print $2; exit }' "${_L}")"
   _k="$(timeout 120 du -sk -- "${_d}" 2> /dev/null | awk '{ print $1 }')"
   if [ -n "${_via}" ]; then
     printf 'USED\t%s\t%s\t%s\t%s\n' "${_k:-?}" "${_d}" "${_u}" "${_via}"
@@ -18738,7 +18767,7 @@ _xmass_cmd_verify() {
             ;;
           USED)
             _ln=$(( _ln + 1 ))
-            _alrt "a store copy on the target mount is still read: ${_ld} (${_lk}K), through the link ${_lv}, while ${_lu} is a real directory on the root now: what that link serves is the old copy -- point it into ${_lu}, and bring over any files written to the copy since, before removing anything"
+            _alrt "a store copy on the target mount is still read: ${_ld} (${_lk}K), through the link ${_lv}, while ${_lu} is a real directory on the root now: what that link serves from the copy is the old store -- serve it from ${_lu} instead, and bring over any files written to the copy since, before removing anything"
             ;;
           UNSURE)
             _ln=$(( _ln + 1 ))
