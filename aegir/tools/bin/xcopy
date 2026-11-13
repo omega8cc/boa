@@ -5185,7 +5185,6 @@ _xcopy_reset_state() {
   echo "INFO: copy state cleared for ${_oct}, the dumps in src/ with it"
   echo "INFO: on a target, clear it before a new transfer, never between that transfer and its import:"
   echo "INFO: it would remove the dumps the transfer brought"
-  echo "INFO: an account copied onward from a server that received it as a copy: clear it there before its export"
 }
 # noproxy ends a copy on its source, which keeps serving the account: the
 # export and transfer stamps and the export's dumps (the panel dump and the
