@@ -342,7 +342,7 @@ _sample_pass() {
   [ -e "/run/spider_load.pid" ]   && _tier="spider"
   [ -e "/run/max_load.pid" ]      && _tier="max"
   [ -e "/run/critical_load.pid" ] && _tier="critical"
-  local _ifc _rx=0 _tx=0
+  local _ifc _rx="" _tx=""
   _ifc=$(ip -o route show default 2>/dev/null | awk '{print $5; exit}')
   if [ -n "${_ifc}" ]; then
     read -r _rx _tx < <(awk -v I="${_ifc}:" '$1 == I {print $2, $10}' /proc/net/dev)
