@@ -3581,17 +3581,21 @@ _migrate_prepare() {
   # src/ belongs to oN: make it a real directory (a link the account put at the
   # name is removed) so the dump below cannot be steered elsewhere.
   _xcopy_in_real_dir "${_USR}" _xcopy_realdir_here src
+  ### Every export takes the panel afresh, as it takes every site: a copy's
+  ### source keeps serving, so a panel dump already in src/ (left by an import
+  ### this box once received, an export killed or retried, or a stamp removed
+  ### by hand) is older than the sites dumped beside it, and the target would
+  ### import that older panel. log/sourcefqdn.txt is written with it.
   if [ "${_cmd}" = "export" ] \
     && [ ! -z "${_HDB}" ] \
-    && [ ! -e "${_USR}/src/prev_hostmaster.sql" ] \
     && [ ! -e "${_USR}/log/exported.pid" ]; then
       # Full hostmaster DB dump. renameaegirhost rewrites the source host/IP
       # across the entire DB on import and its task queue regenerates db-host
       # and alias entries, so a per-table allowlist (which silently dropped any
       # unlisted or newly added schema table) is no longer needed.
       # Written into the real src/ as a fresh file renamed over the name, so a
-      # link the account put at prev_hostmaster.sql (even a dangling one, past
-      # the -e guard above) is replaced, never followed to create its target.
+      # dump already there, or a link the account put at prev_hostmaster.sql
+      # (even a dangling one), is replaced, never followed to create its target.
       _mysqldump_gtid_opts
       [ "${#_MYSQLDUMP_GTID[@]}" -eq 0 ] \
         && echo "INFO: this mysqldump takes no --set-gtid-purged: its dump carries no GTID state"
