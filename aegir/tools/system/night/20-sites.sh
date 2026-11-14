@@ -4782,7 +4782,11 @@ _le_ssl_check_update() {
         fi
         if _ctrl_has "ssl-no-san-${_leMain}.info"; then
           echo "LE no-SAN order for ${_Dom}: ssl-no-san-${_leMain}.info in static/control, its other names are left out"
-          if [ "${_leWild}" != "YES" ] && [ "${_leMain}" != "${_Dom}" ]; then
+          ### The redirect target is one of the site's aliases: a service
+          ### name or a .nodns. name is no more ordered here than below.
+          if [ "${_leWild}" != "YES" ] && [ "${_leMain}" != "${_Dom}" ] \
+            && [[ ! "${_leMain}" =~ ${_svcRx} ]] \
+            && [[ ! "${_leMain}" =~ ".nodns." ]]; then
             _usEaliases="--domain ${_leMain}"
             echo "--domain ${_leMain}"
           fi
