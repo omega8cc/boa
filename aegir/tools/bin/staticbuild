@@ -2680,8 +2680,13 @@ build_cms() {
 
 _culturas_views_fix() {
   # 0 when an entity_reference_revisions tree declares the relationship handler the
-  # views OpenCulturas ships name (the plugin, by its id). $1 the module's directory.
-  _run_as_o8 "grep -q -E 'ViewsRelationship\(.entity_reference_revisions.\)' '$1/src/Plugin/views/relationship/EntityReferenceRevisions.php'"
+  # views OpenCulturas ships name (the plugin, by its id), its views data names that
+  # handler, and no patch left a rejected hunk there: a patch that went in by half
+  # leaves the handler's file beside views data that never names it. $1 the module's
+  # directory.
+  _run_as_o8 "grep -q -E 'ViewsRelationship\(.entity_reference_revisions.\)' '$1/src/Plugin/views/relationship/EntityReferenceRevisions.php' \
+    && grep -q -s -F -e \"'entity_reference_revisions'\" -e '\"entity_reference_revisions\"' '$1/entity_reference_revisions.views.inc' '$1'/src/Hook/*.php \
+    && test -z \"\$(find '$1' -name '*.rej' -print -quit)\""
 }
 
 build_culturas() {
