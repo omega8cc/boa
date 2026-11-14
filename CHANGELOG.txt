@@ -2553,6 +2553,12 @@
       /data/conf/drupal-supported.txt, readable by the control panel, on
       every pass and also on one whose own fetch brought nothing.
 
+    * Ægir: a Clone, a Migrate that renames a site and a Migrate onto
+      another platform stop before their safety copy when something that
+      no site of the task owns is already at the new site's folder, and
+      the log names it. Such a folder, often what a failed task left, was
+      replaced and deleted with only "Replacing the existing site" said.
+
 @=> New Features
 
     * Check available updates, a new read-only site task, writes a site's
