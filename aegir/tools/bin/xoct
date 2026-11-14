@@ -11716,7 +11716,7 @@ _migrate_init() {
       echo "_USR ${_oct} is not eligible for migration: exported on another server"
       echo "INFO: log/sourcefqdn.txt names '$(_xoct_read_in "${_USR}/log" sourcefqdn.txt | tr -cd 'a-zA-Z0-9.-')', this server is '$(_xoct_export_fqdn | tr -cd 'a-zA-Z0-9.-')'"
       echo "INFO: a move this server received and did not finish importing: finish that import here first"
-      echo "INFO: otherwise run 'xoct reset-state ${_oct}', then 'xoct export ${_oct} ${_tgt}${_dst:+ ${_dst}}'"
+      echo "INFO: otherwise run 'xoct reset-state ${_oct}', then 'xoct export ${_oct} ${_tgt}${_dst:+ ${_dst}}${_XOCT_ADMAIL:+ admail=${_XOCT_ADMAIL}}'"
       exit 1
     elif [ "${_cmd}" = "import" ] && [ -e "${_USR}/log/export_failed.pid" ] \
       && [ "${_XOCT_FORCE}" != "YES" ]; then
