@@ -2333,6 +2333,20 @@
       fails closed when the module carries no relationship handler for the
       views the distribution ships.
 
+    * Ægir Provision says so when a platform's own Drush is installed and
+      cannot start. Such a platform looked sound: its Verify passed, and the
+      first sign was a Migrate, Clone or Restore whose database updates
+      could not run, reported as updates to apply by hand. A codebase's
+      first Verify, the Unlock Local Drush task and the Lock that follows it
+      now end with a warning (DRUSH/LOCAL/DEAD) that names that Drush,
+      quotes what it printed and says what ends it: a fresh build added as a
+      new platform, and a Migrate. A move onto such a platform logs the same
+      before its own failure line (DEPLOY8/LOCAL/DRUSH/DEAD). For the Robo
+      releases Drupal 10 cannot run, the warning gives the require that
+      rules them out. A locked platform cannot load its own Drush and is not
+      checked, so the warning comes once per unlock and never on every task,
+      and updatedb runs as before.
+
     * Ægir Add platform: a build from a Git repository that fails no longer
       leaves a platform behind. With a Branch/tag the repository lacks, the
       first Verify failed at the checkout, built the default branch anyway
