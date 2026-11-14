@@ -2329,9 +2329,12 @@
       code it edits, so no OpenCulturas newer than the published 3.1.5 could
       be built, while the distribution's own declaration had already moved
       to a patch for 1.15. The other declared patches, dropped since the 3.0
-      line, are applied again (32 for 20 packages on 3.1.8). The build still
-      fails closed when the module carries no relationship handler for the
-      views the distribution ships.
+      line, are applied again (32 for 20 packages on 3.1.8). When one of
+      them no longer fits a newer release of its module, the build goes on
+      with the distribution's own entity_reference_revisions patch alone and
+      its row says "declared patches dropped"; it still fails closed when
+      that module carries no relationship handler for the views the
+      distribution ships.
 
     * Ægir Provision says so when a platform's own Drush is installed and
       cannot start. Such a platform looked sound: its Verify passed, and the
@@ -2343,9 +2346,12 @@
       new platform, and a Migrate. A move onto such a platform logs the same
       before its own failure line (DEPLOY8/LOCAL/DRUSH/DEAD). For the Robo
       releases Drupal 10 cannot run, the warning gives the require that
-      rules them out. A locked platform cannot load its own Drush and is not
-      checked, so the warning comes once per unlock and never on every task,
-      and updatedb runs as before.
+      rules them out; for a Drush stopped because the platform's PHP is
+      below what its packages need, it names that PHP and the
+      cli-per-platform.info setting instead. A platform that cannot load its
+      own Drush, locked or left half unlocked, is not checked, and a task
+      warns once whichever of its steps runs that Drush first, so the
+      warning never repeats on every task; updatedb runs as before.
 
     * Ægir Add platform: a build from a Git repository that fails no longer
       leaves a platform behind. With a Branch/tag the repository lacks, the
