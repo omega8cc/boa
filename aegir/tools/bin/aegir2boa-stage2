@@ -2043,7 +2043,7 @@ for _R in "/data/disk/\${_A}" "/home/\${_A}.ftp" /home/"\${_A}".* "/opt/user/gem
       _O="\$(stat -c %U -- "\${_R}" 2>/dev/null)"
       case "\${_O}" in
         root|"\${_A}"|"\${_A}".*) ;;
-        *) echo "INFO: target group pass for \${_A}: \${_R//[[:cntrl:]]/?} is owned by \${_O:-an owner that cannot be read}, not by \${_A} or root: left out"; continue ;;
+        *) echo "INFO: target group pass for \${_A}: \$(printf '%s' "\${_R}" | LC_ALL=C tr -c '[:print:]' '?') is owned by \${_O:-an owner that cannot be read}, not by \${_A} or root: left out"; continue ;;
       esac
       ;;
   esac

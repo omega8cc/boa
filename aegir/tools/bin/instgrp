@@ -885,17 +885,19 @@ _acct_roots() {
 
 # The first folder at the account's names that the walk leaves out and that
 # still holds an entry in gid $1 (a link aside: its group grants nothing),
-# printed with any control character as '?'; nothing, and false, when there
-# is none. Revert keeps the group while one does: removed, the group would
-# leave those entries a bare number addgroup can hand to a new account.
-# $2 = the account.
+# printed with every byte outside printable ASCII as '?' (a name the account
+# chose reaches root's terminal and the log); nothing, and false, when there
+# is none. Revert and webrevert keep the group while one does: removed, the
+# group would leave those entries a bare number addgroup can hand to a new
+# account. $2 = the account.
 _acct_tc_left_gid() {
   local _gid="$1" _a="$2" _r
   for _r in /opt/user/gems/"${_a}" /opt/user/gems/"${_a}".* /opt/user/npm/"${_a}" /opt/user/npm/"${_a}".*; do
     [ -d "${_r}" ] && [ ! -L "${_r}" ] || continue
     _acct_tc_own "${_r}" "${_a}" && continue
     if [ -n "$(find -P "${_r}" -gid "${_gid}" ! -type l -print -quit 2> /dev/null)" ]; then
-      printf '%s\n' "${_r//[[:cntrl:]]/?}"
+      printf '%s' "${_r}" | LC_ALL=C tr -c '[:print:]' '?'
+      echo
       return 0
     fi
   done
@@ -4363,6 +4365,14 @@ _wg_group_drop() {
       return 1
     fi
   done < <(_wg_mnt_stores)
+  # a folder at the account's names in the toolchain parents the walk leaves
+  # out (another owner, or a name it does not take) can still hold the group:
+  # an earlier walk up took it in
+  if [ "${_WP_M}" != "YES" ] && _x=$(_acct_tc_left_gid "${_gid}" "${_WP_A}"); then
+    _msg "${_WP_A}: ${_x} is left out of the walk and still holds entries in ${_WP_G} (gid ${_gid}); the group is kept (re-group or remove them, then re-run webrevert)"
+    _log "${_WP_A}: web group kept, ${_x} (left out of the walk) still holds entries in gid ${_gid}"
+    return 1
+  fi
   for _u in $(getent group "${_WP_G}" | cut -d: -f4 | tr ',' ' '); do
     gpasswd -d "${_u}" "${_WP_G}" > /dev/null 2>&1
   done

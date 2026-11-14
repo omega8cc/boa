@@ -4255,16 +4255,18 @@ _xoct_rsync_vanished_only() {
   # Every line must be one of these, or 23 stays a failure: a sender ENOENT
   # (rsync before 3.2.3, a legacy source, prints no [sender] role tag, so the
   # untagged form is accepted only for the sender's own listing calls), the
-  # vanished-file warning, rsync's closing lines, ssh's note on a host key it
-  # added, an empty line. The receiver reports some failures without an rsync
-  # prefix (a file that failed verification, a name too long to make): such a
-  # line is no vanished file.
+  # vanished file or directory warning, rsync's closing lines, ssh's notes on
+  # a host key it added and on a key exchange that is not post-quantum (an
+  # older or armoured peer, OpenSSH 10.1 and later), an empty line. The
+  # receiver reports some failures without an rsync prefix (a file that failed
+  # verification, a name too long to make): such a line is no vanished file.
   _bad=$(grep -vE '^rsync: \[sender\] .*No such file or directory \(2\)$' "${_err}" \
     | grep -vE '^rsync: (get_xattr_names|get_xattr_data|get_acl|readlink_stat|send_files|opendir)[ :(].*No such file or directory \(2\)$' \
-    | grep -vE '^(rsync: (\[sender\] )?)?file has vanished: ' \
+    | grep -vE '^(rsync: (\[sender\] )?)?(file|directory) has vanished: ' \
     | grep -vE '^rsync error: some files/attrs were not transferred \(see previous errors\) \(code 23\)' \
     | grep -vE '^rsync warning: some files vanished before they could be transferred \(code 24\)' \
     | grep -vE '^Warning: Permanently added ' \
+    | grep -vE '^\*\* (WARNING: connection is not using a post-quantum key exchange algorithm\.|This session may be vulnerable to "store now, decrypt later" attacks\.|The server may need to be upgraded\. See https://openssh\.com/pq\.html)$' \
     | grep -vE '^[[:space:]]*$' \
     | head -1)
   [ -z "${_bad}" ]
@@ -5586,7 +5588,7 @@ for _R in "/data/disk/\${_A}" "/home/\${_A}.ftp" /home/"\${_A}".* "/opt/user/gem
       _O="\$(stat -c %U -- "\${_R}" 2>/dev/null)"
       case "\${_O}" in
         root|"\${_A}"|"\${_A}".*) ;;
-        *) echo "INFO: target group pass for \${_A}: \${_R//[[:cntrl:]]/?} is owned by \${_O:-an owner that cannot be read}, not by \${_A} or root: left out"; continue ;;
+        *) echo "INFO: target group pass for \${_A}: \$(printf '%s' "\${_R}" | LC_ALL=C tr -c '[:print:]' '?') is owned by \${_O:-an owner that cannot be read}, not by \${_A} or root: left out"; continue ;;
       esac
       ;;
   esac
