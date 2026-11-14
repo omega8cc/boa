@@ -8623,6 +8623,13 @@ _satellite_ctrl_make_here() {
     rm -f -- ./.ctrl.*
     _acct_put_here ".ctrl.${_tRee}.${_xSrl}.pid" OK
   fi
+  # An account made by this pass never held the FastTrack.info that BOA
+  # wrote by default before 2024: the release pass removes that one once,
+  # where this marker is missing, and must never take a FastTrack.info
+  # the account's owner puts here.
+  if [ "${_STATUS}" = "INIT" ] && [ ! -e ./.disFastTrack.pid ]; then
+    _acct_put_here .disFastTrack.pid OK
+  fi
   # an account still on the box-wide group gets group root here, as the ltd
   # worker gives it (_ltd_ctrl_shut): what the login makes in this
   # set-group-ID tree is then never writable by another account's login
