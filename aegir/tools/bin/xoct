@@ -8516,7 +8516,7 @@ _migrate_prepare() {
         ### may make the account after it, so from then on the seeds' lines
         ### and the broker's note stay, and a re-run's seed reads the note.
         _XOCT_INSTALL_ON=NO
-        trap '[ -n "${_XOCT_RSYNC_ERR:-}" ] && rm -f -- "${_XOCT_RSYNC_ERR}"; _xoct_chattr_back; [ "${_XOCT_INSTALL_ON}" = "YES" ] || { _xoct_dbctl_unseed "${_TGT_HM_USER}" '"${_tgt}"'; _xoct_wg_unseed "${_TGT_HM_USER}" '"${_tgt}"'; } > /dev/null 2>&1; [ "${_SILENT_MARKER}" = "YES" ] && ssh root@'"${_tgt}"' "rm -f /root/.silent.update.cnf" &> /dev/null; rm -f "${_XOCT_LOCK_FILE}"' EXIT
+        trap '_xoct_chattr_back; [ "${_XOCT_INSTALL_ON}" = "YES" ] || { _xoct_dbctl_unseed "${_TGT_HM_USER}" '"${_tgt}"'; _xoct_wg_unseed "${_TGT_HM_USER}" '"${_tgt}"'; } > /dev/null 2>&1; [ "${_SILENT_MARKER}" = "YES" ] && ssh root@'"${_tgt}"' "rm -f /root/.silent.update.cnf" &> /dev/null; rm -f "${_XOCT_LOCK_FILE}"' EXIT
         trap 'exit 130' INT TERM HUP
         _xoct_wg_seed "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
         _xoct_dbctl_seed "${_TGT_HM_USER}" "${_tgt}"
@@ -8561,7 +8561,7 @@ _migrate_prepare() {
         ### Restore the single-flight lock's cleanup (see _take_verb_lock) --
         ### a bare `trap -` here would orphan ${_XOCT_LOCK_FILE} for the whole
         ### rest of the run.
-        trap '[ -n "${_XOCT_RSYNC_ERR:-}" ] && rm -f -- "${_XOCT_RSYNC_ERR}"; _xoct_chattr_back; rm -f "${_XOCT_LOCK_FILE}"' EXIT
+        trap '_xoct_chattr_back; rm -f "${_XOCT_LOCK_FILE}"' EXIT
         trap 'rm -f "${_XOCT_LOCK_FILE}"; exit 130' INT TERM HUP
         if ! _xoct_create_mark "${_oct}" "${_TGT_HM_USER}" "${_tgt}"; then
           echo "ALRT: the create marker for ${_TGT_HM_USER} could not be put on ${_tgt}; a re-run of this create will refuse the account"

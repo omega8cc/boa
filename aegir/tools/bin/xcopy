@@ -4038,7 +4038,7 @@ _migrate_prepare() {
         _SILENT_PROBE=$(ssh root@"${_tgt}" "[ -e /root/.silent.update.cnf ] && echo YES || echo NO" 2>/dev/null)
         if [ "${_SILENT_PROBE}" = "NO" ] && ssh root@"${_tgt}" "touch /root/.silent.update.cnf"; then
           _SILENT_MARKER=YES
-          trap '[ -n "${_XCOPY_RSYNC_ERR:-}" ] && rm -f -- "${_XCOPY_RSYNC_ERR}"; _xcopy_chattr_back; ssh root@'"${_tgt}"' "rm -f /root/.silent.update.cnf" &> /dev/null; rm -f "${_XCOPY_LOCK_FILE}"' EXIT
+          trap '_xcopy_chattr_back; ssh root@'"${_tgt}"' "rm -f /root/.silent.update.cnf" &> /dev/null; rm -f "${_XCOPY_LOCK_FILE}"' EXIT
           trap 'exit 130' INT TERM HUP
         elif [ "${_SILENT_PROBE}" != "YES" ]; then
           if [ -n "${_XCOPY_ADMAIL}" ]; then
@@ -4058,7 +4058,7 @@ _migrate_prepare() {
         ### from then on the seeds stay. Its signal handler exits, which runs
         ### the EXIT handler.
         _XCOPY_INSTALL_ON=NO
-        trap '[ -n "${_XCOPY_RSYNC_ERR:-}" ] && rm -f -- "${_XCOPY_RSYNC_ERR}"; _xcopy_chattr_back; [ "${_XCOPY_INSTALL_ON}" = "YES" ] || { _xcopy_dbarm_unseed "${_TGT_HM_USER}" '"${_tgt}"'; _xcopy_wg_unseed "${_TGT_HM_USER}" '"${_tgt}"'; } > /dev/null 2>&1; [ "${_SILENT_MARKER}" = "YES" ] && ssh root@'"${_tgt}"' "rm -f /root/.silent.update.cnf" &> /dev/null; rm -f "${_XCOPY_LOCK_FILE}"' EXIT
+        trap '_xcopy_chattr_back; [ "${_XCOPY_INSTALL_ON}" = "YES" ] || { _xcopy_dbarm_unseed "${_TGT_HM_USER}" '"${_tgt}"'; _xcopy_wg_unseed "${_TGT_HM_USER}" '"${_tgt}"'; } > /dev/null 2>&1; [ "${_SILENT_MARKER}" = "YES" ] && ssh root@'"${_tgt}"' "rm -f /root/.silent.update.cnf" &> /dev/null; rm -f "${_XCOPY_LOCK_FILE}"' EXIT
         trap 'exit 130' INT TERM HUP
         _xcopy_wg_seed "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
         _xcopy_dbarm_seed "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
@@ -4095,7 +4095,7 @@ _migrate_prepare() {
           ssh root@"${_tgt}" "rm -f /root/.silent.update.cnf"
           _SILENT_MARKER=NO
         fi
-        trap '[ -n "${_XCOPY_RSYNC_ERR:-}" ] && rm -f -- "${_XCOPY_RSYNC_ERR}"; _xcopy_chattr_back; rm -f "${_XCOPY_LOCK_FILE}"' EXIT
+        trap '_xcopy_chattr_back; rm -f "${_XCOPY_LOCK_FILE}"' EXIT
         trap 'rm -f "${_XCOPY_LOCK_FILE}"; exit 130' INT TERM HUP
         if ! _xcopy_create_mark "${_oct}" "${_TGT_HM_USER}" "${_tgt}"; then
           echo "ALRT: the create marker for ${_TGT_HM_USER} could not be put on ${_tgt}; a re-run of this create will refuse the account"
