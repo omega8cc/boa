@@ -466,18 +466,28 @@ _mydumper_lockwait_opts() {
 # and then behaves otherwise. _MYDUMPER_MODES_PL gives each object back the
 # mode the server stored for it: a plain SET before its CREATE and the
 # file's mode after it (myloader stops on a versioned-comment SET in the
-# middle of a file), mode words 8.x refuses left out. It reads the file
+# middle of a file), mode words 8.x refuses left out. A routine's utf8mb4
+# parameters and return value take the loading session's
+# default_collation_for_utf8mb4, which no dump names: a routine whose
+# parameters (and return value) share one of the two defaults that setting
+# takes gets it the same way, the session's own value back after it, read
+# from an 8.x server only (5.x has no such setting); each is a statement
+# prepared from one that names MySQL 8, so a 5.x or MariaDB server, which
+# has no such setting, runs DO 0 in its place and a dump made on 8.x loads
+# there as before. It reads the file
 # whole, never through a link, and replaces it through a new one in the same
 # directory: exit 1, the file as it was, when a line cannot be placed; 2
 # when an object had no mode to give (one text wherever it is copied).
 _MYDUMPER_MODES_PL='use strict; use Fcntl;
-my ($f) = @ARGV; my (%m, @o, $p, $miss);
+my ($f) = @ARGV; my (%m, %c, @o, $p, $q, $miss);
 my $gone = qr/^(?:NO_AUTO_CREATE_USER|NO_FIELD_OPTIONS|NO_KEY_OPTIONS|NO_TABLE_OPTIONS|DB2|MAXDB|MSSQL|MYSQL323|MYSQL40|ORACLE|POSTGRESQL)$/;
 for (split /\n/, (defined $ENV{_MYDUMPER_MODES} ? $ENV{_MYDUMPER_MODES} : "")) {
-  my ($t, $h, $s) = split /\t/, $_, 3;
+  my ($t, $h, $s, $k) = split /\t/, $_, 4;
   next unless defined $s && $t =~ /^(?:TRIGGER|FUNCTION|PROCEDURE|EVENT)$/
     && $h =~ /^[0-9A-Fa-f]+$/ && $s =~ /^[A-Z0-9_,]*$/;
   $m{$t . " " . lc($h)} = join(",", grep { $_ !~ $gone } split(/,/, $s));
+  $c{$t . " " . lc($h)} = $k if defined $k && $t =~ /^(?:FUNCTION|PROCEDURE)$/
+    && $k =~ /^utf8mb4_(?:general_ci|0900_ai_ci)$/;
 }
 sysopen(my $in, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit 1;
 my @st = stat($in); exit 1 unless @st && -f _;
@@ -489,17 +499,27 @@ for my $x (@l[0 .. ($#l < 9 ? $#l : 9)]) {
 exit 1 unless defined $fm;
 for my $i (0 .. $#l) {
   my $x = $l[$i];
-  if ($p && $x =~ /^SET character_set_client = \@PREV_CHARACTER_SET_CLIENT;$/) {
-    push @o, "SET SQL_MODE=\x27$fm\x27;\n"; $p = 0;
+  if (($p || $q) && $x =~ /^SET character_set_client = \@PREV_CHARACTER_SET_CLIENT;$/) {
+    push @o, "SET SQL_MODE=\x27$fm\x27;\n" if $p;
+    push @o, "SET \@BOA_UTF8MB4_SQL = IF(VERSION() REGEXP \x27^8[.]\x27, \x27SET SESSION default_collation_for_utf8mb4 = \@BOA_PREV_UTF8MB4\x27, \x27DO 0\x27);\n",
+      "PREPARE boa_utf8mb4 FROM \@BOA_UTF8MB4_SQL;\n", "EXECUTE boa_utf8mb4;\n", "DEALLOCATE PREPARE boa_utf8mb4;\n" if $q;
+    $p = 0; $q = 0;
   }
   push @o, $x;
   next unless $x =~ /^DROP (TRIGGER|FUNCTION|PROCEDURE|EVENT) IF EXISTS `((?:[^`]|``)+)`;$/;
   my ($t, $n) = ($1, $2); $n =~ s/``/`/g;
-  exit 0 if $i < $#l && $l[$i + 1] =~ /^SET SQL_MODE=/;
-  my $s = $m{$t . " " . unpack("H*", $n)};
+  exit 0 if $i < $#l && $l[$i + 1] =~ /^SET (?:SQL_MODE=|\@BOA_UTF8MB4_SQL )/;
+  my $key = $t . " " . unpack("H*", $n);
+  my $s = $m{$key};
   if (defined $s) { push @o, "SET SQL_MODE=\x27$s\x27;\n"; $p = 1; } else { $miss = 1; }
+  if (defined $c{$key}) {
+    push @o, "SET \@BOA_UTF8MB4_SQL = IF(VERSION() REGEXP \x27^8[.]\x27, \x27SET \@BOA_PREV_UTF8MB4 = \@\@SESSION.default_collation_for_utf8mb4,"
+      . " SESSION default_collation_for_utf8mb4 = \x27\x27$c{$key}\x27\x27\x27, \x27DO 0\x27);\n",
+      "PREPARE boa_utf8mb4 FROM \@BOA_UTF8MB4_SQL;\n", "EXECUTE boa_utf8mb4;\n";
+    $q = 1;
+  }
 }
-exit 1 if $p;
+exit 1 if $p || $q;
 my $w = $f . ".modes";
 sysopen(my $out, $w, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600) or exit 1;
 if (!(print {$out} @o) || !close($out) || !chmod($st[2] & 07777, $w)
@@ -511,12 +531,17 @@ exit($miss ? 2 : 0);'
 # 0 done or nothing to do, 1 the modes unread (the files as mydumper wrote
 # them), 2 an object or a file kept the dump's mode. It never fails a dump.
 _mydumper_object_modes() {
-  local _db="${1}" _dir="${2}" _q _modes _f _rc=0
+  local _db="${1}" _dir="${2}" _q _c="''" _modes _f _rc=0
   shift 2
   [[ "${_db}" =~ ^[A-Za-z0-9_]+$ ]] || return 2
-  _q="SELECT 'TRIGGER', HEX(TRIGGER_NAME), SQL_MODE FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = '${_db}'"
-  _q="${_q} UNION ALL SELECT ROUTINE_TYPE, HEX(ROUTINE_NAME), SQL_MODE FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA = '${_db}'"
-  _q="${_q} UNION ALL SELECT 'EVENT', HEX(EVENT_NAME), SQL_MODE FROM information_schema.EVENTS WHERE EVENT_SCHEMA = '${_db}'"
+  if "$@" -N -B -e "SELECT @@SESSION.default_collation_for_utf8mb4" > /dev/null 2>&1; then
+    _c="IFNULL((SELECT IF(COUNT(DISTINCT p.COLLATION_NAME) = 1, MIN(p.COLLATION_NAME), '') FROM information_schema.PARAMETERS p"
+    _c="${_c} WHERE p.SPECIFIC_SCHEMA = r.ROUTINE_SCHEMA AND p.SPECIFIC_NAME = r.ROUTINE_NAME AND p.ROUTINE_TYPE = r.ROUTINE_TYPE"
+    _c="${_c} AND p.COLLATION_NAME IN ('utf8mb4_general_ci', 'utf8mb4_0900_ai_ci')), '')"
+  fi
+  _q="SELECT 'TRIGGER', HEX(TRIGGER_NAME), SQL_MODE, '' FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = '${_db}'"
+  _q="${_q} UNION ALL SELECT r.ROUTINE_TYPE, HEX(r.ROUTINE_NAME), r.SQL_MODE, ${_c} FROM information_schema.ROUTINES r WHERE r.ROUTINE_SCHEMA = '${_db}'"
+  _q="${_q} UNION ALL SELECT 'EVENT', HEX(EVENT_NAME), SQL_MODE, '' FROM information_schema.EVENTS WHERE EVENT_SCHEMA = '${_db}'"
   _modes=$("$@" -N -B -e "${_q}" 2> /dev/null) || return 1
   [[ -n "${_modes}" ]] || return 0
   for _f in "${_dir}"/*-schema-post.sql "${_dir}"/*-schema-triggers.sql; do

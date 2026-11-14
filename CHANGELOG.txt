@@ -1107,16 +1107,15 @@
       target that refuses it is named, and the load goes on with that
       server's own default.
 
-    * A Restore of a backup made on Percona 5.7, on a server since upgraded
-      to 8.0 or 8.4, keeps the backup's utf8mb4_general_ci tables and
-      columns as they were. A 5.7 dump names that character set with no
-      collation, and the load gave such tables and columns the newer
-      server's default, utf8mb4_0900_ai_ci. The load now reads a copy that
-      names the 5.7 one on those lines, kept beside the account's backups
-      for the load only and made only with room for itself and the load
-      that follows; without that room the backup loads as before, with a
-      warning. A stored routine's parameters and return type, which no dump
-      names a collation for, take the newer server's default as before.
+    * A Restore of a backup made on Percona 5.7, on a server since
+      upgraded to 8.0 or 8.4, keeps the backup's utf8mb4_general_ci
+      tables and columns as they were. A 5.7 dump names that character
+      set with no collation, and the load gave such tables and columns
+      the newer server's default, utf8mb4_0900_ai_ci. The load now reads
+      a copy that names the 5.7 one on those lines, kept beside the
+      account's backups for the load only and made only with room for
+      itself and the load that follows; without that room the backup
+      loads as before, with a warning.
 
     * A Migrate of a site from a database server on Percona 5.7 to one on
       8.0 or 8.4 keeps the site's utf8mb4_general_ci tables and columns as
@@ -1125,6 +1124,27 @@
       utf8mb4_0900_ai_ci. The dump's table files now name the 5.7 one on
       those lines before either loader reads them, the database broker
       included; a dump made on 8.x is loaded as it is.
+
+    * Stored routines keep the collation of their utf8mb4 parameters and
+      return value when a database dumped on Percona 8.0 or 8.4 is loaded
+      again: by a Restore, a Clone or a Migrate, from the nightly SQL
+      backups (mysql_backup.sh, mysql_cluster_backup.sh) and through the
+      database broker, xoct and xcopy. No dump names that collation and a
+      load gave every routine the loading session's default, so a routine
+      made under utf8mb4_general_ci came back under utf8mb4_0900_ai_ci, and
+      a comparison inside it could fail on mixed collations. A routine
+      whose utf8mb4 parameters and return value share one of the two
+      defaults a session can take now carries it in the dump, set just
+      before its CREATE, with the session's own put back after it, on MySQL
+      8 alone: a server on 5.7 loads such a dump as before.
+
+    * A Restore or a Migrate of a database dumped on Percona 5.7 to a
+      server on 8.0 or 8.4 gives its stored routines' utf8mb4 parameters
+      and return value the 5.7 default they were made with,
+      utf8mb4_general_ci: no dump names it, and the load gave them the
+      newer server's default. A Restore's load reads a copy that opens with
+      that default for its session, and a Migrate's fast import opens the
+      routines' file with it.
 
     * aegir2boa keeps a site's utf8mb4_general_ci tables and columns when
       its database comes from MySQL 5.7 or MariaDB before 11.5, as a vanilla
