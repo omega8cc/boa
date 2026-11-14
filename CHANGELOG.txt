@@ -2528,6 +2528,30 @@
       folder that is a symbolic link: its stall test and its table counts
       stopped at the link.
 
+    * Ægir Hosting: a task that another task starts as one of its steps
+      ends as failed when it failed, with its error in its own log. Such a
+      step runs as the other task's child, where an error is handed back
+      to the caller and written nowhere else, so its row in the task list
+      ended as a warning with no error line. Its runner now writes each
+      error the run ended with into the step's own log, when that log does
+      not hold it already. A task the queue starts is unchanged.
+
+    * Ægir: a task log shows the lines of the advisory level again, which
+      provision writes when it repairs a platform's psr/log package or
+      cannot keep the stock copies of core's logger files. The list of
+      levels an Octopus pass gives the control panel left that one out.
+
+    * The nightly clean-up of the site and platform control files keeps a
+      line whose key is drupal_upgrade_modes even when it starts with a
+      blank, where it deleted every such line. The control panel reads that
+      key, and reads an indented line as a list it cannot trust. Every
+      other line that starts with a blank is removed as before.
+
+    * The line of Drupal release lines that still get security fixes, which
+      BOA keeps since the coverage report came, is also written to
+      /data/conf/drupal-supported.txt, readable by the control panel, on
+      every pass and also on one whose own fetch brought nothing.
+
 @=> New Features
 
     * Check available updates, a new read-only site task, writes a site's
