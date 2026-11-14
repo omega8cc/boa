@@ -4771,15 +4771,27 @@ _octopus_cleanup() {
         # alone): chown -R handed a hard link the account left here (its
         # other name anywhere) to root. _grpGid was read above, before the
         # deluser loop.
+        # The uid is recycled from the same system range as the gid, so what
+        # root, a number that names nobody or one of the account's own
+        # identities (one deluser refused is still named) owns loses both
+        # numbers: root:root. What else carries the group is a living user's:
+        # another account's folder at one of the account's names, which an
+        # older walk took into the group. It keeps its owner and loses the
+        # group alone (group root), as _purge_nogroup_root gives it. Each pass
+        # reads the owner on the entry's own handle.
+        _lftOwn=( 0 x "${_tmpUs[@]}" )
         if [ -n "${_grpGid}" ]; then
-          # The uid is recycled from the same system range as the gid, so
-          # the leftovers lose both numbers: root:root.
           for _lftDir in /opt/user/gems/${_usEr} /opt/user/gems/${_usEr}.* \
             /opt/user/npm/${_usEr} /opt/user/npm/${_usEr}.* /mnt/*/files/${_usEr}; do
             if [ -d "${_lftDir}" ] && [ ! -L "${_lftDir}" ]; then
+              for _lftU in "${_lftOwn[@]}"; do
+                env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_lftDir}" -gid "${_grpGid}" \
+                  \( -type d -o -type f \) \
+                  -execdir perl -e "${_ACCT_REOWN_FROM_PL}" -- 0 0 "${_lftU}" "${_grpGid}" {} + &> /dev/null
+              done
               env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_lftDir}" -gid "${_grpGid}" \
                 \( -type d -o -type f \) \
-                -execdir perl -e "${_ACCT_REOWN_FROM_PL}" -- 0 0 -1 "${_grpGid}" {} + &> /dev/null
+                -execdir perl -e "${_ACCT_REOWN_FROM_PL}" -- -1 0 -1 "${_grpGid}" {} + &> /dev/null
             fi
           done
         fi
@@ -4791,9 +4803,14 @@ _octopus_cleanup() {
             /opt/user/npm/${_usEr} /opt/user/npm/${_usEr}.* \
             /mnt/*/files/${_usEr} /var/www/phpcache/${_usEr}; do
             if [ -d "${_lftDir}" ] && [ ! -L "${_lftDir}" ]; then
+              for _lftU in "${_lftOwn[@]}"; do
+                env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_lftDir}" -gid "${_wgGid}" \
+                  \( -type d -o -type f \) \
+                  -execdir perl -e "${_ACCT_REOWN_FROM_PL}" -- 0 0 "${_lftU}" "${_wgGid}" {} + &> /dev/null
+              done
               env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_lftDir}" -gid "${_wgGid}" \
                 \( -type d -o -type f \) \
-                -execdir perl -e "${_ACCT_REOWN_FROM_PL}" -- 0 0 -1 "${_wgGid}" {} + &> /dev/null
+                -execdir perl -e "${_ACCT_REOWN_FROM_PL}" -- -1 0 -1 "${_wgGid}" {} + &> /dev/null
             fi
           done
         fi
