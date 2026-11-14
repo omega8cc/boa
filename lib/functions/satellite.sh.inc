@@ -12502,6 +12502,7 @@ _satellite_child_b_aegir_ui_enhance() {
       "status" => "status",
       "success" => "success",
       "warning" => "warning",
+      "advisory" => "advisory",
       "backup" => "backup",
       "bootstrap" => "bootstrap",
       "command" => "command",
