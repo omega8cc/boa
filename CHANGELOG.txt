@@ -1034,12 +1034,15 @@
       account's names in /opt/user/gems or /opt/user/npm that another account
       owns, as xoct, xcopy and xmass do.
 
-    * boa cleanup purge leaves another account its own files in a folder at
+    * boa cleanup purge leaves a living user its own files among what a
+      removed account leaves in /opt/user/gems, /opt/user/npm, its files
+      store under /mnt and its PHP cache, such as another account's folder at
       the removed account's names in /opt/user/gems or /opt/user/npm. Such
-      files carried the removed account's group only where an older walk
-      took them in, and the purge gave them to root with that group. They
-      now keep their owner and go to group root; what root, the account's
-      own logins or a number that names nobody owns there still goes to root.
+      files carried the removed account's group or web group only where an
+      older walk took them in, and the purge gave them to root:root. They now
+      keep their owner and lose only the group (group root); what root, the
+      account's own logins or a number that names nobody owns there still
+      goes to root:root.
 
     * xoct, xcopy and xmass read a copy status 23 as vanished files only when
       every line rsync printed says so. A file the receiver failed to verify
