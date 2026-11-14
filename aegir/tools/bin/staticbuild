@@ -2678,6 +2678,12 @@ build_cms() {
   _finalize_distro "drupal_cms_installer" "${_wd}" "${_dver}" "cms"
 }
 
+_culturas_views_fix() {
+  # 0 when an entity_reference_revisions tree declares the relationship handler the
+  # views OpenCulturas ships name (the plugin, by its id). $1 the module's directory.
+  _run_as_o8 "grep -q -E 'ViewsRelationship\(.entity_reference_revisions.\)' '$1/src/Plugin/views/relationship/EntityReferenceRevisions.php'"
+}
+
 build_culturas() {
   _begin_build "$(_target_prefix culturas)" "culturas" || return 0
   use_php "${_PHP_DISTRO}" || { _record_fail "culturas"; return 1; }
@@ -2685,38 +2691,33 @@ build_culturas() {
   _dver="$(_create_project "${_wd}" "${_CULTURAS_SPEC}" "drupal/openculturas_project" "--remove-vcs")" \
     || { _record_fail "culturas"; return 1; }
   # Pin the distribution to its exact drupal.org release (the template otherwise pulls a
-  # -dev branch), and build with the dependency patches DROPPED. On the 3.0 line several
-  # were stale against the core the distribution itself requires, and composer-patches
-  # 2.x did not apply them to dist-installed packages; a stock 3.1.0 build with
-  # composer-patches 2.0.0 applies all of them, so the drop is kept as the build proven
-  # to install, not because the patches cannot apply. The one load-bearing patch is
-  # applied with GNU patch below.
+  # -dev branch) and build it with the dependency patches it declares, each written for
+  # the module release that distribution release requires. The 3.0 line was built with
+  # them dropped (several were stale against its own core) and the one load-bearing
+  # patch applied by hand from a fixed address, which stopped fitting the module's next
+  # release while the distribution's own declaration had moved with it.
   local _ocrel
   _ocrel="$(_drupal_release "${_CULTURAS_PROJECT}")"
   if ! { _composer_prepare "${_wd}" \
-         && _run_as_o8 "cd '${_wd}' && composer config --json extra.composer-patches.ignore-dependency-patches '[\"${_CULTURAS_DISTPKG}\"]'" \
          && { [[ -z "${_ocrel}" ]] || _run_as_o8 "cd '${_wd}' && composer require --no-update --no-scripts ${_CULTURAS_DISTPKG}:'${_ocrel}'"; } \
          && _with_core_fallback "${_wd}" "culturas" _composer_build; }; then
     _record_fail "culturas"
     return 1
   fi
-  # One dependency patch is load-bearing and is applied with GNU patch instead:
-  # the views OpenCulturas ships reference entity_reference_revisions relationship
-  # handlers that only exist with the ERR issue-2799479 patch - unpatched, every
-  # front page request throws ViewsData->get() InvalidArgumentException (empty
-  # table key from the broken relationship handler) and the site serves 500s.
-  # Fail closed: a culturas platform without it is broken by default.
   _fix_step "${_wd}" "culturas" "${_CULTURAS_DISTPKG}" || return 1
-  local _err_patch_url="https://www.drupal.org/files/issues/2023-06-29/entity_reference_revisions-2799479-fix-only.patch"
-  local _err_mod="${_wd}/web/modules/contrib/entity_reference_revisions"
-  if ! { _run_as_o8 "curl -fsS --retry 3 -o '${_wd}/.err-2799479.patch' '${_err_patch_url}'" \
-         && _run_as_o8 "cd '${_err_mod}' && patch -p1 --no-backup-if-mismatch < '${_wd}/.err-2799479.patch'" \
-         && _run_as_o8 "rm -f '${_wd}/.err-2799479.patch'"; }; then
-    _alrt "culturas: entity_reference_revisions issue-2799479 views patch did not apply"
-    _record_fail "culturas (patch failed)"
+  # One of those patches is load-bearing: the views OpenCulturas ships name an
+  # entity_reference_revisions relationship handler that exists only with the module's
+  # issue 2799479 fix - without it every front page request throws ViewsData->get()
+  # InvalidArgumentException (empty table key from the broken relationship handler)
+  # and the site serves 500s. The patch check reinstalls a package whose patch no
+  # longer applies without it and only notes that, so the handler is looked for in the
+  # tree. Fail closed: a culturas platform without it is broken by default.
+  if ! _culturas_views_fix "${_wd}/web/modules/contrib/entity_reference_revisions"; then
+    _alrt "culturas: entity_reference_revisions carries no relationship handler for the views the distribution ships (issue 2799479)"
+    _record_fail "culturas (views fix missing)"
     return 1
   fi
-  _info "culturas: applied entity_reference_revisions issue-2799479 views patch"
+  _info "culturas: entity_reference_revisions carries the issue-2799479 relationship handler"
   # Flatten the openculturas-distribution wrapper: its inner profile/ becomes the
   # openculturas install profile, and its remaining contents move up into contrib/.
   local _contrib="${_wd}/web/profiles/contrib"
