@@ -252,6 +252,18 @@
 
 @=> Security
 
+    * root runs an account's task dispatcher (/var/xdrago/run-<account>)
+      only when it is a regular file with one link, owned by root, that no
+      group or other user can write. A copy parked in /var/backups/off-run
+      outlives its account, and once the account's number is given out
+      again its new owner could change a file root would later hand back
+      and run. Any other copy is left alone and named once in
+      /var/log/boa/dispatcher.incident.log, with one mail to the operator;
+      the account's tasks wait for its next Octopus pass, which now writes
+      the dispatcher as a new file of root's. Every hand-back of a parked
+      copy (the release pass, xmass, xtrim, aegir2boa, a barracuda pass)
+      applies the same test and sets any other copy aside.
+
     * xoct, xcopy and xmass copy a client's Ruby gems or npm tree only into
       a folder on the target that root or the account itself owns. Any
       account there could make another login's name first in the shared
