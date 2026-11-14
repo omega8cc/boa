@@ -982,6 +982,14 @@
       sooner); the rest of the schedule runs. A schedule the old switch left
       off is put back.
 
+    * The helper processes of a killed duplicity no longer stay until a
+      reboot. A backup run with --concurrency starts them from duplicity's
+      own interpreter, and when the orphan cleanup or the kernel's
+      out-of-memory killer ended that duplicity they waited under init for
+      good, about 40 MB a pair: no cleanup pattern named them. Each pass of
+      BOA.sh.txt now ends the ones init holds and says so in
+      /var/log/duplicity-cleanup.log.
+
     * The backup schedule is written to a new file and moved into place.
       It was rewritten in place while the interval wrapper, which can run
       for hours, still read it a line at a time, so a rewrite could end

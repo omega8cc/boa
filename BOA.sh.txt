@@ -2695,6 +2695,16 @@ _update_agents() {
     fi
   fi
 
+  # A duplicity run with --concurrency starts helper processes from its own
+  # interpreter ("<venv>/bin/python -c from multiprocessing..."). When that
+  # duplicity is killed, here above or by the kernel's out-of-memory killer,
+  # init takes its helpers and they wait for good (about 40 MB a pair): no
+  # duplicity pattern names them. The ones init holds are reaped here, on
+  # any box; a running duplicity's helpers have it as their parent.
+  if pkill -9 -u root -U root -P 1 -f "^[^ ]*/duplicity/bin/python[0-9.]* (-[^ ]+ )*-c from multiprocessing\." 2> /dev/null; then
+    echo "$(date) Orphaned duplicity helpers killed" >> /var/log/duplicity-cleanup.log
+  fi
+
   # The core tool set every box carries (barracuda, boa, octopus, x*, auto*,
   # reports, backup tools, synproxy family...) is fetched ONLY by
   # _update_boa_tools, which runs on every pass in every context this function
