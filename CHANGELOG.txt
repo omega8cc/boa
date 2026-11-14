@@ -992,6 +992,34 @@
       not. Without them the target's SSH check could ban the source for the
       host key scan and cut a create's install halfway.
 
+    * The firewall check also covers a target xcopy is given by host name.
+      It checked addresses only, and the host key scan then ran against a
+      named target unchecked.
+
+    * instgrp walks a folder at an account's names in /opt/user/gems or
+      /opt/user/npm only when its name holds the characters a login name
+      does. Its walks split their list of folders on blanks, so another name
+      could add folders outside the account to the walk.
+
+    * instgrp revert keeps the account's group while a folder at its names
+      that the walk leaves out still holds entries in it. Removed, the group
+      would leave them a bare number the next account created can be given.
+
+    * aegir2boa-stage2's group pass on the target leaves out a folder at the
+      account's names in /opt/user/gems or /opt/user/npm that another account
+      owns, as xoct, xcopy and xmass do.
+
+    * xoct, xcopy and xmass read a copy status 23 as vanished files only when
+      every line rsync printed says so. A file the receiver failed to verify
+      is reported without rsync's prefix, and such a copy was read as complete.
+
+    * The backups copy of xoct and xcopy skips a backup rotated away between
+      its listing and the copy, as it skips one removed during the copy. It
+      ended with status 23 and kept the transfer from completing.
+
+    * An xoct or xcopy run stopped during a gems, npm or backups copy removes
+      the file that held that copy's errors.
+
     * Sums that can pass two billion are printed whole: the awk on BOA
       servers prints them in exponent form (3e+09) and caps %d there. It
       hit loadreport's window start after some 248 days of uptime, the
