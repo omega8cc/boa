@@ -1,0 +1,13 @@
+# Drupal 8+ cache bins that core chains to APCu, in a process without APCu,
+# which is the command line on a BOA server (global-valkey.inc): core's own
+# chained backend over a null fast tier. Nothing is read from a fast tier
+# there, and every write moves the bin's last-write stamp in the consistent
+# backend, so the web workers stop trusting their APCu copies.
+services:
+  cache.backend.boa_null:
+    class: Drupal\Core\Cache\NullBackendFactory
+  cache.backend.boa_chained:
+    class: Drupal\Core\Cache\ChainedFastBackendFactory
+    arguments: ['@settings', null, 'cache.backend.boa_null']
+    calls:
+      - [setContainer, ['@service_container']]
