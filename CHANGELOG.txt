@@ -1001,9 +1001,10 @@
       does. Its walks split their list of folders on blanks, so another name
       could add folders outside the account to the walk.
 
-    * instgrp revert keeps the account's group while a folder at its names
-      that the walk leaves out still holds entries in it. Removed, the group
-      would leave them a bare number the next account created can be given.
+    * instgrp revert and webrevert keep the account's group and its web
+      group while a folder at its names that the walk leaves out still holds
+      entries in them. Removed, a group would leave those entries a bare
+      number the next account created can be given.
 
     * aegir2boa-stage2's group pass on the target leaves out a folder at the
       account's names in /opt/user/gems or /opt/user/npm that another account
