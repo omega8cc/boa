@@ -2324,6 +2324,16 @@
       tier, so every command-line write marks the web's copies as out of
       date, as Drupal intends. Nothing changes for web requests.
 
+    * Ægir Provision: a task whose database updates did not finish says when
+      the site is left closed. A Drupal 8+ site's own Drush switches
+      maintenance mode on for its updates and off at their end; when it died
+      in between, every visitor got "Site under maintenance", the task ended
+      as a warning and its log did not say why the site was closed. The log
+      now carries one more warning in that case, DEPLOY9/LOCAL/DRUSH/MAINT,
+      with the command that opens the site once the updates are applied
+      (the site's own Drush, maint:set 0). The task does not open a
+      half-updated site.
+
     * Classic Drush 8.5.21 (Ægir's Drush 8): drush8 updatedb on Drupal 10.3
       and newer skips an update that core holds as done by an equivalent
       one, as core's own runner does, where it ran it again. On Drupal 11.5
