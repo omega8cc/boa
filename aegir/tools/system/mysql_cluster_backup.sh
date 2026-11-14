@@ -779,6 +779,7 @@ _mydumper_object_modes() {
     _q="${_q} UNION ALL SELECT 'EVENT', HEX(EVENT_NAME), SQL_MODE, '' FROM information_schema.EVENTS WHERE EVENT_SCHEMA = '${_db}'"
     _modes=$("$@" -N -B -e "${_q}" 2> /dev/null) && break
     [[ "${_c}" != "''" ]] || return 1
+    echo "WARN: the stored routines' utf8mb4 defaults of ${_db} could not be read: its routines load with the loading server's default" >&2
     _c="''"
   done
   [[ -n "${_modes}" ]] || return 0
