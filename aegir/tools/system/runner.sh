@@ -298,6 +298,45 @@ _if_accelerated_queue() {
   fi
 }
 
+# A task dispatcher (run-<account>) root may run or hand back: a regular file
+# with one link, owned by root, that no group or other user can write. Any
+# other copy was made or kept where another user could write it (a parked
+# copy outlives its account, whose number is given out again; a second link
+# stays writable through the other name), so root never runs or returns it.
+_dispatcher_trusted() {
+  local _s
+  [ -f "${1}" ] && [ ! -L "${1}" ] || return 1
+  _s=$(stat -c '%u %h %a' -- "${1}" 2> /dev/null) || return 1
+  case "${_s}" in
+    "0 1 "[0-7][0-7][0-7] | "0 1 "[0-7][0-7][0-7][0-7]) ;;
+    *) return 1 ;;
+  esac
+  (( (8#${_s##* } & 8#022) == 0 ))
+}
+
+# A dispatcher the loop below will not run is named once (by its inode and
+# what makes it untrusted) in dispatcher.incident.log, with one mail to the
+# operator unless _INCIDENT_REPORT is OFF, and left where it is: its
+# account's queue waits until the account's next Octopus pass writes a new
+# one over it.
+_runner_untrusted_note() {
+  local _s _m _to _l=/var/log/boa/dispatcher.incident.log
+  [ -d /var/log/boa ] || return 0
+  _s=$(stat -c 'inode %i, owner %U (uid %u), %h links, mode %a' -- "${1}" 2> /dev/null)
+  grep -qF -- "not run: ${1} (${_s:-unreadable})" "${_l}" 2> /dev/null && return 0
+  _m="not run: ${1} (${_s:-unreadable}): root runs only a dispatcher that is root's alone; the account's tasks wait until its next Octopus pass writes a new one"
+  echo "$(date) ${_m}" >> "${_l}" 2> /dev/null
+  [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
+  case "${_INCIDENT_REPORT^^}" in
+    OFF|NO) return 0 ;;
+  esac
+  command -v s-nail > /dev/null 2>&1 || return 0
+  _to="${_MY_EMAIL:-root}"
+  _to="${_to//\\\@/@}"
+  printf ' %s\n\n ---\n This email has been sent by your BOA task queue (runner.sh)\n' "${_m}" \
+    | s-nail -s "BOA task dispatcher not run on $(uname -n)" "${_to}" > /dev/null 2>&1
+}
+
 # An account runner (run-<oN>, copied from the build tree by every Octopus
 # pass) takes its run lock on fd 9. A copy from a build tree before the fix
 # passed that descriptor to every process it starts: a site cron the panel's
@@ -350,6 +389,11 @@ _runner_action() {
     # Honour the dedicated queue-stop file per child too, so a pause set AFTER this
     # runner parent started still holds every per-account child dispatch.
     [ -e "/run/boa_queue_stop.pid" ] && { echo "Task queue paused: /run/boa_queue_stop.pid present -- skipping ${_Runner}"; continue; }
+    if ! _dispatcher_trusted "${_Runner}"; then
+      _runner_untrusted_note "${_Runner}"
+      echo "Not running ${_Runner}: not root's alone (see /var/log/boa/dispatcher.incident.log)"
+      continue
+    fi
     _runner_heal_lock_fd "${_Runner}"
     _count_cpu
     _load_control

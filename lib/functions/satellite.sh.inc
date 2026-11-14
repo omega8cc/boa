@@ -8315,10 +8315,21 @@ _satellite_make() {
     && _a2b_import_unfinished "${_USER}"; then
     _msg "NOTE: ${_USER}: an aegir2boa db-import is unfinished; its task dispatcher stays held until the import is re-run or reverted"
   else
-    cp -af ${_bldPth}/aegir/scripts/run-xdrago /var/xdrago/run-${_USER}
-    sed -i "s/EDIT_USER/${_USER}/g" /var/xdrago/run-${_USER}
+    # A new file of root's, renamed over the old one: runner.sh runs only a
+    # dispatcher that is root's alone, and a copy written into the old file
+    # would keep any second link or open handle another user held on it.
+    # The name being made holds no "run-", which runner.sh would dispatch.
+    local _rxN="/var/xdrago/.xdnew.${_USER}.$$"
+    rm -f "${_rxN}"
+    if cp -f ${_bldPth}/aegir/scripts/run-xdrago "${_rxN}" \
+      && sed -i "s/EDIT_USER/${_USER}/g" "${_rxN}" \
+      && chown root:root "${_rxN}" && chmod 700 "${_rxN}"; then
+      mv -f "${_rxN}" /var/xdrago/run-${_USER}
+    else
+      rm -f "${_rxN}"
+      _msg "WARN: ${_USER}: its task dispatcher could not be written; the previous one stays"
+    fi
     wait
-    chmod 700 /var/xdrago/run-${_USER} &> /dev/null
   fi
   # 0755 in the build tree, not 0700: the setup children are read by a su'd
   # satellite user, and read is all they need. The deployed copy above keeps

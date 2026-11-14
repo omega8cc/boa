@@ -2346,6 +2346,33 @@ _t_dispatch_off() {
     sleep 10; _waited=$(( _waited + 10 ))
   done
 }
+# A task dispatcher (run-<account>) root may run or hand back: a regular file
+# with one link, owned by root, that no group or other user can write. Any
+# other copy was made or kept where another user could write it (a parked
+# copy outlives its account, whose number is given out again; a second link
+# stays writable through the other name), so root never runs or returns it.
+_dispatcher_trusted() {
+  local _s
+  [ -f "${1}" ] && [ ! -L "${1}" ] || return 1
+  _s=$(stat -c '%u %h %a' -- "${1}" 2> /dev/null) || return 1
+  case "${_s}" in
+    "0 1 "[0-7][0-7][0-7] | "0 1 "[0-7][0-7][0-7][0-7]) ;;
+    *) return 1 ;;
+  esac
+  (( (8#${_s##* } & 8#022) == 0 ))
+}
+
+# A parked copy that is not root's alone is set aside under a dot name beside
+# it, never handed back, and named in dispatcher.incident.log.
+_dispatcher_set_aside() {
+  local _s
+  _s=$(stat -c 'owner %U (uid %u), %h links, mode %a' -- "${1}" 2> /dev/null)
+  mv -f -- "${1}" "${1%/*}/.untrusted-${1##*/}.$(date +%s)" 2> /dev/null || return 1
+  [ -d /var/log/boa ] && echo "$(date) set aside, not handed back: ${1} (${_s:-unreadable}): not root's alone" \
+    >> /var/log/boa/dispatcher.incident.log
+  return 0
+}
+
 # The held dispatcher goes back. With none held, one BOA's agent pass parked
 # in off-run while the freeze stood (it parks the dispatcher of every
 # frozen account there) goes back instead, unless the account is relayed,
@@ -2356,22 +2383,38 @@ _t_dispatch_off() {
 # panel came from a box where its import was cut off): only an import
 # here that reaches its hand-back ends that hold.
 _t_dispatch_on() {
-  local _old="${_ACCT_ROOT}/log/a2b/held-run-${_ACCOUNT}" _off="/var/backups/off-run/run-${_ACCOUNT}"
+  local _old="${_ACCT_ROOT}/log/a2b/held-run-${_ACCOUNT}" _off="/var/backups/off-run/run-${_ACCOUNT}" _aside=0
   if [[ -e "${_STATE_DIR}/failover-hold" || -L "${_STATE_DIR}/failover-hold" ]]; then
     _alrt "dispatcher run-${_ACCOUNT} stays held: its panel came here with a failover from a box where its import was cut off (${_STATE_DIR}/failover-hold); an import here that finishes ends that hold"
     return 0
   fi
-  if [[ -e "$(_t_held_run)" ]]; then
-    mv -f "$(_t_held_run)" "/var/xdrago/run-${_ACCOUNT}"
-    _info "dispatcher run-${_ACCOUNT} restored"
-  elif [[ ! -e "/var/xdrago/run-${_ACCOUNT}" && -f "${_off}" && ! -L "${_off}" \
+  # A held or parked copy goes back only when it is root's alone (runner.sh
+  # runs no other); any other is set aside and the dispatcher rebuilt.
+  if [[ -e "$(_t_held_run)" || -L "$(_t_held_run)" ]]; then
+    if _dispatcher_trusted "$(_t_held_run)"; then
+      mv -f "$(_t_held_run)" "/var/xdrago/run-${_ACCOUNT}"
+      _info "dispatcher run-${_ACCOUNT} restored"
+      return 0
+    fi
+    _dispatcher_set_aside "$(_t_held_run)"
+    _alrt "dispatcher run-${_ACCOUNT} held at $(_t_held_run) is not root's alone: set aside, not handed back"
+    _aside=1
+  fi
+  if [[ ! -e "/var/xdrago/run-${_ACCOUNT}" && -f "${_off}" && ! -L "${_off}" \
     && ! -e "${_ACCT_ROOT}/log/CANCELLED" && ! -e "${_ACCT_ROOT}/log/proxy-failed.pid" ]] \
     && { [[ ! -e "${_ACCT_ROOT}/log/proxied.pid" && ! -L "${_ACCT_ROOT}/log/proxied.pid" ]] \
       || [[ "$(_a2b_in_real_dir "${_ACCT_ROOT}/log" _a2b_read_here proxied.pid | head -n 1)" = "A2B-IMPORT-FREEZE" ]]; }; then
-    mv -f "${_off}" "/var/xdrago/run-${_ACCOUNT}"
-    _info "dispatcher run-${_ACCOUNT} restored from ${_off}"
-  elif [[ ! -e "/var/xdrago/run-${_ACCOUNT}" ]] \
-    && [[ -e "${_old}" || -L "${_old}" ]]; then
+    if _dispatcher_trusted "${_off}"; then
+      mv -f "${_off}" "/var/xdrago/run-${_ACCOUNT}"
+      _info "dispatcher run-${_ACCOUNT} restored from ${_off}"
+      return 0
+    fi
+    _dispatcher_set_aside "${_off}"
+    _alrt "dispatcher run-${_ACCOUNT} parked at ${_off} is not root's alone: set aside, not handed back"
+    _aside=1
+  fi
+  if [[ ! -e "/var/xdrago/run-${_ACCOUNT}" ]] \
+    && [[ "${_aside}" = "1" || -e "${_old}" || -L "${_old}" ]]; then
     _t_dispatch_rebuild
   fi
 }
@@ -2388,7 +2431,7 @@ _t_dispatch_rebuild() {
   for _f in /var/xdrago/run-*; do
     _n="${_f#/var/xdrago/run-}"
     [[ "${_n}" != "${_ACCOUNT}" && -f "${_f}" && ! -L "${_f}" ]] || continue
-    [[ "$(stat -c '%u %h' -- "${_f}" 2>/dev/null)" = "0 1" ]] || continue
+    _dispatcher_trusted "${_f}" || continue
     [[ "$(grep -c '^_H_USER=' -- "${_f}" 2>/dev/null)" = "1" ]] || continue
     grep -qxF -- "_H_USER=${_n}" "${_f}" 2>/dev/null || continue
     _src="${_n}"

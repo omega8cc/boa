@@ -1758,6 +1758,33 @@ _stage_a() {
   _info "${_oN}: stage A complete (proxy re-probed clean)"
 }
 
+# A task dispatcher (run-<account>) root may run or hand back: a regular file
+# with one link, owned by root, that no group or other user can write. Any
+# other copy was made or kept where another user could write it (a parked
+# copy outlives its account, whose number is given out again; a second link
+# stays writable through the other name), so root never runs or returns it.
+_dispatcher_trusted() {
+  local _s
+  [ -f "${1}" ] && [ ! -L "${1}" ] || return 1
+  _s=$(stat -c '%u %h %a' -- "${1}" 2> /dev/null) || return 1
+  case "${_s}" in
+    "0 1 "[0-7][0-7][0-7] | "0 1 "[0-7][0-7][0-7][0-7]) ;;
+    *) return 1 ;;
+  esac
+  (( (8#${_s##* } & 8#022) == 0 ))
+}
+
+# A parked copy that is not root's alone is set aside under a dot name beside
+# it, never handed back, and named in dispatcher.incident.log.
+_dispatcher_set_aside() {
+  local _s
+  _s=$(stat -c 'owner %U (uid %u), %h links, mode %a' -- "${1}" 2> /dev/null)
+  mv -f -- "${1}" "${1%/*}/.untrusted-${1##*/}.$(date +%s)" 2> /dev/null || return 1
+  [ -d /var/log/boa ] && echo "$(date) set aside, not handed back: ${1} (${_s:-unreadable}): not root's alone" \
+    >> /var/log/boa/dispatcher.incident.log
+  return 0
+}
+
 _restore_stage_a() {
   local _oN="$1"
   local _q="${_XTRIM_BASE}/${_oN}/quarantine" _p _m _c
@@ -1876,9 +1903,12 @@ _restore_stage_a() {
       mkdir -p /var/backups/off-run
       mv -f "${_q}/held-run-${_oN}" "/var/backups/off-run/run-${_oN}" 2>/dev/null \
         && _info "${_oN}: dispatcher kept parked (account is proxied); moved to /var/backups/off-run"
-    else
+    elif _dispatcher_trusted "${_q}/held-run-${_oN}"; then
       mv -f "${_q}/held-run-${_oN}" "/var/xdrago/run-${_oN}"
       chmod 700 "/var/xdrago/run-${_oN}" 2>/dev/null
+    else
+      _dispatcher_set_aside "${_q}/held-run-${_oN}"
+      _alrt "${_oN}: its held dispatcher is not root's alone: set aside, not handed back; the account's next Octopus pass writes a new one"
     fi
   fi
   if _nginx_reload_locked; then

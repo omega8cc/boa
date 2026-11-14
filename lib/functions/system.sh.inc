@@ -13468,8 +13468,21 @@ _xdrago_install_upgrade() {
       fi
     fi
   fi
+  # The task dispatchers come back from the copy this pass set aside, each
+  # only when it is root's alone: runner.sh never runs any other, and one
+  # left behind is named in dispatcher.incident.log (the account's next
+  # Octopus pass writes a new one).
   if [ -d "/var/xdrago-pre-${_xSrl}-${_X_VERSION}-${_NOW}" ]; then
-    cp -af /var/xdrago-pre-${_xSrl}-${_X_VERSION}-${_NOW}/run-* /var/xdrago/ &> /dev/null
+    local _rxF
+    for _rxF in /var/xdrago-pre-${_xSrl}-${_X_VERSION}-${_NOW}/run-*; do
+      [ -e "${_rxF}" ] || [ -L "${_rxF}" ] || continue
+      if _dispatcher_trusted "${_rxF}"; then
+        cp -af "${_rxF}" /var/xdrago/ &> /dev/null
+      elif [ -d "/var/log/boa" ]; then
+        echo "$(date) not copied back: ${_rxF} ($(stat -c 'owner %U (uid %u), %h links, mode %a' -- "${_rxF}" 2> /dev/null)): not root's alone" \
+          >> /var/log/boa/dispatcher.incident.log
+      fi
+    done
   fi
   chmod -R 700 /var/xdrago/monitor/check &> /dev/null
   chmod 700 /var/xdrago/* &> /dev/null
