@@ -269,6 +269,9 @@ if ($valkey_up && $use_valkey && !$custom_cache) {
       }
       $settings['cache_prefix']                  = $this_prefix;
       $settings['cache']['default']              = 'cache.backend.redis';
+      // A cluster node gets no backend named for these three bins. Drupal
+      // 8.2 and newer chain them all the same: a bin's own default in
+      // core.services.yml wins over the default set above.
       if (!is_readable('/data/conf/clstr.cnf')) {
         $settings['cache']['bins']['bootstrap']  = 'cache.backend.chainedfast';
         $settings['cache']['bins']['discovery']  = 'cache.backend.chainedfast';
@@ -574,7 +577,9 @@ if (isset($all_ini['redis_debug_header']) && $all_ini['redis_debug_header'] &&
     empty($is_backend) && !headers_sent()) {
   $vk_backend = 'db';
   if (!empty($cache_valkey)) {
-    if ($drupal_core >= 8 && !is_readable('/data/conf/clstr.cnf')) {
+    // On a cluster node too: core chains the three bins there by their
+    // own default (see where the bins are named above).
+    if ($drupal_core >= 8) {
       $vk_backend = 'chainedfast'; // APCu front + Valkey back for bootstrap/discovery/config
     }
     else {
