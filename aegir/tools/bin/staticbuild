@@ -2697,29 +2697,30 @@ _culturas_one_patch() {
   # distribution's declared patches stay out (ignore-dependency-patches) and the root's
   # patches become the entity_reference_revisions patch alone, at the address the
   # distribution's own release declares for it, read from the lock the failed build
-  # resolved (composer.lock keeps each package's extra). Non-zero, changing nothing,
-  # when that lock names no such patch. $1 workdir.
-  local _dir="$1" _p
-  _p="$(_run_as_o8 "cd '${_dir}' && php -r '
+  # resolved (composer.lock keeps each package's extra). The root's composer.json is
+  # written by PHP itself: a declaration's description is free text ("doesn't"), which
+  # no shell quoting carries safely. Non-zero, changing nothing, when that lock names
+  # no such patch or composer.json is not JSON. $1 workdir.
+  _run_as_o8 "cd '$1' && php -r '
     \$l = json_decode((string) @file_get_contents(\"composer.lock\"), true);
-    if (!is_array(\$l) || !isset(\$l[\"packages\"])) { exit(1); }
+    \$j = json_decode((string) @file_get_contents(\"composer.json\"));
+    if (!is_array(\$l) || !isset(\$l[\"packages\"]) || !is_object(\$j)) { exit(1); }
+    \$o = array();
     foreach (\$l[\"packages\"] as \$p) {
-      if (!isset(\$p[\"name\"]) || \$p[\"name\"] !== \$argv[1]) { continue; }
-      \$d = isset(\$p[\"extra\"][\"patches\"][\"drupal/entity_reference_revisions\"]) ? \$p[\"extra\"][\"patches\"][\"drupal/entity_reference_revisions\"] : null;
-      if (!is_array(\$d)) { exit(1); }
-      \$o = array();
-      foreach (\$d as \$k => \$v) {
+      if (!isset(\$p[\"name\"]) || \$p[\"name\"] !== \$argv[1] || !isset(\$p[\"extra\"][\"patches\"][\"drupal/entity_reference_revisions\"])) { continue; }
+      \$d = \$p[\"extra\"][\"patches\"][\"drupal/entity_reference_revisions\"];
+      foreach ((array) \$d as \$k => \$v) {
         \$u = is_array(\$v) ? (isset(\$v[\"url\"]) ? \$v[\"url\"] : \"\") : \$v;
-        \$t = is_array(\$v) && isset(\$v[\"description\"]) ? \$v[\"description\"] : (is_string(\$k) ? \$k : \"issue 2799479\");
-        if (is_string(\$u) && preg_match(\"#^https://#\", \$u)) { \$o[\$t] = \$u; }
+        \$t = (is_array(\$v) && isset(\$v[\"description\"])) ? \$v[\"description\"] : (is_string(\$k) ? \$k : \"issue 2799479\");
+        if (is_string(\$u) && preg_match(\"#^https://#\", \$u)) { \$o[(string) \$t] = \$u; }
       }
-      if (!\$o) { exit(1); }
-      echo json_encode(array(\"drupal/entity_reference_revisions\" => \$o), JSON_UNESCAPED_SLASHES);
-      exit(0);
     }
-    exit(1);' '${_CULTURAS_DISTPKG}'")" || return 1
-  _run_as_o8 "cd '${_dir}' && composer config --no-plugins --json extra.composer-patches.ignore-dependency-patches '[\"${_CULTURAS_DISTPKG}\"]' \
-    && composer config --no-plugins --json extra.patches '${_p}'"
+    if (!\$o) { exit(1); }
+    if (!isset(\$j->extra) || !is_object(\$j->extra)) { \$j->extra = new stdClass(); }
+    if (!isset(\$j->extra->{\"composer-patches\"}) || !is_object(\$j->extra->{\"composer-patches\"})) { \$j->extra->{\"composer-patches\"} = new stdClass(); }
+    \$j->extra->{\"composer-patches\"}->{\"ignore-dependency-patches\"} = array(\$argv[1]);
+    \$j->extra->patches = (object) array(\"drupal/entity_reference_revisions\" => (object) \$o);
+    exit(file_put_contents(\"composer.json\", json_encode(\$j, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . \"\\n\") === false ? 1 : 0);' '${_CULTURAS_DISTPKG}'"
 }
 
 _culturas_build() {
