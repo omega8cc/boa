@@ -2504,11 +2504,13 @@ _names_one() {
 ### request this box makes itself (a tool's own probe of a site, on the
 ### target or through the relay) is no visitor's: its first field is this box
 ### too, and it is left out. A request the target makes itself for a name
-### that still leads here comes back through this box as well: the control
-### panel's hourly web cron calls each site by its name (unless the account
-### has static/control/cron-proxy.info), the nightly site pass asks for each
-### site's robots.txt and llms.txt by name, and a site there may call a name
-### of its own. Its first field is one of the target's own addresses, those
+### that still leads here comes back through this box as well: the nightly
+### site pass asks for each site's robots.txt and llms.txt by name, the
+### control panel's hourly web cron calls each site by its name once the
+### account's nightly pass set it to run by web request (unless the account
+### keeps log/hosting_cron_use_backend.txt; never with its
+### static/control/cron-proxy.info), and a site there may call a name of its
+### own. Its first field is one of the target's own addresses, those
 ### it lists itself and the one this box relays to. It is no visitor's
 ### either, and is kept apart, the second figure, never in the count. A
 ### request of the target's that reaches this box through another front (a
