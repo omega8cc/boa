@@ -847,6 +847,24 @@ _acct_store() {
   printf '%s\n' "${_st}"
 }
 
+# Whether a folder at the account's names in the shared toolchain parents
+# (root's, sticky and open to every user, so any account can make a name
+# there first) is the account's own to walk: a name of the characters a
+# login name holds, since every caller splits the root list on blanks and
+# expands it (a tenant's "o1.x .." would add the parent of the caller's
+# directory, "o1.x *" its entries), and owned by root or one of the
+# account's identities. A folder it refuses is left out of every walk, its
+# files as they are. $1 = the folder, $2 = the account.
+_acct_tc_own() {
+  case "${1##*/}" in
+    *[!a-zA-Z0-9._-]*) return 1 ;;
+  esac
+  case "$(stat -c %U -- "${1}" 2> /dev/null)" in
+    root|"${2}"|"${2}".*) return 0 ;;
+  esac
+  return 1
+}
+
 # Roots the group walk covers. /home/<acct>.ftp/clients is a symlink into the
 # account root (covered there); the store on attached storage is
 # _acct_store's, when the account owns it.
@@ -857,18 +875,31 @@ _acct_roots() {
   for _u in $(_acct_subusers "${_a}" 2> /dev/null); do
     [ -d "/home/${_u}" ] && printf '%s\n' "/home/${_u}"
   done
-  # the shared toolchain parents are root's, sticky and open to every user:
-  # a folder at the account's names there is its own only when root or one
-  # of its identities owns it, since another account can make the name
-  # first; such a folder is left out of every walk, its files as they are
   for _r in /opt/user/gems/"${_a}" /opt/user/gems/"${_a}".* /opt/user/npm/"${_a}" /opt/user/npm/"${_a}".*; do
     [ -d "${_r}" ] && [ ! -L "${_r}" ] || continue
-    case "$(stat -c %U -- "${_r}" 2> /dev/null)" in
-      root|"${_a}"|"${_a}".*) printf '%s\n' "${_r}" ;;
-    esac
+    _acct_tc_own "${_r}" "${_a}" && printf '%s\n' "${_r}"
   done
   _acct_store "${_a}"
   return 0
+}
+
+# The first folder at the account's names that the walk leaves out and that
+# still holds an entry in gid $1 (a link aside: its group grants nothing),
+# printed with any control character as '?'; nothing, and false, when there
+# is none. Revert keeps the group while one does: removed, the group would
+# leave those entries a bare number addgroup can hand to a new account.
+# $2 = the account.
+_acct_tc_left_gid() {
+  local _gid="$1" _a="$2" _r
+  for _r in /opt/user/gems/"${_a}" /opt/user/gems/"${_a}".* /opt/user/npm/"${_a}" /opt/user/npm/"${_a}".*; do
+    [ -d "${_r}" ] && [ ! -L "${_r}" ] || continue
+    _acct_tc_own "${_r}" "${_a}" && continue
+    if [ -n "$(find -P "${_r}" -gid "${_gid}" ! -type l -print -quit 2> /dev/null)" ]; then
+      printf '%s\n' "${_r//[[:cntrl:]]/?}"
+      return 0
+    fi
+  done
+  return 1
 }
 
 # Every fetched root-run writer that touches account trees must carry the
@@ -1933,7 +1964,7 @@ _do_reclaim_files() {
 }
 
 _do_revert() {
-  local _a="$1" _gid _roots _cnf _u _busy _rc=0 _wgSt
+  local _a="$1" _gid _roots _cnf _u _busy _rc=0 _wgSt _left
   _ACCT="${_a}"
   _valid_account "${_a}" || { _fail "${_a} is not an Octopus account on this box"; return 1; }
   # The account group is the base the web group sits on: taking it away
@@ -1999,6 +2030,13 @@ _do_revert() {
       # _UNWALKED is complete here: the last _gid_left found nothing left.
       _alrt "group ${_a} (gid ${_gid}) kept: ${_UNWALKED} entries under the roots still carry it that the walk never changes (see instgrp status ${_a} for examples; re-run revert once they are gone)"
       _log "${_a}: group kept, ${_UNWALKED} entries the walk never changes (hard-linked files and FIFOs not owned by an account identity, sockets, devices) still in gid ${_gid}"
+      [ "${_rc}" = "1" ] || _rc=2
+    elif _left=$(_acct_tc_left_gid "${_gid}" "${_a}"); then
+      # a folder at the account's names the walk leaves out (another owner,
+      # or a name it does not take) can still hold the group: an earlier
+      # walk took it in, or an identity wrote there
+      _alrt "group ${_a} (gid ${_gid}) kept: ${_left} is left out of the walk and still holds entries in it (re-group or remove them, then re-run revert)"
+      _log "${_a}: group kept, ${_left} (left out of the walk) still holds entries in gid ${_gid}"
       [ "${_rc}" = "1" ] || _rc=2
     elif [ -z "$(getent group "${_a}" | cut -d: -f4)" ] \
       && ! getent passwd | awk -F: -v g="${_gid}" '$4 == g { f=1 } END { exit !f }'; then

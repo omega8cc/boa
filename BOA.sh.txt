@@ -5895,7 +5895,7 @@ CSFSTANDBY
     # documented /usr/local/bin path stays a symlink to the fleet copy.
     _fetch_versioned ${_optBin}/aegir2boa-preflight "${_urlHmr}/${_tBn}/aegir2boa-preflight" f94 --guard /local/bin/aegir2boa-preflight
     _fetch_versioned ${_optBin}/aegir2boa-stage1 "${_urlHmr}/${_tBn}/aegir2boa-stage1" f95 --guard /local/bin/aegir2boa-stage1
-    _fetch_versioned ${_optBin}/aegir2boa-stage2 "${_urlHmr}/${_tBn}/aegir2boa-stage2" f53 --symlink ${_usrBin}/aegir2boa-stage2 --guard /local/bin/aegir2boa-stage2
+    _fetch_versioned ${_optBin}/aegir2boa-stage2 "${_urlHmr}/${_tBn}/aegir2boa-stage2" f52 --symlink ${_usrBin}/aegir2boa-stage2 --guard /local/bin/aegir2boa-stage2
     _fetch_versioned ${_optBin}/aptcleanup "${_urlHmr}/${_tBn}/aptcleanup" f91 --guard /local/bin/aptcleanup
     _fetch_versioned ${_optBin}/aptfast "${_urlHmr}/${_tBn}/aptfast" f95 --guard /local/bin/aptfast
     _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/${_tBn}/autobeowulf" f80 --guard /local/bin/autobeowulf
@@ -5927,7 +5927,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/ffmirror "${_urlHmr}/${_tBn}/ffmirror" f97 --guard /local/bin/ffmirror
     _fetch_versioned ${_optBin}/fixmounts "${_urlHmr}/${_tBn}/fixmounts" f98 --guard /local/bin/fixmounts
     _fetch_versioned ${_optBin}/fixrepo "${_urlHmr}/${_tBn}/fixrepo" f90 --guard /local/bin/fixrepo
-    _fetch_versioned ${_optBin}/instgrp "${_urlHmr}/${_tBn}/instgrp" f01 --guard /local/bin/instgrp
+    _fetch_versioned ${_optBin}/instgrp "${_urlHmr}/${_tBn}/instgrp" f00 --guard /local/bin/instgrp
     _fetch_versioned ${_optBin}/linkguard "${_urlHmr}/${_tBn}/linkguard" f86 --guard /local/bin/linkguard
     _fetch_versioned ${_optBin}/eolreport "${_urlHmr}/${_tBn}/eolreport" f98 --symlink ${_usrBin}/eolreport --guard /local/bin/eolreport
     _fetch_core_coverage
@@ -5952,9 +5952,9 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/synproxy_snapshot "${_urlHmr}/${_tBn}/synproxy_snapshot" f99 --guard /local/bin/synproxy_snapshot
     _fetch_versioned ${_optBin}/synproxy_status "${_urlHmr}/${_tBn}/synproxy_status" f99 --guard /local/bin/synproxy_status
     _fetch_versioned ${_optBin}/webserver "${_urlHmr}/${_tBn}/webserver" f93 --guard /local/bin/webserver
-    _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f06 --guard /local/bin/xcopy
-    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f12 --guard /local/bin/xmass
-    _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f89 --guard /local/bin/xoct
+    _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f05 --guard /local/bin/xcopy
+    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f11 --guard /local/bin/xmass
+    _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f88 --guard /local/bin/xoct
     _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f26 --guard /local/bin/xtrim
     # The migration-proxy trust and realip tools ride here with xoct and xmass,
     # which run them: on a _SKYNET_MODE=OFF box the agents pass never runs, and

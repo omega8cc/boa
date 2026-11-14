@@ -2034,6 +2034,19 @@ for _R in "/data/disk/\${_A}" "/home/\${_A}.ftp" /home/"\${_A}".* "/opt/user/gem
   # the FPM pool users' homes (oN.web, oN.NN.web) are www-data's, never the
   # account's: the same root set the tool walks
   case "\${_R}" in /home/*.web) continue ;; esac
+  # a folder in the shared toolchain parents (root's, sticky, open to every
+  # user) is the account's only when root or one of its own identities owns
+  # it: another account can make the name first, and its files are left as
+  # they are (the parent being sticky, no one else can swap such a folder)
+  case "\${_R}" in
+    /opt/user/*)
+      _O="\$(stat -c %U -- "\${_R}" 2>/dev/null)"
+      case "\${_O}" in
+        root|"\${_A}"|"\${_A}".*) ;;
+        *) echo "INFO: target group pass for \${_A}: \${_R//[[:cntrl:]]/?} is owned by \${_O:-an owner that cannot be read}, not by \${_A} or root: left out"; continue ;;
+      esac
+      ;;
+  esac
   # regrouped through a no-follow handle on each name inside the directory
   # find holds, never by name: only a directory, or a regular file with one
   # link, whose handle is still in none of those groups, so a hard link to

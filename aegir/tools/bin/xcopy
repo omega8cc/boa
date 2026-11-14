@@ -873,7 +873,7 @@ for _R in "/data/disk/\${_A}" "/home/\${_A}.ftp" /home/"\${_A}".* "/opt/user/gem
       _O="\$(stat -c %U -- "\${_R}" 2>/dev/null)"
       case "\${_O}" in
         root|"\${_A}"|"\${_A}".*) ;;
-        *) echo "INFO: target group pass for \${_A}: \${_R} is owned by \${_O:-an owner that cannot be read}, not by \${_A} or root: left out"; continue ;;
+        *) echo "INFO: target group pass for \${_A}: \${_R//[[:cntrl:]]/?} is owned by \${_O:-an owner that cannot be read}, not by \${_A} or root: left out"; continue ;;
       esac
       ;;
   esac
@@ -4038,7 +4038,7 @@ _migrate_prepare() {
         _SILENT_PROBE=$(ssh root@"${_tgt}" "[ -e /root/.silent.update.cnf ] && echo YES || echo NO" 2>/dev/null)
         if [ "${_SILENT_PROBE}" = "NO" ] && ssh root@"${_tgt}" "touch /root/.silent.update.cnf"; then
           _SILENT_MARKER=YES
-          trap '_xcopy_chattr_back; ssh root@'"${_tgt}"' "rm -f /root/.silent.update.cnf" &> /dev/null; rm -f "${_XCOPY_LOCK_FILE}"' EXIT
+          trap '[ -n "${_XCOPY_RSYNC_ERR:-}" ] && rm -f -- "${_XCOPY_RSYNC_ERR}"; _xcopy_chattr_back; ssh root@'"${_tgt}"' "rm -f /root/.silent.update.cnf" &> /dev/null; rm -f "${_XCOPY_LOCK_FILE}"' EXIT
           trap 'exit 130' INT TERM HUP
         elif [ "${_SILENT_PROBE}" != "YES" ]; then
           if [ -n "${_XCOPY_ADMAIL}" ]; then
@@ -4058,7 +4058,7 @@ _migrate_prepare() {
         ### from then on the seeds stay. Its signal handler exits, which runs
         ### the EXIT handler.
         _XCOPY_INSTALL_ON=NO
-        trap '_xcopy_chattr_back; [ "${_XCOPY_INSTALL_ON}" = "YES" ] || { _xcopy_dbarm_unseed "${_TGT_HM_USER}" '"${_tgt}"'; _xcopy_wg_unseed "${_TGT_HM_USER}" '"${_tgt}"'; } > /dev/null 2>&1; [ "${_SILENT_MARKER}" = "YES" ] && ssh root@'"${_tgt}"' "rm -f /root/.silent.update.cnf" &> /dev/null; rm -f "${_XCOPY_LOCK_FILE}"' EXIT
+        trap '[ -n "${_XCOPY_RSYNC_ERR:-}" ] && rm -f -- "${_XCOPY_RSYNC_ERR}"; _xcopy_chattr_back; [ "${_XCOPY_INSTALL_ON}" = "YES" ] || { _xcopy_dbarm_unseed "${_TGT_HM_USER}" '"${_tgt}"'; _xcopy_wg_unseed "${_TGT_HM_USER}" '"${_tgt}"'; } > /dev/null 2>&1; [ "${_SILENT_MARKER}" = "YES" ] && ssh root@'"${_tgt}"' "rm -f /root/.silent.update.cnf" &> /dev/null; rm -f "${_XCOPY_LOCK_FILE}"' EXIT
         trap 'exit 130' INT TERM HUP
         _xcopy_wg_seed "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
         _xcopy_dbarm_seed "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
@@ -4095,7 +4095,7 @@ _migrate_prepare() {
           ssh root@"${_tgt}" "rm -f /root/.silent.update.cnf"
           _SILENT_MARKER=NO
         fi
-        trap '_xcopy_chattr_back; rm -f "${_XCOPY_LOCK_FILE}"' EXIT
+        trap '[ -n "${_XCOPY_RSYNC_ERR:-}" ] && rm -f -- "${_XCOPY_RSYNC_ERR}"; _xcopy_chattr_back; rm -f "${_XCOPY_LOCK_FILE}"' EXIT
         trap 'rm -f "${_XCOPY_LOCK_FILE}"; exit 130' INT TERM HUP
         if ! _xcopy_create_mark "${_oct}" "${_TGT_HM_USER}" "${_tgt}"; then
           echo "ALRT: the create marker for ${_TGT_HM_USER} could not be put on ${_tgt}; a re-run of this create will refuse the account"
@@ -4886,9 +4886,11 @@ _xcopy_backups_leg() {
   [ -n "$(_xcopy_in_canon_dir "${_r}" find . -mindepth 1 -maxdepth 1 \
     -name '[!.]*' -print -quit 2> /dev/null)" ] || return 0
   [ "${_MODE}" = "LIVE" ] && _XCOPY_RSYNC_ERR="$(mktemp /tmp/xmig-leg-err.XXXXXX 2> /dev/null)"
+  ### a backup the glob named and a rotation removed before the copy read
+  ### it is skipped, as one removed during the copy is
   # shellcheck disable=SC2086
   _xcopy_in_canon_dir "${_r}" _xcopy_copy_canon_here "${_h}" "${_to:-${_d}/${_n}}" '*' \
-    -aEAXqu ${_ie}
+    -aEAXqu --ignore-missing-args ${_ie}
   _rc="$(_xcopy_leg_rc "$?")"
   ### 24, or a 23 only vanished files caused: files gone while the copy ran
   ### (a rotated backup)
@@ -4906,7 +4908,9 @@ _xcopy_backups_leg() {
 ### call met it first (the xattr or ACL read, the lstat, the open, the
 ### opendir) and the run exits 23, not 24. A client's own gem or npm run, or a
 ### backup rotated during the copy, does exactly that. link_stat is a source
-### argument that never existed, never a vanished file; any receiver-side
+### argument gone before the copy read it: the backups leg passes its glob's
+### names with --ignore-missing-args, so a backup rotated before the read is
+### skipped there; anywhere else it is no vanished file. Any receiver-side
 ### error and any other errno keep 23 as the failure it is. xmass reads its
 ### copies the same way (_xmass_rsync_vanished_only).
 ### $1 = the captured rsync stderr; returns 0 when 23 may be read as 24.
@@ -4915,13 +4919,20 @@ _xcopy_rsync_vanished_only() {
   [ -s "${_err}" ] || return 1
   grep -q 'No such file or directory' "${_err}" || return 1
   grep -qE 'rsync: (\[sender\] )?link_stat ' "${_err}" && return 1
-  # rsync before 3.2.3 (a legacy source) prints no [sender] role tag, so the
-  # untagged form is accepted only for the sender's own listing calls
-  _bad=$(grep -E '^rsync(:| error:| warning:)' "${_err}" \
-    | grep -vE '^rsync: \[sender\] .*No such file or directory \(2\)$' \
+  # Every line must be one of these, or 23 stays a failure: a sender ENOENT
+  # (rsync before 3.2.3, a legacy source, prints no [sender] role tag, so the
+  # untagged form is accepted only for the sender's own listing calls), the
+  # vanished-file warning, rsync's closing lines, ssh's note on a host key it
+  # added, an empty line. The receiver reports some failures without an rsync
+  # prefix (a file that failed verification, a name too long to make): such a
+  # line is no vanished file.
+  _bad=$(grep -vE '^rsync: \[sender\] .*No such file or directory \(2\)$' "${_err}" \
     | grep -vE '^rsync: (get_xattr_names|get_xattr_data|get_acl|readlink_stat|send_files|opendir)[ :(].*No such file or directory \(2\)$' \
+    | grep -vE '^(rsync: (\[sender\] )?)?file has vanished: ' \
     | grep -vE '^rsync error: some files/attrs were not transferred \(see previous errors\) \(code 23\)' \
     | grep -vE '^rsync warning: some files vanished before they could be transferred \(code 24\)' \
+    | grep -vE '^Warning: Permanently added ' \
+    | grep -vE '^[[:space:]]*$' \
     | head -1)
   [ -z "${_bad}" ]
 }
@@ -6376,10 +6387,12 @@ _xcopy_csf_text_covers_ip() {
 ### is the first contact with the target (the scan runs after it), so its
 ### login accepts a host key this box has not met yet. xoct's
 ### _xoct_require_peer_whitelist twin, without its xmass-run exemption (xmass
-### never runs xcopy).
+### never runs xcopy). Unlike xoct, xcopy takes a target by name too, and its
+### key step scans such a name: one is checked here as an address is (its
+### login records the key, so that scan finds it known and opens nothing).
 _xcopy_require_peer_whitelist() {
   local _p="$1" _out _allow _ignore _ip _miss="" _half="" _e _said=""
-  _mig_valid_ip "${_p}" || return 0
+  _mig_valid_ip "${_p}" || [[ "${_p}" =~ ^[A-Za-z0-9][A-Za-z0-9.:-]*$ ]] || return 0
   _e="$(mktemp /tmp/mig-said.XXXXXX 2> /dev/null)" || _e=""
   _out="$(ssh -o ConnectTimeout=15 -o BatchMode=yes -o StrictHostKeyChecking=accept-new root@"${_p}" \
     "if [ -x /usr/sbin/csf ] && [ -e /etc/csf/csf.allow ]; then echo XCOPY-CSF-ALLOW; cat /etc/csf/csf.allow; echo; echo XCOPY-CSF-IGNORE; cat /etc/csf/csf.ignore 2>/dev/null; echo; echo XCOPY-CSF-END; else echo XCOPY-CSF-NONE; fi" 2> "${_e:-/dev/null}")"
@@ -7931,7 +7944,7 @@ _take_verb_lock() {
   [ "$(id -u)" = "0" ] || return 0
   while :; do
     if ( set -C; echo "$$" > "${_XCOPY_LOCK_FILE}" ) 2>/dev/null; then
-      trap '_xcopy_chattr_back; rm -f "${_XCOPY_LOCK_FILE}"' EXIT
+      trap '[ -n "${_XCOPY_RSYNC_ERR:-}" ] && rm -f -- "${_XCOPY_RSYNC_ERR}"; _xcopy_chattr_back; rm -f "${_XCOPY_LOCK_FILE}"' EXIT
       trap 'rm -f "${_XCOPY_LOCK_FILE}"; exit 130' INT TERM HUP
       return 0
     fi
@@ -8007,7 +8020,7 @@ _xcopy_sql_maint_hold() {
     # Signals masked first: one landing in here would run the exit below inside
     # this trap and skip the release, pausing the watchdog for hours. The release
     # goes before the chattr step, the one part that can block on a sick disk.
-    trap 'trap "" INT TERM HUP; _xcopy_sql_maint_release; _xcopy_chattr_back; rm -f "${_XCOPY_LOCK_FILE}"' EXIT
+    trap 'trap "" INT TERM HUP; _xcopy_sql_maint_release; _xcopy_chattr_back; [ -n "${_XCOPY_RSYNC_ERR:-}" ] && rm -f -- "${_XCOPY_RSYNC_ERR}"; rm -f "${_XCOPY_LOCK_FILE}"' EXIT
     trap 'exit 130' INT TERM HUP
     if [ -z "${_XCOPY_SQL_MAINT_BEAT}" ] || ! kill -0 "${_XCOPY_SQL_MAINT_BEAT}" 2>/dev/null; then
       # Detached, not a child of this shell: the bare `wait` calls in this
