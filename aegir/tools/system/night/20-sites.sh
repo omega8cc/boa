@@ -3769,10 +3769,14 @@ _fix_site_system_control_settings() {
 ### (_ctrl_ini_sed): -e expressions run in sequence on every line, and a line
 ### the fourth deletes never reaches the fifth, as with separate passes.
 _cleanup_ini() {
+  ### A line that starts with a blank is dropped, except one whose key is
+  ### drupal_upgrade_modes: the panel reads such a line as a list it cannot
+  ### trust and refuses every upgrade of the site or platform, and with the
+  ### line gone the next day it would accept them all.
   if [ -e "${_CTRL_F}" ]; then
     _ctrl_ini_sed "${_CTRL_F}" \
       -e "s/^;;.*//g" \
-      -e "s/^ .*//g" \
+      -e '/^[[:space:]]*drupal_upgrade_modes[[:space:]]*\(=\|$\)/I!s/^ .*//g' \
       -e "s/^#.*//g" \
       -e "/^$/d" \
       -e "s/^\[/\n\[/g" &> /dev/null
