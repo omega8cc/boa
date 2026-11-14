@@ -1598,6 +1598,16 @@
       its log. A site whose certificate holds such a name is renewed once
       without it.
 
+    * xoct's warning about expired certificates on a relaying server says
+      how many there are. It named the soonest expired set of the account
+      and nothing else, which read as the whole list, and it said the set
+      would be served expired until the mirror pulled a newer one, when the
+      new server may hold none. The line now carries the count (expired: N
+      of the M sets this account's proxies serve), says each stays expired
+      until the new server holds a newer set, and names the command that
+      lists every set with what the new server holds:
+      bash /var/xdrago/migration_proxy_certs.sh --dry
+
     * On a box relaying moved sites, the certificate mirror now warns when a
       relayed site's certificate has expired, or will within the warning
       window, and its target holds nothing newer: the daily run names the

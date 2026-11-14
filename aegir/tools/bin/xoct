@@ -9614,6 +9614,8 @@ _xoct_https_names_here() {
 ### read.
 _xoct_warn_proxy_cert_horizon() {
   local _root="$1" _vd _v _d _t _c _r _end _e _soon="" _soon_e="" _soon_dom="" _pt=""
+  local _now _n=0 _exp=0 _of=""
+  _now="$(date -u '+%s')"
   _vd="${_root}/config/server_master/nginx/vhost.d"
   while IFS= read -r _v; do
     _d="${_v#https.}"
@@ -9636,27 +9638,36 @@ _xoct_warn_proxy_cert_horizon() {
     [ -n "${_end}" ] || continue
     _e=$(date -u -d "${_end}" '+%s' 2>/dev/null)
     [[ "${_e}" =~ ^[0-9]+$ ]] || continue
+    _n=$((_n + 1))
+    [ "${_e}" -le "${_now}" ] && _exp=$((_exp + 1))
     if [ -z "${_soon_e}" ] || [ "${_e}" -lt "${_soon_e}" ]; then
       _soon_e="${_e}"; _soon_dom="${_d}"
     fi
   done < <(_xoct_in_real_dir "${_vd}" _xoct_https_names_here)
   [ -n "${_soon_e}" ] || return 0
   _soon=$(date -u -d "@${_soon_e}" '+%Y-%m-%d')
-  [ "${_soon_e}" -le "$(date -u '+%s')" ] && _pt=" has already PASSED"
+  ### The soonest date is one set's: beside it, how many of the sets this
+  ### account's proxies serve have run out, so one name is not read as the
+  ### whole list. Which they are, and what the target holds for each, is the
+  ### mirror's own report (its --dry run writes nothing).
+  if [ "${_exp}" -gt 0 ]; then
+    _pt=" has already PASSED"
+    _of=" (expired: ${_exp} of the ${_n} sets this account's proxies serve)"
+  fi
   if [ -x "/var/xdrago/migration_proxy_certs.sh" ] \
     && grep -q "migration_proxy_certs" /var/spool/cron/crontabs/root 2>/dev/null; then
     echo "INFO: proxied certificates refresh daily from the target (migration_proxy_certs.sh);"
     if [ -n "${_pt}" ]; then
-      echo "ALRT: soonest local expiry ${_soon} (${_soon_dom})${_pt} -- this proxy serves it expired until the mirror pulls a newer set from the target (daily at 06:45, or now: bash /var/xdrago/migration_proxy_certs.sh)"
+      echo "ALRT: soonest local expiry ${_soon} (${_soon_dom})${_pt}${_of} -- this proxy serves each expired set until the target holds a newer one and the mirror pulls it (daily at 06:45); to list every set with what the target holds: bash /var/xdrago/migration_proxy_certs.sh --dry"
     else
       echo "INFO: soonest local expiry ${_soon} (${_soon_dom}) -- the mirror pulls each newer set from the target daily"
     fi
   elif [ -x "/var/xdrago/migration_proxy_certs.sh" ]; then
     echo "ALRT: migration_proxy_certs.sh is present but NOT SCHEDULED (no root crontab line);"
-    echo "ALRT: soonest certificate expiry ${_soon} (${_soon_dom})${_pt} -- add the daily 06:45 line"
+    echo "ALRT: soonest certificate expiry ${_soon} (${_soon_dom})${_pt}${_of} -- add the daily 06:45 line"
     echo "ALRT: (a barracuda up-* run or the BOA fetch pass restores it) or the mirror never runs"
   else
-    echo "ALRT: soonest certificate expiry ${_soon} (${_soon_dom})${_pt} and the certificate mirror"
+    echo "ALRT: soonest certificate expiry ${_soon} (${_soon_dom})${_pt}${_of} and the certificate mirror"
     if [ -n "${_pt}" ]; then
       echo "ALRT: /var/xdrago/migration_proxy_certs.sh is MISSING on this box -- this proxy already"
       echo "ALRT: serves an expired certificate. The mirror ships with the"
