@@ -9939,7 +9939,8 @@ _xmass_rsync_vanished_only() {
   # older or armoured peer, OpenSSH 10.1 and later), an empty line. The
   # receiver reports some failures without an rsync prefix (a file that failed
   # verification, a name too long to make): such a line is no vanished file.
-  _bad=$(grep -vE '^rsync: \[sender\] .*No such file or directory \(2\)$' "${_err}" \
+  # ssh ends each line it writes to stderr with a carriage return as well.
+  _bad=$(tr -d '\r' < "${_err}" | grep -vE '^rsync: \[sender\] .*No such file or directory \(2\)$' \
     | grep -vE '^rsync: (get_xattr_names|get_xattr_data|get_acl|readlink_stat|send_files|opendir)[ :(].*No such file or directory \(2\)$' \
     | grep -vE '^(rsync: (\[sender\] )?)?(file|directory) has vanished: ' \
     | grep -vE '^rsync error: some files/attrs were not transferred \(see previous errors\) \(code 23\)' \
