@@ -2269,6 +2269,21 @@ _xoct_this_fqdn() {
   _xoct_valid_host "${_f}" || _f=""
   printf '%s' "${_f}"
 }
+### This server's name as export records it in log/sourcefqdn.txt: the
+### account's own server_master alias (a target keeps its own, so on a server
+### that received the account it names that server), else hostname -f; never
+### the box's master alias, which _xoct_this_fqdn reads. Read inside the real
+### .drush, never through a link put at it.
+_xoct_export_fqdn() {
+  local _f
+  _f=$(_xoct_read_in "${_USR}/.drush" server_master.alias.drushrc.php \
+    | grep "remote_host" \
+    | head -1 \
+    | sed "s/.*remote_host.*=>//; s/[' ,;]//g")
+  _f=${_f//[^a-zA-Z0-9.\-]/}
+  [ -z "${_f}" ] && _f=$(hostname -f 2>/dev/null | tr -d '\n')
+  printf '%s' "${_f}"
+}
 ### What the target $1 says of the account $2 there, for a client notice, as
 ### five lines: its hostname, the control panel name root's cnf of the
 ### account holds there (_DOMAIN: written for that box when the account is
@@ -5301,6 +5316,31 @@ _xoct_rm_fpm_markers_here() {
 _xoct_rm_sql_dumps_here() {
   rm -f -- ./*.sql
 }
+### The per-site dump folders in the current (pinned) src/ directory removed:
+### a real directory holding mydumper's metadata file. A link is never
+### followed.
+_xoct_rm_site_dumps_here() {
+  local _e
+  for _e in ./*/; do
+    _e="${_e%/}"
+    [ -L "${_e}" ] && continue
+    if [ -d "${_e}" ] && [ -f "${_e}/metadata" ] && [ ! -L "${_e}/metadata" ]; then
+      rm -rf -- "${_e}"
+    fi
+  done
+}
+### The per-site dump folders still in the current (pinned) src/ directory,
+### each after a space.
+_xoct_site_dumps_left_here() {
+  local _e
+  for _e in ./*/; do
+    _e="${_e%/}"
+    [ -L "${_e}" ] && continue
+    if [ -d "${_e}" ] && [ -f "${_e}/metadata" ] && [ ! -L "${_e}/metadata" ]; then
+      printf ' %s/' "${_e#./}"
+    fi
+  done
+}
 _xoct_heal_fpm_pins() {
   local _acct="$1"
   local _root="/data/disk/${_acct}"
@@ -7696,6 +7736,18 @@ _migrate_prepare() {
   ### own is closed to other writers, and one the account does not own
   ### refuses the export before the client is told of it or anything changes.
   if [ "${_cmd}" = "export" ]; then
+    ### An export with no panel database to dump would ship the sites alone,
+    ### or beside a panel dump an older copy left in src/: refused here, as
+    ### import's precheck refuses it, before the client is told of the move
+    ### or anything changes. Read-only; the read below is the one used.
+    _XOCT_HDB_FIRST=""
+    [ -e "${_THIS_HM_SITE}/drushrc.php" ] \
+      && _XOCT_HDB_FIRST="$(_xoct_panel_db_line "${_THIS_HM_SITE}")"
+    if [ -z "${_XOCT_HDB_FIRST//[^a-zA-Z0-9_]/}" ]; then
+      echo "ERROR: ${_USR##*/} not exported: ${_THIS_HM_SITE:-the panel site}/drushrc.php names no panel database"
+      echo "ERROR: nothing was exported, the client was not told and nothing on this box was changed; fix the cause and re-run"
+      exit 1
+    fi
     _xoct_in_real_dir "${_USR}/static" _xoct_ctrl_dir_here
     if ! _XOCT_GATE_WHY="$(_xoct_gate_own "${_USR}" t)"; then
       echo "ERROR: ${_USR##*/} not exported: its sites would not honour the 503 gate in static/control (${_XOCT_GATE_WHY})"
@@ -7752,6 +7804,7 @@ _migrate_prepare() {
   ### The panel site is the account's: drushrc.php is read inside its real
   ### directory, never through a link or into a FIFO. Read before anything
   ### below changes the box, so the refusal that follows leaves it as it was.
+  _HDB=""
   if [ -e "${_THIS_HM_SITE}/drushrc.php" ]; then
     _HDB=$(_xoct_panel_db_line "${_THIS_HM_SITE}")
     echo "raw _HDB is ${_HDB}"
@@ -7767,6 +7820,13 @@ _migrate_prepare() {
     && [ -z "${_HDB}" ]; then
     echo "ERROR: import for ${_oct}: ${_THIS_HM_SITE}/drushrc.php names no panel database"
     echo "ERROR: nothing was imported and nothing on this box was changed; fix the cause and re-run"
+    exit 1
+  fi
+  ### The export's first read found one; a drushrc.php swapped since then
+  ### must not skip the panel dump and stamp the export over an older one.
+  if [ "${_cmd}" = "export" ] && [ -z "${_HDB}" ]; then
+    echo "ERROR: export for ${_oct}: ${_THIS_HM_SITE}/drushrc.php names no panel database (it did at the start)"
+    echo "ERROR: nothing was dumped; fix the cause and re-run"
     exit 1
   fi
   ### The account's upgrade notice goes off on this box, before the first
@@ -7814,6 +7874,30 @@ _migrate_prepare() {
   ### src/ belongs to oN: make it a real directory (a link the account put at
   ### the name is removed) so the dump below cannot be steered elsewhere.
   _xoct_in_real_dir "${_USR}" _xoct_realdir_here src
+  ### An export starts from no earlier run's state but the panel dump it
+  ### keeps: an earlier run's failure latch goes, so a run that stops at the
+  ### panel leaves none for a transfer to take for an export, and every
+  ### per-site dump folder in src/ goes (an earlier copy's, or one a killed
+  ### run left), so a site this run does not dump has no folder for the
+  ### transfer to send and the import to load as current.
+  if [ "${_cmd}" = "export" ]; then
+    _xoct_in_real_dir "${_USR}/log" rm -f -- ./export_failed.pid
+    _xoct_in_real_dir "${_USR}/src" _xoct_rm_site_dumps_here
+    _XOCT_LEFT=""
+    if [ -e "${_USR}/log/export_failed.pid" ] || [ -L "${_USR}/log/export_failed.pid" ]; then
+      _XOCT_LEFT=" log/export_failed.pid"
+    fi
+    if _XOCT_LEFT_SRC="$(_xoct_in_real_dir "${_USR}/src" _xoct_site_dumps_left_here)"; then
+      _XOCT_LEFT="${_XOCT_LEFT}${_XOCT_LEFT_SRC// / src/}"
+    else
+      _XOCT_LEFT="${_XOCT_LEFT} src/ (not entered)"
+    fi
+    if [ -n "${_XOCT_LEFT}" ]; then
+      echo "ERROR: export for ${_oct}: an earlier export's state stays in ${_USR}:${_XOCT_LEFT}"
+      echo "ERROR: nothing was dumped; fix the cause and re-run"
+      exit 1
+    fi
+  fi
   if [ "${_cmd}" = "export" ] \
     && [ ! -z "${_HDB}" ] \
     && [ ! -e "${_USR}/src/prev_hostmaster.sql" ] \
@@ -7861,12 +7945,7 @@ _migrate_prepare() {
       # refuses without it. Travels with the log/ transfer sync.
       # The alias is read and the record put inside the real .drush and
       # log/ (both oN's), never through a link put at either name.
-      _SRC_FQDN=$(_xoct_read_in "${_USR}/.drush" server_master.alias.drushrc.php \
-        | grep "remote_host" \
-        | head -1 \
-        | sed "s/.*remote_host.*=>//; s/[' ,;]//g")
-      _SRC_FQDN=${_SRC_FQDN//[^a-zA-Z0-9.\-]/}
-      [ -z "${_SRC_FQDN}" ] && _SRC_FQDN=$(hostname -f 2>/dev/null | tr -d '\n')
+      _SRC_FQDN=$(_xoct_export_fqdn)
       printf '%s' "${_SRC_FQDN}" \
         | _xoct_in_real_dir "${_USR}/log" _xoct_write_here sourcefqdn.txt 022
       ### exported.pid is stamped by the run verdict AFTER _migrate_sites,
@@ -11612,12 +11691,32 @@ _migrate_init() {
     elif [ "${_cmd}" = "transfer" ] && [ -e "${_USR}/log/transferred.pid" ]; then
       echo "_USR ${_oct} is not eligible for migration: already transferred"
       exit 1
+    ### A transfer carries what this run's export made. With no export, src/
+    ### and log/ can hold an older copy's panel dump and source hostname (an
+    ### import this box once received), and a transfer stamped here refuses
+    ### the real one after the export.
+    elif [ "${_cmd}" = "transfer" ] && [ ! -e "${_USR}/log/exported.pid" ] \
+      && [ ! -e "${_USR}/log/export_failed.pid" ]; then
+      echo "_USR ${_oct} is not eligible for migration: not exported"
+      echo "INFO: run 'xoct export ${_oct} ${_tgt}${_dst:+ ${_dst}}${_XOCT_ADMAIL:+ admail=${_XOCT_ADMAIL}}' first"
+      exit 1
     elif [ "${_cmd}" = "transfer" ] && [ -e "${_USR}/log/export_failed.pid" ] \
       && [ "${_XOCT_FORCE}" != "YES" ]; then
       echo "_USR ${_oct} is not eligible for migration: export incomplete"
       echo "ALRT: log/export_failed.pid is present -- the last export left FAILED site dumps:"
       _xoct_read_in "${_USR}/log" export_failed.pid | sed "s/^/ALRT:   /"
       echo "INFO: re-run 'xoct export${_XOCT_ADMAIL:+ admail=${_XOCT_ADMAIL}}' after fixing the cause, or pass --force to transfer anyway"
+      exit 1
+    ### The stamps travel with the transfer and stay on a target whose import
+    ### stopped short: there they are the sending server's export, with its
+    ### dumps. Export records the server it ran on; --force passes no other.
+    elif [ "${_cmd}" = "transfer" ] \
+      && [ "$(_xoct_read_in "${_USR}/log" sourcefqdn.txt | tr -cd 'a-zA-Z0-9.-')" \
+        != "$(_xoct_export_fqdn | tr -cd 'a-zA-Z0-9.-')" ]; then
+      echo "_USR ${_oct} is not eligible for migration: exported on another server"
+      echo "INFO: log/sourcefqdn.txt names '$(_xoct_read_in "${_USR}/log" sourcefqdn.txt | tr -cd 'a-zA-Z0-9.-')', this server is '$(_xoct_export_fqdn | tr -cd 'a-zA-Z0-9.-')'"
+      echo "INFO: a move this server received and did not finish importing: finish that import here first"
+      echo "INFO: otherwise run 'xoct reset-state ${_oct}', then 'xoct export ${_oct} ${_tgt}${_dst:+ ${_dst}}'"
       exit 1
     elif [ "${_cmd}" = "import" ] && [ -e "${_USR}/log/export_failed.pid" ] \
       && [ "${_XOCT_FORCE}" != "YES" ]; then
@@ -11697,7 +11796,13 @@ _migrate_init() {
           _xoct_leg_ok "${_USR}/distro" \
             && _xoct_in_real_dir "${_USR}/distro" _xoct_copy_mk_here "${_tgt}" \
               "${_DST}/distro" '*' -aEAXqu ${_ieni}
-          _xoct_leg_ok "${_USR}/src" \
+          ### src/ travels with the transfer alone, after this run's export:
+          ### before it, src/ can hold an older copy's panel dump and site
+          ### dump folders (an import this box once received), and the
+          ### transfer adds to the target's folders without removing from
+          ### them, so the import would load that copy's files with the new.
+          [ "${_cmd}" = "transfer" ] \
+            && _xoct_leg_ok "${_USR}/src" \
             && _xoct_in_real_dir "${_USR}/src" _xoct_copy_mk_here "${_tgt}" \
               "${_DST}/src" '*' -aEAXqu ${_ieni}
           _xoct_transfer_static_symlink_safe "${_USR}" "${_tgt}" "${_DST}" "${_ieni}" "${_TGT_MNT}"
