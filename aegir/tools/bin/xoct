@@ -7909,6 +7909,22 @@ _migrate_prepare() {
       # Written into the real src/ as a fresh file renamed over the name, so a
       # link the account put at prev_hostmaster.sql (even a dangling one, past
       # the -e guard above) is replaced, never followed to create its target.
+      # Record the source FQDN for the import-side rename. The target keeps
+      # its own server_master alias (the transfer never sends this one), so
+      # renameaegirhost's auto-detection there would read OLD==NEW and
+      # silently no-op while the imported DB still holds this FQDN.
+      # Recording it here pins OLD deterministically (and keeps an aborted
+      # rename re-runnable after §3 already rewrote the aliases); import
+      # refuses without it. Travels with the log/ transfer sync.
+      # The alias is read and the record put inside the real .drush and
+      # log/ (both oN's), never through a link put at either name. Written
+      # before the dump lands: a run stopped between the two leaves a panel
+      # dump the next export keeps (it is not taken again), so a record
+      # written after it could stay missing for good; a dump that then fails
+      # leaves no export stamp.
+      _SRC_FQDN=$(_xoct_export_fqdn)
+      printf '%s' "${_SRC_FQDN}" \
+        | _xoct_in_real_dir "${_USR}/log" _xoct_write_here sourcefqdn.txt 022
       _mysqldump_gtid_opts
       [ "${#_MYSQLDUMP_GTID[@]}" -eq 0 ] \
         && echo "INFO: this mysqldump takes no --set-gtid-purged: its dump carries no GTID state"
@@ -7936,18 +7952,6 @@ _migrate_prepare() {
     if [ "${_XOCT_HM_DUMP_OK}" = "YES" ] \
       && [ -s "${_USR}/src/prev_hostmaster.sql" ]; then
       echo "INFO: hostmaster ${_oct} db export complete"
-      # Record the source FQDN for the import-side rename. The target keeps
-      # its own server_master alias (the transfer never sends this one), so
-      # renameaegirhost's auto-detection there would read OLD==NEW and
-      # silently no-op while the imported DB still holds this FQDN.
-      # Recording it here pins OLD deterministically (and keeps an aborted
-      # rename re-runnable after §3 already rewrote the aliases); import
-      # refuses without it. Travels with the log/ transfer sync.
-      # The alias is read and the record put inside the real .drush and
-      # log/ (both oN's), never through a link put at either name.
-      _SRC_FQDN=$(_xoct_export_fqdn)
-      printf '%s' "${_SRC_FQDN}" \
-        | _xoct_in_real_dir "${_USR}/log" _xoct_write_here sourcefqdn.txt 022
       ### exported.pid is stamped by the run verdict AFTER _migrate_sites,
       ### and only when every site dump completed -- the marker now means
       ### "this account's export is restorable", not "a dump was attempted".
@@ -13546,7 +13550,9 @@ _xoct_abandon() {
 ### panel's maintenance mode.
 _xoct_abandon_leftovers() {
   _xoct_abandon_latch
+  _xoct_abandon_failed_latch
   _xoct_abandon_dumps
+  _xoct_abandon_site_dumps
   _xoct_abandon_panel
 }
 ### The export latch of an abandoned move: with no gate and no proxy vhost
@@ -13560,6 +13566,32 @@ _xoct_abandon_latch() {
     echo "INFO: export latch cleared (log/exported.pid): proxy refuses ${_oct} until a fresh export"
   else
     echo "ALRT: ${_oct}'s log/exported.pid could not be cleared: proxy would still accept it"
+  fi
+}
+### A failed run's latch of an abandoned move: --force takes it for an export
+### at proxy and transfer, which would send the given-up run's dumps. Said
+### once, when there was one to clear.
+_xoct_abandon_failed_latch() {
+  [ -e "/data/disk/${_oct}/log/export_failed.pid" ] || [ -L "/data/disk/${_oct}/log/export_failed.pid" ] \
+    || return 0
+  if _xoct_in_real_dir "/data/disk/${_oct}/log" rm -f -- ./export_failed.pid; then
+    echo "INFO: the failed export's latch cleared (log/export_failed.pid): --force takes no export from it"
+  else
+    echo "ALRT: ${_oct}'s log/export_failed.pid could not be cleared: proxy --force and transfer --force would still take it"
+  fi
+}
+### The site dump folders of an abandoned move (a real folder in src/ holding
+### mydumper's metadata): a fresh export removes them too, but a forced
+### transfer before one would send them. Said once, when there were some.
+_xoct_abandon_site_dumps() {
+  local _S="/data/disk/${_oct}/src" _l
+  _l="$(_xoct_in_real_dir "${_S}" _xoct_site_dumps_left_here)" || return 0
+  [ -n "${_l}" ] || return 0
+  _xoct_in_real_dir "${_S}" _xoct_rm_site_dumps_here
+  if [ -z "$(_xoct_in_real_dir "${_S}" _xoct_site_dumps_left_here)" ]; then
+    echo "INFO: the export's site dump folders cleared in src/:${_l}"
+  else
+    echo "ALRT: ${_oct}'s site dump folders in src/ could not all be cleared:${_l}"
   fi
 }
 ### The panel dump of an abandoned move (src/*.sql; prev_hostmaster.sql is
