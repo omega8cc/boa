@@ -705,11 +705,11 @@ _mydumper_lockwait_opts() {
 ### session's default_collation_for_utf8mb4, which no dump names: a routine
 ### whose parameters (and return value) share one of the two defaults that
 ### setting takes gets it the same way, the session's own value back after
-### it, read from an 8.x server only (5.x has no such setting); each is a
-### statement prepared from one that names MySQL 8, so a 5.x or MariaDB
-### server, which has no such setting, runs DO 0 in its place and a dump
-### made on 8.x loads there as before. It reads the file whole, never
-### through a link, and replaces it
+### it, read on any server (a 5.x or MariaDB one names utf8mb4_general_ci
+### there, which a load on MySQL 8 then keeps; a server that refuses that
+### read gives the modes alone); each is a statement prepared from one that
+### names MySQL 8, so a 5.x or MariaDB server, which has no such setting,
+### runs DO 0 in its place. It reads the file whole, never through a link, and replaces it
 ### through a new one in the same directory. Exits 1, the file as it was,
 ### when a line cannot be placed; 2 when an object had no mode to give.
 _MYDUMPER_MODES_PL='use strict; use Fcntl;
@@ -735,7 +735,7 @@ for my $i (0 .. $#l) {
   my $x = $l[$i];
   if (($p || $q) && $x =~ /^SET character_set_client = \@PREV_CHARACTER_SET_CLIENT;$/) {
     push @o, "SET SQL_MODE=\x27$fm\x27;\n" if $p;
-    push @o, "SET \@BOA_UTF8MB4_SQL = IF(VERSION() REGEXP \x27^8[.]\x27, \x27SET SESSION default_collation_for_utf8mb4 = \@BOA_PREV_UTF8MB4\x27, \x27DO 0\x27);\n",
+    push @o, "SET \@BOA_UTF8MB4_SQL = IF(VERSION() LIKE \x278.%\x27, \x27SET SESSION default_collation_for_utf8mb4 = \@BOA_PREV_UTF8MB4\x27, \x27DO 0\x27);\n",
       "PREPARE boa_utf8mb4 FROM \@BOA_UTF8MB4_SQL;\n", "EXECUTE boa_utf8mb4;\n", "DEALLOCATE PREPARE boa_utf8mb4;\n" if $q;
     $p = 0; $q = 0;
   }
@@ -747,7 +747,7 @@ for my $i (0 .. $#l) {
   my $s = $m{$key};
   if (defined $s) { push @o, "SET SQL_MODE=\x27$s\x27;\n"; $p = 1; } else { $miss = 1; }
   if (defined $c{$key}) {
-    push @o, "SET \@BOA_UTF8MB4_SQL = IF(VERSION() REGEXP \x27^8[.]\x27, \x27SET \@BOA_PREV_UTF8MB4 = \@\@SESSION.default_collation_for_utf8mb4,"
+    push @o, "SET \@BOA_UTF8MB4_SQL = IF(VERSION() LIKE \x278.%\x27, \x27SET \@BOA_PREV_UTF8MB4 = \@\@SESSION.default_collation_for_utf8mb4,"
       . " SESSION default_collation_for_utf8mb4 = \x27\x27$c{$key}\x27\x27\x27, \x27DO 0\x27);\n",
       "PREPARE boa_utf8mb4 FROM \@BOA_UTF8MB4_SQL;\n", "EXECUTE boa_utf8mb4;\n";
     $q = 1;
@@ -767,18 +767,20 @@ exit($miss ? 2 : 0);'
 ### mydumper wrote them), 2 when an object or a file kept the dump's mode.
 ### It never fails a dump: the caller says what was left.
 _mydumper_object_modes() {
-  local _db="${1}" _dir="${2}" _q _c="''" _modes _f _rc=0
+  local _db="${1}" _dir="${2}" _q _c _modes _f _rc=0
   shift 2
   [[ "${_db}" =~ ^[A-Za-z0-9_]+$ ]] || return 2
-  if "$@" -N -B -e "SELECT @@SESSION.default_collation_for_utf8mb4" > /dev/null 2>&1; then
-    _c="IFNULL((SELECT IF(COUNT(DISTINCT p.COLLATION_NAME) = 1, MIN(p.COLLATION_NAME), '') FROM information_schema.PARAMETERS p"
-    _c="${_c} WHERE p.SPECIFIC_SCHEMA = r.ROUTINE_SCHEMA AND p.SPECIFIC_NAME = r.ROUTINE_NAME AND p.ROUTINE_TYPE = r.ROUTINE_TYPE"
-    _c="${_c} AND p.COLLATION_NAME IN ('utf8mb4_general_ci', 'utf8mb4_0900_ai_ci')), '')"
-  fi
-  _q="SELECT 'TRIGGER', HEX(TRIGGER_NAME), SQL_MODE, '' FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = '${_db}'"
-  _q="${_q} UNION ALL SELECT r.ROUTINE_TYPE, HEX(r.ROUTINE_NAME), r.SQL_MODE, ${_c} FROM information_schema.ROUTINES r WHERE r.ROUTINE_SCHEMA = '${_db}'"
-  _q="${_q} UNION ALL SELECT 'EVENT', HEX(EVENT_NAME), SQL_MODE, '' FROM information_schema.EVENTS WHERE EVENT_SCHEMA = '${_db}'"
-  _modes=$("$@" -N -B -e "${_q}" 2> /dev/null) || return 1
+  _c="IFNULL((SELECT IF(COUNT(DISTINCT p.COLLATION_NAME) = 1, MIN(p.COLLATION_NAME), '') FROM information_schema.PARAMETERS p"
+  _c="${_c} WHERE p.SPECIFIC_SCHEMA = r.ROUTINE_SCHEMA AND p.SPECIFIC_NAME = r.ROUTINE_NAME AND p.ROUTINE_TYPE = r.ROUTINE_TYPE"
+  _c="${_c} AND p.COLLATION_NAME IN ('utf8mb4_general_ci', 'utf8mb4_0900_ai_ci')), '')"
+  while :; do
+    _q="SELECT 'TRIGGER', HEX(TRIGGER_NAME), SQL_MODE, '' FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = '${_db}'"
+    _q="${_q} UNION ALL SELECT r.ROUTINE_TYPE, HEX(r.ROUTINE_NAME), r.SQL_MODE, ${_c} FROM information_schema.ROUTINES r WHERE r.ROUTINE_SCHEMA = '${_db}'"
+    _q="${_q} UNION ALL SELECT 'EVENT', HEX(EVENT_NAME), SQL_MODE, '' FROM information_schema.EVENTS WHERE EVENT_SCHEMA = '${_db}'"
+    _modes=$("$@" -N -B -e "${_q}" 2> /dev/null) && break
+    [[ "${_c}" != "''" ]] || return 1
+    _c="''"
+  done
   [[ -n "${_modes}" ]] || return 0
   for _f in "${_dir}"/*-schema-post.sql "${_dir}"/*-schema-triggers.sql; do
     if [[ -L "${_f}" ]]; then

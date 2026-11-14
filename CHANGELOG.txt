@@ -1136,7 +1136,9 @@
       whose utf8mb4 parameters and return value share one of the two
       defaults a session can take now carries it in the dump, set just
       before its CREATE, with the session's own put back after it, on MySQL
-      8 alone: a server on 5.7 loads such a dump as before.
+      8 alone: a server on 5.7 loads such a dump as before. The default is
+      read on every server, so a dump made on 5.7 keeps its routines'
+      utf8mb4_general_ci through a load on 8.0 or 8.4 too.
 
     * A Restore or a Migrate of a database dumped on Percona 5.7 to a
       server on 8.0 or 8.4 gives its stored routines' utf8mb4 parameters
