@@ -2121,6 +2121,16 @@
       copy stays. The published Drupal 10.6.21 predates those releases and
       carries Robo 5.1.1.
 
+    * Ægir Provision: the Drush a platform Verify adds to a Drupal 10
+      codebase that has none rules out the same three Robo releases
+      (consolidation/robo:!=5.2.1,!=5.2.2,!=5.2.3). The plain require
+      resolved Robo 5.2.3, whose Drush cannot start on Drupal 10, and a
+      codebase that has a Drush is never given another: a site moved onto
+      such a platform got a warning in place of its database updates. The
+      constraint is written into the project's composer.json and lets
+      every other Robo release in. Drupal 11 and the other majors keep the
+      plain require.
+
     * Classic Drush 8.5.21 (Ægir's Drush 8): drush8 updatedb on Drupal 10.3
       and newer skips an update that core holds as done by an equivalent
       one, as core's own runner does, where it ran it again. On Drupal 11.5
