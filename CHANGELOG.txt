@@ -1058,6 +1058,15 @@
       panel names no database, and stamps the account only over a panel dump
       it made itself.
 
+    * xoct transfer refuses an account that this server did not export, and
+      pretransfer no longer sends src/. Run before the export, a transfer
+      stamped the account transferred and so refused the real one after it;
+      where this server's import of the account stopped short, it sent the
+      sending server's dumps and source name on. An export now starts by
+      removing an earlier run's failure latch and every site dump folder in
+      src/, keeping the panel dump a re-run keeps, and refuses a control panel
+      that names no database before the client's start notice goes out.
+
     * xcopy post-mig names, for each copied site whose verify failed, the
       first error line of that verify's log as the control panel shows it.
 
