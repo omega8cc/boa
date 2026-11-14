@@ -1165,6 +1165,15 @@
       before the client's start notice goes out; xoct abandon also clears a
       failed run's latch and site dump folders.
 
+    * xoct and xcopy send the fixed export after a transfer forced over a
+      failed one. The forced transfer stamped the account transferred, so
+      the export re-run after the fix could never be sent; an export now
+      clears that stamp when the failure latch is beside it. A live
+      transfer first removes, on the target, every site dump folder an
+      earlier transfer left there and each one it is about to send, since
+      the copy adds to a folder and the import would load both runs' files;
+      the control panel dump and other folders stay.
+
     * xcopy post-mig names, for each copied site whose verify failed, the
       first error line of that verify's log as the control panel shows it.
 
