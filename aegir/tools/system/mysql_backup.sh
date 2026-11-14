@@ -416,6 +416,66 @@ if [[ -n "${_mfsPid}" ]]; then
   fi
   _arch_wait_log "mysql_backup.sh (pid $$) waited ${_mfsWait} s; /data/disk/arch is no longer held, the database backup starts"
 fi
+# A migration's database snapshot holds this box: /run/boa_xmass_snapshot.pid
+# names a live root process that runs xmass init, matched as executed (a
+# pid reused after a kill -9, by another user's process, another command or
+# another verb of the tool, never holds; root is read as the real uid in
+# /proc/<pid>/status). Prints that pid while the hold stands.
+_xmass_snap_held() {
+  local _p
+  _p=$( { tr -dc '0-9' < /run/boa_xmass_snapshot.pid; } 2> /dev/null )
+  [ -n "${_p}" ] && kill -0 "${_p}" 2> /dev/null \
+    && [ "$(awk '/^Uid:/ { print $2; exit }' "/proc/${_p}/status" 2> /dev/null)" = "0" ] \
+    && { tr '\0' ' ' < "/proc/${_p}/cmdline"; } 2> /dev/null \
+    | grep -qE '^([^ ]*/)?bash (-[^ ]+ )*([^ ]*/)?xmass init( |$)' \
+    && echo "${_p}"
+}
+# The wait for that snapshot, on the console and in a log of its own: cron
+# discards this output, and a wait that ends in a normal run is no incident
+# for the incident log.
+_snap_wait_log() {
+  echo "INFO: $*"
+  mkdir -p /var/log/boa
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] INFO: $*" >> /var/log/boa/mysql.backup.wait.log
+}
+# This run empties cache tables and, on the nights set for it, rebuilds
+# tables. Under a snapshot xtrabackup copies from the live datadir that
+# ends the snapshot on Percona 5.7 (a table rebuilt without redo logging),
+# and on 8.x each such statement waits on the snapshot's backup lock, this
+# run hanging with its run marker up for as long as the copy lasts. Checked
+# with the wait marker still in place: xmass writes its hold before it looks
+# for this run, and gives way, dropping the hold, when it sees it; so one of
+# the two always goes ahead, and a hold found here is a snapshot under way
+# or one about to give way. The hold is up from before the migration
+# restarts MySQL here (where GTID or the binary log is still off), so a
+# dump meets neither that restart nor the copy. The same wait as for the
+# relocation above: up to 3 hours, checked every 60 s, then this run is
+# skipped with a notice.
+_snapPid=$(_xmass_snap_held)
+if [[ -n "${_snapPid}" ]]; then
+  _snapWait=0
+  _snap_wait_log "mysql_backup.sh (pid $$) waits for a migration (xmass pid ${_snapPid}) to finish its database snapshot, up to 3 hours"
+  while [[ -n "${_snapPid}" ]] && [[ "${_snapWait}" -lt 10800 ]]; do
+    sleep 60
+    _snapWait=$(( _snapWait + 60 ))
+    _snapPid=$(_xmass_snap_held)
+  done
+  if [[ -n "${_snapPid}" ]]; then
+    _snap_wait_log "mysql_backup.sh (pid $$) waited ${_snapWait} s and the migration (xmass pid ${_snapPid}) has not finished its database snapshot; this run is skipped"
+    {
+      echo "The database backup run on ${_hName} did not start: a migration"
+      echo "(xmass pid ${_snapPid}) had not finished its database snapshot after"
+      echo "this run had waited 3 hours for it. No database was dumped. Once the"
+      echo "snapshot has ended, run:"
+      echo
+      echo "  bash /var/xdrago/mysql_backup.sh"
+      echo
+    } | _backup_notice "Backup SKIPPED on [${_hName}]: a migration's database snapshot is running" "xmass pid ${_snapPid} still held it after ${_snapWait} s"
+    _sql_wait_drop
+    exit 0
+  fi
+  _snap_wait_log "mysql_backup.sh (pid $$) waited ${_snapWait} s; the migration's snapshot has ended, the database backup starts"
+fi
 if ! _check_dump_fs; then
   _sql_wait_drop
   # The usage report the full run ends with writes nothing where the dumps

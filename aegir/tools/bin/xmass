@@ -5581,6 +5581,11 @@ _XMASS_INIT_COMMITTED=NO
 _XMASS_INIT_UNWOUND=NO
 _XMASS_TGT_WAS_STANDBY=NO
 _xmass_init_unwind() {
+  # A run that ends inside its snapshot takes its hold with it, so an SQL
+  # backup of this box does not wait while the rest of the unwind talks to
+  # the target. First, and ahead of the guard: a second signal that cuts
+  # the unwind short still finds the hold dropped.
+  _xmass_snapshot_hold_drop
   [ "${_XMASS_INIT_UNWOUND}" = "YES" ] && return 0
   _XMASS_INIT_UNWOUND=YES
   _xmass_init_keepalive_stop
@@ -7488,6 +7493,135 @@ _xmass_seed_empty_gtid_set() {
   _info "GTID set on source: ${_gx}"
 }
 
+# The snapshot and the SQL backups of this box keep off each other. The
+# backups empty cache tables on every run and rebuild tables on the nights
+# set for it; under the snapshot's copy that ends the snapshot on Percona
+# 5.7 (a table rebuilt without redo logging) and on 8.x holds the backup at
+# its first such statement until the copy ends. And init restarts MySQL
+# here where GTID or the binary log is still off, which a dump in flight
+# does not survive. The hold names this run from before that restart until
+# xtrabackup has copied from the live datadir, and no longer: the backups
+# wait for a hold whose pid is a live root process running xmass init, and
+# this side gives way to a backup that runs or waits. Each side writes its own
+# mark before it looks for the other's, so of two starting together one
+# always sees the other.
+_XMASS_SNAP_HOLD="/run/boa_xmass_snapshot.pid"
+_XMASS_SNAP_HELD=NO
+
+# Prints why and returns 0 while an SQL backup runs or waits to start here.
+# The basic run marker names its pid and counts while that pid is a live
+# root process other than this run, whatever its command line: a marker
+# left by a killed run whose pid another process took makes init wait and
+# then refuse, naming the pid, and never lets it run beside a backup
+# started in a form no reader knows. The cluster one carries no pid. The
+# wait marker outlives a run killed in its wait, so it counts only while
+# its pid is a live root process that runs a backup script, matched as
+# executed (the real uid is read from /proc/<pid>/status: /proc/<pid>
+# itself shows root as the owner of any process that is not dumpable).
+# Last, a root process that runs a backup script, in the same form: a run
+# holds no marker before its wait, and the box clears a run marker older
+# than 3 hours under a run that still dumps. The cron launcher's shell,
+# which only names the script, is no such form.
+_xmass_sql_backup_busy() {
+  local _p
+  _p=$( { tr -dc '0-9' < /run/boa_sql_backup.pid; } 2> /dev/null )
+  if [ -n "${_p}" ] && [ "${_p}" != "$$" ] && kill -0 "${_p}" 2> /dev/null \
+    && [ "$(awk '/^Uid:/ { print $2; exit }' "/proc/${_p}/status" 2> /dev/null)" = "0" ]; then
+    echo "the SQL backup runs (pid ${_p})"
+    return 0
+  fi
+  if [ -e "/run/boa_sql_cluster_backup.pid" ]; then
+    echo "the cluster SQL backup runs"
+    return 0
+  fi
+  _p=$( { tr -dc '0-9' < /run/boa_sql_backup_wait.pid; } 2> /dev/null )
+  if [ -n "${_p}" ] && kill -0 "${_p}" 2> /dev/null \
+    && [ "$(awk '/^Uid:/ { print $2; exit }' "/proc/${_p}/status" 2> /dev/null)" = "0" ] \
+    && { tr '\0' ' ' < "/proc/${_p}/cmdline"; } 2> /dev/null \
+    | grep -qE '^([^ ]*/)?bash (-[^ ]+ )*([^ ]*/)?mysql_(cluster_)?backup\.sh( |$)'; then
+    echo "an SQL backup waits to start (pid ${_p})"
+    return 0
+  fi
+  _p=$(pgrep -u root -U root -f '^([^ ]*/)?bash (-[^ ]+ )*([^ ]*/)?mysql_(cluster_)?backup\.sh( |$)' 2> /dev/null | head -n 1)
+  if [ -n "${_p}" ]; then
+    echo "an SQL backup script runs (pid ${_p})"
+    return 0
+  fi
+  return 1
+}
+
+# The hold goes only while it still names this run; so does the file it
+# was written aside in, which a signal can leave behind.
+_xmass_snapshot_hold_drop() {
+  if [ "${_XMASS_SNAP_HELD}" = "YES" ]; then
+    if [ "$( { tr -dc '0-9' < "${_XMASS_SNAP_HOLD}"; } 2> /dev/null )" = "$$" ]; then
+      rm -f -- "${_XMASS_SNAP_HOLD}"
+    fi
+    rm -f -- "${_XMASS_SNAP_HOLD}.$$" 2> /dev/null
+  fi
+  _XMASS_SNAP_HELD=NO
+}
+
+# Takes the hold, waiting for a backup first. Looked for once before the
+# hold is written, so a wait publishes nothing (a hold written only to be
+# dropped would make a backup that starts meanwhile wait for nothing); then
+# written and looked for again, and dropped when a backup came in between.
+# The datadir swap is still ahead where init calls this, so a refusal at
+# the bound unwinds as any other before the swap.
+# $1 = hold (the default), or wait: only the wait, nothing published, for
+# the read init makes before it touches either box. $2 = what the wait is
+# ahead of, for its lines.
+_xmass_snapshot_hold_take() {
+  local _mode="${1:-hold}" _for="${2:-the datadir snapshot starts}"
+  local _why="" _w=0 _t0 _said=NO _last=0
+  local _max="${_XMASS_SQL_BACKUP_MAX_WAIT:-10800}"
+  case "${_max}" in ''|*[!0-9]*) _max=10800 ;; esac
+  _t0=$(date +%s)
+  while :; do
+    _why=$(_xmass_sql_backup_busy)
+    if [ -z "${_why}" ] && [ "${_mode}" = "wait" ]; then
+      if [ "${_said}" = "YES" ]; then
+        _info "  no SQL backup is left on this box (${_w}s)"
+      fi
+      return 0
+    fi
+    if [ -z "${_why}" ]; then
+      # Written aside and renamed, so a reader never sees it empty. Marked
+      # as held before it is published: a signal between the rename and the
+      # mark would leave a hold the unwind does not drop.
+      _XMASS_SNAP_HELD=YES
+      if ! { printf '%s\n' "$$" > "${_XMASS_SNAP_HOLD}.$$" \
+        && chmod 0644 "${_XMASS_SNAP_HOLD}.$$" \
+        && mv -f -T -- "${_XMASS_SNAP_HOLD}.$$" "${_XMASS_SNAP_HOLD}"; } 2> /dev/null; then
+        _xmass_snapshot_hold_drop
+        _die "cannot write ${_XMASS_SNAP_HOLD} -- the datadir snapshot was not started"
+      fi
+      _why=$(_xmass_sql_backup_busy)
+      if [ -z "${_why}" ]; then
+        if [ "${_said}" = "YES" ]; then
+          _info "  no SQL backup is left on this box (${_w}s)"
+        fi
+        return 0
+      fi
+      _xmass_snapshot_hold_drop
+    fi
+    if [ "${_said}" != "YES" ]; then
+      _info "Waiting for the SQL backup on this box to end before ${_for}: ${_why} (up to ${_max}s) ..."
+      _said=YES
+    elif [ $(( _w - _last )) -ge 600 ]; then
+      _info "  still waiting: ${_why} (${_w}s)"
+      _last="${_w}"
+    fi
+    _w=$(( $(date +%s) - _t0 ))
+    [ "${_w}" -lt "${_max}" ] || break
+    sleep 30
+    _w=$(( $(date +%s) - _t0 ))
+  done
+  _die "an SQL backup is still active on this box after ${_w}s (${_why}) -- the datadir" \
+       "snapshot was not started and the target's database was not displaced; let the" \
+       "backup finish, then re-run (_XMASS_SQL_BACKUP_MAX_WAIT=<seconds> sets this wait)"
+}
+
 _xmass_take_backup() {
   _xmass_seed_empty_gtid_set
   # Ensure stage dir on target exists regardless of method
@@ -7508,6 +7642,9 @@ _xmass_take_backup() {
       --kill-long-queries-timeout=60 \
       --target-dir="${_XTRA_STAGE_SRC}" \
       || _die "xtrabackup --backup failed on source"
+    # The copy from the live datadir is over: the prepare and the transfer
+    # read the stage alone and hold no SQL backup off.
+    _xmass_snapshot_hold_drop
 
     _info "xtrabackup: preparing backup on source ..."
     xtrabackup \
@@ -7545,6 +7682,8 @@ _xmass_take_backup() {
       --stream=xbstream \
       | ssh root@"${_tgt}" "${_XMASS_NOFILE_REMOTE}; xbstream -x -C ${_XTRA_STAGE_TGT}" \
       || _die "xtrabackup stream to target failed"
+    # The stream has ended, and with it the copy from the live datadir.
+    _xmass_snapshot_hold_drop
 
     _info "xtrabackup: preparing backup on target ${_tgt} ..."
     ssh root@"${_tgt}" \
@@ -19579,6 +19718,11 @@ REMOTE
   # because neither box has been touched yet, and the decisive full-scope one
   # immediately before the snapshot.
   _xmass_wait_target_silent local "init touches either box" die locks
+  # The night SQL backup of this box is waited for here too, where waiting
+  # costs nothing: init restarts MySQL on a box whose GTID or binary log is
+  # off, and its snapshot must not run beside the backup's table changes.
+  # Only a wait; the hold is taken further down, before the first of those.
+  _xmass_snapshot_hold_take wait "init touches either box"
 
   # Every octopus pass the target ran while it was being provisioned (the
   # install, its in-flow upgrade, the pin-seed pass) snapshotted its own empty
@@ -19780,6 +19924,13 @@ REMOTE
   _xmass_init_inflight_touch
   _xmass_wg_revert_target "${_tgt}"
   _xmass_init_inflight_touch
+
+  # The snapshot hold, ahead of every step that changes MySQL on this box:
+  # the restart that switches GTID and the binary log on comes next, the
+  # snapshot some minutes later. An SQL backup that started since the early
+  # read is waited for here, and one that starts from here on waits for the
+  # snapshot's end. The unwind drops the hold on every refusal.
+  _xmass_snapshot_hold_take hold "init changes MySQL on this box"
 
   # Pause the mysql.sh watchdog on BOTH hosts for the whole init critical
   # section: it must not restart the LIVE source mid xtrabackup snapshot
