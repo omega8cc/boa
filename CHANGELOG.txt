@@ -845,6 +845,15 @@
       logged in /var/log/boa/mysql.backup.wait.log. The snapshot's
       prepare and its transfer hold no backup off.
 
+    * A FastTrack.info put in a new account's ~/static/control stays. Up
+      to 2024 BOA wrote this file into every account by default, and the
+      release pass still removes it once from an account that has not been
+      through that change. An account created after the pass last ran on
+      its server counted as one, so the next release pass removed the
+      FastTrack.info its owner had put there and turned on ClassicTrack.
+      An account the Octopus installer creates is now marked as through
+      that change from the start.
+
     * The migration completion notice gives the client the account's new
       control panel address in full, with the SQL Adminer address beside
       it where the new server has Adminer, and the start notice says what
