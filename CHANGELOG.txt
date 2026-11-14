@@ -2536,10 +2536,11 @@
       error the run ended with into the step's own log, when that log does
       not hold it already. A task the queue starts is unchanged.
 
-    * Ægir: a task log shows the lines of the advisory level again, which
+    * Ægir: a task log shows the lines of the advisory level, which
       provision writes when it repairs a platform's psr/log package or
       cannot keep the stock copies of core's logger files. The list of
-      levels an Octopus pass gives the control panel left that one out.
+      levels an Octopus pass gives the control panel left that one out,
+      while the panel's own default list holds it.
 
     * The nightly clean-up of the site and platform control files keeps a
       line whose key is drupal_upgrade_modes even when it starts with a
