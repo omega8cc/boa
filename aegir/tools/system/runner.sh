@@ -314,17 +314,85 @@ _dispatcher_trusted() {
   (( (8#${_s##* } & 8#022) == 0 ))
 }
 
-# A dispatcher the loop below will not run is named once (by its inode and
-# what makes it untrusted) in dispatcher.incident.log, with one mail to the
-# operator unless _INCIDENT_REPORT is OFF, and left where it is: its
-# account's queue waits until the account's next Octopus pass writes a new
-# one over it.
-_runner_untrusted_note() {
-  local _s _m _to _l=/var/log/boa/dispatcher.incident.log
-  [ -d /var/log/boa ] || return 0
+# A new dispatcher of root's for the account $1 at /var/xdrago/run-$1. BOA
+# writes every dispatcher from one template that differs only in its _H_USER
+# line: it is made from the build tree's template when that is root's alone,
+# else from another account's dispatcher that is root's alone, live, then
+# parked (a demoted box keeps them all parked). The file it replaces is never
+# read or run. With replace as $2 the old file must still be there and is
+# claimed (renamed away) first, so one a parker took meanwhile is never put
+# back. 1 when there is no such source or the new file cannot be made.
+_dispatcher_write() {
+  local _a="${1}" _f _src="" _t _o=""
+  [ -n "${_a}" ] && [ "${_a}" = "${_a##*/}" ] || return 1
+  for _f in /opt/tmp/boa/aegir/scripts/run-xdrago /var/xdrago/run-* /var/backups/off-run/run-*; do
+    [ "${_f##*/}" != "run-${_a}" ] || continue
+    _dispatcher_trusted "${_f}" || continue
+    [ "$(grep -c '^_H_USER=' -- "${_f}" 2> /dev/null)" = "1" ] || continue
+    if [ "${_f}" = "/opt/tmp/boa/aegir/scripts/run-xdrago" ]; then
+      grep -qx '_H_USER=EDIT_USER' "${_f}" 2> /dev/null || continue
+    else
+      grep -qxF -- "_H_USER=${_f##*/run-}" "${_f}" 2> /dev/null || continue
+    fi
+    _src="${_f}"
+    break
+  done
+  [ -n "${_src}" ] || return 1
+  # mktemp's names hold no "run-", which runner.sh would dispatch
+  _t=$(mktemp /var/xdrago/.xdwrite.XXXXXX 2> /dev/null) || return 1
+  if awk -v u="${_a}" '/^_H_USER=/ { print "_H_USER=" u; next } { print }' "${_src}" > "${_t}" \
+    && chown root:root "${_t}" && chmod 700 "${_t}" && _dispatcher_trusted "${_t}" \
+    && [ "$(grep -c '^_H_USER=' -- "${_t}")" = "1" ] \
+    && grep -qxF -- "_H_USER=${_a}" "${_t}" \
+    && bash -n "${_t}" 2> /dev/null; then
+    if [ "${2:-}" = "replace" ]; then
+      if ! _o=$(mktemp /var/xdrago/.xdold.XXXXXX 2> /dev/null) \
+        || ! mv -f -T -- "/var/xdrago/run-${_a}" "${_o}" 2> /dev/null; then
+        rm -f -- "${_t}" ${_o:+"${_o}"}
+        return 1
+      fi
+    fi
+    if mv -f -T -- "${_t}" "/var/xdrago/run-${_a}"; then
+      [ -n "${_o}" ] && rm -f -- "${_o}"
+      return 0
+    fi
+    [ -n "${_o}" ] && rm -f -- "${_o}"
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+
+# A live dispatcher of a real account that is not root's alone is written
+# anew (_dispatcher_write) and named once in dispatcher.incident.log: an
+# Octopus pass copied it with the owner of a build tree that, before the
+# scratch root became root's, an account's user could own. The old file is
+# never read or run. 1 when it is no account's own dispatcher or cannot be
+# written anew.
+_runner_rewrite() {
+  local _a="${1##*/}" _s
+  [ "${1}" = "/var/xdrago/${_a}" ] && [ "${_a#run-}" != "${_a}" ] || return 1
+  [ -f "${1}" ] && [ ! -L "${1}" ] || return 1
+  _a="${_a#run-}"
+  [ -e "/root/.${_a}.octopus.cnf" ] && [ -d "/data/disk/${_a}" ] || return 1
   _s=$(stat -c 'inode %i, owner %U (uid %u), %h links, mode %a' -- "${1}" 2> /dev/null)
-  grep -qF -- "not run: ${1} (${_s:-unreadable})" "${_l}" 2> /dev/null && return 0
-  _m="not run: ${1} (${_s:-unreadable}): root runs only a dispatcher that is root's alone; the account's tasks wait until its next Octopus pass writes a new one"
+  _dispatcher_write "${_a}" replace || return 1
+  [ -d /var/log/boa ] \
+    && echo "$(date) written anew: ${1} (was ${_s:-unreadable}): not root's alone; the old file was never read or run" \
+      >> /var/log/boa/dispatcher.incident.log 2> /dev/null
+  return 0
+}
+
+# A dispatcher the loop below will not run is named once (by its path and
+# inode) in dispatcher.incident.log, with one mail to the operator unless
+# _INCIDENT_REPORT is OFF, and left where it is: its account's queue waits
+# until the account's next Octopus pass writes a new one over it.
+_runner_untrusted_note() {
+  local _s _i _m _to _l=/var/log/boa/dispatcher.incident.log
+  [ -d /var/log/boa ] && [ -e "${1}" ] || return 0
+  _i=$(stat -c '%i' -- "${1}" 2> /dev/null)
+  grep -qF -- "not run: ${1} (inode ${_i:-unreadable}," "${_l}" 2> /dev/null && return 0
+  _s=$(stat -c 'owner %U (uid %u), %h links, mode %a' -- "${1}" 2> /dev/null)
+  _m="not run: ${1} (inode ${_i:-unreadable}, ${_s:-unreadable}): root runs only a dispatcher that is root's alone; the account's tasks wait until its next Octopus pass writes a new one"
   echo "$(date) ${_m}" >> "${_l}" 2> /dev/null
   [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
   case "${_INCIDENT_REPORT^^}" in
@@ -389,7 +457,9 @@ _runner_action() {
     # Honour the dedicated queue-stop file per child too, so a pause set AFTER this
     # runner parent started still holds every per-account child dispatch.
     [ -e "/run/boa_queue_stop.pid" ] && { echo "Task queue paused: /run/boa_queue_stop.pid present -- skipping ${_Runner}"; continue; }
-    if ! _dispatcher_trusted "${_Runner}"; then
+    # listed when the loop began; parked or removed since then: not for it
+    [ -e "${_Runner}" ] || continue
+    if ! _dispatcher_trusted "${_Runner}" && ! _runner_rewrite "${_Runner}"; then
       _runner_untrusted_note "${_Runner}"
       echo "Not running ${_Runner}: not root's alone (see /var/log/boa/dispatcher.incident.log)"
       continue

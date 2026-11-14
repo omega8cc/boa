@@ -8318,15 +8318,15 @@ _satellite_make() {
     # A new file of root's, renamed over the old one: runner.sh runs only a
     # dispatcher that is root's alone, and a copy written into the old file
     # would keep any second link or open handle another user held on it.
-    # The name being made holds no "run-", which runner.sh would dispatch.
-    local _rxN="/var/xdrago/.xdnew.${_USER}.$$"
-    rm -f "${_rxN}"
-    if cp -f ${_bldPth}/aegir/scripts/run-xdrago "${_rxN}" \
+    # mktemp's names hold no "run-", which runner.sh would dispatch.
+    local _rxN=""
+    if _rxN=$(mktemp /var/xdrago/.xdnew.XXXXXX) \
+      && cp -f ${_bldPth}/aegir/scripts/run-xdrago "${_rxN}" \
       && sed -i "s/EDIT_USER/${_USER}/g" "${_rxN}" \
       && chown root:root "${_rxN}" && chmod 700 "${_rxN}"; then
       mv -f "${_rxN}" /var/xdrago/run-${_USER}
     else
-      rm -f "${_rxN}"
+      rm -f ${_rxN:+"${_rxN}"}
       _msg "WARN: ${_USER}: its task dispatcher could not be written; the previous one stays"
     fi
     wait

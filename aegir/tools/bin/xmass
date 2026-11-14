@@ -2260,7 +2260,8 @@ _xmass_pin_rpath() {
 _xmass_remote_guards() {
   declare -f _xmass_real_want _xmass_in_real_dir _xmass_read_here \
     _xmass_read_in _xmass_read_file _xmass_put_here _xmass_touch_here \
-    _xmass_sed_to _xmass_sed_here _dispatcher_trusted
+    _xmass_sed_to _xmass_sed_here _dispatcher_trusted _dispatcher_set_aside \
+    _dispatcher_write
 }
 ### A leg whose source directory is missing or is not a real one (a link
 ### on its path): nothing is followed or sent, and the pass fails as a
@@ -14655,6 +14656,54 @@ _dispatcher_set_aside() {
   return 0
 }
 
+# A new dispatcher of root's for the account $1 at /var/xdrago/run-$1. BOA
+# writes every dispatcher from one template that differs only in its _H_USER
+# line: it is made from the build tree's template when that is root's alone,
+# else from another account's dispatcher that is root's alone, live, then
+# parked (a demoted box keeps them all parked). The file it replaces is never
+# read or run. With replace as $2 the old file must still be there and is
+# claimed (renamed away) first, so one a parker took meanwhile is never put
+# back. 1 when there is no such source or the new file cannot be made.
+_dispatcher_write() {
+  local _a="${1}" _f _src="" _t _o=""
+  [ -n "${_a}" ] && [ "${_a}" = "${_a##*/}" ] || return 1
+  for _f in /opt/tmp/boa/aegir/scripts/run-xdrago /var/xdrago/run-* /var/backups/off-run/run-*; do
+    [ "${_f##*/}" != "run-${_a}" ] || continue
+    _dispatcher_trusted "${_f}" || continue
+    [ "$(grep -c '^_H_USER=' -- "${_f}" 2> /dev/null)" = "1" ] || continue
+    if [ "${_f}" = "/opt/tmp/boa/aegir/scripts/run-xdrago" ]; then
+      grep -qx '_H_USER=EDIT_USER' "${_f}" 2> /dev/null || continue
+    else
+      grep -qxF -- "_H_USER=${_f##*/run-}" "${_f}" 2> /dev/null || continue
+    fi
+    _src="${_f}"
+    break
+  done
+  [ -n "${_src}" ] || return 1
+  # mktemp's names hold no "run-", which runner.sh would dispatch
+  _t=$(mktemp /var/xdrago/.xdwrite.XXXXXX 2> /dev/null) || return 1
+  if awk -v u="${_a}" '/^_H_USER=/ { print "_H_USER=" u; next } { print }' "${_src}" > "${_t}" \
+    && chown root:root "${_t}" && chmod 700 "${_t}" && _dispatcher_trusted "${_t}" \
+    && [ "$(grep -c '^_H_USER=' -- "${_t}")" = "1" ] \
+    && grep -qxF -- "_H_USER=${_a}" "${_t}" \
+    && bash -n "${_t}" 2> /dev/null; then
+    if [ "${2:-}" = "replace" ]; then
+      if ! _o=$(mktemp /var/xdrago/.xdold.XXXXXX 2> /dev/null) \
+        || ! mv -f -T -- "/var/xdrago/run-${_a}" "${_o}" 2> /dev/null; then
+        rm -f -- "${_t}" ${_o:+"${_o}"}
+        return 1
+      fi
+    fi
+    if mv -f -T -- "${_t}" "/var/xdrago/run-${_a}"; then
+      [ -n "${_o}" ] && rm -f -- "${_o}"
+      return 0
+    fi
+    [ -n "${_o}" ] && rm -f -- "${_o}"
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+
 # The script the promotion cleanup runs as root on the promoted box through
 # bash -s, for the account $1: what an earlier demotion of that box left.
 # The cutover pipes it to its target; post-mig runs it here after a
@@ -14726,7 +14775,7 @@ $(declare -f _a2b_import_unfinished)
 $(declare -p _A2B_LIVE_PL)
 $(declare -f _a2b_import_live)
 $(declare -f _xmass_a2b_hold_dispatcher)
-$(declare -f _dispatcher_trusted _dispatcher_set_aside)
+$(declare -f _dispatcher_trusted _dispatcher_set_aside _dispatcher_write)
 # An account whose aegir2boa import is unfinished here (its own state, or
 # the hold this tool carried from the active with every pass) keeps its
 # dispatcher parked on a box armed for the web group, a live one parked
@@ -14742,9 +14791,11 @@ if ! _xmass_a2b_hold_dispatcher "${_oct}" \
   if _dispatcher_trusted "/var/backups/off-run/run-${_oct}"; then
     mv -f "/var/backups/off-run/run-${_oct}" "/var/xdrago/run-${_oct}"
     echo "  ${_oct}: restored parked dispatcher"
-  else
+  elif _dispatcher_write "${_oct}"; then
     _dispatcher_set_aside "/var/backups/off-run/run-${_oct}"
-    echo "  ${_oct}: its parked dispatcher is not root's alone: set aside, not handed back; the account's next Octopus pass writes a new one"
+    echo "  ${_oct}: its parked dispatcher is not root's alone: a new one written, the old set aside"
+  else
+    echo "  ${_oct}: its parked dispatcher is not root's alone and no new one could be written: it stays parked and its tasks wait for the account's next Octopus pass"
   fi
 fi
 # A run-upgrade.pid that accumulated during the standby window (rsynced in
@@ -17931,12 +17982,15 @@ if [ "${_srv}" != "${_TF}" ]; then
 fi
 if [ ! -e "/var/xdrago/run-${_A}" ] && [ -f "/var/backups/off-run/run-${_A}" ] \
   && [ ! -L "/var/backups/off-run/run-${_A}" ] && [ ! -L /var/backups/off-run ]; then
-  if ! _dispatcher_trusted "/var/backups/off-run/run-${_A}"; then
-    echo "XMRET-FAILED: its parked dispatcher is not root's alone and is not handed back: run an Octopus pass for the account there, which writes a new one, then this again"
+  if _dispatcher_trusted "/var/backups/off-run/run-${_A}"; then
+    mv -f -- "/var/backups/off-run/run-${_A}" "/var/xdrago/run-${_A}" \
+      || { echo "XMRET-FAILED: could not put its dispatcher back in /var/xdrago"; exit 0; }
+  elif _dispatcher_write "${_A}"; then
+    _dispatcher_set_aside "/var/backups/off-run/run-${_A}"
+  else
+    echo "XMRET-FAILED: its parked dispatcher is not root's alone and no new one could be written: run an Octopus pass for the account there, then this again"
     exit 0
   fi
-  mv -f -- "/var/backups/off-run/run-${_A}" "/var/xdrago/run-${_A}" \
-    || { echo "XMRET-FAILED: could not put its dispatcher back in /var/xdrago"; exit 0; }
 fi
 if ! nginx -t > /dev/null 2>&1; then
   echo "XMRET-FAILED: nginx -t refuses this box's configuration: read 'nginx -t' there"

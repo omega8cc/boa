@@ -2371,6 +2371,81 @@ _a2b_import_live() {
   perl -e "${_A2B_LIVE_PL}" /proc "${1}" 2> /dev/null
 }
 
+# A task dispatcher (run-<account>) root may run or hand back: a regular file
+# with one link, owned by root, that no group or other user can write. Any
+# other copy was made or kept where another user could write it (a parked
+# copy outlives its account, whose number is given out again; a second link
+# stays writable through the other name), so root never runs or returns it.
+_dispatcher_trusted() {
+  local _s
+  [ -f "${1}" ] && [ ! -L "${1}" ] || return 1
+  _s=$(stat -c '%u %h %a' -- "${1}" 2> /dev/null) || return 1
+  case "${_s}" in
+    "0 1 "[0-7][0-7][0-7] | "0 1 "[0-7][0-7][0-7][0-7]) ;;
+    *) return 1 ;;
+  esac
+  (( (8#${_s##* } & 8#022) == 0 ))
+}
+
+# A parked copy that is not root's alone is set aside under a dot name beside
+# it, never handed back, and named in dispatcher.incident.log.
+_dispatcher_set_aside() {
+  local _s
+  _s=$(stat -c 'owner %U (uid %u), %h links, mode %a' -- "${1}" 2> /dev/null)
+  mv -f -- "${1}" "${1%/*}/.untrusted-${1##*/}.$(date +%s)" 2> /dev/null || return 1
+  [ -d /var/log/boa ] && echo "$(date) set aside, not handed back: ${1} (${_s:-unreadable}): not root's alone" \
+    >> /var/log/boa/dispatcher.incident.log
+  return 0
+}
+
+# A new dispatcher of root's for the account $1 at /var/xdrago/run-$1. BOA
+# writes every dispatcher from one template that differs only in its _H_USER
+# line: it is made from the build tree's template when that is root's alone,
+# else from another account's dispatcher that is root's alone, live, then
+# parked (a demoted box keeps them all parked). The file it replaces is never
+# read or run. With replace as $2 the old file must still be there and is
+# claimed (renamed away) first, so one a parker took meanwhile is never put
+# back. 1 when there is no such source or the new file cannot be made.
+_dispatcher_write() {
+  local _a="${1}" _f _src="" _t _o=""
+  [ -n "${_a}" ] && [ "${_a}" = "${_a##*/}" ] || return 1
+  for _f in /opt/tmp/boa/aegir/scripts/run-xdrago /var/xdrago/run-* /var/backups/off-run/run-*; do
+    [ "${_f##*/}" != "run-${_a}" ] || continue
+    _dispatcher_trusted "${_f}" || continue
+    [ "$(grep -c '^_H_USER=' -- "${_f}" 2> /dev/null)" = "1" ] || continue
+    if [ "${_f}" = "/opt/tmp/boa/aegir/scripts/run-xdrago" ]; then
+      grep -qx '_H_USER=EDIT_USER' "${_f}" 2> /dev/null || continue
+    else
+      grep -qxF -- "_H_USER=${_f##*/run-}" "${_f}" 2> /dev/null || continue
+    fi
+    _src="${_f}"
+    break
+  done
+  [ -n "${_src}" ] || return 1
+  # mktemp's names hold no "run-", which runner.sh would dispatch
+  _t=$(mktemp /var/xdrago/.xdwrite.XXXXXX 2> /dev/null) || return 1
+  if awk -v u="${_a}" '/^_H_USER=/ { print "_H_USER=" u; next } { print }' "${_src}" > "${_t}" \
+    && chown root:root "${_t}" && chmod 700 "${_t}" && _dispatcher_trusted "${_t}" \
+    && [ "$(grep -c '^_H_USER=' -- "${_t}")" = "1" ] \
+    && grep -qxF -- "_H_USER=${_a}" "${_t}" \
+    && bash -n "${_t}" 2> /dev/null; then
+    if [ "${2:-}" = "replace" ]; then
+      if ! _o=$(mktemp /var/xdrago/.xdold.XXXXXX 2> /dev/null) \
+        || ! mv -f -T -- "/var/xdrago/run-${_a}" "${_o}" 2> /dev/null; then
+        rm -f -- "${_t}" ${_o:+"${_o}"}
+        return 1
+      fi
+    fi
+    if mv -f -T -- "${_t}" "/var/xdrago/run-${_a}"; then
+      [ -n "${_o}" ] && rm -f -- "${_o}"
+      return 0
+    fi
+    [ -n "${_o}" ] && rm -f -- "${_o}"
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+
 _update_agents() {
 
   _if_hosted_sys
@@ -2833,7 +2908,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/mysql_cleanup.sh "${_urlHmr}/tools/system/mysql_cleanup.sh" f82
     _fetch_versioned /var/xdrago/mysql_cluster_backup.sh "${_urlHmr}/tools/system/mysql_cluster_backup.sh" f57 --guard mysql_cluster_backup.sh
     _runner_parked runner.sh \
-      || _fetch_versioned /var/xdrago/runner.sh "${_urlHmr}/tools/system/runner.sh" f55
+      || _fetch_versioned /var/xdrago/runner.sh "${_urlHmr}/tools/system/runner.sh" f54
     _fetch_versioned /var/xdrago/minute.sh "${_urlHmr}/tools/system/minute.sh" f72
     _fetch_versioned /var/xdrago/second.sh "${_urlHmr}/tools/system/second.sh" f59
     _fetch_versioned /var/xdrago/ip_access.sh "${_urlHmr}/tools/system/ip_access.sh" f59
@@ -3325,7 +3400,7 @@ _update_agents() {
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -d "/data/u" ] \
     && [ -e "/usr/sbin/csf" ] \
-    && [ ! -e "${_pthLog}/fpm-cli.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/fpm-cli.ctrl.f98.${_tRee}.${_xSrl}.pid" ]; then
     _usrGroup=users
     _useCli=
     _useFpm=
@@ -3434,7 +3509,17 @@ _update_agents() {
               # step hands it back once the account's panel names this box
               :
             elif [ ! -e "/var/xdrago/run-${_tUsr}" ]; then
-              mv -f "/var/backups/off-run/run-${_tUsr}" /var/xdrago/ &> /dev/null
+              # only a copy that is root's alone goes back (runner.sh runs
+              # no other); any other is set aside once a new one is written,
+              # and stays parked, named, while none can be
+              if _dispatcher_trusted "/var/backups/off-run/run-${_tUsr}"; then
+                mv -f "/var/backups/off-run/run-${_tUsr}" /var/xdrago/ &> /dev/null
+              elif _dispatcher_write "${_tUsr}"; then
+                _dispatcher_set_aside "/var/backups/off-run/run-${_tUsr}"
+              elif [ -d /var/log/boa ]; then
+                echo "$(date) not handed back: /var/backups/off-run/run-${_tUsr}: not root's alone, and no new dispatcher could be written" \
+                  >> /var/log/boa/dispatcher.incident.log
+              fi
             else
               mv -f "/var/backups/off-run/run-${_tUsr}" \
                 "/var/backups/off-run/.superseded-run-${_tUsr}" &> /dev/null
@@ -3459,11 +3544,14 @@ _update_agents() {
         fi
       fi
     done
-    touch ${_pthLog}/fpm-cli.ctrl.f99.${_tRee}.${_xSrl}.pid
+    touch ${_pthLog}/fpm-cli.ctrl.f98.${_tRee}.${_xSrl}.pid
   fi
 
-  # Create the destination directory if it doesn't exist
+  # Create the destination directory if it doesn't exist; root's alone, so no
+  # other user can reach a parked dispatcher there
   [ -d "/var/backups/off-run" ] || mkdir -p /var/backups/off-run
+  [ -d "/var/backups/off-run" ] && [ ! -L "/var/backups/off-run" ] \
+    && chown root:root /var/backups/off-run && chmod 700 /var/backups/off-run
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -d "/data/u" ] \
@@ -5976,9 +6064,9 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/synproxy_status "${_urlHmr}/${_tBn}/synproxy_status" f99 --guard /local/bin/synproxy_status
     _fetch_versioned ${_optBin}/webserver "${_urlHmr}/${_tBn}/webserver" f93 --guard /local/bin/webserver
     _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f99 --guard /local/bin/xcopy
-    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f07 --guard /local/bin/xmass
+    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f06 --guard /local/bin/xmass
     _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f81 --guard /local/bin/xoct
-    _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f21 --guard /local/bin/xtrim
+    _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f20 --guard /local/bin/xtrim
     # The migration-proxy trust and realip tools ride here with xoct and xmass,
     # which run them: on a _SKYNET_MODE=OFF box the agents pass never runs, and
     # a refreshed xoct calling a stale trust tool (no adopt verb) left the
