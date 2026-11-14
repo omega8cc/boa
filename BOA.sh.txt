@@ -5770,6 +5770,7 @@ _if_boa_key_tools_update_allowed() {
 # mirror box reads its own tree.
 _fetch_core_coverage() {
   local _dst="${_pthLog}/drupal-supported.txt" _tmp _l
+  local _pub="/data/conf/drupal-supported.txt"
   _tmp="${_dst}.new.$$"
   if [ -s "/var/www/static/core/drupal-supported.txt" ]; then
     cp -f "/var/www/static/core/drupal-supported.txt" "${_tmp}" 2> /dev/null
@@ -5783,6 +5784,18 @@ _fetch_core_coverage() {
       && mv -f "${_tmp}" "${_dst}"
   fi
   rm -f "${_tmp}"
+  # The control panel's PHP reads /data/conf, never the log folder: the
+  # kept line is published there on every pass, also on one that fetched
+  # nothing, and only when it differs from what is there.
+  _l="$(head -n 1 "${_dst}" 2> /dev/null | tr -d '\r')"
+  if [[ "${_l}" =~ ^[0-9]+\.[0-9]+(\ [0-9]+\.[0-9]+)*$ ]] \
+    && [ -d "/data/conf" ] \
+    && [ "$(cat "${_pub}" 2> /dev/null)" != "${_l}" ]; then
+    printf '%s\n' "${_l}" > "${_pub}.new.$$" \
+      && chmod 0644 "${_pub}.new.$$" \
+      && mv -f "${_pub}.new.$$" "${_pub}"
+    rm -f "${_pub}.new.$$"
+  fi
 }
 
 _update_boa_tools() {
