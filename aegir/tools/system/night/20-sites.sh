@@ -4655,7 +4655,7 @@ _le_ssl_check_update() {
   fi
   ### hosting_le names the marker after the alias a site redirects to, and
   ### honours it there on Verify: either name stops this leg too.
-  local _alTxt _rdr _svcRx
+  local _alTxt _rdr _svcRx _leMain
   if [ -e "${_usEr}/.drush/${_Dom}.alias.drushrc.php" ]; then
     _alTxt=$(_acct_read_in "${_usEr}/.drush" "${_Dom}.alias.drushrc.php")
     _rdr=$(printf '%s\n' "${_alTxt}" \
@@ -4769,6 +4769,25 @@ _le_ssl_check_update() {
         ### name of that kind which no longer resolves (one under a server
         ### name the box once had) failed the whole order every night.
         _svcRx='\.(host8|boa|aegir|o8)\.(biz|io|cc)$'
+        ### The no-SAN switch, read as Verify reads it: under the alias the
+        ### site redirects to when it redirects to one, else under its own
+        ### name. With it only the site's own name is ordered, and beside it
+        ### the redirect target, the two names its certificate must cover;
+        ### a wildcard order takes no other name. Not read here, the order
+        ### asked for every alias again, was told the names had changed and
+        ### failed each night on the alias the switch was set for.
+        _leMain="${_Dom}"
+        if [[ "${_rdr}" =~ ^[A-Za-z0-9.-]+$ ]] && [ "${_rdr}" != "0" ]; then
+          _leMain="${_rdr}"
+        fi
+        if _ctrl_has "ssl-no-san-${_leMain}.info"; then
+          echo "LE no-SAN order for ${_Dom}: ssl-no-san-${_leMain}.info in static/control, its other names are left out"
+          if [ "${_leWild}" != "YES" ] && [ "${_leMain}" != "${_Dom}" ]; then
+            _usEaliases="--domain ${_leMain}"
+            echo "--domain ${_leMain}"
+          fi
+          _siTealiases=""
+        fi
         for _aliAs in `echo "${_siTealiases}"`; do
           if [[ "${_aliAs}" =~ ${_svcRx} ]]; then
             echo "ignored alias ${_aliAs} (a hosting service name, as on Verify)"

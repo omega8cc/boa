@@ -1598,6 +1598,16 @@
       its log. A site whose certificate holds such a name is renewed once
       without it.
 
+    * The nightly certificate check reads the no-SAN switch
+      (~/static/control/ssl-no-san-<domain>.info), as Verify does. With the
+      switch set, Verify orders the certificate for the site's own name
+      alone (and the alias it redirects to), but the nightly went on asking
+      for every alias, was told the names had changed, and failed each
+      night on the very alias the switch was set for: the certificate was
+      renewed only by a Verify, and the account got the renewal-failed
+      mail. The nightly now orders the same names as Verify under the
+      switch and says so in its log.
+
     * xoct's warning about expired certificates on a relaying server says
       how many there are. It named the soonest expired set of the account
       and nothing else, which read as the whole list, and it said the set
