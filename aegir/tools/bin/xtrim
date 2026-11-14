@@ -2504,11 +2504,16 @@ _names_one() {
 ### request this box makes itself (a tool's own probe of a site, on the
 ### target or through the relay) is no visitor's: its first field is this box
 ### too, and it is left out. A request the target makes itself for a name
-### that still leads here comes back through this box as well (its nightly
-### site pass asks for each site's robots.txt and llms.txt by the site's
-### name): its first field is one of the target's own addresses, those it
-### lists itself and the one this box relays to. It is no visitor's either,
-### and is kept apart, the second figure, never in the count. Both hold only
+### that still leads here comes back through this box as well: the control
+### panel's hourly web cron calls each site by its name (unless the account
+### has static/control/cron-proxy.info), the nightly site pass asks for each
+### site's robots.txt and llms.txt by name, and a site there may call a name
+### of its own. Its first field is one of the target's own addresses, those
+### it lists itself and the one this box relays to. It is no visitor's
+### either, and is kept apart, the second figure, never in the count. A
+### request of the target's that reaches this box through another front (a
+### CDN this box does not resolve) carries that front's address and reads as
+### a visitor's. Both hold only
 ### where the target resolves the visitor behind this box (a set_real_ip_from
 ### line for it in the migration trust include, or a line in the log that
 ### shows it did: a visitor's or the target's own). Where it does not, every
@@ -2526,7 +2531,8 @@ _names_counts() {
   local _t="$1" _a _pat="" _own=" " _tru="" _out _tr _tq=""
   _NAMES_CNT=""; _NAMES_CNT_STATE=noread; _NAMES_CNT_SINCE=""; _NAMES_CNT_OWN=out
   ### The address this box relays to is the target's own whatever the target
-  ### lists (an address held in front of it); only an address is passed on.
+  ### lists (an address held in front of it); only a value made of address
+  ### characters is passed on, so nothing in it can change the remote text.
   case "${_t}" in
     *[!0-9a-fA-F:.]*) ;;
     *) _tq="${_t}" ;;
@@ -2761,19 +2767,20 @@ _cmd_names() {
   ### What the targets logged as relayed from this box, whole: a request to
   ### a name no line above carries (a wildcard's name, a name of an account
   ### left out of this run) is counted here and named, most requests first.
-  ### The targets' own requests have a sum and a line of their own; a name
-  ### on no line above that got nothing else is not listed.
+  ### The targets' own requests have a sum and a line of their own, and a
+  ### name on no line above is listed with them too: a site on the target
+  ### that calls a name still leading here depends on this box as well.
   if [ -n "${_csince}" ]; then
     _call="$(printf '%s' "${_call}" | sed '/^$/d')"
     _ct="$(printf '%s\n' "${_call}" | awk '{ t += $1 } END { printf "%.0f", t }')"
     _cto="$(printf '%s\n' "${_call}" | awk '{ t += $2 } END { printf "%.0f", t }')"
     ### (the first list is never empty, so the second is never read as it)
-    _cx="$(printf '%s\n' "${_call}" | awk 'NR == FNR { s[$0] = 1; next } NF == 3 && $1 > 0 && !($3 in s) { print }' \
+    _cx="$(printf '%s\n' "${_call}" | awk 'NR == FNR { s[$0] = 1; next } NF == 3 && !($3 in s) { print }' \
       <(printf 'xt-listed-names\n%s' "${_cseen}") - | LC_ALL=C sort -k1,1nr -k3,3)"
     _cm="$(printf '%s\n' "${_cx}" | sed '/^$/d' | wc -l | tr -d ' ')"
     echo "box: ${_ct} requests reached a target through this box (since ${_csince})"
     if [ "${_cto}" -gt 0 ]; then
-      echo "box: ${_cto} more came through this box as a target's own requests, made there for a name that still leads here (its nightly refresh of each site's robots.txt and llms.txt asks by the site's name): no visitor's, in no count above"
+      echo "box: ${_cto} more came through this box as a target's own requests, made there for a name that still leads here (the control panel's hourly web cron and the nightly robots.txt and llms.txt refresh call each site by its name, and a site there may call a name itself): no visitor's, in no count above"
     fi
     if [ "${_cm}" -gt 0 ]; then
       echo "box: ${_cm} more names got relayed requests and are on no line above (a wildcard's name, or an account left out of this run), most requests first:"
