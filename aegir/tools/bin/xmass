@@ -5897,6 +5897,25 @@ apt-get -q -y update >/dev/null 2>&1
 REPOEOF
 }
 
+# percona-xtrabackup Depends on libcurl4-openssl-dev, whose headers unpack at
+# /usr/include/x86_64-linux-gnu/curl. BOA's curl build makes that path a link
+# to its own headers once it has found and removed that package (which takes
+# xtrabackup with it), and dpkg then writes the distro's headers through the
+# link, over BOA's own: later builds compile against an older curl than the
+# library they link. So a link there goes before the install. The package
+# gets a folder of its own, BOA's headers stay as they are, and BOA's next
+# curl build puts the link back. Emits the shell to run, as the repo setup
+# above does, so the source and the target share one definition.
+_xmass_pxb_curl_hdr_cmd() {
+  cat <<'HDREOF'
+_hdrDir=/usr/include/x86_64-linux-gnu/curl
+if [ -L "${_hdrDir}" ]; then
+  rm -f "${_hdrDir}" || exit 1
+  echo "the link ${_hdrDir} is taken away for this install; the curl headers it led to are left as they are"
+fi
+HDREOF
+}
+
 _xmass_install_xtrabackup_local() {
   local _pkg _repo
   _pkg=$(_xmass_xtrabackup_pkg)
@@ -5908,6 +5927,8 @@ _xmass_install_xtrabackup_local() {
   _info "Enabling Percona ${_repo} repo on source ..."
   bash -c "$(_xmass_pxb_repo_setup_cmd "${_repo}")" \
     || _die "Failed to enable ${_repo} repo on source"
+  bash -c "$(_xmass_pxb_curl_hdr_cmd)" \
+    || _die "Failed to take the curl header link away on source: ${_pkg} was not installed"
   _info "Installing ${_pkg} on source ..."
   apt-get -q -y install "${_pkg}" \
     || _die "Failed to install ${_pkg} on source"
@@ -5928,6 +5949,8 @@ _xmass_install_xtrabackup_target() {
   _info "Enabling Percona ${_repo} repo on target ${_tgt} ..."
   _xmass_pxb_repo_setup_cmd "${_repo}" | ssh root@"${_tgt}" "bash -s" \
     || _die "Failed to enable ${_repo} repo on target ${_tgt}"
+  _xmass_pxb_curl_hdr_cmd | ssh root@"${_tgt}" "bash -s" \
+    || _die "Failed to take the curl header link away on target ${_tgt}: ${_pkg} was not installed"
   _info "Installing ${_pkg} on target ${_tgt} ..."
   ssh root@"${_tgt}" "apt-get -q -y install ${_pkg}" \
     || _die "Failed to install ${_pkg} on target ${_tgt}"
