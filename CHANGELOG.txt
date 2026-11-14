@@ -857,6 +857,15 @@
       logged in /var/log/boa/mysql.backup.wait.log. The snapshot's
       prepare and its transfer hold no backup off.
 
+    * A whole-server move no longer overwrites BOA's own curl headers.
+      xmass init installs Percona XtraBackup on both servers, and that
+      package brings the distro's curl development files. On a server
+      where BOA's curl build had already pointed the system's curl header
+      folder at its own headers, they were written through that link, over
+      BOA's own, and whatever was compiled afterwards read curl 7.88
+      headers beside the newer library. init now takes the link away
+      before the install, and BOA's next curl build puts it back.
+
     * A FastTrack.info put in a new account's ~/static/control stays. Up
       to 2024 BOA wrote this file into every account by default, and the
       release pass still removes it once from an account that has not been
