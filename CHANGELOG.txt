@@ -1587,6 +1587,17 @@
       while the profiles were in complain mode is removed once enforce mode
       is back.
 
+    * The nightly certificate check orders the names Verify orders. It took
+      every name of a site's vhost, so a name under one of the hosting
+      service's own domains (an automatic alias, which Verify always leaves
+      out) was ordered at night alone: the two name lists differed, each
+      order forced a renewal after the other's, and such a name that no
+      longer resolved (one under a server name the box had years ago)
+      failed the site's whole order every night, leaving its renewal to the
+      next Verify. The nightly now leaves those names out and says so in
+      its log. A site whose certificate holds such a name is renewed once
+      without it.
+
     * On a box relaying moved sites, the certificate mirror now warns when a
       relayed site's certificate has expired, or will within the warning
       window, and its target holds nothing newer: the daily run names the

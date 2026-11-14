@@ -4655,7 +4655,7 @@ _le_ssl_check_update() {
   fi
   ### hosting_le names the marker after the alias a site redirects to, and
   ### honours it there on Verify: either name stops this leg too.
-  local _alTxt _rdr
+  local _alTxt _rdr _svcRx
   if [ -e "${_usEr}/.drush/${_Dom}.alias.drushrc.php" ]; then
     _alTxt=$(_acct_read_in "${_usEr}/.drush" "${_Dom}.alias.drushrc.php")
     _rdr=$(printf '%s\n' "${_alTxt}" \
@@ -4762,7 +4762,18 @@ _le_ssl_check_update() {
           | tr -d "\n" \
           | sed "s/  / /g; s/  / /g; s/  / /g" \
           | sort | uniq`
+        ### A name under one of the hosting service's own domains is left
+        ### out, as Verify leaves it out (hosting_le): only a site's real
+        ### names are ordered. Ordered here alone it made the two name lists
+        ### differ, so each order forced a renewal after the other's, and a
+        ### name of that kind which no longer resolves (one under a server
+        ### name the box once had) failed the whole order every night.
+        _svcRx='\.(host8|boa|aegir|o8)\.(biz|io|cc)$'
         for _aliAs in `echo "${_siTealiases}"`; do
+          if [[ "${_aliAs}" =~ ${_svcRx} ]]; then
+            echo "ignored alias ${_aliAs} (a hosting service name, as on Verify)"
+            continue
+          fi
           if [ "${_leWild}" = "YES" ]; then
             if [ -z "${_usEaliases}" ] \
               && [ ! -z "${_aliAs}" ] \
