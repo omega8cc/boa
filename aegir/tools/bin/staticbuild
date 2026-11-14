@@ -2679,14 +2679,69 @@ build_cms() {
 }
 
 _culturas_views_fix() {
-  # 0 when an entity_reference_revisions tree declares the relationship handler the
-  # views OpenCulturas ships name (the plugin, by its id), its views data names that
-  # handler, and no patch left a rejected hunk there: a patch that went in by half
-  # leaves the handler's file beside views data that never names it. $1 the module's
-  # directory.
+  # 0 when an entity_reference_revisions tree carries the issue-2799479 fix the views
+  # OpenCulturas ships stand on: the relationship handler declared (the plugin, by its
+  # id), the views data giving the reverse revision relationship to that handler (the
+  # fix's own line, in the .views.inc file or a hooks class, wherever the release keeps
+  # its views data), and no rejected hunk left. A patch that went in by half leaves the
+  # handler's file beside views data that never uses it; the module's other hooks name
+  # its field type anyway, so the views data is read by the fix's line, never by the
+  # type's name. $1 the module's directory.
   _run_as_o8 "grep -q -E 'ViewsRelationship\(.entity_reference_revisions.\)' '$1/src/Plugin/views/relationship/EntityReferenceRevisions.php' \
-    && grep -q -s -F -e \"'entity_reference_revisions'\" -e '\"entity_reference_revisions\"' '$1/entity_reference_revisions.views.inc' '$1'/src/Hook/*.php \
+    && grep -q -s -F \"'entity_reverse' : 'entity_reference_revisions'\" '$1/entity_reference_revisions.views.inc' '$1'/src/Hook/*.php \
     && test -z \"\$(find '$1' -name '*.rej' -print -quit)\""
+}
+
+_culturas_one_patch() {
+  # Switch a culturas build to the one dependency patch its views stand on: the
+  # distribution's declared patches stay out (ignore-dependency-patches) and the root's
+  # patches become the entity_reference_revisions patch alone, at the address the
+  # distribution's own release declares for it, read from the lock the failed build
+  # resolved (composer.lock keeps each package's extra). Non-zero, changing nothing,
+  # when that lock names no such patch. $1 workdir.
+  local _dir="$1" _p
+  _p="$(_run_as_o8 "cd '${_dir}' && php -r '
+    \$l = json_decode((string) @file_get_contents(\"composer.lock\"), true);
+    if (!is_array(\$l) || !isset(\$l[\"packages\"])) { exit(1); }
+    foreach (\$l[\"packages\"] as \$p) {
+      if (!isset(\$p[\"name\"]) || \$p[\"name\"] !== \$argv[1]) { continue; }
+      \$d = isset(\$p[\"extra\"][\"patches\"][\"drupal/entity_reference_revisions\"]) ? \$p[\"extra\"][\"patches\"][\"drupal/entity_reference_revisions\"] : null;
+      if (!is_array(\$d)) { exit(1); }
+      \$o = array();
+      foreach (\$d as \$k => \$v) {
+        \$u = is_array(\$v) ? (isset(\$v[\"url\"]) ? \$v[\"url\"] : \"\") : \$v;
+        \$t = is_array(\$v) && isset(\$v[\"description\"]) ? \$v[\"description\"] : (is_string(\$k) ? \$k : \"issue 2799479\");
+        if (is_string(\$u) && preg_match(\"#^https://#\", \$u)) { \$o[\$t] = \$u; }
+      }
+      if (!\$o) { exit(1); }
+      echo json_encode(array(\"drupal/entity_reference_revisions\" => \$o), JSON_UNESCAPED_SLASHES);
+      exit(0);
+    }
+    exit(1);' '${_CULTURAS_DISTPKG}'")" || return 1
+  _run_as_o8 "cd '${_dir}' && composer config --no-plugins --json extra.composer-patches.ignore-dependency-patches '[\"${_CULTURAS_DISTPKG}\"]' \
+    && composer config --no-plugins --json extra.patches '${_p}'"
+}
+
+_culturas_build() {
+  # The culturas build for _with_core_fallback. composer-patches 2.x, which the
+  # distribution brings, stops the install on any declared patch that no longer fits
+  # (composer-exit-on-patch-failure is a 1.x setting), so one stale patch among the
+  # distribution's would fail the whole build: then the build goes on with the one
+  # patch the views stand on, the way the 3.0 line was built, and the row says so. Every
+  # older core it then tries keeps that one patch. $1 workdir.
+  local _dir="$1" _out _rc
+  if [[ "${_CULTURAS_ONE}" != "1" ]]; then
+    _out="$(_composer_build "${_dir}" 2>&1)"
+    _rc=$?
+    printf '%s\n' "${_out}"
+    [[ "${_rc}" == "0" ]] && return 0
+    grep -q -i -E 'apply patch|patcher|patch .*fail' <<< "${_out}" || return 1
+    _culturas_one_patch "${_dir}" || { _alrt "culturas: the declared patches did not install, and the lock names no entity_reference_revisions patch to build with alone"; return 1; }
+    _CULTURAS_ONE=1
+    _pending culturas "declared patches dropped" "the distribution's declared patches did not install; building with its entity_reference_revisions patch alone"
+    _run_as_o8 "cd '${_dir}' && rm -rf composer.lock vendor patches.lock.json" > /dev/null 2>&1
+  fi
+  _composer_build "${_dir}"
 }
 
 build_culturas() {
@@ -2697,15 +2752,17 @@ build_culturas() {
     || { _record_fail "culturas"; return 1; }
   # Pin the distribution to its exact drupal.org release (the template otherwise pulls a
   # -dev branch) and build it with the dependency patches it declares, each written for
-  # the module release that distribution release requires. The 3.0 line was built with
-  # them dropped (several were stale against its own core) and the one load-bearing
-  # patch applied by hand from a fixed address, which stopped fitting the module's next
-  # release while the distribution's own declaration had moved with it.
+  # the module release that distribution release requires; when they do not install,
+  # with the load-bearing one alone (_culturas_build). The 3.0 line was built with them
+  # dropped (several were stale against its own core) and that one patch applied by
+  # hand from a fixed address, which stopped fitting the module's next release while
+  # the distribution's own declaration had moved with it.
   local _ocrel
+  _CULTURAS_ONE=""
   _ocrel="$(_drupal_release "${_CULTURAS_PROJECT}")"
   if ! { _composer_prepare "${_wd}" \
          && { [[ -z "${_ocrel}" ]] || _run_as_o8 "cd '${_wd}' && composer require --no-update --no-scripts ${_CULTURAS_DISTPKG}:'${_ocrel}'"; } \
-         && _with_core_fallback "${_wd}" "culturas" _composer_build; }; then
+         && _with_core_fallback "${_wd}" "culturas" _culturas_build; }; then
     _record_fail "culturas"
     return 1
   fi
