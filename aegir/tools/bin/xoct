@@ -5449,6 +5449,23 @@ _xoct_site_dumps_left_here() {
     fi
   done
 }
+### The per-site dump folders in the current (pinned) src/ directory, one name
+### a line, each a name of letters, digits, dot, dash and underscore only: a
+### folder of any other name is left out whole. A link is never followed.
+_xoct_site_dump_names_here() {
+  local _e
+  for _e in ./*/; do
+    _e="${_e%/}"
+    [ -L "${_e}" ] && continue
+    if [ -d "${_e}" ] && [ -f "${_e}/metadata" ] && [ ! -L "${_e}/metadata" ]; then
+      _e="${_e#./}"
+      case "${_e}" in
+        ''|.|..|*[!A-Za-z0-9_.-]*) continue ;;
+      esac
+      printf '%s\n' "${_e}"
+    fi
+  done
+}
 ### A live transfer's site dumps go in place of any the target holds: an
 ### earlier transfer of this move (one forced over a failed export) left its
 ### folders in the target's src/, and the copy adds to a folder without
@@ -5457,8 +5474,8 @@ _xoct_site_dumps_left_here() {
 ### holds nothing), every real folder holding mydumper's metadata goes, and
 ### each name this export sends: a failed dump's folder has no metadata. The
 ### panel dump and the account's other folders stay. $1 the target, $2 the
-### account's directory there, $3 the folders this export sends as
-### _xoct_site_dumps_left_here lists them (a name of other than letters,
+### account's directory there, $3 the folders this export sends, one a line
+### as _xoct_site_dump_names_here lists them (a line of other than letters,
 ### digits, dot, dash and underscore is not sent). Status 1, named, when the
 ### target could not be read or keeps a folder.
 _XOCT_REMOTE_DUMPS_CLEAR='if [ -L ./src ] || [ ! -e ./src ]; then
@@ -5489,15 +5506,12 @@ elif cd -P -- ./src && [ "$(/bin/pwd -P)" = "${_w}/src" ]; then
 fi'
 _xoct_target_dumps_clear() {
   local _n _q="" _o
-  local -a _ns=()
-  read -r -a _ns <<< "${3}"
-  for _n in "${_ns[@]}"; do
-    _n="${_n%/}"
+  while IFS= read -r _n; do
     case "${_n}" in
       ''|.|..|*[!A-Za-z0-9_.-]*) continue ;;
     esac
     _q="${_q} './${_n}'"
-  done
+  done <<< "${3}"
   _o="$(_xoct_remote_in "${1}" "${2}" "${_XOCT_REMOTE_DUMPS_CLEAR//@NAMES@/${_q}}" 2> /dev/null)"
   case "${_o}" in
     CLEAR) return 0 ;;
@@ -8062,14 +8076,16 @@ _migrate_prepare() {
   ### per-site dump folder in src/ goes (an earlier copy's, or one a killed
   ### run left), so a site this run does not dump has no folder for the
   ### transfer to send and the import to load as current.
-  ### A transfer stamp beside the failure latch is a transfer forced over
+  ### A transfer stamp newer than the failure latch is a transfer forced over
   ### that failed export: this export is the one the target must get, so the
   ### stamp goes too, before the latch (a run stopped between the two leaves
-  ### the pair for the next export to clear). With no latch (a clean export,
-  ### or an abandon) the stamp stays: a fresh move starts with reset-state.
+  ### the pair for the next export to clear). An older stamp (an abandoned
+  ### move's, a failed export after it) or one with no latch stays: a fresh
+  ### move starts with reset-state.
   if [ "${_cmd}" = "export" ]; then
     _XOCT_FORCED_SENT=""
-    if [ -e "${_USR}/log/export_failed.pid" ] && [ -e "${_USR}/log/transferred.pid" ]; then
+    if [ -e "${_USR}/log/export_failed.pid" ] && [ -e "${_USR}/log/transferred.pid" ] \
+      && [ "${_USR}/log/transferred.pid" -nt "${_USR}/log/export_failed.pid" ]; then
       _XOCT_FORCED_SENT=YES
       _xoct_in_real_dir "${_USR}/log" rm -f -- ./transferred.pid
     fi
@@ -11911,7 +11927,8 @@ _migrate_init() {
       exit 1
     elif [ "${_cmd}" = "transfer" ] && [ -e "${_USR}/log/transferred.pid" ]; then
       echo "_USR ${_oct} is not eligible for migration: already transferred"
-      if [ -e "${_USR}/log/export_failed.pid" ]; then
+      if [ -e "${_USR}/log/export_failed.pid" ] \
+        && [ "${_USR}/log/transferred.pid" -nt "${_USR}/log/export_failed.pid" ]; then
         echo "INFO: that transfer was forced over the failed export (log/export_failed.pid): fix the cause and re-run"
         echo "INFO: 'xoct export ${_oct} ${_tgt}${_dst:+ ${_dst}}${_XOCT_ADMAIL:+ admail=${_XOCT_ADMAIL}}', then transfer the fixed export"
       fi
@@ -12029,7 +12046,7 @@ _migrate_init() {
           ### On the target, an earlier transfer's site dumps go first.
           if [ "${_cmd}" = "transfer" ] && [ "${_MODE}" = "LIVE" ]; then
             if ! _xoct_target_dumps_clear "${_tgt}" "${_DST}" \
-              "$(_xoct_in_real_dir "${_USR}/src" _xoct_site_dumps_left_here)"; then
+              "$(_xoct_in_real_dir "${_USR}/src" _xoct_site_dump_names_here)"; then
               echo "ERROR: ${_cmd} for ${_oct}: src/ NOT sent and the transfer NOT marked complete; fix the cause and re-run"
               exit 1
             fi
