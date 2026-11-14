@@ -1064,8 +1064,10 @@
       where this server's import of the account stopped short, it sent the
       sending server's dumps and source name on. An export now starts by
       removing an earlier run's failure latch and every site dump folder in
-      src/, keeping the panel dump a re-run keeps, and refuses a control panel
-      that names no database before the client's start notice goes out.
+      src/, keeping the panel dump a re-run keeps, records this server before
+      the panel dump lands, and refuses a control panel that names no database
+      before the client's start notice goes out; xoct abandon also clears a
+      failed run's latch and site dump folders.
 
     * xcopy post-mig names, for each copied site whose verify failed, the
       first error line of that verify's log as the control panel shows it.
