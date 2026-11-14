@@ -45,16 +45,18 @@
 
     * xtrim names shows the new server's own requests apart from the
       relayed count. A request the new server makes itself for a name that
-      still leads to the old server comes back through it: its nightly site
-      pass asks for each site's robots.txt and llms.txt by the site's name.
-      Right after a move such requests can be most of what is relayed, and
-      they were counted like a visitor's, so a count of 2 on a name could be
-      that refresh alone. A name's count is now its visitors' alone, and
-      the new server's own follow it as (+N the target's own), on the
-      name's line, in the account's sum and in a line of their own for the
-      server. They are told by the new server's own addresses as the
-      visitor. Where the new server does not resolve the visitor behind the
-      old one, the report says they are counted and cannot be told apart.
+      still leads to the old server comes back through it: the control
+      panel's hourly web cron and the nightly robots.txt and llms.txt
+      refresh call each site by its name. Right after a move such requests
+      can be most of what is relayed, and they were counted like a
+      visitor's, so a count on a name could be the new server's own calls
+      alone. A name's count is now its visitors' alone, and the new
+      server's own follow it as (+N the target's own), on the name's line,
+      in the account's sum, in a line of their own for the server and in
+      the list of names on no line. They are told by the new server's own
+      addresses as the visitor. Where the new server does not resolve the
+      visitor behind the old one, the report says they are counted and
+      cannot be told apart.
 
     * xmass prep-target and init take --host-fp=SHA256:..., the fingerprint
       of the target's SSH host key, which the target's own pre-mig prints
