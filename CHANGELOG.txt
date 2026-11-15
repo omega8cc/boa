@@ -262,6 +262,27 @@
 
 @=> Security
 
+    * nginx can read a hosted account's own vhosts and the files they
+      include only as copies root has judged (ngxstore). The account's
+      backend user writes those files, and nginx's master runs as root and
+      acts on what they name at each reload and configtest. With
+      _NGINX_ACCT_STORE=YES in /root/.barracuda.cnf, root copies each
+      account's files into /etc/nginx/boa-acct.d/<account>/ after reading
+      them with nginx's own token rules against what provision and BOA
+      write there, and points the server's config at the copies. A file
+      outside that shape keeps its previous copy or stays out, and is named
+      once in /var/log/boa/ngxstore.incident.log with one mail. An account
+      whose new copies fail the configtest gets its previous ones back, so
+      one account no longer stops every reload, and a certificate folder
+      moved away keeps its copies. Every server writes nightly to
+      /var/log/boa/ngxstore.report what the copies would leave out. Off by
+      default.
+
+    * Each account's sudo line for /etc/init.d/nginx names reload alone,
+      the one verb provision and the panel run: every other verb of the
+      init script, stop and destroy among them, ran as root for any
+      hosted account.
+
     * root runs an account's task dispatcher (/var/xdrago/run-<account>)
       only when it is a regular file with one link, owned by root, that no
       group or other user can write. A copy parked in /var/backups/off-run
