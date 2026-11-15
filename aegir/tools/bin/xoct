@@ -2302,17 +2302,39 @@ _xoct_export_travelled() {
   [ "${_e}" -nt "${1}/log/transferred.pid" ] && return 1
   return 0
 }
+### Whether xmass carries the account at $1 (its /data/disk path) to the
+### target $2, so that a first proxy of it is xmass's conversion and its
+### export stamp xmass's own: a cutover of this box toward $2 holds the box
+### (running, or parked past its freeze), or the cutover left the account the
+### mark of a conversion it could not make, root's own log/proxy-failed.pid
+### naming $2 first, which xmass's recovery and its go-live send to proxy.
+_xoct_xmass_carried() {
+  local _t
+  _t="$(grep -m1 '^_XMASS_TARGET_IP=' /data/conf/xmass_state.cnf 2> /dev/null | cut -d= -f2- | tr -cd '0-9.')"
+  if [ -n "${_t}" ] && [ "${_t}" = "${2}" ] && _xoct_xmass_cutover_holds > /dev/null; then
+    return 0
+  fi
+  _t="$(_mig_hread "${1}/log" proxy-failed.pid root 2> /dev/null | sed -n 2p | awk '{print $1}' | tr -cd '0-9.')"
+  [ -n "${_t}" ] && [ "${_t}" = "${2}" ]
+}
 ### What the target $1 holds of the account $2's move, read inside its real
-### log/: "imported" when an import stamped it (a completed import removes
-### the export stamps that travelled with the transfer), "pending" when an
-### export stamp travelled there after it, "none" with neither; nothing when
-### the folder cannot be read there. A first contact with the target: its
-### connect is bounded as the record push's is.
+### log/: "imported" when an import ran to its end (it stamps imported.pid,
+### removes the export stamps that travelled with the transfer and, at its
+### end, the 503 gate static/control/http-off.pid that travelled too);
+### "pending" when an export stamp travelled there after it; "failed" when
+### site loads failed (import_failed.pid); "gated" when the import stopped
+### before its end; "none" with no import; nothing when the folder cannot be
+### read there. A first contact with the target: its connect is bounded as
+### the record push's is.
 _xoct_target_import_state() {
   _mig_valid_ip "${1}" && _mig_valid_acct "${2}" || return 1
   ssh -o ConnectTimeout=15 root@"${1}" "_w=\"\$(cd -P /data/disk 2> /dev/null && /bin/pwd -P)/${2}/log\"
 cd -P -- \"/data/disk/${2}/log\" 2> /dev/null && [ \"\$(/bin/pwd -P)\" = \"\${_w}\" ] || exit 1
-if [ -e ./exported.pid ] || [ -e ./export_failed.pid ]; then echo pending; elif [ -e ./imported.pid ]; then echo imported; else echo none; fi" \
+if [ -e ./exported.pid ] || [ -e ./export_failed.pid ]; then echo pending
+elif [ ! -e ./imported.pid ]; then echo none
+elif [ -e ./import_failed.pid ]; then echo failed
+elif [ -e \"/data/disk/${2}/static/control/http-off.pid\" ]; then echo gated
+else echo imported; fi" \
     < /dev/null 2> /dev/null | head -n 1 | tr -cd 'a-z'
 }
 ### What the target $1 says of the account $2 there, for a client notice, as
@@ -10606,8 +10628,9 @@ _xoct_proxy_preflight() {
   ### A first proxy relays to the copy the target imported: one whose last
   ### transfer was never imported there still serves an older copy, or none.
   ### Read before anything is written. A converted account (root's marker)
-  ### and xmass's cutover, which moves the data its own way, are not asked.
-  if ! _mig_is_proxied "${_USR##*/}" && ! _xoct_xmass_cutover_holds > /dev/null; then
+  ### and an account xmass carries to this target, which moves the data its
+  ### own way, are not asked.
+  if ! _mig_is_proxied "${_USR##*/}" && ! _xoct_xmass_carried "${_USR}" "${_tgt}"; then
     case "$(_xoct_target_import_state "${_tgt}" "${_XOCT_PEER_ACCT}")" in
       imported) : ;;
       pending)
@@ -10617,14 +10640,25 @@ _xoct_proxy_preflight() {
         echo "ERROR:   xoct import ${_oct} ${_tgt}${_dst:+ ${_dst}}${_XOCT_ADMAIL:+ admail=${_XOCT_ADMAIL}}"
         exit 1
       ;;
+      failed|gated)
+        echo "ERROR: ${_oct}: the import on ${_tgt} did not complete (log/import_failed.pid there, or its 503 gate"
+        echo "ERROR: still in static/control): its sites would relay to sites that do not serve; nothing changed."
+        echo "ERROR: Fix the cause the import named, then re-run it whole on ${_tgt}:"
+        echo "ERROR:   rm /data/disk/${_XOCT_PEER_ACCT}/log/imported.pid"
+        echo "ERROR:   xoct import ${_oct} ${_tgt}${_dst:+ ${_dst}}${_XOCT_ADMAIL:+ admail=${_XOCT_ADMAIL}}"
+        exit 1
+      ;;
       none)
         echo "ERROR: ${_oct}: ${_tgt} holds no import of ${_XOCT_PEER_ACCT} (no log/imported.pid there); nothing changed."
-        echo "ERROR: Transfer and import the account first"
+        echo "ERROR: Transfer the account, then import it on ${_tgt}:"
+        echo "ERROR:   xoct transfer ${_oct} ${_tgt}${_dst:+ ${_dst}}${_XOCT_ADMAIL:+ admail=${_XOCT_ADMAIL}}"
+        echo "ERROR:   xoct import ${_oct} ${_tgt}${_dst:+ ${_dst}}${_XOCT_ADMAIL:+ admail=${_XOCT_ADMAIL}}"
         exit 1
       ;;
       *)
         echo "ERROR: ${_oct}: /data/disk/${_XOCT_PEER_ACCT}/log on ${_tgt} could not be read, so its import"
-        echo "ERROR: cannot be confirmed; nothing changed. Retry when it answers."
+        echo "ERROR: cannot be confirmed; nothing changed. Retry when ${_tgt} answers:"
+        echo "ERROR:   xoct proxy ${_oct} ${_tgt}${_dst:+ ${_dst}}$(_xoct_proxy_flags)${_XOCT_ADMAIL:+ admail=${_XOCT_ADMAIL}}"
         exit 1
       ;;
     esac
@@ -12052,15 +12086,22 @@ _migrate_init() {
     ### (after a forced one, say) leaves the target an older copy. A converted
     ### account is not asked; as above, only the root marker says converted.
     ### xmass's cutover stamps exported.pid itself and carries the data its own
-    ### way, so it passes the gate above alone. The target's import is read by
-    ### the preflight.
+    ### way, so an account it carries to this target passes the gate above
+    ### alone. The target's import is read by the preflight.
     elif [ "${_cmd}" = "proxy" ] \
       && ! _mig_is_proxied "${_USR##*/}" \
       && ! _xoct_export_travelled "${_USR}" \
-      && ! _xoct_xmass_cutover_holds > /dev/null; then
+      && ! _xoct_xmass_carried "${_USR}" "${_tgt}"; then
       echo "_USR ${_oct} is not eligible for migration: export not transferred"
-      echo "INFO: log/transferred.pid is missing or older than this export: the target holds no copy of it"
-      echo "INFO: run 'xoct transfer ${_oct} ${_tgt}${_dst:+ ${_dst}}${_XOCT_ADMAIL:+ admail=${_XOCT_ADMAIL}}' and the import on the target first"
+      if [ -e "${_USR}/log/transferred.pid" ]; then
+        ### an older stamp a fresh export keeps (one after an abandon, say):
+        ### the transfer refuses it as done, so the move starts again
+        echo "INFO: log/transferred.pid is older than this export: the target holds an older copy"
+        echo "INFO: run 'xoct reset-state ${_oct}', then the export, the transfer and the import on the target"
+      else
+        echo "INFO: no log/transferred.pid: the target holds no copy of this export"
+        echo "INFO: run 'xoct transfer ${_oct} ${_tgt}${_dst:+ ${_dst}}${_XOCT_ADMAIL:+ admail=${_XOCT_ADMAIL}}' and the import on the target first"
+      fi
       exit 1
     elif [ "${_XOCT_START_VERB}" = "YES" ] && [ "${_XOCT_EMAIL_CLASS}" = "OUR" ] \
       && [ "${_XOCT_BOX_MOVE}" != "YES" ]; then
