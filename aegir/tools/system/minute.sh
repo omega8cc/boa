@@ -203,8 +203,8 @@ _xmass_cred_check() {
   _sum="$(cat /root/.my.cnf /root/.my.pass.txt 2> /dev/null | md5sum | cut -c1-32)"
   _rec="$(cut -c1-32 /var/log/boa/xmass.cred.carried 2> /dev/null)"
   [ "${_sum}" = "${_rec}" ] && return 0
-  [ -n "$(find /var/log/boa/xmass.cred.tried -mmin -5 2> /dev/null)" ] && return 0
-  [ -n "$(find /root/.my.cnf /root/.my.pass.txt -mmin -1 2> /dev/null)" ] && return 0
+  [ -n "$(find /var/log/boa/xmass.cred.tried -mmin -5 ! -newermt now 2> /dev/null)" ] && return 0
+  [ -n "$(find /root/.my.cnf /root/.my.pass.txt -mmin -1 ! -newermt now 2> /dev/null)" ] && return 0
   grep -q '^  carry-credentials)' /opt/local/bin/xmass 2> /dev/null || return 0
   touch /var/log/boa/xmass.cred.tried 2> /dev/null
   # One generation kept past 1 MiB: a standby that never takes the pair is

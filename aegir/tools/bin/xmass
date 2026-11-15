@@ -20277,7 +20277,7 @@ _xmass_cred_record() {   # 1 = the pair's md5, 2 = the target it holds for
 }
 
 _xmass_carry_db_credentials() {
-  local _f _loc _rem _out _mtest
+  local _f _loc _rem _out
   for _f in /root/.my.cnf /root/.my.pass.txt; do
     if [ ! -s "${_f}" ]; then
       _alrt "MySQL credentials NOT carried to ${_tgt}: ${_f} is missing or empty here"
@@ -20285,16 +20285,30 @@ _xmass_carry_db_credentials() {
     fi
   done
   _loc="$(cat /root/.my.cnf /root/.my.pass.txt | md5sum | cut -c1-32)"
-  # carry-credentials sets _XMASS_CARRY_SRC: the standby then has to be THIS box's,
-  # its marker naming this source, or nothing is copied there (a target since
-  # rebuilt as another source's standby holds a marker too).
-  _mtest="[ -e /root/.standby.cnf ]"
-  if [ -n "${_XMASS_CARRY_SRC:-}" ]; then
-    _mtest="head -n 1 /root/.standby.cnf 2>/dev/null | grep -qF 'xmass replication target of ${_XMASS_CARRY_SRC} since '"
-  fi
-  _rem="$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" \
-    "if ${_mtest}; then cat /root/.my.cnf /root/.my.pass.txt 2>/dev/null | md5sum | cut -c1-32; else echo NOMARKER; fi" \
-    2>/dev/null)" || _rem="TRANSPORT"
+  # carry-credentials sets _XMASS_CARRY_SRC to this box's addresses: a standby whose
+  # marker names another source (a target since rebuilt as another pair's standby)
+  # is then refused, OTHERSRC, and nothing is copied there. A marker that names no
+  # address in xmass's form (made by hand, or "unknown") is carried to, as a live
+  # sync does; a live sync leaves _XMASS_CARRY_SRC empty and asks only for the file.
+  _rem="$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" "_mine='${_XMASS_CARRY_SRC:-}' bash -s" 2>/dev/null <<'COMPARE'
+if [ ! -e /root/.standby.cnf ]; then
+  echo NOMARKER; exit 0
+fi
+if [ -n "${_mine}" ]; then
+  _l="$(head -n 1 /root/.standby.cnf 2>/dev/null)"
+  case "${_l}" in
+    "xmass replication target of "*" since "*)
+      _a="${_l#xmass replication target of }"; _a="${_a%% since *}"
+      case " ${_mine} unknown " in
+        *" ${_a} "*) : ;;
+        *) echo "OTHERSRC ${_a}"; exit 0 ;;
+      esac
+    ;;
+  esac
+fi
+cat /root/.my.cnf /root/.my.pass.txt 2>/dev/null | md5sum | cut -c1-32
+COMPARE
+)" || _rem="TRANSPORT"
   case "${_rem}" in
     "${_loc}")
       _info "MySQL credentials on ${_tgt}: current"
@@ -20302,7 +20316,12 @@ _xmass_carry_db_credentials() {
       return 0
     ;;
     NOMARKER)
-      _alrt "MySQL credentials NOT carried: ${_tgt} holds no /root/.standby.cnf${_XMASS_CARRY_SRC:+ naming ${_XMASS_CARRY_SRC}}"
+      _alrt "MySQL credentials NOT carried: ${_tgt} holds no /root/.standby.cnf"
+      _xmass_cred_record "${_loc}" "${_tgt}"
+      return 0
+    ;;
+    OTHERSRC*)
+      _alrt "MySQL credentials NOT carried: ${_tgt} is the standby of ${_rem#OTHERSRC }, not of this box"
       _xmass_cred_record "${_loc}" "${_tgt}"
       return 0
     ;;
@@ -20320,16 +20339,24 @@ _xmass_carry_db_credentials() {
       "rm -f /root/.my.cnf.xmass_carry /root/.my.pass.txt.xmass_carry" &> /dev/null
     return 0
   fi
-  _out="$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" "_src='${_XMASS_CARRY_SRC:-}' bash -s" 2>/dev/null <<'CARRY'
+  _out="$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" "_mine='${_XMASS_CARRY_SRC:-}' bash -s" 2>/dev/null <<'CARRY'
 _n=/root/.my.cnf.xmass_carry
 _p=/root/.my.pass.txt.xmass_carry
 chmod 600 "${_n}" "${_p}" 2>/dev/null
 if [ ! -e /root/.standby.cnf ]; then
   rm -f "${_n}" "${_p}"; echo NOMARKER; exit 0
 fi
-if [ -n "${_src}" ] \
-  && ! head -n 1 /root/.standby.cnf 2>/dev/null | grep -qF "xmass replication target of ${_src} since "; then
-  rm -f "${_n}" "${_p}"; echo NOMARKER; exit 0
+if [ -n "${_mine}" ]; then
+  _l="$(head -n 1 /root/.standby.cnf 2>/dev/null)"
+  case "${_l}" in
+    "xmass replication target of "*" since "*)
+      _a="${_l#xmass replication target of }"; _a="${_a%% since *}"
+      case " ${_mine} unknown " in
+        *" ${_a} "*) : ;;
+        *) rm -f "${_n}" "${_p}"; echo "OTHERSRC ${_a}"; exit 0 ;;
+      esac
+    ;;
+  esac
 fi
 # Bounded both ways: a standby mysqld that accepts but never answers must
 # not hold the pass, and the file legs, for the driver's whole ceiling.
@@ -20364,7 +20391,11 @@ CARRY
       _alrt "${_tgt}' shows why"
     ;;
     NOMARKER)
-      _alrt "MySQL credentials NOT carried: ${_tgt} holds no /root/.standby.cnf${_XMASS_CARRY_SRC:+ naming ${_XMASS_CARRY_SRC}}"
+      _alrt "MySQL credentials NOT carried: ${_tgt} holds no /root/.standby.cnf"
+      _xmass_cred_record "${_loc}" "${_tgt}"
+    ;;
+    OTHERSRC*)
+      _alrt "MySQL credentials NOT carried: ${_tgt} is the standby of ${_out#OTHERSRC }, not of this box"
       _xmass_cred_record "${_loc}" "${_tgt}"
     ;;
     *)
@@ -20413,7 +20444,7 @@ _xmass_cmd_carry_credentials() {
     _alrt "carry-credentials: phase syncing, but ${_XMASS_STATE_FILE} names no target or no source address: nothing carried"
     exit 0
   fi
-  if [ -n "$(find /root/.my.cnf /root/.my.pass.txt -newermt '-60 seconds' 2> /dev/null)" ]; then
+  if [ -n "$(find /root/.my.cnf /root/.my.pass.txt -newermt '-60 seconds' ! -newermt now 2> /dev/null)" ]; then
     _info "carry-credentials: root's pair changed in the last minute: deferred until it settles"
     exit 0
   fi
@@ -20421,7 +20452,9 @@ _xmass_cmd_carry_credentials() {
   _take_verb_lock defer
   _info "carry-credentials: $(date '+%F %T') to ${_XMASS_TARGET_IP}"
   _tgt="${_XMASS_TARGET_IP}"
-  _XMASS_CARRY_SRC="${_XMASS_SRC_IP}"
+  # This box as a marker may name it: the state's address, _MY_OWNIP, any interface (the
+  # set the role check takes as this box), kept to address characters.
+  _XMASS_CARRY_SRC="$(printf '%s ' "${_XMASS_SRC_IP}" "${_MY_OWNIP:-}" $(hostname -I 2> /dev/null) | tr -cd '0-9A-Fa-f.: ')"
   _xmass_carry_db_credentials
   exit 0
 }
