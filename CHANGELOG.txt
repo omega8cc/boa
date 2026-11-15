@@ -851,8 +851,9 @@
       met Access denied until the next live sync. Once a minute the source
       now compares its pair with the one last found current on the standby
       and, when they differ, runs xmass carry-credentials: the live sync's
-      own carry, alone, which waits out a BOA run and any other xmass verb
-      and is tried again every five minutes until it lands.
+      own carry, alone, to a standby whose marker names this source, once
+      the pair has not changed for a minute and no other xmass verb runs,
+      also on a full disk, and tried again every five minutes until it lands.
 
     * A BOA server answers a provider's power-off signal. A provider's
       console, a hypervisor's shutdown and a host's own restart press the

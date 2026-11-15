@@ -5759,17 +5759,19 @@ _check_root() {
   # migration is the likely reason the disk filled. autosync is exempt for the
   # opposite reason: its passes only READ this disk, and a filling active is
   # exactly when the mirror must not fall behind — the pass logs an ALRT and
-  # the disk itself is the sibling monitors' business.
+  # the disk itself is the sibling monitors' business. carry-credentials too:
+  # it reads two small files and writes two, and a standby refusing root is no
+  # better on a full source.
   if [ -n "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ] \
     && [ "${_cmd}" != "reset-phase" ] && [ "${_cmd}" != "status" ] \
-    && [ "${_cmd}" != "autosync" ]; then
+    && [ "${_cmd}" != "autosync" ] && [ "${_cmd}" != "carry-credentials" ]; then
     _die "Disk usage at ${_DF_TEST}% — must be below 90% to proceed"
   fi
   # A filesystem out of inodes is as full as one out of space, whatever
   # df -h shows; the same verbs are exempt for the same reasons.
   if [ -n "${_DI_TEST}" ] && [ "${_DI_TEST}" -gt 90 ] \
     && [ "${_cmd}" != "reset-phase" ] && [ "${_cmd}" != "status" ] \
-    && [ "${_cmd}" != "autosync" ]; then
+    && [ "${_cmd}" != "autosync" ] && [ "${_cmd}" != "carry-credentials" ]; then
     _die "Inode usage at ${_DI_TEST}% — must be below 90% to proceed (see df -i /)"
   fi
   # A test, not ||: tr exits 0 on an empty /etc/hostname
@@ -20275,7 +20277,7 @@ _xmass_cred_record() {   # 1 = the pair's md5, 2 = the target it holds for
 }
 
 _xmass_carry_db_credentials() {
-  local _f _loc _rem _out
+  local _f _loc _rem _out _mtest
   for _f in /root/.my.cnf /root/.my.pass.txt; do
     if [ ! -s "${_f}" ]; then
       _alrt "MySQL credentials NOT carried to ${_tgt}: ${_f} is missing or empty here"
@@ -20283,8 +20285,15 @@ _xmass_carry_db_credentials() {
     fi
   done
   _loc="$(cat /root/.my.cnf /root/.my.pass.txt | md5sum | cut -c1-32)"
+  # carry-credentials sets _XMASS_CARRY_SRC: the standby then has to be THIS box's,
+  # its marker naming this source, or nothing is copied there (a target since
+  # rebuilt as another source's standby holds a marker too).
+  _mtest="[ -e /root/.standby.cnf ]"
+  if [ -n "${_XMASS_CARRY_SRC:-}" ]; then
+    _mtest="head -n 1 /root/.standby.cnf 2>/dev/null | grep -qF 'xmass replication target of ${_XMASS_CARRY_SRC} since '"
+  fi
   _rem="$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" \
-    "if [ -e /root/.standby.cnf ]; then cat /root/.my.cnf /root/.my.pass.txt 2>/dev/null | md5sum | cut -c1-32; else echo NOMARKER; fi" \
+    "if ${_mtest}; then cat /root/.my.cnf /root/.my.pass.txt 2>/dev/null | md5sum | cut -c1-32; else echo NOMARKER; fi" \
     2>/dev/null)" || _rem="TRANSPORT"
   case "${_rem}" in
     "${_loc}")
@@ -20293,7 +20302,7 @@ _xmass_carry_db_credentials() {
       return 0
     ;;
     NOMARKER)
-      _alrt "MySQL credentials NOT carried: ${_tgt} holds no /root/.standby.cnf"
+      _alrt "MySQL credentials NOT carried: ${_tgt} holds no /root/.standby.cnf${_XMASS_CARRY_SRC:+ naming ${_XMASS_CARRY_SRC}}"
       _xmass_cred_record "${_loc}" "${_tgt}"
       return 0
     ;;
@@ -20311,11 +20320,15 @@ _xmass_carry_db_credentials() {
       "rm -f /root/.my.cnf.xmass_carry /root/.my.pass.txt.xmass_carry" &> /dev/null
     return 0
   fi
-  _out="$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" "bash -s" 2>/dev/null <<'CARRY'
+  _out="$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" "_src='${_XMASS_CARRY_SRC:-}' bash -s" 2>/dev/null <<'CARRY'
 _n=/root/.my.cnf.xmass_carry
 _p=/root/.my.pass.txt.xmass_carry
 chmod 600 "${_n}" "${_p}" 2>/dev/null
 if [ ! -e /root/.standby.cnf ]; then
+  rm -f "${_n}" "${_p}"; echo NOMARKER; exit 0
+fi
+if [ -n "${_src}" ] \
+  && ! head -n 1 /root/.standby.cnf 2>/dev/null | grep -qF "xmass replication target of ${_src} since "; then
   rm -f "${_n}" "${_p}"; echo NOMARKER; exit 0
 fi
 # Bounded both ways: a standby mysqld that accepts but never answers must
@@ -20351,7 +20364,7 @@ CARRY
       _alrt "${_tgt}' shows why"
     ;;
     NOMARKER)
-      _alrt "MySQL credentials NOT carried: ${_tgt} holds no /root/.standby.cnf"
+      _alrt "MySQL credentials NOT carried: ${_tgt} holds no /root/.standby.cnf${_XMASS_CARRY_SRC:+ naming ${_XMASS_CARRY_SRC}}"
       _xmass_cred_record "${_loc}" "${_tgt}"
     ;;
     *)
@@ -20368,10 +20381,14 @@ CARRY
 # move's or a mirror's standby gets a rotated pair within minutes instead of
 # at the next live sync; until then every root client there meets Access
 # denied, its own monitor included, which can then no longer read the
-# standby's read-only hold. It
-# waits out a barracuda or octopus run (the pass writes the pair line by
-# line) and any other xmass verb, and records "nothing to carry" where this
-# box has no standby in phase syncing, so the minute check rests.
+# standby's read-only hold. It waits until the pair has not changed for a
+# minute (the pass writes it line by line), and for any other xmass verb; it
+# carries only to a standby whose marker names this source. Where no move
+# stands (no state, phase complete, this box a standby or a proxy) it records
+# "nothing to carry", so the minute check rests until the pair changes again;
+# a move under way (phase init, cutover, rename-failed) records nothing, so
+# the first try once it is back at syncing compares again. minute.sh owns the
+# five-minute pacing, so an early exit here never makes it retry sooner.
 _xmass_cmd_carry_credentials() {
   local _sum
   [ -s /root/.my.cnf ] && [ -s /root/.my.pass.txt ] || exit 0
@@ -20381,19 +20398,30 @@ _xmass_cmd_carry_credentials() {
     exit 0
   fi
   _xmass_load_state
-  if [ "${_XMASS_PHASE}" != "syncing" ] || [ -z "${_XMASS_TARGET_IP}" ]; then
-    _xmass_cred_record "${_sum}" none
+  case "${_XMASS_PHASE}" in
+    syncing) : ;;
+    init|cutover|rename-failed)
+      _info "carry-credentials: phase=${_XMASS_PHASE}, a move under way: deferred"
+      exit 0
+    ;;
+    *)
+      _xmass_cred_record "${_sum}" none
+      exit 0
+    ;;
+  esac
+  if [ -z "${_XMASS_TARGET_IP}" ] || [ -z "${_XMASS_SRC_IP}" ]; then
+    _alrt "carry-credentials: phase syncing, but ${_XMASS_STATE_FILE} names no target or no source address: nothing carried"
     exit 0
   fi
-  if _xmass_boa_run_live; then
-    _info "carry-credentials: a barracuda/octopus run is in flight — deferred"
+  if [ -n "$(find /root/.my.cnf /root/.my.pass.txt -newermt '-60 seconds' 2> /dev/null)" ]; then
+    _info "carry-credentials: root's pair changed in the last minute: deferred until it settles"
     exit 0
   fi
-  touch "${_XMASS_CRED_TRIED}" 2> /dev/null
   _XMASS_DEFER_SAYS="carry-credentials"
   _take_verb_lock defer
   _info "carry-credentials: $(date '+%F %T') to ${_XMASS_TARGET_IP}"
   _tgt="${_XMASS_TARGET_IP}"
+  _XMASS_CARRY_SRC="${_XMASS_SRC_IP}"
   _xmass_carry_db_credentials
   exit 0
 }

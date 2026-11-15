@@ -190,21 +190,29 @@ _monitor_box_class() {
 # source of a move or a standing mirror the standby keeps the old client pair
 # until it is carried there. Once the pair here no longer matches the one xmass
 # last confirmed on the standby, 'xmass carry-credentials' carries it, at most
-# every five minutes while a try has not finished. The rest of the fleet pays
-# one file test, a source one checksum of two small files; never during a BOA
-# run, which writes the pair line by line.
+# every five minutes (this check stamps each try itself, whatever the verb
+# makes of it). The rest of the fleet pays one file test, a source one checksum
+# of two small files; nothing while the pair changed in the last minute (a pass
+# writes it line by line), and nothing with an xmass that lacks the verb.
 _xmass_cred_check() {
-  local _sum _rec
+  local _sum _rec _log="/var/log/boa/xmass.cred.log"
   [ -e "/data/conf/xmass_state.cnf" ] || return 0
   [ -e "/opt/local/bin/xmass" ] || return 0
   [ -e "/root/.standby.cnf" ] && return 0
-  [ -e "/run/boa_run.pid" ] && return 0
   [ -s "/root/.my.cnf" ] && [ -s "/root/.my.pass.txt" ] || return 0
   _sum="$(cat /root/.my.cnf /root/.my.pass.txt 2> /dev/null | md5sum | cut -c1-32)"
   _rec="$(cut -c1-32 /var/log/boa/xmass.cred.carried 2> /dev/null)"
   [ "${_sum}" = "${_rec}" ] && return 0
   [ -n "$(find /var/log/boa/xmass.cred.tried -mmin -5 2> /dev/null)" ] && return 0
-  _launch_checker "bash /opt/local/bin/xmass carry-credentials >> /var/log/boa/xmass.cred.log 2>&1"
+  [ -n "$(find /root/.my.cnf /root/.my.pass.txt -mmin -1 2> /dev/null)" ] && return 0
+  grep -q '^  carry-credentials)' /opt/local/bin/xmass 2> /dev/null || return 0
+  touch /var/log/boa/xmass.cred.tried 2> /dev/null
+  # One generation kept past 1 MiB: a standby that never takes the pair is
+  # tried every five minutes for as long as the move stands.
+  if [ -n "$(find "${_log}" -size +1024k 2> /dev/null)" ]; then
+    mv -f "${_log}" "${_log}.1" 2> /dev/null
+  fi
+  _launch_checker "bash /opt/local/bin/xmass carry-credentials >> ${_log} 2>&1"
 }
 _xmass_cred_check
 
