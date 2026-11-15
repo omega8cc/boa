@@ -2824,6 +2824,13 @@ _night_distro_ghosts_here() {
   local i _n _s
   for i in ./*; do
     [ -d "${i}" ] && [ ! -L "${i}" ] || continue
+    # A Platform Path may name a folder here. While the marker of the Add
+    # platform form's build into it stands, that build never finished and
+    # the platform's Delete removes the folder and the marker: it stays.
+    if [ -f "./.${i#./}.unfinished-build" ] && [ ! -L "./.${i#./}.unfinished-build" ]; then
+      echo "GHOST revision ${_usEr}/distro/${i#./} kept: a build into it never finished"
+      continue
+    fi
     # The account owns distro/ and its entries: never through a link at
     # that name (a revision or keys itself), and root's own directory stays
     # root's (the owner and mode it has always had).
