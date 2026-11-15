@@ -1096,9 +1096,11 @@ exit 0;'
 ### Sets _MYSQLDUMP_ROUTINES for _MYSQLDUMP_ROUTINES_PL: each stored routine
 ### of database $1 with the utf8mb4 default its parameters and return value
 ### share (empty when they share none), read with the client command that
-### follows on any server (a 5.x or MariaDB one names utf8mb4_general_ci,
-### which a load on MySQL 8 then keeps). A refused read is said on stderr
-### and leaves it empty, so the dump is written as it always was.
+### follows (a MySQL 5.5 or later or a MariaDB before 11.5 names
+### utf8mb4_general_ci, which a load on MySQL 8 then keeps; MariaDB 11.5's
+### own default gives no lines, and a server with no
+### information_schema.PARAMETERS refuses the read). A refused read is said
+### on stderr and leaves it empty, so the dump is written as it always was.
 _mysqldump_routine_colls() {
   local _db="$1" _q _r
   shift
@@ -1136,7 +1138,10 @@ _site_dump() {   # 1 defaults-file 2 dbn 3 dump file
   local -a _ps
   _MYSQLDUMP_ROUTINES=""
   case " ${_MYSQLDUMP_OBJ} " in
-    *" --routines "*) _mysqldump_routine_colls "$2" _login_only mysql --defaults-extra-file="$1" ;;
+    *" --routines "*)
+      _mysqldump_routine_colls "$2" _login_only mysql --defaults-extra-file="$1" 2>> "${_LOG}" \
+        || _alrt "site database $2: its stored routines' utf8mb4 defaults could not be read: they load with the target's default"
+      ;;
   esac
   # shellcheck disable=SC2046,SC2086
   _login_only mysqldump --defaults-extra-file="$1" $(_mysqldump_flags) ${_MYSQLDUMP_OBJ} "$2" \
