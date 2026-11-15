@@ -4312,8 +4312,9 @@ _cleanup_ghost_drushrc() {
       # anchor those get: a real dir, not a symlink, resolving under THIS
       # account root. Refuse the platform rather than move an unknown path.
       if [ -n "${_ghUb}" ]; then
-        # a build's folder with no docroot yet: the alias root is missing or
-        # holds nothing, and either move would leave the folder untracked
+        # the marker says a build into that folder never finished, whatever
+        # the alias root holds: the platform's Delete removes the folder and
+        # the marker only through this alias, so neither move below runs
         _ghost_seen_reset_acct "${_gh_pmark}"
         echo "GHOST platform alias ${_thisAlias} kept: the build into ${_ghUb} never finished; delete the platform in the control panel to remove both"
       elif [ -d "${_Plm}" ] && ! _validate_loop_dir "${_Plm}"; then
