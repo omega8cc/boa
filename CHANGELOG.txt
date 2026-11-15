@@ -835,6 +835,12 @@
       path outside PHP, from a shell or cron, they ran with no profile. From
       PHP both still run under the PHP profile.
 
+    * staticbuild keeps Composer's malware block on in every step of a
+      catalogue build. The steps that work on a lock with known advisories
+      had lifted every block with one switch; they now lift the advisory
+      block alone, so no resolve takes a version on Packagist's malware list
+      and a lock that holds one does not install, which fails the build.
+
 @=> Important Fixes
 
     * A BOA server answers a provider's power-off signal. A provider's

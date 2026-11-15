@@ -22,7 +22,9 @@
 # block below are settings to review.
 #
 # Composer's advisory blocking stays off for the distro builds, so one upstream advisory
-# cannot halt a catalogue build. Instead each finished distribution gets a fix step: every
+# cannot halt a catalogue build. Its malware block stays on in every step: no resolve
+# takes a version on that list, and a lock that holds one does not install, which fails
+# the build. Instead of the advisory block each finished distribution gets a fix step: every
 # advisory-affected package moves to the newest release its constraints allow (never
 # drupal/core, whose newer release is a new platform name, and never a package the build
 # holds), and a module that holds a library below its fix moves with the library, unless
@@ -444,6 +446,11 @@ _TAR_OWNER="--owner=0 --group=0 --numeric-owner"
 # install immediately (they carry no post-create fix-ups).
 _CP_FLAGS="--no-dev --no-interaction --no-install --no-scripts"
 _CORE_CP_FLAGS="--no-dev --no-interaction"
+# Set on every Composer call that resolves or installs a lock known to carry
+# advisories: it lifts the advisory block alone. Composer's blanket switches
+# (COMPOSER_NO_BLOCKING, COMPOSER_NO_SECURITY_BLOCKING) lift every block with it,
+# and its malware block has to stay on in every step, installs included.
+_ADV_BLOCK_OFF="COMPOSER_POLICY_ADVISORIES_BLOCK=0"
 
 # varbase was DISABLED 2026-07-08 (upstream template drift made every build uninstallable)
 # and RE-ENABLED 2026-08-11: upstream fixed the template in July 2026 -- it now pins core
@@ -1641,7 +1648,7 @@ _fix_advisories() {
   local _wd="$1" _label="$2" _hold=" ${3:-} " _rep _pkgs _p _v0 _v1 _moved=0
   local _todo="" _out _rc _keep _nodev=""
   local -A _was=() _held=() _why=() _via=()
-  local _env="COMPOSER_NO_SECURITY_BLOCKING=1"
+  local _env="${_ADV_BLOCK_OFF}"
   local _up="${_env} composer update --no-install --no-scripts --with-dependencies --minimal-changes ${_FIX_IGNORE_EXT}"
   _FIX_BEFORE=""
   _FIX_NOTE=""
@@ -1785,7 +1792,7 @@ _restore_missing_packages() {
   [[ -n "${_miss}" ]] || return 0
   _alrt "${_label}: listed as installed but missing on disk: $(tr '\n' ' ' <<< "${_miss}")"
   _run_as_o8 "cd '${_wd}' && php -r '\$d = json_decode((string) file_get_contents(\"vendor/composer/installed.json\"), true); \$p = isset(\$d[\"packages\"]) ? \$d[\"packages\"] : \$d; foreach (\$p as \$x) { if (!empty(\$x[\"install-path\"]) && in_array(\$x[\"name\"], array_slice(\$argv, 1), true)) { @rmdir(\"vendor/composer/\" . \$x[\"install-path\"]); } }' $(tr '\n' ' ' <<< "${_miss}")"
-  _out="$(_run_as_o8 "cd '${_wd}' && COMPOSER_NO_SECURITY_BLOCKING=1 composer install $(_tree_nodev "${_wd}") ${_FIX_IGNORE_EXT} 2>&1")"
+  _out="$(_run_as_o8 "cd '${_wd}' && ${_ADV_BLOCK_OFF} composer install $(_tree_nodev "${_wd}") ${_FIX_IGNORE_EXT} 2>&1")"
   _rc=$?
   printf '%s\n' "${_out}"
   if [[ "${_rc}" != "0" ]]; then
@@ -2128,7 +2135,7 @@ _patch_gap_reinstall() {
     _run_as_o8 "rm -rf '${_d}'"
     _run_as_o8 "test ! -e '${_d}'" || return 1
   done <<< "$2"
-  _run_as_o8 "cd '${_wd}' && COMPOSER_NO_SECURITY_BLOCKING=1 composer install $(_tree_nodev "${_wd}") ${_FIX_IGNORE_EXT}"
+  _run_as_o8 "cd '${_wd}' && ${_ADV_BLOCK_OFF} composer install $(_tree_nodev "${_wd}") ${_FIX_IGNORE_EXT}"
 }
 
 _patch_gap_rehash() {
@@ -3028,7 +3035,7 @@ _varbase_take_core() {
             core-recipe-unpack core-vendor-hardening; do
     _with+=" --with 'drupal/${_p}:${_VARBASE_CORE}'"
   done
-  _run_as_o8 "cd '${_wd}' && COMPOSER_NO_SECURITY_BLOCKING=1 composer update --no-install --no-scripts --no-plugins --with-all-dependencies ${_with} --with 'vardot/drupal-core-patches:${_VARBASE_CORE_PATCHES}' ${_VARBASE_IGNORE_EXT} 'drupal/core' 'drupal/core-*' 'vardot/drupal-core-patches'" \
+  _run_as_o8 "cd '${_wd}' && ${_ADV_BLOCK_OFF} composer update --no-install --no-scripts --no-plugins --with-all-dependencies ${_with} --with 'vardot/drupal-core-patches:${_VARBASE_CORE_PATCHES}' ${_VARBASE_IGNORE_EXT} 'drupal/core' 'drupal/core-*' 'vardot/drupal-core-patches'" \
     || return 1
   [[ "$(_lock_version "${_wd}" drupal/core)" == "${_VARBASE_CORE}" ]] || return 1
   _run_as_o8 "rm -f '${_wd}/patches.lock.json'"
@@ -3126,10 +3133,10 @@ _pinned_take_release() {
   # scope. $1 workdir, $2 package, $3 version. Non-zero leaves the published copy alone.
   local _wd="$1" _pkg="$2" _ver="$3"
   [[ "$(_lock_version "${_wd}" "${_pkg}")" != "${_ver}" ]] || return 0
-  _run_as_o8 "cd '${_wd}' && COMPOSER_NO_SECURITY_BLOCKING=1 composer update --no-install --no-scripts --with-dependencies --minimal-changes --with '${_pkg}:${_ver}' ${_FIX_IGNORE_EXT} '${_pkg}'" \
+  _run_as_o8 "cd '${_wd}' && ${_ADV_BLOCK_OFF} composer update --no-install --no-scripts --with-dependencies --minimal-changes --with '${_pkg}:${_ver}' ${_FIX_IGNORE_EXT} '${_pkg}'" \
     || return 1
   [[ "$(_lock_version "${_wd}" "${_pkg}")" == "${_ver}" ]] || return 1
-  _run_as_o8 "cd '${_wd}' && COMPOSER_NO_SECURITY_BLOCKING=1 composer install $(_tree_nodev "${_wd}") ${_FIX_IGNORE_EXT}"
+  _run_as_o8 "cd '${_wd}' && ${_ADV_BLOCK_OFF} composer install $(_tree_nodev "${_wd}") ${_FIX_IGNORE_EXT}"
 }
 
 _ezc_asset_libraries() {
@@ -3142,7 +3149,7 @@ _ezc_asset_libraries() {
   # moves. $1 workdir.
   local _wd="$1"
   _run_as_o8 "cd '${_wd}' && php -r '\$f = \"composer.json\"; \$j = json_decode(file_get_contents(\$f)); \$k = \"web/libraries/{\\\$name}\"; if (!is_object(\$j) || !isset(\$j->extra->{\"installer-paths\"}->\$k)) { exit(1); } \$j->extra->{\"installer-types\"} = array(\"bower-asset\", \"npm-asset\"); \$p = \$j->extra->{\"installer-paths\"}->\$k; foreach (array(\"type:bower-asset\", \"type:npm-asset\") as \$t) { if (!in_array(\$t, \$p, true)) { \$p[] = \$t; } } \$j->extra->{\"installer-paths\"}->\$k = \$p; exit(file_put_contents(\$f, json_encode(\$j, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . \"\\n\") ? 0 : 1);'" || return 1
-  _run_as_o8 "cd '${_wd}' && rm -rf vendor/bower-asset vendor/npm-asset && COMPOSER_NO_SECURITY_BLOCKING=1 composer install $(_tree_nodev "${_wd}") ${_FIX_IGNORE_EXT}" || return 1
+  _run_as_o8 "cd '${_wd}' && rm -rf vendor/bower-asset vendor/npm-asset && ${_ADV_BLOCK_OFF} composer install $(_tree_nodev "${_wd}") ${_FIX_IGNORE_EXT}" || return 1
   _run_as_o8 "test -f '${_wd}/web/libraries/dropzone/dist/min/dropzone.min.js'"
 }
 
@@ -3174,7 +3181,7 @@ _pinned_lock_fits() {
   # say, which a resolve used to refuse, would stop a tenant's install: exits 1, Composer's
   # reason in the log, so the build fails and the published copy stays. $1 workdir, $2 label.
   local _out
-  _out="$(_run_as_o8 "cd '$1' && COMPOSER_NO_SECURITY_BLOCKING=1 composer install --dry-run $(_tree_nodev "$1") --no-interaction --no-scripts --no-plugins --ignore-platform-reqs" 2>&1)" \
+  _out="$(_run_as_o8 "cd '$1' && ${_ADV_BLOCK_OFF} composer install --dry-run $(_tree_nodev "$1") --no-interaction --no-scripts --no-plugins --ignore-platform-reqs" 2>&1)" \
     && return 0
   printf '%s\n' "${_out}"
   _alrt "$2: the lock no longer fits composer.json's requirements or conflicts, so a composer install would stop"
