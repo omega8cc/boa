@@ -413,9 +413,9 @@ _runner_untrusted_note() {
 # waited. Such a copy is healed here, before it runs, whichever pass laid it:
 # fd 9 closed on its two su calls and on its queued Octopus upgrade, nothing
 # else changed. A copy that holds none of the three lines as shipped is left
-# alone. The new copy is made beside the old one under a name without
-# "run-" (the loop below runs every file whose name holds it) and renamed
-# over it, so a run that already started keeps reading the bytes it opened.
+# alone. The new copy is made beside the old one under a mktemp name, which
+# holds no account name and so no "run-", and renamed over it, so a run that
+# already started keeps reading the bytes it opened.
 _runner_heal_lock_fd() {
   local _r="$1" _n _chg _fd
   [ -f "${_r}" ] && [ ! -L "${_r}" ] || return 0
@@ -425,7 +425,7 @@ _runner_heal_lock_fd() {
     -e '    su -s /bin/bash - ${_H_USER} -c "bash /data/disk/${_H_USER}/aegir.sh"' \
     -e '    nohup /opt/local/bin/octopus up-${_tRee} ${_H_USER} force log noscreen >${_UP_OCTOPUS_LOG} 2>&1 &' \
     "${_r}" 2> /dev/null || return 0
-  _n="/var/xdrago/.xdheal.${_r##*/run-}.$$"
+  _n=$(mktemp /var/xdrago/.xdheal.XXXXXX 2> /dev/null) || return 0
   if ! sed \
     -e 's|^\(    su -s /bin/bash - ${_H_USER} -c "drush8 cc drush" &> /dev/null\)$|\1 9>\&-|' \
     -e 's|^\(    su -s /bin/bash - ${_H_USER} -c "bash /data/disk/${_H_USER}/aegir\.sh"\)$|\1 9>\&-|' \
@@ -449,11 +449,15 @@ _runner_heal_lock_fd() {
     >> /var/log/boa/runner-lock-heal.log 2> /dev/null
 }
 
+# The dispatchers run here are /var/xdrago/run-<account> of the accounts
+# this box has (their /root/.<account>.octopus.cnf and /data/disk/<account>):
+# a copy left beside one (old-run-<account>, run-<account>.bak) or a file
+# being written there never runs as root. A run-* file that is not root's
+# alone is named and mailed first, whatever its name.
 _runner_action() {
-  for _Runner in $(find /var/xdrago -maxdepth 1 -mindepth 1 -type f \
-    | grep run- \
-    | uniq \
-    | sort); do
+  local _rAcct
+  for _Runner in $(find /var/xdrago -maxdepth 1 -mindepth 1 -type f -name 'run-*' \
+    | sort -u); do
     # Honour the dedicated queue-stop file per child too, so a pause set AFTER this
     # runner parent started still holds every per-account child dispatch.
     [ -e "/run/boa_queue_stop.pid" ] && { echo "Task queue paused: /run/boa_queue_stop.pid present -- skipping ${_Runner}"; continue; }
@@ -462,6 +466,14 @@ _runner_action() {
     if ! _dispatcher_trusted "${_Runner}" && ! _runner_rewrite "${_Runner}"; then
       _runner_untrusted_note "${_Runner}"
       echo "Not running ${_Runner}: not root's alone (see /var/log/boa/dispatcher.incident.log)"
+      continue
+    fi
+    # root's alone but no account's: a copy left beside a dispatcher
+    _rAcct="${_Runner##*/run-}"
+    if [[ ! "${_rAcct}" =~ ^[a-z0-9-]+$ ]] \
+      || [ ! -f "/root/.${_rAcct}.octopus.cnf" ] \
+      || [ ! -d "/data/disk/${_rAcct}" ]; then
+      echo "Not running ${_Runner}: not the dispatcher of an account on this box"
       continue
     fi
     _runner_heal_lock_fd "${_Runner}"
