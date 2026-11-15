@@ -1025,6 +1025,23 @@ _WEB_GROUP_PHASE_B=NO
 _NGINX_LINK_GUARD=NO
 
 ###
+### nginx and the files hosted accounts write: an account's backend user
+### writes the vhosts and fragments nginx loads, and nginx's master runs as
+### root. With _NGINX_ACCT_STORE=YES, ngxstore copies each account's files
+### into /etc/nginx/boa-acct.d/<account>/ only after judging them against
+### what provision and BOA write there, and points the server's config at
+### the copies; the init script brings them up to date before it reads the
+### config, and root's cron once a minute. A refused file keeps its previous
+### copy or stays out and is named in /var/log/boa/ngxstore.incident.log.
+### NO puts the account paths back at the next sync. Every server writes
+### nightly to /var/log/boa/ngxstore.report what the copies would leave out,
+### armed or not.
+###
+###   _NGINX_ACCT_STORE=YES
+###
+_NGINX_ACCT_STORE=NO
+
+###
 ### The database broker (boa-dbctl) for every account: an account switched
 ### to it keeps rights on its own databases only, where every account's
 ### database user otherwise holds every privilege on all of them. With
