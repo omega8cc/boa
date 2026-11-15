@@ -19180,7 +19180,7 @@ _xmass_force_tool_update() {
     # there, or laid from another tree and put back by the target's own
     # pass, shows up now, not when a verb runs it. No DONE line means the
     # call or the refresh did not finish. Nothing here refuses.
-    local _rout _st="" _w _rt _rm _rh _ra _rs _xs="" _me _mine="" _rheld=""
+    local _rout _st="" _w _rt _rm _rh _ra _rs _xs="" _xm="" _me _mine="" _rheld=""
     _rout=$(_xmass_tool_state_sh \
       | ssh -o BatchMode=yes -o ConnectTimeout=15 root@"${_where}" "bash -s -- ${_tools}" \
       2>/dev/null)
@@ -19201,7 +19201,7 @@ _xmass_force_tool_update() {
       case "${_w}" in
         HELD) _rheld="${_rheld} ${_rt}" ;;
         TOOL)
-          [ "${_rt}" = "xmass" ] && _xs="${_rs}"
+          [ "${_rt}" = "xmass" ] && { _xs="${_rs}"; _xm="${_rm}"; }
           ### With no pass run, no tool has a marker: no line would be true.
           [ -z "${_st}" ] || continue
           if [ "${_rm}" != "-" ]; then
@@ -19223,7 +19223,9 @@ _xmass_force_tool_update() {
       esac
     done <<< "${_rout}"
     ### The two ends of a move run their own xmass: say when the target's is
-    ### not the code this run executes.
+    ### not the code this run executes, with the cause its state gives: no
+    ### pass ran there, its copy was not replaced (its own line says why), or
+    ### its own pass installed that copy.
     _me="$(readlink -f -- "$0" 2> /dev/null)"
     [ -n "${_me}" ] && [ -f "${_me}" ] \
       && _mine="$(md5sum 2> /dev/null < "${_me}" | cut -c1-32)"
@@ -19233,8 +19235,12 @@ _xmass_force_tool_update() {
       _alrt "  could not read the xmass this run executes (${0}) to compare it with the one on ${_where}"
     elif [ "${_xs}" = "${_mine}" ]; then
       _info "  ${_where} runs the xmass this run executes (md5 ${_mine})"
+    elif [ -n "${_st}" ]; then
+      _alrt "  ${_where} runs another xmass (md5 ${_xs}) than this run executes (md5 ${_mine}): no refresh ran there, so its copy may be an older one"
+    elif [ "${_xm}" = "-" ]; then
+      _alrt "  ${_where} runs another xmass (md5 ${_xs}) than this run executes (md5 ${_mine}): its copy there was not replaced, as its xmass line above says"
     else
-      _alrt "  ${_where} runs another xmass (md5 ${_xs}) than this run executes (md5 ${_mine}): the two ends run different code -- a copy pinned there or laid from another tree, or a publish between the two refreshes"
+      _alrt "  ${_where} runs another xmass (md5 ${_xs}) than this run executes (md5 ${_mine}): its own refresh installed that copy -- it follows another tree, this run's xmass is not the one its tree publishes, or a publish came between the two refreshes"
     fi
     return 0
   fi
