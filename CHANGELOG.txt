@@ -2471,6 +2471,15 @@
       verified is not known to be the platform's code; the leftover of a
       build that was cut off is the one thing removed.
 
+    * Nightly: a platform whose build from the Add platform form was cut
+      off keeps its alias. Such a build leaves its folder and a marker file
+      beside it, and the platform's Delete removes both only through the
+      alias; the clean-up of platforms with no docroot moved that alias to
+      undo/ alone on the second night, and the Delete then removed the
+      record and left the folder and the marker behind. While the marker
+      stands, the three platform sweeps keep the alias and the nightly log
+      says so.
+
     * Drupal 8+: a change made with Drush reaches the web at once. Drupal
       keeps the bootstrap, discovery and config cache bins in APCu in front
       of Valkey and builds that chained backend only in a process that has
