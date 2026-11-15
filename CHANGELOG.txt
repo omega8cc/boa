@@ -1259,10 +1259,12 @@
       transfer forced over a failed export, let the sites relay to the older
       copy the target held. A first proxy now refuses an export that was
       not transferred after it, and reads the target before it writes
-      anything: a transfer not yet imported there, no import at all, or a
-      target that does not answer stops it, each named with the command to
-      run. A repair of a converted account and the conversion an xmass
-      cutover drives are not asked.
+      anything: a transfer not yet imported there, an import that failed or
+      stopped before its end, no import at all, or a target that does not
+      answer stops it, each named with the command to run. A repair of a
+      converted account is not asked, and neither is an account an xmass
+      cutover carries to that target: its own conversion, and the re-run
+      xmass names for an account it could not convert.
 
     * xcopy post-mig names, for each copied site whose verify failed, the
       first error line of that verify's log as the control panel shows it.
