@@ -2512,6 +2512,20 @@
       stands, the three platform sweeps keep the alias and the nightly log
       says so.
 
+    * Nightly: a platform whose path holds a colon keeps its alias. The
+      platform and site sweeps read an alias's root and site path by
+      splitting its line on colons and blanks, so such a root read as
+      empty: the platform verifies and serves, yet on the second night the
+      sweep took it for one whose folder is gone and moved its alias to
+      undo/. The three night scripts now read the quoted value whole.
+
+    * Nightly: a cut-off build whose Platform Path is a folder in the
+      account's distro/ stays in place. The sweep of empty distro
+      revisions moved such a folder, holding only the clone's .git, into
+      undo/dist/, so the platform's Delete had nothing to remove and its
+      marker file stayed behind. While the marker stands the folder stays
+      and the nightly log says so.
+
     * Drupal 8+: a change made with Drush reaches the web at once. Drupal
       keeps the bootstrap, discovery and config cache bins in APCu in front
       of Valkey and builds that chained backend only in a process that has
