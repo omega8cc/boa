@@ -262,6 +262,14 @@
 
 @=> Security
 
+    * An Octopus install that makes an account under a name an earlier,
+      removed account had (removed other than by boa cleanup purge, before
+      the ltd worker noticed it gone) first moves that account's record of
+      removed logins, /data/conf/acct-uids/<oN>.gone, and its uid list to
+      the numbers held for no account. The new account so never takes a
+      file one of the earlier account's logins left as its own. An upgrade
+      keeps the account's record.
+
     * root takes an account's PHP choices from its static/control only
       when that folder is the account's own, as the ltd worker already
       does: the box-wide reads of a barracuda pass (which PHP versions
