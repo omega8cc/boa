@@ -1042,11 +1042,16 @@ _nginx_initd_check() {
     ### copy with the older predicate still names standby.serve.cnf -- so
     ### the test names a string only the CURRENT gate carries.
     _X_INIT_TEST_D=$(cat /etc/init.d/nginx | grep standby_promoted 2>&1)
+    ### A hosted account's own nginx files are read only as root's judged
+    ### copies once the store is armed: configtest, reload and start bring the
+    ### copies up to date first, so an older script is refreshed.
+    _X_INIT_TEST_E=$(cat /etc/init.d/nginx | grep _ngxstore_sync 2>&1)
   fi
   if [[ "${_X_INIT_TEST_A}" =~ ULIMIT ]] \
     && [[ "${_X_INIT_TEST_B}" =~ Giedymin ]] \
     && [[ "${_X_INIT_TEST_C}" =~ rotate ]] \
-    && [[ "${_X_INIT_TEST_D}" =~ standby_promoted ]]; then
+    && [[ "${_X_INIT_TEST_D}" =~ standby_promoted ]] \
+    && [[ "${_X_INIT_TEST_E}" =~ _ngxstore_sync ]]; then
     chown root:root /etc/init.d/nginx &> /dev/null
     chmod 755 /etc/init.d/nginx &> /dev/null
     _mrun "update-rc.d nginx defaults"
@@ -1211,6 +1216,7 @@ _nginx_wildcard_ssl_install() {
     if [ -e "/etc/init.d/valkey-server" ]; then
       _valkey_password_update
     fi
+    _nginx_acct_store_sync
     _mrun "service nginx restart"
   else
     _WILD_SSL_PROXY_UP=NO
@@ -1336,6 +1342,7 @@ _nginx_wildcard_ssl_install() {
         && sed -i "/ssl_conf_command Options.*KTLS/d" ${_WILD_SSL_VHOST}
       [ "${_ka_want}" = "YES" ] \
         || sed -i "/^[[:space:]]*keepalive[[:space:]]\+0;/d" ${_WILD_SSL_VHOST}
+      _nginx_acct_store_sync
       if ! nginx -t > /dev/null 2>&1; then
         if [ -s "${_wildPrev}" ]; then
           cp -af "${_wildPrev}" ${_WILD_SSL_VHOST}

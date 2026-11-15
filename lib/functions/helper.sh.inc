@@ -2360,6 +2360,35 @@ _sudoers_safe_append() {
   _sudoers_commit "${_file}" "${_tmp}"
 }
 
+# Each user's nginx line in /etc/sudoers names the one verb provision and the
+# panel call, reload: the bare init script let the user run any verb of it as
+# root (stop, destroy). Validated by visudo before it goes live; a no-op once
+# no bare line is left.
+_sudoers_nginx_reload_only() {
+  local _file="/etc/sudoers"
+  local _re='^([a-z0-9][a-z0-9_.-]*) ALL=NOPASSWD: /etc/init\.d/nginx[[:space:]]*$'
+  local _tmp
+  grep -qE "${_re}" "${_file}" 2>/dev/null || return 0
+  _tmp=$(mktemp "$(dirname "${_file}")/.sudoers.boa.XXXXXX" 2>/dev/null)
+  if [ -z "${_tmp}" ] || [ ! -e "${_tmp}" ]; then
+    return 1
+  fi
+  sed -E "s#${_re}#\\1 ALL=NOPASSWD: /etc/init.d/nginx reload#" "${_file}" > "${_tmp}" \
+    || { rm -f "${_tmp}"; return 1; }
+  _sudoers_commit "${_file}" "${_tmp}"
+}
+
+# A file BOA just wrote that names a hosted account's own nginx files is
+# pointed at root's judged copies before any configtest reads it, when the
+# store is armed; not armed, ngxstore only puts account paths back that it
+# finds switched.
+_nginx_acct_store_sync() {
+  [ -x /opt/local/bin/ngxstore ] || return 0
+  env -i PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin \
+    timeout 300 /opt/local/bin/ngxstore sync --quiet > /dev/null 2>&1
+  return 0
+}
+
 # The database broker's (boa-dbctl) sudo line for account $1 in
 # /etc/sudoers.d/boa-dbctl, validated and matched as a whole line as
 # _sudoers_safe_append does. The line alone changes nothing: the broker

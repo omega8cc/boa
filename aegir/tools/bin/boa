@@ -4376,6 +4376,10 @@ _octopus_cleanup() {
           echo "parked ${_sites_nr} vhost file(s) of ${_usEr} in ${_zombie_dir}vhost.d/"
         fi
         [ -e "${_nginx_inc}/${_usEr}.conf" ] && mv -f "${_nginx_inc}/${_usEr}.conf" ${_zombie_dir}
+        # root's judged copies of the account's nginx files go with them
+        if [ -d "/etc/nginx/boa-acct.d/${_usEr}" ] || [ -e "/etc/nginx/boa-acct.d/.${_usEr}.manifest" ]; then
+          rm -rf -- "/etc/nginx/boa-acct.d/${_usEr}" "/etc/nginx/boa-acct.d/.${_usEr}."*
+        fi
         # Every panel SSL proxy include the account ever had: a renamed box
         # keeps the old-name one next to the new, and a single quoted mv of
         # the ls output moved neither -- nginx then failed its configtest on

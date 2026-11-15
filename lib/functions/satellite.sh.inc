@@ -5991,7 +5991,8 @@ _satellite_run_pre_install() {
     fi
     _provision_backend_dbpass_generate
     _sudoers_safe_append /etc/sudoers \
-      "${_USER} ALL=NOPASSWD: /etc/init.d/nginx" "${_USER} ALL=NOPASSWD"
+      "${_USER} ALL=NOPASSWD: /etc/init.d/nginx reload" "${_USER} ALL=NOPASSWD"
+    _sudoers_nginx_reload_only
     _SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership fix-drupal-site-symlinks lock-local-drush-permissions)
     for _SCRIPT in ${_SCRIPTS[@]}; do
       _sudoers_safe_append /etc/sudoers.d/${_SCRIPT} \
@@ -6002,7 +6003,8 @@ _satellite_run_pre_install() {
     _dbctl_sudo_line "${_USER}"
   else
     _sudoers_safe_append /etc/sudoers \
-      "${_USER} ALL=NOPASSWD: /etc/init.d/nginx" "${_USER} ALL=NOPASSWD"
+      "${_USER} ALL=NOPASSWD: /etc/init.d/nginx reload" "${_USER} ALL=NOPASSWD"
+    _sudoers_nginx_reload_only
     _SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership fix-drupal-site-symlinks lock-local-drush-permissions)
     for _SCRIPT in ${_SCRIPTS[@]}; do
       _sudoers_safe_append /etc/sudoers.d/${_SCRIPT} \
@@ -6404,6 +6406,7 @@ _satellite_run_post_install() {
           "${_USER}.nginx.conf" 0644 ""
       ln -sfn ${_ROOT}/config/${_USER}.nginx.conf \
         /var/aegir/config/server_master/nginx/platform.d/${_USER}.conf
+      _nginx_acct_store_sync
     fi
     ### the site tree is the instance user's: the group is changed from
     ### inside the real directories, through a handle, never on a link or a

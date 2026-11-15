@@ -1626,7 +1626,8 @@ _aegir_master_upgrade() {
     rm -f /opt/tmp/testecho*
     usermod -aG users aegir
     _sudoers_safe_append /etc/sudoers \
-      "aegir ALL=NOPASSWD: /etc/init.d/nginx" "aegir ALL=NOPASSWD"
+      "aegir ALL=NOPASSWD: /etc/init.d/nginx reload" "aegir ALL=NOPASSWD"
+    _sudoers_nginx_reload_only
     _SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership fix-drupal-site-symlinks lock-local-drush-permissions)
     for SCRIPT in ${_SCRIPTS[@]}; do
       _sudoers_safe_append /etc/sudoers.d/${SCRIPT} \
@@ -1951,7 +1952,8 @@ _aegir_master_install_upgrade() {
     usermod -aG www-data aegir
     usermod -aG users aegir
     _sudoers_safe_append /etc/sudoers \
-      "aegir ALL=NOPASSWD: /etc/init.d/nginx" "aegir ALL=NOPASSWD"
+      "aegir ALL=NOPASSWD: /etc/init.d/nginx reload" "aegir ALL=NOPASSWD"
+    _sudoers_nginx_reload_only
 
     _unlock_sendmail_for_snail
     if getent group allow-snail >/dev/null 2>&1 && \

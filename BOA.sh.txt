@@ -2967,6 +2967,17 @@ _update_agents() {
       chmod 600 /var/spool/cron/crontabs/root &> /dev/null
       service cron reload &> /dev/null || /etc/init.d/cron reload &> /dev/null
     fi
+    # The account nginx store's two lines (the minute sync, a no-op unless the
+    # store is armed, and the nightly report), likewise.
+    if [ -x "/opt/local/bin/ngxstore" ] \
+      && [ -e "/var/spool/cron/crontabs/root" ] \
+      && ! grep -q "ngxstore" /var/spool/cron/crontabs/root 2>/dev/null; then
+      echo '* * * * *   /usr/bin/nice -n5 bash /opt/local/bin/ngxstore sync --quiet --reload-if-changed >/dev/null 2>&1' >> /var/spool/cron/crontabs/root
+      echo '05 6 * * *  /usr/bin/nice -n10 /usr/bin/ionice -c3 bash /opt/local/bin/ngxstore report     >/dev/null 2>&1' >> /var/spool/cron/crontabs/root
+      chown root:crontab /var/spool/cron/crontabs/root &> /dev/null
+      chmod 600 /var/spool/cron/crontabs/root &> /dev/null
+      service cron reload &> /dev/null || /etc/init.d/cron reload &> /dev/null
+    fi
     _fetch_versioned /var/xdrago/move_sql.sh "${_urlHmr}/tools/system/move_sql.sh" f78
     _fetch_versioned /var/xdrago/mysql_repair.sh "${_urlHmr}/tools/system/mysql_repair.sh" f89
     _fetch_versioned /var/xdrago/purge_binlogs.sh "${_urlHmr}/tools/system/purge_binlogs.sh" f88
@@ -5390,6 +5401,29 @@ _log_crawler_fix() {
   echo "$(date 2> /dev/null) $1" >> "${_pthLog}/crawler-access-fix.log"
 }
 
+# Each user's nginx line in /etc/sudoers names reload alone, the restart
+# command of provision and the panel: the bare init script let a hosted
+# account run any verb of it as root. helper.sh.inc's
+# _sudoers_nginx_reload_only does the same in a pass; visudo checks the result
+# before it goes live.
+_fix_nginx_sudo_verb() {
+  local _f="/etc/sudoers"
+  local _re='^([a-z0-9][a-z0-9_.-]*) ALL=NOPASSWD: /etc/init\.d/nginx[[:space:]]*$'
+  local _tmp
+  [ -e "${_f}" ] || return 0
+  command -v visudo > /dev/null 2>&1 || return 0
+  grep -qE "${_re}" "${_f}" 2> /dev/null || return 0
+  _tmp=$(mktemp /etc/.sudoers.boa.XXXXXX 2> /dev/null) || return 0
+  if sed -E "s#${_re}#\\1 ALL=NOPASSWD: /etc/init.d/nginx reload#" "${_f}" > "${_tmp}" \
+    && visudo -cf "${_tmp}" > /dev/null 2>&1; then
+    chown root:root "${_tmp}"
+    chmod 0440 "${_tmp}"
+    mv -f "${_tmp}" "${_f}"
+  else
+    rm -f "${_tmp}"
+  fi
+}
+
 _fix_nginx_crawler_access() {
   local _bAse=""
   local _fIle=""
@@ -6029,7 +6063,7 @@ CSFSTANDBY
     # while a backup run is in flight.
     _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f45 --guard duplicity
     _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f32 --guard /local/bin/barracuda
-    _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f87 --guard /local/bin/boa
+    _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f86 --guard /local/bin/boa
     _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/${_tBn}/dcysetup" f91 --guard duplicity
     _fetch_versioned ${_optBin}/dhcpfix "${_urlHmr}/${_tBn}/dhcpfix" f98 --guard /local/bin/dhcpfix
     _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/${_tBn}/duobackboa" f44 --guard duplicity
@@ -6052,6 +6086,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/fixrepo "${_urlHmr}/${_tBn}/fixrepo" f90 --guard /local/bin/fixrepo
     _fetch_versioned ${_optBin}/instgrp "${_urlHmr}/${_tBn}/instgrp" f99 --guard /local/bin/instgrp
     _fetch_versioned ${_optBin}/linkguard "${_urlHmr}/${_tBn}/linkguard" f86 --guard /local/bin/linkguard
+    _fetch_versioned ${_optBin}/ngxstore "${_urlHmr}/${_tBn}/ngxstore" f01 --guard /local/bin/ngxstore
     _fetch_versioned ${_optBin}/eolreport "${_urlHmr}/${_tBn}/eolreport" f98 --symlink ${_usrBin}/eolreport --guard /local/bin/eolreport
     _fetch_core_coverage
     _fetch_versioned ${_optBin}/floodreport "${_urlHmr}/${_tBn}/floodreport" f99 --symlink ${_usrBin}/floodreport --guard /local/bin/floodreport
@@ -6076,7 +6111,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/synproxy_status "${_urlHmr}/${_tBn}/synproxy_status" f99 --guard /local/bin/synproxy_status
     _fetch_versioned ${_optBin}/webserver "${_urlHmr}/${_tBn}/webserver" f93 --guard /local/bin/webserver
     _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f99 --guard /local/bin/xcopy
-    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f06 --guard /local/bin/xmass
+    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f05 --guard /local/bin/xmass
     _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f81 --guard /local/bin/xoct
     _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f20 --guard /local/bin/xtrim
     # The migration-proxy trust and realip tools ride here with xoct and xmass,
@@ -6198,7 +6233,7 @@ CSFSTANDBY
   chmod 700 ${_optBin}/synproxy* &> /dev/null
 
   # _SYS (700): system utilities
-  chmod 700 ${_optBin}/{aptfast,codebasecheck,dhcpfix,fancynow,fixmounts,fixrepo,instgrp,linkguard,mergecsf,screenfetch,vmnetfix} &> /dev/null
+  chmod 700 ${_optBin}/{aptfast,codebasecheck,dhcpfix,fancynow,fixmounts,fixrepo,instgrp,linkguard,ngxstore,mergecsf,screenfetch,vmnetfix} &> /dev/null
 
   # _SYS (700): cleanup tools
   chmod 700 ${_optBin}/{aptcleanup,autosymlink,sqlclean,updatesymlinks,verifyvhostsdns,vhostcheck} &> /dev/null
@@ -7787,6 +7822,7 @@ if [ "$(id -u)" -eq 0 ]; then
     _fix_newrelic
     _fix_leftovers
     _fix_nginx_crawler_access
+    _fix_nginx_sudo_verb
     _fix_wiped_nginx_config
     _update_agents
     _sysctl_update

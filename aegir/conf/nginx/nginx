@@ -134,7 +134,20 @@ setFilePerms(){
     fi
 }
 
+# With the store armed, nginx reads a hosted account's own files only as
+# root's judged copies (/opt/local/bin/ngxstore): they are brought up to date
+# before any configuration is read, from a clean environment. Not armed, the
+# tool only puts the account paths back if it finds them switched. A failure
+# of it never stops nginx.
+_ngxstore_sync() {
+    if [ -x /opt/local/bin/ngxstore ]; then
+        env -i PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin \
+            timeout 300 /opt/local/bin/ngxstore sync --quiet > /dev/null 2>&1
+    fi
+}
+
 configtest() {
+    _ngxstore_sync
     $DAEMON -t -c $NGINX_CONF_FILE
 }
 
@@ -284,6 +297,7 @@ start() {
         log_end_msg $SCRIPT_ERROR
         rc=0
     else
+        _ngxstore_sync
         # Check if the ULIMIT is set in /etc/default/nginx
         if [ -n "$ULIMIT" ]; then
             # Set the ulimits

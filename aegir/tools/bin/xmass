@@ -17566,6 +17566,10 @@ if [ ! -e "${_L}" ]; then
   _was=OK
   nginx -t > /dev/null 2>&1 || _was=NO
   ln -sfn "/data/disk/${_A}/config/${_A}.nginx.conf" "${_L}"
+  # an armed store judges the account's files before any test reads them
+  [ -x /opt/local/bin/ngxstore ] \
+    && env -i PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin \
+      timeout 300 /opt/local/bin/ngxstore sync --quiet > /dev/null 2>&1
   if [ "${_was}" = "OK" ] && ! nginx -t > /dev/null 2>&1; then
     rm -f -- "${_L}"
     echo "XMLAY-FAILED: nginx -t refuses this account's vhosts: read 'nginx -t' with ${_L} in place"
