@@ -2517,7 +2517,11 @@
       splitting its line on colons and blanks, so such a root read as
       empty: the platform verifies and serves, yet on the second night the
       sweep took it for one whose folder is gone and moved its alias to
-      undo/. The three night scripts now read the quoted value whole.
+      undo/. The same reading took any other value ending in root for the
+      root too (an HTTP basic-auth user named root, a Git or Composer
+      folder whose name ends in root), which kept such a site out of its
+      nightly maintenance and could move such a platform's alias. The three
+      night scripts now read the quoted value of those keys alone, whole.
 
     * Nightly: a cut-off build whose Platform Path is a folder in the
       account's distro/ stays in place. The sweep of empty distro
