@@ -19175,17 +19175,66 @@ _xmass_force_tool_update() {
   local _tools="xmass xoct xcopy xtrim renameaegirhost ffmirror instgrp"
 
   if [ -n "${_where}" ]; then
-    # "wait": a self-update already running there is waited for (up to 20
-    # minutes); a box where the refresh still could not run says so
-    local _rout
-    _rout=$(ssh -o BatchMode=yes -o ConnectTimeout=15 root@"${_where}" \
-      "for t in ${_tools}; do rm -f /var/log/boa/\${t}.ctrl.* /var/log/boa/\${t}.mvfail.*; done; \
-       [ -x /var/xdrago/clear.sh ] && { bash /var/xdrago/clear.sh wait &>/dev/null || echo REFRESH_NOT_RUN; }; true" \
+    # The target's half runs there in one call and reads back what each
+    # tool's refresh did, as the branch below reads it here: a copy pinned
+    # there, or laid from another tree and put back by the target's own
+    # pass, shows up now, not when a verb runs it. No DONE line means the
+    # call or the refresh did not finish. Nothing here refuses.
+    local _rout _st="" _w _rt _rm _rh _ra _rs _xs="" _me _mine="" _rheld=""
+    _rout=$(_xmass_tool_state_sh \
+      | ssh -o BatchMode=yes -o ConnectTimeout=15 root@"${_where}" "bash -s -- ${_tools}" \
       2>/dev/null)
-    if [[ "${_rout}" =~ REFRESH_NOT_RUN ]]; then
+    if ! printf '%s\n' "${_rout}" | grep -qx 'DONE'; then
+      _alrt "  could not force a tool refresh on ${_where}: the call there failed or did not finish; its tools may be stale"
+      return 0
+    fi
+    printf '%s\n' "${_rout}" | grep -qx 'NOCLEAR' && _st=NOCLEAR
+    printf '%s\n' "${_rout}" | grep -qx 'NOTRUN' && _st=NOTRUN
+    if [ "${_st}" = "NOCLEAR" ]; then
+      _alrt "  ${_where} has no /var/xdrago/clear.sh: no tool refresh could run there; its tools may be stale"
+    elif [ "${_st}" = "NOTRUN" ]; then
       _alrt "  the tool refresh on ${_where} did not run (an install or another self-update held it); its tools may be stale"
     else
       _info "  forced a tool refresh on ${_where}"
+    fi
+    while IFS=$'\t' read -r _w _rt _rm _rh _ra _rs; do
+      case "${_w}" in
+        HELD) _rheld="${_rheld} ${_rt}" ;;
+        TOOL)
+          [ "${_rt}" = "xmass" ] && _xs="${_rs}"
+          ### With no pass run, no tool has a marker: no line would be true.
+          [ -z "${_st}" ] || continue
+          if [ "${_rm}" != "-" ]; then
+            _info "  on ${_where}: $(printf '%s' "${_rm}" | sed 's|\.ctrl\.| |; s|\..*||')"
+          elif [ "${_rh}" = "1" ] && [[ "${_ra}" == *[ia]* ]]; then
+            _alrt "  on ${_where}: ${_rt} was fetched but not installed: /opt/local/bin/${_rt} there is immutable or append-only, so the move over it was refused; the next verbs there run the copy it has"
+          elif [ "${_rh}" = "1" ]; then
+            _alrt "  on ${_where}: ${_rt} was fetched but not installed: the move over /opt/local/bin/${_rt} was refused; see /var/log/boa/mirror.incident.log there"
+          elif [[ "${_ra}" == *[ia]* ]]; then
+            _alrt "  on ${_where}: ${_rt} was not refreshed: /opt/local/bin/${_rt} there is immutable or append-only, so no pass can replace it; the next verbs there run the copy it has"
+          elif [[ " ${_rheld} " == *" ${_rt} "* ]]; then
+            _alrt "  on ${_where}: ${_rt} was not refreshed, and an earlier move over /opt/local/bin/${_rt} was refused (see /var/log/boa/mirror.incident.log there); until a pass can replace it, the next verbs there run the copy it has"
+          elif [ "${_rs}" = "-" ]; then
+            _alrt "  on ${_where}: ${_rt} was not refreshed and /opt/local/bin/${_rt} is not there: its fetch failed"
+          else
+            _alrt "  on ${_where}: ${_rt} was not refreshed (running there now, or its fetch failed); the next verbs there run the copy it has"
+          fi
+          ;;
+      esac
+    done <<< "${_rout}"
+    ### The two ends of a move run their own xmass: say when the target's is
+    ### not the code this run executes.
+    _me="$(readlink -f -- "$0" 2> /dev/null)"
+    [ -n "${_me}" ] && [ -f "${_me}" ] \
+      && _mine="$(md5sum 2> /dev/null < "${_me}" | cut -c1-32)"
+    if [ -z "${_xs}" ] || [ "${_xs}" = "-" ]; then
+      _alrt "  ${_where} has no /opt/local/bin/xmass"
+    elif [ "${#_mine}" -ne 32 ]; then
+      _alrt "  could not read the xmass this run executes (${0}) to compare it with the one on ${_where}"
+    elif [ "${_xs}" = "${_mine}" ]; then
+      _info "  ${_where} runs the xmass this run executes (md5 ${_mine})"
+    else
+      _alrt "  ${_where} runs another xmass (md5 ${_xs}) than this run executes (md5 ${_mine}): the two ends run different code -- a copy pinned there or laid from another tree, or a publish between the two refreshes"
     fi
     return 0
   fi
@@ -19252,6 +19301,40 @@ _xmass_force_tool_update() {
     fi
   done
   return 0
+}
+
+_xmass_tool_state_sh() {
+  # The target's half of _xmass_force_tool_update, run there with the tools
+  # as its arguments: each tool's markers and refused-move hold removed (the
+  # tools that had a hold named first, as HELD lines), the tools pass run
+  # ("wait": a self-update already running there is waited for, up to 20
+  # minutes; NOCLEAR or NOTRUN when it cannot run), then one TOOL line a
+  # tool: its marker's name, whether a hold is back, lsattr's flags and the
+  # md5 of /opt/local/bin/<tool>, "-" for what is not there. DONE closes it.
+  cat <<'EOS'
+for _t in "$@"; do
+  ls /var/log/boa/${_t}.mvfail.* &> /dev/null && printf 'HELD\t%s\n' "${_t}"
+  rm -f /var/log/boa/${_t}.ctrl.* /var/log/boa/${_t}.mvfail.*
+done
+if [ ! -e /var/xdrago/clear.sh ]; then
+  echo NOCLEAR
+elif ! bash /var/xdrago/clear.sh wait &> /dev/null; then
+  echo NOTRUN
+fi
+for _t in "$@"; do
+  _m="$(ls /var/log/boa/${_t}.ctrl.* 2> /dev/null | head -1)"
+  _m="${_m##*/}"
+  _h=0
+  ls /var/log/boa/${_t}.mvfail.* &> /dev/null && _h=1
+  _a="$(lsattr -d -- "/opt/local/bin/${_t}" 2> /dev/null)"
+  _a="${_a%% *}"
+  _s=""
+  [ -f "/opt/local/bin/${_t}" ] \
+    && _s="$(md5sum 2> /dev/null < "/opt/local/bin/${_t}" | cut -c1-32)"
+  printf 'TOOL\t%s\t%s\t%s\t%s\t%s\n' "${_t}" "${_m:--}" "${_h}" "${_a:--}" "${_s:--}"
+done
+echo DONE
+EOS
 }
 
 _xmass_pre_mig_panel_sanity() {
