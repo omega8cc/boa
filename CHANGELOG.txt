@@ -250,6 +250,16 @@
       profiles the kernel holds. A real folder at the path, and the lines
       an operator keeps in that file, are left as they are.
 
+    * Every BOA box now trims its disks once a week, on Wednesday at 05:47:
+      blocks the box frees (deleted backups, rotated logs, expired binary
+      logs) go back to thin or SSD storage, and a virtual disk with discard
+      enabled gives the space back to its host. A disk that takes no
+      discards is skipped at no cost. The run stands down where another
+      weekly trim already runs (a cron job or an enabled fstrim.timer),
+      during a BOA run and under the maintenance pause, and
+      /root/.deny.fstrim.cnf turns it off. Each run logs to
+      /var/log/boa/fstrim.log.
+
 @=> Security
 
     * root runs an account's task dispatcher (/var/xdrago/run-<account>)

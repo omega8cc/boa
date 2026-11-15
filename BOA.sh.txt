@@ -2630,6 +2630,7 @@ _update_agents() {
     [ ! -e "/var/xdrago/checksql.sh" ] && rm -f ${_pthLog}/checksql.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/clear.sh" ] && rm -f ${_pthLog}/clear.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/cloudflare_realip.sh" ] && rm -f ${_pthLog}/cloudflare_realip.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/fstrim.sh" ] && rm -f ${_pthLog}/fstrim.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/owl.sh" ] && rm -f ${_pthLog}/owl.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/graceful.sh" ] && rm -f ${_pthLog}/graceful.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/guest-fire.sh" ] && rm -f ${_pthLog}/guest-fire.sh.ctrl.*.pid
@@ -2951,6 +2952,17 @@ _update_agents() {
       && [ -e "/var/spool/cron/crontabs/root" ] \
       && ! grep -q "migration_proxy_certs" /var/spool/cron/crontabs/root 2>/dev/null; then
       echo '45 6 * * *  /usr/bin/nice -n5 /usr/bin/ionice -c2 -n7 bash /var/xdrago/migration_proxy_certs.sh          >/dev/null 2>&1' >> /var/spool/cron/crontabs/root
+      chown root:crontab /var/spool/cron/crontabs/root &> /dev/null
+      chmod 600 /var/spool/cron/crontabs/root &> /dev/null
+      service cron reload &> /dev/null || /etc/init.d/cron reload &> /dev/null
+    fi
+    _fetch_versioned /var/xdrago/fstrim.sh "${_urlHmr}/tools/system/fstrim.sh" f99
+    # The weekly line otherwise arrives only with the crontab template on a
+    # full up-* run; ensure it whenever the script is present, as above.
+    if [ -x "/var/xdrago/fstrim.sh" ] \
+      && [ -e "/var/spool/cron/crontabs/root" ] \
+      && ! grep -q "fstrim.sh" /var/spool/cron/crontabs/root 2>/dev/null; then
+      echo '47 5 * * 3  /usr/bin/nice -n10 /usr/bin/ionice -c3 bash /var/xdrago/fstrim.sh                       >/dev/null 2>&1' >> /var/spool/cron/crontabs/root
       chown root:crontab /var/spool/cron/crontabs/root &> /dev/null
       chmod 600 /var/spool/cron/crontabs/root &> /dev/null
       service cron reload &> /dev/null || /etc/init.d/cron reload &> /dev/null
