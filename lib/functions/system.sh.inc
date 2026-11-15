@@ -2764,10 +2764,13 @@ _php_vrn_dotted() {
 # inside a comment, a domain or a longer value does not count;
 # _php_if_versions_cleanup_cnf skips comment rows and domains too.
 _php_eight_six_asked() {
-  local _c _f _v
+  local _c _f _v _a
   for _c in /data/disk/*/static/control; do
-    # the account's own directory: never a link, never a FIFO opened
+    # the account's own directory: never a link, never a FIFO opened, and
+    # never one another account made
     _acct_in_real_dir "${_c}" true || continue
+    _a="${_c#/data/disk/}"
+    _acct_ctrl_own_seen "${_a%%/*}" || continue
     for _f in fpm.info cli.info; do
       _v="$(_acct_read_in "${_c}" "${_f}" | tr -cd '0-9.')"
       case "${_v}" in
@@ -2853,10 +2856,13 @@ _php_eight_six_hosted_cnf() {
 #   switch naming a PHP that is not installed is ignored by both, so it adds
 #   nothing here either.
 _php_versions_pinned_more() {
-  local _c _f _v _k _rest _line _e _mk _txt _n _out=""
+  local _c _f _v _k _rest _line _e _mk _txt _n _out="" _a
   for _c in /data/disk/*/static/control; do
-    # the account's own directory: never a link, never a FIFO opened
+    # the account's own directory: never a link, never a FIFO opened, and
+    # never one another account made
     _acct_in_real_dir "${_c}" true || continue
+    _a="${_c#/data/disk/}"
+    _acct_ctrl_own_seen "${_a%%/*}" || continue
     for _f in fpm.info cli.info; do
       _v="$(_php_vrn_dotted "$(_acct_read_in "${_c}" "${_f}" | tr -cd '0-9')")"
       [ -n "${_v}" ] && [ "${_v}" != "8.6" ] && _out="${_out} ${_v}"
@@ -2907,6 +2913,8 @@ _php_legacy_versions_cleanup_cnf() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _php_legacy_versions_cleanup_cnf"
   fi
+  # the PHP choices below are read only from control folders the accounts own
+  _acct_ctrl_judge_all
   _PHP_CLI_LEGACY_IF_USED_A=$(_acct_read_all log cli.txt | grep "5\.2" 2>&1)
   _PHP_CLI_LEGACY_IF_USED_B=$(_acct_read_all static/control cli.info | LC_ALL=C grep -a "5\.2" 2>&1)
   _PHP_CLI_LEGACY_IF_USED_C=$(grep "CLI.*5\.2" /root/.*.octopus.cnf 2>&1)
@@ -3080,6 +3088,8 @@ _php_if_versions_cleanup_cnf() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _php_if_versions_cleanup_cnf"
   fi
+  # the PHP choices below are read only from control folders the accounts own
+  _acct_ctrl_judge_all
   if [ -e "/root/.allow-php-multi-install-cleanup.cnf" ] \
     || [ -e "/root/.run-to-excalibur.cnf" ] \
     || [ -e "/root/.run-to-daedalus.cnf" ] \
@@ -4973,9 +4983,12 @@ _barracuda_cnf() {
             _acct_put_in "${_Ctrl}" cli.txt "${_PHP_SINGLE_INSTALL}"
             ### _msg "INFO: Forced PHP ${_PHP_SINGLE_INSTALL} in ${_Ctrl}"
           done
+          ### never into a control folder another account made
+          _acct_ctrl_judge_all
           for _Ctrl in /data/disk/*/static/control; do
             _ctrlUsr="${_Ctrl#/data/disk/}"
             _ctrlUsr="${_ctrlUsr%%/*}"
+            _acct_ctrl_own_seen "${_ctrlUsr}" || continue
             _ctrlOwn="${_ctrlUsr}.ftp:$(_acct_group "${_ctrlUsr}")"
             _acct_in_real_dir "${_Ctrl}" _acct_pin_here fpm.info \
               "${_PHP_SINGLE_INSTALL}" "${_ctrlOwn}"

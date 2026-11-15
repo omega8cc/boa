@@ -597,6 +597,40 @@ _acct_read_in() {
   _acct_in_real_dir "${1}" _acct_read_here "${2}"
 }
 #
+# The uids root's walks over the account $1's trees act on, comma-separated:
+# root's own (0, what root wrote there for the account) and those of every
+# identity of the account as passwd names them: oN and oN.<name>, that is its
+# .ftp login, its client sub-accounts oN.<client> and oN.<client>-dev and its
+# PHP-FPM users oN.web and oN.<ver>.web. An account name holds no dot, so the
+# match is exact: o1 never takes o10's. Status 1, and nothing, unless the
+# account itself is in passwd. The numbers of the account's removed
+# identities that root recorded in /data/conf/acct-uids/<oN>.gone (the ltd
+# worker, before deluser frees one) are listed too while no user has them.
+# Root's check of the control folder, its reads of the control files and its
+# hand-overs into that folder take a uid no passwd entry names only when it
+# is listed: another account's removed login leaves files under such a number
+# too. Its other hand-overs, mode walks and removal walks still take any.
+_acct_walk_uids() {
+  local _a="${1}" _n _p _u _r _x="0" _self=NO
+  case "${_a}" in
+    ""|*[!a-z0-9-]*) return 1 ;;
+  esac
+  while IFS=: read -r _n _p _u _r; do
+    [[ "${_n}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]] || continue
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    _x="${_x},${_u}"
+    [ "${_n}" = "${_a}" ] && _self=YES
+  done < <(getent passwd 2> /dev/null)
+  [ "${_self}" = "YES" ] || return 1
+  # the account's removed identities, their numbers recorded by root before
+  # deluser freed them; a number a user has again is not taken
+  while IFS= read -r _u; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    getent passwd "${_u}" > /dev/null 2>&1 && continue
+    _x="${_x},${_u}"
+  done 2> /dev/null < "/data/conf/acct-uids/${_a}.gone"
+  echo "${_x}"
+}
 # An account's static/control is taken only as its own. Every other
 # account's .ftp login is in the box-wide group, which an account not yet on
 # its own group still has on static/ and on what its login makes there, so
@@ -699,6 +733,44 @@ _acct_ctrl_own() {
   esac
   echo "${_r:-static/ is not a real directory}"
   return 1
+}
+# The account $1's control/ as _acct_ctrl_own judges it: 0 when it is the
+# account's own (or it has none). A run that judged every account first
+# (_acct_ctrl_judge_all) keeps the verdicts in variables a command
+# substitution inherits, so a box-wide read walks each folder once; an
+# account it did not judge is judged here, without a word.
+_acct_ctrl_own_seen() {
+  case " ${_ACCT_CTRL_JUDGED:-} " in
+    *" ${1} "*)
+      case " ${_ACCT_CTRL_NOT_OWN:-} " in
+        *" ${1} "*) return 1 ;;
+      esac
+      return 0
+      ;;
+  esac
+  _acct_ctrl_own "${1}" > /dev/null
+}
+# Every account's control/ judged once a run, in the run's own shell, before
+# the box-wide reads of the accounts' PHP choices: one that is not the
+# account's own is named once (ALRT), and those reads leave it out.
+_acct_ctrl_judge_all() {
+  local _u _a _why
+  [ "${_ACCT_CTRL_JUDGED_ALL:-}" = "YES" ] && return 0
+  _ACCT_CTRL_JUDGED=""
+  _ACCT_CTRL_NOT_OWN=""
+  for _u in /data/disk/*; do
+    _a="${_u##*/}"
+    case "${_a}" in
+      ""|*[!a-z0-9-]*) continue ;;
+    esac
+    [ -e "${_u}/static/control" ] || [ -L "${_u}/static/control" ] || continue
+    _ACCT_CTRL_JUDGED="${_ACCT_CTRL_JUDGED} ${_a}"
+    if ! _why=$(_acct_ctrl_own "${_a}"); then
+      _ACCT_CTRL_NOT_OWN="${_ACCT_CTRL_NOT_OWN} ${_a}"
+      _msg "ALRT: ${_u}/static/control is not ${_a}'s own (${_why}); the box's PHP choices leave its control files out"
+    fi
+  done
+  _ACCT_CTRL_JUDGED_ALL=YES
 }
 # ./$1 of the current (pinned) directory, read as _acct_read_here reads it
 # (at most 1 MiB), only as the account $2's own; empty otherwise. An account
@@ -844,6 +916,10 @@ _acct_read_all() {
   local _u
   for _u in /data/disk/*; do
     [ -d "${_u}/${1}" ] || continue
+    # a control/ another account made says nothing of this one's choices
+    if [ "${1}" = "static/control" ] && ! _acct_ctrl_own_seen "${_u##*/}"; then
+      continue
+    fi
     _acct_read_in "${_u}/${1}" "${2}"
     echo
   done

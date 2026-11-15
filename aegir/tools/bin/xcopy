@@ -2966,6 +2966,108 @@ _mig_php_norm() {
   esac
 }
 
+### The account's own control folder, judged as the ltd worker and the backup
+### tools judge it (the same three helpers, one text wherever they are
+### defined): a control/ another account's login made says nothing of
+### this account's PHP, so its files are not read.
+# The uids root's walks over the account $1's trees act on, comma-separated:
+# root's own (0, what root wrote there for the account) and those of every
+# identity of the account as passwd names them: oN and oN.<name>, that is its
+# .ftp login, its client sub-accounts oN.<client> and oN.<client>-dev and its
+# PHP-FPM users oN.web and oN.<ver>.web. An account name holds no dot, so the
+# match is exact: o1 never takes o10's. Status 1, and nothing, unless the
+# account itself is in passwd. The numbers of the account's removed
+# identities that root recorded in /data/conf/acct-uids/<oN>.gone (the ltd
+# worker, before deluser frees one) are listed too while no user has them.
+# Root's check of the control folder, its reads of the control files and its
+# hand-overs into that folder take a uid no passwd entry names only when it
+# is listed: another account's removed login leaves files under such a number
+# too. Its other hand-overs, mode walks and removal walks still take any.
+_acct_walk_uids() {
+  local _a="${1}" _n _p _u _r _x="0" _self=NO
+  case "${_a}" in
+    ""|*[!a-z0-9-]*) return 1 ;;
+  esac
+  while IFS=: read -r _n _p _u _r; do
+    [[ "${_n}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]] || continue
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    _x="${_x},${_u}"
+    [ "${_n}" = "${_a}" ] && _self=YES
+  done < <(getent passwd 2> /dev/null)
+  [ "${_self}" = "YES" ] || return 1
+  # the account's removed identities, their numbers recorded by root before
+  # deluser freed them; a number a user has again is not taken
+  while IFS= read -r _u; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    getent passwd "${_u}" > /dev/null 2>&1 && continue
+    _x="${_x},${_u}"
+  done 2> /dev/null < "/data/conf/acct-uids/${_a}.gone"
+  echo "${_x}"
+}
+# The whole of an account's control/, judged once before a run acts on it:
+# run inside the account's real static/, it prints OK when control/ and
+# everything in it, never followed through a link, and static/ and every
+# directory above it up to /, are root's or one of the account's identities'
+# (the uids given first, _acct_walk_uids, with the account's recorded
+# removed identities), ABSENT when there is no control/, and otherwise why
+# not, on one line.
+# Every other account's .ftp login is in the box-wide group, which an account
+# not yet on its own group still has on static/: such a login could put a
+# control/ of its own there, or a file of its own in a group-writable
+# directory below it, for root to act on as the account's.
+_ACCT_CTRL_OWN_PL='use Fcntl;
+my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, shift @ARGV // "");
+sub own { my $u = shift; return exists $own{$u} ? 1 : 0; }
+sub isd { ($_[0] & 0170000) == 0040000 }
+sub nm { (my $v = shift) =~ s/[^\x20-\x7e]/?/g; return substr($v, 0, 200); }
+sub refuse { print "$_[0]\n"; exit 0; }
+my ($p, $top, @d, @x) = (".", 0);
+for (1 .. 256) {
+  @x = stat($p) or refuse("static/ cannot be read");
+  own($x[4]) or refuse("a directory above control/ is owned by uid $x[4]");
+  if (@d && $x[0] == $d[0] && $x[1] == $d[1]) { $top = 1; last; }
+  @d = @x;
+  $p .= "/..";
+}
+$top or refuse("static/ is too deep");
+my @s = lstat("./control");
+unless (@s) { print(($!{ENOENT} ? "ABSENT" : "control/ cannot be read") . "\n"); exit 0; }
+isd($s[2]) or refuse("control is not a directory");
+my ($n, @q) = (0, ["control", @s]);
+while (my $e = shift @q) {
+  my ($f, @t) = @$e;
+  own($t[4]) or refuse(nm($f) . " is owned by uid $t[4]" . (defined(getpwuid($t[4])) ? "" : ", which no user has and root never recorded for this account: if the file is its own, give it to its .ftp login"));
+  next unless isd($t[2]);
+  opendir(my $h, "./$f") or refuse(nm($f) . " cannot be read");
+  for my $b (readdir($h)) {
+    next if $b eq "." || $b eq "..";
+    ++$n > 100000 and refuse("control/ holds more than 100000 entries");
+    my @u = lstat("./$f/$b") or next;
+    push @q, ["$f/$b", @u];
+  }
+  closedir($h);
+}
+print "OK\n";
+exit 0;'
+# 0 when the account $1's control/ is its own as _ACCT_CTRL_OWN_PL judges it
+# (or it has none); otherwise why not on stdout, status 1. A run that acts
+# on what control/ says leaves the account as it is when it is not.
+_acct_ctrl_own() {
+  local _a="${1}" _o _r _want
+  # an account not in passwd (not made yet, or removed) has nothing to
+  # judge it by: read as before
+  _o=$(_acct_walk_uids "${_a}" 2> /dev/null) || return 0
+  [ -e "/data/disk/${_a}/static" ] || [ -L "/data/disk/${_a}/static" ] || return 0
+  _want="$(cd -P -- /data/disk 2> /dev/null && /bin/pwd -P)/${_a}/static"
+  _r=$(cd -P -- "/data/disk/${_a}/static" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] \
+    && perl -e "${_ACCT_CTRL_OWN_PL}" -- "${_o}" 2> /dev/null)
+  case "${_r}" in
+    OK|ABSENT) return 0 ;;
+  esac
+  echo "${_r:-static/ is not a real directory}"
+  return 1
+}
+
 ### Union of the PHP versions in force for this account, each counted only when
 ### its PHP is installed here: root's record of the PHP its pool and command
 ### line run on (_PHP_FPM_VERSION and _PHP_CLI_VERSION in its octopus.cnf,
@@ -2992,6 +3094,11 @@ _mig_php_versions_needed() {
     _v="$(_mig_php_norm "${_v#*=}")"
     _mig_php_here "${_v}" && _out="${_out} ${_v}"
   done
+  ### root's record alone when the control folder is not the account's own
+  if ! _acct_ctrl_own "${_u##*/}" > /dev/null; then
+    echo "${_out}" | tr ' ' '\n' | sort -u | tr '\n' ' '
+    return 0
+  fi
   ### read inside the account's real static/control, never through a link
   ### or into a FIFO put there
   for _f in fpm.info cli.info; do
@@ -3040,6 +3147,8 @@ _mig_php_versions_needed() {
 ### reaches the operator's console. $1 = the account's directory.
 _mig_php_inert_choices() {
   local _u="$1" _f _v _nn _dom _rest _line _k _e _mk=0 _txt _n
+  ### nothing of a control folder that is not the account's own
+  _acct_ctrl_own "${_u##*/}" > /dev/null || return 0
   for _f in fpm.info cli.info; do
     _v="$(_mig_php_norm "$(_xcopy_read_in "${_u}/static/control" "${_f}" | tr -d ' \t\r\n')")"
     [ -n "${_v}" ] && [ ! -x "/opt/php${_v//./}/bin/php" ] || continue
@@ -3225,7 +3334,14 @@ _xcopy_php_inert_report() {
 ### is driven remotely to build them (a full system pass: a few minutes).
 ### --fix-php is a create option, so only create offers it.
 _xcopy_php_coverage_gate() {
-  local _u="$1" _t="$2" _need _v _sv _miss=""
+  local _u="$1" _t="$2" _need _v _sv _miss="" _why
+  ### a control folder another account made holds no PHP choice of this
+  ### account's: its PHP would not be known on the target
+  if ! _why="$(_acct_ctrl_own "${_u##*/}")"; then
+    echo "ERROR: ${_u}/static/control is not $(basename "${_u}")'s own (${_why}): its PHP choices are not read"
+    echo "ERROR: remove what another account made there (the ltd worker's ALERT names it), then run this again"
+    return 1
+  fi
   _need="$(_mig_php_versions_needed "${_u}")"
   if [ -z "${_need// /}" ]; then
     _xcopy_php_inert_report "${_u}" "${_t}" alrt
