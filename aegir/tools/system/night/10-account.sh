@@ -2203,7 +2203,7 @@ _night_platform_root_lines_here() {
   fi
   for _f in "${_l[@]}"; do
     _r=$(_acct_read_plain_here "${_f#./}" \
-      | sed -n "s/^[[:space:]]*'root'[[:space:]]*=>[[:space:]]*'\([^']*\)',\{0,1\}[[:space:]]*\$/\1/p" \
+      | sed -n "s/^[[:space:]]*'root'[[:space:]]*=>[[:space:]]*'\([^']*\)'.*/\1/p" \
       | head -n 1 2>&1)
     [ -n "${_r}" ] || continue
     _d=$(_detect_real_docroot "${_r}")
@@ -2291,7 +2291,7 @@ _check_old_empty_platforms() {
         # the name reaches a drush command line
         [[ "${_T_PFM_NAME}" =~ ^[A-Za-z0-9._-]+$ ]] || continue
         _T_PFM_ROOT=$(_acct_read_in "${_drD}" "${_pf}" \
-          | sed -n "s/^[[:space:]]*'root'[[:space:]]*=>[[:space:]]*'\([^']*\)',\{0,1\}[[:space:]]*\$/\1/p" \
+          | sed -n "s/^[[:space:]]*'root'[[:space:]]*=>[[:space:]]*'\([^']*\)'.*/\1/p" \
           | head -n 1 2>&1)
         # The alias keeps the path the platform was registered with, which for
         # a Composer build can be its app root; site_path and sites/all live
