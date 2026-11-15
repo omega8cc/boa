@@ -262,6 +262,21 @@
 
 @=> Security
 
+    * root takes an account's PHP choices from its static/control only
+      when that folder is the account's own, as the ltd worker already
+      does: the box-wide reads of a barracuda pass (which PHP versions
+      the server keeps or builds, and whether an account asks for 8.6)
+      and its single-PHP writes there, the PHP gates of xmass, xoct and
+      xcopy, and xtrim's restore of a parked pool. A control folder
+      another account's login made could steer which PHP the server
+      builds or keeps, and the tree xtrim puts an account's pool back in.
+      A move or copy of an account whose folder is not its own now stops
+      at the PHP gate and says why (its dry run is not clean). xtrim
+      records the PHP tree of each pool it parks and puts the pool back
+      there; a quarantine parked before that record reads fpm.info only
+      from a folder that is the account's own, and otherwise leaves the
+      pool in quarantine with the reason.
+
     * nginx can read a hosted account's own vhosts and the files they
       include only as copies root has judged (ngxstore). The account's
       backend user writes those files, and nginx's master runs as root and
