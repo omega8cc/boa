@@ -2203,10 +2203,8 @@ _night_platform_root_lines_here() {
   fi
   for _f in "${_l[@]}"; do
     _r=$(_acct_read_plain_here "${_f#./}" \
-      | grep "root'" \
-      | cut -d: -f2 \
-      | awk '{ print $3}' \
-      | sed "s/[\,']//g" 2>&1)
+      | sed -n "s/^[[:space:]]*'root'[[:space:]]*=>[[:space:]]*'\([^']*\)',\{0,1\}[[:space:]]*\$/\1/p" \
+      | head -n 1 2>&1)
     [ -n "${_r}" ] || continue
     _d=$(_detect_real_docroot "${_r}")
     printf '%s\t%s\t%s\t%s\n' "${_f#./}" "${_r}" "${_d:-${_r}}" \
@@ -2293,10 +2291,8 @@ _check_old_empty_platforms() {
         # the name reaches a drush command line
         [[ "${_T_PFM_NAME}" =~ ^[A-Za-z0-9._-]+$ ]] || continue
         _T_PFM_ROOT=$(_acct_read_in "${_drD}" "${_pf}" \
-          | grep "root'" \
-          | cut -d: -f2 \
-          | awk '{ print $3}' \
-          | sed "s/[\,']//g" 2>&1)
+          | sed -n "s/^[[:space:]]*'root'[[:space:]]*=>[[:space:]]*'\([^']*\)',\{0,1\}[[:space:]]*\$/\1/p" \
+          | head -n 1 2>&1)
         # The alias keeps the path the platform was registered with, which for
         # a Composer build can be its app root; site_path and sites/all live
         # under the docroot Provision serves, so both tests below read that.

@@ -4301,10 +4301,8 @@ _cleanup_ghost_drushrc() {
       _IS_SITE=NO
     elif [[ "${_aliasName}" =~ (^)"platform_" ]]; then
       _Plm=$(printf '%s\n' "${_alTxt}" \
-        | grep "root'" \
-        | cut -d: -f2 \
-        | awk '{ print $3}' \
-        | sed "s/[\,']//g" 2>&1)
+        | sed -n "s/^[[:space:]]*'root'[[:space:]]*=>[[:space:]]*'\([^']*\)',\{0,1\}[[:space:]]*\$/\1/p" \
+        | head -n 1 2>&1)
       _gh_pmark="ghost-drushrc-platform-${_aliasName}.seen"
       _ghUb=$(_ghost_unfinished_build "${_alTxt}" "${_Plm}")
       # _Plm is parsed from a Drush alias exactly like _Dir/_Plr in the per-site
@@ -4373,10 +4371,8 @@ _cleanup_ghost_drushrc() {
         fi
       else
         _T_SITE_FDIR=$(printf '%s\n' "${_alTxt}" \
-          | grep "site_path'" \
-          | cut -d: -f2 \
-          | awk '{ print $3}' \
-          | sed "s/[\,']//g" 2>&1)
+          | sed -n "s/^[[:space:]]*'site_path'[[:space:]]*=>[[:space:]]*'\([^']*\)',\{0,1\}[[:space:]]*\$/\1/p" \
+          | head -n 1 2>&1)
         # Fail closed: a degraded/mid-rewrite alias parses to an empty or
         # non-/data/disk site_path -> KEEP, never reap on a bad parse. The
         # prefix test is TEXTUAL, so ".." components pass it and still reach
@@ -4433,10 +4429,8 @@ _cleanup_ghost_drushrc() {
           _GH_CLASS=ghost
           _GH_FE=""
           _T_SITE_ROOT=$(printf '%s\n' "${_alTxt}" \
-            | grep "'root' =>" \
-            | cut -d: -f2 \
-            | awk '{ print $3}' \
-            | sed "s/[\,']//g" 2>&1)
+            | sed -n "s/^[[:space:]]*'root'[[:space:]]*=>[[:space:]]*'\([^']*\)',\{0,1\}[[:space:]]*\$/\1/p" \
+            | head -n 1 2>&1)
           _T_SITE_URI=$(printf '%s\n' "${_alTxt}" \
             | sed -n "s/^[[:space:]]*'uri' => '\([^']*\)'.*/\1/p" | head -n 1)
           [ -n "${_T_SITE_URI}" ] || _T_SITE_URI="${_T_SITE_NAME}"
@@ -4457,10 +4451,8 @@ _cleanup_ghost_drushrc() {
               for _GH_PALIAS in `_acct_in_real_dir "${_drD}" \
                 compgen -G './platform_*.alias.drushrc.php'`; do
                 _GH_PROOT=$(_acct_read_in "${_drD}" "${_GH_PALIAS#./}" \
-                  | grep "'root' =>" \
-                  | cut -d: -f2 \
-                  | awk '{ print $3}' \
-                  | sed "s/[\,']//g" 2>&1)
+                  | sed -n "s/^[[:space:]]*'root'[[:space:]]*=>[[:space:]]*'\([^']*\)',\{0,1\}[[:space:]]*\$/\1/p" \
+                  | head -n 1 2>&1)
                 _GH_PDOC=$(_detect_real_docroot "${_GH_PROOT}") \
                   || _GH_PDOC="${_GH_PROOT}"
                 if [ -n "${_GH_PDOC}" ] \
@@ -4981,16 +4973,12 @@ _daily_process() {
       echo "Dom is ${_Dom}"
       _alTxt=$(_acct_read_in "${_usEr}/.drush" "${_Dan}.alias.drushrc.php")
       _Dir=$(printf '%s\n' "${_alTxt}" \
-        | grep "site_path'" \
-        | cut -d: -f2 \
-        | awk '{ print $3}' \
-        | sed "s/[\,']//g" 2>&1)
+        | sed -n "s/^[[:space:]]*'site_path'[[:space:]]*=>[[:space:]]*'\([^']*\)',\{0,1\}[[:space:]]*\$/\1/p" \
+        | head -n 1 2>&1)
       _DIR_CTRL_F="${_Dir}/modules/boa_site_control.ini"
       _Plr=$(printf '%s\n' "${_alTxt}" \
-        | grep "root'" \
-        | cut -d: -f2 \
-        | awk '{ print $3}' \
-        | sed "s/[\,']//g" 2>&1)
+        | sed -n "s/^[[:space:]]*'root'[[:space:]]*=>[[:space:]]*'\([^']*\)',\{0,1\}[[:space:]]*\$/\1/p" \
+        | head -n 1 2>&1)
       _PLR_CTRL_F="${_Plr}/sites/all/modules/boa_platform_control.ini"
       # Skip the iteration if the alias-derived paths do not resolve under
       # an allowed BOA root. Guards against a compromised aegir-context user
