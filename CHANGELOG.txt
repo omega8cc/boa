@@ -851,7 +851,7 @@
       met Access denied until the next live sync. Once a minute the source
       now compares its pair with the one last found current on the standby
       and, when they differ, runs xmass carry-credentials: the live sync's
-      own carry, alone, to a standby whose marker names this source, once
+      own carry, alone, to a standby whose marker names no other source, once
       the pair has not changed for a minute and no other xmass verb runs,
       also on a full disk, and tried again every five minutes until it lands.
 
