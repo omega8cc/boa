@@ -2284,6 +2284,37 @@ _xoct_export_fqdn() {
   [ -z "${_f}" ] && _f=$(hostname -f 2>/dev/null | tr -d '\n')
   printf '%s' "${_f}"
 }
+### Whether the export of the account $1 (its /data/disk path) went to the
+### target: log/transferred.pid there and no older than the export's own
+### stamp (exported.pid, or the latch a --force run passes over). The export
+### after a forced transfer removes that transfer's stamp, and one re-run by
+### any other way stands newer than it.
+_xoct_export_travelled() {
+  local _e
+  if [ -e "${1}/log/exported.pid" ]; then
+    _e="${1}/log/exported.pid"
+  elif [ -e "${1}/log/export_failed.pid" ]; then
+    _e="${1}/log/export_failed.pid"
+  else
+    return 1
+  fi
+  [ -e "${1}/log/transferred.pid" ] || return 1
+  [ "${_e}" -nt "${1}/log/transferred.pid" ] && return 1
+  return 0
+}
+### What the target $1 holds of the account $2's move, read inside its real
+### log/: "imported" when an import stamped it (a completed import removes
+### the export stamps that travelled with the transfer), "pending" when an
+### export stamp travelled there after it, "none" with neither; nothing when
+### the folder cannot be read there. A first contact with the target: its
+### connect is bounded as the record push's is.
+_xoct_target_import_state() {
+  _mig_valid_ip "${1}" && _mig_valid_acct "${2}" || return 1
+  ssh -o ConnectTimeout=15 root@"${1}" "_w=\"\$(cd -P /data/disk 2> /dev/null && /bin/pwd -P)/${2}/log\"
+cd -P -- \"/data/disk/${2}/log\" 2> /dev/null && [ \"\$(/bin/pwd -P)\" = \"\${_w}\" ] || exit 1
+if [ -e ./exported.pid ] || [ -e ./export_failed.pid ]; then echo pending; elif [ -e ./imported.pid ]; then echo imported; else echo none; fi" \
+    < /dev/null 2> /dev/null | head -n 1 | tr -cd 'a-z'
+}
 ### What the target $1 says of the account $2 there, for a client notice, as
 ### five lines: its hostname, the control panel name root's cnf of the
 ### account holds there (_DOMAIN: written for that box when the account is
@@ -10572,6 +10603,32 @@ _xoct_proxy_preflight() {
     echo "ALRT: ha-switch: the client mail asserts a live mirror with automatic failover;"
     echo "ALRT: this tool cannot verify one exists -- confirm the pair is real first"
   fi
+  ### A first proxy relays to the copy the target imported: one whose last
+  ### transfer was never imported there still serves an older copy, or none.
+  ### Read before anything is written. A converted account (root's marker)
+  ### and xmass's cutover, which moves the data its own way, are not asked.
+  if ! _mig_is_proxied "${_USR##*/}" && ! _xoct_xmass_cutover_holds > /dev/null; then
+    case "$(_xoct_target_import_state "${_tgt}" "${_XOCT_PEER_ACCT}")" in
+      imported) : ;;
+      pending)
+        echo "ERROR: ${_oct}: the last transfer to ${_tgt} is not imported there (an export stamp waits in"
+        echo "ERROR: /data/disk/${_XOCT_PEER_ACCT}/log): its sites would relay to an older copy; nothing changed."
+        echo "ERROR: Run the import on ${_tgt} first:"
+        echo "ERROR:   xoct import ${_oct} ${_tgt}${_dst:+ ${_dst}}${_XOCT_ADMAIL:+ admail=${_XOCT_ADMAIL}}"
+        exit 1
+      ;;
+      none)
+        echo "ERROR: ${_oct}: ${_tgt} holds no import of ${_XOCT_PEER_ACCT} (no log/imported.pid there); nothing changed."
+        echo "ERROR: Transfer and import the account first"
+        exit 1
+      ;;
+      *)
+        echo "ERROR: ${_oct}: /data/disk/${_XOCT_PEER_ACCT}/log on ${_tgt} could not be read, so its import"
+        echo "ERROR: cannot be confirmed; nothing changed. Retry when it answers."
+        exit 1
+      ;;
+    esac
+  fi
 
   echo "INFO: ${_oct}: proxy mode ${_MIG_MODE}${_MIG_DEADLINE:+ (deadline ${_MIG_DEADLINE})}${_MIG_DEADLINE_NONE:+ (no deadline)} [source: ${_MIG_SOURCE}]"
 
@@ -11989,6 +12046,21 @@ _migrate_init() {
       echo "_USR ${_oct} is not eligible for migration: not exported"
       echo "INFO: proxy follows this account's export (log/exported.pid, or --force after one that"
       echo "INFO: left log/export_failed.pid): run 'xoct export${_XOCT_ADMAIL:+ admail=${_XOCT_ADMAIL}}' first"
+      exit 1
+    ### A first proxy points the sites at the target's copy, so the export
+    ### stamped here must have gone there: an export re-run after its transfer
+    ### (after a forced one, say) leaves the target an older copy. A converted
+    ### account is not asked; as above, only the root marker says converted.
+    ### xmass's cutover stamps exported.pid itself and carries the data its own
+    ### way, so it passes the gate above alone. The target's import is read by
+    ### the preflight.
+    elif [ "${_cmd}" = "proxy" ] \
+      && ! _mig_is_proxied "${_USR##*/}" \
+      && ! _xoct_export_travelled "${_USR}" \
+      && ! _xoct_xmass_cutover_holds > /dev/null; then
+      echo "_USR ${_oct} is not eligible for migration: export not transferred"
+      echo "INFO: log/transferred.pid is missing or older than this export: the target holds no copy of it"
+      echo "INFO: run 'xoct transfer ${_oct} ${_tgt}${_dst:+ ${_dst}}${_XOCT_ADMAIL:+ admail=${_XOCT_ADMAIL}}' and the import on the target first"
       exit 1
     elif [ "${_XOCT_START_VERB}" = "YES" ] && [ "${_XOCT_EMAIL_CLASS}" = "OUR" ] \
       && [ "${_XOCT_BOX_MOVE}" != "YES" ]; then
