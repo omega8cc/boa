@@ -262,6 +262,13 @@
 
 @=> Security
 
+    * The task queue runs /var/xdrago/run-<account> only for an account the
+      server has (its /root/.<account>.octopus.cnf and /data/disk/<account>).
+      A copy left beside a dispatcher, such as an old-run-<account> or a
+      run-<account>.bak, ran as root every minute beside the real one. A
+      run- file that is not root's alone is still named and mailed, and the
+      run lock heal's new copy takes a temporary name with no account in it.
+
     * An Octopus install that makes an account under a name an earlier,
       removed account had (removed other than by boa cleanup purge, before
       the ltd worker noticed it gone) first moves that account's record of
