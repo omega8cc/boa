@@ -591,6 +591,34 @@ _acct_unswept_add() {
     _acct_gone_write "${_f}" "$(printf '%s\n%s\n' "${_c}" "${_u}" | sort -un)"
   ) 9> "${_d}/.unswept.lock"
 }
+# The records of an earlier account of the name $1, which passwd no longer
+# has (removed other than by boa cleanup purge, its name made again before
+# the ltd worker's prune saw it gone): its recorded numbers and its
+# identities' (the uid list) that no user has stay held for no account
+# (_acct_purged_add) and both records go, so a new account of the name
+# never takes what the earlier one left as its own. An account in passwd
+# (an upgrade) keeps them, and nothing goes while passwd does not answer.
+_acct_gone_retire() {
+  local _a="${1}" _d=/data/conf/acct-uids _c="" _x _u _gone=""
+  [[ "${_a}" =~ ^[a-z0-9-]+$ ]] || return 1
+  getent passwd root > /dev/null 2>&1 || return 0
+  id -u -- "${_a}" > /dev/null 2>&1 && return 0
+  if [ -f "${_d}/${_a}.gone" ] && [ ! -L "${_d}/${_a}.gone" ]; then
+    _c=$(cat -- "${_d}/${_a}.gone") || return 1
+  fi
+  if [ -f "${_d}/${_a}" ] && [ ! -L "${_d}/${_a}" ]; then
+    _x=$(tr ',' '\n' < "${_d}/${_a}") || return 1
+    _c="${_c}"$'\n'"${_x}"
+  fi
+  [ -n "${_c//[[:space:]]/}" ] || return 0
+  while IFS= read -r _u; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    getent passwd "${_u}" > /dev/null 2>&1 && continue
+    _gone="${_gone} ${_u}"
+  done <<< "${_c}"
+  # shellcheck disable=SC2086
+  _acct_purged_add ${_gone} && rm -f -- "${_d}/${_a}.gone" "${_d}/${_a}"
+}
 # The numbers of an account that is gone (boa cleanup purge, or one removed
 # some other way, which the ltd worker's prune finds by its records) are
 # listed in /data/conf/acct-uids/.purged, each with the time it joined, and
@@ -4612,6 +4640,9 @@ _satellite_add_user_dirs() {
         _msg "NOTE: instgrp absent or the box not ready for the per-instance group (instgrp check); ${_USER} is born on the box-wide group, the next upgrade converts it"
       fi
     fi
+    # an earlier account of this name left its records: not this one's
+    _acct_gone_retire "${_USER}" \
+      || _msg "${_STATUS} A: WARN: the records an earlier ${_USER} left in /data/conf/acct-uids could not be retired"
     _acct_new_identity low "${_USER}" \
       adduser --system --home ${_ROOT} --ingroup ${_ACCG} ${_USER} &> /dev/null
     if ! id -u "${_USER}" > /dev/null 2>&1; then
