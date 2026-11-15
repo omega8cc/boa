@@ -19311,6 +19311,8 @@ _xmass_tool_state_sh() {
   # minutes; NOCLEAR or NOTRUN when it cannot run), then one TOOL line a
   # tool: its marker's name, whether a hold is back, lsattr's flags and the
   # md5 of /opt/local/bin/<tool>, "-" for what is not there. DONE closes it.
+  # The script comes on the remote shell's input, so the pass gets
+  # /dev/null for its own: a child that reads input would take the rest.
   cat <<'EOS'
 for _t in "$@"; do
   ls /var/log/boa/${_t}.mvfail.* &> /dev/null && printf 'HELD\t%s\n' "${_t}"
@@ -19318,7 +19320,7 @@ for _t in "$@"; do
 done
 if [ ! -e /var/xdrago/clear.sh ]; then
   echo NOCLEAR
-elif ! bash /var/xdrago/clear.sh wait &> /dev/null; then
+elif ! bash /var/xdrago/clear.sh wait &> /dev/null < /dev/null; then
   echo NOTRUN
 fi
 for _t in "$@"; do
