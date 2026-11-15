@@ -2224,8 +2224,43 @@ _night_user_tasks_alive() {
   return 1
 }
 
+### A build of the control panel's Add platform form writes
+### .<folder>.unfinished-build beside the folder it builds into and removes
+### it once the build ends. While that marker stands beside the folder an
+### alias builds into, and the alias root lies in that folder, the folder is
+### the platform's leftover: the platform's Delete removes the two only
+### through its alias, so the alias stays. $1 is the alias text, $2 its root;
+### prints the folder. One text wherever it is defined.
+_ghost_unfinished_build() {
+  local _gk _gp _gm
+  for _gk in composer_project_path composer_git_path git_repository_path; do
+    _gp=$(printf '%s\n' "$1" \
+      | sed -n "s/^[[:space:]]*'${_gk}' => '\([^']*\)',[[:space:]]*\$/\1/p" \
+      | head -n 1)
+    _gp="${_gp%/}"
+    case "${_gp}" in
+      /*/*) ;;
+      *) continue ;;
+    esac
+    case "${_gp}/" in
+      */../*|*/./*) continue ;;
+    esac
+    case "${2%/}/" in
+      "${_gp}"/*) ;;
+      *) continue ;;
+    esac
+    _gm="${_gp%/*}/.${_gp##*/}.unfinished-build"
+    if [ -d "${_gp}" ] && [ ! -L "${_gp}" ] \
+      && [ -f "${_gm}" ] && [ ! -L "${_gm}" ]; then
+      printf '%s\n' "${_gp}"
+      return 0
+    fi
+  done
+  return 1
+}
+
 _check_old_empty_platforms() {
-  local _drD="${_usEr}/.drush" _pf _siteLines _rootLines _rootNew _snapT _twin _twinMsg
+  local _drD="${_usEr}/.drush" _pf _siteLines _rootLines _rootNew _snapT _twin _twinMsg _ubDir
   _provision_running && { echo "INFO: provision task active -- skipping empty-platform cleanup"; return; }
   if [ "${_hostedSys}" = "YES" ]; then
     if [[ "${_hName}" =~ "demo.aegir.cc" ]] \
@@ -2272,7 +2307,10 @@ _check_old_empty_platforms() {
         if [ -z "${_T_PFM_DOC}" ]; then
           # Version-agnostic emptiness: no index.php at the alias root nor
           # under web/docroot/html. Do NOT key on sites/all (D8+ dropped it).
-          if _cnf_flag_yes /root/.${_HM_U}.octopus.cnf _GHOST_PLATFORMS_CLEANUP \
+          _ubDir=$(_ghost_unfinished_build "$(_acct_read_in "${_drD}" "${_pf}")" "${_T_PFM_ROOT}")
+          if [ -n "${_ubDir}" ]; then
+            echo "GHOST platform ${_T_PFM_ROOT} kept: the build into ${_ubDir} never finished; delete the platform in the control panel to remove both"
+          elif _cnf_flag_yes /root/.${_HM_U}.octopus.cnf _GHOST_PLATFORMS_CLEANUP \
             || _cnf_flag_yes /root/.barracuda.cnf _GHOST_PLATFORMS_CLEANUP; then
             if _acct_in_real_dir "${_drD}" \
               _acct_undo_here "platform_${_T_PFM_NAME}.alias.drushrc.php" &> /dev/null; then

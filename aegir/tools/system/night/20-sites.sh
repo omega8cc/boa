@@ -521,6 +521,41 @@ _ghost_seen_reset_acct() {
   return 0
 }
 
+### A build of the control panel's Add platform form writes
+### .<folder>.unfinished-build beside the folder it builds into and removes
+### it once the build ends. While that marker stands beside the folder an
+### alias builds into, and the alias root lies in that folder, the folder is
+### the platform's leftover: the platform's Delete removes the two only
+### through its alias, so the alias stays. $1 is the alias text, $2 its root;
+### prints the folder. One text wherever it is defined.
+_ghost_unfinished_build() {
+  local _gk _gp _gm
+  for _gk in composer_project_path composer_git_path git_repository_path; do
+    _gp=$(printf '%s\n' "$1" \
+      | sed -n "s/^[[:space:]]*'${_gk}' => '\([^']*\)',[[:space:]]*\$/\1/p" \
+      | head -n 1)
+    _gp="${_gp%/}"
+    case "${_gp}" in
+      /*/*) ;;
+      *) continue ;;
+    esac
+    case "${_gp}/" in
+      */../*|*/./*) continue ;;
+    esac
+    case "${2%/}/" in
+      "${_gp}"/*) ;;
+      *) continue ;;
+    esac
+    _gm="${_gp%/*}/.${_gp##*/}.unfinished-build"
+    if [ -d "${_gp}" ] && [ ! -L "${_gp}" ] \
+      && [ -f "${_gm}" ] && [ ! -L "${_gm}" ]; then
+      printf '%s\n' "${_gp}"
+      return 0
+    fi
+  done
+  return 1
+}
+
 # aegir2boa's own root state for the account $1 says its db-import, or the
 # revert of one, is unfinished: the dispatcher it held aside is still there,
 # a hold xmass carried here with a failover from the box the import ran on
@@ -4236,7 +4271,7 @@ _cleanup_ghost_drushrc() {
   ### read, the arming marker kept, and every move into undo/ made only
   ### inside the real directories (_acct_in_real_dir, _acct_undo_here); a
   ### platform or site tree moves from inside its resolved parent.
-  local _drD="${_usEr}/.drush" _alTxt
+  local _drD="${_usEr}/.drush" _alTxt _ghUb
   # Sites-reap enablement is resolved once per account, and every OFF->ON flip
   # only ARMS on its first enabled run (nothing moved): the consecutive-night
   # ghost counters keep counting during dry-run, so a flip would otherwise
@@ -4271,11 +4306,17 @@ _cleanup_ghost_drushrc() {
         | awk '{ print $3}' \
         | sed "s/[\,']//g" 2>&1)
       _gh_pmark="ghost-drushrc-platform-${_aliasName}.seen"
+      _ghUb=$(_ghost_unfinished_build "${_alTxt}" "${_Plm}")
       # _Plm is parsed from a Drush alias exactly like _Dir/_Plr in the per-site
       # loop, but reaches an unconditional root "mv -f" -- so it needs the same
       # anchor those get: a real dir, not a symlink, resolving under THIS
       # account root. Refuse the platform rather than move an unknown path.
-      if [ -d "${_Plm}" ] && ! _validate_loop_dir "${_Plm}"; then
+      if [ -n "${_ghUb}" ]; then
+        # a build's folder with no docroot yet: the alias root is missing or
+        # holds nothing, and either move would leave the folder untracked
+        _ghost_seen_reset_acct "${_gh_pmark}"
+        echo "GHOST platform alias ${_thisAlias} kept: the build into ${_ghUb} never finished; delete the platform in the control panel to remove both"
+      elif [ -d "${_Plm}" ] && ! _validate_loop_dir "${_Plm}"; then
         echo "SKIP: platform root symlinked or outside ${_usEr}: ${_Plm}"
       elif [ -d "${_Plm}" ]; then
         # Version-agnostic: a real docroot or a vendor/ tree = live platform.
