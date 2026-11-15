@@ -1253,6 +1253,17 @@
       the copy adds to a folder and the import would load both runs' files;
       the control panel dump and other folders stay.
 
+    * xoct proxy converts an account only after its export has reached the
+      target and been imported there. It asked only for the export stamp,
+      so an export re-run after the transfer, such as the fixed one after a
+      transfer forced over a failed export, let the sites relay to the older
+      copy the target held. A first proxy now refuses an export that was
+      not transferred after it, and reads the target before it writes
+      anything: a transfer not yet imported there, no import at all, or a
+      target that does not answer stops it, each named with the command to
+      run. A repair of a converted account and the conversion an xmass
+      cutover drives are not asked.
+
     * xcopy post-mig names, for each copied site whose verify failed, the
       first error line of that verify's log as the control panel shows it.
 
