@@ -843,6 +843,17 @@
 
 @=> Important Fixes
 
+    * The standby of a move or a standing mirror gets root's rotated MySQL
+      password within minutes. A barracuda pass rotates it on the box that
+      owns it (on Percona 8.4 every pass), and replication carries the new
+      password to the standby at once but not root's client pair, so every
+      root client there, the standby's own monitor and backups included,
+      met Access denied until the next live sync. Once a minute the source
+      now compares its pair with the one last found current on the standby
+      and, when they differ, runs xmass carry-credentials: the live sync's
+      own carry, alone, which waits out a BOA run and any other xmass verb
+      and is tried again every five minutes until it lands.
+
     * A BOA server answers a provider's power-off signal. A provider's
       console, a hypervisor's shutdown and a host's own restart press the
       machine's ACPI power button and wait. On Devuan nothing answered it

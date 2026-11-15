@@ -114,6 +114,12 @@ _ieni="--ignore-errors"
 _XMASS_AUTOSYNC_CNF="/root/.xmass.autosync.cnf"
 _XMASS_AUTOSYNC_STATUS="/var/log/boa/xmass.autosync.status"
 _XMASS_AUTOSYNC_FAILCOUNT="/var/log/boa/xmass.autosync.fail.count"
+### Root's MySQL client pair as last confirmed on the standby ("<md5> <date>
+### <target>"), and the stamp of the last carry-credentials try. minute.sh reads
+### both: a pair that no longer matches the record is carried within minutes.
+### Losing either costs one more carry, which finds the pair current.
+_XMASS_CRED_CARRIED="/var/log/boa/xmass.cred.carried"
+_XMASS_CRED_TRIED="/var/log/boa/xmass.cred.tried"
 ### Duty cycle: a pass may occupy at most 1/(N+1) of wall clock, so the box
 ### rests at least N x the last pass duration between passes. Shared with
 ### monitor/check/autosync.sh, which enforces it; kept here so --status can
@@ -20253,7 +20259,21 @@ REMOTE
 # only once it opens the standby's own database: until replication has
 # applied the rotation the old pair is the one that works, so it stays and
 # the next pass retries. The replaced pair is kept once as *.xmass_prev.
-# Never fatal: the file legs do not depend on it.
+# Never fatal: the file legs do not depend on it. A pair found current or
+# carried (or a target with nothing to carry to) is recorded in
+# _XMASS_CRED_CARRIED, which minute.sh compares with the pair here so a
+# rotation reaches the standby within minutes (carry-credentials), not at the
+# next live pass.
+_xmass_cred_record() {   # 1 = the pair's md5, 2 = the target it holds for
+  local _tmp
+  mkdir -p "$(dirname "${_XMASS_CRED_CARRIED}")" 2> /dev/null
+  _tmp="${_XMASS_CRED_CARRIED}.$$"
+  echo "${1} $(date '+%F_%T') ${2}" > "${_tmp}" 2> /dev/null \
+    && mv -f "${_tmp}" "${_XMASS_CRED_CARRIED}" 2> /dev/null
+  rm -f "${_tmp}" 2> /dev/null
+  return 0
+}
+
 _xmass_carry_db_credentials() {
   local _f _loc _rem _out
   for _f in /root/.my.cnf /root/.my.pass.txt; do
@@ -20269,10 +20289,12 @@ _xmass_carry_db_credentials() {
   case "${_rem}" in
     "${_loc}")
       _info "MySQL credentials on ${_tgt}: current"
+      _xmass_cred_record "${_loc}" "${_tgt}"
       return 0
     ;;
     NOMARKER)
       _alrt "MySQL credentials NOT carried: ${_tgt} holds no /root/.standby.cnf"
+      _xmass_cred_record "${_loc}" "${_tgt}"
       return 0
     ;;
     ""|TRANSPORT)
@@ -20315,6 +20337,7 @@ CARRY
   case "${_out}" in
     CARRIED)
       _info "MySQL credentials carried to ${_tgt} (rotated here since they last travelled)"
+      _xmass_cred_record "${_loc}" "${_tgt}"
     ;;
     NOAUTH)
       _alrt "MySQL credentials on ${_tgt} differ from this box's, and this box's pair"
@@ -20329,12 +20352,50 @@ CARRY
     ;;
     NOMARKER)
       _alrt "MySQL credentials NOT carried: ${_tgt} holds no /root/.standby.cnf"
+      _xmass_cred_record "${_loc}" "${_tgt}"
     ;;
     *)
       _alrt "MySQL credentials carry to ${_tgt} ended without a verdict (${_out:-no output}); the next pass retries"
     ;;
   esac
   return 0
+}
+
+# carry-credentials: the carry above, alone, for the pair this box holds now.
+# minute.sh runs it once the pair no longer matches _XMASS_CRED_CARRIED (a
+# pass rotated it: on 8.4 every pass, on 5.7 and 8.0 under the new-password
+# flag), and at most every five minutes while a try has not finished, so a
+# move's or a mirror's standby gets a rotated pair within minutes instead of
+# at the next live sync; until then every root client there meets Access
+# denied, its own monitor included, which can then no longer read the
+# standby's read-only hold. It
+# waits out a barracuda or octopus run (the pass writes the pair line by
+# line) and any other xmass verb, and records "nothing to carry" where this
+# box has no standby in phase syncing, so the minute check rests.
+_xmass_cmd_carry_credentials() {
+  local _sum
+  [ -s /root/.my.cnf ] && [ -s /root/.my.pass.txt ] || exit 0
+  _sum="$(cat /root/.my.cnf /root/.my.pass.txt | md5sum | cut -c1-32)"
+  if [ -e /root/.standby.cnf ] || [ -e /root/.proxy.cnf ]; then
+    _xmass_cred_record "${_sum}" none
+    exit 0
+  fi
+  _xmass_load_state
+  if [ "${_XMASS_PHASE}" != "syncing" ] || [ -z "${_XMASS_TARGET_IP}" ]; then
+    _xmass_cred_record "${_sum}" none
+    exit 0
+  fi
+  if _xmass_boa_run_live; then
+    _info "carry-credentials: a barracuda/octopus run is in flight — deferred"
+    exit 0
+  fi
+  touch "${_XMASS_CRED_TRIED}" 2> /dev/null
+  _XMASS_DEFER_SAYS="carry-credentials"
+  _take_verb_lock defer
+  _info "carry-credentials: $(date '+%F %T') to ${_XMASS_TARGET_IP}"
+  _tgt="${_XMASS_TARGET_IP}"
+  _xmass_carry_db_credentials
+  exit 0
 }
 
 _xmass_cmd_sync() {
@@ -23455,6 +23516,8 @@ _mig_runlog_start() {
   [ -n "${_verb}" ] || return 0
   case "${_tool}:${_verb}" in
     xmass:status) return 0 ;;
+    # run by minute.sh, which keeps its output in /var/log/boa/xmass.cred.log
+    xmass:carry-credentials) return 0 ;;
     xmass:autosync)
       case " $* " in
         *" --run "*|*" --status "*) return 0 ;;
@@ -23701,7 +23764,7 @@ _take_verb_lock() {
       case "${_cmdline}" in
         */xmass\ *|*/xmass|*\ xmass\ *)
           if [ "${_mode}" = "defer" ]; then
-            _info "autosync: another xmass run is in flight (pid ${_owner}) — deferred"
+            _info "${_XMASS_DEFER_SAYS:-autosync}: another xmass run is in flight (pid ${_owner}) — deferred"
             exit 0
           fi
           _die "another xmass run is in flight (pid ${_owner}) -- refusing to start '${_cmd}'. Wait for it to finish."
@@ -23978,6 +24041,13 @@ case "${_cmd}" in
       ;;
     esac
   ;;
+  carry-credentials)
+    # Run by minute.sh when root's MySQL pair here changed since it last
+    # reached the standby; takes the verb lock itself, in defer mode.
+    [ $# -eq 0 ] || _die "Usage: xmass carry-credentials"
+    _check_root
+    _xmass_cmd_carry_credentials
+  ;;
   *)
     echo ""
     echo "Usage: xmass pre-mig <source-fqdn>                    (run on the source first: publishes"
@@ -24001,6 +24071,8 @@ case "${_cmd}" in
     echo "                     (run on source; standing-mirror file cadence — arm AFTER"
     echo "                      the first 'sync --live'; minute.sh then repeats the live"
     echo "                      sync every N minutes, default 15, until cutover/--off)"
+    echo "Usage: xmass carry-credentials                        (run on source by minute.sh: root's"
+    echo "                     MySQL pair to the standby once a pass has rotated it here)"
     echo "Usage: xmass status  [target-ip]                      (run on source)"
     echo "Usage: xmass cutover <target-ip> [--proxy-mode=...] [--proxy-deadline=...] [--live]"
     echo "                     [admail=<address>]  (a test run: see the notes)"
