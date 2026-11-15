@@ -7762,6 +7762,8 @@ _mig_runlog_start() {
   [ -n "${_verb}" ] || return 0
   case "${_tool}:${_verb}" in
     xmass:status) return 0 ;;
+    # run by minute.sh, which keeps its output in /var/log/boa/xmass.cred.log
+    xmass:carry-credentials) return 0 ;;
     xmass:autosync)
       case " $* " in
         *" --run "*|*" --status "*) return 0 ;;
