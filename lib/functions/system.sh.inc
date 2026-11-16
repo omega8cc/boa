@@ -13991,8 +13991,8 @@ _if_install_ftpd() {
   if [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
     || [[ "${_XTRAS_LIST}" =~ "FTP" ]]; then
     if [ ! -e "/var/ftp" ]; then
-      # run here: _mrun's own shell would not have the helper
-      _sys_user_add high useradd -r -d /var/ftp -s /sbin/nologin -m ftp &> /dev/null
+      # _mrun's own bash -c would not have the helper
+      _mrun_here _sys_user_add high useradd -r -d /var/ftp -s /sbin/nologin -m ftp
     fi
     if [ ! -e "/etc/ssl/private/pure-ftpd.pem" ] \
       || [ ! -e "/usr/local/sbin/pure-ftpd" ] \

@@ -350,8 +350,8 @@ _install_valkey_src() {
   fi
   _msg "INFO: Installing Valkey ${_VALKEY_VRN}..."
   if [ ! -e "/var/lib/valkey" ]; then
-    # run here: _mrun's own shell would not have the helper
-    _sys_user_add low adduser --system --group --home /home/valkey valkey &> /dev/null
+    # _mrun's own bash -c would not have the helper
+    _mrun_here _sys_user_add low adduser --system --group --home /home/valkey valkey
   fi
   # Prebuilt package path (_USE_PREBUILT_PKGS): replaces only the source
   # fetch + compile; the shared tail below (init script, runtime dirs owned
@@ -434,8 +434,8 @@ _valkey_install_upgrade() {
     _valkeyCnfTpl="valkey9.conf"
   fi
   if [ ! -e "/var/lib/valkey" ]; then
-    # run here: _mrun's own shell would not have the helper
-    _sys_user_add low adduser --system --group --home /home/valkey valkey &> /dev/null
+    # _mrun's own bash -c would not have the helper
+    _mrun_here _sys_user_add low adduser --system --group --home /home/valkey valkey
   fi
   mkdir -p /run/valkey
   chown -R valkey:valkey /run/valkey

@@ -1071,11 +1071,13 @@ _acct_pick_uid() {
 # adduser makes it (addgroup --system, the lowest free system gid) and the
 # user joins it (--ingroup); useradd's own user group takes N only when no
 # group holds it. With no number held the numbers are the tools' own. A
-# name that exists, no number to pick, or three picks taken meanwhile run
-# the command as it is, as before. A gone account's number given as the
-# last resort is said in the incident log.
+# name that exists runs the command as it is. No number to pick, or three
+# picks taken meanwhile, leave the number to the tool, as before, and the
+# incident log says so; a group made here is joined, never made again, and
+# goes when the user is not made. A gone account's number given as the
+# last resort is said in the incident log too.
 _sys_user_add() {
-  local _w="${1}" _i _n _p _t _r _m _x
+  local _w="${1}" _i _n _p _t _r _m _x _mg=""
   local -a _c
   shift
   [ "$#" -ge 2 ] || return 1
@@ -1084,41 +1086,79 @@ _sys_user_add() {
     low|high) ;;
     *) "$@"; return ;;
   esac
-  if ! getent passwd "${_i}" > /dev/null 2>&1; then
-    for _t in 1 2 3; do
-      _n=$(_acct_pick_uid "${_w}" "")
-      _p=$?
-      [ "${_p}" -eq 0 ] || [ "${_p}" -eq 2 ] || break
-      _c=()
-      for _x in "${@:1:$#-1}"; do
-        if [ "${_w}" = "low" ] && [ "${_x}" = "--group" ]; then
-          getent group "${_i}" > /dev/null 2>&1 \
-            || addgroup --system "${_i}" > /dev/null 2>&1
-          _c+=(--ingroup "${_i}")
-        else
-          _c+=("${_x}")
+  if getent passwd "${_i}" > /dev/null 2>&1; then
+    "$@"
+    return
+  fi
+  for _t in 1 2 3; do
+    _n=$(_acct_pick_uid "${_w}" "")
+    _p=$?
+    [ "${_p}" -eq 0 ] || [ "${_p}" -eq 2 ] || break
+    _c=()
+    for _x in "${@:1:$#-1}"; do
+      if [ "${_w}" = "low" ] && [ "${_x}" = "--group" ]; then
+        if ! getent group "${_i}" > /dev/null 2>&1; then
+          addgroup --system "${_i}" > /dev/null 2>&1 && _mg="${_i}"
         fi
-      done
-      if [ "${_w}" = "low" ]; then
-        _c+=(--uid "${_n}")
+        _c+=(--ingroup "${_i}")
       else
-        _c+=(-u "${_n}")
-      fi
-      "${_c[@]}" "${_i}"
-      _r=$?
-      # made (a failure after that is the tool's own); not made, the number
-      # was taken meanwhile or the tool refused: pick again
-      if getent passwd "${_i}" > /dev/null 2>&1; then
-        if [ "${_r}" -eq 0 ] && [ "${_p}" -eq 2 ]; then
-          _m="${_i}: made under ${_n}, a number of an account that is gone: no other was free"
-          mkdir -p /var/log/boa
-          echo "$(date) ${_m}" >> /var/log/boa/manage_ltd.incident.log
-        fi
-        return "${_r}"
+        _c+=("${_x}")
       fi
     done
+    if [ "${_w}" = "low" ]; then
+      _c+=(--uid "${_n}")
+    else
+      _c+=(-u "${_n}")
+    fi
+    "${_c[@]}" "${_i}"
+    _r=$?
+    # made (a failure after that is the tool's own); not made, the number
+    # was taken meanwhile or the tool refused: pick again
+    if getent passwd "${_i}" > /dev/null 2>&1; then
+      if [ "${_p}" -eq 2 ]; then
+        _m="${_i}: made under ${_n}, a number of an account that is gone: no other was free"
+        mkdir -p /var/log/boa
+        echo "$(date) ${_m}" >> /var/log/boa/manage_ltd.incident.log
+      fi
+      return "${_r}"
+    fi
+  done
+  _m="${_i}: no uid picked free of removed account identities, the number left to ${1}"
+  mkdir -p /var/log/boa
+  echo "$(date) ${_m}" >> /var/log/boa/manage_ltd.incident.log
+  if [ -n "${_mg}" ] && getent group "${_mg}" > /dev/null 2>&1; then
+    # a plain --group would now take the next free gid for the home
+    _c=()
+    for _x in "${@:1:$#-1}"; do
+      if [ "${_x}" = "--group" ]; then
+        _c+=(--ingroup "${_i}")
+      else
+        _c+=("${_x}")
+      fi
+    done
+    "${_c[@]}" "${_i}"
+  else
+    "$@"
   fi
-  "$@"
+  _r=$?
+  if [ -n "${_mg}" ] && ! getent passwd "${_i}" > /dev/null 2>&1; then
+    groupdel "${_mg}" > /dev/null 2>&1
+  fi
+  return "${_r}"
+}
+# Run "$@" in this shell with its output where _mrun puts a command's (the
+# run's info and error logs, or nowhere): a function such as _sys_user_add
+# exists here, not in _mrun's own bash -c. Status 0, as _mrun's.
+_mrun_here() {
+  [ "$#" -ge 1 ] || return 0
+  if [ -n "${_LOG_INFO}" ] && [ -n "${_LOG_ERRR}" ]; then
+    "$@" \
+      > >(tee -a "${_LOG_INFO}" > /dev/null) \
+      2> >(tee -a "${_LOG_ERRR}" > /dev/null)
+  else
+    "$@" &> /dev/null
+  fi
+  return 0
 }
 
 _sanitize_string() {
