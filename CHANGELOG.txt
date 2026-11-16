@@ -909,6 +909,16 @@
       reboots into such a kernel. Each step is logged and mailed;
       _KERNEL_GUARD=NO turns it off.
 
+    * A package's own job in /etc/cron.d runs on a hosted box. Cron runs
+      each such line through /bin/sh, which is websh there, with the
+      file's PATH= line, and websh put its own PATH in place, so a job
+      that finds its command in a directory only that line names ran
+      nothing and said nothing: sysstat's collector, once switched on
+      with ENABLED="true" in /etc/default/sysstat, wrote no sample. For a
+      line run as root websh now keeps the directories its caller's PATH
+      adds, after its own, so every command it found before is found the
+      same; any other identity still gets websh's PATH alone.
+
     * xoct's two reads of the target that decide a move's next step end
       when the target stops answering once connected: the proxy's read of
       the account's import there, before its first write, and the check of
