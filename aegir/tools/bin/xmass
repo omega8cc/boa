@@ -9981,7 +9981,9 @@ _xmass_rename_churn() {   # 1 = source leg root  2 = target leg root  3 = top-le
   _srcP=$(cd "${_src}" 2>/dev/null && /bin/pwd -P) || { printf '0'; return 0; }
   while IFS= read -r _d; do
     _rel="${_d#"${_src}"/}"
-    case "${_rel}" in ''|*[!A-Za-z0-9._/-]*|*..*|/*) continue ;; esac
+    # a Platform Path may hold a colon; the path travels only on the input
+    # of the target's shell, split on '|', and is used quoted there
+    case "${_rel}" in ''|*[!A-Za-z0-9._/:-]*|*..*|/*) continue ;; esac
     [[ "${_skip}" = *" ${_rel%%/*} "* ]] && continue
     _t="${_rel##*/}"
     _p="${_t%"${_fq}"}"

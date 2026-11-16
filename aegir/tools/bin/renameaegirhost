@@ -325,9 +325,16 @@ _safe_name() {
   # tenant's own tree) travel through _maybe_run's eval inside literal single
   # quotes and into su -c strings; one quote in such a value would close the
   # quoting and run the remainder as root. Refuse anything outside the
-  # hostname/path charset. $1 = value, $2 = label for the alert.
-  if [[ ! "$1" =~ ^[A-Za-z0-9._/-]+$ ]]; then
-    _alrt "  ${2:-name} '$1' carries characters outside [A-Za-z0-9._/-] -- skipped"
+  # hostname/path charset. An absolute path may also hold a colon, as a
+  # Platform Path may: no shell reads a colon as anything but a character,
+  # and no sed, split or pattern here is built from a path. A name never
+  # holds one. $1 = value, $2 = label for the alert.
+  local _cs='A-Za-z0-9._/-'
+  case "$1" in
+    /*) _cs='A-Za-z0-9._/:-' ;;
+  esac
+  if [[ ! "$1" =~ ^[${_cs}]+$ ]]; then
+    _alrt "  ${2:-name} '$1' carries characters outside [${_cs}] -- skipped"
     return 1
   fi
   return 0

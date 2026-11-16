@@ -4831,8 +4831,12 @@ _migrate_sites() {
     fi
     if [ -e "${_USR}/.drush/${_Dom}.alias.drushrc.php" ]; then
       echo Dom is ${_Dom}
-      _Dir=$(_xoct_read_in "${_USR}/.drush" "${_Dom}.alias.drushrc.php" | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g")
-      _Plr=$(_xoct_read_in "${_USR}/.drush" "${_Dom}.alias.drushrc.php" | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g")
+      ### Each value is read whole by its own key: a Platform Path may hold a
+      ### colon, and another key's value may end in site_path or root.
+      _Dir=$(_xoct_read_in "${_USR}/.drush" "${_Dom}.alias.drushrc.php" \
+        | sed -n "s/^[[:space:]]*'site_path'[[:space:]]*=>[[:space:]]*'\([^']*\)'.*/\1/p" | head -n 1)
+      _Plr=$(_xoct_read_in "${_USR}/.drush" "${_Dom}.alias.drushrc.php" \
+        | sed -n "s/^[[:space:]]*'root'[[:space:]]*=>[[:space:]]*'\([^']*\)'.*/\1/p" | head -n 1)
       ### site_path comes from the account's own alias and points into its own
       ### tree: it is confined to the account and drushrc.php is read inside
       ### its real directory, so root reads and writes a site only there.
