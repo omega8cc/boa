@@ -933,18 +933,18 @@
 
     * xmass's forced tool refresh says what it did and why, on its own
       server (pre-mig) and on a target (prep-target, a standing mirror's
-      repairs, the return of accounts): each tool's version, or why it was
-      not replaced (an immutable or append-only copy, a refused move, a
-      missing file, running now, its fetch failed), read from what the
-      pass recorded, and where no record names a tool, that no fetch of it
-      completed, with the failures the passes logged and a mirror that
-      served no usable BOA.sh.txt said as facts, never as its cause; on a
-      target also whether its xmass is the code the run executes. A held
-      pass names what held it, and a refresh that fetched none of the
-      tools says so. A copy pinned on the target, or another tree's put
-      back by its own refresh, shows at once instead of when a verb runs
-      it. A target the refresh call never reached was reported as
-      refreshed; it is now named as not refreshed.
+      repairs, the return of accounts): each tool's version, or what its
+      record shows (an immutable or append-only copy, a refused move,
+      running now, its fetch failed). Where no record names a tool, the
+      line says that no fetch of it completed, with the failures the
+      passes logged and a mirror's no-usable BOA.sh.txt said as facts,
+      never as its cause, or that nothing on record says why; on a target
+      it also says whether the target's xmass is the code the run
+      executes. A held pass names what held it, and a refresh that fetched
+      none of the tools says so. A copy pinned on the target, or another
+      tree's put back by its own refresh, shows at once instead of when a
+      verb runs it. A target the refresh call never reached was reported
+      as refreshed; it is now named as not refreshed.
 
     * A BOA server answers a provider's power-off signal. A provider's
       console, a hypervisor's shutdown and a host's own restart press the
