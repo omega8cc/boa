@@ -931,14 +931,17 @@
       the pair has not changed for a minute and no other xmass verb runs,
       also on a full disk, and tried again every five minutes until it lands.
 
-    * xmass prep-target, a standing mirror's repairs and the return of
-      accounts say what the forced tool refresh did on the target, as
-      pre-mig says it for its own server: each tool's version there, or
-      why it was not replaced (an immutable or append-only copy, a refused
-      move, a missing file, a tool running there), and whether the
-      target's xmass is the code the run executes. A copy pinned on the
-      target, or another tree's put back by its own refresh, shows at once
-      instead of when a verb runs it. A target the refresh call never
+    * xmass's forced tool refresh says what it did and why, on its own
+      server (pre-mig) and on a target (prep-target, a standing mirror's
+      repairs, the return of accounts): each tool's version, or why it was
+      not replaced (an immutable or append-only copy, a refused move, a
+      missing file, running now, its fetch failed, the mirror behind the
+      last publish), read from what the pass recorded rather than guessed,
+      and on a target whether its xmass is the code the run executes. A
+      held pass names what held it, and a pass that got no usable
+      BOA.sh.txt from the mirror says it fetched no tool. A copy pinned on
+      the target, or another tree's put back by its own refresh, shows at
+      once instead of when a verb runs it. A target the refresh call never
       reached was reported as refreshed; it is now named as not refreshed.
 
     * A BOA server answers a provider's power-off signal. A provider's
