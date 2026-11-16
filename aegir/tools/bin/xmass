@@ -19368,7 +19368,7 @@ _xmass_force_tool_update() {
             _alrt "  on ${_where}: ${_rt} was fetched but not installed: the move over /opt/local/bin/${_rt} was refused; see /var/log/boa/mirror.incident.log there"
           elif [[ "${_ra}" == *[ia]* ]]; then
             _alrt "  on ${_where}: ${_rt} was not refreshed: /opt/local/bin/${_rt} there is immutable or append-only, so no pass can replace it; the next verbs there run the copy it has"
-          elif [[ " ${_rheld} " == *" ${_rt} "* ]]; then
+          elif [ "${_rs}" != "-" ] && [[ " ${_rheld} " == *" ${_rt} "* ]]; then
             _alrt "  on ${_where}: ${_rt} was not refreshed, and an earlier move over /opt/local/bin/${_rt} was refused (see /var/log/boa/mirror.incident.log there); until a pass can replace it, the next verbs there run the copy it has"
           elif [ -n "${_st}" ]; then
             _p=0
