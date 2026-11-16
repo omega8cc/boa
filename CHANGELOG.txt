@@ -280,10 +280,11 @@
       and its bin's wipe stamp in Valkey, by SCAN, and reports a site whose
       container was rewritten and wiped again since the last check at three
       checks within an hour of each other, or thrown away and compiled again
-      inside its requests at six checks in a row (as code doing it on every
-      request does, and someone clearing all caches over and over): one line
-      a day per site in /var/log/boa/container_guard.incident.log, and at
-      most one alert mail a day listing every site found that day so far,
+      inside its requests at six checks with no quiet check between them (as
+      code doing it on every request does, and someone clearing all caches
+      over and over): one line a day per site in
+      /var/log/boa/container_guard.incident.log, and at most one alert mail
+      a day listing every site found that day so far and since the last mail,
       since when, and what to look for in its code.
       A cache rebuild, a Verify, a Migrate, a module install, Clear all
       caches and a Valkey restart never read as the fault, and a read that

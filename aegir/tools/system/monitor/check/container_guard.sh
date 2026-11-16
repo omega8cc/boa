@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# BOA service container watchdog — container_guard v1.2.
+# BOA service container watchdog — container_guard v1.3.
 #
 # Drupal 8+ compiles its service container once and keeps it in a cache; on
 # BOA that cache is Valkey (db 8), one hash per site and container under
@@ -20,12 +20,15 @@
 #     both had been written again since the previous check and the stamp was
 #     the newer of the two (its code invalidates the container while it
 #     serves requests, and the next request compiles it again);
-#   - rebuilt: at six checks in a row both had been written again, the
-#     container the newer at each (its code throws the container away and
-#     compiles it again inside its requests: drupal_flush_all_caches(), or
+#   - rebuilt: at six checks, with no quiet check between them (one where
+#     nothing was written), both had been written again and the container
+#     was the newer (its code throws the container away and compiles it
+#     again inside its requests: drupal_flush_all_caches(), or
 #     invalidateContainer() then rebuildContainer()). Someone clearing all
 #     caches from the admin pages again and again for an hour looks the same,
-#     and the report says so.
+#     and the report says so. A busy site of either kind can show the other
+#     kind at some checks (a check lands inside one request); the advice for
+#     both is the same.
 #
 # A cache rebuild (drush cr, the panel's Flush all caches), a Verify and a
 # module install from the command line write the container and no stamp; a
@@ -40,12 +43,13 @@
 #
 # A site is named, with its account, by its own sites/<name>/services.yml or
 # the sites/<name> deployment identifier its container's cache key carries,
-# else by the vhost name whose md5 starts the prefix. Each site gets one line
-# a day in the incident log, at most fifty a run, the rest counted and
-# named by a later check. The host's alert mail goes out at most once a day,
-# from the first check that finds a site, listing every site found that day
-# so far, among them each site still counted as thrown away (a site first
-# found after it is in the next day's mail if it is found again by then).
+# else by the vhost name whose md5 starts the prefix (a sites/default or
+# sites/all yaml names no site). Each site gets one line a day in the
+# incident log, at most fifty a run, the rest counted and named by a later
+# check. The host's alert mail goes out at most once a day, from the first
+# check that finds a site, listing every site found that day so far, among
+# them each site still counted as thrown away, and every site found since
+# the last mail that went out.
 # Valkey is read over its socket, or 127.0.0.1:6379 where there is none; a
 # box that cannot be read gets one incident line a day saying so.
 #
@@ -377,7 +381,8 @@ BEGIN {
     cc[p] = v
     s = ""; a = ""
     if (match(k, /\/sites\/[A-Za-z0-9][A-Za-z0-9._-]*\/services\.yml/)) s = substr(k, RSTART + 7, RLENGTH - 20)
-    else if (match(k, /[:.]sites\/[A-Za-z0-9][A-Za-z0-9._-]*:/)) s = substr(k, RSTART + 7, RLENGTH - 8)
+    if (s == "default" || s == "all") s = ""
+    if (s == "" && match(k, /[:.]sites\/[A-Za-z0-9][A-Za-z0-9._-]*:/)) s = substr(k, RSTART + 7, RLENGTH - 8)
     if (s == "default" || s == "all") s = ""
     if (match(k, /\/data\/disk\/[A-Za-z0-9._-]+\//)) a = substr(k, RSTART + 11, RLENGTH - 12)
     site[p] = s; acct[p] = a
@@ -442,8 +447,8 @@ while read -r _t _p _n _f _s _a; do
       ;;
     B)
       _say "FAULTY prefix=${_p} site=${_s} account=${_a} kind=rebuilt row=${_n} since=${_since}"
-      _what="threw Drupal's service container away and compiled it again at ${_n} checks in a row since ${_since:-unknown}: something rebuilds the container while the site serves requests (its own code on every request, or all caches cleared again and again from its admin pages), so requests pay for full container builds"
-      _item="  ${_s} (account ${_a}): since ${_since:-unknown}, rebuilt at ${_n} checks in a row"
+      _what="threw Drupal's service container away and compiled it again at ${_n} checks since ${_since:-unknown}, with no quiet check between them: something rebuilds the container while the site serves requests (its own code on every request, or all caches cleared again and again from its admin pages), so requests pay for full container builds"
+      _item="  ${_s} (account ${_a}): since ${_since:-unknown}, rebuilt at ${_n} checks with no quiet check between them"
       ;;
     *) continue ;;
   esac
@@ -480,15 +485,21 @@ if [[ -n "${_keep}" ]] && [[ -s "${_FOUND}" ]]; then
     && mv -f "${_FOUND}.new" "${_FOUND}"
 fi
 
-# The mail's list: every site found today so far, each once by its name and
-# account (a migrated site can be found under its old and new prefixes).
+# The mail's list: every site found today so far and every site found since
+# the last mail that went out (a "-" line marks each one), each once by its
+# name and account (a migrated site can be found under its old and new
+# prefixes); a site with no name is kept apart by its prefix.
 _found=()
 while IFS= read -r _l; do
   _found+=("${_l}")
-done < <(awk -F'\t' -v d="${_today}" '$1 == d {
+done < <(awk -F'\t' -v d="${_today}" '
+FNR == NR { if ($2 == "-") last = FNR; next }
+$2 == "-" { next }
+FNR > last || $1 == d {
   k = $3; sub(/:.*/, "", k)
+  if (k ~ /^  - \(/) k = k " " $2
   if (!(k in s)) { s[k] = 1; print $3 }
-}' "${_FOUND}" 2> /dev/null)
+}' "${_FOUND}" "${_FOUND}" 2> /dev/null)
 _nFound=${#_found[@]}
 _moreMail=0
 if [[ "${_nFound}" -gt "${_MAX_SITES}" ]]; then
@@ -512,10 +523,11 @@ _mail_body() {
   echo "since the check before. \"Thrown away\": the stamp was the newer, so the"
   echo "site's code calls the kernel's invalidateContainer() while it serves"
   echo "requests and the next request compiles the container again. \"Rebuilt\":"
-  echo "the container was the newer at six checks in a row, so the container is"
-  echo "thrown away and compiled again inside the site's requests: by its code on"
-  echo "every request, or by someone clearing all caches from its admin pages again"
-  echo "and again. A cache rebuild (drush cr, Flush all caches), a Verify, a"
+  echo "the container was the newer at six checks with no quiet check between"
+  echo "them, so the container is thrown away and compiled again inside the site's"
+  echo "requests: by its code on every request, or by someone clearing all caches"
+  echo "from its admin pages again and again. A cache rebuild (drush cr, Flush all"
+  echo "caches), a Verify, a"
   echo "Migrate or a Valkey restart, done once, never looks like this, and none of"
   echo "them fixes it."
   echo
@@ -531,8 +543,9 @@ _mail_body() {
   echo "line is also in ${_pthOml}."
 }
 
-# The mail: once a day at most, the sites found so far that day. A held one
-# is tried again at the next check; a failed one waits for the next day.
+# The mail: once a day at most, the list above. A held one is tried again
+# at the next check; a failed one waits for the next day and leaves its
+# sites listed for it.
 _mailed="NO"
 if [[ "${_nFound}" -gt 0 ]] && [[ "$(cat "${_MAILED}" 2> /dev/null)" != "${_today}" ]]; then
   _mail_way
@@ -545,6 +558,7 @@ if [[ "${_nFound}" -gt 0 ]] && [[ "$(cat "${_MAILED}" 2> /dev/null)" != "${_toda
       ;;
     off)
       echo "${_today}" > "${_MAILED}"
+      printf '%s\t-\tSENT\n' "${_today}" >> "${_FOUND}"
       ;;
     send)
       _hName="$(tr -d '\n' 2> /dev/null < /etc/hostname)"
@@ -553,6 +567,7 @@ if [[ "${_nFound}" -gt 0 ]] && [[ "$(cat "${_MAILED}" 2> /dev/null)" != "${_toda
       echo "Sending Incident Report Email on $(date)" >> "${_pthOml}"
       if _mail_body | s-nail -s "Incident Report: Drupal container rebuilt on every request on ${_nFound} site(s) on ${_hName} at $(date)" ${_MY_EMAIL}; then
         _mailed="YES"
+        printf '%s\t-\tSENT\n' "${_today}" >> "${_FOUND}"
       else
         _mailed="FAILED"
         echo "$(date) INFO: the alert mail for ${_nFound} site(s) failed; the next day's check tries again" >> "${_pthOml}"
@@ -563,6 +578,6 @@ fi
 if [[ "${#_newLines[@]}" -gt 0 ]] || [[ "${_more}" -gt 0 ]]; then
   echo >> "${_pthOml}"
 fi
-_say "DONE faulty=${_nNow} new=${#_newLines[@]} more=${_more} mail=${_mailed} today=${_nFound}"
+_say "DONE faulty=${_nNow} new=${#_newLines[@]} more=${_more} mail=${_mailed} listed=${_nFound}"
 
 exit 0
