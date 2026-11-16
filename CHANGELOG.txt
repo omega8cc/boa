@@ -894,6 +894,21 @@
 
 @=> Important Fixes
 
+    * A kernel guard keeps servers off Debian's 6.1 kernels from 6.1.191
+      on (6.1.0-55, 6.1.192-1), whose ext4 block allocator takes a page
+      the page cache no longer holds for a valid one: under a copy larger
+      than the server's memory the kernel oopses inside the journal and
+      every write to that filesystem waits until a hard reset. The daily
+      security updates install these kernels by themselves. On every pass
+      autoupboa now keeps them out of apt with a pin, removes one that is
+      installed but not running (a meta package that goes with it comes
+      back with a newer kernel it allows), drops its line from the reboot
+      request, and on a server that runs one points the next boot at the
+      newest other 6.1 kernel and asks for the night window's reboot,
+      putting GRUB's default back after it. The night window never
+      reboots into such a kernel. Each step is logged and mailed;
+      _KERNEL_GUARD=NO turns it off.
+
     * xoct's two reads of the target that decide a move's next step end
       when the target stops answering once connected: the proxy's read of
       the account's import there, before its first write, and the check of
