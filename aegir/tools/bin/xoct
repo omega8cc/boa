@@ -2325,10 +2325,15 @@ _xoct_xmass_carried() {
 ### site loads failed (import_failed.pid); "gated" when the import stopped
 ### before its end; "none" with no import; nothing when the folder cannot be
 ### read there. A first contact with the target: its connect is bounded as
-### the record push's is.
+### the record push's is, and a target that stops answering once connected
+### ends it within the alive limit (the panel facts read's options), so it
+### never holds the verb lock. Batch mode refuses a key it does not know, so
+### the key is learned first, as the confirmation read does, its notice on
+### stderr: the caller reads the state from stdout.
 _xoct_target_import_state() {
   _mig_valid_ip "${1}" && _mig_valid_acct "${2}" || return 1
-  ssh -o ConnectTimeout=15 root@"${1}" "_w=\"\$(cd -P /data/disk 2> /dev/null && /bin/pwd -P)/${2}/log\"
+  _xoct_learn_peer_host_key "${1}" >&2
+  ssh -o ConnectTimeout=15 -o BatchMode=yes -o ServerAliveInterval=5 -o ServerAliveCountMax=3 root@"${1}" "_w=\"\$(cd -P /data/disk 2> /dev/null && /bin/pwd -P)/${2}/log\"
 cd -P -- \"/data/disk/${2}/log\" 2> /dev/null && [ \"\$(/bin/pwd -P)\" = \"\${_w}\" ] || exit 1
 if [ -e ./exported.pid ] || [ -e ./export_failed.pid ]; then echo pending
 elif [ ! -e ./imported.pid ]; then echo none
@@ -8031,7 +8036,9 @@ _xoct_create_mark() {   # 1 = account here 2 = account on the target 3 = target
 ### name before this holds. Create puts the marker since 2026-09-29: a pair
 ### moved by older tools cannot confirm, and root restates it instead.
 ### Read-only on the peer. Status 0 confirmed, 1 not, 2 the peer did not
-### answer.
+### answer (a peer that stops answering once connected ends the read within
+### the alive limit, the panel facts read's options, so it never holds the
+### verb lock or a cutover's relay pass).
 _xoct_peer_confirms_oct() {   # 1 = account here 2 = peer 3 = account there
   local _h _f _out
   [[ "${1}" =~ ^[a-zA-Z0-9][a-zA-Z0-9._-]*$ ]] || return 1
@@ -8040,7 +8047,7 @@ _xoct_peer_confirms_oct() {   # 1 = account here 2 = peer 3 = account there
   _h="$(_xoct_create_src_host)" || return 1
   _f="$(_xoct_create_marker "${3}")"
   _xoct_learn_peer_host_key "${2}"
-  _out="$(ssh -o ConnectTimeout=15 root@"${2}" "_m='${_f}'; _u=\$(id -u '${3}' 2> /dev/null); _i=\$(stat -c %i:%W -- '/data/disk/${3}' 2> /dev/null); _n=''; case \"\${_u}/\${_i}\" in *[!0-9:/]*) ;; [0-9]*/[0-9]*:[0-9]*) _n=1 ;; esac; if [ -n \"\${_n}\" ] && [ -f \"\${_m}\" ] && [ ! -L \"\${_m}\" ] && [ \"\$(stat -c %u:%h -- \"\${_m}\" 2> /dev/null)\" = 0:1 ] && grep -qxF -- '_MIG_CREATE_SRC_HOST=${_h}' \"\${_m}\" && grep -qxF -- '_MIG_CREATE_SRC_OCT=${1}' \"\${_m}\" && grep -qxF -- \"_MIG_CREATE_TGT_UID=\${_u}\" \"\${_m}\" && grep -qxF -- \"_MIG_CREATE_TGT_INODE=\${_i}\" \"\${_m}\"; then echo XOCT-OCT-CONFIRMED; else echo XOCT-OCT-UNCONFIRMED; fi" 2> /dev/null)"
+  _out="$(ssh -o ConnectTimeout=15 -o BatchMode=yes -o ServerAliveInterval=5 -o ServerAliveCountMax=3 root@"${2}" "_m='${_f}'; _u=\$(id -u '${3}' 2> /dev/null); _i=\$(stat -c %i:%W -- '/data/disk/${3}' 2> /dev/null); _n=''; case \"\${_u}/\${_i}\" in *[!0-9:/]*) ;; [0-9]*/[0-9]*:[0-9]*) _n=1 ;; esac; if [ -n \"\${_n}\" ] && [ -f \"\${_m}\" ] && [ ! -L \"\${_m}\" ] && [ \"\$(stat -c %u:%h -- \"\${_m}\" 2> /dev/null)\" = 0:1 ] && grep -qxF -- '_MIG_CREATE_SRC_HOST=${_h}' \"\${_m}\" && grep -qxF -- '_MIG_CREATE_SRC_OCT=${1}' \"\${_m}\" && grep -qxF -- \"_MIG_CREATE_TGT_UID=\${_u}\" \"\${_m}\" && grep -qxF -- \"_MIG_CREATE_TGT_INODE=\${_i}\" \"\${_m}\"; then echo XOCT-OCT-CONFIRMED; else echo XOCT-OCT-UNCONFIRMED; fi" 2> /dev/null)"
   grep -qx 'XOCT-OCT-CONFIRMED' <<< "${_out}" && return 0
   grep -qx 'XOCT-OCT-UNCONFIRMED' <<< "${_out}" && return 1
   return 2
