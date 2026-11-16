@@ -1652,6 +1652,16 @@ _kguard_restore_boot() {
   update-grub > /dev/null 2>&1 || return 1
   rm -f "${_KGUARD_DIR}/grub-default" "${_KGUARD_DIR}/grub.before"
   _kguard_log "GRUB default put back: ${_was:-unset}"
+  # The reboot the guard asked for goes with the redirect it was for.
+  if grep -q -s -F "(BOA kernel guard)" /run/reboot-required.pkgs; then
+    grep -v -F "(BOA kernel guard)" /run/reboot-required.pkgs > /run/reboot-required.pkgs.kguard
+    if [ -s "/run/reboot-required.pkgs.kguard" ]; then
+      mv -f /run/reboot-required.pkgs.kguard /run/reboot-required.pkgs
+    else
+      rm -f /run/reboot-required.pkgs.kguard /run/reboot-required.pkgs /run/reboot-required
+    fi
+    _kguard_log "its reboot request dropped"
+  fi
 }
 
 # Purge kernel images the guard keeps out, with their headers, after a
