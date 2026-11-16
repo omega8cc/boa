@@ -538,13 +538,15 @@ _vhostd()  { echo "${_AEGIR_ROOT}/config/server_master/nginx/vhost.d"; }
 _pred()    { echo "${_AEGIR_ROOT}/config/server_master/nginx/pre.d"; }
 _stub_of() { echo "$(_pred)/a2b_503_$1.conf"; }
 
-# parse a site's alias for site_path/root (xoct:221-222 pattern; callers
-# pass the trailing quote - "root'" - so the pattern is NOT re-quoted here:
-# wrapping it as 'root'' can never match and every alias read comes back
-# empty)
+# a value of a context's alias, read whole by its key: callers pass the key
+# with its trailing quote ("root'"), and only the line that sets that key
+# answers, so a path holding a colon or a blank reads whole and another
+# value ending in the key's name ('platform' => '@platform_xroot') is never
+# taken for it
 _alias_val() {
-  grep "$2" "${_AEGIR_ROOT}/.drush/$1.alias.drushrc.php" 2>/dev/null \
-    | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g" | head -1
+  local _k="${2%\'}"
+  sed -n "s/^[[:space:]]*'${_k}'[[:space:]]*=>[[:space:]]*'\([^']*\)'.*/\1/p" \
+    "${_AEGIR_ROOT}/.drush/$1.alias.drushrc.php" 2>/dev/null | head -n 1
 }
 
 # parse a drushrc option (xoct:224-233 pattern), sanitized by the caller

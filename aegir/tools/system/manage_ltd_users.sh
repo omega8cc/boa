@@ -8246,11 +8246,10 @@ _manage_site_drush_alias_mirror() {
             rm -f -- "./${_SiteName}.alias.drushrc.php"
         fi
       else
+        # Read whole by its key: a platform path may hold a blank or a colon.
         _SiteDir=$(_ltd_read_in "${_pthParentUsr}/.drush" "${_Alias##*/}" \
-          | grep "site_path'" \
-          | cut -d: -f2 \
-          | awk '{ print $3}' \
-          | sed "s/[\,']//g" 2>&1)
+          | sed -n "s/^[[:space:]]*'site_path'[[:space:]]*=>[[:space:]]*'\([^']*\)'.*/\1/p" \
+          | head -n 1 2>&1)
         # Fail closed: a degraded/mid-rewrite alias parses to an empty or
         # non-/data/disk site_path -> KEEP, never reap on a bad parse.
         if [ -z "${_SiteDir}" ] \

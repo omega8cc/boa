@@ -1991,18 +1991,20 @@ _check_sites_list() {
     if [ -e "${_usEr}/.drush/${_Dan}.alias.drushrc.php" ] \
       && [ "${_STATUS_DISABLED}" = "NO" ]; then
       _alTxt=$(_acct_read_in "${_usEr}/.drush" "${_Dan}.alias.drushrc.php")
+      # Each value read whole by its own key: a platform path may hold a
+      # colon or a blank, and another value may end in root or site_path.
       _Dir=$(printf '%s\n' "${_alTxt}" \
-        | grep "site_path'" \
-        | cut -d: -f2 \
-        | awk '{ print $3}' \
-        | sed "s/[\,']//g" 2>&1)
+        | sed -n "s/^[[:space:]]*'site_path'[[:space:]]*=>[[:space:]]*'\([^']*\)'.*/\1/p" \
+        | head -n 1 2>&1)
       _DIR_CTRL_F="${_Dir}/modules/boa_site_control.ini"
       _Plr=$(printf '%s\n' "${_alTxt}" \
-        | grep "root'" \
-        | cut -d: -f2 \
-        | awk '{ print $3}' \
-        | sed "s/[\,']//g" 2>&1)
+        | sed -n "s/^[[:space:]]*'root'[[:space:]]*=>[[:space:]]*'\([^']*\)'.*/\1/p" \
+        | head -n 1 2>&1)
       _PLR_CTRL_F="${_Plr}/sites/all/modules/boa_platform_control.ini"
+      if [ -z "${_Dir}" ] || [ -z "${_Plr}" ]; then
+        echo "SKIP: ${_Dom} alias names no site_path or root"
+        continue
+      fi
       if [ -n "${_Dir}" ] && ! _validate_safe_dir "${_Dir}"; then
         echo "SKIP: _Dir resolves outside allowed roots: ${_Dir}"
         continue
@@ -2394,10 +2396,19 @@ _build_active_core_set() {
         # the core empty if we archive it, losing the index permanently.
         local _sitePath _rootPath
         _alTxtTmp=$(_acct_read_in "${_usEr}/.drush" "${_DomTmp}.alias.drushrc.php")
-        _sitePath=$(printf '%s\n' "${_alTxtTmp}" | grep "site_path'" \
-          | cut -d: -f2 | awk '{print $3}' | sed "s/[\,']//g" 2>/dev/null)
-        _rootPath=$(printf '%s\n' "${_alTxtTmp}" | grep "'root' =>" \
-          | cut -d: -f2 | awk '{print $3}' | sed "s/[\,']//g" 2>/dev/null)
+        _sitePath=$(printf '%s\n' "${_alTxtTmp}" \
+          | sed -n "s/^[[:space:]]*'site_path'[[:space:]]*=>[[:space:]]*'\([^']*\)'.*/\1/p" \
+          | head -n 1 2>/dev/null)
+        _rootPath=$(printf '%s\n' "${_alTxtTmp}" \
+          | sed -n "s/^[[:space:]]*'root'[[:space:]]*=>[[:space:]]*'\([^']*\)'.*/\1/p" \
+          | head -n 1 2>/dev/null)
+        # An alias whose site path cannot be read says nothing about its
+        # INI: its core is kept as managed, never left to the age sweep.
+        if [ -z "${_sitePath}" ]; then
+          _CORES_WITH_SOLR_MODULE["oct.${_HM_U_TMP}.${_DomTmp}"]=1
+          _CORES_WITH_SOLR_MODULE["solr.${_HM_U_TMP}.${_DomTmp}"]=1
+          _CORES_WITH_SOLR_MODULE["${_HM_U_TMP}.${_DomTmp}"]=1
+        fi
         # A Grav or Textpattern site has no Solr binding for _check_sites_list
         # to manage (it skips them), so an INI a tenant edited there must not
         # keep a leftover core out of the orphan sweep.

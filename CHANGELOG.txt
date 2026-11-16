@@ -2574,6 +2574,18 @@
       nightly maintenance and could move such a platform's alias. The three
       night scripts now read the quoted value of those keys alone, whole.
 
+    * The Solr core pass, the limited shell worker, the usage pass and
+      aegir2boa read a site alias's values whole too. On a platform whose
+      path holds a colon, a site got no Solr core from its INI, and the
+      orphan sweep, not seeing its directive, could unload and move a live
+      site's core once its index sat idle for 60 days; such a site was also
+      left out of the usage counts. A blank in the path made the worker take
+      the site's alias for a ghost's, which the ghost alias clean-up moved
+      to undo/ after 48 hours. aegir2boa saved a site whose platform title
+      ends in profile with the default install profile. A core whose alias
+      names no readable site path is now kept, and the Solr pass skips such
+      a site and says so.
+
     * Nightly: a cut-off build whose Platform Path is a folder in the
       account's distro/ stays in place. The sweep of empty distro
       revisions moved such a folder, holding only the clone's .git, into

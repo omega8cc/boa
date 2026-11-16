@@ -774,16 +774,14 @@ _usage_count() {
     if [ -e "${_usEr}/.drush/${_Dom}.alias.drushrc.php" ]; then
       #echo "${_THIS_U},${_Dom},drushrc-exists"
       _Ali=$(_usage_read_in "${_usEr}/.drush" "${_Dom}.alias.drushrc.php")
+      # Each value read whole by its own key: a platform path may hold a
+      # colon or a blank, and another value may end in root or site_path.
       _Dir=$(printf '%s\n' "${_Ali}" \
-        | grep "site_path'" \
-        | cut -d: -f2 \
-        | awk '{ print $3}' \
-        | sed "s/[\,']//g" 2>&1)
+        | sed -n "s/^[[:space:]]*'site_path'[[:space:]]*=>[[:space:]]*'\([^']*\)'.*/\1/p" \
+        | head -n 1 2>&1)
       _Plr=$(printf '%s\n' "${_Ali}" \
-        | grep "root'" \
-        | cut -d: -f2 \
-        | awk '{ print $3}' \
-        | sed "s/[\,']//g" 2>&1)
+        | sed -n "s/^[[:space:]]*'root'[[:space:]]*=>[[:space:]]*'\([^']*\)'.*/\1/p" \
+        | head -n 1 2>&1)
       _detect_vanilla_core
       _fix_clear_cache
       #echo Dir is ${_Dir}
