@@ -1072,12 +1072,14 @@ _acct_pick_uid() {
 # user joins it (--ingroup); useradd's own user group takes N only when no
 # group holds it. With no number held the numbers are the tools' own. A
 # name that exists runs the command as it is. No number to pick, or three
-# picks taken meanwhile, leave the number to the tool, as before, and the
-# incident log says so; a group made here is joined, never made again, and
-# goes when the user is not made. A gone account's number given as the
-# last resort is said in the incident log too.
+# picked numbers that made no user, leave the number to the tool, as
+# before, and the incident log says which; a group of the name, made here
+# or there before, is joined, never made again (a plain --group would give
+# the home the next free gid), and one made here goes when the user is not
+# made. A gone account's number given as the last resort is said in the
+# incident log too.
 _sys_user_add() {
-  local _w="${1}" _i _n _p _t _r _m _x _mg=""
+  local _w="${1}" _i _n _p _t _r _m="" _x _mg=""
   local -a _c
   shift
   [ "$#" -ge 2 ] || return 1
@@ -1093,7 +1095,10 @@ _sys_user_add() {
   for _t in 1 2 3; do
     _n=$(_acct_pick_uid "${_w}" "")
     _p=$?
-    [ "${_p}" -eq 0 ] || [ "${_p}" -eq 2 ] || break
+    if [ "${_p}" -ne 0 ] && [ "${_p}" -ne 2 ]; then
+      _m="no uid free of removed account identities"
+      break
+    fi
     _c=()
     for _x in "${@:1:$#-1}"; do
       if [ "${_w}" = "low" ] && [ "${_x}" = "--group" ]; then
@@ -1123,11 +1128,10 @@ _sys_user_add() {
       return "${_r}"
     fi
   done
-  _m="${_i}: no uid picked free of removed account identities, the number left to ${1}"
+  _m="${_i}: ${_m:-not made under three picked numbers}, the number left to ${1}"
   mkdir -p /var/log/boa
   echo "$(date) ${_m}" >> /var/log/boa/manage_ltd.incident.log
-  if [ -n "${_mg}" ] && getent group "${_mg}" > /dev/null 2>&1; then
-    # a plain --group would now take the next free gid for the home
+  if [ "${_w}" = "low" ] && getent group "${_i}" > /dev/null 2>&1; then
     _c=()
     for _x in "${@:1:$#-1}"; do
       if [ "${_x}" = "--group" ]; then
