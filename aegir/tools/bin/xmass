@@ -9897,6 +9897,7 @@ _xmass_finalize_dry() {   # 1 tgt
 ### --exclude are NOT deletion candidates (we never pass --delete-excluded),
 ### so proxied.pid, migproxy.cnf, pass.txt and php.ini stay safe by construction.
 _XMASS_PRUNE=NO
+_XMASS_ARCH_HELD=""
 _XMASS_MAX_DELETE="${_XMASS_MAX_DELETE:-5000}"
 
 # The one explanation of a tripped delete guard. rc 25 can surface from
@@ -12756,10 +12757,64 @@ _xmass_sync_store() {
   fi
 }
 
+# Why a pass keeps the arch leg back this time; nothing and status 1 when it
+# carries it. The box's nightly SQL backup writes each database as a dir of
+# per-table dump files under /data/disk/arch/sql/<set>/, then packs each into
+# one .tar.zst and removes the dir. A pruning pass that carries the dirs
+# mid-dump leaves the next pass tens of thousands of deletions, and the
+# delete guard stops that pass and every later one until the rest fits
+# (seen at night on a standing mirror). So while a backup runs, waits to
+# start or still packs (_xmass_sql_backup_busy: the run, cluster or wait
+# marker, or the running script, which outlives its run marker through the
+# packing), a pruning LIVE pass, `sync --live` and autosync alike, carries
+# no part of arch; the first pass after it carries the finished set and the
+# rotation's deletions together. The guard is unchanged. The additive passes
+# (the cutover's, --fix-accounts) always carry arch: the box that takes
+# production must hold the night's dumps. A missing or failing helper reads
+# as idle, which leaves the leg as it always ran.
+_xmass_arch_held() {
+  local _why=""
+  [ "${_MODE:-}" = "LIVE" ] && [ "${_XMASS_PRUNE:-}" = "YES" ] || return 1
+  _why="$(_xmass_sql_backup_busy 2> /dev/null)" || return 1
+  [ -n "${_why}" ] || return 1
+  printf '%s' "${_why}"
+}
+
+# arch: storage-aware -- mirror onto the target mount, or de-reference to root,
+# per the target's disk reality (canonical layout <mount>/files/system/arch).
+# Its own sweep runs against the resolved tree so per-account symlink stores
+# inside it (nightly backup trees on a secondary volume) materialise on the
+# target instead of arriving dangling; the excludes ride the store transfer
+# through the passthrough rsync-args slot. A held leg skips all three parts.
+_xmass_sync_arch() {
+  local _archReal="" _rcArch=0 _why=""
+  if _why="$(_xmass_arch_held)"; then
+    _XMASS_ARCH_HELD="${_why}"
+    _info "  arch: held back this pass, ${_why}; the next pass carries it"
+    return 0
+  fi
+  if [ -L "/data/disk/arch" ]; then
+    _archReal="$(readlink -f /data/disk/arch 2>/dev/null)"
+  elif [ -d "/data/disk/arch" ]; then
+    _archReal="/data/disk/arch"
+  fi
+  if [ -n "${_archReal}" ] && [ -d "${_archReal}" ]; then
+    _xmass_scan_out_links "${_archReal}"
+    _info "  link sweep arch (${_archReal}): ${_XMASS_LNK_RPT}"
+  fi
+  _xmass_handle_store "/data/disk/arch" "/data/disk/arch" "files/system/arch" \
+    "${_tgt}" "${_TGT_MNT}" "$(_xmass_leg_args "${_archReal:-/data/disk/arch}") ${_XMASS_OUT_EXCL}" "arch" || _rcArch=$?
+  [ "${_rcArch}" != "0" ] && _XMASS_STORE_RC="${_rcArch}"
+  if [ "${_rcArch}" = "0" ] && [ -n "${_archReal}" ] && [ -d "${_archReal}" ]; then
+    _xmass_materialise_out_links "${_archReal}" "/data/disk/arch"
+  fi
+  return 0
+}
+
 _xmass_sync_shared() {
   _xmass_auto_assert_standby
   _info "Syncing shared data (/data/all, arch, legacy, bind, static) ..."
-  local _item _archReal
+  local _item
   _xmass_sync_store
   # /data/disk/legacy goes under its own name, as before
   _item=/data/disk/legacy
@@ -12778,29 +12833,7 @@ _xmass_sync_shared() {
       "${_item}/" "root@${_tgt}:${_item}/"
     _xmass_materialise_out_links "${_item}" "${_item}"
   fi
-  # arch: storage-aware -- mirror onto the target mount, or de-reference to root,
-  # per the target's disk reality (canonical layout <mount>/files/system/arch).
-  # Its own sweep runs against the resolved tree so per-account symlink stores
-  # inside it (nightly backup trees on a secondary volume) materialise on the
-  # target instead of arriving dangling; the excludes ride the store transfer
-  # through the passthrough rsync-args slot.
-  _archReal=""
-  if [ -L "/data/disk/arch" ]; then
-    _archReal="$(readlink -f /data/disk/arch 2>/dev/null)"
-  elif [ -d "/data/disk/arch" ]; then
-    _archReal="/data/disk/arch"
-  fi
-  if [ -n "${_archReal}" ] && [ -d "${_archReal}" ]; then
-    _xmass_scan_out_links "${_archReal}"
-    _info "  link sweep arch (${_archReal}): ${_XMASS_LNK_RPT}"
-  fi
-  local _rcArch=0
-  _xmass_handle_store "/data/disk/arch" "/data/disk/arch" "files/system/arch" \
-    "${_tgt}" "${_TGT_MNT}" "$(_xmass_leg_args "${_archReal:-/data/disk/arch}") ${_XMASS_OUT_EXCL}" "arch" || _rcArch=$?
-  [ "${_rcArch}" != "0" ] && _XMASS_STORE_RC="${_rcArch}"
-  if [ "${_rcArch}" = "0" ] && [ -n "${_archReal}" ] && [ -d "${_archReal}" ]; then
-    _xmass_materialise_out_links "${_archReal}" "/data/disk/arch"
-  fi
+  _xmass_sync_arch
   if [ -d "/var/www/static" ] && [ ! -L "/var/www/static" ]; then
     _xmass_scan_out_links "/var/www/static"
     _info "  link sweep /var/www/static: ${_XMASS_LNK_RPT}"
@@ -21205,6 +21238,7 @@ _xmass_cmd_sync() {
   _XMASS_STORE_RC=0
   _XMASS_CNF_RC=0
   _XMASS_RSYNC_RC=0
+  _XMASS_ARCH_HELD=""
   # Source-side deletions propagate on the DATA trees for every `sync` pass,
   # manual and automated alike (2026-08-26 ruling — a standing mirror that
   # never deletes grows without bound, and it grows nightly). The cutover
@@ -21274,6 +21308,9 @@ _xmass_cmd_sync() {
     _XMASS_LAST_SYNC_SECS=$(( $(date +%s) - _syncT0 ))
     _xmass_save_state
     _info "xmass sync complete at ${_XMASS_LAST_SYNC}"
+    if [ -n "${_XMASS_ARCH_HELD:-}" ] && [ "${_XMASS_AUTO}" != "YES" ]; then
+      _alrt "arch was held back this pass (${_XMASS_ARCH_HELD}): the next sync carries it"
+    fi
   else
     _xmass_finalize_dry "${_tgt}"
   fi
@@ -21893,7 +21930,7 @@ _xmass_autosync_run() {
     echo "_LAST_DURATION_SECS=${_dur}"
     echo "_LAST_TARGET=${_AS_TGT}"
   } > "${_XMASS_AUTOSYNC_STATUS}"
-  _info "autosync: pass complete in ${_dur}s"
+  _info "autosync: pass complete in ${_dur}s${_XMASS_ARCH_HELD:+; arch held back, ${_XMASS_ARCH_HELD}}"
 }
 
 # Whether the cutover's external proof also asks the target over HTTPS: 0
