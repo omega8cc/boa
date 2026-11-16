@@ -960,6 +960,16 @@
 
 @=> Important Fixes
 
+    * xmass cutover sizes and copies each account's files store once while
+      the sites answer 503, in its final pass before the write freeze. Its
+      last file sync of the accounts copied every store too, behind the
+      same gate, so each store was walked twice while visitors waited: on
+      a server with a large store that added many minutes to the outage
+      (one pass over a 739 G store with nothing new to copy took 11
+      minutes). The last file sync still carries everything else of each
+      account, and a store that cannot be placed still stops the cutover
+      before the write freeze.
+
     * The redis module moves to 8.x-1.11.5 for Drupal 10 and 11 and to
       2.0.0-alpha2.2 for Drupal 12. Its reliable queue serialized an item
       after opening a transaction, so an item that cannot be serialized

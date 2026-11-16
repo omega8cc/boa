@@ -138,6 +138,11 @@ _XMASS_SYNC_MAX_WAIT="${_XMASS_SYNC_MAX_WAIT:-7200}"
 ### destructive step so a truncated tree can never reach the target promote.
 _XMASS_RSYNC_RC=0
 
+### YES only while a live cutover's step 3 syncs the accounts: each store then
+### waits for step 5, the final pass before the write freeze (see Pass 2 of
+### _xmass_sync_static_symlink_safe). Never taken from the environment.
+_XMASS_STORE_IN_FINAL_PASS=NO
+
 ### The group maps of the account being synced (_xmass_set_gmap) and its
 ### user map (_xmass_set_umap); empty outside an account.
 _XMASS_GMAP=""
@@ -11572,6 +11577,17 @@ _xmass_sync_static_symlink_safe() {
   _XMASS_PANEL_SKIP=""
   _XMASS_PANEL_EXCL=""
   _XMASS_PANEL_OWN=""
+  # A live cutover's step 3 leaves the store to its step 5, the final pass
+  # before the write freeze, which carries every store anyway. Both run behind
+  # the 503 gate, so a store passed in both was sized and walked twice while
+  # the clients waited: one pass over a 739 G store with nothing new to copy
+  # took 11 minutes. The rest of this function still runs in step 3.
+  if [ "${_XMASS_STORE_IN_FINAL_PASS}" = "YES" ]; then
+    if [ -e "${_src_usr}/static/files" ] || [ -L "${_src_usr}/static/files" ]; then
+      _info "  static/files (${_dst_acct}): left to the final pass before the write freeze"
+    fi
+    return 0
+  fi
   if [ -e "${_src_usr}/static/files" ] || [ -L "${_src_usr}/static/files" ]; then
     if ! _xmass_panel_store_names "${_src_usr}" "${_dst_usr}"; then
       _alrt "DENY: static/files (${_dst_acct}): the control panel names of ${_dst_acct} on the target could not be read -- the store is not copied this pass"
@@ -23131,9 +23147,12 @@ _xmass_cmd_cutover() {
   _xmass_sync_solr
   local _oct
   _XMASS_WG_SKIPPED=""
+  # The stores cross once, in step 5 below (Pass 2 of _xmass_sync_static_symlink_safe).
+  _XMASS_STORE_IN_FINAL_PASS=YES
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
     _xmass_sync_account "${_oct}"
   done
+  _XMASS_STORE_IN_FINAL_PASS=NO
   _xmass_wg_box_tell
 
   # A store/symlink that could not be placed on the target, or a failed transfer, is
@@ -23164,6 +23183,7 @@ _xmass_cmd_cutover() {
   # hours while it walked millions of files, with the SQL watchdog muted. What
   # actually quiesces the files is the web block from step 1, which is already in
   # force, and nothing between here and the write freeze writes to them.
+  # It is the only pass of the stores inside the gate: step 3 leaves them here.
   _info "Final static/files rsync pass (web already blocked; pre-freeze) ..."
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
     # the account's group maps and user map: no destination pass follows
