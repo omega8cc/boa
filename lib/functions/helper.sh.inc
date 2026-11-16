@@ -936,6 +936,191 @@ _acct_read_whole_in() {
   printf '%s\n' "${_s}"
 }
 
+#
+# barracuda loads no satellite.sh.inc: its own copy of the picker, one text
+# with the Octopus one, for BOA's own service users (_sys_user_add).
+#
+# The number a new identity of account $2 is made under, the highest of
+# those that fit first ($1 high, as useradd -r picks one) or the lowest ($1
+# low, as adduser --system does), among the system uids no user has and no
+# process or thread runs as (real, effective, saved or file system uid): a
+# number the account itself freed (<oN>.gone) before any other, then one no
+# account holds (in no other account's record, not waiting for the sweep in
+# .unswept, not a gone account's in .purged); only when none is left, the
+# number of a gone account the sweep has walked and no account has recorded
+# since, the oldest first, with status 2. A number freed from a live account is never given to another:
+# what it left outside the account's trees would be that account's, and no
+# walk proves it left nothing. Status 1, and nothing, when the range, the
+# users or the processes cannot be read or no number is free. A name that
+# cannot be an account's takes no number back.
+_acct_pick_uid() {
+  local IFS=$' \t\n'
+  local _w="${1}" _a="${2}" _lo="" _hi="" _um="" _k _v _u _f _t _old="" _oldt=""
+  local _d=/data/conf/acct-uids _uns=""
+  local _pso=NO
+  local -A _h=() _l=() _own=() _g=()
+  [[ "${_a}" =~ ^[a-z0-9-]+$ ]] || _a=""
+  case "${_w}" in
+    high)
+      while read -r _k _v _; do
+        _v="${_v%%#*}"
+        case "${_k}" in
+          SYS_UID_MIN) _lo="${_v}" ;;
+          SYS_UID_MAX) _hi="${_v}" ;;
+          UID_MIN) _um="${_v}" ;;
+        esac
+      done < <(grep -E '^[[:space:]]*(SYS_)?UID_M(IN|AX)[[:space:]]' /etc/login.defs 2> /dev/null)
+      [ -n "${_lo}" ] || _lo=101
+      if [ -z "${_hi}" ]; then
+        [[ "${_um}" =~ ^[1-9][0-9]*$ ]] && _hi=$(( _um - 1 )) || _hi=999
+      fi
+      ;;
+    low)
+      while IFS='=' read -r _k _v; do
+        _k="${_k//[[:space:]]/}"
+        _v="${_v%%#*}"
+        _v="${_v//[[:space:]\"\']/}"
+        case "${_k}" in
+          FIRST_SYSTEM_UID) _lo="${_v}" ;;
+          LAST_SYSTEM_UID) _hi="${_v}" ;;
+        esac
+      done < <(grep -E '^[[:space:]]*(FIRST|LAST)_SYSTEM_UID[[:space:]]*=' /etc/adduser.conf 2> /dev/null)
+      [ -n "${_lo}" ] || _lo=100
+      [ -n "${_hi}" ] || _hi=999
+      ;;
+    *) return 1 ;;
+  esac
+  [[ "${_lo}" =~ ^[1-9][0-9]*$ && "${_hi}" =~ ^[1-9][0-9]*$ ]] || return 1
+  [ "${_lo}" -le "${_hi}" ] || return 1
+  while IFS=: read -r _k _v _u _; do
+    [[ "${_u}" =~ ^[0-9]+$ ]] && _h[${_u}]=1
+  done < <(getent passwd 2> /dev/null)
+  # no passwd read, no pick: every number would look free
+  [ -n "${_h[0]:-}" ] || return 1
+  for _u in $(ps -eL -o ruid= -o euid= -o suid= -o fsuid= 2> /dev/null); do
+    [[ "${_u}" =~ ^[0-9]+$ ]] || continue
+    _h[${_u}]=1
+    [ "${_u}" = "0" ] && _pso=YES
+  done
+  # no process list read, no pick: a number something runs as would look free
+  [ "${_pso}" = "YES" ] || return 1
+  for _f in "${_d}"/*.gone; do
+    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
+    while IFS= read -r _u; do
+      [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+      _g[${_u}]=1
+      if [ -n "${_a}" ] && [ "${_f}" = "${_d}/${_a}.gone" ]; then
+        _own[${_u}]=1
+      else
+        _l[${_u}]=1
+      fi
+    done < "${_f}"
+  done
+  # (no list yet: every number it would take is in a record above)
+  if [ -f "${_d}/.unswept" ] && [ ! -L "${_d}/.unswept" ]; then
+    _uns=$(cat -- "${_d}/.unswept") || return 1
+  fi
+  while IFS= read -r _u; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    [ -n "${_own[${_u}]:-}" ] || _l[${_u}]=1
+  done <<< "${_uns}"
+  while read -r _u _t; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] && _l[${_u}]=1
+  done 2> /dev/null < "${_d}/.purged"
+  if [ "${_w}" = "high" ]; then
+    for (( _u = _hi; _u >= _lo; _u-- )); do
+      [ -n "${_own[${_u}]:-}" ] && [ -z "${_h[${_u}]:-}" ] && { echo "${_u}"; return 0; }
+    done
+    for (( _u = _hi; _u >= _lo; _u-- )); do
+      [ -n "${_h[${_u}]:-}${_l[${_u}]:-}${_own[${_u}]:-}" ] || { echo "${_u}"; return 0; }
+    done
+  else
+    for (( _u = _lo; _u <= _hi; _u++ )); do
+      [ -n "${_own[${_u}]:-}" ] && [ -z "${_h[${_u}]:-}" ] && { echo "${_u}"; return 0; }
+    done
+    for (( _u = _lo; _u <= _hi; _u++ )); do
+      [ -n "${_h[${_u}]:-}${_l[${_u}]:-}${_own[${_u}]:-}" ] || { echo "${_u}"; return 0; }
+    done
+  fi
+  # the last resort: a gone account's number the sweep has walked, never one
+  # an account has recorded since; without the list nothing counts as walked
+  [ -f "${_d}/.unswept" ] && [ ! -L "${_d}/.unswept" ] || return 1
+  while read -r _u _t; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ && "${_t}" =~ ^[0-9]+$ ]] || continue
+    [ "${_u}" -ge "${_lo}" ] && [ "${_u}" -le "${_hi}" ] || continue
+    [ -z "${_h[${_u}]:-}${_g[${_u}]:-}" ] || continue
+    grep -qx -- "${_u}" <<< "${_uns}" && continue
+    if [ -z "${_oldt}" ] || [ "${_t}" -lt "${_oldt}" ]; then
+      _old="${_u}"
+      _oldt="${_t}"
+    fi
+  done 2> /dev/null < "${_d}/.purged"
+  [ -n "${_old}" ] || return 1
+  echo "${_old}"
+  return 2
+}
+#
+# Make one of BOA's own service users (a PHP version's pool user, Valkey,
+# Solr, MySQL, Aegir, sshd, ftp) under the number _acct_pick_uid gives for
+# no account, so it never takes a number a removed account identity freed:
+# what that number still owns would be the service's. $1 is high for a
+# useradd -r command (the tool takes the highest free system uid) or low
+# for an adduser --system one (the lowest), the rest the command with the
+# name last. adduser --system --group --uid N gives the group the number N
+# too and fails when another group holds it, so the group is made first as
+# adduser makes it (addgroup --system, the lowest free system gid) and the
+# user joins it (--ingroup); useradd's own user group takes N only when no
+# group holds it. With no number held the numbers are the tools' own. A
+# name that exists, no number to pick, or three picks taken meanwhile run
+# the command as it is, as before. A gone account's number given as the
+# last resort is said in the incident log.
+_sys_user_add() {
+  local _w="${1}" _i _n _p _t _r _m _x
+  local -a _c
+  shift
+  [ "$#" -ge 2 ] || return 1
+  _i="${*: -1}"
+  case "${_w}" in
+    low|high) ;;
+    *) "$@"; return ;;
+  esac
+  if ! getent passwd "${_i}" > /dev/null 2>&1; then
+    for _t in 1 2 3; do
+      _n=$(_acct_pick_uid "${_w}" "")
+      _p=$?
+      [ "${_p}" -eq 0 ] || [ "${_p}" -eq 2 ] || break
+      _c=()
+      for _x in "${@:1:$#-1}"; do
+        if [ "${_w}" = "low" ] && [ "${_x}" = "--group" ]; then
+          getent group "${_i}" > /dev/null 2>&1 \
+            || addgroup --system "${_i}" > /dev/null 2>&1
+          _c+=(--ingroup "${_i}")
+        else
+          _c+=("${_x}")
+        fi
+      done
+      if [ "${_w}" = "low" ]; then
+        _c+=(--uid "${_n}")
+      else
+        _c+=(-u "${_n}")
+      fi
+      "${_c[@]}" "${_i}"
+      _r=$?
+      # made (a failure after that is the tool's own); not made, the number
+      # was taken meanwhile or the tool refused: pick again
+      if getent passwd "${_i}" > /dev/null 2>&1; then
+        if [ "${_r}" -eq 0 ] && [ "${_p}" -eq 2 ]; then
+          _m="${_i}: made under ${_n}, a number of an account that is gone: no other was free"
+          mkdir -p /var/log/boa
+          echo "$(date) ${_m}" >> /var/log/boa/manage_ltd.incident.log
+        fi
+        return "${_r}"
+      fi
+    done
+  fi
+  "$@"
+}
+
 _sanitize_string() {
   echo "$1" | sed 's/[\\\/\^\?\>\`\#\"\{\(\&\|\*]//g; s/\(['"'"'\]\)//g'
 }

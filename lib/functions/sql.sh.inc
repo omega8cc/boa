@@ -1625,9 +1625,10 @@ _prep_for_install_db_sql() {
     groupadd mysql
   fi
 
-  # Create the mysql user if it doesn't exist
+  # Create the mysql user if it doesn't exist, never under a number a removed
+  # account identity freed
   if ! id -u mysql > /dev/null 2>&1; then
-    useradd -r -g mysql -d /var/lib/mysql -s /bin/false mysql
+    _sys_user_add high useradd -r -g mysql -d /var/lib/mysql -s /bin/false mysql
   fi
 
   # Create the directory if it doesn't exist

@@ -56,7 +56,7 @@ _if_solr_nine() {
       rm -rf "/var/opt/solr*"
       _get_dev_arch "solr-${_SOLR_9_VRN}.tgz" "keep"
       if [ -e "/var/opt/solr-${_SOLR_9_VRN}.tgz" ] && [ -e "/var/opt/solr-${_SOLR_9_VRN}/bin/install_solr_service.sh" ]; then
-        adduser --system --group --shell /bin/bash --home /var/${_N_SOLR} ${_N_SOLR} &> /dev/null
+        _sys_user_add low adduser --system --group --shell /bin/bash --home /var/${_N_SOLR} ${_N_SOLR} &> /dev/null
         usermod -aG users ${_N_SOLR} &> /dev/null
         cd /var/opt/solr-${_SOLR_9_VRN}/bin/
         bash ./install_solr_service.sh /var/opt/solr-${_SOLR_9_VRN}.tgz -f -n -i /opt -d /var/${_N_SOLR} -u ${_N_SOLR} -s ${_N_SOLR} -p 9099 &> /dev/null
@@ -117,7 +117,7 @@ _if_solr_nine() {
       rm -rf "/var/opt/solr*"
       _get_dev_arch "solr-${_SOLR_9_VRN}.tgz" "keep"
       if [ -e "/var/opt/solr-${_SOLR_9_VRN}.tgz" ] && [ -e "/var/opt/solr-${_SOLR_9_VRN}/bin/install_solr_service.sh" ]; then
-        adduser --system --group --shell /bin/bash --home /var/${_N_SOLR} ${_N_SOLR} &> /dev/null
+        _sys_user_add low adduser --system --group --shell /bin/bash --home /var/${_N_SOLR} ${_N_SOLR} &> /dev/null
         usermod -aG users ${_N_SOLR} &> /dev/null
         cd /var/opt/solr-${_SOLR_9_VRN}/bin/
         bash ./install_solr_service.sh /var/opt/solr-${_SOLR_9_VRN}.tgz -f -n -i /opt -d /var/${_N_SOLR} -u ${_N_SOLR} -s ${_N_SOLR} -p 9099 &> /dev/null
@@ -163,7 +163,7 @@ _if_solr_seven() {
       rm -rf "/var/opt/solr*"
       _get_dev_arch "solr-${_SOLR_7_VRN}.tgz" "keep"
       if [ -e "/var/opt/solr-${_SOLR_7_VRN}.tgz" ] && [ -e "/var/opt/solr-${_SOLR_7_VRN}/bin/install_solr_service.sh" ]; then
-        adduser --system --group --shell /bin/bash --home /var/${_N_SOLR} ${_N_SOLR} &> /dev/null
+        _sys_user_add low adduser --system --group --shell /bin/bash --home /var/${_N_SOLR} ${_N_SOLR} &> /dev/null
         usermod -aG users ${_N_SOLR} &> /dev/null
         cd /var/opt/solr-${_SOLR_7_VRN}/bin/
         bash ./install_solr_service.sh /var/opt/solr-${_SOLR_7_VRN}.tgz -f -n -i /opt -d /var/${_N_SOLR} -u ${_N_SOLR} -s ${_N_SOLR} -p 9077 &> /dev/null
@@ -205,7 +205,7 @@ _if_solr_seven() {
       rm -rf "/var/opt/solr*"
       _get_dev_arch "solr-${_SOLR_7_VRN}.tgz" "keep"
       if [ -e "/var/opt/solr-${_SOLR_7_VRN}.tgz" ] && [ -e "/var/opt/solr-${_SOLR_7_VRN}/bin/install_solr_service.sh" ]; then
-        adduser --system --group --shell /bin/bash --home /var/${_N_SOLR} ${_N_SOLR} &> /dev/null
+        _sys_user_add low adduser --system --group --shell /bin/bash --home /var/${_N_SOLR} ${_N_SOLR} &> /dev/null
         usermod -aG users ${_N_SOLR} &> /dev/null
         cd /var/opt/solr-${_SOLR_7_VRN}/bin/
         bash ./install_solr_service.sh /var/opt/solr-${_SOLR_7_VRN}.tgz -f -n -i /opt -d /var/${_N_SOLR} -u ${_N_SOLR} -s ${_N_SOLR} -p 9077 &> /dev/null
@@ -310,7 +310,7 @@ _if_solr_four() {
         cp -af /var/opt/solr-${_SOLR_4_VRN}/example/solr/collection1/conf/* \
           ${_Dir}/ &> /dev/null
       done
-      adduser --system --group --home /opt/solr4 jetty9 &> /dev/null
+      _sys_user_add low adduser --system --group --home /opt/solr4 jetty9 &> /dev/null
       if [ ! -e "/opt/solr4/search_api_solr-7.x-1.17.log" ]; then
         cd /var/opt
         rm -rf search_api_solr*

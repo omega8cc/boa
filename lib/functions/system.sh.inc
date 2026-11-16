@@ -6571,7 +6571,7 @@ _sshd_install_src() {
       mkdir -p /var/lib/sshd
       chmod -R 700 /var/lib/sshd/
       chown -R root:sys /var/lib/sshd/
-      useradd -r -U -d /var/lib/sshd/ -c "sshd privsep" -s /bin/false sshd &> /dev/null
+      _sys_user_add high useradd -r -U -d /var/lib/sshd/ -c "sshd privsep" -s /bin/false sshd &> /dev/null
     fi
     _PKG_CONFIG_PATH="${_SSL_LIB_PATH}/pkgconfig"
     cd /var/opt
@@ -13991,7 +13991,8 @@ _if_install_ftpd() {
   if [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
     || [[ "${_XTRAS_LIST}" =~ "FTP" ]]; then
     if [ ! -e "/var/ftp" ]; then
-      _mrun "useradd -r -d /var/ftp -s /sbin/nologin -m ftp"
+      # run here: _mrun's own shell would not have the helper
+      _sys_user_add high useradd -r -d /var/ftp -s /sbin/nologin -m ftp &> /dev/null
     fi
     if [ ! -e "/etc/ssl/private/pure-ftpd.pem" ] \
       || [ ! -e "/usr/local/sbin/pure-ftpd" ] \

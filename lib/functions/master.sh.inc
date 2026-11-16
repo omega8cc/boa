@@ -1948,7 +1948,7 @@ _aegir_master_install_upgrade() {
 
   ###--------------------###
     _msg "INFO: Installing Ægir Master Instance..."
-    adduser --system --group --home /var/aegir aegir &> /dev/null
+    _sys_user_add low adduser --system --group --home /var/aegir aegir &> /dev/null
     usermod -aG www-data aegir
     usermod -aG users aegir
     _sudoers_safe_append /etc/sudoers \
