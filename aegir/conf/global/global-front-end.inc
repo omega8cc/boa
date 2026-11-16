@@ -286,7 +286,8 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
         // crawler request was a full render plus a new session row. The page
         // stored is then the one every crawler without a session cookie gets
         // at that address for the window: nginx keys crawlers apart from
-        // people, but not by country or by any other cookie. A crawler that
+        // people, by country only on a vhost the operator opted in to
+        // per-country copies, and never by any other cookie. A crawler that
         // sends a cookie keeps the cookies of its own answer.
         if (isset($_SERVER['REQUEST_METHOD'])
           && ($_SERVER['REQUEST_METHOD'] == 'GET' || $_SERVER['REQUEST_METHOD'] == 'HEAD')

@@ -160,6 +160,18 @@
       Visitors whose browser BOA does not take for a crawler never get a
       crawler's page and keep their cookie.
 
+    * A site whose pages follow the visitor's country, such as a shop that
+      prices by region, can now keep one Speed Booster copy per country.
+      The server's operator adds a "host" 1; line for each of the site's
+      names to /data/conf/boa_geo_vary.map, tests with nginx -t and reloads
+      nginx; the country code nginx passes to PHP as GEOIP_COUNTRY_CODE then
+      becomes part of the cache key for that host, for people and crawlers
+      alike, and its answers carry X-Speed-Cache-Geo with that code. The
+      site should build its pages from the same value: an address with no
+      known country shares one copy, and a page that sets a cookie is still
+      never stored. Every other site keeps its cache key byte for byte, and
+      with no such file nothing changes.
+
     * Uptime monitors always reach the live site: besides Pingdom and
       UptimeRobot, a user agent naming uptime, monitor, StatusCake,
       Site24x7, HetrixTools, Freshping, NodePing or updown is never served
