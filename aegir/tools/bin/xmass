@@ -9898,6 +9898,7 @@ _xmass_finalize_dry() {   # 1 tgt
 ### so proxied.pid, migproxy.cnf, pass.txt and php.ini stay safe by construction.
 _XMASS_PRUNE=NO
 _XMASS_ARCH_HELD=""
+_XMASS_ARCH_HOLD_ADDITIVE=NO
 _XMASS_MAX_DELETE="${_XMASS_MAX_DELETE:-5000}"
 
 # The one explanation of a tripped delete guard. rc 25 can surface from
@@ -12766,18 +12767,56 @@ _xmass_sync_store() {
 # (seen at night on a standing mirror). So while a backup runs, waits to
 # start or still packs (_xmass_sql_backup_busy: the run, cluster or wait
 # marker, or the running script, which outlives its run marker through the
-# packing), a pruning LIVE pass, `sync --live` and autosync alike, carries
-# no part of arch; the first pass after it carries the finished set and the
-# rotation's deletions together. The guard is unchanged. The additive passes
-# (the cutover's, --fix-accounts) always carry arch: the box that takes
-# production must hold the night's dumps. A missing or failing helper reads
-# as idle, which leaves the leg as it always ran.
+# packing), a LIVE pass that asks for the hold carries no part of arch; the
+# first pass after it carries the finished set and the rotation's deletions
+# together. The guard is unchanged. A missing or failing helper reads as
+# idle, which leaves the leg as it always ran.
 _xmass_arch_held() {
   local _why=""
-  [ "${_MODE:-}" = "LIVE" ] && [ "${_XMASS_PRUNE:-}" = "YES" ] || return 1
+  _xmass_arch_hold_applies || return 1
   _why="$(_xmass_sql_backup_busy 2> /dev/null)" || return 1
   [ -n "${_why}" ] || return 1
   printf '%s' "${_why}"
+}
+
+# Status 0 when this pass asks for the hold: a LIVE pass that prunes (`sync
+# --live`, autosync) or --fix-accounts, which lays accounts on a standing
+# mirror and leaves arch to the next sync (_XMASS_ARCH_HOLD_ADDITIVE). The
+# cutover's passes never ask: the box that takes production must hold the
+# night's dumps.
+_xmass_arch_hold_applies() {
+  [ "${_MODE:-}" = "LIVE" ] || return 1
+  [ "${_XMASS_PRUNE:-}" = "YES" ] || [ "${_XMASS_ARCH_HOLD_ADDITIVE:-}" = "YES" ]
+}
+
+# The hold is asked once, before the leg's checks and rsync's file list, so a
+# backup that starts in between would still be carried mid-dump. It writes
+# into a set made at its start, so the leg lists the sets under sql/ and
+# cluster/ BEFORE it asks: this prints a filter file that carries each entry
+# listed and hides any other from this pass, which leaves a set made after
+# the hold said idle to the next pass. Hidden on the sending side only, so a
+# set the source rotated away still goes on the target. Nothing printed, and
+# the leg carries as it always did, when the file cannot be written or an
+# entry's name is not a plain one.
+_xmass_arch_sets_filter() {   # 1 = arch's real dir
+  local _f _b _e _n _rules=""
+  for _b in sql cluster; do
+    [ -d "$1/${_b}" ] && [ ! -L "$1/${_b}" ] || continue
+    for _e in "$1/${_b}"/* "$1/${_b}"/.[!.]* "$1/${_b}"/..?*; do
+      [ -e "${_e}" ] || [ -L "${_e}" ] || continue
+      _n="${_e##*/}"
+      case "${_n}" in ''|*[!A-Za-z0-9._-]*) return 0 ;; esac
+      _rules="${_rules}+ /${_b}/${_n}"$'\n'
+    done
+    _rules="${_rules}H /${_b}/*"$'\n'
+  done
+  [ -n "${_rules}" ] || return 0
+  _f="$(mktemp /tmp/xmass-archsets.XXXXXX 2> /dev/null)" || return 0
+  if ! printf '%s' "${_rules}" > "${_f}" 2> /dev/null; then
+    rm -f "${_f}"
+    return 0
+  fi
+  printf '%s' "${_f}"
 }
 
 # arch: storage-aware -- mirror onto the target mount, or de-reference to root,
@@ -12786,24 +12825,31 @@ _xmass_arch_held() {
 # inside it (nightly backup trees on a secondary volume) materialise on the
 # target instead of arriving dangling; the excludes ride the store transfer
 # through the passthrough rsync-args slot. A held leg skips all three parts.
+# The sets' filter goes after those excludes: rsync takes the first rule that
+# matches, so an excluded link stays excluded.
 _xmass_sync_arch() {
-  local _archReal="" _rcArch=0 _why=""
-  if _why="$(_xmass_arch_held)"; then
-    _XMASS_ARCH_HELD="${_why}"
-    _info "  arch: held back this pass, ${_why}; the next pass carries it"
-    return 0
-  fi
+  local _archReal="" _rcArch=0 _why="" _sets=""
   if [ -L "/data/disk/arch" ]; then
     _archReal="$(readlink -f /data/disk/arch 2>/dev/null)"
   elif [ -d "/data/disk/arch" ]; then
     _archReal="/data/disk/arch"
+  fi
+  if [ -n "${_archReal}" ] && [ -d "${_archReal}" ] && _xmass_arch_hold_applies; then
+    _sets="$(_xmass_arch_sets_filter "${_archReal}")"
+  fi
+  if _why="$(_xmass_arch_held)"; then
+    [ -n "${_sets}" ] && rm -f "${_sets}"
+    _XMASS_ARCH_HELD="${_why}"
+    _info "  arch: held back this pass, ${_why}; the next pass carries it"
+    return 0
   fi
   if [ -n "${_archReal}" ] && [ -d "${_archReal}" ]; then
     _xmass_scan_out_links "${_archReal}"
     _info "  link sweep arch (${_archReal}): ${_XMASS_LNK_RPT}"
   fi
   _xmass_handle_store "/data/disk/arch" "/data/disk/arch" "files/system/arch" \
-    "${_tgt}" "${_TGT_MNT}" "$(_xmass_leg_args "${_archReal:-/data/disk/arch}") ${_XMASS_OUT_EXCL}" "arch" || _rcArch=$?
+    "${_tgt}" "${_TGT_MNT}" "$(_xmass_leg_args "${_archReal:-/data/disk/arch}") ${_XMASS_OUT_EXCL}${_sets:+ --filter=._${_sets}}" "arch" || _rcArch=$?
+  [ -n "${_sets}" ] && rm -f "${_sets}"
   [ "${_rcArch}" != "0" ] && _XMASS_STORE_RC="${_rcArch}"
   if [ "${_rcArch}" = "0" ] && [ -n "${_archReal}" ] && [ -d "${_archReal}" ]; then
     _xmass_materialise_out_links "${_archReal}" "/data/disk/arch"
@@ -18254,11 +18300,19 @@ _xmass_fix_accounts() {
     _XMASS_CNF_RC=0
     _XMASS_RSYNC_RC=0
     _XMASS_WG_SKIPPED=""
+    # laying an account takes nothing from arch, so this lane keeps it back
+    # while an SQL backup runs, as a pruning pass does (see _xmass_arch_held)
+    _XMASS_ARCH_HELD=""
+    _XMASS_ARCH_HOLD_ADDITIVE=YES
     _xmass_sync_shared
+    _XMASS_ARCH_HOLD_ADDITIVE=NO
     # the accounts' platforms link into the shared store: nothing is laid on one
     # that did not land, and each mark stays for the re-run
     if [ "${_XMASS_RSYNC_RC:-0}" != "0" ] || [ "${_XMASS_STORE_RC:-0}" != "0" ]; then
       _die "the shared data did not all reach ${_t} (see DENY above): nothing laid; a re-run takes it up"
+    fi
+    if [ -n "${_XMASS_ARCH_HELD}" ]; then
+      _alrt "arch was held back (${_XMASS_ARCH_HELD}): the next live sync carries it"
     fi
     for _oct in ${_ok}; do
       _XMASS_STORE_RC=0
