@@ -873,6 +873,17 @@
 
 @=> Important Fixes
 
+    * xoct's two reads of the target that decide a move's next step end
+      when the target stops answering once connected: the proxy's read of
+      the account's import there, before its first write, and the check of
+      the create marker that ties the account there to this one, which
+      go-live, the proxy conversion and the completion notice ask. They had
+      a connect limit alone, so a target that took the connection and then
+      sent nothing held the run, the lock the other xoct verbs wait on and,
+      in an xmass cutover, the relay pass behind it. Both now give up
+      within the limit the target's other reads have, in batch mode with
+      the target's host key learned first.
+
     * The standby of a move or a standing mirror gets root's rotated MySQL
       password within minutes. A barracuda pass rotates it on the box that
       owns it (on Percona 8.4 every pass), and replication carries the new
