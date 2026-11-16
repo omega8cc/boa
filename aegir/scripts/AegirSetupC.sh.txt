@@ -1955,18 +1955,18 @@ declare -A _distros_names=(
 
 # Define distros versions for configuration
 declare -A _distros_versions=(
-  ["CMS"]="2.2.8"
+  ["CMS"]="2.2.9"
   ["CK1"]="2.77"
   ["CK2"]="2.41"
   ["CK3"]="5.1.0"
   ["EZC"]="2.2.15"
   ["FOS"]="4.0.9"
   ["LGV"]="4.0.5"
-  ["OCS"]="3.1.6"
-  ["OFD"]="13.6.9"
+  ["OCS"]="3.1.8"
+  ["OFD"]="13.6.11"
   ["OPG"]="3.2.7"
   ["SOC"]="13.1.0"
-  ["THR"]="8.4.6"
+  ["THR"]="8.4.7"
   ["UC6"]="2.15"
   ["UC7"]="3.13"
   ["VBX"]="11.0.0"
