@@ -19307,7 +19307,7 @@ _xmass_force_tool_update() {
     # pass, shows up now, not when a verb runs it. No DONE line means the
     # call or the refresh did not finish. Nothing here refuses.
     local _rout _st="" _w _rt _rm _rh _ra _rs _xs="" _xm="" _xp=0 _p _me _mine="" _rheld=""
-    local _rhold="" _rnob=0 _rfn=0 _rfl="" _rfc="" _rrun="" _rstl=""
+    local _rhold="" _rnob=0 _rfn=0 _rfl="" _rfc="" _rrun="" _rarm=0 _rref="" _rrn=0 _rlast=""
     _rout=$(_xmass_tool_state_sh \
       | ssh -o BatchMode=yes -o ConnectTimeout=15 root@"${_where}" "bash -s -- ${_tools}" \
       2>/dev/null)
@@ -19315,21 +19315,28 @@ _xmass_force_tool_update() {
       _alrt "  could not force a tool refresh on ${_where}: the call there failed or did not finish; its tools may be stale"
       return 0
     fi
-    while IFS=$'\t' read -r _w _rt _rm _rh; do
+    ### The facts first: a tool armed after the pass means a pass of this
+    ### refresh reached the tools, whatever else its window logged (the
+    ### self-update the wait waited for writes there too), and a refused move
+    ### the pass counted as a failed fetch is named by its own line below.
+    while IFS=$'\t' read -r _w _rt _rm _rh _ra _rs; do
       case "${_w}" in
         HOLDER) _rhold="${_rt}" ;;
         NOBOASH) _rnob=1 ;;
         FAILS) _rfn="${_rt}"; _rfl="${_rm}"; _rfc="${_rh}" ;;
-        TFACT)
-          [ "${_rm}" = "1" ] && _rrun="${_rrun} ${_rt}"
-          [ "${_rh}" = "1" ] && _rstl="${_rstl} ${_rt}"
+        TFACT) [ "${_rm}" = "1" ] && _rrun="${_rrun} ${_rt}" ;;
+        TOOL)
+          [ "${_rm}" != "-" ] && _rarm=1
+          [ "${_rh}" = "1" ] && { _rref="${_rref} ${_rt}"; _rrn=$((_rrn + 1)); }
           ;;
       esac
     done <<< "${_rout}"
     [[ "${_rfn}" =~ ^[0-9]+$ ]] || _rfn=0
+    _rfn=$((_rfn - _rrn))
+    [[ " ${_rref} " == *" ${_rfl} "* ]] || _rlast=", the last of ${_rfl} (${_rfc})"
     printf '%s\n' "${_rout}" | grep -qx 'NOCLEAR' && _st=NOCLEAR
     [ -z "${_st}" ] && printf '%s\n' "${_rout}" | grep -qx 'NOTRUN' && _st=NOTRUN
-    [ -z "${_st}" ] && [ "${_rnob}" = "1" ] && _st=NOBOASH
+    [ -z "${_st}" ] && [ "${_rnob}" = "1" ] && [ "${_rarm}" = "0" ] && _st=NOBOASH
     if [ "${_st}" = "NOCLEAR" ]; then
       _alrt "  ${_where} has no /var/xdrago/clear.sh: no tool refresh could run there; its tools may be stale"
     elif [ "${_st}" = "NOTRUN" ]; then
@@ -19346,10 +19353,9 @@ _xmass_force_tool_update() {
           ### When this call's pass did not run, another one (the self-update
           ### it waited for) can still have armed a marker or been refused:
           ### every line that states a fact is printed, and the reasons a
-          ### pass of this call gives (running, a failed fetch, the mirror
-          ### behind) are left out. Those are read from the target itself:
-          ### the fetch's own running test, the failures this pass logged and
-          ### the stamp of a fetch that got the bytes already there.
+          ### pass of this call gives (running, a failed fetch) are left out.
+          ### Those are read from the target itself: the fetch's own running
+          ### test and the failures its tools passes logged.
           _p=1
           if [ "${_rm}" != "-" ]; then
             _info "  on ${_where}: $(printf '%s' "${_rm}" | sed 's|\.ctrl\.| |; s|\..*||')"
@@ -19369,10 +19375,8 @@ _xmass_force_tool_update() {
             _alrt "  on ${_where}: ${_rt} was not refreshed: it runs there now, and a running tool is never replaced; the next verbs there run the copy it has"
           elif [ "${_rfl}" = "${_rt}" ]; then
             _alrt "  on ${_where}: ${_rt} was not refreshed: its fetch failed (${_rfc}; see /var/log/boa/mirror.incident.log there); the next verbs there run the copy it has"
-          elif [[ " ${_rstl} " == *" ${_rt} "* ]]; then
-            _alrt "  on ${_where}: ${_rt} was not refreshed: its mirror had not caught up with the last publish, and the next pass there asks again; until then the next verbs there run the copy it has"
           elif [ "${_rfn}" -gt 0 ]; then
-            _alrt "  on ${_where}: ${_rt} was not refreshed: the pass there counted ${_rfn} failed fetch(es), the last of ${_rfl} (${_rfc}; see /var/log/boa/mirror.incident.log there); the next verbs there run the copy it has"
+            _alrt "  on ${_where}: ${_rt} was not refreshed: the tools passes of this refresh there counted ${_rfn} failed fetch(es) besides any refused move above${_rlast}; see /var/log/boa/mirror.incident.log there; the next verbs there run the copy it has"
           else
             _alrt "  on ${_where}: ${_rt} was not refreshed, and nothing on record there says why (it may have run during the pass); the next verbs there run the copy it has"
           fi
@@ -19420,8 +19424,8 @@ _xmass_force_tool_update() {
   # is not tried by this pass, so no new hold can tell of its refused move.
   # A hold is only a record, of any age, and a barracuda system pass or an
   # earlier refresh removes it, so a pin is read from the file itself too.
-  local _held="" _ms _hs _facts _fhold="" _fnob=0 _ffn=0 _ffl="" _ffc="" _frun="" _fstl=""
-  local _fw _fa _fb _fc
+  local _held="" _ms _hs _facts _fhold="" _fnob=0 _ffn=0 _ffl="" _ffc="" _frun="" _fst=""
+  local _fw _fa _fb _fc _farm=0 _fref="" _frn=0 _flast=""
   for _t in ${_tools}; do
     ls /var/log/boa/${_t}.mvfail.* &>/dev/null && _held="${_held} ${_t}"
     rm -f /var/log/boa/${_t}.ctrl.* /var/log/boa/${_t}.mvfail.*
@@ -19441,16 +19445,25 @@ _xmass_force_tool_update() {
     case "${_fw}" in
       NOBOASH) _fnob=1 ;;
       FAILS) _ffn="${_fa}"; _ffl="${_fb}"; _ffc="${_fc}" ;;
-      TFACT)
-        [ "${_fb}" = "1" ] && _frun="${_frun} ${_fa}"
-        [ "${_fc}" = "1" ] && _fstl="${_fstl} ${_fa}"
-        ;;
+      TFACT) [ "${_fb}" = "1" ] && _frun="${_frun} ${_fa}" ;;
     esac
   done <<< "${_facts}"
   [[ "${_ffn}" =~ ^[0-9]+$ ]] || _ffn=0
-  if [ "${_fnob}" = "1" ]; then
+  ### The window also holds what the self-update the wait waited for wrote:
+  ### a tool armed now means a pass of this refresh reached the tools, and a
+  ### refused move the pass counted as a failed fetch is named by its own line.
+  for _t in ${_tools}; do
+    ls /var/log/boa/${_t}.ctrl.* &>/dev/null && _farm=1
+    if ls /var/log/boa/${_t}.mvfail.* &>/dev/null; then
+      _fref="${_fref} ${_t}"
+      _frn=$((_frn + 1))
+    fi
+  done
+  _ffn=$((_ffn - _frn))
+  [[ " ${_fref} " == *" ${_ffl} "* ]] || _flast=", the last of ${_ffl} (${_ffc})"
+  if [ "${_fnob}" = "1" ] && [ "${_farm}" = "0" ]; then
     _alrt "  the tool refresh here fetched no tool: the mirror served no usable BOA.sh.txt (see /var/log/boa/mirror.incident.log); the tools may be stale"
-    return 0
+    _fst=NOBOASH
   fi
 
   local _mrk _att
@@ -19479,6 +19492,9 @@ _xmass_force_tool_update() {
         ### record has no age; the refusing pass's mirror.incident.log line
         ### counts the refusal, but names only that pass's last failure.
         _alrt "  ${_t} was not refreshed, and an earlier move over /opt/local/bin/${_t} was refused (see /var/log/boa/mirror.incident.log); until a pass can replace it, the next verbs run the copy it has"
+      elif [ -n "${_fst}" ]; then
+        ### The pass fetched no tool: only the facts above are said.
+        :
       elif [[ " ${_frun} " == *" ${_t} "* ]]; then
         ### Running now, by the fetch's own test: the tool executing this
         ### line, or another run of one. It refreshes on the next 5-minute
@@ -19486,13 +19502,9 @@ _xmass_force_tool_update() {
         _info "  ${_t} (refresh deferred — running now)"
       elif [ "${_ffl}" = "${_t}" ]; then
         _alrt "  ${_t} was not refreshed: its fetch failed (${_ffc}; see /var/log/boa/mirror.incident.log); the next verbs run the copy it has"
-      elif [[ " ${_fstl} " == *" ${_t} "* ]]; then
-        ### A serial move answered with the bytes already here: the fetch
-        ### stamps it and leaves the marker unarmed for up to an hour.
-        _alrt "  ${_t} was not refreshed: the mirror had not caught up with the last publish, and the next pass asks again; until then the next verbs run the copy it has"
       elif [ "${_ffn}" -gt 0 ]; then
-        ### The pass's failure line names its last failed fetch only.
-        _alrt "  ${_t} was not refreshed: the pass counted ${_ffn} failed fetch(es), the last of ${_ffl} (${_ffc}; see /var/log/boa/mirror.incident.log); the next verbs run the copy it has"
+        ### A pass's failure line names its last failed fetch only.
+        _alrt "  ${_t} was not refreshed: the tools passes of this refresh counted ${_ffn} failed fetch(es) besides any refused move above${_flast}; see /var/log/boa/mirror.incident.log; the next verbs run the copy it has"
       else
         _alrt "  ${_t} was not refreshed, and nothing on record says why (it may have run during the pass); the next verbs run the copy it has"
       fi
@@ -19564,13 +19576,14 @@ _xmass_log_since() {
 # $2: the sizes of mirror.incident.log and clear.hold.incident.log before the
 # pass, then the tools. Prints HOLDER and the holder a held wait named there
 # (clear.sh's own words), or the PHP version swap's marker while it lives;
-# NOBOASH when the mirror served no usable BOA.sh.txt, so the pass fetched no
-# tool; FAILS with the tools pass's failed fetches, the last one's name and
-# its status; and per tool TFACT, whether it runs now (the fetch's own guard
-# test: a running tool is never replaced) and whether its last fetch got the
-# bytes already deployed on a serial move (the mirror behind the publish).
+# NOBOASH when the mirror served no usable BOA.sh.txt (the callers read it as
+# a pass that fetched no tool only when no tool armed a marker: the window
+# also holds the self-update the wait waited for); FAILS with the failed
+# fetches of the tools passes in the window, the last one's name and its
+# status; and per tool TFACT, whether it runs now (the fetch's own guard
+# test: a running tool is never replaced).
 _xmass_refresh_facts() {
-  local _ms="$1" _hs="$2" _t _h _q _c _d _s
+  local _ms="$1" _hs="$2" _t _h _q _c _d
   shift 2
   _h="$(_xmass_log_since /var/log/boa/clear.hold.incident.log "${_hs}" | awk '
     /clear\.sh wait: self-update not run \(held by / {
@@ -19596,12 +19609,10 @@ _xmass_refresh_facts() {
   for _t in "$@"; do
     _c="$(pgrep -u root -U root -fc "^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*/local/bin/${_t}( |$)" 2> /dev/null | tr -dc '0-9')"
     _d="$(pgrep -u root -U root -fc "^[^ ]*/local/bin/${_t}( |$)" 2> /dev/null | tr -dc '0-9')"
-    _s=0
-    ls /var/log/boa/${_t}.stale.* &> /dev/null && _s=1
     if [ $(( ${_c:-0} + ${_d:-0} )) -gt 0 ]; then
-      printf 'TFACT\t%s\t1\t%s\n' "${_t}" "${_s}"
+      printf 'TFACT\t%s\t1\n' "${_t}"
     else
-      printf 'TFACT\t%s\t0\t%s\n' "${_t}" "${_s}"
+      printf 'TFACT\t%s\t0\n' "${_t}"
     fi
   done
   return 0
