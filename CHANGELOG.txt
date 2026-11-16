@@ -568,6 +568,18 @@
       so. xmass's repair of a target's missing users picks its numbers the
       same way.
 
+    * xmass gives an account's files owned by a number no user has on the
+      old server an owner the new server can tell: a number root recorded
+      as one of the account's removed identities lands as the account, any
+      other as nobody, which no account's check trusts and no new login
+      takes. By number alone such a file landed on whatever the new server
+      held that number for: another account's login, or a number free for
+      the next one made there. A dry run names these numbers per account.
+      The repair of a target's missing users no longer takes the number an
+      account's home carries there when that server holds it for another
+      account's removed identity, or, for an account laid there new, for
+      an account that is gone: it says so and makes no user.
+
     * Before the ltd worker removes a client login, it ends every process
       the login runs, in any root: a process in a chroot or a user
       namespace outlived the removal and went on writing as the freed

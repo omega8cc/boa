@@ -143,6 +143,13 @@ _XMASS_RSYNC_RC=0
 _XMASS_GMAP=""
 _XMASS_UMAP=""
 
+### The numbers no user has that own an account's files here, walked once a
+### run (_xmass_nameless_walk: one line per account, its name, a tab, the
+### numbers), the last walk's list, and the accounts whose line was said.
+_XMASS_NAMELESS_SEEN=""
+_XMASS_NAMELESS_LIST=""
+_XMASS_NAMELESS_SAID=""
+
 ### The accounts whose legs a pass skipped for an unfinished free of their
 ### web group name (_xmass_set_gmap), named in the pass's last line.
 _XMASS_WG_SKIPPED=""
@@ -4355,6 +4362,33 @@ for _I in "${_A}" "${_A}.ftp"; do
     ''|*[!0-9]*|0) _U="" ;;
     *) getent passwd "${_U}" > /dev/null 2>&1 && _U="" ;;
   esac
+  # Never a number this server holds for another account: one in another
+  # account's record of its removed identities is that account's, and taking
+  # it would make what that identity left here this account's. A gone
+  # account's (.purged) is taken back only by an account installed here,
+  # whose own numbers the ltd worker lists there once its user is lost;
+  # never by one laid here new. Its own record (<oN>.gone) is its own.
+  _HELD=""
+  _R=/data/conf/acct-uids
+  if [ -n "${_U}" ] && ! grep -qsx -- "${_U}" "${_R}/${_A}.gone"; then
+    for _F in "${_R}"/*.gone; do
+      [ -f "${_F}" ] && [ ! -L "${_F}" ] || continue
+      [ "${_F}" = "${_R}/${_A}.gone" ] && continue
+      if grep -qx -- "${_U}" "${_F}" 2> /dev/null; then
+        _HELD="${_F##*/}"
+        _HELD="a removed identity of ${_HELD%.gone} (${_F})"
+        break
+      fi
+    done
+    if [ -z "${_HELD}" ] && [ -n "${_NEW}" ] && [ -f "${_R}/.purged" ] && [ ! -L "${_R}/.purged" ] \
+      && grep -qE "^${_U}( |\$)" "${_R}/.purged" 2> /dev/null; then
+      _HELD="an account that is gone (${_R}/.purged)"
+    fi
+  fi
+  if [ -n "${_HELD}" ]; then
+    echo "XMID-FAILED: ${_I} not made: ${_H} carries uid ${_U}, which this server holds for ${_HELD}; it is not taken, as what that identity left here would become ${_A}'s"
+    continue
+  fi
   find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -f {} \; &> /dev/null
   _MK=-m
   [ -d "${_H}" ] && _MK=-M
@@ -11628,6 +11662,134 @@ _xmass_wg_skipped_says() {
   return 0
 }
 
+# The account $1's own places here, each a real directory: its home, its
+# files store on attached storage, the homes of its .ftp and client logins
+# and its gem and npm trees; every leg of the account copies from them.
+_xmass_acct_places() {
+  local _a="${1}" _p _s _m
+  [[ "${_a}" =~ ^[a-z0-9-]+$ ]] || return 0
+  for _p in "/data/disk/${_a}" "/home/${_a}".* "/opt/user/gems/${_a}.ftp" "/opt/user/npm/${_a}.ftp"; do
+    case "${_p}" in
+      /home/*)
+        # a client login is oN.<client> or oN.<client>-dev; the PHP-FPM
+        # users' homes are www-data's, never the account's
+        [[ "${_p#/home/}" =~ ^${_a}\.[a-z0-9]+(-dev)?$ ]] || continue
+        [ "${_p}" = "/home/${_a}.web" ] && continue
+        ;;
+    esac
+    [ -d "${_p}" ] && [ ! -L "${_p}" ] && echo "${_p}"
+  done
+  _s=$(realpath -e -- "/data/disk/${_a}/static/files" 2> /dev/null) || return 0
+  case "${_s}" in
+    /mnt/?*/files/"${_a}"/static/files)
+      _m="${_s%/files/"${_a}"/static/files}"
+      case "${_m}" in
+        */files/*|*/static/*|*[!A-Za-z0-9._/-]*) return 0 ;;
+      esac
+      echo "${_s}"
+      ;;
+  esac
+  return 0
+}
+# _XMASS_NAMELESS_LIST set to the numbers no user has here that own an entry
+# in the account $1's places (_xmass_acct_places), space-separated: walked
+# the first time a run asks, the same list after that, so the cutover's
+# passes inside its window take the list it walked before the window. A
+# number loses its user only when the user is removed, and the account's own
+# removed identities are recorded before (_xmass_nameless_owners reads them
+# on every call). Nothing while passwd does not answer: every number would
+# look like no user's. Never in a subshell: the list is kept for the run.
+_xmass_nameless_walk() {
+  local _a="${1}" _p _l
+  local -a _r=()
+  _XMASS_NAMELESS_LIST=""
+  _l="$(printf '%s' "${_XMASS_NAMELESS_SEEN}" | A="${_a}" awk -F '\t' '$1 == ENVIRON["A"] { print "n" $2; exit }')"
+  if [ -n "${_l}" ]; then
+    _XMASS_NAMELESS_LIST="${_l#n}"
+    return 0
+  fi
+  getent passwd root > /dev/null 2>&1 || return 0
+  while IFS= read -r _p; do
+    [ -n "${_p}" ] && _r+=("${_p}")
+  done < <(_xmass_acct_places "${_a}")
+  if [ "${#_r[@]}" -gt 0 ]; then
+    _XMASS_NAMELESS_LIST="$(env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_r[@]}" -xdev -nouser -printf '%U\n' 2> /dev/null \
+      | grep -E '^[1-9][0-9]*$' | sort -un | tr '\n' ' ')"
+  fi
+  _XMASS_NAMELESS_SEEN="${_XMASS_NAMELESS_SEEN}${_a}"$'\t'"${_XMASS_NAMELESS_LIST}"$'\n'
+  return 0
+}
+# The numbers no user has here that own the account $1's files, each on its
+# own line with how its legs carry it: "<uid> own" when root recorded it here
+# as one of the account's removed identities (/data/conf/acct-uids/<oN>.gone,
+# which the ltd worker and the Octopus upgrade write before deluser frees
+# it), "<uid> none" for any other: another account's removed identity, a
+# gone account's, or one no record names. Root's checks here take only the
+# first as the account's own, and a move keeps that: by number alone either
+# would land on whatever the target holds the number for, another account's
+# identity or a number free for its next one. The account's own recorded
+# numbers are listed whether or not the walk met them (a removal after the
+# walk). A number a user has, or whose lookup fails, is left out: it travels
+# by that user's name, as before. _xmass_nameless_walk first, in the shell
+# that keeps the list.
+_xmass_nameless_owners() {
+  local _a="${1}" _f="/data/conf/acct-uids/${1}.gone" _u _r
+  local -A _own=() _seen=()
+  [[ "${_a}" =~ ^[a-z0-9-]+$ ]] || return 0
+  if [ -f "${_f}" ] && [ ! -L "${_f}" ]; then
+    while IFS= read -r _u; do
+      [[ "${_u}" =~ ^[1-9][0-9]*$ ]] && _own[${_u}]=1
+    done < "${_f}"
+  fi
+  _xmass_nameless_walk "${_a}"
+  for _u in ${_XMASS_NAMELESS_LIST} "${!_own[@]}"; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    [ -z "${_seen[${_u}]:-}" ] || continue
+    _seen[${_u}]=1
+    getent passwd "${_u}" > /dev/null 2>&1
+    _r=$?
+    [ "${_r}" -eq 2 ] || continue
+    if [ -n "${_own[${_u}]:-}" ]; then
+      echo "${_u} own"
+    else
+      echo "${_u} none"
+    fi
+  done | sort -n
+}
+# The account's line on them, once a run and once a day on the autosync
+# passes: status 0 when it is to be said now.
+_xmass_nameless_once() {
+  local _oct="${1}" _d="/var/log/boa/xmass_autosync"
+  case " ${_XMASS_NAMELESS_SAID} " in
+    *" ${_oct} "*) return 1 ;;
+  esac
+  _XMASS_NAMELESS_SAID="${_XMASS_NAMELESS_SAID} ${_oct}"
+  if [ "${_MODE}" = "LIVE" ] && [ "${_XMASS_AUTO}" = "YES" ]; then
+    mkdir -p "${_d}" 2> /dev/null
+    [ -z "$(find "${_d}/.nameless_${_oct}" -mmin -1440 2> /dev/null)" ] || return 1
+    touch "${_d}/.nameless_${_oct}" 2> /dev/null
+  fi
+  return 0
+}
+# A dry run names them, as the plan of the account's legs.
+_xmass_nameless_plan() {
+  local _oct="${1}" _u _k _own="" _none=""
+  [[ "${_oct}" =~ ^[a-z0-9-]+$ ]] || return 0
+  _xmass_nameless_walk "${_oct}"
+  while read -r _u _k; do
+    case "${_k}" in
+      own) _own="${_own} ${_u}" ;;
+      none) _none="${_none} ${_u}" ;;
+    esac
+  done < <(_xmass_nameless_owners "${_oct}")
+  [ -n "${_own}${_none}" ] && _xmass_nameless_once "${_oct}" || return 0
+  [ -z "${_own}" ] \
+    || _info "  ${_oct}: [DRY] its files owned by its removed identities (uid${_own}) would land as ${_oct} on ${_tgt}"
+  [ -z "${_none}" ] \
+    || _info "  ${_oct}: [DRY] its files owned by a uid no user has here and no record names its own (${_none# }) would land as nobody on ${_tgt}"
+  return 0
+}
+
 # Set _XMASS_UMAP, the user map every leg of one account carries beside its
 # group maps (LIVE only; empty otherwise): each identity of the account here
 # (the account, its .ftp login, its client logins, its PHP-FPM users) onto
@@ -11645,14 +11807,21 @@ _xmass_wg_skipped_says() {
 # target that answers without the account's own user (the identity repair
 # can run before it is back there) gets no map, and so does an account name
 # rsync would read as a number: those legs travel by name, as before.
+# The numbers no user has here that own the account's files follow the
+# names (_xmass_nameless_owners), each by number: one root recorded here as
+# the account's removed identity onto the account, any other onto nobody,
+# which no account's check trusts and no new identity takes, so the target
+# never holds the account's files under a number free for, or held by,
+# another account's identity. A target without nobody gets those as
+# numbers, as before, and a line says so.
 # $1 = account.
 _xmass_set_umap() {
-  local _oct="$1" _n _ans _have _m=""
+  local _oct="$1" _n _ans _have _m="" _u _k _own="" _none="" _left=""
   _XMASS_UMAP=""
   [ "${_MODE}" = "LIVE" ] || return 0
   [[ "${_oct}" =~ ^[a-zA-Z_][a-zA-Z0-9_-]*$ ]] || return 0
   _ans=$(ssh -o BatchMode=yes -o ConnectTimeout=15 root@"${_tgt}" \
-    "getent passwd | cut -d: -f1 | grep -E '^(root|${_oct}(\.[a-zA-Z0-9._-]+)?)\$' | sed 's/^/XMUM:/'; echo XMUM-END" \
+    "getent passwd | cut -d: -f1 | grep -E '^(root|nobody|${_oct}(\.[a-zA-Z0-9._-]+)?)\$' | sed 's/^/XMUM:/'; echo XMUM-END" \
     2>/dev/null)
   # read through pipes, never a here-string: a full /tmp must not turn
   # into a DENY of its own
@@ -11673,6 +11842,31 @@ _xmass_set_umap() {
       _m="${_m:+${_m},}${_n}:${_oct}"
     fi
   done
+  _xmass_nameless_walk "${_oct}"
+  while read -r _u _k; do
+    case "${_k}" in
+      own)
+        _m="${_m:+${_m},}${_u}:${_oct}"
+        _own="${_own} ${_u}"
+        ;;
+      none)
+        if printf '%s\n' "${_have}" | grep -qxF nobody; then
+          _m="${_m:+${_m},}${_u}:nobody"
+          _none="${_none} ${_u}"
+        else
+          _left="${_left} ${_u}"
+        fi
+        ;;
+    esac
+  done < <(_xmass_nameless_owners "${_oct}")
+  if [ -n "${_own}${_none}${_left}" ] && _xmass_nameless_once "${_oct}"; then
+    [ -z "${_own}" ] \
+      || _info "  ${_oct}: its files owned by its removed identities (uid${_own}) land as ${_oct} on ${_tgt}"
+    [ -z "${_none}" ] \
+      || _info "  ${_oct}: its files owned by a uid no user has here and no record names its own (${_none# }) land as nobody on ${_tgt}"
+    [ -z "${_left}" ] \
+      || _alrt "  ${_oct}: ${_tgt} has no user nobody: its files owned by a uid no user has here and no record names its own (${_left# }) travel as those numbers"
+  fi
   _XMASS_UMAP="${_m}"
   return 0
 }
@@ -11930,6 +12124,8 @@ _xmass_sync_account() {
   # a promotion mid-pass must stop the pass here, not hours later.
   _xmass_auto_assert_standby
   _info "  Syncing account ${_oct} ..."
+  # the plan names what the user map will carry by number (_xmass_set_umap)
+  [ "${_MODE}" = "LIVE" ] || _xmass_nameless_plan "${_oct}"
 
   # Platform codebases (large; delta-synced efficiently by rsync). An octopus
   # pass that refreshes a catalogue platform stages a whole tree under
@@ -22695,6 +22891,14 @@ _xmass_cmd_cutover() {
   # What is queued in the panels right now, before anything is blocked: it
   # travels with the DB and runs on the target.
   _xmass_report_queued_tasks
+
+  # The numbers no user has that own each account's files, walked now: the
+  # passes inside the window take this list (_xmass_nameless_walk) and add
+  # no walk of their own to it.
+  local _nwa
+  for _nwa in ${_ELIGIBLE_ACCOUNTS}; do
+    _xmass_nameless_walk "${_nwa}"
+  done
 
   # Step 0: Re-hold Solr on target in case it was manually started since init.
   # Also stops any running instance so the final Solr rsync gets a clean state.
