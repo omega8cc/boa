@@ -1,6 +1,31 @@
 #!/bin/bash
 
+_CALLER_PATH="${PATH}"
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec:/usr/local/ssl3
+
+# A root line keeps the absolute directories its caller's PATH adds, after
+# websh's own. Cron runs an /etc/cron.d line through /bin/sh with that
+# file's PATH= line, and once websh replaced it a job that names its command
+# by a directory only that line lists (sysstat's debian-sa1, in
+# /usr/lib/sysstat) found nothing, ran nothing and said nothing. websh's
+# directories keep their order, so every command found before resolves the
+# same; a line that is not root's (both real and effective id 0) never
+# takes its caller's PATH.
+if [ "${EUID}" = "0" ] && [ "${UID}" = "0" ]; then
+  IFS=: read -r -a _CALLER_DIRS <<< "${_CALLER_PATH}"
+  for _CALLER_DIR in "${_CALLER_DIRS[@]}"; do
+    case "${_CALLER_DIR}" in
+      /*)
+        case ":${PATH}:" in
+          *":${_CALLER_DIR}:"*) ;;
+          *) PATH="${PATH}:${_CALLER_DIR}" ;;
+        esac
+        ;;
+    esac
+  done
+  unset _CALLER_DIRS _CALLER_DIR
+fi
+unset _CALLER_PATH
 
 # The report of which command-line PHP a backend drush line runs on, and what
 # chose it (see _cpp_before_exec): cleared first, so no websh spawn -- the
