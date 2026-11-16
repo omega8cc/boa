@@ -2545,8 +2545,8 @@ _mig_build_panel_block() {
 ### When the target's name was not read, or the target did not confirm the
 ### account, the item says the names are not given. The entries are read
 ### inside the account's real credentials directory and only where its
-### control folder passes the test the backup schedule and multiback apply
-### (_acct_ctrl_own, their copy): the 503 gate's test also refuses a folder
+### control folder here passes the test the backup schedule and multiback
+### apply (_acct_ctrl_own, their copy): the 503 gate's test also refuses a folder
 ### the account's login left open to others, which the schedule still runs,
 ### and passes one holding another identity's file, which it skips. $1 =
 ### context (complete|start), $2 = the new system's IP, $3 = the account
@@ -2558,6 +2558,8 @@ _mig_build_backup_block() {
   local _why="because a bucket's name includes the server's name and your account's name"
   local _more="   More about bucket names: https://docs.boa.io/using/backups/mybackup-and-quota#where-your-backups-land-the-bucket-name"
   _MIG_BACKUP_BLOCK=""
+  ### in the schedule's order: no credentials folder, no entry to judge
+  [ -d "${_USR}/static/control/remote_backups/credentials" ] || return 0
   if ! _own="$(_acct_ctrl_own "${_USR##*/}" 2> /dev/null)"; then
     echo "INFO: ${_oct}: the notice names no own backup entry: static/control is not the account's own (${_own:-not read}), and the backup schedule skips its entries"
     return 0

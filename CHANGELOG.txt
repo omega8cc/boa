@@ -1115,13 +1115,14 @@
 
     * The migration notices find an account's own off-site backup entries
       by the test of its control folder the backup schedule and multiback
-      apply, so the bucket item names every entry that runs on the new
-      server and none that is skipped there. Before, they used the 503
-      gate's test, which also refuses a control folder the account's login
-      left open to other users (the schedule runs it until BOA's next pass
-      over the account closes it) and passes one holding a file of another
+      apply, the one that decides whether they run at all, judged on the
+      old server's copy of the folder. Before, they used the 503 gate's
+      test, which also refuses a control folder the account's login left
+      open to other users (the schedule runs it until BOA's next pass over
+      the account closes it) and passes one holding a file of another
       identity (the schedule skips it): an entry could run with no bucket
-      named, or be named and never run. The run says when it names none.
+      named, or be named and never run. The run says when it leaves out
+      the entries of a folder that fails the test.
 
     * A migration notice that cannot give the control panel's new address
       says the SQL Adminer moved with it only where the account had
