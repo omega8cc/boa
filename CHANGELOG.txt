@@ -848,17 +848,38 @@
       2.12.0, which Drupal 10.6 keeps at 2.10. Existing platforms keep
       their sites.
 
-    * New Drupal CMS (2.2.8) and Thunder platforms carry Scheduler 2.3.1,
+    * New Drupal CMS (2.2.9) and Thunder platforms carry Scheduler 2.3.1,
       with its security fix of 4 November. Existing platforms keep their sites.
 
     * New Open Social platforms carry Simple OAuth 6.1.4, with its security
       fix of 4 November; Bootstrap and Gin, which Open Social 13.1.0 holds,
       stay below their fixes. Existing platforms keep their sites.
 
-    * New OpenFed platforms are built on 13.6.9, whose pins take Bootstrap
+    * New OpenFed platforms are built on 13.6.11, whose pins take Bootstrap
       3.45, Scheduler 2.2.3 and SVG Image 3.2.5, and so svg-sanitize 1.1.1:
-      the security fixes its 13.6.8 pins had held back. Existing platforms
+      the security fixes the 13.6.8 pins had held back. Existing platforms
       keep their sites.
+
+    * New EzContent, OpenCulturas and Varbase platforms carry Smart Trim
+      2.3.2, and new OpenFed and Open Social platforms Smart Trim 2.2.2, with
+      its security fix of 11 November. Existing platforms keep their sites.
+
+    * New OpenCulturas platforms are built on 3.1.8 and carry Real Name
+      2.0.1, with its security fix of 11 November. Existing platforms keep
+      their sites.
+
+    * New OpenFed platforms carry Page Manager 4.1.0, with its security fix
+      of 11 November. Existing platforms keep their sites.
+
+    * New Opigno platforms carry Entity Print 2.20.0, with its security fix
+      of 11 November. Existing platforms keep their sites.
+
+    * New Commerce Kickstart platforms carry Commerce License 3.1.2, with
+      its two security fixes of 11 November. Existing platforms keep
+      their sites.
+
+    * New EzContent platforms carry Paragraphs Edit 3.0.2, with its security
+      fix of 11 November. Existing platforms keep their sites.
 
     * The AppArmor profiles of wkhtmltopdf and wkhtmltoimage also cover the
       copies BOA keeps in /usr/bin, the path sites are given: started by that
