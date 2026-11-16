@@ -935,8 +935,8 @@
       server (pre-mig) and on a target (prep-target, a standing mirror's
       repairs, the return of accounts): each tool's version, or why it was
       not replaced (an immutable or append-only copy, a refused move, a
-      missing file, running now, its fetch failed, the mirror behind the
-      last publish), read from what the pass recorded rather than guessed,
+      missing file, running now, its fetch failed, or the count of the
+      pass's other failed fetches), read from what the pass recorded,
       and on a target whether its xmass is the code the run executes. A
       held pass names what held it, and a pass that got no usable
       BOA.sh.txt from the mirror says it fetched no tool. A copy pinned on

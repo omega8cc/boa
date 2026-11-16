@@ -19307,7 +19307,7 @@ _xmass_force_tool_update() {
     # pass, shows up now, not when a verb runs it. No DONE line means the
     # call or the refresh did not finish. Nothing here refuses.
     local _rout _st="" _w _rt _rm _rh _ra _rs _xs="" _xm="" _xp=0 _p _me _mine="" _rheld=""
-    local _rhold="" _rnob=0 _rfn=0 _rfl="" _rfc="" _rrun="" _rarm=0 _rref="" _rrn=0 _rlast=""
+    local _rhold="" _rnob=0 _rfn=0 _rfl="" _rfc="" _rrun="" _rarm=0 _rrn=0
     _rout=$(_xmass_tool_state_sh \
       | ssh -o BatchMode=yes -o ConnectTimeout=15 root@"${_where}" "bash -s -- ${_tools}" \
       2>/dev/null)
@@ -19315,10 +19315,12 @@ _xmass_force_tool_update() {
       _alrt "  could not force a tool refresh on ${_where}: the call there failed or did not finish; its tools may be stale"
       return 0
     fi
-    ### The facts first: a tool armed after the pass means a pass of this
-    ### refresh reached the tools, whatever else its window logged (the
-    ### self-update the wait waited for writes there too), and a refused move
-    ### the pass counted as a failed fetch is named by its own line below.
+    ### The facts first. The window also holds what the self-update the wait
+    ### waited for wrote, so each line below states only what is true of
+    ### either pass: a marker armed, a hold back (the holds were removed
+    ### before the wait) or a tools pass's failure line each mean a pass of
+    ### this refresh reached the tools, and only with none of them does a
+    ### mirror's no-usable BOA.sh.txt line mean the refresh fetched no tool.
     while IFS=$'\t' read -r _w _rt _rm _rh _ra _rs; do
       case "${_w}" in
         HOLDER) _rhold="${_rt}" ;;
@@ -19327,13 +19329,12 @@ _xmass_force_tool_update() {
         TFACT) [ "${_rm}" = "1" ] && _rrun="${_rrun} ${_rt}" ;;
         TOOL)
           [ "${_rm}" != "-" ] && _rarm=1
-          [ "${_rh}" = "1" ] && { _rref="${_rref} ${_rt}"; _rrn=$((_rrn + 1)); }
+          [ "${_rh}" = "1" ] && { _rarm=1; _rrn=$((_rrn + 1)); }
           ;;
       esac
     done <<< "${_rout}"
     [[ "${_rfn}" =~ ^[0-9]+$ ]] || _rfn=0
-    _rfn=$((_rfn - _rrn))
-    [[ " ${_rref} " == *" ${_rfl} "* ]] || _rlast=", the last of ${_rfl} (${_rfc})"
+    [ "${_rfn}" -gt 0 ] && _rarm=1
     printf '%s\n' "${_rout}" | grep -qx 'NOCLEAR' && _st=NOCLEAR
     [ -z "${_st}" ] && printf '%s\n' "${_rout}" | grep -qx 'NOTRUN' && _st=NOTRUN
     [ -z "${_st}" ] && [ "${_rnob}" = "1" ] && [ "${_rarm}" = "0" ] && _st=NOBOASH
@@ -19375,8 +19376,10 @@ _xmass_force_tool_update() {
             _alrt "  on ${_where}: ${_rt} was not refreshed: it runs there now, and a running tool is never replaced; the next verbs there run the copy it has"
           elif [ "${_rfl}" = "${_rt}" ]; then
             _alrt "  on ${_where}: ${_rt} was not refreshed: its fetch failed (${_rfc}; see /var/log/boa/mirror.incident.log there); the next verbs there run the copy it has"
-          elif [ "${_rfn}" -gt 0 ]; then
-            _alrt "  on ${_where}: ${_rt} was not refreshed: the tools passes of this refresh there counted ${_rfn} failed fetch(es) besides any refused move above${_rlast}; see /var/log/boa/mirror.incident.log there; the next verbs there run the copy it has"
+          elif [ "${_rfn}" -gt "${_rrn}" ]; then
+            _alrt "  on ${_where}: ${_rt} was not refreshed: the tools passes of this refresh there logged ${_rfn} failed fetch(es), refused moves included, the last of ${_rfl} (${_rfc}); see /var/log/boa/mirror.incident.log there; the next verbs there run the copy it has"
+          elif [ "${_rnob}" = "1" ]; then
+            _alrt "  on ${_where}: ${_rt} was not refreshed: a pass of this refresh there got no usable BOA.sh.txt from the mirror (see /var/log/boa/mirror.incident.log there); the next verbs there run the copy it has"
           else
             _alrt "  on ${_where}: ${_rt} was not refreshed, and nothing on record there says why (it may have run during the pass); the next verbs there run the copy it has"
           fi
@@ -19425,7 +19428,7 @@ _xmass_force_tool_update() {
   # A hold is only a record, of any age, and a barracuda system pass or an
   # earlier refresh removes it, so a pin is read from the file itself too.
   local _held="" _ms _hs _facts _fhold="" _fnob=0 _ffn=0 _ffl="" _ffc="" _frun="" _fst=""
-  local _fw _fa _fb _fc _farm=0 _fref="" _frn=0 _flast=""
+  local _fw _fa _fb _fc _farm=0 _frn=0
   for _t in ${_tools}; do
     ls /var/log/boa/${_t}.mvfail.* &>/dev/null && _held="${_held} ${_t}"
     rm -f /var/log/boa/${_t}.ctrl.* /var/log/boa/${_t}.mvfail.*
@@ -19449,18 +19452,19 @@ _xmass_force_tool_update() {
     esac
   done <<< "${_facts}"
   [[ "${_ffn}" =~ ^[0-9]+$ ]] || _ffn=0
-  ### The window also holds what the self-update the wait waited for wrote:
-  ### a tool armed now means a pass of this refresh reached the tools, and a
-  ### refused move the pass counted as a failed fetch is named by its own line.
+  ### The window also holds what the self-update the wait waited for wrote,
+  ### so each line below states only what is true of either pass: a marker
+  ### armed, a hold back (removed above) or a tools pass's failure line each
+  ### mean a pass of this refresh reached the tools, and only with none of
+  ### them does a no-usable BOA.sh.txt line mean the refresh fetched no tool.
   for _t in ${_tools}; do
     ls /var/log/boa/${_t}.ctrl.* &>/dev/null && _farm=1
     if ls /var/log/boa/${_t}.mvfail.* &>/dev/null; then
-      _fref="${_fref} ${_t}"
+      _farm=1
       _frn=$((_frn + 1))
     fi
   done
-  _ffn=$((_ffn - _frn))
-  [[ " ${_fref} " == *" ${_ffl} "* ]] || _flast=", the last of ${_ffl} (${_ffc})"
+  [ "${_ffn}" -gt 0 ] && _farm=1
   if [ "${_fnob}" = "1" ] && [ "${_farm}" = "0" ]; then
     _alrt "  the tool refresh here fetched no tool: the mirror served no usable BOA.sh.txt (see /var/log/boa/mirror.incident.log); the tools may be stale"
     _fst=NOBOASH
@@ -19502,9 +19506,12 @@ _xmass_force_tool_update() {
         _info "  ${_t} (refresh deferred — running now)"
       elif [ "${_ffl}" = "${_t}" ]; then
         _alrt "  ${_t} was not refreshed: its fetch failed (${_ffc}; see /var/log/boa/mirror.incident.log); the next verbs run the copy it has"
-      elif [ "${_ffn}" -gt 0 ]; then
-        ### A pass's failure line names its last failed fetch only.
-        _alrt "  ${_t} was not refreshed: the tools passes of this refresh counted ${_ffn} failed fetch(es) besides any refused move above${_flast}; see /var/log/boa/mirror.incident.log; the next verbs run the copy it has"
+      elif [ "${_ffn}" -gt "${_frn}" ]; then
+        ### A pass's failure line names its last failed fetch only, and
+        ### counts a refused move too: said when it holds more than those.
+        _alrt "  ${_t} was not refreshed: the tools passes of this refresh logged ${_ffn} failed fetch(es), refused moves included, the last of ${_ffl} (${_ffc}); see /var/log/boa/mirror.incident.log; the next verbs run the copy it has"
+      elif [ "${_fnob}" = "1" ]; then
+        _alrt "  ${_t} was not refreshed: a pass of this refresh got no usable BOA.sh.txt from the mirror (see /var/log/boa/mirror.incident.log); the next verbs run the copy it has"
       else
         _alrt "  ${_t} was not refreshed, and nothing on record says why (it may have run during the pass); the next verbs run the copy it has"
       fi
