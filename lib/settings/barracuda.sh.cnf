@@ -1224,7 +1224,7 @@ _USE_CRON_GUARD=YES
 ### each site's cached container and its bin's wipe stamp in Valkey and
 ### reports, once a day per site, a site whose container was rewritten
 ### and wiped again at three checks, or thrown away and compiled again at
-### six checks in a row. Read-only. Set to NO to disable on this system.
+### six checks, none quiet between. Read-only. Set to NO to disable it.
 ###
 _USE_CONTAINER_GUARD=YES
 
