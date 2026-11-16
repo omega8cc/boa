@@ -294,6 +294,16 @@
 
 @=> Security
 
+    * When /opt/local/bin/lock.inc cannot be read, the monitors and system
+      scripts that keep to one running copy count their own runs instead
+      and stop above two. That count now takes root's processes alone, as
+      it already did in two of them: an account could give three processes
+      of its own a monitor's command line, or start a setuid program under
+      it, and hold that monitor off. The meta installer fetches lock.inc
+      before the monitors are installed and every self-update fetches it
+      again when it is missing, so this applies only where that fetch
+      failed. Nothing changes where lock.inc is present.
+
     * BOA's own service users (a new PHP version's pool user, Valkey, Solr,
       MySQL, Aegir, sshd and ftp) are made under a number no removed
       account login or web user freed, as an account's own logins are:
