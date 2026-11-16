@@ -2381,9 +2381,12 @@ _xoct_backup_services_here() {
   done
 }
 ### Item 1 of the completion and start notices when the panel's new address
-### is not known: said plainly, never a guess.
+### is not known: said plainly, never a guess. The _NOADM texts leave out an
+### Adminer the client never had here, or one the target was read to lack.
 _MIG_PANEL_NONE_DONE="Your Ægir Control Panel and SQL Adminer have moved to the new server with your account. Their new address could not be confirmed when this message was sent, so it is not given here: please ask your host's support for it. The address you used so far opens only the old, disabled panel."
+_MIG_PANEL_NONE_DONE_NOADM="Your Ægir Control Panel has moved to the new server with your account. Its new address could not be confirmed when this message was sent, so it is not given here: please ask your host's support for it. The address you used so far opens only the old, disabled panel."
 _MIG_PANEL_NONE_START="Your Ægir Control Panel and SQL Adminer will move to the new server with your account. You will be told their new address once the migration is complete."
+_MIG_PANEL_NONE_START_NOADM="Your Ægir Control Panel will move to the new server with your account. You will be told its new address once the migration is complete."
 ### The control panel paragraph of the completion and start notices (item 1,
 ### one line). The notice names only IP addresses and the panel is never
 ### relayed, so its new address is given in full. Nothing the target says is
@@ -2411,7 +2414,7 @@ _MIG_PANEL_NONE_START="Your Ægir Control Panel and SQL Adminer will move to the
 ### the buckets it used for the account before (both empty when not read).
 _mig_build_panel_block() {
   local _ctx="$1" _ip="$2" _acct="$3"
-  local _old _mf _tf="" _tp="" _ta="" _out="" _rule="" _why="" _was _adm="" _rc _n _dns
+  local _old _mf _tf="" _tp="" _ta="" _out="" _rule="" _why="" _was _adm="" _nadm _rc _n _dns
   _MIG_PANEL_STATE=unknown
   _MIG_TGT_BKHOST=""
   _MIG_TGT_CHAINS=""
@@ -2462,6 +2465,10 @@ _mig_build_panel_block() {
         [ "${_acct}" != "${_oct}" ] && _rule="${_rule//${_oct}.${_tf}/${_acct}.${_tf}}"
         if [ "${_tp}" != "${_rule}" ]; then
           _why="/root/.${_acct}.octopus.cnf on ${_ip} names ${_tp}, the rename of ${_old} gives ${_rule}"
+          ### Octopus names an account's panel after /etc/hostname, the
+          ### rename after hostname -f: a target where they differ is named.
+          [ -n "${_MIG_TGT_BKHOST}" ] && [ "${_MIG_TGT_BKHOST,,}" != "${_tf}" ] \
+            && _why="${_why}; ${_ip} gives hostname -f ${_tf} and /etc/hostname ${_MIG_TGT_BKHOST}"
         elif [ "${_rule}" = "${_old}" ]; then
           _MIG_PANEL_STATE=same
         else
@@ -2474,6 +2481,11 @@ _mig_build_panel_block() {
   ### The old Adminer address is named only where this box has Adminer.
   _was="https://${_old}"
   [ -e /var/www/adminer/index.php ] && [ -n "${_adm}" ] && _was="https://${_old} and https://${_old}/sqladmin/"
+  ### Without a new address the client is told that its Adminer moved too
+  ### only where it had one here, and the target was not read to lack one
+  ### (a hosted server always installs it).
+  _nadm=""
+  [ -e /var/www/adminer/index.php ] && [ "${_ta}" != "NO" ] && _nadm=YES
   ### A name under this box's hostname is the host's to move in DNS, never
   ### the client's.
   _dns="the DNS record of ${_old} points to ${_ip}"
@@ -2493,9 +2505,11 @@ _mig_build_panel_block() {
     ;;
     start:*)
       _MIG_PANEL_BLOCK="${_MIG_PANEL_NONE_START}"
+      [ -n "${_nadm}" ] || _MIG_PANEL_BLOCK="${_MIG_PANEL_NONE_START_NOADM}"
     ;;
     *)
       _MIG_PANEL_BLOCK="${_MIG_PANEL_NONE_DONE}"
+      [ -n "${_nadm}" ] || _MIG_PANEL_BLOCK="${_MIG_PANEL_NONE_DONE_NOADM}"
     ;;
   esac
   case "${_MIG_PANEL_STATE}" in
@@ -2531,18 +2545,23 @@ _mig_build_panel_block() {
 ### When the target's name was not read, or the target did not confirm the
 ### account, the item says the names are not given. The entries are read
 ### inside the account's real credentials directory and only where its
-### control folder passes this tool's own check of it, a narrower test than
-### the walk the backup schedule makes. $1 = context (complete|start), $2 =
-### the new system's IP, $3 = the account there; reads _MIG_TGT_BKHOST and
-### _MIG_TGT_CHAINS of the panel paragraph's read. Sets _MIG_BACKUP_BLOCK,
-### empty for no item.
+### control folder passes the test the backup schedule and multiback apply
+### (_acct_ctrl_own, their copy): the 503 gate's test also refuses a folder
+### the account's login left open to others, which the schedule still runs,
+### and passes one holding another identity's file, which it skips. $1 =
+### context (complete|start), $2 = the new system's IP, $3 = the account
+### there; reads _MIG_TGT_BKHOST and _MIG_TGT_CHAINS of the panel
+### paragraph's read. Sets _MIG_BACKUP_BLOCK, empty for no item.
 _mig_build_backup_block() {
   local _ctx="$1" _ip="$2" _acct="$3"
-  local _svcs _s _sd _new _old _was _hh _th="${_MIG_TGT_BKHOST}" _lines="" _hand="" _again="" _said="" _head
+  local _svcs _s _sd _new _old _was _hh _th="${_MIG_TGT_BKHOST}" _lines="" _hand="" _again="" _said="" _head _own
   local _why="because a bucket's name includes the server's name and your account's name"
   local _more="   More about bucket names: https://docs.boa.io/using/backups/mybackup-and-quota#where-your-backups-land-the-bucket-name"
   _MIG_BACKUP_BLOCK=""
-  _xoct_gate_own "${_USR}" > /dev/null 2>&1 || return 0
+  if ! _own="$(_acct_ctrl_own "${_USR##*/}" 2> /dev/null)"; then
+    echo "INFO: ${_oct}: the notice names no own backup entry: static/control is not the account's own (${_own:-not read}), and the backup schedule skips its entries"
+    return 0
+  fi
   _svcs="$(_xoct_in_real_dir "${_USR}/static/control/remote_backups/credentials" _xoct_backup_services_here)"
   _svcs="${_svcs% }"
   [ -n "${_svcs}" ] || return 0
