@@ -1217,6 +1217,18 @@ _USE_TASK_GUARD=YES
 _USE_CRON_GUARD=YES
 
 ###
+### Service container watchdog (container_guard monitor): a Drupal 8+
+### site whose own code invalidates its service container while it
+### serves requests compiles the whole container again on every one, and
+### nothing else shows it. Every ten minutes the watchdog reads each
+### site's cached container and its bin's wipe stamp in Valkey and
+### reports, once a day per site, a site whose container was rewritten
+### and already wiped again at three checks in a row. Read-only. Set to
+### NO to disable on this system.
+###
+_USE_CONTAINER_GUARD=YES
+
+###
 ### Permanent health/attack archive (XDR9000): a read-only harvester
 ### copies attack bans, auto-heal incidents, backup outcomes and metric
 ### samples into an append-only archive under /var/log/boa/xdr9000/

@@ -2672,6 +2672,7 @@ _update_agents() {
     [ ! -e "/var/xdrago/monitor/check/batch_guard.sh" ] && rm -f ${_pthLog}/batch_guard.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/monitor/check/task_guard.sh" ] && rm -f ${_pthLog}/task_guard.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/monitor/check/cron_guard.sh" ] && rm -f ${_pthLog}/cron_guard.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/container_guard.sh" ] && rm -f ${_pthLog}/container_guard.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/monitor/check/autosync.sh" ] && rm -f ${_pthLog}/autosync.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/monitor/check/system.sh" ] && rm -f ${_pthLog}/system.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/monitor/check/unbound.sh" ] && rm -f ${_pthLog}/unbound.sh.ctrl.*.pid
@@ -2879,6 +2880,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/monitor/check/batch_guard.sh "${_urlHmr}/tools/system/monitor/check/batch_guard.sh" f90
     _fetch_versioned /var/xdrago/monitor/check/task_guard.sh "${_urlHmr}/tools/system/monitor/check/task_guard.sh" f96
     _fetch_versioned /var/xdrago/monitor/check/cron_guard.sh "${_urlHmr}/tools/system/monitor/check/cron_guard.sh" f85
+    _fetch_versioned /var/xdrago/monitor/check/container_guard.sh "${_urlHmr}/tools/system/monitor/check/container_guard.sh" f99
     _fetch_versioned /var/xdrago/monitor/check/autosync.sh "${_urlHmr}/tools/system/monitor/check/autosync.sh" f00
     _fetch_versioned /var/xdrago/monitor/check/valkey.sh "${_urlHmr}/tools/system/monitor/check/valkey.sh" f72
     _fetch_versioned /var/xdrago/monitor/check/system.sh "${_urlHmr}/tools/system/monitor/check/system.sh" f59
@@ -2910,7 +2912,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/mysql_cluster_backup.sh "${_urlHmr}/tools/system/mysql_cluster_backup.sh" f57 --guard mysql_cluster_backup.sh
     _runner_parked runner.sh \
       || _fetch_versioned /var/xdrago/runner.sh "${_urlHmr}/tools/system/runner.sh" f53
-    _fetch_versioned /var/xdrago/minute.sh "${_urlHmr}/tools/system/minute.sh" f69
+    _fetch_versioned /var/xdrago/minute.sh "${_urlHmr}/tools/system/minute.sh" f68
     _fetch_versioned /var/xdrago/second.sh "${_urlHmr}/tools/system/second.sh" f59
     _fetch_versioned /var/xdrago/ip_access.sh "${_urlHmr}/tools/system/ip_access.sh" f59
     _fetch_versioned /var/xdrago/user_admin_access.sh "${_urlHmr}/tools/system/user_admin_access.sh" f65

@@ -137,6 +137,9 @@ _launch_auto_healing() {
   if [ -e "/var/xdrago/monitor/check/cron_guard.sh" ]; then
     _launch_checker "bash /var/xdrago/monitor/check/cron_guard.sh"
   fi
+  if [ -e "/var/xdrago/monitor/check/container_guard.sh" ]; then
+    _launch_checker "bash /var/xdrago/monitor/check/container_guard.sh"
+  fi
   # Standing-mirror file cadence: launched ONLY while an operator has armed
   # 'xmass autosync' on this box (the marker is the switch), so the rest of
   # the fleet pays one file test per pass.
