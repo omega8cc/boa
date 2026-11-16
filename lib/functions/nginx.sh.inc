@@ -1074,16 +1074,20 @@ _nginx_initd_check() {
 ### The init script's restart tests the configuration first and keeps a
 ### running nginx when the test fails, so the configuration this pass wrote
 ### is not live. Said as a failure notice (the pass mails it) and in nginx's
-### incident log, with nginx -t's own first error.
+### incident log, with nginx -t's own first error. Running means the master
+### /run/nginx.pid names, as the init script reads it: a bare process name
+### also matches an nginx -t another tool runs at that moment.
 _nginx_restart_report() {
-  local _why _state
+  local _why _state _mp
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _nginx_restart_report"
   fi
   command -v nginx > /dev/null 2>&1 || return 0
   nginx -t > /dev/null 2>&1 && return 0
   _why=$(nginx -t 2>&1 | grep -m1 -E '\[(emerg|alert|crit)\]' | cut -c1-300)
-  if pidof nginx > /dev/null 2>&1; then
+  _mp=$(cat /run/nginx.pid 2> /dev/null)
+  if [[ "${_mp}" =~ ^[0-9]+$ ]] \
+    && ps -p "${_mp}" -o args= 2> /dev/null | grep -q '^nginx: master process'; then
     _state="the running Nginx keeps its previous configuration"
   else
     _state="Nginx is not running"
