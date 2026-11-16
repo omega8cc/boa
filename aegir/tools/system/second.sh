@@ -312,12 +312,12 @@ _manage_single_lock() {
   else
     # -------- legacy pgrep guard ---------
     # Exit if more than 2 instances of this script are running.
-    # The 2-instance slack is deliberate here: pgrep -fc matches the cron
+    # The 2-instance slack is deliberate here: the count matches root's cron
     # sh -c wrapper as well as this shell, so a cap of 1 could refuse every
     # launch on exactly the lock.inc-less boxes this fallback exists for.
     # True single-instance comes from the shared flock above.
     _SCRIPT=$(basename "$0")
-    _CNT=$(pgrep -fc "(^|(^| )[^ ]*bash )[^ ]*/${_SCRIPT//./\\.}( |$)")
+    _CNT=$(pgrep -u root -U root -fc "(^|(^| )[^ ]*bash )[^ ]*/${_SCRIPT//./\\.}( |$)")
     if (( _CNT > 2 )); then
       echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
       exit 0

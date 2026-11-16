@@ -515,7 +515,7 @@ _manage_single_lock() {
   if [ -n "${_SINGLE_INSTANCE_LIB_VER:-}" ] && command -v _single_instance_lock >/dev/null 2>&1; then
     _single_instance_lock
   else
-    _CNT=$(pgrep -fc "(^|(^| )[^ ]*bash )[^ ]*/$(basename "$0")( |$)")
+    _CNT=$(pgrep -u root -U root -fc "(^|(^| )[^ ]*bash )[^ ]*/$(basename "$0")( |$)")
     if [ "${_CNT:-0}" -gt 2 ]; then
       echo "Too many $(basename "$0") running $(date) (count=${_CNT})"
       exit 0

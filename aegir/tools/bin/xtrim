@@ -73,7 +73,7 @@ _manage_single_lock() {
     && command -v _single_instance_lock >/dev/null 2>&1; then
     _single_instance_lock
   else
-    if [ "$(pgrep -fc '[x]trim')" -gt 2 ]; then
+    if [ "$(pgrep -u root -U root -fc '[x]trim')" -gt 2 ]; then
       echo "$(date 2>/dev/null) too many xtrim already running" \
         >> /var/log/boa/too.many.log
       exit 0

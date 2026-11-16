@@ -3022,7 +3022,7 @@ _manage_single_lock() {
     # -------- legacy pgrep guard (no lock.inc on the box yet) ---------
     # Anchored to the execution form the crontab uses; the $( ) fork of
     # this very process matches as well, hence a count of two is ours.
-    _CNT=$(pgrep -fc "^(/[^ ]*/)?bash (-c )?/var/xdrago/manage_solr_config\.sh( |$)")
+    _CNT=$(pgrep -u root -U root -fc "^(/[^ ]*/)?bash (-c )?/var/xdrago/manage_solr_config\.sh( |$)")
     if (( _CNT > 2 )); then
       echo "Too many manage_solr_config.sh running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
       exit 0
