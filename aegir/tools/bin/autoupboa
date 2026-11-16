@@ -1512,7 +1512,7 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
 fi
 
 ###
-### Kernel guard. The 6.1 stable releases from 6.1.191 carry a backport that
+### Kernel guard. Debian's 6.1.191-1 and 6.1.192-1 builds carry a backport that
 ### moved ext4's block allocator to folios with the newer page cache's answer
 ### for a miss (an error pointer), while the 6.1 page cache still answers NULL:
 ### once a group's buddy page has been evicted, ext4_mb_load_buddy_gfp() takes
@@ -1521,11 +1521,15 @@ fi
 ### (6.1.192-1) under a copy larger than the server's memory. The guard keeps
 ### those kernels out of apt, removes one installed but not running, and on a
 ### server running one points the next boot at the newest other 6.1 kernel and
-### asks for the night window's reboot. When a fixed 6.1 release is known, the
-### pattern below ends just before it. _KERNEL_GUARD=NO in /root/.barracuda.cnf
-### stops the guard acting; it then removes and changes nothing.
+### asks for the night window's reboot. Debian's 6.1.192-2 (6.1.0-56) carries
+### the fix, so the pattern names only the broken builds, their Debian 11 forms
+### included; on a server an earlier, wider pattern touched, the pin is
+### rewritten and the healthy branch below brings back the meta package (and
+### with it the fixed kernel) and GRUB's default. _KERNEL_GUARD=NO in
+### /root/.barracuda.cnf stops the guard acting; it then removes and changes
+### nothing.
 ###
-_KGUARD_RE='^6\.1\.(19[1-9]|[2-9][0-9][0-9])([^0-9]|$)'
+_KGUARD_RE='^6\.1\.19[12]-1(~(deb11u|bpo11\+)[0-9]+)?$'
 _KGUARD_PIN="/etc/apt/preferences.d/99-boa-kernel-guard"
 _KGUARD_DIR="/etc/boa/control/kernel-guard"
 _KGUARD_LOG="/var/log/boa/kernel-guard.log"
@@ -1751,8 +1755,8 @@ _kernel_guard() {
   done < <(dpkg-query -W -f '${Package}\t${Version}\t${db:Status-Status}\n' 'linux-image-6.1.0-*' 2> /dev/null)
   [ "${_sixOne}" = "YES" ] || return 0
   _write_managed_apt_conf "${_KGUARD_PIN}" \
-"Explanation: Managed by BOA (autoupboa), the kernel guard: 6.1.191 and later freeze ext4
-Explanation: (a NULL folio taken for an error in the block allocator). _KERNEL_GUARD=NO stops it.
+"Explanation: Managed by BOA (autoupboa), the kernel guard: Debian's 6.1.191-1 and 6.1.192-1 freeze ext4
+Explanation: (a NULL folio in the block allocator, fixed in 6.1.192-2). _KERNEL_GUARD=NO stops it.
 Package: linux-image-* linux-headers-* linux-kbuild-*
 Pin: version /${_KGUARD_RE}/
 Pin-Priority: -1"
@@ -1763,7 +1767,7 @@ Pin-Priority: -1"
   if [ -n "${_purge}" ]; then
     # shellcheck disable=SC2086
     if _kguard_purge ${_purge}; then
-      _kguard_mail "removed" "The kernel guard removed${_purge} from this server: Debian's 6.1 kernels from 6.1.191 can freeze ext4 (a NULL folio in the block allocator). The running kernel ${_run} stays. Log: ${_KGUARD_LOG}"
+      _kguard_mail "removed" "The kernel guard removed${_purge} from this server: Debian's 6.1.191-1 and 6.1.192-1 kernels can freeze ext4 (a NULL folio in the block allocator). The running kernel ${_run} stays. Log: ${_KGUARD_LOG}"
     else
       _kguard_mail "purge-refused" "The kernel guard could not remove${_purge} from this server. While it stays, a reboot can start it. Log: ${_KGUARD_LOG}"
     fi

@@ -960,8 +960,8 @@
 
 @=> Important Fixes
 
-    * A kernel guard keeps servers off Debian's 6.1 kernels from 6.1.191
-      on (6.1.0-55, 6.1.192-1), whose ext4 block allocator takes a page
+    * A kernel guard keeps servers off Debian's broken 6.1 builds, 6.1.191-1
+      and 6.1.192-1 (6.1.0-55), whose ext4 block allocator takes a page
       the page cache no longer holds for a valid one: under a copy larger
       than the server's memory the kernel oopses inside the journal and
       every write to that filesystem waits until a hard reset. The daily
@@ -973,7 +973,10 @@
       newest other 6.1 kernel and asks for the night window's reboot,
       putting GRUB's default back after it. The night window never
       reboots into such a kernel. Each step is logged and mailed;
-      _KERNEL_GUARD=NO turns it off.
+      _KERNEL_GUARD=NO turns it off. Debian's 6.1.192-2 (6.1.0-56) fixes
+      ext4 and is allowed: a server where an earlier build of the guard
+      kept that fix out too gets it back on the next pass, with its kernel
+      meta package and GRUB's default.
 
     * A package's own job in /etc/cron.d runs on a hosted box. Cron runs
       each such line through /bin/sh, which is websh there, with the
