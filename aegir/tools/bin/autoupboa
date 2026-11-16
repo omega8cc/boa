@@ -1706,12 +1706,14 @@ _kguard_meta_back() {
 # The guard of an earlier release pointed GRUB's default at another kernel
 # while the running one was a build it kept out (a published pattern also
 # caught the fixed 6.1.192-2), recorded the line it replaced, and asked for
-# the night window's reboot. Its reboot request goes; its default goes back
-# once, while GRUB's default is still the one it wrote, and a default
+# the night window's reboot. Once GRUB's stock choice, the newest kernel in
+# /boot, is no broken build, its reboot request goes and its default goes
+# back once, while GRUB's default is still the one it wrote; a default
 # changed by hand since stays. Nothing else here writes GRUB's settings.
 _kguard_old_boot_back() {
   local _rec="${_KGUARD_DIR}/grub-default" _f="/etc/default/grub"
   local _rr="/run/reboot-required.pkgs" _was _cur
+  _kguard_newest_broken && return 0
   if grep -q -s ' (BOA kernel guard)$' "${_rr}"; then
     grep -v ' (BOA kernel guard)$' "${_rr}" > "${_rr}.kguard"
     if [ -s "${_rr}.kguard" ]; then
@@ -1780,8 +1782,8 @@ Pin-Priority: -1"
   # packages and GRUB change only outside a BOA run and the night backup
   _is_protected_run > /dev/null
   [ "${_protectedRun}" = "FALSE" ] || return 0
-  _kguard_old_boot_back
   _kguard_purge
+  _kguard_old_boot_back
   _kguard_meta_back
 }
 
