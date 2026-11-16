@@ -286,10 +286,11 @@ chmod 0600 "${_STATE}" "${_SEEN}" 2> /dev/null
 # when it last grew. A check whose C and S both moved and whose S is the
 # newer grows the row; one that leaves S newer and nothing moved keeps it
 # (nobody visited); a container newer than the stamp ends it, unless both
-# moved (a check landing between a rebuild and its wipe); a row that has not
-# grown for _ROW_GAP seconds starts again. State lines: S prefix C S n first
-# last site account. Report lines: R (a report) or W (watched) prefix n first
-# site account.
+# moved (a check landing between a rebuild and its wipe, or a site fixed
+# since: the row is kept, unreported, and the next check decides); a row that
+# has not grown for _ROW_GAP seconds starts again. State lines: S prefix C S
+# n first last site account. Report lines: R (a report) or W (watched)
+# prefix n first site account.
 _out="$(LC_ALL=C awk -v now="${_NOW}" -v row="${_ROW}" -v gap="${_ROW_GAP}" \
   -v nf="${_NAMES}" -v sf="${_STATE}" -v rf="${_REPL}" "${_KEYS_AWK}"'
 function num(v) { return (v ~ /^[0-9]+(\.[0-9]+)?$/) }
@@ -344,6 +345,11 @@ END {
     }
     if (!x && n == 0) continue
     printf "S %s %s %s %d %s %s %s %s\n", p, c, (d == "" ? "-" : d), n, f, lg, s, a
+    # A row kept with the container the newer is never reported at that
+    # check: it is as likely a site just fixed (one rebuild after its last
+    # wipe) as a check between a request's rebuild and its wipe, and the
+    # next check tells them apart.
+    if (!x) continue
     printf "%s %s %d %s %s %s\n", ((n >= row) ? "R" : "W"), p, n, f, s, a
   }
 }' "${_KEYS}")"
