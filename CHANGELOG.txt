@@ -884,6 +884,20 @@
       within the limit the target's other reads have, in batch mode with
       the target's host key learned first.
 
+    * Ægir Provision: two tasks of one account no longer cross their
+      database dumps. Every site of an account dumps into one fast store,
+      backups/tmp_expim, and a Migrate (the hostmaster's Clone too, and a
+      Restore of an archive with no database) dumps in its task and imports
+      in its deploy. Nothing held the store between the two, so a task run
+      beside it by hand, or beside a task runner past its lock, could
+      replace the dump, and the Migrate then imported the other site's
+      database as its own and dropped its own. A task now holds the
+      account's store from its first use to its last; a second one waits,
+      saying every minute which task holds it, for up to an hour, then
+      stops before it touches anything. A dump of another database is
+      imported only by the task that made it, and a Backup or a deploy
+      moves aside only its own task's dump.
+
     * The standby of a move or a standing mirror gets root's rotated MySQL
       password within minutes. A barracuda pass rotates it on the box that
       owns it (on Percona 8.4 every pass), and replication carries the new
