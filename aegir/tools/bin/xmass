@@ -9899,6 +9899,10 @@ _xmass_finalize_dry() {   # 1 tgt
 _XMASS_PRUNE=NO
 _XMASS_ARCH_HELD=""
 _XMASS_ARCH_HOLD_ADDITIVE=NO
+_XMASS_ARCH_SETS_FILE=""
+_XMASS_ARCH_SETS_LNK=""
+_XMASS_ARCH_SETS_SKIP=""
+_XMASS_ARCH_SETS_ROOT=""
 _XMASS_MAX_DELETE="${_XMASS_MAX_DELETE:-5000}"
 
 # The one explanation of a tripped delete guard. rc 25 can surface from
@@ -11170,9 +11174,11 @@ _xmass_materialise_out_links() {
       *) _tmArg="" ;;
     esac
     _rcStore=0
+    # a linked sql/ or cluster/ of arch takes its sets' filter here, after
+    # the nested excludes (see _xmass_arch_sets_filter)
     _xmass_handle_store "${_root}/${_rel}" "${_dstRoot}/${_rel}" "" \
-      "${_tgt}" "${_tmArg}" "${_la} ${_nExcl}" "out-of-root link ${_root}/${_rel}" \
-      "${_acct}" uid || _rcStore=$?
+      "${_tgt}" "${_tmArg}" "${_la} ${_nExcl}$(_xmass_arch_sets_link_arg "${_root}" "${_rel}" "${_depth}" "${_acct}")" \
+      "out-of-root link ${_root}/${_rel}" "${_acct}" uid || _rcStore=$?
     if [ "${_rcStore}" != "0" ]; then
       _XMASS_STORE_RC="${_rcStore}"
       continue
@@ -12792,31 +12798,109 @@ _xmass_arch_hold_applies() {
 # The hold is asked once, before the leg's checks and rsync's file list, so a
 # backup that starts in between would still be carried mid-dump. It writes
 # into a set made at its start, so the leg lists the sets under sql/ and
-# cluster/ BEFORE it asks: this prints a filter file that carries each entry
-# listed and hides any other from this pass, which leaves a set made after
-# the hold said idle to the next pass. Hidden on the sending side only, so a
-# set the source rotated away still goes on the target. Nothing printed, and
-# the leg carries as it always did, when the file cannot be written or an
-# entry's name is not a plain one.
+# cluster/ BEFORE it asks, into rsync filter files that carry each entry
+# listed and hide any other from this pass: a set made after the hold said
+# idle waits for the next pass. A base not there yet gets its hide line too
+# (a box's first backup of that kind). A base that is a link is listed where
+# it leads: inside arch, in the leg's own file at that path; outside it, in
+# a file of its own for the copy of that link (_xmass_materialise_out_links,
+# through _xmass_arch_sets_link_arg). Hidden on the sending side only, so a
+# set the source rotated away still goes on the target. A base whose entries
+# cannot all be written as rules (a name outside [A-Za-z0-9._+~@%:,=-], a
+# link that leads to no usable dir) or whose file cannot be written is not
+# listed: its copy runs as it always did, and _XMASS_ARCH_SETS_SKIP says
+# which and why. Globals only (the unwind removes the files), nothing on
+# stdout.
 _xmass_arch_sets_filter() {   # 1 = arch's real dir
-  local _f _b _e _n _rules=""
+  local _b _e _n _r _a _f _lr _bad _rules=""
+  _xmass_arch_sets_drop
+  _XMASS_ARCH_SETS_ROOT="$1"
   for _b in sql cluster; do
-    [ -d "$1/${_b}" ] && [ ! -L "$1/${_b}" ] || continue
-    for _e in "$1/${_b}"/* "$1/${_b}"/.[!.]* "$1/${_b}"/..?*; do
-      [ -e "${_e}" ] || [ -L "${_e}" ] || continue
-      _n="${_e##*/}"
-      case "${_n}" in ''|*[!A-Za-z0-9._-]*) return 0 ;; esac
-      _rules="${_rules}+ /${_b}/${_n}"$'\n'
-    done
-    _rules="${_rules}H /${_b}/*"$'\n'
+    _a="/${_b}"
+    _r="$1/${_b}"
+    if [ -L "${_r}" ]; then
+      _r="$(readlink -f "$1/${_b}" 2> /dev/null)"
+      if [ -z "${_r}" ] || [ ! -d "${_r}" ] || [ "${_r}" = "$1" ]; then
+        _XMASS_ARCH_SETS_SKIP="${_XMASS_ARCH_SETS_SKIP:+${_XMASS_ARCH_SETS_SKIP}, }${_b}/ (a link to no usable dir)"
+        continue
+      fi
+      case "${_r}" in
+        "$1"/*) _a="/${_r#"$1"/}" ;;
+        *) _a="" ;;
+      esac
+      case "${_a}" in
+        *[!A-Za-z0-9._+~@%:,=/-]*)
+          _XMASS_ARCH_SETS_SKIP="${_XMASS_ARCH_SETS_SKIP:+${_XMASS_ARCH_SETS_SKIP}, }${_b}/ (a link to a path a rule cannot carry)"
+          continue
+          ;;
+      esac
+    fi
+    _lr=""
+    _bad=""
+    if [ -d "${_r}" ]; then
+      for _e in "${_r}"/* "${_r}"/.[!.]* "${_r}"/..?*; do
+        [ -e "${_e}" ] || [ -L "${_e}" ] || continue
+        _n="${_e##*/}"
+        case "${_n}" in ''|*[!A-Za-z0-9._+~@%:,=-]*) _bad=YES; break ;; esac
+        _lr="${_lr}+ ${_a}/${_n}"$'\n'
+      done
+    fi
+    if [ -n "${_bad}" ]; then
+      _XMASS_ARCH_SETS_SKIP="${_XMASS_ARCH_SETS_SKIP:+${_XMASS_ARCH_SETS_SKIP}, }${_b}/ (a name a rule cannot carry)"
+      continue
+    fi
+    _lr="${_lr}H ${_a}/*"$'\n'
+    if [ -n "${_a}" ]; then
+      _rules="${_rules}${_lr}"
+      continue
+    fi
+    _f="$(mktemp /tmp/xmass-archsets.XXXXXX 2> /dev/null)" || _f=""
+    [ -n "${_f}" ] && _XMASS_ARCH_SETS_LNK="${_XMASS_ARCH_SETS_LNK}${_b}=${_f} "
+    if [ -z "${_f}" ] || ! printf '%s' "${_lr}" > "${_f}" 2> /dev/null; then
+      _XMASS_ARCH_SETS_SKIP="${_XMASS_ARCH_SETS_SKIP:+${_XMASS_ARCH_SETS_SKIP}, }${_b}/ (no filter file)"
+    fi
   done
   [ -n "${_rules}" ] || return 0
-  _f="$(mktemp /tmp/xmass-archsets.XXXXXX 2> /dev/null)" || return 0
-  if ! printf '%s' "${_rules}" > "${_f}" 2> /dev/null; then
-    rm -f "${_f}"
-    return 0
+  _f="$(mktemp /tmp/xmass-archsets.XXXXXX 2> /dev/null)" || _f=""
+  _XMASS_ARCH_SETS_FILE="${_f}"
+  if [ -z "${_f}" ] || ! printf '%s' "${_rules}" > "${_f}" 2> /dev/null; then
+    [ -n "${_f}" ] && rm -f -- "${_f}"
+    _XMASS_ARCH_SETS_FILE=""
+    _XMASS_ARCH_SETS_SKIP="${_XMASS_ARCH_SETS_SKIP:+${_XMASS_ARCH_SETS_SKIP}, }sql/ and cluster/ (no filter file)"
   fi
-  printf '%s' "${_f}"
+  return 0
+}
+
+# The filter option for the copy of a linked sql/ or cluster/ that leads
+# outside arch, the link at arch's top named by $2: the one place
+# _xmass_arch_sets_filter's own file for it applies. Nothing for any other
+# copy.
+_xmass_arch_sets_link_arg() {   # 1 = root  2 = link  3 = depth  4 = account
+  local _p
+  [ -z "$4" ] && [ "$3" = "1" ] && [ -n "${_XMASS_ARCH_SETS_ROOT}" ] \
+    && [ "$1" = "${_XMASS_ARCH_SETS_ROOT}" ] || return 0
+  for _p in ${_XMASS_ARCH_SETS_LNK}; do
+    if [ "${_p%%=*}" = "$2" ] && [ -s "${_p#*=}" ]; then
+      printf ' --filter=._%s' "${_p#*=}"
+      return 0
+    fi
+  done
+  return 0
+}
+
+# Removes the filter files the arch leg made and forgets them; the unwind
+# runs it too, so a pass stopped by a signal leaves none behind.
+_xmass_arch_sets_drop() {
+  local _p
+  [ -n "${_XMASS_ARCH_SETS_FILE}" ] && rm -f -- "${_XMASS_ARCH_SETS_FILE}"
+  for _p in ${_XMASS_ARCH_SETS_LNK}; do
+    rm -f -- "${_p#*=}"
+  done
+  _XMASS_ARCH_SETS_FILE=""
+  _XMASS_ARCH_SETS_LNK=""
+  _XMASS_ARCH_SETS_SKIP=""
+  _XMASS_ARCH_SETS_ROOT=""
+  return 0
 }
 
 # arch: storage-aware -- mirror onto the target mount, or de-reference to root,
@@ -12828,17 +12912,20 @@ _xmass_arch_sets_filter() {   # 1 = arch's real dir
 # The sets' filter goes after those excludes: rsync takes the first rule that
 # matches, so an excluded link stays excluded.
 _xmass_sync_arch() {
-  local _archReal="" _rcArch=0 _why="" _sets=""
+  local _archReal="" _rcArch=0 _why=""
   if [ -L "/data/disk/arch" ]; then
     _archReal="$(readlink -f /data/disk/arch 2>/dev/null)"
   elif [ -d "/data/disk/arch" ]; then
     _archReal="/data/disk/arch"
   fi
   if [ -n "${_archReal}" ] && [ -d "${_archReal}" ] && _xmass_arch_hold_applies; then
-    _sets="$(_xmass_arch_sets_filter "${_archReal}")"
+    _xmass_arch_sets_filter "${_archReal}"
+    if [ -n "${_XMASS_ARCH_SETS_SKIP}" ]; then
+      _xmass_warn_daily "arch_sets" "  arch: the backup sets of ${_XMASS_ARCH_SETS_SKIP} are not listed before the backup check: there a backup that starts during a pass can still be carried mid-dump"
+    fi
   fi
   if _why="$(_xmass_arch_held)"; then
-    [ -n "${_sets}" ] && rm -f "${_sets}"
+    _xmass_arch_sets_drop
     _XMASS_ARCH_HELD="${_why}"
     _info "  arch: held back this pass, ${_why}; the next pass carries it"
     return 0
@@ -12848,12 +12935,12 @@ _xmass_sync_arch() {
     _info "  link sweep arch (${_archReal}): ${_XMASS_LNK_RPT}"
   fi
   _xmass_handle_store "/data/disk/arch" "/data/disk/arch" "files/system/arch" \
-    "${_tgt}" "${_TGT_MNT}" "$(_xmass_leg_args "${_archReal:-/data/disk/arch}") ${_XMASS_OUT_EXCL}${_sets:+ --filter=._${_sets}}" "arch" || _rcArch=$?
-  [ -n "${_sets}" ] && rm -f "${_sets}"
+    "${_tgt}" "${_TGT_MNT}" "$(_xmass_leg_args "${_archReal:-/data/disk/arch}") ${_XMASS_OUT_EXCL}${_XMASS_ARCH_SETS_FILE:+ --filter=._${_XMASS_ARCH_SETS_FILE}}" "arch" || _rcArch=$?
   [ "${_rcArch}" != "0" ] && _XMASS_STORE_RC="${_rcArch}"
   if [ "${_rcArch}" = "0" ] && [ -n "${_archReal}" ] && [ -d "${_archReal}" ]; then
     _xmass_materialise_out_links "${_archReal}" "/data/disk/arch"
   fi
+  _xmass_arch_sets_drop
   return 0
 }
 
@@ -16494,6 +16581,8 @@ _xmass_verb_unwind() {
     rm -f "${_XMASS_SAID_FILE}"
     _XMASS_SAID_FILE=""
   fi
+  # the arch leg's filter files, when a signal cut its copy short
+  _xmass_arch_sets_drop
   [ "${_rc}" != "0" ] && [ "${_XMASS_CSF_KEEP}" != "YES" ] && _xmass_csf_undo_peers
   # a fenced target's cron, started by a prep-target that did not finish
   _xmass_target_cron_refence
