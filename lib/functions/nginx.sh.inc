@@ -1046,12 +1046,17 @@ _nginx_initd_check() {
     ### copies once the store is armed: configtest, reload and start bring the
     ### copies up to date first, so an older script is refreshed.
     _X_INIT_TEST_E=$(cat /etc/init.d/nginx | grep _ngxstore_sync 2>&1)
+    ### A restart tests the configuration first and keeps a running nginx
+    ### when the test fails: an older script stops every site on a file
+    ### nginx -t rejects, so it is refreshed.
+    _X_INIT_TEST_F=$(cat /etc/init.d/nginx | grep restart_tested 2>&1)
   fi
   if [[ "${_X_INIT_TEST_A}" =~ ULIMIT ]] \
     && [[ "${_X_INIT_TEST_B}" =~ Giedymin ]] \
     && [[ "${_X_INIT_TEST_C}" =~ rotate ]] \
     && [[ "${_X_INIT_TEST_D}" =~ standby_promoted ]] \
-    && [[ "${_X_INIT_TEST_E}" =~ _ngxstore_sync ]]; then
+    && [[ "${_X_INIT_TEST_E}" =~ _ngxstore_sync ]] \
+    && [[ "${_X_INIT_TEST_F}" =~ restart_tested ]]; then
     chown root:root /etc/init.d/nginx &> /dev/null
     chmod 755 /etc/init.d/nginx &> /dev/null
     _mrun "update-rc.d nginx defaults"
@@ -1064,6 +1069,28 @@ _nginx_initd_check() {
     _mrun "update-rc.d nginx defaults"
     _mrun "service nginx start"
   fi
+}
+
+### The init script's restart tests the configuration first and keeps a
+### running nginx when the test fails, so the configuration this pass wrote
+### is not live. Said as a failure notice (the pass mails it) and in nginx's
+### incident log, with nginx -t's own first error.
+_nginx_restart_report() {
+  local _why _state
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _nginx_restart_report"
+  fi
+  command -v nginx > /dev/null 2>&1 || return 0
+  nginx -t > /dev/null 2>&1 && return 0
+  _why=$(nginx -t 2>&1 | grep -m1 -E '\[(emerg|alert|crit)\]' | cut -c1-300)
+  if pidof nginx > /dev/null 2>&1; then
+    _state="the running Nginx keeps its previous configuration"
+  else
+    _state="Nginx is not running"
+  fi
+  _msg "OOPS: Nginx was not restarted, nginx -t fails (${_why:-no reason given}); ${_state}"
+  mkdir -p /var/log/boa
+  echo "$(date) Nginx not restarted by a barracuda pass: nginx -t fails (${_why:-no reason given}); ${_state}" >> /var/log/boa/nginx.incident.log
 }
 
 _nginx_mime_check_fix() {
@@ -1131,14 +1158,18 @@ _nginx_limit_req_zones_update() {
   ### must never be able to trust a file the running nginx cannot load.
   ### Skip the test where nginx is not installed yet (fresh INIT ordering);
   ### the shipped content is static and known-good on every nginx BOA builds.
+  ### nginx -t's own first error is named: the file it fails on may be another
+  ### one, such as a broken line in a map file root keeps under /data/conf.
   if command -v nginx > /dev/null 2>&1; then
     if ! nginx -t > /dev/null 2>&1; then
+      local _why
+      _why=$(nginx -t 2>&1 | grep -m1 -E '\[(emerg|alert|crit)\]' | cut -c1-300)
       if [ -n "${_zones_bak}" ] && [ -e "${_zones_bak}" ]; then
         mv -f "${_zones_bak}" "${_zones_dst}"
       else
         rm -f "${_zones_dst}"
       fi
-      _msg "ALERT: nginx -t rejected ${_zones_dst}; previous state restored"
+      _msg "ALERT: nginx -t rejected ${_zones_dst}; previous state restored (${_why:-no reason given})"
       return 0
     fi
   fi
@@ -1148,11 +1179,12 @@ _nginx_limit_req_zones_update() {
   return 0
 }
 
-### The wild-ssl front is a static copy in the master render tree and the
-### upgrade path restarts nginx without a configtest, so its crawler-fleet
-### guard may only exist while the installed zones file declares the variable
-### it reads. The range is anchored on the exact marker lines, so text that
-### merely quotes a marker can never widen what is deleted.
+### The wild-ssl front is a static copy in the master render tree, and with a
+### configuration nginx -t rejects no reload or restart brings in anything
+### new, so its crawler-fleet guard may only exist while the installed zones
+### file declares the variable it reads. The range is anchored on the exact
+### marker lines, so text that merely quotes a marker can never widen what is
+### deleted.
 _nginx_wild_ssl_fleet_gate() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _nginx_wild_ssl_fleet_gate"

@@ -14829,6 +14829,7 @@ _initd_update() {
       _msg "NOTE: replication standby -- Nginx restart skipped (web tier held)"
     else
       _mrun "service nginx restart"
+      _nginx_restart_report
     fi
     if [ ! -e "/root/.proxy.cnf" ]; then
       # Valkey has no reload: the signal one sends only reaches its thread

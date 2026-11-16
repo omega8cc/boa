@@ -341,6 +341,32 @@ stop() {
     return
 }
 
+# A restart stops every site before it starts nginx again, so with a
+# configuration nginx -t rejects (one broken line in a file root keeps under
+# /data/conf is enough) every site stays down. The running nginx is kept
+# instead and the caller gets a non-zero status, as with reload. With no
+# nginx running there is nothing to keep and start goes ahead as before; on a
+# standby held by its marker files the restart stops nginx as before, since
+# start() keeps a held web tier down.
+restart_tested() {
+    isRunning
+    isAlive=$?
+
+    if [ "${isAlive}" -eq $TRUE ] \
+      && { [ ! -e "/root/.standby.cnf" ] \
+        || [ -e "/root/.standby.serve.cnf" ] \
+        || [ -e "/var/log/boa/.standby_promoted.pid" ]; } \
+      && ! configtest; then
+        log_failure_msg "$DESCRIPTION not restarted: nginx -t failed, the running nginx is kept"
+        rc=1
+        return
+    fi
+
+    stop
+    sleep 1
+    start
+}
+
 reload() {
     configtest || return $?
 
@@ -470,12 +496,7 @@ case "$1" in
         stop
         ;;
     restart|force-reload)
-        stop
-        # if [ $rc -ne 0 ]; then
-        #     script_exit
-        # fi
-        sleep 1
-        start
+        restart_tested
         ;;
     reload)
         $1

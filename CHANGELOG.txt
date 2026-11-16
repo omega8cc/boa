@@ -989,6 +989,18 @@
       adds, after its own, so every command it found before is found the
       same; any other identity still gets websh's PATH alone.
 
+    * BOA's nginx init script tests the configuration before a restart and
+      keeps the running nginx when the test fails. A restart stopped nginx
+      and started it again, so one broken line in a file nginx reads, such
+      as the per-country cache list root keeps under /data/conf, took every
+      site on the server down at the next barracuda pass, which always
+      restarts nginx, while a reload with the same file was refused and
+      kept serving. The restart now answers with an error instead, and the
+      pass says in its mail and in nginx's incident log that its new
+      configuration is not live, with nginx -t's first error. A restart
+      with nginx stopped, and one on a replication standby holding its web
+      tier down, work as before.
+
     * xoct's two reads of the target that decide a move's next step end
       when the target stops answering once connected: the proxy's read of
       the account's import there, before its first write, and the check of
