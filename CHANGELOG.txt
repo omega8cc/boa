@@ -2555,6 +2555,17 @@
       every other Robo release in. Drupal 11 and the other majors keep the
       plain require.
 
+    * Ægir Provision: the Drush a platform Verify adds rules out the three
+      Robo releases on every codebase whose Symfony Console is older than
+      7.4, no longer on Drupal 10 alone. Drupal 11.0, 11.1 and 11.2 before
+      11.2.12 keep Console 7.1 to 7.3, so a codebase on one of them that
+      had no Drush was given Robo 5.2.3 and a Drush that stopped at start,
+      as on Drupal 10 before. The require follows the Console the codebase
+      installed, read from Composer's own record: Drupal 11.2.12 and
+      later, on Console 7.4, keep the plain require and their
+      composer.json gains no line. Where no Console version can be read,
+      Drupal 10 alone gets the constraint, as before.
+
     * staticbuild builds OpenCulturas with the dependency patches the
       distribution declares and applies none by hand. The one patch it
       applied by hand, for entity_reference_revisions, came from a fixed
