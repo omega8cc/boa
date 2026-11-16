@@ -275,15 +275,19 @@
     * A watchdog for a Drupal 8+ site that compiles its whole service
       container again on every request: its own code invalidates the
       container while it serves requests (an observed store lost about 0.9
-      seconds a request that way for days, and nothing showed it). Every ten
-      minutes container_guard reads each site's cached container and its
-      bin's wipe stamp in Valkey, by SCAN, and reports a site whose container
-      was rewritten and already wiped again at three checks in a row: one
-      line a day per site in /var/log/boa/container_guard.incident.log, and
-      at most one alert mail a day naming each site, since when, and what to
-      look for in its code. A cache rebuild, a Verify, a Migrate, a module
-      install, Clear all caches and a Valkey restart never read as the
-      fault. It only reads; _USE_CONTAINER_GUARD=NO turns it off.
+      seconds a request that way for days, and nothing showed it). About
+      every ten minutes container_guard reads each site's cached container
+      and its bin's wipe stamp in Valkey, by SCAN, and reports a site whose
+      container was rewritten and wiped again since the last check at three
+      checks within an hour of each other, or rebuilt from nothing at three
+      checks in a row: one line a day per site in
+      /var/log/boa/container_guard.incident.log, and at most one alert mail
+      a day naming each site, since when, and what to look for in its code.
+      A cache rebuild, a Verify, a Migrate, a module install, Clear all
+      caches and a Valkey restart never read as the fault, and a read that
+      fails or comes back short judges no site. It reads Valkey over its
+      local socket or the default local port, and only reads;
+      _USE_CONTAINER_GUARD=NO turns it off.
 
 @=> Security
 
