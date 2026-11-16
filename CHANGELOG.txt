@@ -960,23 +960,24 @@
 
 @=> Important Fixes
 
-    * A kernel guard keeps servers off Debian's broken 6.1 builds, 6.1.191-1
-      and 6.1.192-1 (6.1.0-55), whose ext4 block allocator takes a page
-      the page cache no longer holds for a valid one: under a copy larger
-      than the server's memory the kernel oopses inside the journal and
-      every write to that filesystem waits until a hard reset. The daily
-      security updates install these kernels by themselves. On every pass
-      autoupboa now keeps them out of apt with a pin, removes one that is
-      installed but not running (a meta package that goes with it comes
-      back with a newer kernel it allows), drops its line from the reboot
-      request, and on a server that runs one points the next boot at the
-      newest other 6.1 kernel and asks for the night window's reboot,
-      putting GRUB's default back after it. The night window never
-      reboots into such a kernel. Each step is logged and mailed;
-      _KERNEL_GUARD=NO turns it off. Debian's 6.1.192-2 (6.1.0-56) fixes
-      ext4 and is allowed: a server where an earlier build of the guard
-      kept that fix out too gets it back on the next pass, with its kernel
-      meta package and GRUB's default.
+    * A kernel guard keeps servers off Debian's 6.1.192-1 (6.1.0-55),
+      whose ext4 block allocator takes a page the page cache no longer
+      holds for a valid one: under a copy larger than the server's memory
+      the kernel oopses inside the journal and every write to that
+      filesystem waits until a hard reset (Debian bug 1154101, fixed in
+      6.1.192-2). The daily security updates install such a kernel by
+      themselves. On a server with a 6.1 kernel every autoupboa pass keeps
+      the broken builds, 6.1.191-1 and 6.1.192-1, out of apt with a pin,
+      so no upgrade by hand brings one either, and removes such a kernel
+      that is not running once apt's dry run removes nothing but kernel
+      images and none of them is held; a meta package that goes with it
+      comes back when apt offers the fixed build, and the removed kernel's
+      line leaves the reboot request. The night window never reboots while
+      the newest kernel in /boot is a broken build. The guard never sets
+      GRUB's default. A server where an earlier dev build of the guard kept
+      the fix out gets it back on the next pass, with its meta package and
+      its GRUB default. What the guard cannot do is logged and mailed;
+      _KERNEL_GUARD=NO turns it off.
 
     * A package's own job in /etc/cron.d runs on a hosted box. Cron runs
       each such line through /bin/sh, which is websh there, with the
