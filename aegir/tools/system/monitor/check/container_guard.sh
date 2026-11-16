@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# BOA service container watchdog — container_guard v1.1.
+# BOA service container watchdog — container_guard v1.2.
 #
 # Drupal 8+ compiles its service container once and keeps it in a cache; on
 # BOA that cache is Valkey (db 8), one hash per site and container under
@@ -20,24 +20,32 @@
 #     both had been written again since the previous check and the stamp was
 #     the newer of the two (its code invalidates the container while it
 #     serves requests, and the next request compiles it again);
-#   - rebuilt: at three checks in a row both had been written again and the
-#     container was the newer (its code rebuilds the container while it serves
-#     requests: rebuildContainer(), drupal_flush_all_caches(), an install).
+#   - rebuilt: at six checks in a row both had been written again, the
+#     container the newer at each (its code throws the container away and
+#     compiles it again inside its requests: drupal_flush_all_caches(), or
+#     invalidateContainer() then rebuildContainer()). Someone clearing all
+#     caches from the admin pages again and again for an hour looks the same,
+#     and the report says so.
 #
-# A cache rebuild (drush cr, the panel's Flush all caches), a Verify, a
-# Migrate and a module install from the command line write no container
-# stamp, the admin page's Clear all caches writes one and then the container,
-# and a Valkey restart empties both, so none of them, done once, is ever
-# reported; a stamp newer than a container that nothing has rewritten since
-# (a site nobody visited after such an action) counts nothing. A site is
-# listed only at a check where both moved. Read-only: it changes nothing on
-# any site, cache or panel.
+# A cache rebuild (drush cr, the panel's Flush all caches), a Verify and a
+# module install from the command line write the container and no stamp; a
+# Migrate and the admin page's Clear all caches write the stamp and then the
+# container; a Valkey restart empties both. So none of them, done once, is
+# ever reported, and a stamp newer than a container that nothing has
+# rewritten since (a site nobody visited after such an action) counts
+# nothing. Code that rebuilds the container without throwing it away first
+# (rebuildContainer() alone, a module install in every request) writes no
+# stamp and is not seen. Read-only: it changes nothing on any site, cache or
+# panel.
 #
-# A site is named, with its account, by the path its container's cache key
-# carries, else by the vhost name whose md5 starts the prefix. Each site gets
-# one line a day in the incident log, at most fifty a run; the host's alert
-# mail goes out at most once a day, listing the sites found so far that day
-# (a site found after it is in the next day's mail if it is still found).
+# A site is named, with its account, by its own sites/<name>/services.yml or
+# the sites/<name> deployment identifier its container's cache key carries,
+# else by the vhost name whose md5 starts the prefix. Each site gets one line
+# a day in the incident log, at most fifty a run, the rest counted and
+# named by a later check. The host's alert mail goes out at most once a day,
+# from the first check that finds a site, listing every site found that day
+# so far, among them each site still counted as thrown away (a site first
+# found after it is in the next day's mail if it is found again by then).
 # Valkey is read over its socket, or 127.0.0.1:6379 where there is none; a
 # box that cannot be read gets one incident line a day saying so.
 #
@@ -58,15 +66,17 @@ _pthDat="/var/log/boa/container_guard"
 _STAMP="${_pthDat}/.last_run"
 _STATE="${_pthDat}/state"
 _SEEN="${_pthDat}/reported"
+_FOUND="${_pthDat}/found"
 _MAILED="${_pthDat}/.mailed"
 _UNREAD="${_pthDat}/.unread"
 _pthOml="/var/log/boa/container_guard.incident.log"
 _VK_CLI="/usr/bin/valkey-cli"
 _VK_SOCK="/run/valkey/valkey.sock"
 _VK_PASS="/root/.valkey.pass.txt"
-# checks that make a report, and the longest gap in seconds between two
-# checks that grow the same row
+# checks that make a report of each kind, and the longest gap in seconds
+# between two checks that grow the same thrown-away row
 _ROW=3
+_ROW_REBUILT=6
 _ROW_GAP=3600
 # sites a run writes to the log and the mail lists, the rest counted
 _MAX_SITES=50
@@ -235,7 +245,7 @@ _CMDS="${_pthDat}/.cmds"
 _REPL="${_pthDat}/.replies"
 _NAMES="${_pthDat}/.names"
 _cleanup() {
-  rm -f "${_KEYS}" "${_CMDS}" "${_REPL}" "${_NAMES}" "${_STATE}.new" "${_SEEN}.new"
+  rm -f "${_KEYS}" "${_CMDS}" "${_REPL}" "${_NAMES}" "${_STATE}.new" "${_SEEN}.new" "${_FOUND}.new"
 }
 trap _cleanup EXIT
 
@@ -280,11 +290,12 @@ function kind(k,   i) {
 # One read per key, sent down one connection: HGET created for a container,
 # GET for a stamp. In CSV each reply is one line whatever it holds (a value
 # with a newline is escaped, a missing key is NULL, an error reads ERROR,...),
-# cut to 80 characters, since no timestamp is longer and a tenant can store a
-# huge value. Reads that fail come back as fewer lines (a lost connection
-# writes to stderr and still exits 0) or as errors from the server itself
-# (no password, loading, no free client): either way nothing is judged. A
-# WRONGTYPE error belongs to one key and only that key is left out.
+# cut to 80 characters, since no timestamp is longer, so the reply file and
+# the judgement stay small whatever a key holds. Reads that fail come back as
+# fewer lines (a lost connection writes to stderr and still exits 0) or as
+# errors from the server itself (no password, loading, no free client):
+# either way nothing is judged. A WRONGTYPE error belongs to one key and only
+# that key is left out.
 LC_ALL=C awk "${_KEYS_AWK}"'
   { t = kind($0) }
   t == "C" { print "HGET \047" $0 "\047 created" }
@@ -318,23 +329,24 @@ for _v in /data/disk/*/config/server_master/nginx/vhost.d/*; do
 done > "${_NAMES}" 2> /dev/null
 
 _NOW="$(date +%s)"
-touch "${_STATE}" "${_SEEN}"
-chmod 0600 "${_STATE}" "${_SEEN}" 2> /dev/null
+touch "${_STATE}" "${_SEEN}" "${_FOUND}"
+chmod 0600 "${_STATE}" "${_SEEN}" "${_FOUND}" 2> /dev/null
 
 # The judgement, per prefix with a stamp: the newest container time (C), the
 # stamp (S), and from the last check its C and S, the thrown-away row (n),
-# the rebuilt row (m), when the rows began (f, 0 for none) and when they last
-# grew (lg). A check where both moved and S is the newer grows n and ends m;
-# where both moved and C is the newer, it grows m and keeps n (a check
-# between the rebuild and the wipe of one request, or a site fixed since: the
-# next check tells them apart); S the newer with nothing moved keeps n (nobody
-# visited); C the newer with nothing moved ends both. Rows that have not
-# grown for _ROW_GAP seconds start again. A prefix is reported only at a
-# check that moved it: n at _ROW with S the newer, or m at _ROW. State lines:
-# S prefix C S n first last site account m. Report lines: R (thrown away),
-# B (rebuilt) or W (watched) prefix rows first site account.
-_out="$(LC_ALL=C awk -v now="${_NOW}" -v row="${_ROW}" -v gap="${_ROW_GAP}" \
-  -v nf="${_NAMES}" -v sf="${_STATE}" -v rf="${_REPL}" "${_KEYS_AWK}"'
+# the rebuilt row (m), when the watch began (f, 0 for none) and when n last
+# grew (lg). A check where both moved grows n when S is the newer and m when
+# C is, and keeps the other row: a check can land inside one request, between
+# its wipe and its rebuild or between a rebuild and the next wipe, and a
+# site fixed since shows C the newer once. S the newer with nothing moved
+# keeps n (nobody visited) and ends m; C the newer with nothing moved ends
+# both. n ends when it has not grown for _ROW_GAP seconds. A prefix is
+# thrown away while n is at _ROW and S the newer, and rebuilt at a check
+# that grows m to _ROW_REBUILT or past it. State lines: S prefix C S n first
+# last site account m. Report lines: R (thrown away), B (rebuilt) or W
+# (watched) prefix rows first site account.
+_out="$(LC_ALL=C awk -v now="${_NOW}" -v row="${_ROW}" -v rowb="${_ROW_REBUILT}" \
+  -v gap="${_ROW_GAP}" -v nf="${_NAMES}" -v sf="${_STATE}" -v rf="${_REPL}" "${_KEYS_AWK}"'
 function num(v) {
   if (v !~ /^"[0-9]+(\.[0-9]+)?"$/) return ""
   return substr(v, 2, length(v) - 2)
@@ -364,7 +376,8 @@ BEGIN {
   if (!(p in cc) || v + 0 > cc[p] + 0) {
     cc[p] = v
     s = ""; a = ""
-    if (match(k, /[\/:]sites\/[A-Za-z0-9][A-Za-z0-9._-]*/)) s = substr(k, RSTART + 7, RLENGTH - 7)
+    if (match(k, /\/sites\/[A-Za-z0-9][A-Za-z0-9._-]*\/services\.yml/)) s = substr(k, RSTART + 7, RLENGTH - 20)
+    else if (match(k, /[:.]sites\/[A-Za-z0-9][A-Za-z0-9._-]*:/)) s = substr(k, RSTART + 7, RLENGTH - 8)
     if (s == "default" || s == "all") s = ""
     if (match(k, /\/data\/disk\/[A-Za-z0-9._-]+\//)) a = substr(k, RSTART + 11, RLENGTH - 12)
     site[p] = s; acct[p] = a
@@ -385,17 +398,18 @@ END {
     moved = (had && pc[p] != c && ps[p] != d)
     if (had) { n = pn[p] + 0; m = pm[p] + 0; f = pf[p] + 0; lg = pl[p] + 0 }
     else { n = 0; m = 0; f = 0; lg = 0 }
-    if (f > 0 && now - lg > gap) { n = 0; m = 0; f = 0 }
-    if (x && moved) { n++; m = 0 }
+    if (n > 0 && now - lg > gap) { n = 0; if (m == 0) f = 0 }
+    if (moved) {
+      if (x) { n++; lg = now }
+      else m++
+    }
     else if (x) m = 0
-    else if (moved) m++
     else { n = 0; m = 0 }
     if (n == 0 && m == 0 && !x) f = 0
-    else if (f == 0) { f = now; lg = now }
-    if (moved) lg = now
+    else if (f == 0) f = now
     printf "S %s %s %s %d %.0f %.0f %s %s %d\n", p, c, d, n, f, lg, s, a, m
-    if (moved && x && n >= row) printf "R %s %d %.0f %s %s\n", p, n, f, s, a
-    else if (moved && !x && m >= row) printf "B %s %d %.0f %s %s\n", p, m, f, s, a
+    if (x && n >= row) printf "R %s %d %.0f %s %s\n", p, n, f, s, a
+    else if (moved && !x && m >= rowb) printf "B %s %d %.0f %s %s\n", p, m, f, s, a
     else if (f > 0) printf "W %s %d/%d %.0f %s %s\n", p, n, m, f, s, a
   }
 }' "${_KEYS}")"
@@ -410,10 +424,9 @@ mv -f "${_STATE}.new" "${_STATE}"
 chmod 0600 "${_STATE}" 2> /dev/null
 
 _today="$(date +%F)"
-_found=()
+_nNow=0
 _newLines=()
 _more=0
-_moreMail=0
 while read -r _t _p _n _f _s _a; do
   [[ -n "${_p}" ]] || continue
   _since="$(date -d "@${_f}" '+%F %H:%M' 2> /dev/null)"
@@ -429,20 +442,20 @@ while read -r _t _p _n _f _s _a; do
       ;;
     B)
       _say "FAULTY prefix=${_p} site=${_s} account=${_a} kind=rebuilt row=${_n} since=${_since}"
-      _what="rebuilt Drupal's service container from nothing at ${_n} checks in a row since ${_since:-unknown}: its own code rebuilds the container while it serves requests, so requests pay for full container builds"
+      _what="threw Drupal's service container away and compiled it again at ${_n} checks in a row since ${_since:-unknown}: something rebuilds the container while the site serves requests (its own code on every request, or all caches cleared again and again from its admin pages), so requests pay for full container builds"
       _item="  ${_s} (account ${_a}): since ${_since:-unknown}, rebuilt at ${_n} checks in a row"
       ;;
     *) continue ;;
   esac
-  if [[ "${#_found[@]}" -lt "${_MAX_SITES}" ]]; then
-    _found+=("${_item}")
-  else
-    _moreMail=$(( _moreMail + 1 ))
+  _nNow=$(( _nNow + 1 ))
+  # the day's list for the mail: each site once, as first found that day
+  if ! grep -q "^${_today}"$'\t'"${_p}"$'\t' "${_FOUND}"; then
+    printf '%s\t%s\t%s\n' "${_today}" "${_p}" "${_item}" >> "${_FOUND}"
   fi
-  # once a day per site: the log keeps the record, the mail the summary
+  # one log line a day per site; a site past the cap is named by a later check
   grep -qxF "${_today} ${_p}" "${_SEEN}" && continue
-  echo "${_today} ${_p}" >> "${_SEEN}"
   if [[ "${#_newLines[@]}" -lt "${_MAX_SITES}" ]]; then
+    echo "${_today} ${_p}" >> "${_SEEN}"
     _newLines+=("$(date) CONTAINER: ${_s} (account ${_a}, cache prefix ${_p}) ${_what}")
   else
     _more=$(( _more + 1 ))
@@ -457,10 +470,30 @@ if [[ "${_more}" -gt 0 ]]; then
 fi
 
 # keep a week of daily records
-if [[ -s "${_SEEN}" ]]; then
-  _keep="$(date -d '7 days ago' +%F 2> /dev/null)"
-  [[ -n "${_keep}" ]] && awk -v k="${_keep}" '$1 >= k' "${_SEEN}" > "${_SEEN}.new" \
+_keep="$(date -d '7 days ago' +%F 2> /dev/null)"
+if [[ -n "${_keep}" ]] && [[ -s "${_SEEN}" ]]; then
+  awk -v k="${_keep}" '$1 >= k' "${_SEEN}" > "${_SEEN}.new" \
     && mv -f "${_SEEN}.new" "${_SEEN}"
+fi
+if [[ -n "${_keep}" ]] && [[ -s "${_FOUND}" ]]; then
+  awk -F'\t' -v k="${_keep}" '$1 >= k' "${_FOUND}" > "${_FOUND}.new" \
+    && mv -f "${_FOUND}.new" "${_FOUND}"
+fi
+
+# The mail's list: every site found today so far, each once by its name and
+# account (a migrated site can be found under its old and new prefixes).
+_found=()
+while IFS= read -r _l; do
+  _found+=("${_l}")
+done < <(awk -F'\t' -v d="${_today}" '$1 == d {
+  k = $3; sub(/:.*/, "", k)
+  if (!(k in s)) { s[k] = 1; print $3 }
+}' "${_FOUND}" 2> /dev/null)
+_nFound=${#_found[@]}
+_moreMail=0
+if [[ "${_nFound}" -gt "${_MAX_SITES}" ]]; then
+  _moreMail=$(( _nFound - _MAX_SITES ))
+  _found=("${_found[@]:0:${_MAX_SITES}}")
 fi
 
 _mail_body() {
@@ -474,15 +507,17 @@ _mail_body() {
   echo
   echo "How it was seen: BOA keeps each Drupal 8+ site's compiled container in"
   echo "Valkey, and the Redis module stamps the container cache each time a"
-  echo "site throws its container away. At each of these checks, about ten"
-  echo "minutes apart, the site's container and that stamp had both been written"
-  echo "again since the check before. \"Thrown away\": the stamp was the newer,"
-  echo "so the site's code calls the kernel's invalidateContainer() while it"
-  echo "serves requests and the next request compiles the container again."
-  echo "\"Rebuilt\": the container was the newer, so the site's code throws the"
-  echo "container away and compiles it again inside its requests. A cache rebuild"
-  echo "(drush cr, Flush all caches), a Verify, a Migrate or a Valkey restart,"
-  echo "done once, never looks like this, and none of them fixes it."
+  echo "site throws its container away. At the checks counted, about ten minutes"
+  echo "apart, the site's container and that stamp had both been written again"
+  echo "since the check before. \"Thrown away\": the stamp was the newer, so the"
+  echo "site's code calls the kernel's invalidateContainer() while it serves"
+  echo "requests and the next request compiles the container again. \"Rebuilt\":"
+  echo "the container was the newer at six checks in a row, so the container is"
+  echo "thrown away and compiled again inside the site's requests: by its code on"
+  echo "every request, or by someone clearing all caches from its admin pages again"
+  echo "and again. A cache rebuild (drush cr, Flush all caches), a Verify, a"
+  echo "Migrate or a Valkey restart, done once, never looks like this, and none of"
+  echo "them fixes it."
   echo
   echo "What to look for in the site's code: calls of invalidateContainer(),"
   echo "rebuildContainer() or drupal_flush_all_caches() that ordinary requests"
@@ -499,7 +534,6 @@ _mail_body() {
 # The mail: once a day at most, the sites found so far that day. A held one
 # is tried again at the next check; a failed one waits for the next day.
 _mailed="NO"
-_nFound=$(( ${#_found[@]} + _moreMail ))
 if [[ "${_nFound}" -gt 0 ]] && [[ "$(cat "${_MAILED}" 2> /dev/null)" != "${_today}" ]]; then
   _mail_way
   case "${_MAIL_WAY}" in
@@ -529,6 +563,6 @@ fi
 if [[ "${#_newLines[@]}" -gt 0 ]] || [[ "${_more}" -gt 0 ]]; then
   echo >> "${_pthOml}"
 fi
-_say "DONE faulty=${_nFound} new=${#_newLines[@]} more=${_more} mail=${_mailed}"
+_say "DONE faulty=${_nNow} new=${#_newLines[@]} more=${_more} mail=${_mailed} today=${_nFound}"
 
 exit 0
