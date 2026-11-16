@@ -347,8 +347,8 @@ END {
     printf "S %s %s %s %d %s %s %s %s\n", p, c, (d == "" ? "-" : d), n, f, lg, s, a
     # A row kept with the container the newer is never reported at that
     # check: it is as likely a site just fixed (one rebuild after its last
-    # wipe) as a check between a request's rebuild and its wipe, and the
-    # next check tells them apart.
+    # wipe) as a check between the rebuild and the wipe of one request, and
+    # the next check tells them apart.
     if (!x) continue
     printf "%s %s %d %s %s %s\n", ((n >= row) ? "R" : "W"), p, n, f, s, a
   }
