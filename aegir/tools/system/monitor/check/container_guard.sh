@@ -21,12 +21,13 @@
 #     the newer of the two (its code invalidates the container while it
 #     serves requests, and the next request compiles it again);
 #   - rebuilt: at six checks, with no quiet check between them (one where
-#     nothing was written), both had been written again and the container
-#     was the newer (its code throws the container away and compiles it
-#     again inside its requests: drupal_flush_all_caches(), or
-#     invalidateContainer() then rebuildContainer()). Someone clearing all
-#     caches from the admin pages again and again for an hour looks the same,
-#     and the report says so. A busy site of either kind can show the other
+#     the container and the stamp were not both written again), both had
+#     been written again and the container was the newer (its code throws
+#     the container away and compiles it again inside its requests:
+#     drupal_flush_all_caches(), or invalidateContainer() then
+#     rebuildContainer()). Someone clearing all caches from the admin pages
+#     again and again for an hour looks the same, and the report says so.
+#     A busy site of either kind can show the other
 #     kind at some checks (a check lands inside one request); the advice for
 #     both is the same.
 #
@@ -47,9 +48,9 @@
 # sites/all yaml names no site). Each site gets one line a day in the
 # incident log, at most fifty a run, the rest counted and named by a later
 # check. The host's alert mail goes out at most once a day, from the first
-# check that finds a site, listing every site found that day so far, among
+# check that has a site to list: every site found that day so far, among
 # them each site still counted as thrown away, and every site found since
-# the last mail that went out.
+# the last mail that went out (a failed mail leaves its sites listed).
 # Valkey is read over its socket, or 127.0.0.1:6379 where there is none; a
 # box that cannot be read gets one incident line a day saying so.
 #
@@ -527,9 +528,9 @@ _mail_body() {
   echo "them, so the container is thrown away and compiled again inside the site's"
   echo "requests: by its code on every request, or by someone clearing all caches"
   echo "from its admin pages again and again. A cache rebuild (drush cr, Flush all"
-  echo "caches), a Verify, a"
-  echo "Migrate or a Valkey restart, done once, never looks like this, and none of"
-  echo "them fixes it."
+  echo "caches), a Verify, a Migrate or a Valkey restart, done once, never looks"
+  echo "like this, and none of them fixes it. A site found since the last mail is"
+  echo "listed here too, with the time it was first counted."
   echo
   echo "What to look for in the site's code: calls of invalidateContainer(),"
   echo "rebuildContainer() or drupal_flush_all_caches() that ordinary requests"
