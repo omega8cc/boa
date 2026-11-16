@@ -1620,12 +1620,16 @@ _kguard_next_boot() {
     else
       echo "${_want}" >> "${_grub}"
     fi
-    if ! update-grub > /dev/null 2>&1; then
+    # A failed update-grub, or a grub.cfg that does not carry the new default
+    # after it, puts /etc/default/grub back as it was: nothing half done.
+    if ! update-grub > /dev/null 2>&1 \
+      || ! grep -q -F "set default=\"${_sub}>${_ent}\"" "${_cfg}"; then
       cp -p "${_KGUARD_DIR}/grub.before" "${_grub}"
       update-grub > /dev/null 2>&1
       rm -f "${_KGUARD_DIR}/grub-default"
       return 1
     fi
+    return 0
   fi
   grep -q -F "set default=\"${_sub}>${_ent}\"" "${_cfg}" || return 1
   return 0
