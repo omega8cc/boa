@@ -2497,6 +2497,13 @@
       copy stays. The published Drupal 10.6.21 predates those releases and
       carries Robo 5.1.1.
 
+    * staticbuild's Drupal 11.1 core line holds the same three Robo releases
+      as its Drupal 10 lines. Drupal 11.1 keeps Symfony Console 7.2, older
+      than the 7.4 those releases need, so its build took Robo 5.2.3 and
+      failed at the Drush start check; the published Drupal 11.1.10 stayed
+      as it was, on Robo 5.1.1. A core line now takes the hold whenever its
+      Console is older than 7.4: Drupal 10, 11.0 and 11.1.
+
     * Ægir Provision: the Drush a platform Verify adds to a Drupal 10
       codebase that has none rules out the same three Robo releases
       (consolidation/robo:!=5.2.1,!=5.2.2,!=5.2.3). The plain require

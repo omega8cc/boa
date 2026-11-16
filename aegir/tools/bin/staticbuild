@@ -427,13 +427,15 @@ _CORE_PRERELEASE="11.5.0-beta1 12.0.0-beta2"
 #
 # consolidation/robo 5.2.1, 5.2.2 and 5.2.3 call Symfony Console's
 # Application::addCommand(), which exists only from Symfony Console 7.4, while their
-# own constraints still allow Symfony 6: a codebase on Symfony 6.4 (Drupal 10) that
-# resolves one of them has a Drush 13 that dies at start, "Call to undefined method
+# own constraints still allow Symfony 6 and every Symfony 7: a codebase on an older
+# Console (Drupal 10 on 6.4, Drupal 11.1 on 7.2) that resolves one of them has a
+# Drush 13 that dies at start, "Call to undefined method
 # Drush\Application::addCommand()" (consolidation/robo issue 1199, fixed on its 5.x
-# branch after 5.2.3). Every distribution build holds them, and so does a Drupal 10
-# core line (_core_conflicts); no other core line does, as a core on Symfony 8 can
-# only take a Robo from 5.2.1 on. The hold changes nothing once a later release is
-# out: lift it then, and in any case before a distribution moves to Symfony 8.
+# branch after 5.2.3). Every distribution build holds them, and so does a core line
+# whose Console is older than 7.4 (_core_conflicts); no other core line does, as a
+# core on Symfony 8 can only take a Robo from 5.2.1 on. The hold changes nothing once
+# a later release is out: lift it then, and in any case before a distribution moves
+# to Symfony 8.
 _ROBO_HOLD="consolidation/robo:>=5.2.1,<5.2.4"
 _COMPOSER_CONFLICTS="twig/twig:>=3.30 ${_ROBO_HOLD}"
 # The first Twig release that needs that fix in core, whether held or not.
@@ -2544,10 +2546,12 @@ _core_drush_spec() {
 
 _core_conflicts() {
   # $1 = a core line. The releases its build holds back, as root conflicts written
-  # before its Drush require (package:constraint, space-separated): Drupal 10 keeps
-  # Symfony 6.4, where a Drush on the held Robo releases cannot start (_ROBO_HOLD).
-  case "${1%%.*}" in
-    10) printf '%s\n' "${_ROBO_HOLD}" ;;
+  # before its Drush require (package:constraint, space-separated). A Drush on the
+  # held Robo releases (_ROBO_HOLD) starts only on Symfony Console 7.4 or later:
+  # Drupal 10 keeps 6.4, Drupal 11.0 7.1 and Drupal 11.1 7.2, and every later line
+  # has 7.4 or newer at its latest release.
+  case "$1" in
+    10.*|11.0|11.0.*|11.1|11.1.*) printf '%s\n' "${_ROBO_HOLD}" ;;
   esac
 }
 
