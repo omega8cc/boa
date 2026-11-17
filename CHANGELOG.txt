@@ -960,6 +960,18 @@
 
 @=> Important Fixes
 
+    * An account whose site sits on a platform whose folder name holds a
+      colon moves again with xoct, xcopy and xmass. xoct and xcopy read a
+      site's path from its Drush alias by splitting the line on colons, so
+      such a path read as empty: the export refused the site and counted
+      it failed, and transfer and import then refused the whole account.
+      renameaegirhost, which every import and every xmass cutover runs,
+      refused any path holding a colon, so a site named after the old
+      server's host on such a platform kept that name and the rename
+      stopped before the task queue. Both now read and admit the whole
+      path; a name still never holds a colon. Nothing wrong was written
+      before: the account could not move.
+
     * Composer runs by the shell login on a Drupal 11.4 or newer codebase
       under ~/static complete again. Core's scaffold plugin rewrites
       web/autoload_runtime.php in place on every composer run, as it does
