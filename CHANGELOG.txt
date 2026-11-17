@@ -960,6 +960,20 @@
 
 @=> Important Fixes
 
+    * Composer runs by the shell login on a Drupal 11.4 or newer codebase
+      under ~/static complete again. Core's scaffold plugin rewrites
+      web/autoload_runtime.php in place on every composer run, as it does
+      web/autoload.php, but platform Verify set every PHP file in the web
+      root to 0644 and kept only autoload.php group-writable, so once the
+      codebase belonged to the backend user each composer require or
+      update stopped at the end with "file_put_contents(...)
+      autoload_runtime.php: Failed to open stream: Permission denied",
+      after the packages and composer.lock were already written. Platform
+      Verify and the nightly pass now keep autoload_runtime.php
+      group-writable like autoload.php. The other web root files stay
+      0644: the scaffold replaces them through a new file, which the
+      group-writable web root already allows.
+
     * autoinit converts a Debian box to Devuan again on a routed IP block
       whose gateway lies outside the box's own subnet. vmnetfix, which
       autoinit runs at each stage, reset the network interface and then
