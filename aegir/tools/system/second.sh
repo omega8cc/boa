@@ -400,7 +400,17 @@ _hold_services() {
   local _load_period="$3"
   touch /run/boa_second_auto_healing.pid
   sleep 3
-  service nginx stop
+  # The pause ends when the nginx watchdog starts nginx again. With a
+  # configuration nginx -t rejects that start fails and every site would stay
+  # down after the pause, so the running nginx keeps serving and only PHP-FPM
+  # is paused. Tested the way a start loads it: configtest syncs the store's
+  # copies first.
+  local _ngx_keep="" _ngx_out
+  if [ -n "$(pgrep -x nginx)" ] && ! _ngx_out=$(service nginx configtest 2>&1); then
+    _ngx_keep=$(printf '%s\n' "${_ngx_out}" | grep -m1 -E '\[(emerg|alert|crit)\]' | cut -c1-300)
+    _ngx_keep="${_ngx_keep:-no reason given}"
+  fi
+  [ -z "${_ngx_keep}" ] && service nginx stop
   _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
@@ -408,11 +418,13 @@ _hold_services() {
     fi
   done
   killall php-fpm
-  killall nginx
+  [ -z "${_ngx_keep}" ] && killall nginx
   local _log_message
   _log_message="$(date) System Load ${_current_load}% (${_load_period}) - Web Server Paused"
+  [ -n "${_ngx_keep}" ] && _log_message="$(date) System Load ${_current_load}% (${_load_period}) - PHP-FPM Paused, Nginx kept: nginx -t fails (${_ngx_keep})"
   echo "${_log_message}" >> ${_pthOml}
   local _subject="Web Services Paused - ${_load_period} Load ${_current_load}% exceeded Max Load Threshold ${_threshold}%"
+  [ -n "${_ngx_keep}" ] && _subject="PHP-FPM Paused, Nginx kept as nginx -t fails - ${_load_period} Load ${_current_load}% exceeded Max Load Threshold ${_threshold}%"
   _incident_email_report "${_subject}" "ALERT"
   echo >> ${_pthOml}
   echo "Action Taken: Web services paused due to high load."
