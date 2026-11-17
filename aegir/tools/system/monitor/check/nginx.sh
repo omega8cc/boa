@@ -245,6 +245,27 @@ _box_going_down() {
   return 1
 }
 
+# A heal stops nginx and starts it again. With a configuration nginx -t
+# rejects (one broken line in a file root keeps under /data/conf is enough)
+# that start fails, so whatever still serves would be stopped for nothing and
+# every site would stay down. Tested the way a start loads it: the init
+# script's configtest brings the store's copies up to date first. Status 0
+# means refused: nothing was stopped and no start was tried.
+_nginx_conf_refused() {
+  local _out _why _state
+  _out=$(service nginx configtest 2>&1) && return 1
+  _why=$(printf '%s\n' "${_out}" | grep -m1 -E '\[(emerg|alert|crit)\]' | cut -c1-300)
+  if command -v ss > /dev/null 2>&1 \
+    && ss -Hltn 2> /dev/null | grep -qE ':(80|443) '; then
+    _state="what still serves is kept with the configuration it loaded"
+  else
+    _state="Nginx is down and cannot start until nginx -t passes"
+  fi
+  echo "$(date) NGX $1: not restarted, nginx -t fails (${_why:-no reason given}); ${_state}" >> "${_pthOml}"
+  _incident_email_report "NGX $1: nginx -t fails, not restarted"
+  return 0
+}
+
 _nginx_quic_bpf_shed() {
   # A start that failed with the quic_bpf fragment in place. The eBPF init
   # behind it runs only on a real start (nginx -t skips it) and a failed init
@@ -379,6 +400,12 @@ _restart_nginx() {
     "Nginx OOM") touch "${_ngxOomSt}" ;;
     "Nginx BIND PORT error, serving master") touch "${_ngxBindSt}" ;;
   esac
+  if _nginx_conf_refused "$1"; then
+    date +%s > "${_cd}"
+    echo >> ${_pthOml}
+    [ -e "/run/boa_nginx_auto_healing.pid" ] && rm -f /run/boa_nginx_auto_healing.pid
+    exit 0
+  fi
   echo "Killing all Nginx processes and restarting Nginx..."
   _stop_nginx_processes
   _nginx_error_log_aside
@@ -601,15 +628,24 @@ _nginx_if_up_check_fix() {
           echo "$(date) INFO: Nginx master alive and serving; missing pidfile treated as an artefact, standing down" >> ${_pthOml}
           return 0
         fi
+        if _nginx_conf_refused "Nginx Server was down"; then
+          date +%s > "${_cd}"
+          echo >> ${_pthOml}
+          exit 0
+        fi
         _stop_nginx_processes
         _nginx_error_log_aside
         service nginx restart
         _nginx_quic_bpf_shed
         # Stamp cooldown after attempting recovery
         date +%s > "${_cd}"
-        _thisErrLog="$(date) Nginx Server was down, restarted"
+        # A start that passed nginx -t can still fail (a port held by another
+        # program, a missing certificate): the line says which it was.
+        local _upHow="Nginx Server was down, restarted"
+        [ -n "$(_nginx_master_pids)" ] || _upHow="Nginx Server was down, start failed"
+        _thisErrLog="$(date) ${_upHow}"
         echo "${_thisErrLog}" >> ${_pthOml}
-        _incident_email_report "Nginx Server was down, restarted"
+        _incident_email_report "${_upHow}"
         echo >> ${_pthOml}
         exit 0
       fi
