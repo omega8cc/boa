@@ -258,17 +258,20 @@ _box_going_down() {
 # script's configtest brings the store's copies up to date first. Status 0
 # means refused: nothing was stopped and no start was tried.
 _nginx_conf_refused() {
-  local _out _why _state
+  local _out _why _oom _state
   _out=$(service nginx configtest 2>&1) && return 1
   _why=$(printf '%s\n' "${_out}" | grep -m1 -E '\[(emerg|alert|crit)\]' | cut -c1-300)
   # A test that ran out of memory says nothing about the files, and the
-  # memory heal exists for exactly that state: the heal goes ahead.
-  case "${_out}" in
-    *"(12: Cannot allocate memory)"*)
-      echo "$(date) INFO: NGX $1: nginx -t ran out of memory (${_why:-no reason given}); not read as a configuration error" >> "${_pthOml}"
-      return 1
-      ;;
-  esac
+  # memory heal exists for exactly that state: the heal goes ahead. Only
+  # nginx's own allocation failure counts: an error can quote a file's text,
+  # and that text can carry the same words.
+  _oom=$(printf '%s\n' "${_out}" \
+    | grep -m1 -E '^nginx: \[(emerg|alert|crit)\] [a-z_]+\([^")]*\) failed \(12: Cannot allocate memory\)' \
+    | cut -c1-300)
+  if [ -n "${_oom}" ]; then
+    echo "$(date) INFO: NGX $1: nginx -t ran out of memory (${_oom}); not read as a configuration error" >> "${_pthOml}"
+    return 1
+  fi
   if command -v ss > /dev/null 2>&1 \
     && ss -Hltn 2> /dev/null | grep -qE ':(80|443) '; then
     _state="what still serves is kept with the configuration it loaded"
