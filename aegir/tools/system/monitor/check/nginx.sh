@@ -119,7 +119,13 @@ _normalize_incident_report
 
 _incident_email_report() {
   if ! _check_uptime_grace_period >/dev/null; then return 1; fi
-  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "ALL" ]; then
+  # The heals mail at ALL alone. An ALERT is mailed at every level but OFF:
+  # an nginx kept for a configuration nginx -t rejects takes no new one, and
+  # one that is down cannot start until the file is fixed.
+  local _send=NO
+  [ "${_INCIDENT_REPORT}" = "ALL" ] && _send=YES
+  [ "${3}" = "ALERT" ] && [ "${_INCIDENT_REPORT}" != "OFF" ] && _send=YES
+  if [ -n "${_MY_EMAIL}" ] && [ "${_send}" = "YES" ]; then
     # One alert per cooldown, not one per pass. A service that keeps failing
     # used to send a mail every time a watchdog acted, which buries the signal
     # exactly when it matters most. Nothing is lost: every incident is still
@@ -262,7 +268,7 @@ _nginx_conf_refused() {
     _state="Nginx is down and cannot start until nginx -t passes"
   fi
   echo "$(date) NGX $1: not restarted, nginx -t fails (${_why:-no reason given}); ${_state}" >> "${_pthOml}"
-  _incident_email_report "NGX $1: nginx -t fails, not restarted"
+  _incident_email_report "NGX $1: nginx -t fails, not restarted" "nginx-conf" "ALERT"
   return 0
 }
 
