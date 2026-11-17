@@ -63,10 +63,14 @@ _check_root() {
 }
 
 ### Single instance, house pattern (lock.inc when present, legacy fallback).
-### The fallback counts root's runs of an xtrim path, in the form the other
-### tools use, never a command line that only names it (an editor, a tail of
-### a run log, a grep). A run that keeps a run log is two such processes,
-### the wrapper and its run.
+### The fallback counts what the lock covers: root's runs of an xtrim path
+### with a verb that takes the lock (the verbs below that call this
+### function), in the form the other tools use. A command line that only
+### names the tool (an editor, a tail of a run log, a grep) never counts,
+### and neither does a run of names or space, which take no lock so they
+### can run beside a shrink. A run that keeps a run log is two such
+### processes, the wrapper and its run. A refusal is said as lock.inc says
+### it.
 _manage_single_lock() {
   local _L _CNT
   _SELF_NAME="xtrim"
@@ -77,8 +81,9 @@ _manage_single_lock() {
     && command -v _single_instance_lock >/dev/null 2>&1; then
     _single_instance_lock
   else
-    _CNT=$(pgrep -u root -U root -fc "(^|(^| )[^ ]*bash )[^ ]*/${_SELF_NAME}( |$)")
+    _CNT=$(pgrep -u root -U root -fc "(^|(^| )[^ ]*bash )[^ ]*/${_SELF_NAME}( --[^ ]*)* (status|plan|quiesce|shrink|finalize|restore)( |$)")
     if [ "${_CNT:-0}" -gt 2 ]; then
+      echo "${_SELF_NAME}: another instance is running; exiting."
       echo "$(date 2>/dev/null) too many xtrim already running (count=${_CNT})" \
         >> /var/log/boa/too.many.log
       exit 0
