@@ -960,6 +960,18 @@
 
 @=> Important Fixes
 
+    * autoinit converts a Debian box to Devuan again on a routed IP block
+      whose gateway lies outside the box's own subnet. vmnetfix, which
+      autoinit runs at each stage, reset the network interface and then
+      set the default route the plain way, which the kernel refuses for
+      such a gateway: the box was left without a default route, and each
+      repair pass of the conversion repeated the reset, so it never came
+      back online. vmnetfix now reaches such a gateway on-link, as it did
+      for a single /32 address. The interfaces file it writes also gave
+      such a box a plain gateway line whenever its route was working, and
+      that line fails at the next boot; it now writes the on-link lines
+      there too.
+
     * When /opt/local/bin/lock.inc cannot be read, xtrim counts its own
       running copies instead and stops when there are too many. It counted
       every root process whose command line held its name, so an editor
