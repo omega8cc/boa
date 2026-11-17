@@ -977,8 +977,11 @@
       every root process whose command line held its name, so an editor
       open on the tool, a tail of its run log or a grep for its name
       counted as a running xtrim and could stop a run. It now counts only
-      root's runs of an xtrim path, as the monitors and the other tools
-      do. Nothing changes where lock.inc is present.
+      root's runs of an xtrim path with a verb that takes the lock, as the
+      lock itself does: xtrim names and xtrim space, which take no lock,
+      no longer stop a status, plan or shrink started beside them. A run it
+      stops now says so, "xtrim: another instance is running; exiting.",
+      as it does with lock.inc. Nothing changes where lock.inc is present.
 
     * xmass cutover sizes and copies each account's files store once while
       the sites answer 503, in its final pass before the write freeze. Its
