@@ -3800,7 +3800,7 @@ _update_agents() {
     && _fetch_versioned /etc/cron.hourly/systemtime "${_urlHmr}/helpers/systemtime" f94 --mode 755
 
   _Dir="/data/all/000/modules"
-  _REDIS_E_VERSION=8.x-1.11.4
+  _REDIS_E_VERSION=8.x-1.11.5
   if [ -e "/var/xdrago/manage_solr_config.sh" ]; then
     if _shared_module_stale redis_ten_eleven "ver-${_REDIS_E_VERSION}.${_xSrl}.full.info"; then
       _shared_module_update redis_ten_eleven "${_REDIS_E_VERSION}"
@@ -3870,7 +3870,7 @@ _update_agents() {
   # shelf, and only once the pin names a published tarball (empty: no box
   # fetches it). The same version as OCTOPUS.sh.txt's _REDIS_W_VERSION.
   _Dir="/data/all/000/modules"
-  _REDIS_W_VERSION=2.0.0-alpha2.1
+  _REDIS_W_VERSION=2.0.0-alpha2.2
   if [ -n "${_REDIS_W_VERSION}" ] \
     && [ -e "/var/xdrago/manage_solr_config.sh" ] \
     && [ -d "${_Dir}/o_contrib_twelve" ]; then

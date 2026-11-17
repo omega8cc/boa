@@ -960,6 +960,16 @@
 
 @=> Important Fixes
 
+    * The redis module moves to 8.x-1.11.5 for Drupal 10 and 11 and to
+      2.0.0-alpha2.2 for Drupal 12. Its reliable queue serialized an item
+      after opening a transaction, so an item that cannot be serialized
+      left the request's connection to Valkey inside that transaction: the
+      next cache read or write on Drupal 12 stopped PHP with a fatal error,
+      and on Drupal 10 and 11 the request's next cache read failed. The
+      item is now serialized first. BOA keeps queues in each site's own
+      database, so only a site that moves a queue to Valkey with the
+      module's reliable queue itself was exposed.
+
     * A kernel guard keeps servers off Debian's 6.1.192-1 (6.1.0-55),
       whose ext4 block allocator takes a page the page cache no longer
       holds for a valid one: under a copy larger than the server's memory
