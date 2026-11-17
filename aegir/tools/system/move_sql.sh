@@ -155,24 +155,72 @@ _start_sql() {
   [ "$1" != "chain" ] && exit 0
 }
 
+# An nginx kept for a configuration nginx -t rejects takes no new one and
+# could not start again, so it is mailed at every report level but OFF, with
+# the nginx monitor's own throttle and grace period where lock.inc has them.
+_ngx_kept_mail() {
+  local _L _lvl _sfx="" _hName
+  _lvl="${_INCIDENT_REPORT:-MINI}"
+  _lvl="${_lvl^^}"
+  case "${_lvl}" in
+    NO|OFF) return 0 ;;
+  esac
+  [ -n "${_MY_EMAIL}" ] || return 0
+  command -v s-nail > /dev/null 2>&1 || return 0
+  for _L in "/opt/local/bin/lock.inc" "/opt/local/lib/lock.inc"; do
+    [ -r "${_L}" ] && . "${_L}" && break
+  done
+  if command -v _check_uptime_grace_period > /dev/null 2>&1; then
+    _check_uptime_grace_period > /dev/null || return 0
+  fi
+  if command -v _incident_email_ratelimit > /dev/null 2>&1; then
+    _incident_email_ratelimit "nginx-conf" || return 0
+    if [ "${_INCIDENT_SUPPRESSED:-0}" -gt 0 ]; then
+      _sfx=" (+${_INCIDENT_SUPPRESSED} more since the last alert)"
+    fi
+  fi
+  _hName="$(cat /etc/hostname 2> /dev/null | tr -d '\n')"
+  s-nail -s "Incident Report: NGX move_sql.sh: nginx -t fails, Nginx kept running${_sfx} on ${_hName} at $(date)" "${_MY_EMAIL}" < <(tail -n 200 /var/log/boa/nginx.incident.log)
+}
+
 _stop_sql() {
   _check_running
+
+  # Nginx is stopped with the database's clients, and comes back at the next
+  # `webserver up` or watchdog pass. With a configuration nginx -t rejects it
+  # could not start again and every site would stay down, so the running
+  # nginx is kept instead (nothing starts one early). Tested the way a start
+  # loads it: configtest syncs the store's copies first. Said before the
+  # locks: the alert mail is held while they exist.
+  local _ngx_keep="" _ngx_out
+  if [ -n "$(pgrep -x nginx)" ] && ! _ngx_out=$(service nginx configtest 2>&1); then
+    _ngx_keep=$(printf '%s\n' "${_ngx_out}" | grep -m1 -E '\[(emerg|alert|crit)\]' | cut -c1-300)
+    _ngx_keep="${_ngx_keep:-no reason given}"
+    mkdir -p /var/log/boa
+    echo "$(date) NGX move_sql.sh: Nginx not stopped for the database restart, nginx -t fails (${_ngx_keep}); it keeps serving with the configuration it loaded" >> /var/log/boa/nginx.incident.log
+    _ngx_kept_mail
+  fi
+
   _create_locks
 
-  echo "Stopping Nginx now..."
-  service nginx stop &> /dev/null
-  # Seeded and bounded: the variable used to start empty, so this "wait"
-  # never waited at all and the kill below landed on a tier mid-shutdown.
-  _IS_NGINX_RUNNING=$(pgrep -x nginx)
-  _ngx_stop_wait=0
-  until [ -z "${_IS_NGINX_RUNNING}" ] || [ "${_ngx_stop_wait}" -ge 30 ]; do
-    echo "Waiting for Nginx graceful shutdown..."
-    sleep 1
-    _ngx_stop_wait=$(( _ngx_stop_wait + 1 ))
+  if [ -n "${_ngx_keep}" ]; then
+    echo "Nginx kept running: nginx -t fails (${_ngx_keep})"
+  else
+    echo "Stopping Nginx now..."
+    service nginx stop &> /dev/null
+    # Seeded and bounded: the variable used to start empty, so this "wait"
+    # never waited at all and the kill below landed on a tier mid-shutdown.
     _IS_NGINX_RUNNING=$(pgrep -x nginx)
-  done
-  killall nginx &> /dev/null
-  echo "Nginx stopped"
+    _ngx_stop_wait=0
+    until [ -z "${_IS_NGINX_RUNNING}" ] || [ "${_ngx_stop_wait}" -ge 30 ]; do
+      echo "Waiting for Nginx graceful shutdown..."
+      sleep 1
+      _ngx_stop_wait=$(( _ngx_stop_wait + 1 ))
+      _IS_NGINX_RUNNING=$(pgrep -x nginx)
+    done
+    killall nginx &> /dev/null
+    echo "Nginx stopped"
+  fi
 
   echo "Stopping all PHP-FPM instances now..."
   _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56 55 54 53"
