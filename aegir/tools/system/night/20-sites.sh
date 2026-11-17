@@ -3305,7 +3305,9 @@ _plr_perm_here() {
     -mindepth 1 -maxdepth 1
   _in_real_sub sites _night_mode_own_here "${_o}" f 0644 . \
     -mindepth 1 -maxdepth 1 \( -name "*.php" -o -name "*.txt" -o -name "*.yml" \)
-  _night_chmod_own_here "${_o}" f 0664 ./autoload.php
+  ### Core's composer scaffold rewrites both in place, never through an
+  ### unlink (the second from Drupal 11.4 on), so each stays group-writable.
+  _night_chmod_own_here "${_o}" f 0664 ./autoload.php ./autoload_runtime.php
   _in_real_sub sites/all _night_chmod_own_here "${_o}" d 0755 ./drush
   ### Tenant composer codebases: the two directories core's composer
   ### scaffold writes into stay group-writable for the shell user

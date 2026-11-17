@@ -2986,7 +2986,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/checksql.sh "${_urlHmr}/tools/system/checksql.sh" f92
     _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f60
     _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f41
-    _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f93
+    _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f92
     _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f16
     _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f36
     _runner_parked owl.sh \
@@ -6027,7 +6027,7 @@ CSFSTANDBY
   fi
   rm -f ${_pthLog}/vmnetfix.sh.ctrl.*
   if [ -e "${_pthLog}" ]; then
-    _fetch_versioned ${_usrBin}/fix-drupal-platform-permissions.sh "${_urlHmr}/${_tBn}/fix-drupal-platform-permissions.sh" f51
+    _fetch_versioned ${_usrBin}/fix-drupal-platform-permissions.sh "${_urlHmr}/${_tBn}/fix-drupal-platform-permissions.sh" f50
     _fetch_versioned ${_usrBin}/fix-drupal-site-permissions.sh     "${_urlHmr}/${_tBn}/fix-drupal-site-permissions.sh"     f57
     _fetch_versioned ${_usrBin}/fix-drupal-platform-ownership.sh   "${_urlHmr}/${_tBn}/fix-drupal-platform-ownership.sh"   f66
     _fetch_versioned ${_usrBin}/fix-drupal-site-ownership.sh       "${_urlHmr}/${_tBn}/fix-drupal-site-ownership.sh"       f61

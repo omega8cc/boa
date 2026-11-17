@@ -1140,8 +1140,14 @@ printf 'Setting permissions of all codebase files inside %s...\n' "$(_nm "${drup
 _left_add _in_pinned_dir "${drupal_root}/sites/all" \
   _fwalk_own_here f "${_SA_FILE}" ./modules ./themes ./libraries
 
+### Core's composer scaffold rewrites autoload.php and, from Drupal 11.4 on,
+### autoload_runtime.php in place on every composer run (no unlink first, so
+### the file itself must be writable, not only its directory): both keep the
+### tree's file mode. Every other scaffold file is replaced through an unlink
+### and keeps the tighter 0644.
 _left_add _chmod_any_own_in "${drupal_root}" 0644 '*.php'
-_left_add _chmod_any_own_in "${drupal_root}" "${_MODE_FILE}" autoload.php
+_left_add _chmod_any_own_in "${drupal_root}" "${_MODE_FILE}" autoload.php \
+  autoload_runtime.php
 _left_add _chmod_any_own_in "${drupal_root}" 0751 sites
 _left_add _chmod_any_own_in "${drupal_root}/sites" 0755 '*'
 _left_add _chmod_any_own_in "${drupal_root}/sites" 0644 '*.php'
