@@ -261,6 +261,14 @@ _nginx_conf_refused() {
   local _out _why _state
   _out=$(service nginx configtest 2>&1) && return 1
   _why=$(printf '%s\n' "${_out}" | grep -m1 -E '\[(emerg|alert|crit)\]' | cut -c1-300)
+  # A test that ran out of memory says nothing about the files, and the
+  # memory heal exists for exactly that state: the heal goes ahead.
+  case "${_out}" in
+    *"(12: Cannot allocate memory)"*)
+      echo "$(date) INFO: NGX $1: nginx -t ran out of memory (${_why:-no reason given}); not read as a configuration error" >> "${_pthOml}"
+      return 1
+      ;;
+  esac
   if command -v ss > /dev/null 2>&1 \
     && ss -Hltn 2> /dev/null | grep -qE ':(80|443) '; then
     _state="what still serves is kept with the configuration it loaded"
