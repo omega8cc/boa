@@ -1474,6 +1474,282 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
   fi
 fi
 
+###
+### Kernel guard. Debian's 6.1.192-1 (6.1.0-55) carries a stable backport
+### that moved ext4's block allocator to folios with the newer page cache's
+### answer for a miss, an error pointer, while the 6.1 page cache answers
+### NULL: once a group's buddy page is evicted, ext4_mb_load_buddy_gfp()
+### takes that NULL for a folio, the task oopses holding a journal handle,
+### and every later write to the filesystem waits until a hard reset
+### (Debian bug 1154101, fixed in 6.1.192-2). On a server with a 6.1 kernel
+### image the guard keeps the broken builds out of apt with a pin, purges
+### such an image that does not run (a meta package that goes with it comes
+### back once apt offers a fixed build), and the night window never reboots
+### into one. It never sets GRUB's default (the next boot is GRUB's stock
+### choice, the newest kernel in /boot); it only puts back, once, a default
+### an earlier release's guard redirected. _KERNEL_GUARD=NO in
+### /root/.barracuda.cnf turns it off: it then writes, removes, installs
+### and refuses nothing.
+###
+_KGUARD_PIN="/etc/apt/preferences.d/99-boa-kernel-guard"
+_KGUARD_DIR="/etc/boa/control/kernel-guard"
+_KGUARD_LOG="/var/log/boa/kernel-guard.log"
+# The broken builds as Debian versions them, Debian 11's forms included;
+# the pin and every check below read this one pattern.
+_KGUARD_RE='^6\.1\.19[12]-1(~(deb11u|bpo11\+)[0-9]+)?$'
+# The last broken build: a meta package the purge took comes back past it.
+_KGUARD_LAST="6.1.192-1"
+
+# True when a Debian package version is a broken build.
+_kguard_broken() {
+  [ -n "$1" ] && [[ "$1" =~ ${_KGUARD_RE} ]]
+}
+
+_kguard_log() {
+  [ -d "/var/log/boa" ] || mkdir -p /var/log/boa
+  echo "[$(date 2>/dev/null)] $*" >> "${_KGUARD_LOG}"
+  echo "INFO: kernel guard: $*"
+}
+
+# What the guard could not do is logged, and mailed once a boot for each
+# distinct message: it needs a hand.
+_kguard_refused() {
+  local _msg="$1" _mark="/run/boa_kguard_refused" _hostN _mailTo=""
+  if grep -q -s -x -F -- "${_msg}" "${_mark}"; then
+    echo "INFO: kernel guard: ${_msg}"
+    return 0
+  fi
+  echo "${_msg}" >> "${_mark}"
+  _kguard_log "${_msg}"
+  _hostN="$(cat /etc/hostname 2>/dev/null | tr -d '\n')"
+  _if_hosted_sys
+  if [ "${_hostedSys}" = "YES" ]; then
+    _mailTo="$(basename "$0")@omega8.cc"
+  else
+    _mailTo="${_MY_EMAIL:-}"
+  fi
+  if [ -n "${_mailTo}" ] && [ -x "$(command -v s-nail)" ]; then
+    echo "The kernel guard on ${_hostN}: ${_msg}. Log: ${_KGUARD_LOG}" \
+      | s-nail -S ttycharset=utf-8 -S sendcharsets=utf-8 \
+        -s "KERNEL GUARD: refused on ${_hostN}" "${_mailTo}" &> /dev/null
+  fi
+}
+
+# The 6.1 kernel images on the server, in any dpkg state that keeps their
+# files: "<package> <version>" a line.
+_kguard_images() {
+  dpkg-query -W -f '${Package} ${Version} ${db:Status-Status}\n' 'linux-image-6.1.0-*' 2>/dev/null \
+    | awk '$3 != "" && $3 != "not-installed" && $3 != "config-files" {print $1, $2}'
+}
+
+# The kernel release an image package boots.
+_kguard_release() {
+  local _r="${1#linux-image-}"
+  _r="${_r%-unsigned}"
+  echo "${_r%-dbg}"
+}
+
+# True while apt, dpkg or a daily security run works: the guard waits for
+# a later pass and never stops one.
+_kguard_pkg_busy() {
+  pgrep -u root -U root -x 'apt|apt-get|aptitude|dpkg|unattended-upgr' > /dev/null 2>&1 && return 0
+  pgrep -u root -U root -f '^([^ ]*/)?python[0-9.]* /usr/bin/unattended-upgrade( |$)' > /dev/null 2>&1 && return 0
+  pgrep -u root -U root -f '^([^ ]*/)?(ba|da)?sh /usr/lib/apt/apt\.systemd\.daily( |$)' > /dev/null 2>&1
+}
+
+# A purged kernel asks for no reboot: its line leaves the request, and the
+# request goes once nothing else is in it.
+_kguard_drop_reboot_lines() {
+  local _f="/run/reboot-required.pkgs"
+  [ "$#" -gt 0 ] && [ -s "${_f}" ] || return 0
+  if ! awk 'NR == FNR {gone[$1]; next} !($1 in gone)' <(printf '%s\n' "$@") "${_f}" > "${_f}.kguard"; then
+    rm -f "${_f}.kguard"
+    return 1
+  fi
+  if [ -s "${_f}.kguard" ]; then
+    mv -f "${_f}.kguard" "${_f}"
+  else
+    rm -f "${_f}.kguard" "${_f}" /run/reboot-required
+  fi
+}
+
+# Purges the broken images that do not run, after a simulation that
+# removes nothing but linux-image-* packages, none of them held; a meta
+# package that goes with them is written down to come back.
+_kguard_purge() {
+  local _run _pkg _ver _list="" _sim _bad _held _rc _m _gone=""
+  _run="$(uname -r 2>/dev/null)"
+  [ -n "${_run}" ] || return 0
+  while read -r _pkg _ver; do
+    _kguard_broken "${_ver}" || continue
+    [ "$(_kguard_release "${_pkg}")" = "${_run}" ] && continue
+    _list="${_list} ${_pkg}"
+  done < <(_kguard_images)
+  [ -n "${_list}" ] || return 0
+  _kguard_pkg_busy && return 0
+  # shellcheck disable=SC2086
+  _sim="$(LC_ALL=C apt-get -s purge ${_list} < /dev/null 2>/dev/null | awk '$1 == "Purg" || $1 == "Remv" {print $2}')"
+  _bad="$(echo "${_sim}" | grep -v -E '^(linux-image-|$)' | tr '\n' ' ')"
+  _held="$(apt-mark showhold 2>/dev/null | grep -x -F -f <(echo "${_sim}") | tr '\n' ' ')"
+  if [ -z "${_sim}" ] || [ -n "${_bad}" ] || [ -n "${_held}" ]; then
+    # shellcheck disable=SC2086
+    _kguard_refused "purge refused:${_list} (the simulation would remove: $(echo ${_sim:-nothing})${_bad:+; not an image: ${_bad% }}${_held:+; held: ${_held% }})"
+    return 1
+  fi
+  [ -d "/var/log/boa" ] || mkdir -p /var/log/boa
+  # shellcheck disable=SC2086
+  LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=60 \
+    -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold \
+    purge -y -qq ${_list} < /dev/null >> "${_KGUARD_LOG}" 2>&1
+  _rc=$?
+  for _m in ${_sim}; do
+    case "$(dpkg-query -W -f '${db:Status-Status}' "${_m}" 2>/dev/null)" in
+      ""|not-installed|config-files) ;;
+      *) continue ;;
+    esac
+    _gone="${_gone} ${_m}"
+    # a meta package names no x.y.z- release
+    [[ "${_m}" =~ [0-9]+\.[0-9]+\.[0-9]+- ]] && continue
+    mkdir -p "${_KGUARD_DIR}"
+    grep -q -s -x -F -- "${_m}" "${_KGUARD_DIR}/meta-removed" || echo "${_m}" >> "${_KGUARD_DIR}/meta-removed"
+  done
+  # shellcheck disable=SC2086
+  [ -n "${_gone}" ] && _kguard_drop_reboot_lines ${_gone}
+  if [ "${_rc}" -ne 0 ]; then
+    _kguard_refused "purge failed (apt-get exit ${_rc}):${_list}; removed:${_gone:- nothing}"
+    return 1
+  fi
+  _kguard_log "purged:${_gone}"
+}
+
+# A meta package the purge took goes back once apt offers it past the last
+# broken build, when its install removes nothing.
+_kguard_meta_back() {
+  local _rec="${_KGUARD_DIR}/meta-removed" _m _cand _rm _left=() _names=()
+  [ -s "${_rec}" ] || return 0
+  _kguard_pkg_busy && return 0
+  mapfile -t _names < "${_rec}"
+  for _m in "${_names[@]}"; do
+    # nothing but a kernel package name is ever acted on
+    [[ "${_m}" =~ ^linux-(image|headers)-[a-z0-9][a-z0-9.+-]*$ ]] || continue
+    if [ "$(dpkg-query -W -f '${db:Status-Status}' "${_m}" 2>/dev/null)" = "installed" ]; then
+      _kguard_log "meta package back: ${_m}, installed meanwhile"
+      continue
+    fi
+    _cand="$(LC_ALL=C apt-cache policy "${_m}" 2>/dev/null | awk '/Candidate:/ {print $2; exit}')"
+    if [ -z "${_cand}" ] || [ "${_cand}" = "(none)" ] \
+      || ! dpkg --compare-versions "${_cand}" gt "${_KGUARD_LAST}"; then
+      _left+=("${_m}")
+      continue
+    fi
+    _rm="$(LC_ALL=C apt-get -s --no-install-recommends install "${_m}" < /dev/null 2>/dev/null \
+      | awk '$1 == "Remv" || $1 == "Purg" {print $2}' | tr '\n' ' ')"
+    if [ -n "${_rm}" ]; then
+      _kguard_refused "meta package ${_m} ${_cand} left out: its install would remove ${_rm% }"
+      _left+=("${_m}")
+      continue
+    fi
+    [ -d "/var/log/boa" ] || mkdir -p /var/log/boa
+    if LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=60 \
+      -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold \
+      install -y -qq --no-install-recommends "${_m}" < /dev/null >> "${_KGUARD_LOG}" 2>&1; then
+      _kguard_log "meta package back: ${_m} ${_cand}"
+    else
+      _kguard_refused "meta package ${_m} ${_cand}: its install failed"
+      _left+=("${_m}")
+    fi
+  done
+  if [ "${#_left[@]}" -gt 0 ]; then
+    printf '%s\n' "${_left[@]}" > "${_rec}.new" && mv -f "${_rec}.new" "${_rec}"
+  else
+    rm -f "${_rec}"
+  fi
+}
+
+# The guard of an earlier release pointed GRUB's default at another kernel
+# while the running one was a build it kept out (a published pattern also
+# caught the fixed 6.1.192-2), recorded the line it replaced, and asked for
+# the night window's reboot. Once GRUB's stock choice, the newest kernel in
+# /boot, is no broken build, its reboot request goes and its default goes
+# back once, while GRUB's default is still the one it wrote; a default
+# changed by hand since stays. Nothing else here writes GRUB's settings.
+_kguard_old_boot_back() {
+  local _rec="${_KGUARD_DIR}/grub-default" _f="/etc/default/grub"
+  local _rr="/run/reboot-required.pkgs" _was _cur
+  _kguard_newest_broken && return 0
+  if grep -q -s ' (BOA kernel guard)$' "${_rr}"; then
+    grep -v ' (BOA kernel guard)$' "${_rr}" > "${_rr}.kguard"
+    if [ -s "${_rr}.kguard" ]; then
+      mv -f "${_rr}.kguard" "${_rr}"
+    else
+      rm -f "${_rr}.kguard" "${_rr}" /run/reboot-required
+    fi
+    _kguard_log "an earlier guard's reboot request withdrawn"
+  fi
+  [ -e "${_rec}" ] || return 0
+  _was="$(cat "${_rec}" 2>/dev/null)"
+  _cur="$(grep -E '^GRUB_DEFAULT=' "${_f}" 2>/dev/null)"
+  case "${_was}" in
+    ""|GRUB_DEFAULT=0|GRUB_DEFAULT=\"0\"|GRUB_DEFAULT=\'0\') ;;
+    *) _was="?" ;;
+  esac
+  if [ "${_was}" != "?" ] \
+    && [[ "${_cur}" =~ ^GRUB_DEFAULT=\"gnulinux-advanced-[^\"\>]+\>gnulinux-[^\"\>]+-advanced-[^\"\>]+\"$ ]]; then
+    cp -p "${_f}" "${_KGUARD_DIR}/grub.redirected" || return 1
+    if [ -n "${_was}" ]; then
+      sed "s|^GRUB_DEFAULT=.*|${_was}|" "${_KGUARD_DIR}/grub.redirected" > "${_f}.kguard"
+    else
+      sed '/^GRUB_DEFAULT=/d' "${_KGUARD_DIR}/grub.redirected" > "${_f}.kguard"
+    fi
+    chmod 0644 "${_f}.kguard" && mv -f "${_f}.kguard" "${_f}" || return 1
+    if ! update-grub > /dev/null 2>&1; then
+      # grub.cfg still starts the redirect: the file says so too, and the
+      # next pass tries again
+      cp -p "${_KGUARD_DIR}/grub.redirected" "${_f}"
+      _kguard_refused "an earlier guard's GRUB default not put back: update-grub failed"
+      return 1
+    fi
+    rm -f "${_KGUARD_DIR}/grub.redirected"
+    _kguard_log "an earlier guard's GRUB default put back: ${_was:-no line}"
+  else
+    _kguard_log "an earlier guard's GRUB record dropped, GRUB's default left as it is: ${_cur:-no line}"
+  fi
+  rm -f "${_rec}" "${_KGUARD_DIR}/grub.before"
+}
+
+# True when the newest kernel in /boot, the one GRUB's stock default
+# boots, is a broken build.
+_kguard_newest_broken() {
+  local _k _new _ver
+  _new="$(for _k in /boot/vmlinuz-*; do [ -f "${_k}" ] && echo "${_k#/boot/vmlinuz-}"; done | sort -V | tail -n 1)"
+  [ -n "${_new}" ] || return 1
+  _ver="$(dpkg-query -W -f '${Version}' "linux-image-${_new}" 2>/dev/null)"
+  [ -n "${_ver}" ] || _ver="$(dpkg-query -W -f '${Version}' "linux-image-${_new}-unsigned" 2>/dev/null)"
+  _kguard_broken "${_ver}"
+}
+
+_kernel_guard() {
+  [ "${_KERNEL_GUARD:-}" = "NO" ] && return 0
+  command -v dpkg-query > /dev/null 2>&1 || return 0
+  [ -n "$(_kguard_images)" ] || return 0
+  _write_managed_apt_conf "${_KGUARD_PIN}" \
+"Explanation: Managed by BOA (autoupboa), the kernel guard: Debian's 6.1.192-1 (6.1.0-55) freezes ext4
+Explanation: (a NULL folio in the block allocator, Debian bug 1154101, fixed in 6.1.192-2).
+Package: linux-image-* linux-headers-* linux-kbuild-*
+Pin: version /${_KGUARD_RE}/
+Pin-Priority: -1"
+  case "$?" in
+    2) _kguard_log "apt pin written: ${_KGUARD_PIN}" ;;
+    1) _kguard_refused "apt pin not written: ${_KGUARD_PIN}" ;;
+  esac
+  # packages and GRUB change only outside a BOA run and the night backup
+  _is_protected_run > /dev/null
+  [ "${_protectedRun}" = "FALSE" ] || return 0
+  _kguard_purge
+  _kguard_old_boot_back
+  _kguard_meta_back
+}
+
 _announce_kernel_reboot() {
   # An unattended kernel-activation reboot must never be silent: log it
   # in /var/log/boa/ and alert the admin by email before firing, so an
@@ -1543,6 +1819,12 @@ _if_new_kernel_reboot() {
         echo "NOTE: kernel reboot pending, deferred: a migration park stands"
         return 0
       fi
+      ### Never into a broken build the kernel guard keeps out (one it has
+      ### not purged): GRUB's stock default boots the newest kernel in /boot.
+      if [ "${_KERNEL_GUARD:-}" != "NO" ] && _kguard_newest_broken; then
+        echo "NOTE: kernel reboot pending, refused: the newest kernel in /boot is a broken build the kernel guard keeps out"
+        return 0
+      fi
       ### A staged kernel is activated only inside the silent night
       ### maintenance window (04:00-04:59 server time): an apt security
       ### run staging a kernel mid-day must never reboot a box mid-day.
@@ -1563,6 +1845,8 @@ _if_new_kernel_reboot() {
     fi
   fi
 }
+
+_kernel_guard
 
 _if_hosted_sys
 if [ "${_hostedSys}" = "YES" ] || [ -e "/root/.allow.auto.reboot.cnf" ]; then
