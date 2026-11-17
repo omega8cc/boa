@@ -960,6 +960,14 @@
 
 @=> Important Fixes
 
+    * When /opt/local/bin/lock.inc cannot be read, xtrim counts its own
+      running copies instead and stops when there are too many. It counted
+      every root process whose command line held its name, so an editor
+      open on the tool, a tail of its run log or a grep for its name
+      counted as a running xtrim and could stop a run. It now counts only
+      root's runs of an xtrim path, as the monitors and the other tools
+      do. Nothing changes where lock.inc is present.
+
     * xmass cutover sizes and copies each account's files store once while
       the sites answer 503, in its final pass before the write freeze. Its
       last file sync of the accounts copied every store too, behind the
