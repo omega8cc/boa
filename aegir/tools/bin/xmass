@@ -11582,7 +11582,7 @@ _xmass_sync_static_symlink_safe() {
   # the 503 gate, so a store passed in both was sized and walked twice while
   # the clients waited: one pass over a 739 G store with nothing new to copy
   # took 11 minutes. The rest of this function still runs in step 3.
-  if [ "${_XMASS_STORE_IN_FINAL_PASS}" = "YES" ]; then
+  if [ "${_XMASS_STORE_IN_FINAL_PASS:-NO}" = "YES" ]; then
     if [ -e "${_src_usr}/static/files" ] || [ -L "${_src_usr}/static/files" ]; then
       _info "  static/files (${_dst_acct}): left to the final pass before the write freeze"
     fi
