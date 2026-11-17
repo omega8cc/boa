@@ -1011,6 +1011,18 @@
       with nginx stopped, and one on a replication standby holding its web
       tier down, work as before.
 
+    * Nothing BOA runs stops a serving nginx any more for a start that
+      could not work. With a file nginx -t rejects, the nginx monitor's
+      restarts (an account's restart request included), webserver up, a
+      database server restart (a barracuda pass that changes my.cnf or
+      upgrades the server) and the load pause stopped or killed nginx and
+      left its start to later, which failed, so every site stayed down
+      until the file was fixed. They now keep the running nginx (the
+      database restart and the pause still stop PHP-FPM), the monitor no
+      longer tries to start a stopped one, and the reason, with nginx -t's
+      first error, goes to nginx's incident log and is mailed at every
+      incident report level but OFF.
+
     * xoct's two reads of the target that decide a move's next step end
       when the target stops answering once connected: the proxy's read of
       the account's import there, before its first write, and the check of
