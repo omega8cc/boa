@@ -2970,6 +2970,20 @@
       completion and that the lines above it name what is left to resolve
       in the site. A run that did leave updates behind keeps its warning.
 
+    * Ægir: a Migrate run beside a Backup task of the same account no
+      longer takes that task's backup mode. Its deploy read the mode the
+      queue leaves for the Backup task, looked for a database dump its own
+      safety copy never made, and failed. Only the Backup task's own
+      process reads that mode now, and the other tasks no longer remove
+      it at their start, which left that Backup task with no mode.
+
+    * Ægir: a Migrate whose Verify of the site fails before the move now
+      stops there. Run by hand on a site whose panel record names the
+      target platform, that Verify built the site's folder on the target
+      and failed, and the Migrate went on to copy the site over it: the
+      failed task then left that folder, a new database and its logins.
+      Now nothing is copied, and the folder is removed.
+
 @=> New Features
 
     * Check available updates, a new read-only site task, writes a site's
