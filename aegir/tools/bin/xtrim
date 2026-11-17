@@ -63,8 +63,12 @@ _check_root() {
 }
 
 ### Single instance, house pattern (lock.inc when present, legacy fallback).
+### The fallback counts root's runs of an xtrim path, in the form the other
+### tools use, never a command line that only names it (an editor, a tail of
+### a run log, a grep). A run that keeps a run log is two such processes,
+### the wrapper and its run.
 _manage_single_lock() {
-  local _L
+  local _L _CNT
   _SELF_NAME="xtrim"
   for _L in "/opt/local/bin/lock.inc" "/opt/local/lib/lock.inc"; do
     [ -r "${_L}" ] && . "${_L}" && break
@@ -73,8 +77,9 @@ _manage_single_lock() {
     && command -v _single_instance_lock >/dev/null 2>&1; then
     _single_instance_lock
   else
-    if [ "$(pgrep -u root -U root -fc '[x]trim')" -gt 2 ]; then
-      echo "$(date 2>/dev/null) too many xtrim already running" \
+    _CNT=$(pgrep -u root -U root -fc "(^|(^| )[^ ]*bash )[^ ]*/${_SELF_NAME}( |$)")
+    if [ "${_CNT:-0}" -gt 2 ]; then
+      echo "$(date 2>/dev/null) too many xtrim already running (count=${_CNT})" \
         >> /var/log/boa/too.many.log
       exit 0
     fi
