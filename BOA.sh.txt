@@ -7133,46 +7133,72 @@ _php_floor_log() {
   echo "$(date 2> /dev/null) $1" >> "${_pthLog}/sec-floor.log"
 }
 
+# Copies $1 to $2 when $1 is there and $2 is not, and prints the copy's size
+# in bytes, else 0.
+_sec_floor_copy() {
+  if [ -f "$1" ] && [ ! -e "$2" ] && cp -p "$1" "$2" 2> /dev/null; then
+    stat -c %s "$2" 2> /dev/null || echo 0
+  else
+    echo 0
+  fi
+}
+
+# Puts what $1 holds past its first $3 bytes, the part copied to $2 at the
+# mark, into $2 right after $2's own first $3 bytes, through a file of its
+# own, and removes $1; on any failure both stay as they were. A copy no longer
+# at the head of both files counts as none: then all of $1 goes first.
+_sec_floor_join() {
+  local _n="$3" _j="$2.join"
+  case "${_n}" in
+    ''|*[!0-9]*) _n=0 ;;
+  esac
+  if [ "${_n}" -gt 0 ] && ! cmp -s -n "${_n}" "$1" "$2" 2> /dev/null; then
+    _n=0
+  fi
+  if { head -c "${_n}" "$2" && tail -c +"$(( _n + 1 ))" "$1" \
+    && tail -c +"$(( _n + 1 ))" "$2"; } 2> /dev/null > "${_j}" \
+    && mv -f "${_j}" "$2" 2> /dev/null; then
+    rm -f "$1"
+  fi
+  rm -f "${_j}" 2> /dev/null
+}
+
 # The floor's files were named for PHP alone until the floor covered Nginx.
-# This agent's first run here moves the log and the pass log to the new
-# names with their history (a pass still writing the old pass log goes on
-# writing it under the new name). While mirrors disagree after a publish, an
-# agent from before the rename can still run here now and then, with its own
-# state and logs under the old names: they stay its own for a day after this
-# agent first ran here, so it neither starts over nor mails again. Then no
-# such agent or its pass can still run: what it wrote joins the new logs and
-# its state goes. The day is counted from /etc/boa/control/sec-floor.since.
-# The floor log's older lines go first, so its last line stays this agent's
-# own (_php_floor_log reads it); the pass log may be written by a running
-# pass, so its older lines are added at the end.
+# This agent's first run here copies the log and the pass log to the new
+# names with their history and marks /etc/boa/control/sec-floor.since with
+# each copy's size. While mirrors disagree after a publish, an agent from
+# before the rename can still run here now and then: its state and old-name
+# logs stay exactly as it keeps them for a day after the mark, so it neither
+# starts over nor logs and mails a line again. Then no such agent or its pass
+# runs any more: what it added to an old log after the copy goes into the new
+# log right after the copied history, the old files go, and so do its states.
+# The pass log is joined only while no BOA run can be writing it.
 _sec_floor_rename_logs() {
-  local _sInce=/etc/boa/control/sec-floor.since _dAy=""
+  local _sInce=/etc/boa/control/sec-floor.since _lOg="" _pAss=""
   local _oLd="${_pthLog}/php-sec-floor.log" _nEw="${_pthLog}/sec-floor.log"
+  local _oPs=/var/log/boa/barracuda-php-floor.log _nPs=/var/log/boa/barracuda-sec-floor.log
   if [ ! -e "${_sInce}" ]; then
+    _lOg=$(_sec_floor_copy "${_oLd}" "${_nEw}")
+    _pAss=$(_sec_floor_copy "${_oPs}" "${_nPs}")
     mkdir -p /etc/boa/control
-    touch "${_sInce}"
+    echo "${_lOg} ${_pAss}" > "${_sInce}"
+    return 0
   fi
-  [ -n "$(find "${_sInce}" -mmin +1440 2> /dev/null)" ] && _dAy=YES
-  if [ -f "${_oLd}" ]; then
-    if [ ! -e "${_nEw}" ]; then
-      mv -f "${_oLd}" "${_nEw}" 2> /dev/null
-    elif [ "${_dAy}" = "YES" ] && [ -f "${_nEw}" ]; then
-      cat "${_oLd}" "${_nEw}" > "${_nEw}.join" 2> /dev/null \
-        && mv -f "${_nEw}.join" "${_nEw}" && rm -f "${_oLd}"
-      rm -f "${_nEw}.join"
+  [ -n "$(find "${_sInce}" -mmin +1440 2> /dev/null)" ] || return 0
+  read -r _lOg _pAss < "${_sInce}"
+  if [ -f "${_oLd}" ] && [ ! -e "${_nEw}" ]; then
+    mv -f "${_oLd}" "${_nEw}" 2> /dev/null
+  elif [ -f "${_oLd}" ] && [ -f "${_nEw}" ]; then
+    _sec_floor_join "${_oLd}" "${_nEw}" "${_lOg}"
+  fi
+  if [ ! -e /run/boa_run.pid ]; then
+    if [ -f "${_oPs}" ] && [ ! -e "${_nPs}" ]; then
+      mv -f "${_oPs}" "${_nPs}" 2> /dev/null
+    elif [ -f "${_oPs}" ] && [ -f "${_nPs}" ]; then
+      _sec_floor_join "${_oPs}" "${_nPs}" "${_pAss}"
     fi
   fi
-  _oLd=/var/log/boa/barracuda-php-floor.log
-  _nEw=/var/log/boa/barracuda-sec-floor.log
-  if [ -f "${_oLd}" ]; then
-    if [ ! -e "${_nEw}" ]; then
-      mv -f "${_oLd}" "${_nEw}" 2> /dev/null
-    elif [ "${_dAy}" = "YES" ] && [ -f "${_nEw}" ]; then
-      cat "${_oLd}" >> "${_nEw}" 2> /dev/null && rm -f "${_oLd}"
-    fi
-  fi
-  [ "${_dAy}" = "YES" ] \
-    && find /etc/boa/control -maxdepth 1 -name 'php-sec-floor.*.txt' -delete 2> /dev/null
+  find /etc/boa/control -maxdepth 1 -name 'php-sec-floor.*.txt' -delete 2> /dev/null
 }
 
 # TRUE when version $2 is older than $3 by PHP's own rules, asked of the PHP
