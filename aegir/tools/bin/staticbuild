@@ -334,7 +334,7 @@ _VARBASE_SPEC="Vardot/varbase-project:11.0.10"
 # the core: move these once a test install AND clone pass, and _distros_drupal_cores["VBX"]
 # in AegirSetupC only after the new tarball is on the mirror. Drop both when a newer
 # template carries its own lock.
-_VARBASE_CORE="11.4.11"
+_VARBASE_CORE="11.4.13"
 _VARBASE_CORE_PATCHES="11.4.0.8"
 # The 11 line's committed lock pins drupal/ai_provider_amazeeio 1.4.2 (via
 # drupal/drupal_cms_ai), which declares ext-pdo_pgsql; BOA's PHP builds carry no
