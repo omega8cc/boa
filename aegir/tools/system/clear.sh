@@ -192,6 +192,7 @@ _installer_alive() {
 # script as well (SHELL=/bin/bash and the redirections on the crontab line
 # keep that shell alive for the whole run).
 _SQL_BACKUP_EXEC='^([^ ]*/)?bash /var/xdrago/mysql_backup\.sh( |$)'
+_SQL_CLUSTER_BACKUP_EXEC='^([^ ]*/)?bash /var/xdrago/mysql_cluster_backup\.sh( |$)'
 
 # Seconds the oldest process of the form has run; empty when none runs.
 _exec_age() {
@@ -214,14 +215,17 @@ _sql_backup_limit() {
   echo $(( _h * 3600 ))
 }
 
-# 0 while a nightly backup runs within its limit. The self-update and
-# autoupboa hold for it as for an install, so nothing is replaced, restarted
-# or reaped under a running dump; past the limit the hold lifts and
-# autoupboa's reaper ends the hanging run and reports it.
+# 0 while a nightly backup, plain or cluster, runs within its limit. The
+# self-update and autoupboa hold for it as for an install, so nothing is
+# replaced, restarted or reaped under a running dump; past the limit the hold
+# lifts and autoupboa's reaper ends the hanging run and reports it.
 _sql_backup_live() {
-  local _a=""
+  local _a="" _lim=""
+  _lim=$(_sql_backup_limit)
   _a=$(_exec_age "${_SQL_BACKUP_EXEC}")
-  [ -n "${_a}" ] && [ "${_a}" -le "$(_sql_backup_limit)" ]
+  [ -n "${_a}" ] && [ "${_a}" -le "${_lim}" ] && return 0
+  _a=$(_exec_age "${_SQL_CLUSTER_BACKUP_EXEC}")
+  [ -n "${_a}" ] && [ "${_a}" -le "${_lim}" ]
 }
 
 _ONE_HOUR=$(date --date '1 hour ago' +"%Y-%m-%d %H:%M:%S")
