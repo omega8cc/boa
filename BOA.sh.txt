@@ -7134,15 +7134,30 @@ _php_floor_log() {
 }
 
 # The floor's files were named for PHP alone until the floor covered Nginx:
-# the log and the pass log keep their history under the new names, once. A
-# pass still writing the old pass log goes on writing it under the new name.
+# the log and the pass log keep their history under the new names. The
+# first move renames them, and a pass still writing the old pass log goes on
+# writing it under the new name. While mirrors disagree after a publish, an
+# agent from before the rename can write the old files again: their lines
+# are added to the new ones, the pass log's only once no pass can still be
+# writing it (no BOA run, ten quiet minutes). Agent runs never overlap.
 _sec_floor_rename_logs() {
-  if [ -f "${_pthLog}/php-sec-floor.log" ] && [ ! -e "${_pthLog}/sec-floor.log" ]; then
-    mv -f "${_pthLog}/php-sec-floor.log" "${_pthLog}/sec-floor.log" 2> /dev/null
+  local _oLd="${_pthLog}/php-sec-floor.log" _nEw="${_pthLog}/sec-floor.log"
+  if [ -f "${_oLd}" ]; then
+    if [ ! -e "${_nEw}" ]; then
+      mv -f "${_oLd}" "${_nEw}" 2> /dev/null
+    elif [ -f "${_nEw}" ]; then
+      cat "${_oLd}" >> "${_nEw}" 2> /dev/null && rm -f "${_oLd}"
+    fi
   fi
-  if [ -f /var/log/boa/barracuda-php-floor.log ] \
-    && [ ! -e /var/log/boa/barracuda-sec-floor.log ]; then
-    mv -f /var/log/boa/barracuda-php-floor.log /var/log/boa/barracuda-sec-floor.log 2> /dev/null
+  _oLd=/var/log/boa/barracuda-php-floor.log
+  _nEw=/var/log/boa/barracuda-sec-floor.log
+  if [ -f "${_oLd}" ]; then
+    if [ ! -e "${_nEw}" ]; then
+      mv -f "${_oLd}" "${_nEw}" 2> /dev/null
+    elif [ -f "${_nEw}" ] && [ ! -e /run/boa_run.pid ] \
+      && [ -n "$(find "${_oLd}" -mmin +10 2> /dev/null)" ]; then
+      cat "${_oLd}" >> "${_nEw}" 2> /dev/null && rm -f "${_oLd}"
+    fi
   fi
 }
 
@@ -7234,12 +7249,14 @@ _php_security_floor() {
     _wHat="${_wHat:+${_wHat} and }Nginx"
     _lIst="${_lIst:+${_lIst} and }Nginx ${_nGx}"
   fi
-  ### The state is named by both floors; a state of other floors goes, and
-  ### so does one under the name the floor had before it covered Nginx.
+  ### The state is named by both floors; a state of other floors goes. One
+  ### under the name the floor had before it covered Nginx goes once an hour
+  ### old: while mirrors disagree after a publish, an agent from before the
+  ### rename keeps its own, so it does not start over and mail again.
   _sTp="/etc/boa/control/sec-floor.$(echo "${_PHP_SEC_FLOOR}${_NGINX_SEC_FLOOR:+ nginx-${_NGINX_SEC_FLOOR}}" \
     | cksum | cut -d' ' -f1).txt"
-  find /etc/boa/control -maxdepth 1 \( -name 'sec-floor.*.txt' -o -name 'php-sec-floor.*.txt' \) \
-    ! -name "${_sTp##*/}" -delete 2> /dev/null
+  find /etc/boa/control -maxdepth 1 \( -name 'sec-floor.*.txt' \
+    -o \( -name 'php-sec-floor.*.txt' -mmin +60 \) \) ! -name "${_sTp##*/}" -delete 2> /dev/null
   if [ -z "${_bElow}" ]; then
     rm -f "${_sTp}"
     return 0
