@@ -316,8 +316,11 @@
       BOA vhost. A box whose Nginx is older starts the barracuda system pass
       that installs it, also with _SKYNET_MODE=OFF, under the PHP floor's
       rules: its own spread of up to 30 minutes once the release is on the
-      mirror, the busy and OS upgrade holds, three tries, and
-      /var/log/boa/php-sec-floor.log says where it stands.
+      mirror, the busy and OS upgrade holds, three tries. The floor's files
+      now carry neutral names, its log with its history moved over once:
+      /var/log/boa/sec-floor.log says where it stands, the pass writes
+      /var/log/boa/barracuda-sec-floor.log and its state is
+      /etc/boa/control/sec-floor.<sum>.txt.
 
     * lfd blocks SSH password guessing again. OpenSSH 9.8 and newer logs
       failed logins as sshd-session, and the SSH rules of csf 15.00 match

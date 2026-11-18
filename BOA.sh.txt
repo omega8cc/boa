@@ -7118,9 +7118,10 @@ _PHP_SEC_FLOOR="8.2.35 8.3.36 8.4.27 8.5.12 8.6.0RC4 7.4.33+cve-2026-109618-1096
 # Nginx security floor: the first release no box may run below, e.g.
 # "1.31.9"; empty means off. A box whose /usr/sbin/nginx is older gets the
 # same pass, under the same rules, once the tree pins that release or newer
-# and its source is on the mirror: the pass installs the pin. The state,
-# the log and the launcher's override are the PHP floor's, so one pass
-# serves both floors.
+# and its source is on the mirror: the pass installs the pin. Both floors
+# share one state, one log and the launcher's override, so one pass serves
+# both: /etc/boa/control/sec-floor.<sum>.txt, /var/log/boa/sec-floor.log
+# and the pass's own /var/log/boa/barracuda-sec-floor.log.
 _NGINX_SEC_FLOOR="1.31.9"
 
 # One line per state: a wait repeated on every run is logged once, until
@@ -7128,8 +7129,21 @@ _NGINX_SEC_FLOOR="1.31.9"
 # follow a new state alone.
 _php_floor_log() {
   [ -d "${_pthLog}" ] || return 1
-  tail -n 1 "${_pthLog}/php-sec-floor.log" 2> /dev/null | grep -qF -- "$1" && return 1
-  echo "$(date 2> /dev/null) $1" >> "${_pthLog}/php-sec-floor.log"
+  tail -n 1 "${_pthLog}/sec-floor.log" 2> /dev/null | grep -qF -- "$1" && return 1
+  echo "$(date 2> /dev/null) $1" >> "${_pthLog}/sec-floor.log"
+}
+
+# The floor's files were named for PHP alone until the floor covered Nginx:
+# the log and the pass log keep their history under the new names, once. A
+# pass still writing the old pass log goes on writing it under the new name.
+_sec_floor_rename_logs() {
+  if [ -f "${_pthLog}/php-sec-floor.log" ] && [ ! -e "${_pthLog}/sec-floor.log" ]; then
+    mv -f "${_pthLog}/php-sec-floor.log" "${_pthLog}/sec-floor.log" 2> /dev/null
+  fi
+  if [ -f /var/log/boa/barracuda-php-floor.log ] \
+    && [ ! -e /var/log/boa/barracuda-sec-floor.log ]; then
+    mv -f /var/log/boa/barracuda-php-floor.log /var/log/boa/barracuda-sec-floor.log 2> /dev/null
+  fi
 }
 
 # TRUE when version $2 is older than $3 by PHP's own rules, asked of the PHP
@@ -7180,6 +7194,7 @@ _php_security_floor() {
   local _tR="" _wAit="" _eNt="" _fV="" _fId="" _hOst="" _nGx="" _wHat=""
   _PHP_FLOOR_GO=NO
   [ -n "${_PHP_SEC_FLOOR}${_NGINX_SEC_FLOOR}" ] || return 0
+  _sec_floor_rename_logs
   [ -x "/opt/local/bin/barracuda" ] || return 0
   [ -e "/var/log/barracuda_log.txt" ] || return 0
   ### A major OS upgrade in progress rebuilds every PHP version itself; the
@@ -7219,12 +7234,12 @@ _php_security_floor() {
     _wHat="${_wHat:+${_wHat} and }Nginx"
     _lIst="${_lIst:+${_lIst} and }Nginx ${_nGx}"
   fi
-  ### The Nginx floor joins the state's name only when set, so the PHP
-  ### floor's state keeps its name while the Nginx floor is off.
-  _sTp="/etc/boa/control/php-sec-floor.$(echo "${_PHP_SEC_FLOOR}${_NGINX_SEC_FLOOR:+ nginx-${_NGINX_SEC_FLOOR}}" \
+  ### The state is named by both floors; a state of other floors goes, and
+  ### so does one under the name the floor had before it covered Nginx.
+  _sTp="/etc/boa/control/sec-floor.$(echo "${_PHP_SEC_FLOOR}${_NGINX_SEC_FLOOR:+ nginx-${_NGINX_SEC_FLOOR}}" \
     | cksum | cut -d' ' -f1).txt"
-  find /etc/boa/control -maxdepth 1 -name 'php-sec-floor.*.txt' ! -name "${_sTp##*/}" \
-    -delete 2> /dev/null
+  find /etc/boa/control -maxdepth 1 \( -name 'sec-floor.*.txt' -o -name 'php-sec-floor.*.txt' \) \
+    ! -name "${_sTp##*/}" -delete 2> /dev/null
   if [ -z "${_bElow}" ]; then
     rm -f "${_sTp}"
     return 0
@@ -7249,7 +7264,7 @@ release is out for this box. It runs although _SKYNET_MODE=OFF is set:
 the release fixes remote code execution bugs. The pass does not touch
 the master Aegir instance.
 
-Log: ${_pthLog}/php-sec-floor.log"
+Log: ${_pthLog}/sec-floor.log"
       fi
       return 0
       ;;
@@ -7271,7 +7286,7 @@ and still is after three barracuda system passes.
 BOA starts no more passes for it. Run 'barracuda up-<tree> system' by
 hand and read its report in /var/backups/reports/up/barracuda/.
 
-Log: ${_pthLog}/php-sec-floor.log"
+Log: ${_pthLog}/sec-floor.log"
     return 0
   fi
   _php_floor_busy && return 0
@@ -7363,7 +7378,7 @@ The barracuda system pass that rebuilds it would also run the major OS
 upgrade staged with ${_eNt}=YES in /root/.barracuda.cnf. BOA starts it
 once that upgrade has been run or the line is removed.
 
-Log: ${_pthLog}/php-sec-floor.log"
+Log: ${_pthLog}/sec-floor.log"
       fi
       _wAit=YES
       break
@@ -7395,12 +7410,12 @@ _php_security_floor_launch() {
   fi
   echo "${_PHP_FLOOR_NEXT}" > "${_PHP_FLOOR_STATE}"
   [ -d "${_pthLog}" ] && echo "$(date 2> /dev/null) ${_PHP_FLOOR_LIST} below the security floor, barracuda up-${_PHP_FLOOR_TREE} system launched" \
-    >> "${_pthLog}/php-sec-floor.log"
+    >> "${_pthLog}/sec-floor.log"
   ### Nothing of an earlier run may stay in /opt/tmp, hidden entries included
   ### (a stale build tree or its refetch marker): the pass starts clean.
   find /opt/tmp/ -mindepth 1 -maxdepth 1 -exec rm -rf -- {} + 2> /dev/null
   ( _PHP_SEC_FLOOR_PASS=YES nohup setsid /opt/local/bin/barracuda "up-${_PHP_FLOOR_TREE}" system noscreen \
-    >> /var/log/boa/barracuda-php-floor.log 2>&1 < /dev/null & )
+    >> /var/log/boa/barracuda-sec-floor.log 2>&1 < /dev/null & )
 }
 
 ###--------------------###
