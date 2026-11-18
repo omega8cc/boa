@@ -3078,6 +3078,15 @@
       failed task then left that folder, a new database and its logins.
       Now nothing is copied, and the folder is removed.
 
+    * Ægir: a Migrate that keeps the site's name, a Clone and the upgrades
+      that copy a site now stop before they change anything when the
+      panel's record of the site names another platform than the one its
+      alias and folder are on, as a move made outside the panel leaves
+      it. Their Verify through the panel would have worked on that other
+      platform, where it could give the site's database user a password
+      its own settings no longer held. The task log names the command that
+      brings the record up to date.
+
 @=> New Features
 
     * Check available updates, a new read-only site task, writes a site's
