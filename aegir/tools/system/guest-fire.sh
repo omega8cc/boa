@@ -221,6 +221,35 @@ _cidr_covers_ip() {
     END { exit found ? 0 : 1 }'
 }
 
+# The CIDR blocks of a CSF file as one of the two tests below lists them
+# (any: every block in an entry; plain: a first-field block), in _CSF_BLK.
+# The tests run for every address of every ledger, per port, on each of the
+# five passes a minute, and the listing took three programs each time, the
+# same blocks nearly always. It is made again only when the file's bytes
+# differ from those it was made from: the file is read by the shell itself
+# on every test, so an entry added or removed between two tests, by csf or
+# by an operator, counts from the next test on, as it did.
+declare -A _CSF_BLK_TXT=() _CSF_BLK_OUT=()
+_csf_blocks() {
+  local _kind="${1}" _file="${2}" _txt="" _k="${1}|${2}"
+  LC_ALL=C IFS= read -r -d '' _txt 2> /dev/null < "${_file}"
+  if [[ -n "${_CSF_BLK_TXT[${_k}]+x}" && "${_CSF_BLK_TXT[${_k}]}" == "${_txt}" ]]; then
+    _CSF_BLK="${_CSF_BLK_OUT[${_k}]}"
+    return 0
+  fi
+  if [[ "${_kind}" == "any" ]]; then
+    _CSF_BLK="$(cut -d'#' -f1 "${_file}" 2>/dev/null \
+      | grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}' \
+      | sort -u)"
+  else
+    _CSF_BLK="$(sed 's/^[[:space:]]*//' "${_file}" 2>/dev/null \
+      | grep -oE '^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}' \
+      | sort -u)"
+  fi
+  _CSF_BLK_TXT[${_k}]="${_txt}"
+  _CSF_BLK_OUT[${_k}]="${_CSF_BLK}"
+}
+
 # Membership test against a CSF state file, honouring every entry form CSF
 # accepts: plain first-field IP, IP/32, advanced syntax (s=/d=), and covering
 # CIDR blocks anywhere in an entry. This is the TRUST test: any appearance
@@ -231,10 +260,8 @@ _csf_file_matches_ip() {
   [[ -f "${_file}" ]] || return 1
   grep -qE "(^[[:space:]]*|\|s=|\|d=)${_ip_rx}(/32)?([[:space:]#|]|$)" "${_file}" 2>/dev/null \
     && return 0
-  cut -d'#' -f1 "${_file}" 2>/dev/null \
-    | grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}' \
-    | sort -u \
-    | _cidr_covers_ip "${_ip}"
+  _csf_blocks any "${_file}"
+  _cidr_covers_ip "${_ip}" <<< "${_CSF_BLK}"
 }
 
 # First-field entries only (csf strips leading whitespace, so an indented
@@ -246,10 +273,8 @@ _csf_plain_covers_ip() {
   [[ -f "${_file}" ]] || return 1
   grep -qE "^[[:space:]]*${_ip_rx}(/32)?([[:space:]#]|$)" "${_file}" 2>/dev/null \
     && return 0
-  sed 's/^[[:space:]]*//' "${_file}" 2>/dev/null \
-    | grep -oE '^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}' \
-    | sort -u \
-    | _cidr_covers_ip "${_ip}"
+  _csf_blocks plain "${_file}"
+  _cidr_covers_ip "${_ip}" <<< "${_CSF_BLK}"
 }
 
 # Return 0 if the IP has an active inbound temp ban covering the port.
