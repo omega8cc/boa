@@ -394,10 +394,12 @@ _grav_tick_slot() {
 # line. One pass over every alias, listed by the instance user (the account's
 # .drush is its own, so root opens no name there), one separator line before
 # each file: an enabled site's site_path and uri, each a whole quoted value on
-# its own two-space-indented line, the first match per file. Returns the
-# reading shell's status, so a pass that did not finish can be told apart.
+# its own two-space-indented line, the first match per file. Returns 1 when
+# any file's read failed (not only the last one's, which alone was the loop's
+# status), when the pass did not finish, or when awk could not write its list:
+# a read that missed one store must never be kept.
 _grav_alias_read() {
-  timeout 60 su -s /bin/bash "${_H_USER}" -c "cd -P -- '/data/disk/${_H_USER}/.drush' 2>/dev/null || exit 0; for _f in *.alias.drushrc.php; do [ -f \"\${_f}\" ] && [ ! -L \"\${_f}\" ] || continue; echo; echo '#boa-alias-file'; timeout 10 dd if=\"./\${_f}\" iflag=nofollow,nonblock,fullblock bs=1048576 count=1 status=none; done" 2> /dev/null < /dev/null 7>&- 8>&- \
+  timeout 60 su -s /bin/bash "${_H_USER}" -c "cd -P -- '/data/disk/${_H_USER}/.drush' 2>/dev/null || exit 0; _rc=0; for _f in *.alias.drushrc.php; do [ -f \"\${_f}\" ] && [ ! -L \"\${_f}\" ] || continue; echo; echo '#boa-alias-file'; timeout 10 dd if=\"./\${_f}\" iflag=nofollow,nonblock,fullblock bs=1048576 count=1 status=none || _rc=1; done; exit \${_rc}" 2> /dev/null < /dev/null 7>&- 8>&- \
     | awk -v q="'" '
       function val(line, key,   p, v) {
         p = "  " q key q " => " q
@@ -420,7 +422,8 @@ _grav_alias_read() {
       uri == "" { v = val($0, "uri"); if (v != "") uri = v }
       END { emit() }
     ' 2> /dev/null
-  return "${PIPESTATUS[0]}"
+  local -a _ps=( "${PIPESTATUS[@]}" )
+  (( _ps[0] == 0 && _ps[1] == 0 ))
 }
 
 # _grav_alias_read's lines in a new order every minute, so that busy stores
