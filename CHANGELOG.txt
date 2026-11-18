@@ -973,6 +973,23 @@
 
 @=> Important Fixes
 
+    * A login of an account moved to another server, on the server it
+      moved from, opens with a welcome that says so: since when its sites
+      are served by the new server, named where its reverse DNS record
+      resolves back to it and by address otherwise, that nothing changed
+      in the old copy reaches the live sites, and the exact login to use
+      there. Such a login was held to its own home under the usual
+      welcome, which read as a broken shell to anyone not told of the
+      move. It still reaches only its home, the part the completion
+      notice asks the client to download from the old server.
+
+    * xoct's completion notice says where the account's SSH and SFTP
+      logins connect now (the new server's name, or its address where the
+      name is not confirmed) and asks the account holder to tell anyone
+      else who uses those logins, such as a developer or a site
+      administrator: the old server only forwards the sites, and files
+      changed there do not reach them.
+
     * Classic Drush 8.5.25 (Ægir's Drush 8): a run with no TERM starts no
       shell to ask tput for colours, and a run with no terminal on its
       input none to ask stty for the width; both answers were already
