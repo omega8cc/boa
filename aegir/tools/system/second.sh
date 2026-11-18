@@ -603,10 +603,12 @@ _proc_control() {
 }
 
 # Function to get system load averages
+# (Read by the shell itself, and both values from one awk with the same
+# formula and format: this runs ten times a minute.)
 _get_load() {
-  read -r _one _five _rest <<< "$(cat /proc/loadavg)"
-  _O_LOAD=$(awk -v _load_value="${_one}" -v _cpus="${_CPU_COUNT}" 'BEGIN { printf "%.1f", (_load_value / _cpus) * 100 }')
-  _F_LOAD=$(awk -v _load_value="${_five}" -v _cpus="${_CPU_COUNT}" 'BEGIN { printf "%.1f", (_load_value / _cpus) * 100 }')
+  read -r _one _five _rest < /proc/loadavg
+  read -r _O_LOAD _F_LOAD < <(awk -v _l1="${_one}" -v _l5="${_five}" -v _cpus="${_CPU_COUNT}" \
+    'BEGIN { printf "%.1f %.1f\n", (_l1 / _cpus) * 100, (_l5 / _cpus) * 100 }')
 }
 
 # Average count of runnable plus I/O-blocked tasks over ~9 s, read from
@@ -847,18 +849,25 @@ _load_control() {
   _limits_exceeded=false
   _skip_proc_control=false
 
-  # Thresholds in percentages (calculate using bc)
-  _CPU_SPIDER_THRESHOLD=$(echo "${_CPU_SPIDER_RATIO} * 100" | bc -l)
-  _CPU_MAX_THRESHOLD=$(echo "${_CPU_MAX_RATIO} * 100" | bc -l)
-  _CPU_CRIT_THRESHOLD=$(echo "${_CPU_CRIT_RATIO} * 100" | bc -l)
-  # A ratio that sanitised to garbage (a bare dot, two dots) makes bc emit
-  # nothing, and an empty threshold turns every tier comparison below false
-  # -- the whole controller silently off. Fall back to the documented
-  # defaults instead.
-  awk "BEGIN{exit !(${_CPU_SPIDER_THRESHOLD}>0)}" 2>/dev/null || _CPU_SPIDER_THRESHOLD=$(echo "2.1 * 100" | bc -l)
-  awk "BEGIN{exit !(${_CPU_MAX_THRESHOLD}>0)}" 2>/dev/null || _CPU_MAX_THRESHOLD=$(echo "6.1 * 100" | bc -l)
-  awk "BEGIN{exit !(${_CPU_CRIT_THRESHOLD}>0)}" 2>/dev/null || _CPU_CRIT_THRESHOLD=$(echo "8.1 * 100" | bc -l)
-  _CPU_RESUME_THRESHOLD=$(echo "${_CPU_MAX_THRESHOLD} * ${_RESUME_FRACTION}" | bc -l)
+  # Thresholds in percentages (calculate using bc). They follow from the
+  # ratios alone, so they are worked out on a run's first pass and again only
+  # when a ratio differs from the one they were worked out from (seven
+  # programs on each of the ten passes a minute, for the same four values).
+  _thr_in="${_CPU_SPIDER_RATIO}|${_CPU_MAX_RATIO}|${_CPU_CRIT_RATIO}|${_RESUME_FRACTION}"
+  if [ "${_THR_FROM-unset}" != "${_thr_in}" ]; then
+    _CPU_SPIDER_THRESHOLD=$(echo "${_CPU_SPIDER_RATIO} * 100" | bc -l)
+    _CPU_MAX_THRESHOLD=$(echo "${_CPU_MAX_RATIO} * 100" | bc -l)
+    _CPU_CRIT_THRESHOLD=$(echo "${_CPU_CRIT_RATIO} * 100" | bc -l)
+    # A ratio that sanitised to garbage (a bare dot, two dots) makes bc emit
+    # nothing, and an empty threshold turns every tier comparison below false
+    # -- the whole controller silently off. Fall back to the documented
+    # defaults instead.
+    awk "BEGIN{exit !(${_CPU_SPIDER_THRESHOLD}>0)}" 2>/dev/null || _CPU_SPIDER_THRESHOLD=$(echo "2.1 * 100" | bc -l)
+    awk "BEGIN{exit !(${_CPU_MAX_THRESHOLD}>0)}" 2>/dev/null || _CPU_MAX_THRESHOLD=$(echo "6.1 * 100" | bc -l)
+    awk "BEGIN{exit !(${_CPU_CRIT_THRESHOLD}>0)}" 2>/dev/null || _CPU_CRIT_THRESHOLD=$(echo "8.1 * 100" | bc -l)
+    _CPU_RESUME_THRESHOLD=$(echo "${_CPU_MAX_THRESHOLD} * ${_RESUME_FRACTION}" | bc -l)
+    _THR_FROM="${_thr_in}"
+  fi
 
   echo "Current Load Averages:"
   echo " - 1-minute Load (per CPU): ${_O_LOAD}%"
