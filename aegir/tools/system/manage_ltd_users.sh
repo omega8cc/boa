@@ -8516,17 +8516,35 @@ _ltd_valid_fqdn() {
 _LTD_MOVED_MEMO_IP=""
 _LTD_MOVED_MEMO_NAME=""
 
+# One DNS question: the reply's status on the first line ("status NOERROR",
+# "status NXDOMAIN", "status SERVFAIL", ...; "status none" when no reply came),
+# then the data of each answer record of the type asked, so a classless
+# delegation's CNAME in front of a PTR is never taken for it. dig's own exit
+# status is 0 for any reply, a server failure included, so the status line is
+# what tells an answer. $1 = PTR (of the address $2) or A (of the name $2).
+_ltd_dig() {
+  local _o _st
+  if [ "${1}" = "PTR" ]; then
+    _o="$(dig +time=2 +tries=1 +noall +comments +answer -x "${2}" 2> /dev/null)"
+  else
+    _o="$(dig +time=2 +tries=1 +noall +comments +answer A "${2}" 2> /dev/null)"
+  fi
+  _st="$(printf '%s\n' "${_o}" | sed -n 's/.*->>HEADER<<-.* status: \([A-Z]*\),.*/\1/p' | head -n 1)"
+  echo "status ${_st:-none}"
+  printf '%s\n' "${_o}" | awk -v t="${1}" '$0 !~ /^;/ && $4 == t { print $5 }'
+}
+
 # The name of the server at the IPv4 address $1: a name its reverse record
-# gives (a classless delegation's CNAME is passed over), printed only when that
-# name's own address record is the same address, so a login by the name shown
-# reaches that server (where the reverse record is still the provider's own,
-# its name is the one shown). A confirmed name is kept a day per address in
-# /var/log/boa, which releases leave in place. The kept name is used again
-# only while DNS gives no answer at all (dig's own status), so the welcome
-# built from it does not flap; once DNS answers and confirms no name, the kept
-# name goes. Nothing when no name is confirmed.
+# gives, printed only when that name's own address record is the same address,
+# so a login by the name shown reaches that server (where the reverse record
+# is still the provider's own, its name is the one shown). A confirmed name is
+# kept a day per address in /var/log/boa, which releases leave in place. Past
+# that day the kept name is used again unless DNS answers (NOERROR or
+# NXDOMAIN, never a server failure or no reply) and names no server at the
+# address: only then does it go, so the welcome built from it does not flap.
+# Nothing when no name is confirmed.
 _ltd_moved_host() {
-  local _ip="${1}" _c _n _ptr _fwd _rc _old=""
+  local _ip="${1}" _c _n _ptr _fwd _ans _old=""
   _c="${_LTD_MOVED_DIR}/ltd-moved-host.${_ip}"
   if [ -f "${_c}" ] && [ ! -L "${_c}" ]; then
     _old="$(head -n 1 "${_c}" 2> /dev/null)"
@@ -8536,26 +8554,31 @@ _ltd_moved_host() {
       return 0
     fi
   fi
-  _ptr="$(dig +short +time=2 +tries=1 -x "${_ip}" 2> /dev/null)"
-  _rc=$?
-  if [ "${_rc}" = "0" ]; then
+  _ptr="$(_ltd_dig PTR "${_ip}")"
+  case "$(printf '%s\n' "${_ptr}" | head -n 1)" in
+    "status NOERROR"|"status NXDOMAIN") _ans=YES ;;
+    *) _ans=NO ;;
+  esac
+  if [ "${_ans}" = "YES" ]; then
     # read as lines, never word-split and globbed: a name is DNS's text
     while IFS= read -r _n; do
       _n="${_n%.}"
       _n="${_n,,}"
       _ltd_valid_fqdn "${_n}" || continue
-      _fwd="$(dig +short +time=2 +tries=1 A "${_n}" 2> /dev/null)"
-      _rc=$?
-      if printf '%s\n' "${_fwd}" | grep -qxF "${_ip}"; then
+      _fwd="$(_ltd_dig A "${_n}")"
+      if printf '%s\n' "${_fwd}" | sed 1d | grep -qxF "${_ip}"; then
         mkdir -p "${_LTD_MOVED_DIR}"
         printf '%s\n' "${_n}" > "${_c}.new.$$" && mv -f -- "${_c}.new.$$" "${_c}"
         echo "${_n}"
         return 0
       fi
-      [ "${_rc}" = "0" ] || break
-    done < <(printf '%s\n' "${_ptr}" | grep -viE '\.in-addr\.arpa\.?$' | head -n 3)
+      case "$(printf '%s\n' "${_fwd}" | head -n 1)" in
+        "status NOERROR"|"status NXDOMAIN") ;;
+        *) _ans=NO; break ;;
+      esac
+    done < <(printf '%s\n' "${_ptr}" | sed 1d | head -n 3)
     # DNS answered and named no server at this address: the kept name goes
-    if [ "${_rc}" = "0" ]; then
+    if [ "${_ans}" = "YES" ]; then
       rm -f -- "${_c}"
       return 0
     fi
@@ -8569,27 +8592,29 @@ _ltd_moved_host() {
 # server (a name or an address), $2 = this server's name (may be empty), $3 =
 # the day of the move (may be empty), $4 = the login's name there (empty when
 # the account's name there is not known for sure), $5 = dev for a platform
-# developer login, which a move does not set up there by itself.
+# developer login, which a move does not set up there by itself, $6 = the
+# login's own ending after the account's name (.ftp, .<client>), for a login
+# whose name there is not known.
 _ltd_moved_intro() {
-  local _s="Its" _here="This server"
+  local _s="Its" _here="This server" _who="${4}" _where=""
   [ -n "${3}" ] && _s="Since ${3} its"
   [ -n "${2}" ] && _here="This server, ${2},"
+  if [ -z "${_who}" ]; then
+    _who="<account>${6}"
+    _where='\n   where <account> is the name this account has there'
+  fi
   printf '%s' 'intro : "\n      ======== This account has moved to another server ========\n'
   printf '%s' "\n   ${_s} sites are served by the new server ${1}."
   printf '%s' "\n   ${_here} only forwards their traffic: the account's"
   printf '%s' '\n   files here are an old copy, and nothing changed here reaches'
   printf '%s' '\n   the live sites.\n'
-  if [ -z "${4}" ]; then
-    printf '%s' "\n   Log in to the new server ${1} instead, with the same password"
-    printf '%s' '\n   and keys, under the name the account has there.\n'
-  elif [ "${5}" = "dev" ]; then
+  if [ "${5}" = "dev" ]; then
     printf '%s' '\n   Log in to the new server instead, once your host has set this'
-    printf '%s' '\n   developer login up there:\n'
-    printf '%s' "\n      ssh ${4}@${1}\n"
+    printf '%s' "\n   developer login up there${_where:+,}${_where}:\n"
   else
-    printf '%s' '\n   Log in to the new server instead, with the same password and keys:\n'
-    printf '%s' "\n      ssh ${4}@${1}\n"
+    printf '%s' "\n   Log in to the new server instead, with the same password and keys${_where:+,}${_where}:\n"
   fi
+  printf '%s' "\n      ssh ${_who}@${1}\n"
   printf '%s' '\n   The same goes for SFTP. Here this login reaches only its own home'
   printf '%s' '\n   directory, whose files were not moved: download from it anything'
   printf '%s\n' '\n   you still need.\n"'
@@ -8651,7 +8676,7 @@ _ltd_moved_stanzas() {
     [[ "${_l}" == *"${_LTD_PLATFORM_SUFFIX}" ]] && _kind=dev
     echo >> ${_THIS_LTD_CONF}
     echo "[${_l}]" >> ${_THIS_LTD_CONF}
-    _ltd_moved_intro "${_new}" "${_old}" "${_day}" "${_there}" "${_kind}" >> ${_THIS_LTD_CONF}
+    _ltd_moved_intro "${_new}" "${_old}" "${_day}" "${_there}" "${_kind}" "${_l#"${_a}"}" >> ${_THIS_LTD_CONF}
   done
   return 0
 }
