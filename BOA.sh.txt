@@ -2980,6 +2980,14 @@ _update_agents() {
       chmod 600 /var/spool/cron/crontabs/root &> /dev/null
       service cron reload &> /dev/null || /etc/init.d/cron reload &> /dev/null
     fi
+    # The nightly database backup starts at this box's own minute, not at the
+    # template's 01:15 every box on one host would share; the template copy of
+    # a full up-* run puts 01:15 back, so every pass re-applies it (a no-op
+    # once the lines carry it).
+    if [ -e "/opt/local/bin/heavyslots" ] \
+      && [ -e "/var/spool/cron/crontabs/root" ]; then
+      bash /opt/local/bin/heavyslots apply --quiet &> /dev/null
+    fi
     _fetch_versioned /var/xdrago/move_sql.sh "${_urlHmr}/tools/system/move_sql.sh" f77
     _fetch_versioned /var/xdrago/mysql_repair.sh "${_urlHmr}/tools/system/mysql_repair.sh" f88
     _fetch_versioned /var/xdrago/purge_binlogs.sh "${_urlHmr}/tools/system/purge_binlogs.sh" f87
@@ -6078,7 +6086,7 @@ CSFSTANDBY
       _fetch_versioned /root/.remote_backups/run/create_credentials_templates.sh "${_urlHmr}/tools/backup/run/create_credentials_templates.sh" f41
       _fetch_versioned /root/.remote_backups/run/create_global_paths_config.sh "${_urlHmr}/tools/backup/run/create_global_paths_config.sh" f43
       _fetch_versioned /root/.remote_backups/run/create_user_paths_config.sh "${_urlHmr}/tools/backup/run/create_user_paths_config.sh" f36
-      _fetch_versioned /root/.remote_backups/run/create_cron_entries.sh "${_urlHmr}/tools/backup/run/create_cron_entries.sh" f33
+      _fetch_versioned /root/.remote_backups/run/create_cron_entries.sh "${_urlHmr}/tools/backup/run/create_cron_entries.sh" f34
       _fetch_versioned /root/.remote_backups/run/create_readme.sh "${_urlHmr}/tools/backup/run/create_readme.sh" f39
       _fetch_versioned /root/.remote_backups/run/create_config_readme.sh "${_urlHmr}/tools/backup/run/create_config_readme.sh" f37
     fi
@@ -6093,6 +6101,7 @@ CSFSTANDBY
     _fetch_core_coverage
     _fetch_versioned ${_optBin}/floodreport "${_urlHmr}/${_tBn}/floodreport" f99 --symlink ${_usrBin}/floodreport --guard /local/bin/floodreport
     _fetch_versioned ${_optBin}/fpmreport "${_urlHmr}/${_tBn}/fpmreport" f98 --symlink ${_usrBin}/fpmreport --guard /local/bin/fpmreport
+    _fetch_versioned ${_optBin}/heavyslots "${_urlHmr}/${_tBn}/heavyslots" f01 --symlink ${_usrBin}/heavyslots --guard /local/bin/heavyslots
     _fetch_versioned ${_optBin}/loadreport "${_urlHmr}/${_tBn}/loadreport" f91 --symlink ${_usrBin}/loadreport --guard /local/bin/loadreport
     _fetch_versioned ${_optBin}/lock.inc "${_urlHmr}/${_tBn}/lock.inc" f84 --guard /local/bin/lock.inc
     _fetch_versioned ${_optBin}/multiback "${_urlHmr}/${_tBn}/multiback" f70 --guard duplicity
@@ -6226,7 +6235,7 @@ CSFSTANDBY
   chmod 700 ${_optBin}/{aegir2boa-preflight,aegir2boa-stage1,aegir2boa-stage2,lock.inc,renameaegirhost,solrtrim,syncpass,weblogx,xcopy,xmass,xoct,xtrim} &> /dev/null
 
   # _DB (700): performance and DB tuners
-  chmod 700 ${_optBin}/{eolreport,floodreport,fpmreport,loadreport,memorytuner,perftest,xdr9000} &> /dev/null
+  chmod 700 ${_optBin}/{eolreport,floodreport,fpmreport,heavyslots,loadreport,memorytuner,perftest,xdr9000} &> /dev/null
 
   # _MAIL (700): mail + priority tools
   chmod 700 ${_optBin}/{setprio,smtpgapps} &> /dev/null

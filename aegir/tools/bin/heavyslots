@@ -1,0 +1,456 @@
+#!/bin/bash
+
+# heavyslots: this box's own start minutes for its two heavy recurring jobs,
+# the nightly database backup (mysql_backup.sh in root's crontab) and the
+# off-site backup cycle (sequential_backups.sh, /etc/cron.d/duplicity_backup).
+#
+# Every box used to start both at the same minutes (01:15, and :00 every six
+# hours), so the VMs sharing one host dumped their databases and uploaded
+# their backups at the same moment, night after night. Each box now takes one
+# of 16 lanes from the last number of its IPv4 address, times five, modulo 16:
+# any 16 neighbouring addresses, such as the block a host routes to its VMs,
+# take 16 different lanes, and two neighbours sit five lanes apart. The same
+# box always takes the same lane, so every rewrite is a no-op.
+#
+#   - Lane n starts the off-site cycle at 23:00 plus about six minutes per
+#     lane, skipping minutes 47 to 59 (23:00 to 00:41), and repeats it every
+#     _BACKUP_INTERVAL; the database backup starts 75 minutes after that
+#     start (00:15 to 01:56): after midnight, so its weekday and month-day
+#     passes keep their dates, and well before the 03:01 graceful pass, the
+#     weekly system upgrade and the kernel-reboot window (04:00-04:59,
+#     autoupboa). The cluster variant runs an hour after the backup.
+#   - No cycle starts from 02:00 to 04:59 (graceful, the weekly upgrade, the
+#     reboot window, owl at 04:15), in the hour before or the 90 minutes after
+#     a recurring upgrade line in /etc/crontab, within the hour before or the
+#     150 minutes after the database backup's start, or in minutes 47 to 59:
+#     updatesymlinks retries at :47 through the night and stands down only for
+#     a backup that is already running. Where the interval or an upgrade line
+#     breaks a rule, the allowed minute nearest to the lane's is taken, giving
+#     up the gap to the database backup first, then the night rules. No
+#     database backup starts inside an upgrade line's window while another
+#     lane's start is clear of it.
+#   - _SQL_BACKUP_START=HH:MM and _BACKUP_START=HH:MM in /root/.barracuda.cnf
+#     pin either start; a pinned database backup moves the cycle with it, and
+#     the off-site pin repeats every interval.
+#
+# Usage:
+#   heavyslots [show] [--interval HOURS]   this box's minutes, and the ones in use
+#   heavyslots sql                         "MM HH" of the database backup
+#   heavyslots dcy [HOURS]                 "MM H,H,.." of the off-site cycle
+#   heavyslots apply [--quiet]             move root's crontab lines to this box's minutes
+#   --ip A.B.C.D [--weekly HH:MM]          with show, sql or dcy: the minutes a box at
+#                                          that address takes, reading nothing on this box
+
+export HOME=/root
+export SHELL=/bin/bash
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
+
+_ROOT_CRON="/var/spool/cron/crontabs/root"
+_ETC_CRON="/etc/crontab"
+_DCY_CRON="/etc/cron.d/duplicity_backup"
+_BAR_CNF="/root/.barracuda.cnf"
+_LOG="/var/log/boa/heavyslots.log"
+
+# Minutes of the day. The quiet span holds autoupboa's reboot hour (04).
+_LANES=16
+_LANE_STEP=5
+_DCY_FROM=1380
+_DCY_ROOM=94
+_DCY_LEAD=75
+_DCY_GAP_BEFORE=60
+_DCY_GAP_AFTER=150
+_QUIET_FROM=120
+_QUIET_SPAN=180
+_UPG_BEFORE=60
+_UPG_AFTER=90
+_SKIP_MIN_FROM=47
+
+_msg() {
+  [ "${_QUIET}" = "YES" ] || echo "$*"
+}
+_alrt() {
+  echo "WARN: $*" >&2
+}
+_die() {
+  echo "ERROR: $*" >&2
+  exit 1
+}
+
+_usage() {
+  echo "Usage: heavyslots [show|sql|dcy [HOURS]|apply [--quiet]] [--interval HOURS]"
+  echo "       heavyslots show|sql|dcy --ip A.B.C.D [--weekly HH:MM]"
+  exit 2
+}
+
+# This box's IPv4 address: the source of its default route, else its first
+# global address. Nothing when it has none.
+_box_ipv4() {
+  local _a
+  _a="$(ip -4 -o route get 1.1.1.1 2> /dev/null | sed -n 's/.* src \([0-9.]*\).*/\1/p' | head -n 1)"
+  [ -n "${_a}" ] || _a="$(ip -4 -o addr show scope global 2> /dev/null \
+    | awk '{ sub(/\/.*/, "", $4); print $4; exit }')"
+  [[ "${_a}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] && echo "${_a}"
+}
+
+# The value of $1 in /root/.barracuda.cnf, read, never sourced: the last
+# uncommented assignment, without quotes or a trailing comment.
+_cnf_value() {
+  local _v
+  [ -f "${_BAR_CNF}" ] || return 0
+  _v="$(grep -E "^[[:space:]]*(export[[:space:]]+)?${1}=" "${_BAR_CNF}" 2> /dev/null | tail -n 1)"
+  _v="${_v#*=}"
+  _v="${_v%%#*}"
+  printf '%s' "${_v}" | tr -d "\"' \t\r"
+}
+
+# Minutes of the day for HH:MM; status 1 for anything else.
+_hhmm_min() {
+  [[ "$1" =~ ^([01]?[0-9]|2[0-3]):([0-5][0-9])$ ]] || return 1
+  echo "$(( 10#${BASH_REMATCH[1]} * 60 + 10#${BASH_REMATCH[2]} ))"
+}
+
+_fmt() {
+  printf '%02d:%02d' "$(( $1 / 60 ))" "$(( $1 % 60 ))"
+}
+
+# 0 when minute $1 of the day lies in the span of $3 minutes from $2, around
+# the clock.
+_in_span() {
+  local _d
+  _d=$(( ( ($1 - $2) % 1440 + 1440 ) % 1440 ))
+  [ "${_d}" -lt "$3" ]
+}
+
+# Start minutes of the recurring upgrade lines in /etc/crontab, one a line:
+# the weekly system pass autoupboa writes, or any upgrade line with no fixed
+# date. A dated full upgrade, once a year at most, is left out.
+_upgrade_starts() {
+  local _cm _ch _dom _mon _rest
+  [ -f "${_ETC_CRON}" ] || return 0
+  while read -r _cm _ch _dom _mon _rest; do
+    [[ "${_cm}" =~ ^[0-9]{1,2}$ ]] && [[ "${_ch}" =~ ^[0-9]{1,2}$ ]] || continue
+    [ "${_dom}" = "*" ] && [ "${_mon}" = "*" ] || continue
+    (( 10#${_cm} < 60 && 10#${_ch} < 24 )) || continue
+    echo "$(( 10#${_ch} * 60 + 10#${_cm} ))"
+  done < <(grep -E '^[[:space:]]*[0-9].*(autoupboa[[:space:]]+weekly-system|(barracuda|octopus)[[:space:]]+up-)' \
+    "${_ETC_CRON}" 2> /dev/null)
+}
+
+# 0 when minute $1 is inside a recurring upgrade's window.
+_in_upgrade() {
+  local _u
+  for _u in "${_UPG[@]}"; do
+    _in_span "$1" "$(( _u - _UPG_BEFORE ))" "$(( _UPG_BEFORE + _UPG_AFTER ))" && return 0
+  done
+  return 1
+}
+
+# The off-site interval in hours, 1 to 24: $1, or _BACKUP_INTERVAL (minutes)
+# from the cnf, or 6.
+_interval_hours() {
+  local _h="${1//[^0-9]/}" _m
+  if [ -z "${_h}" ]; then
+    _m=""
+    [ "${_PURE}" = "YES" ] || _m="$(_cnf_value _BACKUP_INTERVAL)"
+    _m="${_m//[^0-9]/}"
+    _m="${_m:-360}"
+    _h=$(( 10#${_m} / 60 ))
+  fi
+  _h=$(( 10#${_h} ))
+  (( _h < 1 )) && _h=1
+  (( _h > 24 )) && _h=24
+  echo "${_h}"
+}
+
+# The lane of IPv4 address $1: its last number times five, modulo 16.
+_lane_of() {
+  local _o="${1##*.}"
+  [[ "${_o}" =~ ^[0-9]{1,3}$ ]] && (( 10#${_o} < 256 )) || return 1
+  echo "$(( (10#${_o} * _LANE_STEP) % _LANES ))"
+}
+
+# Lane $1's off-site cycle start: minute 0 to 46 of 23:xx, then of 00:xx.
+_lane_cycle() {
+  local _p=$(( $1 * _DCY_ROOM / _LANES ))
+  if [ "${_p}" -lt "${_SKIP_MIN_FROM}" ]; then
+    echo "$(( (_DCY_FROM + _p) % 1440 ))"
+  else
+    echo "$(( (_DCY_FROM + 60 + _p - _SKIP_MIN_FROM) % 1440 ))"
+  fi
+}
+
+_lane_sql() {
+  echo "$(( ($(_lane_cycle "$1") + _DCY_LEAD) % 1440 ))"
+}
+
+# The database backup's start (minutes of the day): the pin, or this lane's,
+# or the next lane's clear of every recurring upgrade window.
+_sql_start() {
+  local _pin _k _s
+  if [ "${_PURE}" != "YES" ]; then
+    if _pin="$(_hhmm_min "$(_cnf_value _SQL_BACKUP_START)")"; then
+      echo "${_pin}"
+      return 0
+    fi
+  fi
+  for (( _k = 0; _k < _LANES; _k++ )); do
+    _s="$(_lane_sql "$(( (_LANE + _k) % _LANES ))")"
+    if ! _in_upgrade "${_s}"; then
+      echo "${_s}"
+      return 0
+    fi
+  done
+  _lane_sql "${_LANE}"
+}
+
+# The database backup's start as root's crontab has it now: its first active
+# daily line with a plain minute and hour. Nothing when there is none.
+_sql_live() {
+  local _cm _ch _rest
+  [ -f "${_ROOT_CRON}" ] || return 0
+  read -r _cm _ch _rest < <(grep -E '^[[:space:]]*[0-9]{1,2}[[:space:]]+[0-9]{1,2}[[:space:]]+\*[[:space:]]+\*[[:space:]]+\*[[:space:]].*bash /var/xdrago/mysql_backup\.sh' \
+    "${_ROOT_CRON}" 2> /dev/null | head -n 1)
+  [[ "${_cm}" =~ ^[0-9]{1,2}$ ]] && [[ "${_ch}" =~ ^[0-9]{1,2}$ ]] || return 0
+  (( 10#${_cm} < 60 && 10#${_ch} < 24 )) || return 0
+  echo "$(( 10#${_ch} * 60 + 10#${_cm} ))"
+}
+
+# 0 when every start of a cycle from minute $1, every $2 hours, keeps the
+# rules of level $4 (1 all, 2 without the gap to the database backup at $3,
+# 3 the minute rule alone).
+_dcy_ok() {
+  local _c="$1" _per=$(( $2 * 60 )) _sql="$3" _lvl="$4" _s _k _n
+  (( _c % 60 < _SKIP_MIN_FROM )) || return 1
+  [ "${_lvl}" -ge 3 ] && return 0
+  _n=$(( (1440 + _per - 1) / _per ))
+  for (( _k = 0; _k < _n; _k++ )); do
+    _s=$(( (_c + _k * _per) % 1440 ))
+    _in_span "${_s}" "${_QUIET_FROM}" "${_QUIET_SPAN}" && return 1
+    _in_upgrade "${_s}" && return 1
+    if [ "${_lvl}" -eq 1 ]; then
+      _in_span "${_s}" "$(( _sql - _DCY_GAP_BEFORE ))" "$(( _DCY_GAP_BEFORE + _DCY_GAP_AFTER ))" \
+        && return 1
+    fi
+  done
+  return 0
+}
+
+# The off-site cycle's first start of the day, below $1 hours (minutes), for a
+# database backup at $2: the pin, or the allowed minute nearest to 75 minutes
+# before the dump, which is the lane's own start when the backup keeps its lane.
+_dcy_start() {
+  local _hrs="$1" _sql="$2" _per _pin _tgt _d _c _lvl
+  _per=$(( _hrs * 60 ))
+  if [ "${_PURE}" != "YES" ]; then
+    if _pin="$(_hhmm_min "$(_cnf_value _BACKUP_START)")"; then
+      echo "$(( _pin % _per ))"
+      return 0
+    fi
+  fi
+  _tgt=$(( ( (_sql - _DCY_LEAD) % _per + _per ) % _per ))
+  for _lvl in 1 2 3; do
+    for (( _d = 0; _d <= _per / 2; _d++ )); do
+      for _c in $(( _tgt + _d )) $(( _tgt - _d )); do
+        _c=$(( ( _c % _per + _per ) % _per ))
+        if _dcy_ok "${_c}" "${_hrs}" "${_sql}" "${_lvl}"; then
+          echo "${_c}"
+          return 0
+        fi
+      done
+    done
+  done
+  echo "${_tgt}"
+}
+
+# "MM H,H,.." for cron: a cycle from minute $1 every $2 hours.
+_dcy_fields() {
+  local _c="$1" _per=$(( $2 * 60 )) _k _n
+  local -a _hs=()
+  _n=$(( (1440 + _per - 1) / _per ))
+  for (( _k = 0; _k < _n; _k++ )); do
+    _hs+=("$(( (_c + _k * _per) % 1440 / 60 ))")
+  done
+  echo "$(( _c % 60 )) $(printf '%s\n' "${_hs[@]}" | sort -n -u | paste -sd, -)"
+}
+
+# The database backup's start the off-site cycle keeps clear of: root's
+# crontab line as it is now, else this box's own minute.
+_sql_for_dcy() {
+  local _l=""
+  [ "${_PURE}" = "YES" ] || _l="$(_sql_live)"
+  if [ -n "${_l}" ]; then
+    echo "${_l}"
+  else
+    _sql_start
+  fi
+}
+
+# Moves the first daily line of mysql_backup.sh and of mysql_cluster_backup.sh
+# run with no arguments in root's crontab to this box's minutes (the cluster
+# variant an hour after); anything else in the file stays as it is.
+_apply() {
+  local _sql _cl _tmp _was _rc=0
+  [ -f "${_ROOT_CRON}" ] && [ ! -L "${_ROOT_CRON}" ] || return 0
+  _sql="$(_sql_start)"
+  [[ "${_sql}" =~ ^[0-9]+$ ]] || return 1
+  _cl=$(( (_sql + 60) % 1440 ))
+  _was="$(_sql_live)"
+  # beside crontabs/, never in it: cron would read a stray file there
+  _tmp="${_ROOT_CRON%/*/*}/.heavyslots.$$"
+  rm -f "${_tmp}"
+  awk -v sm="$(( _sql % 60 ))" -v sh="$(( _sql / 60 ))" \
+    -v cm="$(( _cl % 60 ))" -v ch="$(( _cl / 60 ))" '
+    BEGIN {
+      t = "^[0-9]+[ \t]+[0-9]+[ \t]+[*][ \t]+[*][ \t]+[*][ \t]+(.*[ \t])?bash /var/xdrago/"
+      e = "[.]sh([ \t]+>/dev/null 2>&1)?[ \t]*$"
+    }
+    !s && $0 ~ (t "mysql_backup" e) {
+      sub(/^[0-9]+[ \t]+[0-9]+/, sprintf("%02d %d", sm, sh)); s = 1
+    }
+    !c && $0 ~ (t "mysql_cluster_backup" e) {
+      sub(/^[0-9]+[ \t]+[0-9]+/, sprintf("%02d %d", cm, ch)); c = 1
+    }
+    { print }' "${_ROOT_CRON}" > "${_tmp}" 2> /dev/null || _rc=1
+  if [ "${_rc}" -ne 0 ] || [ ! -s "${_tmp}" ]; then
+    rm -f "${_tmp}"
+    _alrt "root's crontab not rewritten: ${_tmp} could not be written"
+    return 1
+  fi
+  if cmp -s "${_tmp}" "${_ROOT_CRON}"; then
+    rm -f "${_tmp}"
+    _msg "Database backup at $(_fmt "${_sql}"): root's crontab already runs it then"
+    return 0
+  fi
+  chown root:crontab "${_tmp}" 2> /dev/null
+  chmod 600 "${_tmp}"
+  if ! mv -f "${_tmp}" "${_ROOT_CRON}"; then
+    rm -f "${_tmp}"
+    _alrt "root's crontab not rewritten: the move into ${_ROOT_CRON} failed"
+    return 1
+  fi
+  service cron reload &> /dev/null || /etc/init.d/cron reload &> /dev/null
+  [ -d "/var/log/boa" ] || mkdir -p /var/log/boa
+  echo "$(date) database backup ${_was:+$(_fmt "${_was}") }-> $(_fmt "${_sql}") (cluster variant $(_fmt "${_cl}"), lane ${_LANE} of ${_IPV4})" \
+    >> "${_LOG}"
+  _msg "Database backup moved to $(_fmt "${_sql}") (cluster variant $(_fmt "${_cl}"))"
+  return 0
+}
+
+_show() {
+  local _sql _sqn _hrs _c _k _n _l _u _list="" _src _dsrc
+  _sql="$(_sql_start)"
+  _hrs="$(_interval_hours "${_HRS}")"
+  _sqn="$(_sql_for_dcy)"
+  _c="$(_dcy_start "${_hrs}" "${_sqn}")"
+  _n=$(( (1440 + _hrs * 60 - 1) / (_hrs * 60) ))
+  for (( _k = 0; _k < _n; _k++ )); do
+    _list="${_list} $(_fmt "$(( (_c + _k * _hrs * 60) % 1440 ))")"
+  done
+  _src="lane ${_LANE}"
+  _dsrc="${_DCY_LEAD} minutes before the dump where the rules allow"
+  if [ "${_PURE}" != "YES" ]; then
+    _hhmm_min "$(_cnf_value _SQL_BACKUP_START)" > /dev/null && _src="pinned by _SQL_BACKUP_START"
+    _hhmm_min "$(_cnf_value _BACKUP_START)" > /dev/null && _dsrc="pinned by _BACKUP_START"
+  fi
+  echo "heavyslots for ${_IPV4}${_NAME:+ (${_NAME})}, lane ${_LANE} of ${_LANES}"
+  echo "  database backup   $(_fmt "${_sql}") daily, cluster variant $(_fmt "$(( (_sql + 60) % 1440 ))") (${_src})"
+  if [ "${_PURE}" != "YES" ]; then
+    _l="$(_sql_live)"
+    if [ -n "${_l}" ]; then
+      echo "    root's crontab  $(_fmt "${_l}")"
+    else
+      echo "    root's crontab  no daily line"
+    fi
+  fi
+  echo "  off-site backup  ${_list} (every ${_hrs} h, ${_dsrc})"
+  if [ "${_PURE}" != "YES" ]; then
+    _l="$(grep -E '^[[:space:]]*[0-9*]' "${_DCY_CRON}" 2> /dev/null | head -n 1 | awk '{ print $1, $2 }')"
+    echo "    ${_DCY_CRON}  ${_l:-no line}"
+  fi
+  echo "  kept clear        $(_fmt "${_QUIET_FROM}")-$(_fmt "$(( _QUIET_FROM + _QUIET_SPAN - 1 ))") (graceful, weekly upgrade, kernel reboot, owl)"
+  for _u in "${_UPG[@]}"; do
+    echo "  upgrade line      $(_fmt "${_u}"), kept clear $(_fmt "$(( (_u - _UPG_BEFORE + 1440) % 1440 ))")-$(_fmt "$(( (_u + _UPG_AFTER - 1 + 1440) % 1440 ))")"
+  done
+}
+
+_VERB="show"
+case "${1:-}" in
+  show|sql|dcy|apply) _VERB="$1"; shift ;;
+esac
+_PURE=NO
+_IPV4=""
+_NAME=""
+_HRS=""
+_QUIET=NO
+_WEEKLY=""
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --ip)
+      [ "$#" -ge 2 ] || _usage
+      _IPV4="$2"
+      _PURE=YES
+      shift 2
+      ;;
+    --weekly)
+      [ "$#" -ge 2 ] || _usage
+      _WEEKLY="$2"
+      shift 2
+      ;;
+    --interval)
+      [ "$#" -ge 2 ] || _usage
+      _HRS="$2"
+      shift 2
+      ;;
+    --quiet)
+      _QUIET=YES
+      shift
+      ;;
+    *)
+      if [ "${_VERB}" = "dcy" ] && [[ "$1" =~ ^[0-9]+$ ]] && [ -z "${_HRS}" ]; then
+        _HRS="$1"
+        shift
+      else
+        _usage
+      fi
+      ;;
+  esac
+done
+
+if [ "${_PURE}" = "YES" ]; then
+  [[ "${_IPV4}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] || _die "--ip takes an IPv4 address"
+  [ "${_VERB}" = "apply" ] && _die "apply works on this box only, without --ip"
+else
+  [ "$(id -u)" -eq 0 ] || _die "run as root, or with --ip A.B.C.D"
+  # No address, no answer: the callers then keep the lines in place, so a
+  # passing network hiccup never moves the schedule back and forth.
+  _IPV4="$(_box_ipv4)" || _die "this box's IPv4 address cannot be read; nothing changed"
+  _NAME="$({ tr -d '[:space:]' < /etc/hostname; } 2> /dev/null)"
+fi
+_LANE="$(_lane_of "${_IPV4}")" || _die "${_IPV4} is not an IPv4 address"
+
+_UPG=()
+if [ -n "${_WEEKLY}" ]; then
+  _u="$(_hhmm_min "${_WEEKLY}")" || _die "--weekly takes HH:MM"
+  _UPG=("${_u}")
+elif [ "${_PURE}" != "YES" ]; then
+  mapfile -t _UPG < <(_upgrade_starts)
+fi
+
+case "${_VERB}" in
+  show)
+    _show
+    ;;
+  sql)
+    _s="$(_sql_start)"
+    echo "$(( _s % 60 )) $(( _s / 60 ))"
+    ;;
+  dcy)
+    _h="$(_interval_hours "${_HRS}")"
+    _dcy_fields "$(_dcy_start "${_h}" "$(_sql_for_dcy)")" "${_h}"
+    ;;
+  apply)
+    _apply
+    exit $?
+    ;;
+esac
+exit 0

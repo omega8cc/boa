@@ -1853,6 +1853,23 @@ _SQL_LOW_MAX_TTL=60
 _SQL_BACKUP_MAX_HOURS=12
 
 ###
+### The nightly database backup's start, HH:MM. Empty: this box's own minute
+### from 00:15 to 01:56, a lane heavyslots takes from the last number of its
+### IPv4 address, so the boxes sharing one host do not dump together. A pin
+### later in the night can meet the 03:01 graceful pass, the weekly system
+### upgrade or the 04:00-04:59 kernel-reboot window.
+###
+_SQL_BACKUP_START=
+
+###
+### The off-site backup cycle's start, HH:MM, repeated every _BACKUP_INTERVAL
+### minutes (360 unless set). Empty: 75 minutes before its database backup
+### (23:00 to 00:41 by lane), never from 02:00 to 04:59, near a weekly
+### upgrade or in minutes 47 to 59.
+###
+_BACKUP_START=
+
+###
 ### Switches the nightly usage accounting pass (usage.sh) off for good on
 ### this box; the tool itself stays updated. Written automatically, with the
 ### attribute lifted, where the tool's file was made immutable to stop it.

@@ -13421,6 +13421,11 @@ _xdrago_install_upgrade() {
     fi
     chown root:crontab /var/spool/cron/crontabs/root
     chmod 600 /var/spool/cron/crontabs/root
+    ### The template's 01:15 database backup moves to this box's own minute
+    ### (heavyslots), so the boxes sharing one host do not dump together; the
+    ### tools pass re-applies it too, and fetches the tool on a new box.
+    [ -e "/opt/local/bin/heavyslots" ] \
+      && bash /opt/local/bin/heavyslots apply --quiet &> /dev/null
     ### Weekly rotation for BOA monitor incident logs so emailed reports stay
     ### recent and the files stay bounded (the monitors mail only the last 200).
     cp -af ${_bldPth}/aegir/conf/var/logrotate.d.boa.conf /etc/logrotate.d/boa &> /dev/null
@@ -13448,6 +13453,8 @@ _xdrago_install_upgrade() {
     cp -af /var/xdrago/cron/crontabs/root /var/spool/cron/crontabs/ &> /dev/null
     chown root:crontab /var/spool/cron/crontabs/root
     chmod 600 /var/spool/cron/crontabs/root
+    [ -e "/opt/local/bin/heavyslots" ] \
+      && bash /opt/local/bin/heavyslots apply --quiet &> /dev/null
     ### Weekly rotation for BOA monitor incident logs (see the upgrade path above).
     cp -af ${_bldPth}/aegir/conf/var/logrotate.d.boa.conf /etc/logrotate.d/boa &> /dev/null
     if [ -z "${_THISHTIP}" ]; then
