@@ -8499,6 +8499,117 @@ _prune_psr_log_stash() {
     -mtime +6 -execdir rm -rf {} + &> /dev/null
 }
 
+# Where root keeps a moved account's relay records (as xoct and xmass write
+# them), and where this worker keeps the confirmed names of the servers such
+# accounts moved to. Plain assignments, never taken from the environment.
+_LTD_MIG_REC_DIR="/root"
+_LTD_MOVED_DIR="/var/log/boa"
+
+# A host name in lowercase DNS form, at least two labels.
+_ltd_valid_fqdn() {
+  [ "${#1}" -le 253 ] \
+    && [[ "${1}" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$ ]]
+}
+
+# The name of the server at the IPv4 address $1: its reverse record, printed
+# only when that name's own address record is the same address, so a login
+# by the name shown reaches that server (where the reverse record is still
+# the provider's own, its name is the one shown). Kept a day per address in
+# /var/log/boa, which releases leave in place, and the last confirmed name is
+# used while DNS does not answer, so the welcome built from it does not flap.
+# Nothing when no name was ever confirmed.
+_ltd_moved_host() {
+  local _ip="${1}" _c _n _old=""
+  _c="${_LTD_MOVED_DIR}/ltd-moved-host.${_ip}"
+  if [ -f "${_c}" ] && [ ! -L "${_c}" ]; then
+    _old="$(head -n 1 "${_c}" 2> /dev/null)"
+    _ltd_valid_fqdn "${_old}" || _old=""
+    if [ -n "${_old}" ] && [ -n "$(find "${_c}" -mmin -1440 2> /dev/null)" ]; then
+      echo "${_old}"
+      return 0
+    fi
+  fi
+  _n="$(dig +short +time=2 +tries=1 -x "${_ip}" 2> /dev/null | head -n 1)"
+  _n="${_n%.}"
+  _n="${_n,,}"
+  if _ltd_valid_fqdn "${_n}" \
+    && dig +short +time=2 +tries=1 A "${_n}" 2> /dev/null | grep -qxF "${_ip}"; then
+    mkdir -p "${_LTD_MOVED_DIR}"
+    printf '%s\n' "${_n}" > "${_c}.new.$$" && mv -f -- "${_c}.new.$$" "${_c}"
+    echo "${_n}"
+    return 0
+  fi
+  [ -n "${_old}" ] && echo "${_old}"
+  return 0
+}
+
+# The welcome of a moved account's login, as an lshell intro line. Every value
+# in it is checked by the caller to hold no quote or backslash. $1 = the new
+# server (a name or an address), $2 = this server's name (may be empty), $3 =
+# the day of the move (may be empty), $4 = the login's name there.
+_ltd_moved_intro() {
+  local _s="Its" _here="This server"
+  [ -n "${3}" ] && _s="Since ${3} its"
+  [ -n "${2}" ] && _here="This server, ${2},"
+  printf '%s' 'intro : "\n      ======== This account has moved to another server ========\n'
+  printf '%s' "\n   ${_s} sites are served by the new server ${1}."
+  printf '%s' "\n   ${_here} only forwards their traffic: the account's"
+  printf '%s' '\n   files here are an old copy, and nothing changed here reaches'
+  printf '%s' '\n   the live sites.\n'
+  printf '%s' '\n   Log in to the new server instead, with the same password and keys:\n'
+  printf '%s' "\n      ssh ${4}@${1}\n"
+  printf '%s' '\n   The same goes for SFTP. Here this login reaches only its own home'
+  printf '%s' '\n   directory, whose files were not moved: download from it anything'
+  printf '%s\n' '\n   you still need.\n"'
+}
+
+# A moved account's logins on the server it moved from. Once a migration has
+# made the account a relay here (root's proxied marker, COMPLETE, beside its
+# source-role record naming the new server), the pass skips the account and
+# writes no section for its logins, so lshell holds each to its own home: the
+# part the completion notice asks the client to download from. Without a word
+# of the move such a login reads as broken. Each of the account's shell logins
+# gets a section whose welcome says where the account lives now and how to log
+# in there; its path stays the home alone. Called only for an account whose
+# own sections are not written this pass. $1 = the account.
+_ltd_moved_stanzas() {
+  local _a="${1}" _m _r _f _at _ip _po _new _old _day="" _l _shl _there
+  _m="${_LTD_MIG_REC_DIR}/.${_a}.migproxy.proxied"
+  _r="${_LTD_MIG_REC_DIR}/.${_a}.migproxy.cnf"
+  for _f in "${_m}" "${_r}"; do
+    [ -f "${_f}" ] && [ ! -L "${_f}" ] \
+      && [ "$(stat -c '%u' "${_f}" 2> /dev/null)" = "0" ] || return 0
+  done
+  grep -qx '_MIG_PROXIED=COMPLETE' "${_m}" 2> /dev/null || return 0
+  grep -qx '_MIG_ROLE=source' "${_r}" 2> /dev/null || return 0
+  _ip="$(sed -n 's/^_MIG_PEER_IP=//p' "${_r}" 2> /dev/null | head -n 1)"
+  [[ "${_ip}" =~ ^((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])$ ]] \
+    || return 0
+  _po="$(sed -n 's/^_MIG_PEER_OCT=//p' "${_r}" 2> /dev/null | head -n 1)"
+  [[ "${_po}" =~ ^[a-z0-9-]+$ ]] || _po="${_a}"
+  _at="$(sed -n 's/^_MIG_PROXIED_AT=//p' "${_m}" 2> /dev/null | head -n 1)"
+  [[ "${_at}" =~ ^[0-9]{9,11}$ ]] && _day="$(date -d "@${_at}" '+%Y-%m-%d' 2> /dev/null)"
+  [[ "${_day}" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] || _day=""
+  _new="$(_ltd_moved_host "${_ip}")"
+  _ltd_valid_fqdn "${_new}" || _new="${_ip}"
+  _old="$(hostname -f 2> /dev/null)"
+  _old="${_old,,}"
+  _ltd_valid_fqdn "${_old}" || _old=""
+  for _l in $(getent group lshellg 2> /dev/null | cut -d: -f4 | tr ',' '\n' \
+    | grep -E "^${_a}\.[a-z0-9][a-z0-9._-]*$" | sort -u); do
+    _shl="$(getent passwd "${_l}" 2> /dev/null | cut -d: -f7)"
+    case "${_shl}" in
+      /usr/bin/mysecureshell|/usr/bin/lshell) ;;
+      *) continue ;;
+    esac
+    _there="${_po}${_l#"${_a}"}"
+    echo >> ${_THIS_LTD_CONF}
+    echo "[${_l}]" >> ${_THIS_LTD_CONF}
+    _ltd_moved_intro "${_new}" "${_old}" "${_day}" "${_there}" >> ${_THIS_LTD_CONF}
+  done
+  return 0
+}
+
 _manage_user() {
   _repair_staged_homes
   for _pthParentUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
@@ -8512,10 +8623,19 @@ _manage_user() {
       [[ "${_USER}" =~ ^[a-z0-9-]+$ ]] && _ltd_pool_deny_heal_skipped
       _USER=""
     fi
+    # Decided once: the body below writes the account's own sections, and a
+    # moved account's welcome sections are written only when it does not, so
+    # no login can get two.
+    _ltdBody=NO
     if [ -e "${_pthParentUsr}/config/server_master/nginx/vhost.d" ] \
       && [ -e "${_pthParentUsr}/log/fpm.txt" ] \
       && [ ! -e "${_pthParentUsr}/log/proxied.pid" ] \
       && [ ! -e "${_pthParentUsr}/log/CANCELLED" ]; then
+      _ltdBody=YES
+    elif [[ "${_pthParentUsr##*/}" =~ ^[a-z0-9-]+$ ]]; then
+      _ltd_moved_stanzas "${_pthParentUsr##*/}"
+    fi
+    if [ "${_ltdBody}" = "YES" ]; then
       _MNT_STATIC_FILES=""
       _mntPoint=""
       _USER=""
