@@ -12,7 +12,6 @@ _WRAPPER_SCRIPT="${_WRAPPER_DIR}/sequential_backups.sh"
 _SCHEDULE_DIR="/root/.remote_backups/schedule"
 _SCHEDULE_FILE="${_SCHEDULE_DIR}/backup_schedule.txt"
 _CRON_FILE="/etc/cron.d/duplicity_backup"
-_LOGFILE="/var/log/backup_runtime.log"
 
 # Function to verify root access
 _check_root() {
@@ -82,7 +81,6 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 # File paths
 _SCHEDULE_FILE="/root/.remote_backups/schedule/backup_schedule.txt"
 _PID_DIR="/run"
-_LOGFILE="/var/log/backup_runtime.log"
 
 # Liveness for a recorded lock owner: the pid must exist AND still look
 # like this tooling. A pid recycled by an unrelated long-lived process
@@ -644,21 +642,7 @@ _generate_backup_schedule() {
   echo "Backup schedule created at ${_SCHEDULE_FILE}"
 }
 
-# Function to adjust the backup interval dynamically
-_adjust_backup_interval() {
-  if [ -f "${_LOGFILE}" ]; then
-    _TOTAL_RUNTIME=$(tail -n1 "${_LOGFILE}" | awk '{print $NF}')
-    _NEW_INTERVAL=$(( (_TOTAL_RUNTIME / 3600 + 1) * 60 ))  # Round up to the next hour
-    if [ "${_NEW_INTERVAL}" -gt "${_BACKUP_INTERVAL}" ]; then
-      _BACKUP_INTERVAL="${_NEW_INTERVAL}"
-      echo "Adjusted backup interval to $((_BACKUP_INTERVAL / 60)) hours."
-      _create_cron_entries
-    fi
-  fi
-}
-
 # Main script execution
 _generate_wrapper_script
 _generate_backup_schedule
-_adjust_backup_interval
 _create_cron_entries

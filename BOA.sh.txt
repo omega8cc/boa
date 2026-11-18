@@ -6086,7 +6086,7 @@ CSFSTANDBY
       _fetch_versioned /root/.remote_backups/run/create_credentials_templates.sh "${_urlHmr}/tools/backup/run/create_credentials_templates.sh" f41
       _fetch_versioned /root/.remote_backups/run/create_global_paths_config.sh "${_urlHmr}/tools/backup/run/create_global_paths_config.sh" f43
       _fetch_versioned /root/.remote_backups/run/create_user_paths_config.sh "${_urlHmr}/tools/backup/run/create_user_paths_config.sh" f36
-      _fetch_versioned /root/.remote_backups/run/create_cron_entries.sh "${_urlHmr}/tools/backup/run/create_cron_entries.sh" f34
+      _fetch_versioned /root/.remote_backups/run/create_cron_entries.sh "${_urlHmr}/tools/backup/run/create_cron_entries.sh" f32
       _fetch_versioned /root/.remote_backups/run/create_readme.sh "${_urlHmr}/tools/backup/run/create_readme.sh" f39
       _fetch_versioned /root/.remote_backups/run/create_config_readme.sh "${_urlHmr}/tools/backup/run/create_config_readme.sh" f37
     fi
@@ -7651,7 +7651,7 @@ if [ "$(id -u)" -eq 0 ]; then
           echo "no completed backup past the alert floor. Check first:"
           echo "  ${_bupErF}"
           echo "  /var/log/boa/*conn-test-err.log (credentials/bucket problems)"
-          echo "  /etc/cron.d/duplicity_backup and /var/log/backup_runtime.log"
+          echo "  /etc/cron.d/duplicity_backup"
           echo
           echo "This notice repeats daily until a run completes."
         } | s-nail -s "Backup FRESHNESS Alert for [${_bupHstN}]: ${_bupSvc} ${_bupUsr} ${_bupKind}" ${_MY_EMAIL}
