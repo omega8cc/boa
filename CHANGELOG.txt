@@ -993,18 +993,22 @@
       root's login shell are rewritten as before.
 
     * A login of an account moved to another server, on the server it
-      moved from, opens with a welcome that says so: since when its sites
-      are served by the new server, named where its reverse DNS record
-      resolves back to it and by address otherwise, that nothing changed
-      in the old copy reaches the live sites, and the exact login to use
-      there. Such a login was held to its own home under the usual
-      welcome, which read as a broken shell to anyone not told of the
-      move. It still reaches only its home, the part the completion
-      notice asks the client to download from the old server.
+      moved from, opens with a welcome that says so: since when its
+      sites are served by the new server, named where its reverse DNS
+      record resolves back to it and by address otherwise, that nothing
+      changed in the old copy reaches the live sites, and the exact
+      login to use there (none where the relay's record came from an
+      older tool's copy, and for a platform developer login once the
+      host has set it up there, as a move does not carry it). Such a
+      login was held to its own home under the usual welcome, which read
+      as a broken shell to anyone not told of the move. It still reaches
+      only its home, the part the completion notice asks the client to
+      download from the old server.
 
     * xoct's completion notice says where the account's SSH and SFTP
       logins connect now (the new server's name, or its address where the
-      name is not confirmed) and asks the account holder to tell anyone
+      name is not confirmed), names the logins there when the account
+      moved under another name, and asks the account holder to tell anyone
       else who uses those logins, such as a developer or a site
       administrator: the old server only forwards the sites, and files
       changed there do not reach them.
