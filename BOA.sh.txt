@@ -7133,28 +7133,32 @@ _php_floor_log() {
   echo "$(date 2> /dev/null) $1" >> "${_pthLog}/sec-floor.log"
 }
 
-# Copies $1 to $2 when $1 is there and $2 is not, and prints the copy's size
-# in bytes, else 0.
+# Copies $1 to $2 when $1 is there and $2 is not; a copy that fails partway
+# is removed, so $2 never holds a cut history.
 _sec_floor_copy() {
-  if [ -f "$1" ] && [ ! -e "$2" ] && cp -p "$1" "$2" 2> /dev/null; then
-    stat -c %s "$2" 2> /dev/null || echo 0
-  else
-    echo 0
+  if [ -f "$1" ] && [ ! -e "$2" ]; then
+    cp -p "$1" "$2" 2> /dev/null || rm -f "$2"
   fi
 }
 
-# Puts what $1 holds past its first $3 bytes, the part copied to $2 at the
-# mark, into $2 right after $2's own first $3 bytes, through a file of its
-# own, and removes $1; on any failure both stay as they were. A copy no longer
-# at the head of both files counts as none: then all of $1 goes first.
+# Puts the lines of $1 past the head it shares with $2 (the history the first
+# run copied, if any) right after that head in $2, through a file of its own,
+# and removes $1; on any failure both stay as they were. The shared head is
+# read from the files, whole equal lines from the first, so nothing recorded
+# elsewhere can make the history appear twice or cut a line.
 _sec_floor_join() {
-  local _n="$3" _j="$2.join"
-  case "${_n}" in
-    ''|*[!0-9]*) _n=0 ;;
-  esac
-  if [ "${_n}" -gt 0 ] && ! cmp -s -n "${_n}" "$1" "$2" 2> /dev/null; then
-    _n=0
+  local _n="" _j="$2.join"
+  if [ ! -s "$1" ]; then
+    rm -f "$1"
+    return 0
   fi
+  _n=$(LC_ALL=C awk 'NR == FNR { a[FNR] = $0; m = FNR; next }
+    !d && FNR <= m && a[FNR] == $0 { n += length($0) + 1; next }
+    { d = 1 }
+    END { print n + 0 }' "$1" "$2" 2> /dev/null)
+  case "${_n}" in
+    ''|*[!0-9]*) return 1 ;;
+  esac
   if { head -c "${_n}" "$2" && tail -c +"$(( _n + 1 ))" "$1" \
     && tail -c +"$(( _n + 1 ))" "$2"; } 2> /dev/null > "${_j}" \
     && mv -f "${_j}" "$2" 2> /dev/null; then
@@ -7165,8 +7169,8 @@ _sec_floor_join() {
 
 # The floor's files were named for PHP alone until the floor covered Nginx.
 # This agent's first run here copies the log and the pass log to the new
-# names with their history and marks /etc/boa/control/sec-floor.since with
-# each copy's size. While mirrors disagree after a publish, an agent from
+# names with their history and marks the time in
+# /etc/boa/control/sec-floor.since. While mirrors disagree after a publish, an agent from
 # before the rename can still run here now and then: its state and old-name
 # logs stay exactly as it keeps them for a day after the mark, so it neither
 # starts over nor logs and mails a line again. Then no such agent or its pass
@@ -7174,28 +7178,27 @@ _sec_floor_join() {
 # log right after the copied history, the old files go, and so do its states.
 # The pass log is joined only while no BOA run can be writing it.
 _sec_floor_rename_logs() {
-  local _sInce=/etc/boa/control/sec-floor.since _lOg="" _pAss=""
+  local _sInce=/etc/boa/control/sec-floor.since
   local _oLd="${_pthLog}/php-sec-floor.log" _nEw="${_pthLog}/sec-floor.log"
   local _oPs=/var/log/boa/barracuda-php-floor.log _nPs=/var/log/boa/barracuda-sec-floor.log
   if [ ! -e "${_sInce}" ]; then
-    _lOg=$(_sec_floor_copy "${_oLd}" "${_nEw}")
-    _pAss=$(_sec_floor_copy "${_oPs}" "${_nPs}")
+    _sec_floor_copy "${_oLd}" "${_nEw}"
+    _sec_floor_copy "${_oPs}" "${_nPs}"
     mkdir -p /etc/boa/control
-    echo "${_lOg} ${_pAss}" > "${_sInce}"
+    touch "${_sInce}"
     return 0
   fi
   [ -n "$(find "${_sInce}" -mmin +1440 2> /dev/null)" ] || return 0
-  read -r _lOg _pAss < "${_sInce}"
   if [ -f "${_oLd}" ] && [ ! -e "${_nEw}" ]; then
     mv -f "${_oLd}" "${_nEw}" 2> /dev/null
   elif [ -f "${_oLd}" ] && [ -f "${_nEw}" ]; then
-    _sec_floor_join "${_oLd}" "${_nEw}" "${_lOg}"
+    _sec_floor_join "${_oLd}" "${_nEw}"
   fi
   if [ ! -e /run/boa_run.pid ]; then
     if [ -f "${_oPs}" ] && [ ! -e "${_nPs}" ]; then
       mv -f "${_oPs}" "${_nPs}" 2> /dev/null
     elif [ -f "${_oPs}" ] && [ -f "${_nPs}" ]; then
-      _sec_floor_join "${_oPs}" "${_nPs}" "${_pAss}"
+      _sec_floor_join "${_oPs}" "${_nPs}"
     fi
   fi
   find /etc/boa/control -maxdepth 1 -name 'php-sec-floor.*.txt' -delete 2> /dev/null
