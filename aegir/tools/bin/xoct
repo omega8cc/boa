@@ -2423,7 +2423,7 @@ _MIG_LOGIN_NONE_DONE="Your SSH and SFTP logins now connect to the new server, at
 ### two readings agree (new or same), else the new address the mail gives.
 _mig_build_panel_block() {
   local _ctx="$1" _ip="$2" _acct="$3"
-  local _old _mf _tf="" _tp="" _ta="" _out="" _rule="" _why="" _was _adm="" _nadm _rc _n _dns
+  local _old _mf _tf="" _tp="" _ta="" _out="" _rule="" _why="" _was _adm="" _nadm _rc _n _dns _cf=""
   _MIG_PANEL_STATE=unknown
   _MIG_TGT_BKHOST=""
   _MIG_TGT_CHAINS=""
@@ -2446,6 +2446,7 @@ _mig_build_panel_block() {
     elif [ "${_rc}" != "0" ]; then
       _why="${_ip} does not confirm by its create marker that its ${_acct} is this account"
     else
+      _cf=YES
       _out="$(_xoct_panel_facts_there "${_ip}" "${_acct}")"
       _tf="$(sed -n 's/^XOCT-HOST=//p' <<< "${_out}" | head -n 1 | tr -d '\r')"
       _tp="$(sed -n 's/^XOCT-PANEL=//p' <<< "${_out}" | head -n 1 | tr -d '\r')"
@@ -2539,13 +2540,14 @@ _mig_build_panel_block() {
     ;;
   esac
   if [ "${_ctx}" = "complete" ]; then
-    ### The account's name there is said only once the target confirmed it
-    ### (new or same): under another name every login's name changes too.
+    ### The account's name there is said once the target confirmed it by its
+    ### create marker, whatever the panel's readings gave: under another name
+    ### every login's name changes too.
+    _n=""
+    [ "${_cf}" = "YES" ] && [ "${_acct}" != "${_oct}" ] \
+      && _n=" Your account is named ${_acct} there, so your main login is ${_acct}.ftp in place of ${_oct}.ftp, and each of your other logins starts with ${_acct} in place of ${_oct}."
     case "${_MIG_PANEL_STATE}" in
       new|same)
-        _n=""
-        [ "${_acct}" != "${_oct}" ] \
-          && _n=" Your account is named ${_acct} there, so your main login is ${_acct}.ftp in place of ${_oct}.ftp, and each of your other logins starts with ${_acct} in place of ${_oct}."
         if [ "${_tf}" != "${_mf}" ]; then
           _MIG_LOGIN_LINE="Your SSH and SFTP logins now connect to the new server, ${_tf}, in place of ${_mf}.${_n} ${_MIG_LOGIN_TELL}"
         else
@@ -2554,6 +2556,8 @@ _mig_build_panel_block() {
       ;;
       *)
         _MIG_LOGIN_LINE="${_MIG_LOGIN_NONE_DONE}"
+        [ -n "${_n}" ] \
+          && _MIG_LOGIN_LINE="Your SSH and SFTP logins now connect to the new server, at the new address above, in place of the old one.${_n} ${_MIG_LOGIN_TELL}"
       ;;
     esac
   fi
