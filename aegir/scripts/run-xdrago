@@ -451,12 +451,19 @@ _grav_alias_sites() (
       exit 0
     fi
   fi
-  if _grav_alias_read > "${_lf}.$$" && [[ -n "${_sig}" ]] \
-    && mv -f "${_lf}.$$" "${_lf}"; then
-    printf '%s' "${_sig}" > "${_sf}.$$" && mv -f "${_sf}.$$" "${_sf}"
-    "${_shuf}" 2> /dev/null < "${_lf}"
+  if _grav_alias_read 2> /dev/null > "${_lf}.$$"; then
+    if [[ -n "${_sig}" ]] && mv -f "${_lf}.$$" "${_lf}"; then
+      printf '%s' "${_sig}" > "${_sf}.$$" && mv -f "${_sf}.$$" "${_sf}"
+      "${_shuf}" 2> /dev/null < "${_lf}"
+    else
+      "${_shuf}" 2> /dev/null < "${_lf}.$$"
+    fi
   else
-    "${_shuf}" 2> /dev/null < "${_lf}.$$"
+    # A read that failed, or a list /run had no room for: this minute's
+    # stores come from a fresh read through a pipe, as before the cache, so
+    # a full /run never stops the ticks; nothing is kept.
+    rm -f "${_lf}.$$"
+    _grav_alias_read | "${_shuf}" 2> /dev/null
   fi
   rm -f "${_lf}.$$" "${_sf}.$$"
 )
