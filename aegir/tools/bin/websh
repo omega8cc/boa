@@ -1178,9 +1178,34 @@ if [ "${1}" = "-c" ] && [ "${2}" = "--" ]; then
 fi
 
 # The identity every policy below keys on is the process's own, never the
-# name in $USER, which the caller's environment sets.
-_LTD_GID=$(id -nG 2>&1)
-_LTD_UID=$(id -nu 2>&1)
+# name in $USER, which the caller's environment sets. One id call gives both
+# (websh is /bin/sh, so every saved fork counts on every exec): the name in
+# its uid=N(name) field is what id -nu prints, and the names in its
+# groups=N(a),N(b) field, in that order, are what id -nG prints. Output that
+# does not read that way (a group without a name, an extra field) falls back
+# to the two calls.
+_LTD_RE_ID='^uid=[0-9]+\(([^)]*)\) gid=[0-9]+\([^)]*\) groups=(.*)$'
+_LTD_RE_GRP='^[0-9]+\(([^)]*)\)$'
+_LTD_ID=$(id 2>&1)
+_LTD_UID=""
+_LTD_GID=""
+if [[ "${_LTD_ID}" =~ ${_LTD_RE_ID} ]]; then
+  _LTD_UID="${BASH_REMATCH[1]}"
+  IFS=, read -r -a _LTD_GRPS <<< "${BASH_REMATCH[2]}"
+  for _LTD_G1 in "${_LTD_GRPS[@]}"; do
+    if [[ "${_LTD_G1}" =~ ${_LTD_RE_GRP} ]]; then
+      _LTD_GID="${_LTD_GID:+${_LTD_GID} }${BASH_REMATCH[1]}"
+    else
+      _LTD_GID=""
+      break
+    fi
+  done
+fi
+if [ -z "${_LTD_UID}" ] || [ -z "${_LTD_GID}" ]; then
+  _LTD_GID=$(id -nG 2>&1)
+  _LTD_UID=$(id -nu 2>&1)
+fi
+unset _LTD_ID _LTD_RE_ID _LTD_RE_GRP _LTD_GRPS _LTD_G1
 
 # A tenant's -c takes the command string as the next word: every check
 # below reads it there, so an option in between is not accepted.
@@ -1213,10 +1238,6 @@ fi
 _ALL="$@"
 ### echo "_ALL is ${_ALL}"
 
-# Capture environment variables
-_ENV=$(env 2>&1)
-### echo "_ENV is ${_ENV}"
-
 # Determine _ARGS based on the first argument
 if [ "${1}" = "-c" ]; then
   _ARGS="${2}"
@@ -1236,7 +1257,7 @@ unset PHPRC
 # ahead of the fast lane below, which applies them too.
 _INTERNAL=NO
 if [ -z "${USER}" ]; then
-  USER=$(id -nu ${USER} 2>&1)
+  USER="${_LTD_UID}"
   _LTD_QQQ=YES
 fi
 _X_USR=".*"
@@ -2810,7 +2831,7 @@ if _grp_set_is "users www-data" \
       echo
       exit 1
     fi
-    if [[ $(whoami) == *.ftp ]] \
+    if [[ ${_LTD_UID} == *.ftp ]] \
       || [[ "${2}" =~ "drush" ]] \
       || [[ "${2}" =~ "mysql " ]]; then
       _IN_PATH=YES
@@ -3259,10 +3280,10 @@ if _grp_set_is "users www-data" \
     || _in_grp ltd-shell \
     || _in_grp ltd-shell-more; then
     if [[ "${_ARGS}" =~ "*" ]]; then
-      if [[ $(whoami) == *.ftp ]]; then
+      if [[ ${_LTD_UID} == *.ftp ]]; then
         _SILENT=YES
         ####
-        #### The [[ $(whoami) == *.ftp ]] ### OK for Drush and Drupal
+        #### The [[ ${_LTD_UID} == *.ftp ]] ### OK for Drush and Drupal
         #### The [[ "${_ARGS}" =~ "set -m; " ]] ### Legacy defunct method
         ####
       else
@@ -3316,7 +3337,7 @@ if _grp_set_is "users www-data" \
   fi
   if [ "${_IN_PATH}" = "YES" ]; then
     if [ -x "/usr/local/bin/ruby" ] && [ -x "/usr/local/bin/gem" ]; then
-      if [[ $(whoami) == *.ftp ]] || [ ! -z "${SSH_CLIENT}" ]; then
+      if [[ ${_LTD_UID} == *.ftp ]] || [ ! -z "${SSH_CLIENT}" ]; then
         _RUBY_ALLOW=YES
       fi
     fi
@@ -3328,7 +3349,7 @@ if _grp_set_is "users www-data" \
       fi
     fi
     if [ -x "/usr/bin/npm" ] && [ -e "/home/${USER}/.npmrc" ]; then
-      if [[ $(whoami) == *.ftp ]] || [ ! -z "${SSH_CLIENT}" ]; then
+      if [[ ${_LTD_UID} == *.ftp ]] || [ ! -z "${SSH_CLIENT}" ]; then
         _NPM_ALLOW=YES
       fi
     fi
