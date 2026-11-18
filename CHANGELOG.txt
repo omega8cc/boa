@@ -1027,7 +1027,28 @@
       An idle server with three accounts started 355 to 510 programs a
       second, most of them for Drush's shell-outs through websh; each run
       as the backend or an account user now starts 4 or 5 instead of 6 or
-      7. What websh allows and runs is unchanged.
+      7. Its command test, run on every line that names no known path,
+      now finds the command in the shell itself, by the same search as
+      which, instead of starting which and its shell, and the master
+      user's PHP is read from Drush's first line without grep. What websh
+      allows and runs is unchanged.
+
+    * websh no longer restarts itself without end when a copy of it is
+      run from another path: it started that same copy again and again,
+      spinning one CPU and running nothing. Root and the system users now
+      run the line as sh, as the installed paths do, and an account's
+      login is refused, as its -c line from another path already was.
+
+    * An idle server starts far fewer programs for its own bookkeeping.
+      The Grav store ticks read an instance's aliases only when the
+      instance user's listing of them changed, instead of every alias
+      every minute (233 programs a minute for 114 aliases, now 6). The
+      FPM sampler reads its status and probe values in the shell instead
+      of three programs per value, the event archiver takes the size of
+      the files it follows in one call per pass and makes a month's
+      folder once, and the Solr config manager resolves each account's
+      home once per run instead of once per site check. What each of
+      them records and decides is unchanged.
 
     * An account whose site sits on a platform whose folder name holds a
       colon moves again with xoct, xcopy and xmass. xoct and xcopy read a
