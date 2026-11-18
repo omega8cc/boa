@@ -984,6 +984,14 @@
 
 @=> Important Fixes
 
+    * A barracuda pass that switches system scripts from /bin/sh to dash
+      (or bash) changes only that shell's name. It changed every /bin/sh
+      in a matched file, so names that only start with it changed too:
+      the "#!/bin/sh5" note in gzexe and bzexe and a gettext.sh comment
+      read /bin/dash..., and a script calling /usr/bin/sha256sum, shred
+      or shuf would have broken. Shebangs, exec lines, SHELL= lines and
+      root's login shell are rewritten as before.
+
     * A login of an account moved to another server, on the server it
       moved from, opens with a welcome that says so: since when its sites
       are served by the new server, named where its reverse DNS record
