@@ -219,11 +219,14 @@ _sql_backup_limit() {
 # self-update and autoupboa hold for it as for an install, so nothing is
 # replaced, restarted or reaped under a running dump; past the limit the hold
 # lifts and autoupboa's reaper ends the hanging run and reports it.
+# _SQL_LIVE names the script it found, for the hold log.
 _sql_backup_live() {
   local _a="" _lim=""
   _lim=$(_sql_backup_limit)
+  _SQL_LIVE=mysql_backup.sh
   _a=$(_exec_age "${_SQL_BACKUP_EXEC}")
   [ -n "${_a}" ] && [ "${_a}" -le "${_lim}" ] && return 0
+  _SQL_LIVE=mysql_cluster_backup.sh
   _a=$(_exec_age "${_SQL_CLUSTER_BACKUP_EXEC}")
   [ -n "${_a}" ] && [ "${_a}" -le "${_lim}" ]
 }
@@ -629,7 +632,7 @@ else
     if _installer_alive; then
       _held=" installer-alive"
     elif _sql_backup_live; then
-      _held=" mysql_backup.sh"
+      _held=" ${_SQL_LIVE:-mysql_backup.sh}"
     else
       # Another self-update is running: routine when the two schedules
       # overlap, so it is only said here; the log records a holder only once
