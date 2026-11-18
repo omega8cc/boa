@@ -66,12 +66,15 @@ _FPM_WORKER_LINE=' child [0-9]+ said into std(err|out): '
 # The last 500 lines each master wrote itself. Read from a wider tail, so a
 # burst of worker output cannot push a master message out of the window.
 _fpm_master_tail() {
-  local _f
+  local _f _rc=0
   for _f in /var/log/php/php*-fpm-error.log; do
     [ -f "${_f}" ] || continue
+    # 1 when the last tail could not write its lines (a full /run for the
+    # kept copy below): every log's, not only the last one's
     tail --lines=20000 "${_f}" 2>/dev/null \
-      | grep -v -E "${_FPM_WORKER_LINE}" | tail --lines=500
+      | grep -v -E "${_FPM_WORKER_LINE}" | tail --lines=500 || _rc=1
   done
+  return "${_rc}"
 }
 
 # _fpm_master_tail's output as a file, _FPM_TAIL_F, read again only when a
