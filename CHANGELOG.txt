@@ -307,6 +307,18 @@
 
 @=> Security
 
+    * Nginx 1.31.9, upstream's security release of 18 November 2026,
+      brought to every box through the security floor, which now covers
+      Nginx too. Among its fixes are memory corruption in HTTP/2 flow
+      control (CVE-2026-123007), use-after-free in HTTP/2 and HTTP/3
+      (CVE-2026-123633, CVE-2026-121810) and an endless loop while reading
+      a request body over TLS 1.3 (CVE-2026-118899), all reachable on every
+      BOA vhost. A box whose Nginx is older starts the barracuda system pass
+      that installs it, also with _SKYNET_MODE=OFF, under the PHP floor's
+      rules: its own spread of up to 30 minutes once the release is on the
+      mirror, the busy and OS upgrade holds, three tries, and
+      /var/log/boa/php-sec-floor.log says where it stands.
+
     * lfd blocks SSH password guessing again. OpenSSH 9.8 and newer logs
       failed logins as sshd-session, and the SSH rules of csf 15.00 match
       only sshd, so lfd's LF_SSHD has counted no failure since BOA moved to

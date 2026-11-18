@@ -7115,6 +7115,14 @@ _php_upload_progress_off() {
 # hole, and a system pass leaves the master Ægir instance as it is.
 _PHP_SEC_FLOOR="8.2.35 8.3.36 8.4.27 8.5.12 8.6.0RC4 7.4.33+cve-2026-109618-109619 8.0.30+cve-2026-109618-109619 8.1.34+cve-2026-109618-109619 5.6.40+sury-105 5.6.40+openssl3-pkey-export 7.0.33+sury-93 7.0.33+openssl3-pkey-export 7.1.33+sury-81 7.2.34+sury-66 7.3.33+sury-35 7.4.33+sury-31 8.0.30+sury-25 8.1.34+sury-9 5.6.40+xlts-1 7.0.33+xlts-1 7.1.33+xlts-1 7.2.34+xlts-1 7.3.33+xlts-1 7.4.33+xlts-1 8.0.30+xlts-1"
 
+# Nginx security floor: the first release no box may run below, e.g.
+# "1.31.9"; empty means off. A box whose /usr/sbin/nginx is older gets the
+# same pass, under the same rules, once the tree pins that release or newer
+# and its source is on the mirror: the pass installs the pin. The state,
+# the log and the launcher's override are the PHP floor's, so one pass
+# serves both floors.
+_NGINX_SEC_FLOOR="1.31.9"
+
 # One line per state: a wait repeated on every run is logged once, until
 # something else is logged. TRUE only when it wrote the line, so a mail can
 # follow a new state alone.
@@ -7129,6 +7137,12 @@ _php_floor_log() {
 _php_floor_older() {
   # shellcheck disable=SC2016 # $argv is PHP's, not the shell's
   "$1" -n -r 'exit(version_compare($argv[1], $argv[2], "<") ? 0 : 1);' "$2" "$3" 2> /dev/null
+}
+
+# TRUE when Nginx version $1 is older than $2: digits and dots only, so
+# sort -V orders them as Nginx does (1.31.6.1 before 1.31.9 before 1.31.10).
+_ngx_floor_older() {
+  [ "$1" != "$2" ] && [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | head -n 1)" = "$1" ]
 }
 
 # TRUE while no pass may start: an install or upgrade, the nightly dump, an
@@ -7158,16 +7172,18 @@ _php_floor_mail() {
 # tree is below its floor or the pin's source is not on the mirror. A pass
 # that leaves a version below is tried again 12 hours later; after three, or
 # when a major OS upgrade is staged in the cnf, the operator is mailed once
-# and the box is left to them.
+# and the box is left to them. Nginx below its own floor counts as one more
+# version below, with the same waits.
 _php_security_floor() {
   local _fLr="" _e="" _iV="" _pIn="" _bElow="" _lIst="" _sTp="" _nOw=""
   local _dUe="" _tRies="" _lAst="" _sUm="" _hN="" _sPr="" _pIns="" _sZ=""
-  local _tR="" _wAit="" _eNt="" _fV="" _fId="" _hOst=""
+  local _tR="" _wAit="" _eNt="" _fV="" _fId="" _hOst="" _nGx="" _wHat=""
   _PHP_FLOOR_GO=NO
-  [ -n "${_PHP_SEC_FLOOR}" ] || return 0
+  [ -n "${_PHP_SEC_FLOOR}${_NGINX_SEC_FLOOR}" ] || return 0
   [ -x "/opt/local/bin/barracuda" ] || return 0
   [ -e "/var/log/barracuda_log.txt" ] || return 0
-  ### A major OS upgrade in progress rebuilds every PHP version itself.
+  ### A major OS upgrade in progress rebuilds every PHP version itself; the
+  ### floor waits for it to end.
   ls /root/.run-to-*.cnf > /dev/null 2>&1 && return 0
   for _fLr in ${_PHP_SEC_FLOOR}; do
     _fV="${_fLr%%+*}"
@@ -7187,7 +7203,26 @@ _php_security_floor() {
       _lIst="${_lIst} ${_iV}${_fId:+ (without ${_fId})}"
     fi
   done
-  _sTp="/etc/boa/control/php-sec-floor.$(echo "${_PHP_SEC_FLOOR}" | cksum | cut -d' ' -f1).txt"
+  if [ -n "${_NGINX_SEC_FLOOR}" ] && [ -x "/usr/sbin/nginx" ]; then
+    _nGx=$(/usr/sbin/nginx -v 2>&1 | sed -n 's#^nginx version: nginx/\([0-9][0-9.]*\).*#\1#p' | head -n 1)
+    if [ -n "${_nGx}" ] && _ngx_floor_older "${_nGx}" "${_NGINX_SEC_FLOOR}"; then
+      _bElow="${_bElow} nginx:${_NGINX_SEC_FLOOR}"
+    else
+      _nGx=""
+    fi
+  fi
+  ### What is below, as the log and the mails name it: "PHP 8.4.26",
+  ### "Nginx 1.31.8" or "PHP 8.4.26 and Nginx 1.31.8".
+  _wHat=""
+  [ -n "${_lIst}" ] && _wHat="PHP" && _lIst="PHP${_lIst}"
+  if [ -n "${_nGx}" ]; then
+    _wHat="${_wHat:+${_wHat} and }Nginx"
+    _lIst="${_lIst:+${_lIst} and }Nginx ${_nGx}"
+  fi
+  ### The Nginx floor joins the state's name only when set, so the PHP
+  ### floor's state keeps its name while the Nginx floor is off.
+  _sTp="/etc/boa/control/php-sec-floor.$(echo "${_PHP_SEC_FLOOR}${_NGINX_SEC_FLOOR:+ nginx-${_NGINX_SEC_FLOOR}}" \
+    | cksum | cut -d' ' -f1).txt"
   find /etc/boa/control -maxdepth 1 -name 'php-sec-floor.*.txt' ! -name "${_sTp##*/}" \
     -delete 2> /dev/null
   if [ -z "${_bElow}" ]; then
@@ -7204,12 +7239,12 @@ _php_security_floor() {
       _dUe=$(( _nOw + _sPr ))
       mkdir -p /etc/boa/control
       echo "${_dUe} 0 ${_sUm}" > "${_sTp}"
-      _php_floor_log "PHP${_lIst} below the security floor, barracuda system pass due $(date -d "@${_dUe}" 2> /dev/null)"
+      _php_floor_log "${_lIst} below the security floor, barracuda system pass due $(date -d "@${_dUe}" 2> /dev/null)"
       if [ "${_SKYNET_MODE}" = "OFF" ]; then
-        _php_floor_mail "PHP security upgrade scheduled for [${_hN}]" \
-          "PHP${_lIst} on ${_hN} is older than the security release BOA requires.
+        _php_floor_mail "${_wHat} security upgrade scheduled for [${_hN}]" \
+          "${_lIst} on ${_hN} is older than the security release BOA requires.
 
-A barracuda system pass rebuilds PHP from $(date -d "@${_dUe}" 2> /dev/null), once the
+A barracuda system pass upgrades ${_wHat} from $(date -d "@${_dUe}" 2> /dev/null), once the
 release is out for this box. It runs although _SKYNET_MODE=OFF is set:
 the release fixes remote code execution bugs. The pass does not touch
 the master Aegir instance.
@@ -7228,9 +7263,9 @@ Log: ${_pthLog}/php-sec-floor.log"
   [ "${_tRies}" -ge 4 ] && return 0
   if [ "${_tRies}" -eq 3 ]; then
     echo "${_dUe} 4 ${_sUm}" > "${_sTp}"
-    _php_floor_log "PHP${_lIst} below the security floor after three barracuda system passes; no forced pass from here on"
-    _php_floor_mail "PHP security upgrade needs you on [${_hN}]" \
-      "PHP${_lIst} on ${_hN} is older than the security release BOA requires,
+    _php_floor_log "${_lIst} below the security floor after three barracuda system passes; no forced pass from here on"
+    _php_floor_mail "${_wHat} security upgrade needs you on [${_hN}]" \
+      "${_lIst} on ${_hN} is older than the security release BOA requires,
 and still is after three barracuda system passes.
 
 BOA starts no more passes for it. Run 'barracuda up-<tree> system' by
@@ -7252,12 +7287,28 @@ Log: ${_pthLog}/php-sec-floor.log"
   ### this box's mirror when that gives nothing.
   for _hOst in files.boa.io "${_USE_MIR}"; do
     _pIns=$(curl -sL --max-time 60 -A iCab "https://${_hOst}/versions/${_tR}/boa/BARRACUDA.sh.txt" \
-      2> /dev/null | grep -E '^_PHP[0-9]{2}_VRN=')
+      2> /dev/null | grep -E '^_(PHP[0-9]{2}|NGINX)_VRN=')
     [ -n "${_pIns}" ] && break
   done
   for _eNt in ${_bElow}; do
     _e="${_eNt%%:*}"
     _fLr="${_eNt#*:}"
+    if [ "${_e}" = "nginx" ]; then
+      _pIn=$(echo "${_pIns}" | grep "^_NGINX_VRN=" | head -n 1 | cut -d= -f2 | tr -cd '0-9.')
+      if [ -z "${_pIn}" ] || _ngx_floor_older "${_pIn}" "${_fLr}"; then
+        _php_floor_log "waiting for the ${_tR} tree to pin Nginx ${_fLr} or newer (it pins ${_pIn:-nothing readable})"
+        _wAit=YES
+        break
+      fi
+      _sZ=$(curl -sIL --max-time 30 -A iCab "${_urlDev}/src/nginx-${_pIn}.tar.gz" 2> /dev/null \
+        | grep -i "^content-length:" | tail -n 1 | tr -dc '0-9')
+      if [ -z "${_sZ}" ] || [ "${_sZ}" -lt 500000 ]; then
+        _php_floor_log "waiting for nginx-${_pIn}.tar.gz on ${_USE_MIR}"
+        _wAit=YES
+        break
+      fi
+      continue
+    fi
     _fV="${_fLr%%+*}"
     _fId=""
     [ "${_fV}" = "${_fLr}" ] || _fId="${_fLr#*+}"
@@ -7304,9 +7355,9 @@ Log: ${_pthLog}/php-sec-floor.log"
       _BUSTER_TO_BULLSEYE _STRETCH_TO_BUSTER _JESSIE_TO_STRETCH _WHEEZY_TO_JESSIE \
       _SQUEEZE_TO_WHEEZY _LENNY_TO_SQUEEZE; do
       [ "${!_eNt}" = "YES" ] || continue
-      if _php_floor_log "PHP${_lIst} below the security floor, held: ${_eNt}=YES is staged in /root/.barracuda.cnf"; then
-        _php_floor_mail "PHP security upgrade needs you on [${_hN}]" \
-          "PHP${_lIst} on ${_hN} is older than the security release BOA requires.
+      if _php_floor_log "${_lIst} below the security floor, held: ${_eNt}=YES is staged in /root/.barracuda.cnf"; then
+        _php_floor_mail "${_wHat} security upgrade needs you on [${_hN}]" \
+          "${_lIst} on ${_hN} is older than the security release BOA requires.
 
 The barracuda system pass that rebuilds it would also run the major OS
 upgrade staged with ${_eNt}=YES in /root/.barracuda.cnf. BOA starts it
@@ -7343,7 +7394,7 @@ _php_security_floor_launch() {
     return 0
   fi
   echo "${_PHP_FLOOR_NEXT}" > "${_PHP_FLOOR_STATE}"
-  [ -d "${_pthLog}" ] && echo "$(date 2> /dev/null) PHP${_PHP_FLOOR_LIST} below the security floor, barracuda up-${_PHP_FLOOR_TREE} system launched" \
+  [ -d "${_pthLog}" ] && echo "$(date 2> /dev/null) ${_PHP_FLOOR_LIST} below the security floor, barracuda up-${_PHP_FLOOR_TREE} system launched" \
     >> "${_pthLog}/php-sec-floor.log"
   ### Nothing of an earlier run may stay in /opt/tmp, hidden entries included
   ### (a stale build tree or its refetch marker): the pass starts clean.
@@ -7750,7 +7801,7 @@ if [ "$(id -u)" -eq 0 ]; then
     _count_cpu
   fi
 
-  # Below the PHP security floor: decide on a barracuda system pass,
+  # Below the PHP or Nginx security floor: decide on a barracuda system pass,
   # SKYNET-off too; it starts at the end of whichever branch runs below
   _php_security_floor
 
@@ -7852,7 +7903,7 @@ if [ "$(id -u)" -eq 0 ]; then
     # _saCoreN="3143016-83"
     # _fix_core_dgd
   fi
-  # The PHP security floor's pass, decided above, after this run's own work
+  # The security floor's pass, decided above, after this run's own work
   _php_security_floor_launch
   if [ ! -e "/etc/ssl/private/4096.dhp" ] && [ -d "/var/xdrago" ]; then
     echo "Generating 4096.dhp -- it may take a very long time..."
