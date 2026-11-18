@@ -2622,11 +2622,22 @@ _check_fpm_saturation() {
   _tmp="${_posfile}.$$"
   : > "${_tmp}" 2>/dev/null || return 0
   _hits=0; _hitf=""
+  # One stat for every log: a log still at its recorded offset (an idle pass,
+  # nearly every pass) needs nothing more; one that changed is stat'ed alone
+  # right before it is read, as each log was on every pass.
+  local -A _SZ=()
+  local _l
+  while IFS= read -r _l; do
+    _SZ["${_l#* }"]="${_l%% *}"
+  done < <(stat -c '%s %n' -- ${_NGINX_FPM_ERR_GLOB} 2>/dev/null)
   for _f in ${_NGINX_FPM_ERR_GLOB}; do
     [[ -f "${_f}" ]] || continue
-    _sz="$(stat -c %s "${_f}" 2>/dev/null)"
-    [[ "${_sz}" =~ ^[0-9]+$ ]] || _sz=0
+    _sz="${_SZ["${_f}"]:-}"
     _off="${_POS["${_f}"]:-0}"
+    if [[ ! "${_sz}" =~ ^[0-9]+$ ]] || (( _sz != _off )); then
+      _sz="$(stat -c %s "${_f}" 2>/dev/null)"
+    fi
+    [[ "${_sz}" =~ ^[0-9]+$ ]] || _sz=0
     (( _sz < _off )) && _off=0
     if (( _sz > _off )); then
       _new="$(tail -c +$(( _off + 1 )) "${_f}" 2>/dev/null \
