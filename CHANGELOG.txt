@@ -4,6 +4,19 @@
 
 @=> New Features
 
+    * Each box starts its nightly database backup and its off-site backup
+      cycle at its own minute, so the VMs sharing one host no longer dump
+      and upload together at 01:15 and on the hour. The new heavyslots
+      tool gives each box one of 16 lanes from the last number of its IPv4
+      address, so any 16 neighbouring addresses take 16 lanes: the dump
+      starts from 00:15 to 01:56 and the cycle 75 minutes before it, at
+      the same interval as before. No cycle starts from 02:00 to 04:59,
+      near a weekly upgrade or in minutes 47 to 59, and no dump near a
+      weekly upgrade while another lane is clear of it. heavyslots show
+      prints a box's minutes, and --ip <address> those of another box;
+      _SQL_BACKUP_START and _BACKUP_START in /root/.barracuda.cnf pin
+      either start.
+
     * xoct notice-to {oN|--all} prints who each client notice of a move
       would go to: the account's address, the visible copy where the server
       adds one, and the hidden copy. The dry run of xmass cutover prints
