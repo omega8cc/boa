@@ -225,27 +225,36 @@ _cidr_covers_ip() {
 # (any: every block in an entry; plain: a first-field block), in _CSF_BLK.
 # The tests run for every address of every ledger, per port, on each of the
 # five passes a minute, and the listing took three programs each time, the
-# same blocks nearly always. It is made again only when the file's bytes
-# differ from those it was made from: the file is read by the shell itself
-# on every test, so an entry added or removed between two tests, by csf or
-# by an operator, counts from the next test on, as it did.
+# same blocks nearly always. The file is read by the shell itself on every
+# test, once, and the listing is made from those very bytes when they differ
+# from the ones it was last made from: an entry added or removed between two
+# tests, by csf or by an operator, counts from the next test on, as it did,
+# and a file rewritten while it is read can never pair one text with
+# another's blocks. A file holding a NUL byte (the shell cannot hold one, and
+# its read stops there) is listed from the file each time and never kept.
 declare -A _CSF_BLK_TXT=() _CSF_BLK_OUT=()
+_csf_blocks_list() {
+  if [[ "${1}" == "any" ]]; then
+    cut -d'#' -f1 2>/dev/null \
+      | grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}' \
+      | sort -u
+  else
+    sed 's/^[[:space:]]*//' 2>/dev/null \
+      | grep -oE '^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}' \
+      | sort -u
+  fi
+}
 _csf_blocks() {
   local _kind="${1}" _file="${2}" _txt="" _k="${1}|${2}"
-  LC_ALL=C IFS= read -r -d '' _txt 2> /dev/null < "${_file}"
+  if LC_ALL=C IFS= read -r -d '' _txt 2> /dev/null < "${_file}"; then
+    _CSF_BLK="$(_csf_blocks_list "${_kind}" 2> /dev/null < "${_file}")"
+    return 0
+  fi
   if [[ -n "${_CSF_BLK_TXT[${_k}]+x}" && "${_CSF_BLK_TXT[${_k}]}" == "${_txt}" ]]; then
     _CSF_BLK="${_CSF_BLK_OUT[${_k}]}"
     return 0
   fi
-  if [[ "${_kind}" == "any" ]]; then
-    _CSF_BLK="$(cut -d'#' -f1 "${_file}" 2>/dev/null \
-      | grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}' \
-      | sort -u)"
-  else
-    _CSF_BLK="$(sed 's/^[[:space:]]*//' "${_file}" 2>/dev/null \
-      | grep -oE '^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}' \
-      | sort -u)"
-  fi
+  _CSF_BLK="$(printf '%s' "${_txt}" | _csf_blocks_list "${_kind}")"
   _CSF_BLK_TXT[${_k}]="${_txt}"
   _CSF_BLK_OUT[${_k}]="${_CSF_BLK}"
 }
@@ -261,7 +270,9 @@ _csf_file_matches_ip() {
   grep -qE "(^[[:space:]]*|\|s=|\|d=)${_ip_rx}(/32)?([[:space:]#|]|$)" "${_file}" 2>/dev/null \
     && return 0
   _csf_blocks any "${_file}"
-  _cidr_covers_ip "${_ip}" <<< "${_CSF_BLK}"
+  # a pipe, as the listing was: a here-string over 64 KiB is a temp file,
+  # and on a full disk the test would read no block at all
+  printf '%s\n' "${_CSF_BLK}" | _cidr_covers_ip "${_ip}"
 }
 
 # First-field entries only (csf strips leading whitespace, so an indented
@@ -274,7 +285,7 @@ _csf_plain_covers_ip() {
   grep -qE "^[[:space:]]*${_ip_rx}(/32)?([[:space:]#]|$)" "${_file}" 2>/dev/null \
     && return 0
   _csf_blocks plain "${_file}"
-  _cidr_covers_ip "${_ip}" <<< "${_CSF_BLK}"
+  printf '%s\n' "${_CSF_BLK}" | _cidr_covers_ip "${_ip}"
 }
 
 # Return 0 if the IP has an active inbound temp ban covering the port.
