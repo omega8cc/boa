@@ -1269,7 +1269,7 @@ _is_protected_run() {
 # A backup ended by the reaper is said where the backup's own notices go,
 # and mailed: a run killed in silence left incomplete sets nobody heard of.
 _sql_backup_reaped_notice() {   # 1 = hours  [2 = the script  3 = its dumps' dir  4 = "cluster "]
-  local _hrs="$1" _scr="${2:-mysql_backup.sh}" _dir="${3:-/data/disk/arch/sql}" _kind="$4"
+  local _hrs="$1" _scr="${2:-mysql_backup.sh}" _dir="${3:-/data/disk/arch/sql}" _kind="${4:-}"
   local _hostN="" _mailTo="" _sub="" _body=""
   _hostN="$(cat /etc/hostname 2>/dev/null | tr -d '\n')"
   _sub="Backup KILLED on [${_hostN}]: the nightly ${_kind}run was still going after ${_hrs} h"
