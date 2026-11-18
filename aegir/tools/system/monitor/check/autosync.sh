@@ -355,9 +355,11 @@ if [ "${_rc}" != "0" ]; then
   fi
   # A refused leg says why in its DENY lines, and the pass ends on an ERROR
   # line; a leg early in the pass (arch, the shared stores) prints them well
-  # above the last 40 lines, so the mail quotes this pass's own first.
+  # above the last 40 lines, so the mail quotes this pass's own first. Read
+  # as text whatever the bytes: a link name a DENY line carries may hold
+  # bytes that are not UTF-8, which would stop grep's matches there.
   _AS_DENY="$(tail -c +"$(( _AS_LOGOFF + 1 ))" "${_pthSyncLog}" 2>/dev/null \
-    | grep -E 'DENY:|ERROR:' | head -n 30)"
+    | LC_ALL=C grep -aE 'DENY:|ERROR:' | head -n 30)"
   {
     echo "$(date) ALRT: xmass autosync pass failed (rc=${_rc})"
     if [ -n "${_AS_DENY}" ]; then
