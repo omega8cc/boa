@@ -52,6 +52,22 @@ _sanitize_number() {
   echo "$1" | sed 's/[^0-9.]//g'
 }
 
+# The real path of the account root _usEr, in _USER_REAL, resolved once per
+# account: every per-site check compares against it (one run of an account
+# with a few dozen sites resolved it some six hundred times). Only root can
+# rename or replace an entry of /data/disk, so the account cannot move it
+# while this run lasts. Each account loop resolves it in the main shell, so
+# the checks' subshells inherit it; one called with no copy resolves its own.
+_usEr_real() {
+  if [ "${_USER_REAL_KEY:-}" != "${_usEr}" ] || [ -z "${_USER_REAL:-}" ]; then
+    _USER_REAL_KEY=""
+    _USER_REAL=$(realpath -e -- "${_usEr}" 2>/dev/null) || { _USER_REAL=""; return 1; }
+    [ -n "${_USER_REAL}" ] || return 1
+    _USER_REAL_KEY="${_usEr}"
+  fi
+  return 0
+}
+
 _validate_safe_dir() {
   local _resolved
   _resolved=$(realpath -e -- "$1" 2>/dev/null) || return 1
@@ -80,7 +96,8 @@ _validate_ctrl_dir() {
   [ -e "$1" ] || return 0
   [ -d "$1" ] || return 1
   _resolved=$(realpath -e -- "$1" 2>/dev/null) || return 1
-  _anchor=$(realpath -e -- "${_usEr}" 2>/dev/null) || return 1
+  _usEr_real || return 1
+  _anchor="${_USER_REAL}"
   case "${_resolved}/" in
     "${_anchor}"/*)
       return 0
@@ -201,7 +218,8 @@ _in_resolved_dir() {
   shift 2
   [ -n "${_d}" ] && [ ! -L "${_d}" ] && [ -d "${_d}" ] || return 1
   _rd=$(realpath -e -- "${_d}" 2> /dev/null) || return 1
-  _rus=$(realpath -e -- "${_usEr}" 2> /dev/null) || return 1
+  _usEr_real || return 1
+  _rus="${_USER_REAL}"
   case "${_rd}/" in
     "${_rus}"/?*) ;;
     /data/all/?*|/data/disk/all/?*) [ "${_k}" = "site" ] || return 1 ;;
@@ -336,7 +354,8 @@ _reseed_ctrl_ini() {
   [ -L "${_pnt}" ] && return 1
   [ -d "${_pnt}" ] || return 1
   _rpn=$(realpath -e -- "${_pnt}" 2>/dev/null) || return 1
-  _rus=$(realpath -e -- "${_usEr}" 2>/dev/null) || return 1
+  _usEr_real || return 1
+  _rus="${_USER_REAL}"
   case "${_rpn}/" in
     "${_rus}"/*) : ;;
     *) return 1 ;;
@@ -497,7 +516,8 @@ _solr_in_files_here() {
     return
   fi
   _r=$(realpath -e -- ./files 2> /dev/null) || return 1
-  _rus=$(realpath -e -- "${_usEr}" 2> /dev/null) || return 1
+  _usEr_real || return 1
+  _rus="${_USER_REAL}"
   _a="${_usEr##*/}"
   case "${_r}" in
     ""|*[!A-Za-z0-9._/-]*) return 1 ;;
@@ -2356,6 +2376,7 @@ _build_active_core_set() {
 
   for _usEr in $(find /data/disk/ -maxdepth 1 -mindepth 1 | sort); do
     [ -e "${_usEr}/config/server_master/nginx/vhost.d" ] || continue
+    _usEr_real
     local _HM_U_TMP _vhDTmp
     _HM_U_TMP=$(echo "${_usEr}" | cut -d'/' -f4 | awk '{ print $1}')
     # The vhosts, aliases and site INIs are listed and read as
@@ -2941,6 +2962,7 @@ _start_up() {
     if [ -e "${_usEr}/config/server_master/nginx/vhost.d" ] \
       && [ ! -e "${_usEr}/log/proxied.pid" ] \
       && [ ! -e "${_usEr}/log/CANCELLED" ]; then
+      _usEr_real
       if (( $(echo "${_O_LOAD} < ${_O_LOAD_MAX}" | bc -l) )); then
         _HM_U=$(echo ${_usEr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
         # Group owning this account's tree, re-derived for every account in
