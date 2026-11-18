@@ -973,6 +973,15 @@
 
 @=> Important Fixes
 
+    * websh, which is /bin/sh on hosted boxes, starts two to three fewer
+      programs on each run: one id call gives the identity it read with
+      two, the copy of the environment it took and never read is gone,
+      and its .ftp tests reuse that identity instead of running whoami.
+      An idle server with three accounts started 355 to 510 programs a
+      second, most of them for Drush's shell-outs through websh; each run
+      as the backend or an account user now starts 4 or 5 instead of 6 or
+      7. What websh allows and runs is unchanged.
+
     * An account whose site sits on a platform whose folder name holds a
       colon moves again with xoct, xcopy and xmass. xoct and xcopy read a
       site's path from its Drush alias by splitting the line on colons, so
