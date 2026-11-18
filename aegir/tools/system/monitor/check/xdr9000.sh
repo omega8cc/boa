@@ -142,9 +142,8 @@ _SAMPLES="${_day_dir}/samples-${_day_tag}.jsonl"
 ###
 # Inode and size of every source a pass reads, from one stat call per pass
 # (_stat_fill) instead of one per file: a pass looks at some seventy files and
-# runs several times a minute. A file the pass did not list, or one that came
-# after the fill, is read by its own stat as before; a file read a moment after
-# the fill can only have grown, and the next pass takes the rest, as it did.
+# runs several times a minute. It only says which files are unchanged since
+# their recorded offset (see _read_new_lines); any other file is stat'ed alone.
 declare -A _STAT_C=()
 _stat_fill() {
   local _l _r
@@ -162,16 +161,19 @@ _read_new_lines() {
   local _tmp_f="${_pthSta}/.chunk.$$"
   [ -f "${_src}" ] || return 1
   local _ino _size
-  if [[ -n "${_STAT_C[${_src}]+x}" ]]; then
-    _ino="${_STAT_C[${_src}]%% *}"
-    _size="${_STAT_C[${_src}]##* }"
-  else
-    read -r _ino _size < <(stat -c '%i %s' "${_src}" 2>/dev/null)
-  fi
-  [ -z "${_ino}" ] && return 1
   local _p_ino=0 _p_off=0
   [ -f "${_pos_f}" ] && read -r _p_ino _p_off < "${_pos_f}"
   [[ "${_p_off}" =~ ^[0-9]+$ ]] || _p_off=0
+  # The pass's one stat settles only a file still at its recorded offset (the
+  # same inode and size), whose pass ends here as it always did. Any other
+  # file is stat'ed alone right before it is read, as before: a file rotated
+  # since the pass's stat is then read as the new file it is.
+  if [[ -n "${_STAT_C[${_src}]+x}" && "${_STAT_C[${_src}]}" == "${_p_ino} ${_p_off}" ]]; then
+    echo "${_p_ino} ${_p_off}" > "${_pos_f}"
+    return 1
+  fi
+  read -r _ino _size < <(stat -c '%i %s' "${_src}" 2>/dev/null)
+  [ -z "${_ino}" ] && return 1
   [ "${_ino}" != "${_p_ino}" ] && _p_off=0
   (( _size < _p_off )) && _p_off=0
   if (( _size <= _p_off )); then
