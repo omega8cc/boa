@@ -74,6 +74,46 @@ _fpm_master_tail() {
   done
 }
 
+# _fpm_master_tail's output as a file, _FPM_TAIL_F, read again only when a
+# log changed. Two checks read it on every pass, several passes a minute,
+# three programs per version's log each time, nearly always to find what the
+# read before found. One stat of the logs (name, inode, size, change time)
+# keys the copy kept in /run: a log that moved, grew, shrank or was written
+# reads them all again. The checks grep the very bytes they grepped before.
+_fpm_master_tail_file() {
+  local _ck="/run/boa-php-fpm-tail.key" _key="" _old=""
+  local -a _fl=( /var/log/php/php*-fpm-error.log )
+  _FPM_TAIL_F="/run/boa-php-fpm-tail.txt"
+  _key="$(stat -c '%n %i %s %z' -- "${_fl[@]}" 2> /dev/null)"
+  if [ -n "${_key}" ] && [ -f "${_ck}" ] && [ ! -L "${_ck}" ] \
+    && [ -f "${_FPM_TAIL_F}" ] && [ ! -L "${_FPM_TAIL_F}" ]; then
+    LC_ALL=C IFS= read -r -d '' _old < "${_ck}"
+    [ "${_old}" = "${_key}" ] && return 0
+  fi
+  rm -f "${_ck}"
+  if ! { ( umask 077; _fpm_master_tail > "${_FPM_TAIL_F}.$$" ) \
+    && mv -f "${_FPM_TAIL_F}.$$" "${_FPM_TAIL_F}"; }; then
+    rm -f "${_FPM_TAIL_F}.$$" "${_FPM_TAIL_F}"
+    return 1
+  fi
+  if [ -n "${_key}" ]; then
+    ( umask 077; printf '%s' "${_key}" > "${_ck}.$$" ) \
+      && mv -f "${_ck}.$$" "${_ck}"
+    rm -f "${_ck}.$$"
+  fi
+  return 0
+}
+
+# The count of the master's lines holding $1, from the kept copy, or from a
+# fresh read when the copy could not be written.
+_fpm_master_hits() {
+  if _fpm_master_tail_file; then
+    grep -c "$1" "${_FPM_TAIL_F}"
+  else
+    _fpm_master_tail | grep -c "$1"
+  fi
+}
+
 : "${_FPM_COOLDOWN_SECS:=30}"
 
 _NOW=$(date +%y%m%d-%H%M%S)
@@ -232,10 +272,10 @@ _fpm_giant_log_detection() {
 
 _fpm_listen_conflict_detection() {
   if [ -e "/var/log/php" ]; then
-    _hit=$(_fpm_master_tail | grep -c "already listen on")
+    _hit=$(_fpm_master_hits "already listen on")
     if [ "${_hit}" -gt 0 ]; then
       sleep 2
-      _hit2=$(_fpm_master_tail | grep -c "already listen on")
+      _hit2=$(_fpm_master_hits "already listen on")
       if [ "${_hit2}" -gt 0 ]; then
         _sql_mutation_began && return 0
         [ -d "/var/backups/php-logs/${_NOW}" ] || mkdir -p /var/backups/php-logs/${_NOW}/
@@ -562,10 +602,10 @@ _fpm_timeout_detection() {
 }
 
 _fpm_sockets_healing() {
-  _hit=$(_fpm_master_tail | grep -c "Address already in use")
+  _hit=$(_fpm_master_hits "Address already in use")
   if [ "${_hit}" -gt 0 ]; then
     sleep 2
-    _hit2=$(_fpm_master_tail | grep -c "Address already in use")
+    _hit2=$(_fpm_master_hits "Address already in use")
     if [ "${_hit2}" -gt 0 ]; then
       _sql_mutation_began && return 0
       [ -d "/var/backups/php-logs/${_NOW}" ] || mkdir -p /var/backups/php-logs/${_NOW}/
@@ -596,8 +636,19 @@ _fpm_fastcgi_temp() {
 }
 
 _fpm_health_ok() {
-  # ${1} = version: its master, its www socket and its pid file are all there
-  pgrep -u root -U root -f "^php-fpm: master process.*/opt/php${1}/etc/php${1}-fpm.conf" >/dev/null 2>&1 || return 1
+  # ${1} = version: its master, its www socket and its pid file are all there.
+  # With _FPM_MASTERS_SET, the master is looked for, by the same pattern, in
+  # _FPM_MASTERS: one pgrep -a of every master the caller took for its round
+  # of versions, instead of one pgrep per version on every pass.
+  local _re="^php-fpm: master process.*/opt/php${1}/etc/php${1}-fpm.conf" _l _seen=NO
+  if [ "${_FPM_MASTERS_SET:-}" = "YES" ]; then
+    while IFS= read -r _l; do
+      [[ "${_l#* }" =~ ${_re} ]] && { _seen=YES; break; }
+    done <<< "${_FPM_MASTERS}"
+    [ "${_seen}" = "YES" ] || return 1
+  else
+    pgrep -u root -U root -f "${_re}" >/dev/null 2>&1 || return 1
+  fi
   [ -S "/run/www${1}.fpm.socket" ] || return 1
   [ -s "/run/php${1}-fpm.pid" ] || return 1
   return 0
@@ -623,11 +674,16 @@ _fpm_health_check_fix() {
   # One grace for reloads, shared by every version found down: a grace per
   # version makes each one wait for every version listed before it.
   _DOWN_V=""
+  # Every version is read from one list of the masters; a version that reads
+  # as down is asked again by its own pgrep after the grace below.
+  _FPM_MASTERS="$(pgrep -u root -U root -af '^php-fpm: master process' 2> /dev/null)"
+  _FPM_MASTERS_SET=YES
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ] && [ -x "/opt/php${e}/bin/php" ]; then
       _fpm_health_ok "${e}" || _DOWN_V="${_DOWN_V} ${e}"
     fi
   done
+  _FPM_MASTERS_SET=""
   [ -n "${_DOWN_V}" ] || return 0
   sleep 2
   for e in ${_DOWN_V}; do
