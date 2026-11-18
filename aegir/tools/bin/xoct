@@ -2173,6 +2173,12 @@ _xoct_backup_services_here() {
 ### is not known: said plainly, never a guess.
 _MIG_PANEL_NONE_DONE="Your Ægir Control Panel and SQL Adminer have moved to the new server with your account. Their new address could not be confirmed when this message was sent, so it is not given here: please ask your host's support for it. The address you used so far opens only the old, disabled panel."
 _MIG_PANEL_NONE_START="Your Ægir Control Panel and SQL Adminer will move to the new server with your account. You will be told their new address once the migration is complete."
+### The second line of item 2 of the completion notice when no login line was
+### built, and the sentence every login line ends with: the account's main
+### login is often used by someone this mail does not reach (a developer, a
+### site administrator), who would go on logging in to the old server.
+_MIG_LOGIN_TELL="The old server only forwards your sites: files changed there do not reach them. If someone else uses these logins for you, such as a developer or a site administrator, please let them know."
+_MIG_LOGIN_NONE_DONE="Your SSH and SFTP logins now connect to the new server, at the new address above, in place of the old one. ${_MIG_LOGIN_TELL}"
 ### The control panel paragraph of the completion and start notices (item 1,
 ### one line). The notice names only IP addresses and the panel is never
 ### relayed, so its new address is given in full. Nothing the target says is
@@ -2198,12 +2204,16 @@ _MIG_PANEL_NONE_START="Your Ægir Control Panel and SQL Adminer will move to the
 ### (new|same|unknown), and for the backup paragraph built after it
 ### _MIG_TGT_BKHOST, the target's name for a bucket, and _MIG_TGT_CHAINS,
 ### the buckets it used for the account before (both empty when not read).
+### For the completion notice it sets _MIG_LOGIN_LINE, where the account's
+### SSH and SFTP logins go now: the target's own name only when the panel's
+### two readings agree (new or same), else the new address the mail gives.
 _mig_build_panel_block() {
   local _ctx="$1" _ip="$2" _acct="$3"
-  local _old _mf _tf="" _tp="" _ta="" _out="" _rule="" _why="" _was _adm="" _rc _n _dns
+  local _old _mf _tf="" _tp="" _ta="" _out="" _rule="" _why="" _was _adm="" _rc _n _dns _cf=""
   _MIG_PANEL_STATE=unknown
   _MIG_TGT_BKHOST=""
   _MIG_TGT_CHAINS=""
+  _MIG_LOGIN_LINE=""
   _old="${_DOMAIN,,}"
   _mf="${_XOCT_MY_FQDN:-${_XOCT_DEFER_FQDN}}"
   _xoct_valid_host "${_mf}" || _mf="$(_xoct_this_fqdn)"
@@ -2222,6 +2232,7 @@ _mig_build_panel_block() {
     elif [ "${_rc}" != "0" ]; then
       _why="${_ip} does not confirm by its create marker that its ${_acct} is this account"
     else
+      _cf=YES
       _out="$(_xoct_panel_facts_there "${_ip}" "${_acct}")"
       _tf="$(sed -n 's/^XOCT-HOST=//p' <<< "${_out}" | head -n 1 | tr -d '\r')"
       _tp="$(sed -n 's/^XOCT-PANEL=//p' <<< "${_out}" | head -n 1 | tr -d '\r')"
@@ -2303,6 +2314,28 @@ _mig_build_panel_block() {
       fi
     ;;
   esac
+  if [ "${_ctx}" = "complete" ]; then
+    ### The account's name there is said once the target confirmed it by its
+    ### create marker, whatever the panel's readings gave: under another name
+    ### every login's name changes too.
+    _n=""
+    [ "${_cf}" = "YES" ] && [ "${_acct}" != "${_oct}" ] \
+      && _n=" Your account is named ${_acct} there, so your main login is ${_acct}.ftp in place of ${_oct}.ftp, and each of your other logins starts with ${_acct} in place of ${_oct}."
+    case "${_MIG_PANEL_STATE}" in
+      new|same)
+        if [ "${_tf}" != "${_mf}" ]; then
+          _MIG_LOGIN_LINE="Your SSH and SFTP logins now connect to the new server, ${_tf}, in place of ${_mf}.${_n} ${_MIG_LOGIN_TELL}"
+        else
+          _MIG_LOGIN_LINE="Your SSH and SFTP logins keep the server name ${_mf}, which reaches the new server once your host points its DNS record to ${_ip}.${_n} ${_MIG_LOGIN_TELL}"
+        fi
+      ;;
+      *)
+        _MIG_LOGIN_LINE="${_MIG_LOGIN_NONE_DONE}"
+        [ -n "${_n}" ] \
+          && _MIG_LOGIN_LINE="Your SSH and SFTP logins now connect to the new server, at the new address above, in place of the old one.${_n} ${_MIG_LOGIN_TELL}"
+      ;;
+    esac
+  fi
   return 0
 }
 ### The own-backups item of the completion and start notices (item 9), only
@@ -2440,6 +2473,7 @@ Important Changes to Note:
 
 2. Access Credentials
    All your access credentials remain the same: the Ægir Control Panel, SSH/SFTP and SQL passwords have been carried over to the new server.
+   ${_MIG_LOGIN_LINE:-${_MIG_LOGIN_NONE_DONE}}
 
 3. SSH Key Transfer
    The main SSH account keys have been transferred.
