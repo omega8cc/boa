@@ -46,18 +46,86 @@ _DEST_DRUSH="/opt/tools/drush/8/drush/drush.php"
 # the login's gem bin and npm bin where the tools and the bins are there. A
 # tool gem install or npm install -g put there lives in those bins alone,
 # and a login other than the main one reaches websh through that test, so
-# on websh's PATH alone its own tools were refused as not installed.
+# on websh's PATH alone its own tools were refused as not installed. Set in
+# _GATE_PATH: the test runs on every line a login runs, so it forks nothing.
 _gate_path() {
-  local _p="${PATH}"
+  _GATE_PATH="${PATH}"
   if [ -x "/usr/local/bin/ruby" ] && [ -x "/usr/local/bin/gem" ] \
     && [ -n "${SSH_CLIENT}" ] && [ -d "/opt/user/gems/${USER}/bin" ]; then
-    _p="${_p}:/opt/user/gems/${USER}/bin"
+    _GATE_PATH="${_GATE_PATH}:/opt/user/gems/${USER}/bin"
   fi
   if [ -x "/usr/bin/npm" ] && [ -e "/home/${USER}/.npmrc" ] \
     && [ -d "/opt/user/npm/${USER}/.npm-packages/bin" ]; then
-    _p="${_p}:/opt/user/npm/${USER}/.npm-packages/bin"
+    _GATE_PATH="${_GATE_PATH}:/opt/user/npm/${USER}/.npm-packages/bin"
   fi
-  echo "${_p}"
+}
+
+# Debian's which(1) (debianutils, a dash script) run in the shell itself: the
+# command test called it on every line a login ran that names no known path,
+# two programs each time (which and its dash). Line for line the same search:
+# its getopts with -a, its PATH split (an empty element is the current
+# directory, and a PATH ending in one ":" gets one more), a name with a "/"
+# tested as it is, and -f and -x on each candidate. $1 is the PATH, the rest
+# are which's arguments, word for word as the call site expands them. Sets
+# _WHICH_TEST to which's standard output as $(...) would keep it; an unknown
+# option gives its usage line, without dash's "Illegal option" on stderr.
+_which_test() {
+  local _wp="$1" _all=0 _o="" _prog _rest _e _opt OPTIND=1
+  local -a _els=()
+  shift
+  case "${_wp}" in
+    *[!:]:) _wp="${_wp}:" ;;
+  esac
+  # dash's field split on ":": a final empty field is dropped, inner ones kept
+  if [[ -n "${_wp}" ]]; then
+    _rest="${_wp}"
+    while [[ "${_rest}" == *:* ]]; do
+      _els+=( "${_rest%%:*}" )
+      _rest="${_rest#*:}"
+    done
+    [[ -n "${_rest}" ]] && _els+=( "${_rest}" )
+  fi
+  while getopts ":a" _opt; do
+    case "${_opt}" in
+      a) _all=1 ;;
+      *)
+        _rest="which"
+        for _e in "${_els[@]}"; do
+          [[ -z "${_e}" ]] && _e=.
+          if [[ -f "${_e}/which" && -x "${_e}/which" ]]; then
+            _rest="${_e}/which"
+            break
+          fi
+        done
+        _WHICH_TEST="Usage: ${_rest} [-a] args"
+        return 2
+        ;;
+    esac
+  done
+  shift $(( OPTIND - 1 ))
+  for _prog in "$@"; do
+    case "${_prog}" in
+      */*)
+        if [[ -f "${_prog}" && -x "${_prog}" ]]; then
+          _o+="${_prog}"$'\n'
+        fi
+        ;;
+      *)
+        for _e in "${_els[@]}"; do
+          [[ -z "${_e}" ]] && _e=.
+          if [[ -f "${_e}/${_prog}" && -x "${_e}/${_prog}" ]]; then
+            _o+="${_e}/${_prog}"$'\n'
+            (( _all )) || break
+          fi
+        done
+        ;;
+    esac
+  done
+  while [[ "${_o}" == *$'\n' ]]; do
+    _o="${_o%$'\n'}"
+  done
+  _WHICH_TEST="${_o}"
+  return 0
 }
 
 _in_grp() {
@@ -2739,7 +2807,13 @@ check_php_cli_version() {
   _PHP_CLI=
   _CLI_FROM=""; _CLI_WHY=""
   if [ "${HOME}" = "/var/aegir" ] && [ -f "/var/aegir/drush/drush.php" ]; then
-    _PHP_CLI=$(grep "/opt/php" /var/aegir/drush/drush.php 2>&1)
+    # The lines of drush.php naming /opt/php (its #! line), as grep printed
+    # them, read here: this runs on every line the master user runs. A file
+    # it cannot read gives nothing, as grep's error line matched no version.
+    local _dl=""
+    while IFS= read -r _dl || [[ -n "${_dl}" ]]; do
+      [[ "${_dl}" == *"/opt/php"* ]] && _PHP_CLI+="${_PHP_CLI:+$'\n'}${_dl}"
+    done 2> /dev/null < /var/aegir/drush/drush.php
     _CLI_FROM="the master's Drush pin"
   else
     _ctrl_file "/data/disk/${_Y_USR}/static/control" cli.info
@@ -3215,10 +3289,11 @@ if _grp_set_is "users www-data" \
           _IN_PATH=NO
         fi
       else
+        _gate_path
         if [ -n "${_P2_CMD}" ]; then
-          _WHICH_TEST="$(PATH="$(_gate_path)" which "${_P2_CMD}")"
+          _which_test "${_GATE_PATH}" "${_P2_CMD}"
         else
-          _WHICH_TEST="$(PATH="$(_gate_path)" which ${2})"
+          _which_test "${_GATE_PATH}" ${2}
         fi
         if [[ "${_WHICH_TEST}" =~ (^)"/usr/" ]] \
           || [[ "${_WHICH_TEST}" =~ (^)"/bin/" ]] \
@@ -3266,7 +3341,8 @@ if _grp_set_is "users www-data" \
         _IN_PATH=NO
       fi
     else
-      _WHICH_TEST="$(PATH="$(_gate_path)" which ${1})"
+      _gate_path
+      _which_test "${_GATE_PATH}" ${1}
       if [[ "${_WHICH_TEST}" =~ (^)"/usr/" ]] \
         || [[ "${_WHICH_TEST}" =~ (^)"/bin/" ]] \
         || [[ "${_WHICH_TEST}" =~ (^)"/opt/" ]]; then
@@ -3440,10 +3516,14 @@ if _grp_set_is "users www-data" \
         exit 0
       fi
     else
-      ### echo EXO 1 _F_ARR is "$@"
-      ### echo EXO 1 $0 "$@"
-      exec $0 "${_SH_OPTS[@]}" "$@"
-      exit 0
+      # $0 is this script's own path (bash sets it so), so exec $0 started
+      # websh again, with the same $0, without end: a copy of websh run from
+      # any other path spun one CPU and ran nothing. These logins now get the
+      # refusal a -c line from another path gets at the top of this branch.
+      echo
+      echo "  ERROR: Not Authorized Path"
+      echo
+      exit 1
     fi
   else
     exit 1
@@ -3489,9 +3569,13 @@ else
       exit 0
     fi
   else
-    ### echo EXO 2 _F_ARR is "$@"
-    ### echo EXO 2 $0 "$@"
-    exec $0 "${_SH_OPTS[@]}" "$@"
+    # Not exec $0, which restarted this same script without end ($0 is its
+    # own path) and ran nothing: here, for root and the system users, a copy
+    # run from any other path goes on as sh, as the installed paths do.
+    if [ -x "/bin/dash" ]; then
+      exec /bin/dash "${_SH_OPTS[@]}" "$@"
+    fi
+    exec /bin/bash "${_SH_OPTS[@]}" "$@"
     exit 0
   fi
   exit 0
