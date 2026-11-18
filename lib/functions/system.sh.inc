@@ -7786,6 +7786,9 @@ _switch_to_dash() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _switch_to_dash"
   fi
+  # /bin/sh only as a whole name: a longer one that starts with it
+  # (/usr/bin/sha256sum, /bin/sh5, /bin/sh.distrib) is left as it is
+  local _SH_END='\([^A-Za-z0-9_.-]\|$\)'
   # a link, not a copy: a second regular file beside /usr/bin/dash drifts on
   # the next dash upgrade and stops the merged /usr conversion
   if [ -x "/usr/bin/dash" ] && [ ! -e "/bin/dash" ]; then
@@ -7793,11 +7796,11 @@ _switch_to_dash() {
   fi
   if [ -x "/bin/dash" ]; then
     _get_bin_paths
-    sed -i "s/:\/bin\/sh/:\/bin\/dash/g" /etc/passwd &> /dev/null
-    sed -i "s/\/bin\/sh/\/bin\/dash/g"   /etc/crontab &> /dev/null
-    sed -i "s/\/bin\/sh/\/bin\/dash/g"   /etc/init.d/ssh &> /dev/null
-    sed -i "s/\/bin\/sh/\/bin\/dash/g"   /etc/csf/uninstall.sh &> /dev/null
-    sed -i "s/\/bin\/sh/\/bin\/dash/g"   /etc/csf/remove_apf_bfd.sh &> /dev/null
+    sed -i "s/:\/bin\/sh${_SH_END}/:\/bin\/dash\1/g" /etc/passwd &> /dev/null
+    sed -i "s/\/bin\/sh${_SH_END}/\/bin\/dash\1/g"   /etc/crontab &> /dev/null
+    sed -i "s/\/bin\/sh${_SH_END}/\/bin\/dash\1/g"   /etc/init.d/ssh &> /dev/null
+    sed -i "s/\/bin\/sh${_SH_END}/\/bin\/dash\1/g"   /etc/csf/uninstall.sh &> /dev/null
+    sed -i "s/\/bin\/sh${_SH_END}/\/bin\/dash\1/g"   /etc/csf/remove_apf_bfd.sh &> /dev/null
     for p in ${_X_BIN_PATHS}; do
       if [ -e "$p" ]; then
         for f in `find $p ! -perm -4000 ! -perm -2000 -type f`; do
@@ -7817,7 +7820,7 @@ _switch_to_dash() {
               && [ "$f" != "/bin/websh" ] \
               && [ "$f" != "/usr/bin/websh" ] \
               && [ "$f" != "/opt/local/bin/websh" ]; then
-              sed -i "s/\/bin\/sh/\/bin\/dash/g" $f &> /dev/null
+              sed -i "s/\/bin\/sh${_SH_END}/\/bin\/dash\1/g" $f &> /dev/null
               wait
             fi
             _SHELL_TEST=
@@ -7827,7 +7830,7 @@ _switch_to_dash() {
               && [ "$f" != "/bin/websh" ] \
               && [ "$f" != "/usr/bin/websh" ] \
               && [ "$f" != "/opt/local/bin/websh" ]; then
-              sed -i "s/\/usr\/bin\/sh/\/bin\/dash/g" $f &> /dev/null
+              sed -i "s/\/usr\/bin\/sh${_SH_END}/\/bin\/dash\1/g" $f &> /dev/null
               wait
             fi
             _SHELL_TEST=
@@ -7837,7 +7840,7 @@ _switch_to_dash() {
               && [ "$f" != "/bin/websh" ] \
               && [ "$f" != "/usr/bin/websh" ] \
               && [ "$f" != "/opt/local/bin/websh" ]; then
-              sed -i "s/\/bin\/sh/\/bin\/dash/g" $f &> /dev/null
+              sed -i "s/\/bin\/sh${_SH_END}/\/bin\/dash\1/g" $f &> /dev/null
               wait
             fi
           fi
@@ -7853,17 +7856,19 @@ _switch_to_bash() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _switch_to_bash"
   fi
+  # /bin/sh only as a whole name (see _switch_to_dash)
+  local _SH_END='\([^A-Za-z0-9_.-]\|$\)'
   # a link, not a copy (see _switch_to_dash)
   if [ -x "/usr/bin/bash" ] && [ ! -e "/bin/bash" ]; then
     ln -sfn /usr/bin/bash /bin/bash
   fi
   if [ -x "/bin/bash" ]; then
     _get_bin_paths
-    sed -i "s/:\/bin\/sh/:\/bin\/bash/g" /etc/passwd &> /dev/null
-    sed -i "s/\/bin\/sh/\/bin\/bash/g"   /etc/crontab &> /dev/null
-    sed -i "s/\/bin\/sh/\/bin\/bash/g"   /etc/init.d/ssh &> /dev/null
-    sed -i "s/\/bin\/sh/\/bin\/bash/g"   /etc/csf/uninstall.sh &> /dev/null
-    sed -i "s/\/bin\/sh/\/bin\/bash/g"   /etc/csf/remove_apf_bfd.sh &> /dev/null
+    sed -i "s/:\/bin\/sh${_SH_END}/:\/bin\/bash\1/g" /etc/passwd &> /dev/null
+    sed -i "s/\/bin\/sh${_SH_END}/\/bin\/bash\1/g"   /etc/crontab &> /dev/null
+    sed -i "s/\/bin\/sh${_SH_END}/\/bin\/bash\1/g"   /etc/init.d/ssh &> /dev/null
+    sed -i "s/\/bin\/sh${_SH_END}/\/bin\/bash\1/g"   /etc/csf/uninstall.sh &> /dev/null
+    sed -i "s/\/bin\/sh${_SH_END}/\/bin\/bash\1/g"   /etc/csf/remove_apf_bfd.sh &> /dev/null
     for p in ${_X_BIN_PATHS}; do
       if [ -e "$p" ]; then
         for f in `find $p ! -perm -4000 ! -perm -2000 -type f`; do
@@ -7883,7 +7888,7 @@ _switch_to_bash() {
               && [ "$f" != "/bin/websh" ] \
               && [ "$f" != "/usr/bin/websh" ] \
               && [ "$f" != "/opt/local/bin/websh" ]; then
-              sed -i "s/\/bin\/sh/\/bin\/bash/g" $f &> /dev/null
+              sed -i "s/\/bin\/sh${_SH_END}/\/bin\/bash\1/g" $f &> /dev/null
               wait
             fi
             _SHELL_TEST=
@@ -7893,7 +7898,7 @@ _switch_to_bash() {
               && [ "$f" != "/bin/websh" ] \
               && [ "$f" != "/usr/bin/websh" ] \
               && [ "$f" != "/opt/local/bin/websh" ]; then
-              sed -i "s/\/usr\/bin\/sh/\/bin\/bash/g" $f &> /dev/null
+              sed -i "s/\/usr\/bin\/sh${_SH_END}/\/bin\/bash\1/g" $f &> /dev/null
               wait
             fi
             _SHELL_TEST=
@@ -7903,7 +7908,7 @@ _switch_to_bash() {
               && [ "$f" != "/bin/websh" ] \
               && [ "$f" != "/usr/bin/websh" ] \
               && [ "$f" != "/opt/local/bin/websh" ]; then
-              sed -i "s/\/bin\/sh/\/bin\/bash/g" $f &> /dev/null
+              sed -i "s/\/bin\/sh${_SH_END}/\/bin\/bash\1/g" $f &> /dev/null
               wait
             fi
           fi
