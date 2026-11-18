@@ -379,6 +379,38 @@ _csf_forgeable_login_triggers_off() {
   _mrun "service lfd restart"
 }
 
+# lfd's SSH login rules in csf's RegexMain.pm match only the sshd[PID] tag, and
+# OpenSSH 9.8 and newer logs logins and failures as sshd-session[PID], so
+# LF_SSHD counted no failure at all. Each rule takes an optional -session
+# suffix, non-capturing so no capture number the rules read moves. The edited
+# copy must keep every rule and compile before it replaces the live file, and
+# lfd restarts once to load it. This fixes csf's code, not a setting, so it
+# runs with _CUSTOM_CONFIG_CSF=YES too.
+_csf_lfd_sshd_session_rules() {
+  local _rm=/usr/local/csf/lib/ConfigServer/RegexMain.pm
+  local _old='sshd\[\d+\]'
+  local _fix='sshd(?:-session)?\[\d+\]'
+  local _tmp="${_rm}.boa-new"
+  local _cnt _got
+  [[ -e "${_rm}" ]] || return 0
+  _cnt=$(grep -oF "${_old}" "${_rm}" 2> /dev/null | wc -l)
+  [[ "${_cnt}" -gt 0 ]] || return 0
+  rm -f "${_tmp}"
+  sed 's/sshd\\\[\\d+\\\]/sshd(?:-session)?\\[\\d+\\]/g' "${_rm}" > "${_tmp}" 2> /dev/null
+  _got=$(grep -oF "${_fix}" "${_tmp}" 2> /dev/null | wc -l)
+  if [[ "${_got}" -eq "${_cnt}" ]] \
+    && ! grep -qF "${_old}" "${_tmp}" \
+    && perl -I/usr/local/csf/lib -c "${_tmp}" &> /dev/null \
+    && chown --reference="${_rm}" "${_tmp}" \
+    && chmod --reference="${_rm}" "${_tmp}" \
+    && mv -f "${_tmp}" "${_rm}"; then
+    _mrun "service lfd restart"
+  else
+    rm -f "${_tmp}"
+    _msg "WARN: lfd SSH login rules left as shipped, sshd-session not matched"
+  fi
+}
+
 _csf_lfd_install_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _csf_lfd_install_upgrade"
@@ -468,6 +500,7 @@ _csf_lfd_install_upgrade() {
         wait
         _csf_forgeable_login_triggers_off
       fi
+      _csf_lfd_sshd_session_rules
       if [ "${_VMFAMILY}" = "VZ" ]; then
         sed -i "s/^PORTFLOOD .*/PORTFLOOD = \"\"/g" /etc/csf/csf.conf &> /dev/null
         wait
