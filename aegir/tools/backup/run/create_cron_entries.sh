@@ -5,6 +5,7 @@ export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 
 # Configurable in /root/.barracuda.cnf interval in minutes between backup cycles
+# (whole hours count; _BACKUP_START=HH:MM there pins the cycle's start)
 _BACKUP_INTERVAL=360
 _WRAPPER_DIR="/root/.remote_backups/run"
 _WRAPPER_SCRIPT="${_WRAPPER_DIR}/sequential_backups.sh"
@@ -357,15 +358,44 @@ EOF
   echo "Wrapper script created at ${_WRAPPER_SCRIPT}"
 }
 
-# Function to create cron entries
+# Function to create cron entries. The minute and hours are this box's own
+# (heavyslots: a lane from its IPv4 address, clear of its nightly database
+# backup, the night maintenance and the weekly upgrade), so the boxes sharing
+# one host do not all start their uploads at :00; the interval stays
+# _BACKUP_INTERVAL. _BACKUP_START=HH:MM in /root/.barracuda.cnf pins the start.
+# Written to a fresh file and moved into place only when it changes: cron
+# reads the file whenever its time stamp moves, and this runs every few
+# minutes.
 _create_cron_entries() {
-  echo "# Cron job for sequential backups" > "${_CRON_FILE}"
+  local _hrs _slot _new="${_CRON_FILE}.new"
+  _hrs=$(( _BACKUP_INTERVAL / 60 ))
+  [ "${_hrs}" -lt 1 ] && _hrs=1
+  [ "${_hrs}" -gt 24 ] && _hrs=24
+  _slot="0 */${_hrs}"
+  if [ -e "/opt/local/bin/heavyslots" ]; then
+    _slot="$(bash /opt/local/bin/heavyslots dcy "${_hrs}" 2> /dev/null)"
+    # no answer this time: the line in place stays, so a passing failure
+    # never moves the schedule back and forth
+    [[ "${_slot}" =~ ^[0-9]{1,2}\ [0-9]{1,2}(,[0-9]{1,2})*$ ]] \
+      || _slot="$(awk -v w="${_WRAPPER_SCRIPT}" \
+        '$0 !~ /^[ \t]*#/ && index($0, w) { print $1, $2; exit }' "${_CRON_FILE}" 2> /dev/null)"
+    [[ "${_slot}" =~ ^[0-9*/,]+\ [0-9*/,]+$ ]] || _slot="0 */${_hrs}"
+  fi
   # bash + full path, never a bare path: cron must not depend on an executable
   # bit or on PATH. The wrapper is written with chmod +x a few lines above, but
   # a mode can be lost by any later hand copy, and the failure is silent —
   # "Permission denied" into a log nobody reads while the schedule looks live.
-  echo "0 */$((_BACKUP_INTERVAL / 60)) * * * root bash ${_WRAPPER_SCRIPT}" >> "${_CRON_FILE}"
-  chmod 644 "${_CRON_FILE}"
+  # The fresh file's dot keeps cron from reading it.
+  {
+    echo "# Cron job for sequential backups"
+    echo "${_slot} * * * root bash ${_WRAPPER_SCRIPT}"
+  } > "${_new}"
+  chmod 644 "${_new}"
+  if cmp -s "${_new}" "${_CRON_FILE}"; then
+    rm -f "${_new}"
+  else
+    mv -f "${_new}" "${_CRON_FILE}"
+  fi
   echo "Cron entry created at ${_CRON_FILE}"
 
   # Validate the cron file
