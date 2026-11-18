@@ -1047,8 +1047,14 @@
       of three programs per value, the event archiver takes the size of
       the files it follows in one call per pass and makes a month's
       folder once, and the Solr config manager resolves each account's
-      home once per run instead of once per site check. What each of
-      them records and decides is unchanged.
+      home once per run instead of once per site check. The PHP monitor
+      reads the FPM logs again only when one of them changed and asks
+      for every master in one list, both max_children readers take every
+      log's size from one call, the firewall guard lists the blocks of
+      csf.allow and csf.deny again only when the file changed (207
+      addresses: 6,621 programs instead of 15,177), and the load control
+      works out its thresholds once per run. What each of them records
+      and decides is unchanged.
 
     * An account whose site sits on a platform whose folder name holds a
       colon moves again with xoct, xcopy and xmass. xoct and xcopy read a
