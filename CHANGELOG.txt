@@ -307,6 +307,17 @@
 
 @=> Security
 
+    * lfd blocks SSH password guessing again. OpenSSH 9.8 and newer logs
+      failed logins as sshd-session, and the SSH rules of csf 15.00 match
+      only sshd, so lfd's LF_SSHD has counted no failure since BOA moved to
+      OpenSSH 9.8; only BOA's own SSH scanner banned, IPv4 addresses alone,
+      on port 22 for 15 minutes. Each barracuda pass now widens those rules
+      in the installed csf to take either name, keeps the edit only when
+      the file still compiles, and restarts lfd once. IPv6 addresses are
+      blocked again, and 10 failures in 5 minutes close every port to an
+      address for an hour, as csf.conf sets it; only csf.ignore exempts an
+      address from lfd, csf.allow alone does not.
+
     * When /opt/local/bin/lock.inc cannot be read, the monitors and system
       scripts that keep to one running copy count their own runs instead
       and stop above two. That count now takes root's processes alone, as
