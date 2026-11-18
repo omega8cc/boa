@@ -8572,9 +8572,11 @@ _ltd_moved_host() {
         echo "${_n}"
         return 0
       fi
+      # a name its own lookup got no real answer for confirms nothing either
+      # way: noted, so the kept name stays, and the next name is asked
       case "$(printf '%s\n' "${_fwd}" | head -n 1)" in
         "status NOERROR"|"status NXDOMAIN") ;;
-        *) _ans=NO; break ;;
+        *) _ans=NO ;;
       esac
     done < <(printf '%s\n' "${_ptr}" | sed 1d | head -n 3)
     # DNS answered and named no server at this address: the kept name goes
