@@ -973,6 +973,13 @@
 
 @=> Important Fixes
 
+    * Classic Drush 8.5.25 (Ægir's Drush 8): a run with no TERM starts no
+      shell to ask tput for colours, and a run with no terminal on its
+      input none to ask stty for the width; both answers were already
+      known (no colour, the default width). Every backend and cron run of
+      Drush 8 skips both, so one panel status starts 20 programs instead
+      of 56. With a terminal, or with TERM set, Drush asks as before.
+
     * websh, which is /bin/sh on hosted boxes, starts two to three fewer
       programs on each run: one id call gives the identity it read with
       two, the copy of the environment it took and never read is gone,
