@@ -2539,12 +2539,17 @@ _mig_build_panel_block() {
     ;;
   esac
   if [ "${_ctx}" = "complete" ]; then
+    ### The account's name there is said only once the target confirmed it
+    ### (new or same): under another name every login's name changes too.
     case "${_MIG_PANEL_STATE}" in
       new|same)
+        _n=""
+        [ "${_acct}" != "${_oct}" ] \
+          && _n=" Your account is named ${_acct} there, so your main login is ${_acct}.ftp in place of ${_oct}.ftp, and each of your other logins starts with ${_acct} in place of ${_oct}."
         if [ "${_tf}" != "${_mf}" ]; then
-          _MIG_LOGIN_LINE="Your SSH and SFTP logins now connect to the new server, ${_tf}, in place of ${_mf}. ${_MIG_LOGIN_TELL}"
+          _MIG_LOGIN_LINE="Your SSH and SFTP logins now connect to the new server, ${_tf}, in place of ${_mf}.${_n} ${_MIG_LOGIN_TELL}"
         else
-          _MIG_LOGIN_LINE="Your SSH and SFTP logins keep the server name ${_mf}, which reaches the new server once your host points its DNS record to ${_ip}. ${_MIG_LOGIN_TELL}"
+          _MIG_LOGIN_LINE="Your SSH and SFTP logins keep the server name ${_mf}, which reaches the new server once your host points its DNS record to ${_ip}.${_n} ${_MIG_LOGIN_TELL}"
         fi
       ;;
       *)
