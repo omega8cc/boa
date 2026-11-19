@@ -1489,6 +1489,13 @@
       otherwise a link to Jetty's jetty.sh, which the next pass replaces
       with that template; the line says which.
 
+    * xmass restore-solr no longer removes the pid file of a Solr version
+      that is already running. It removed the pid files of Solr 7 and 9
+      before it checked whether each was listening, so the java.sh
+      watchdog found none for a running version within a minute, restarted
+      it and sent an incident mail. A stale pid file is now removed only
+      right before a version is started.
+
     * A site's solr.php is written again when its directive moves the site
       to another Solr version. The core keeps its name on every version, and
       the file was rewritten only when that name was missing from it, so it

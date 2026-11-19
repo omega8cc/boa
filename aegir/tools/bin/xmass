@@ -10182,15 +10182,17 @@ _xmass_restore_solr_source() {
     ### defaults is a no-op once links exist, so the K links a disable
     ### left behind need an explicit enable to flip back.
     update-rc.d "${_svc}" enable &> /dev/null
-    ### A pkill -9'd Solr leaves its pid file behind, which the start path trips on.
-    case "${_svc}" in
-      solr9|solr7) rm -f "/var/${_svc}/solr-"*.pid &> /dev/null ;;
-    esac
     if _xmass_port_listening "${_port}"; then
       _info "  ${_svc}: already listening on 127.0.0.1:${_port}"
       _restored=YES
       continue
     fi
+    ### A pkill -9'd Solr leaves its pid file behind, which the start path trips
+    ### on. Only a version about to start loses it: a running one keeps its own,
+    ### or the java.sh watchdog would find none and restart it.
+    case "${_svc}" in
+      solr9|solr7) rm -f "/var/${_svc}/solr-"*.pid &> /dev/null ;;
+    esac
     service "${_svc}" start &> /dev/null || true
     _waited=0
     while [ "${_waited}" -lt 60 ]; do
