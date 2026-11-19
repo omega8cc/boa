@@ -3210,7 +3210,7 @@ _update_agents() {
     && [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     _poolSum="$(md5sum /var/xdrago/conf/fpm-pool-common.conf.dist 2>/dev/null | cut -d' ' -f1)"
-    _fetch_versioned /var/xdrago/conf/fpm-pool-common.conf.dist "${_urlHmr}/conf/php/fpm-pool-common.conf" f97 --mode 644
+    _fetch_versioned /var/xdrago/conf/fpm-pool-common.conf.dist "${_urlHmr}/conf/php/fpm-pool-common.conf" f96 --mode 644
     if _source_due /var/xdrago/conf/fpm-pool-common.conf.dist "${_poolSum}" \
       "${_pthLog}/common.ctrl.${_tRee}.${_xSrl}.pid"; then
       mv -f /var/xdrago/conf/fpm-pool-common.conf /var/xdrago/conf/fpm-pool-common.conf.old
@@ -3230,7 +3230,7 @@ _update_agents() {
     && [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     _poolSum="$(md5sum /var/xdrago/conf/fpm-pool-common-legacy.conf.dist 2>/dev/null | cut -d' ' -f1)"
-    _fetch_versioned /var/xdrago/conf/fpm-pool-common-legacy.conf.dist "${_urlHmr}/conf/php/fpm-pool-common-legacy.conf" f97 --mode 644
+    _fetch_versioned /var/xdrago/conf/fpm-pool-common-legacy.conf.dist "${_urlHmr}/conf/php/fpm-pool-common-legacy.conf" f96 --mode 644
     if _source_due /var/xdrago/conf/fpm-pool-common-legacy.conf.dist "${_poolSum}" \
       "${_pthLog}/legacy.ctrl.${_tRee}.${_xSrl}.pid"; then
       mv -f /var/xdrago/conf/fpm-pool-common-legacy.conf /var/xdrago/conf/fpm-pool-common-legacy.conf.old
@@ -3250,7 +3250,7 @@ _update_agents() {
     && [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     _poolSum="$(md5sum /var/xdrago/conf/fpm-pool-common-modern.conf.dist 2>/dev/null | cut -d' ' -f1)"
-    _fetch_versioned /var/xdrago/conf/fpm-pool-common-modern.conf.dist "${_urlHmr}/conf/php/fpm-pool-common-modern.conf" f97 --mode 644
+    _fetch_versioned /var/xdrago/conf/fpm-pool-common-modern.conf.dist "${_urlHmr}/conf/php/fpm-pool-common-modern.conf" f96 --mode 644
     if _source_due /var/xdrago/conf/fpm-pool-common-modern.conf.dist "${_poolSum}" \
       "${_pthLog}/modern.ctrl.${_tRee}.${_xSrl}.pid"; then
       mv -f /var/xdrago/conf/fpm-pool-common-modern.conf /var/xdrago/conf/fpm-pool-common-modern.conf.old
@@ -7160,6 +7160,86 @@ _php_upload_progress_off() {
   done
 }
 
+# Keep catch_workers_output off in the settings of every PHP-FPM pool, for
+# every PHP version on the box. With it on, the master holds a pipe to each
+# worker's output, and its cleanup of those pipes can be turned against the
+# master, which runs as root, by code running in a pool (CVE-2026-129291;
+# upstream's fix is in 8.2.36, 8.3.37, 8.4.28 and 8.5.13 only). Off, no
+# version has such pipes. The price is the log: a worker cannot write PHP's
+# own log in /var/log/php (root only), and its PHP errors no longer reach the
+# master's log either. Checked on every run, never stamped: a barracuda pass
+# from a tree whose templates still say yes copies them over these files. A
+# changed file is applied by a reload of every running master after its own
+# config test. A master failing that test keeps serving, and the reload is
+# retried on every run until it passes; the marker lives in /run, since a
+# master started after a reboot reads the changed files anyway.
+_php_fpm_worker_output_off() {
+  local _e=""
+  local _fIle=""
+  local _pId=""
+  local _pNd=""
+  local _rO=""
+  local _cHg=NO
+  local _aCt="^[[:space:]]*catch_workers_output[[:space:]]*="
+  local _lIne="catch_workers_output = no"
+  for _fIle in /opt/etc/fpm/fpm-pool-common*.conf /opt/php[0-9][0-9]/etc/pool.d/*.conf; do
+    [ -f "${_fIle}" ] || continue
+    ### Nothing to do in a file without an active line (FPM's own default is
+    ### no) or with every active line already at no.
+    if ! grep -E "${_aCt}" "${_fIle}" 2> /dev/null | grep -qvxF "${_lIne}"; then
+      continue
+    fi
+    ### Once per file while it stays so, not every five minutes (an
+    ### immutable file): a marker in /run per file.
+    _rO="/run/php-fpm-worker-output.$(echo "${_fIle}" | cksum | cut -d' ' -f1).ro"
+    if ! sed -i --follow-symlinks -E "s/${_aCt}.*/${_lIne}/" "${_fIle}" 2> /dev/null; then
+      if [ ! -e "${_rO}" ]; then
+        [ -d "${_pthLog}" ] && echo "$(date 2> /dev/null) ERROR: ${_fIle} not writable" \
+          >> "${_pthLog}/php-fpm-worker-output.log"
+        touch "${_rO}"
+      fi
+      continue
+    fi
+    rm -f "${_rO}"
+    [ -d "${_pthLog}" ] && echo "$(date 2> /dev/null) ${_lIne} in ${_fIle}" \
+      >> "${_pthLog}/php-fpm-worker-output.log"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      echo "INFO: ${_lIne} in ${_fIle}"
+    fi
+    _cHg=YES
+  done
+  for _e in 86 85 84 83 82 81 80 74 73 72 71 70 56; do
+    _pNd="/run/php${_e}-fpm.pool-reload"
+    [ "${_cHg}" = "YES" ] && touch "${_pNd}"
+    [ -e "${_pNd}" ] || continue
+    _pId=$(cat "/run/php${_e}-fpm.pid" 2> /dev/null)
+    case "${_pId}" in
+      ''|*[!0-9]*) _pId="" ;;
+    esac
+    ### No init script or no live master: the next start reads the files.
+    if [ ! -e "/etc/init.d/php${_e}-fpm" ] || [ -z "${_pId}" ] \
+      || ! kill -0 "${_pId}" 2> /dev/null; then
+      rm -f "${_pNd}"
+      continue
+    fi
+    if [ -x "/opt/php${_e}/sbin/php-fpm" ] \
+      && "/opt/php${_e}/sbin/php-fpm" -t --fpm-config "/opt/php${_e}/etc/php${_e}-fpm.conf" \
+        -c "/opt/php${_e}/etc/php${_e}.ini" &> /dev/null; then
+      if service "php${_e}-fpm" reload &> /dev/null; then
+        rm -f "${_pNd}"
+        [ -d "${_pthLog}" ] && echo "$(date 2> /dev/null) php${_e}-fpm reloaded" \
+          >> "${_pthLog}/php-fpm-worker-output.log"
+      elif [ "${_cHg}" = "YES" ]; then
+        [ -d "${_pthLog}" ] && echo "$(date 2> /dev/null) ERROR: php${_e}-fpm reload failed, retried every run" \
+          >> "${_pthLog}/php-fpm-worker-output.log"
+      fi
+    elif [ "${_cHg}" = "YES" ]; then
+      [ -d "${_pthLog}" ] && echo "$(date 2> /dev/null) ERROR: php${_e}-fpm config test failed, reload retried every run" \
+        >> "${_pthLog}/php-fpm-worker-output.log"
+    fi
+  done
+}
+
 # PHP security floor: the first point release of each minor version that
 # carries a security fix no box may wait for, e.g. "8.2.35 8.3.36"; empty
 # means off. A release PHP no longer fixes takes BOA's own security patch
@@ -7629,6 +7709,9 @@ if [ "$(id -u)" -eq 0 ]; then
 
   # PHP session upload progress Off in every ini, re-asserted every run
   _php_upload_progress_off
+
+  # No capture of the workers' output in any PHP-FPM pool, the same way
+  _php_fpm_worker_output_off
 
   if ! command -v bc &> /dev/null; then
     apt-get update -qq &> /dev/null

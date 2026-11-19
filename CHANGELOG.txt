@@ -339,6 +339,18 @@
 
 @=> Security
 
+    * No PHP-FPM pool captures its workers' output any more, on any PHP
+      version. With catch_workers_output on, the master's cleanup of the
+      capture pipes could be turned against the master, which runs as
+      root, by code running in a pool (CVE-2026-129291, fixed upstream in
+      PHP 8.2.36, 8.3.37, 8.4.28 and 8.5.13 only). The pool settings now
+      say no, and the system agent sets it to no in /opt/etc/fpm and in
+      every pool file on each run, then reloads the PHP-FPM masters: a
+      box has it within minutes of the agent's own update, before any
+      upgrade. The price is the log: a worker cannot write to
+      /var/log/php, so the PHP errors it raises are no longer logged.
+      /var/log/boa/php-fpm-worker-output.log says what the agent changed.
+
     * PHP 8.1.34 builds with upstream's fix for CVE-2026-129291 carried
       back to it: a use-after-free in the way the PHP-FPM master reads its
       workers' output, which code already running in a pool could use to
