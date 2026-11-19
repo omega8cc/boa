@@ -859,9 +859,8 @@ _stop_denied_jvm() {
 # it is tested. The run sourced the file when it started; xmass restore-solr
 # may since have cleared a deny, put the init script back and started the
 # version, and acting on the value read then would park and stop the version
-# it just brought back. With the deny gone, only a later barracuda pass would
-# put the init script back: for Solr 4 at once, for Solr 7 and 9 only with a
-# Solr upgrade.
+# it just brought back, which then stays parked until restore-solr runs again
+# (or, for Solr 4, until the next barracuda pass).
 _cnf_deny_now() {
   [ -e "/root/.barracuda.cnf" ] || { echo "NO"; return 0; }
   ( unset "$1"; . /root/.barracuda.cnf > /dev/null 2>&1 < /dev/null; printf '%s' "${!1:-NO}"; exit 0 )
