@@ -60,6 +60,7 @@ _if_solr_nine() {
         usermod -aG users ${_N_SOLR} &> /dev/null
         cd /var/opt/solr-${_SOLR_9_VRN}/bin/
         bash ./install_solr_service.sh /var/opt/solr-${_SOLR_9_VRN}.tgz -f -n -i /opt -d /var/${_N_SOLR} -u ${_N_SOLR} -s ${_N_SOLR} -p 9099 &> /dev/null
+        _solr_svc_denied "${_N_SOLR}" && _mrun "update-rc.d -f ${_N_SOLR} remove"
         echo ${_SOLR_9_VRN} > ${_SOLR_CTRL}
         cd /var/opt
         _if_fix_solr9_permissions
@@ -121,6 +122,7 @@ _if_solr_nine() {
         usermod -aG users ${_N_SOLR} &> /dev/null
         cd /var/opt/solr-${_SOLR_9_VRN}/bin/
         bash ./install_solr_service.sh /var/opt/solr-${_SOLR_9_VRN}.tgz -f -n -i /opt -d /var/${_N_SOLR} -u ${_N_SOLR} -s ${_N_SOLR} -p 9099 &> /dev/null
+        _solr_svc_denied "${_N_SOLR}" && _mrun "update-rc.d -f ${_N_SOLR} remove"
         echo ${_SOLR_9_VRN} > ${_SOLR_CTRL}
         cd /var/opt
         _if_fix_solr9_permissions
@@ -168,6 +170,7 @@ _if_solr_seven() {
         usermod -aG users ${_N_SOLR} &> /dev/null
         cd /var/opt/solr-${_SOLR_7_VRN}/bin/
         bash ./install_solr_service.sh /var/opt/solr-${_SOLR_7_VRN}.tgz -f -n -i /opt -d /var/${_N_SOLR} -u ${_N_SOLR} -s ${_N_SOLR} -p 9077 &> /dev/null
+        _solr_svc_denied "${_N_SOLR}" && _mrun "update-rc.d -f ${_N_SOLR} remove"
         echo ${_SOLR_7_VRN} > ${_SOLR_CTRL}
         cd /var/opt
         _if_fix_solr7_permissions
@@ -210,6 +213,7 @@ _if_solr_seven() {
         usermod -aG users ${_N_SOLR} &> /dev/null
         cd /var/opt/solr-${_SOLR_7_VRN}/bin/
         bash ./install_solr_service.sh /var/opt/solr-${_SOLR_7_VRN}.tgz -f -n -i /opt -d /var/${_N_SOLR} -u ${_N_SOLR} -s ${_N_SOLR} -p 9077 &> /dev/null
+        _solr_svc_denied "${_N_SOLR}" && _mrun "update-rc.d -f ${_N_SOLR} remove"
         echo ${_SOLR_7_VRN} > ${_SOLR_CTRL}
         cd /var/opt
         _if_fix_solr7_permissions
@@ -232,9 +236,9 @@ _if_solr_seven() {
 # read as autoupboa reads it when it parks the service: the box-wide Java
 # deny or the version's own, as a setting or as a marker file. A pass still
 # installs and upgrades a version its own deny names, but starts none that
-# is denied: autoupboa parks it again at its first run after the pass, and
-# where _SKYNET_MODE=OFF stops autoupboa before its deny arms, a started one
-# would run for good.
+# is denied and registers none for boot: autoupboa parks it again at its
+# first run after the pass, and where _SKYNET_MODE=OFF stops autoupboa
+# before its deny arms, a started one would run for good.
 _solr_svc_denied() {
   local _dv=""
   case "${1}" in
@@ -420,8 +424,10 @@ _if_solr_four() {
           ln -sfn /opt/jetty9/bin/jetty.sh /etc/init.d/jetty9 &> /dev/null
         fi
         chmod 755 /etc/init.d/jetty9 &> /dev/null
-        _mrun "update-rc.d jetty9 defaults"
-        _solr_svc_denied jetty9 || _mrun "service jetty9 start"
+        if ! _solr_svc_denied jetty9; then
+          _mrun "update-rc.d jetty9 defaults"
+          _mrun "service jetty9 start"
+        fi
       fi
       echo ${_SOLR_4_VRN} > ${_SOLR_CTRL}
       _msg "INFO: MultiCore Apache Solr ${_R_SOLR} with Jetty ${_R_JETTY} installed"
@@ -455,7 +461,10 @@ _if_solr_four() {
         -Dsolr.solr.home=/opt/solr4 \$JAVA_OPTIONS\" \
         # Options" | fmt -su -w 2500 >> /etc/default/jetty9
     fi
-    if [ ! -e "/etc/init.d/jetty9" ] || [ -L "/etc/init.d/jetty9" ]; then
+    ### A denied Solr 4 that autoupboa parked stays parked: its init script
+    ### and boot links are not put back.
+    if { [ ! -e "/etc/init.d/jetty9" ] || [ -L "/etc/init.d/jetty9" ]; } \
+      && ! _solr_svc_denied jetty9; then
       if [ -e "${_locCnf}/solr4/jetty9" ]; then
         rm -f /etc/init.d/jetty9
         cp -af ${_locCnf}/solr4/jetty9 /etc/init.d/jetty9
