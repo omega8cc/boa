@@ -8,10 +8,12 @@
       installed sysstat but left it switched off, so a box had no record to
       be sized from; the daily graceful.sh pass now switches it on
       (samples every ten minutes, read with sar) and keeps 28 days instead
-      of the package's 7, leaving any other value an operator set. Where
-      the box's shell for cron cannot find sysstat's collector, its cron
-      file runs with dash. _SYSSTAT_HISTORY=NO in /root/.barracuda.cnf
-      leaves sysstat alone.
+      of the package's 7, all of them uncompressed so sar reads every one,
+      leaving any other value an operator set. Where the box's shell for
+      cron cannot find sysstat's collector, its cron file runs with dash.
+      _SYSSTAT_HISTORY=NO in /root/.barracuda.cnf leaves sysstat alone; to
+      switch it off again, also set ENABLED="false" in /etc/default/sysstat
+      and run dpkg-reconfigure sysstat.
 
     * Each box starts its nightly database backup and its off-site backup
       cycle at its own minute, so the VMs sharing one host no longer dump
