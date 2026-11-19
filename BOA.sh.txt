@@ -4696,28 +4696,51 @@ _fix_solr_defaults_line() {
   fi
 }
 
-### unattended-upgrades installs a fixed openjdk package under a running
-### Solr, which keeps the replaced JVM, deleted from disk, until something
-### restarts it; a barracuda pass does, but that may be days away. Such a
-### Solr is restarted here, at most once an hour, so a restart that does
-### not take is never repeated every run.
-_restart_solr_on_replaced_jvm() {
+### A Solr JVM that no longer runs what its box holds is restarted here: one
+### whose java a package upgrade replaced (unattended-upgrades installs a
+### fixed openjdk under a running Solr, which keeps the old build, deleted
+### from disk, until a barracuda pass restarts it, maybe days later), and
+### one started without the JVM option its own line now holds (a pass that
+### wrote the line and stopped before its restart): only when the value the
+### file sets last carries it and the file is newer than the JVM, so a line
+### of the operator's that drops it never restarts Solr every hour. Never
+### while root's dpkg or the unattended-upgrade worker runs, so no restart
+### meets a half-unpacked JDK, and at most once an hour, so a restart that
+### does not take is never repeated every run. The pid file lives in the
+### service user's own folder: only a plain file is read, in one open that
+### follows no link and never waits on a FIFO, and only its first bytes.
+_restart_stale_solr_jvm() {
   # ${1} = solr7 or solr9  ${2} = its port
-  local _svc="${1}" _port="${2}" _pid _exe _mark
+  # ${3} = a JVM option its line carries and the JVM must too (optional)
+  local _svc="${1}" _port="${2}" _xopt="${3}" _pf _inc _pid _exe _mark _age _mt _why=""
   _mark="/run/boa_${_svc}_jvm_restart.pid"
+  _pf="/var/${_svc}/solr-${_port}.pid"
+  _inc="/etc/default/${_svc}.in.sh"
   [ -x "/etc/init.d/${_svc}" ] || return 0
   _solr_svc_denied "${_svc}" && return 0
-  _pid="$(cat "/var/${_svc}/solr-${_port}.pid" 2> /dev/null | sed 's/[^0-9]//g')"
+  [ -f "${_pf}" ] && [ ! -L "${_pf}" ] || return 0
+  _pid="$(timeout 10 dd if="${_pf}" iflag=nofollow,nonblock bs=16 count=1 status=none 2> /dev/null | tr -dc '0-9')"
   [ -n "${_pid}" ] && [ -d "/proc/${_pid}" ] || return 0
   [ "$(stat -c %U "/proc/${_pid}" 2> /dev/null)" = "${_svc}" ] || return 0
   _exe="$(readlink "/proc/${_pid}/exe" 2> /dev/null)"
   case "${_exe}" in
-    *"/java (deleted)") ;;
-    *) return 0 ;;
+    *"/java (deleted)") _why="its replaced JVM ${_exe}" ;;
   esac
+  if [ -z "${_why}" ] && [ -n "${_xopt}" ] \
+    && grep '^SOLR_OPTS=' "${_inc}" 2> /dev/null | tail -n 1 | grep -q -e " ${_xopt}\"$" \
+    && ! tr '\0' '\n' 2> /dev/null < "/proc/${_pid}/cmdline" | grep -q -x -e "${_xopt}"; then
+    _age="$(ps -o etimes= -p "${_pid}" 2> /dev/null | tr -dc '0-9')"
+    _mt="$(stat -c %Y "${_inc}" 2> /dev/null)"
+    if [ -n "${_age}" ] && [ -n "${_mt}" ] && [ "$(( $(date +%s) - _age ))" -le "${_mt}" ]; then
+      _why="a JVM started without ${_xopt}"
+    fi
+  fi
+  [ -n "${_why}" ] || return 0
+  pgrep -u root -x dpkg > /dev/null 2>&1 && return 0
+  pgrep -u root -U root -f '^([^ ]*/)?python[0-9.]* (/usr)?/bin/unattended-upgrade( |$)' > /dev/null 2>&1 && return 0
   [ -n "$(find "${_mark}" -mmin -60 2> /dev/null)" ] && return 0
   touch "${_mark}"
-  echo "_restart${_svc^} for its replaced JVM ${_exe} at $(date)" >> ${_pthLog}/_fix_start_stop_ports_solr.log
+  echo "_restart${_svc^} for ${_why} at $(date)" >> ${_pthLog}/_fix_start_stop_ports_solr.log
   service "${_svc}" restart
 }
 
@@ -4726,8 +4749,8 @@ _fix_start_stop_ports_solr() {
     && [ ! -e "/var/log/boa/.xmass_solr_hold.pid" ]; then
     _fix_solr_defaults_line solr9 19099 mycustomkey9 "-XX:-UseBASE64Intrinsics"
     _fix_solr_defaults_line solr7 19077 mycustomkey7
-    _restart_solr_on_replaced_jvm solr9 9099
-    _restart_solr_on_replaced_jvm solr7 9077
+    _restart_stale_solr_jvm solr9 9099 "-XX:-UseBASE64Intrinsics"
+    _restart_stale_solr_jvm solr7 9077
   fi
   if [ -x "/etc/init.d/jetty9" ]; then
     _restartSolr4=FALSE

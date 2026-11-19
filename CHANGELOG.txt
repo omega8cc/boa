@@ -372,10 +372,13 @@
       every box whose build is older than the one BOA names, now
       21.0.13.1, which fixes CVE-2026-114938. Until now only a box in
       debug mode ever took a newer Corretto, so others kept the build they
-      first got. A newer build than the named one is kept. The download's
-      SHA256 check now stops a failed or partial download before it is
-      unpacked, and the archive is removed after use; of the Corretto 21
-      trees in /opt/jdk only the new one and the one it replaced stay.
+      first got. A newer build than the named one is kept, and a build
+      whose version cannot be read is replaced. The archive is fetched
+      into a folder made for the run that only root can enter, its SHA256
+      must match before it is unpacked, and the unpacked java must run
+      before BOA's links move to it. Of the Corretto 21 trees in /opt/jdk
+      the new one, the one it replaced and any a running JVM uses stay. A
+      real folder where BOA's Java 21 link belongs is reported and left.
 
     * Nginx 1.31.9, upstream's security release of 18 November 2026,
       brought to every box through the security floor, which now covers
@@ -1124,8 +1127,10 @@
       upgrades install a fixed openjdk while Solr runs, and Solr went on
       running the old, deleted build until the next barracuda pass, which
       can be days away. The five-minute self-update restarts it when its
-      running java is a deleted file, at most once an hour, never on a
-      replication standby, under the xmass Solr hold or for a denied version.
+      running java is a deleted file, and a Solr 9 started without the
+      option its line holds, never while dpkg runs, at most once an hour,
+      never on a replication standby, under the xmass Solr hold or for a
+      denied version.
 
     * A barracuda pass on the source of an xmass move no longer changes
       root's MySQL password until the move ends. The new password reached
