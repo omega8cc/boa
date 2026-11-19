@@ -1044,6 +1044,24 @@
 
 @=> Important Fixes
 
+    * A barracuda pass on the source of an xmass move no longer changes
+      root's MySQL password until the move ends. The new password reached
+      the standby by replication while root's client pair there stayed
+      old, so every root client on the standby was refused until the pair
+      travelled, and a cutover started meanwhile stopped at its lag read
+      with the sites already on the 503 page. xmass holds the rotation on
+      the source from init to the end of the cutover with a file of its
+      own, /root/.xmass.rotation.hold.cnf (never the operator's
+      /root/.mysql.no.new.password.cnf, which every Percona 8.4 pass
+      deletes), and lifts it when the move ends or is forgotten. A
+      standing mirror's active keeps rotating: the carry serves it.
+
+    * xmass cutover --live carries root's MySQL pair to the standby first
+      and reads the replica through it, and stops before it changes
+      anything when the standby still refuses it or the replica has
+      stopped. It found that out only at its lag wait, with the sites
+      already on the 503 page.
+
     * A barracuda pass that switches system scripts from /bin/sh to dash
       (or bash) changes only that shell's name. It changed every /bin/sh
       in a matched file, so names that only start with it changed too:

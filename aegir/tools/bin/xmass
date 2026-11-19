@@ -120,6 +120,10 @@ _XMASS_AUTOSYNC_FAILCOUNT="/var/log/boa/xmass.autosync.fail.count"
 ### Losing either costs one more carry, which finds the pair current.
 _XMASS_CRED_CARRIED="/var/log/boa/xmass.cred.carried"
 _XMASS_CRED_TRIED="/var/log/boa/xmass.cred.tried"
+### Holds root's MySQL password rotation on a move's source (sql.sh.inc reads
+### it). Only xmass lays and removes it; see _xmass_rotation_hold_sync.
+_XMASS_ROT_HOLD="/root/.xmass.rotation.hold.cnf"
+_XMASS_INIT_RUN=NO
 ### Duty cycle: a pass may occupy at most 1/(N+1) of wall clock, so the box
 ### rests at least N x the last pass duration between passes. Shared with
 ### monitor/check/autosync.sh, which enforces it; kept here so --status can
@@ -1986,6 +1990,73 @@ STATEEOF
   if [ "${_XMASS_PHASE}" = "complete" ] && [ -e "${_XMASS_AUTOSYNC_CNF}" ]; then
     _xmass_autosync_disarm "the migration is complete; nothing passive remains to feed"
   fi
+  _xmass_rotation_hold_sync
+}
+
+###-------------ROOT PASSWORD ROTATION HOLD----###
+###
+### A barracuda pass rotates root's MySQL password (on 8.4 at every pass, on
+### 5.7 and 8.0 under /root/.mysql.yes.new.password.cnf). On a move's source
+### the rotation replicates to the standby, whose own client pair stays, so
+### every root client there is refused until the pair is carried; a cutover
+### started meanwhile stops at its lag read with the source already on 503.
+### So the source holds the rotation for the span of a move: from init's
+### first state write, through syncing, to the cutover's end, while the
+### cutover's tail and a parked tail stand, and never once the move is
+### complete. /root/.mysql.no.new.password.cnf cannot be that hold: on 8.4
+### every barracuda pass deletes it before the rotation is decided, and it is
+### the operator's switch, which xmass leaves alone. A standing mirror at
+### syncing (autosync armed, or the ha-switch mode) does not hold: its role
+### never ends, so rotation there goes on and the carry brings the pair to
+### the standby. sql.sh.inc honours the marker only while the state file
+### still shows a move, so one a hand-removed state file left behind cannot
+### hold the box for good.
+_xmass_rotation_hold_want() {
+  [ -e /root/.standby.cnf ] && return 1
+  [ -e /root/.proxy.cnf ] && return 1
+  case "${_XMASS_PHASE}" in
+    cutover|rename-failed) return 0 ;;
+    init) [ "${_XMASS_INIT_RUN}" = "YES" ] ;;
+    syncing)
+      [ -e "${_XMASS_AUTOSYNC_CNF}" ] && return 1
+      [ "${_XMASS_PROXY_MODE}" = "ha-switch" ] && return 1
+      return 0
+    ;;
+    *) return 1 ;;
+  esac
+}
+
+_xmass_rotation_hold_lift() {
+  [ -e "${_XMASS_ROT_HOLD}" ] || return 0
+  if rm -f "${_XMASS_ROT_HOLD}" 2> /dev/null; then
+    _info "root's MySQL password rotation resumes on this box (${_XMASS_ROT_HOLD} removed): ${1}"
+  else
+    _alrt "could not remove ${_XMASS_ROT_HOLD}: root's MySQL password rotation stays held here until it goes"
+  fi
+  return 0
+}
+
+_xmass_rotation_hold_sync() {
+  local _tmp
+  if ! _xmass_rotation_hold_want; then
+    _xmass_rotation_hold_lift "phase ${_XMASS_PHASE:-none}, no move holds it"
+    return 0
+  fi
+  [ -e "${_XMASS_ROT_HOLD}" ] && return 0
+  _tmp="${_XMASS_ROT_HOLD}.$$"
+  if printf '%s\n' \
+    "# Laid by xmass $(date '+%F %T') for the move to ${_XMASS_TARGET_IP:-?} (phase ${_XMASS_PHASE})." \
+    "# Root's MySQL password rotation is held on this source until the move ends;" \
+    "# xmass removes this file then. Barracuda honours it only while" \
+    "# ${_XMASS_STATE_FILE} shows the move." > "${_tmp}" 2> /dev/null \
+    && mv -f "${_tmp}" "${_XMASS_ROT_HOLD}" 2> /dev/null; then
+    _info "root's MySQL password rotation held on this box until the move ends (${_XMASS_ROT_HOLD})"
+  else
+    rm -f "${_tmp}" 2> /dev/null
+    _alrt "could not write ${_XMASS_ROT_HOLD}: a barracuda pass here may rotate root's MySQL"
+    _alrt "  password during the move, and the standby then refuses root until a live sync"
+  fi
+  return 0
 }
 
 ###-------------CHECK ROOT----------------###
@@ -5802,6 +5873,11 @@ _xmass_init_unwind() {
   _xmass_snapshot_hold_drop
   [ "${_XMASS_INIT_UNWOUND}" = "YES" ] && return 0
   _XMASS_INIT_UNWOUND=YES
+  # Refused before the swap, the run leaves no standby of this box: the
+  # rotation it held here resumes. Past the swap the standby stands, so the
+  # hold stays until the move goes on or 'xmass reset-phase init' forgets it.
+  [ "${_XMASS_INIT_COMMITTED}" = "YES" ] \
+    || _xmass_rotation_hold_lift "init refused before the standby was built"
   _xmass_init_keepalive_stop
   # The watchdog mute must not survive the window on either end -- a
   # refused init leaves a NORMAL box, and the mute would otherwise sit
@@ -20577,6 +20653,10 @@ _xmass_cmd_init() {
          " Remove ${_XMASS_STATE_FILE} to start over, or use" \
          " 'xmass reset-phase <phase>' to correct a wedged phase."
   fi
+  # From init's first state write the source holds root's password rotation:
+  # a pass between the snapshot and the replica start would leave the
+  # restored copy refusing the pair init carries there.
+  _XMASS_INIT_RUN=YES
 
   _XMASS_TARGET_IP="${_tgt}"
   _XMASS_SRC_IP="${_MY_OWNIP:-$(hostname -I 2>/dev/null | awk '{print $1}')}"
@@ -21045,6 +21125,8 @@ REMOTE
       _info "pair (the plan and the skip list are yours to re-read), then it"
       _info "resumes by itself"
     fi
+    # the stale cadence gone, this pair is a move: it holds the rotation
+    _xmass_rotation_hold_sync
   fi
   # Sync is plain rsync + live replication; the watchdog can resume protecting
   # both servers between now and cutover.
@@ -21601,6 +21683,13 @@ _xmass_cmd_status() {
   echo "  Init time        : ${_XMASS_INIT_TIME:-n/a}"
   echo "  Last file sync   : ${_XMASS_LAST_SYNC:-never}"
   echo "  Replication lag  : ${_lag}"
+  if [ -e "${_XMASS_ROT_HOLD}" ]; then
+    echo "  Root pw rotation : held here until the move ends (${_XMASS_ROT_HOLD})"
+  elif _xmass_rotation_hold_want; then
+    echo "  Root pw rotation : NOT held yet -- the next live sync lays the hold"
+  else
+    echo "  Root pw rotation : runs as usual (no move holds it)"
+  fi
   [ -z "${_nocopy}" ] \
     || echo "  No copy on mirror: ${_nocopy} -- no file of these travels and a promotion leaves them without their sites; run '$(_xmass_acct_remedy "${_tgt}")'"
   [ -z "${_lostusr}" ] \
@@ -21807,6 +21896,9 @@ _xmass_autosync_arm() {
   } > "${_XMASS_AUTOSYNC_CNF}"
   chmod 600 "${_XMASS_AUTOSYNC_CNF}"
   rm -f "${_XMASS_AUTOSYNC_FAILCOUNT}"
+  # A standing mirror's active keeps rotating root's password: the carry
+  # brings each new pair to the standby.
+  _xmass_rotation_hold_sync
   _info "======================================================"
   _info "  xmass autosync ARMED"
   _info "  Target   : ${_tgt}"
@@ -21825,6 +21917,9 @@ _xmass_autosync_off() {
     _xmass_autosync_disarm "operator --off"
     _info "The mirror keeps replicating its database; file freshness is"
     _info "manual 'xmass sync ... --live' again."
+    # Without the cadence the pair reads as a move again, unless ha-switch.
+    _xmass_load_state
+    _xmass_rotation_hold_sync
   else
     _info "autosync was not armed on this box"
   fi
@@ -23080,6 +23175,20 @@ _xmass_cmd_cutover() {
   # in a control folder its sites honour: checked before the clean-dry token
   # is used and before anything is parked.
   _xmass_gate_ready_all || _die "the cutover did not start: fix the control folders named above, then run it again"
+
+  # Step 4 reads the replica through the standby's own root client, with the
+  # source already on 503. A pass that rotated root's pair here since it last
+  # travelled (a standing mirror, or a move begun before the rotation hold)
+  # leaves that client refused: carry the pair first, and stop here, before
+  # the clean-dry token is used and before anything changes, when the
+  # replica still cannot be read.
+  _xmass_carry_db_credentials
+  case "$(_xmass_get_repl_lag)" in
+    ''|NULL|*[!0-9]*)
+      _die "the replica on ${_tgt} cannot be read (its root client refused, or the replica" \
+           "stopped): nothing was changed; 'xmass status ${_tgt}' names which and the remedy"
+    ;;
+  esac
 
   # --live requires a prior CLEAN dry run for THIS target (mass plan for all accounts).
   _xmass_require_clean_dry "${_tgt}"

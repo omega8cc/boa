@@ -2646,6 +2646,27 @@ EOF
   fi
 }
 
+### xmass holds root's password rotation on a move's source from init to the
+### cutover's end: a rotation there replicates to the standby, whose own pair
+### stays, and every root client there is refused until the pair travels. The
+### hold counts only while the move's state still stands; one left by a state
+### file removed by hand, or by a move that has ended, is cleared.
+_sql_root_rotation_move_held() {
+  local _h="/root/.xmass.rotation.hold.cnf" _p
+  [ -e "${_h}" ] || return 1
+  _p=$(grep -m1 '^_XMASS_PHASE=' /data/conf/xmass_state.cnf 2> /dev/null \
+    | cut -d= -f2- | tr -cd 'a-z-')
+  case "${_p}" in
+    init|syncing|cutover|rename-failed)
+      _msg "INFO: MySQL root password rotation held: this box is a move's source (${_h})"
+      return 0
+    ;;
+  esac
+  rm -f "${_h}"
+  _msg "INFO: Stale ${_h} removed (no move stands here)"
+  return 1
+}
+
 _sql_root_credentials_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _sql_root_credentials_update"
@@ -2791,8 +2812,9 @@ _sql_root_credentials_update() {
         ### root-credentialed tool on the mirror, xmass included, then fails
         ### to authenticate. The active owns the password; replication carries
         ### it; promotion resumes normal rotation.
-        if [ -e "/root/.mysql.yes.new.password.cnf" ] \
-          || [ -e "/root/.my.cluster_root_pwd.txt" ]; then
+        if { [ -e "/root/.mysql.yes.new.password.cnf" ] \
+          || [ -e "/root/.my.cluster_root_pwd.txt" ]; } \
+          && ! _sql_root_rotation_move_held; then
           _forced_mysql_root_password_update
         fi
       fi
