@@ -6861,6 +6861,63 @@ _php_floor_mail() {
   echo "$2" | s-nail -s "$1" "${_MY_EMAIL}" &> /dev/null
 }
 
+# A pass the floor started has ended with versions still below: one log line
+# and one mail, naming the pass's report and its own last lines (those after
+# the line its launch wrote). $1 what is below, $2 PHP/Nginx, $3 host, $4 the
+# pass's number, $5 next start, $6 state, $7 the set below now, $8 the set
+# the pass was for. Another set below now (part upgraded, a version retired
+# or newly below): it counts afresh. The same set after the third pass: BOA
+# starts no more, as the state says. A log with no launch line yet (a pass an
+# older agent started) names no report: its newest may be an earlier pass's.
+_sec_floor_failed() {
+  local _sEc="" _rEp="" _tAil="" _nXt="" _sUb="" _wHy="" _nOne=""
+  _nOne="none, the pass stopped before it began its work"
+  if grep -q '^=== .* security floor pass ' /var/log/boa/barracuda-sec-floor.log 2> /dev/null; then
+    _sEc=$(awk '/^=== .* security floor pass /{ b = ""; next } { b = b $0 "\n" } END { printf "%s", b }' \
+      /var/log/boa/barracuda-sec-floor.log 2> /dev/null)
+    _rEp=$(echo "${_sEc}" | grep -o '/var/backups/reports/up/barracuda/[0-9]*/barracuda-up-[0-9-]*\.log' \
+      | tail -n 1)
+  else
+    _sEc=$(tail -n 12 /var/log/boa/barracuda-sec-floor.log 2> /dev/null)
+    _nOne="under /var/backups/reports/up/barracuda/"
+  fi
+  _tAil=$(echo "${_sEc}" | grep -v '^$' | tail -n 12 | sed 's/\x1b\[[0-9;]*m//g')
+  _sUb="$2 security upgrade failed on [$3]"
+  if [ "$7" != "$8" ]; then
+    _php_floor_log "$1 still below the security floor after barracuda system pass $4, which was started for another set below; counted afresh from $(date -d "@$5" 2> /dev/null)"
+    _wHy="ended with another set below than it was started for, and this is still below"
+    _nXt="BOA starts a pass for it from $(date -d "@$5" 2> /dev/null), counted afresh
+(1 of 3). Fix what stopped it before then, or run
+'barracuda up-<tree> system' by hand once it is fixed."
+  elif [ "$4" -ge 3 ]; then
+    echo "$5 4 $7" > "$6"
+    _php_floor_log "$1 below the security floor after three barracuda system passes; no forced pass from here on"
+    _sUb="$2 security upgrade needs you on [$3]"
+    _wHy="ended without upgrading what it was for"
+    _nXt="This was the third pass: BOA starts no more for it. Fix what stopped
+it, then run 'barracuda up-<tree> system' by hand."
+  else
+    _php_floor_log "$1 below the security floor after barracuda system pass $4 of 3, the next due $(date -d "@$5" 2> /dev/null)"
+    _wHy="ended without upgrading what it was for"
+    _nXt="BOA starts pass $(( $4 + 1 )) of 3 from $(date -d "@$5" 2> /dev/null). Fix what
+stopped it before then, or run 'barracuda up-<tree> system' by hand
+once it is fixed."
+  fi
+  _php_floor_mail "${_sUb}" \
+    "On $3 the barracuda system pass BOA started for the security
+release it requires (pass $4 of 3) ${_wHy}:
+$1
+
+${_nXt}
+
+The pass's report: ${_rEp:-${_nOne}}
+
+Its last lines in /var/log/boa/barracuda-sec-floor.log:
+${_tAil:-(none)}
+
+Log: ${_pthLog}/sec-floor.log"
+}
+
 # Decides whether this box needs the floor's pass. _php_security_floor_launch
 # starts it at the end of the run, after the tools refresh: the run's own apt
 # and service steps never overlap the pass, and a SKYNET-off box already has
@@ -6870,14 +6927,15 @@ _php_floor_mail() {
 # 30 minutes, also when a wait for the release ends, so the fleet does not
 # fetch from the mirrors at once. A version waits while the pin of the box's
 # tree is below its floor or the pin's source is not on the mirror. A pass
-# that leaves a version below is tried again 12 hours later; after three, or
-# when a major OS upgrade is staged in the cnf, the operator is mailed once
-# and the box is left to them. Nginx below its own floor counts as one more
-# version below, with the same waits.
+# that ends with a version still below is told to the operator once, at the
+# first agent run after it, and is tried again 12 hours after it started;
+# after the third, or when a major OS upgrade is staged in the cnf, the box is
+# left to the operator. Nginx below its own floor counts as one more version
+# below, with the same waits.
 _php_security_floor() {
   local _fLr="" _e="" _iV="" _pIn="" _bElow="" _lIst="" _sTp="" _nOw=""
   local _dUe="" _tRies="" _lAst="" _sUm="" _hN="" _sPr="" _pIns="" _sZ=""
-  local _tR="" _wAit="" _eNt="" _fV="" _fId="" _hOst="" _nGx="" _wHat=""
+  local _tR="" _wAit="" _eNt="" _fV="" _fId="" _hOst="" _nGx="" _wHat="" _tOld="" _pAss=""
   _PHP_FLOOR_GO=NO
   [ -n "${_PHP_SEC_FLOOR}${_NGINX_SEC_FLOOR}" ] || return 0
   _sec_floor_rename_logs
@@ -6926,8 +6984,12 @@ _php_security_floor() {
     | cksum | cut -d' ' -f1).txt"
   find /etc/boa/control -maxdepth 1 -name 'sec-floor.*.txt' ! -name "${_sTp##*/}" \
     -delete 2> /dev/null
+  ### Beside the state: the set and the pass whose failure was told.
+  _tOld="${_sTp%.txt}.told"
+  find /etc/boa/control -maxdepth 1 -name 'sec-floor.*.told' ! -name "${_tOld##*/}" \
+    -delete 2> /dev/null
   if [ -z "${_bElow}" ]; then
-    rm -f "${_sTp}"
+    rm -f "${_sTp}" "${_tOld}"
     return 0
   fi
   _sUm=$(echo "${_bElow}" | cksum | cut -d' ' -f1)
@@ -6958,8 +7020,18 @@ Log: ${_pthLog}/sec-floor.log"
   case "${_tRies}" in
     ''|*[!0-9]*) _tRies=0 ;;
   esac
+  _pAss="${_tRies}"
   ### Other versions below than the passes so far were for: count afresh.
   [ "${_lAst}" = "${_sUm}" ] || _tRies=0
+  ### A pass started for the state's set has ended (clear.sh runs no agent
+  ### beside one) with versions still below, all or part of it: tell it
+  ### once, before its retry is due. A launch clears the marker.
+  if [ "${_pAss}" -ge 1 ] && [ "${_pAss}" -le 3 ] && [ "${_nOw}" -lt "${_dUe}" ] \
+    && [ "$(cat "${_tOld}" 2> /dev/null)" != "${_lAst}:${_pAss}" ] && ! _install_in_flight; then
+    echo "${_lAst}:${_pAss}" > "${_tOld}"
+    _sec_floor_failed "${_lIst}" "${_wHat}" "${_hN}" "${_pAss}" "${_dUe}" "${_sTp}" "${_sUm}" "${_lAst}"
+    return 0
+  fi
   [ "${_nOw}" -ge "${_dUe}" ] || return 0
   [ "${_tRies}" -ge 4 ] && return 0
   if [ "${_tRies}" -eq 3 ]; then
@@ -7077,6 +7149,7 @@ Log: ${_pthLog}/sec-floor.log"
   _PHP_FLOOR_GO=YES
   _PHP_FLOOR_TREE="${_tR}"
   _PHP_FLOOR_STATE="${_sTp}"
+  _PHP_FLOOR_TOLD="${_tOld}"
   _PHP_FLOOR_NEXT="$(( _nOw + 43200 )) $(( _tRies + 1 )) ${_sUm}"
   _PHP_FLOOR_LIST="${_lIst}"
 }
@@ -7095,8 +7168,12 @@ _php_security_floor_launch() {
     return 0
   fi
   echo "${_PHP_FLOOR_NEXT}" > "${_PHP_FLOOR_STATE}"
+  rm -f "${_PHP_FLOOR_TOLD}"
   [ -d "${_pthLog}" ] && echo "$(date 2> /dev/null) ${_PHP_FLOOR_LIST} below the security floor, barracuda up-${_PHP_FLOOR_TREE} system launched" \
     >> "${_pthLog}/sec-floor.log"
+  ### The pass's own lines start after this one: a failure is told from them.
+  echo "=== $(date 2> /dev/null) security floor pass for ${_PHP_FLOOR_LIST}" \
+    >> /var/log/boa/barracuda-sec-floor.log
   ### Nothing of an earlier run may stay in /opt/tmp, hidden entries included
   ### (a stale build tree or its refetch marker): the pass starts clean.
   find /opt/tmp/ -mindepth 1 -maxdepth 1 -exec rm -rf -- {} + 2> /dev/null
