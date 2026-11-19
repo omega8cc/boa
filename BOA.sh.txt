@@ -7874,7 +7874,7 @@ if [ "$(id -u)" -eq 0 ]; then
   ### an SCTP socket, and an unpatched flaw in it gives root. Nothing in BOA
   ### uses SCTP. A module already loaded cannot be removed and stays until
   ### the next reboot; /proc/sys/net/sctp exists while SCTP is live. In a
-  ### container the host's kernel loads modules and reads its own modprobe.d.
+  ### container the host's modprobe loads modules, reading the host's files.
   ### The file is checked by its lines, so an empty or partial one is
   ### written again; modprobe reads only *.conf, never the .new copy.
   _sctpConf="/etc/modprobe.d/blacklist-sctp.conf"

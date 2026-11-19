@@ -323,18 +323,19 @@
       /etc/boa/control/sec-floor.<sum>.txt.
 
     * The Linux kernel's SCTP module no longer loads on demand on a BOA
-      box. Any local user could load it by opening an SCTP socket, and an
-      unpatched flaw in it gives root: nginx2root chains it after the Nginx
-      bugs above, and any other code running on a box can reach it too.
-      The system agent writes /etc/modprobe.d/blacklist-sctp.conf for sctp
-      and sctp_diag, as it already does for dccp and n_hdlc, on its first
-      run after the release reaches the mirror, also with _SKYNET_MODE=OFF,
-      once no install, upgrade or nightly SQL dump holds the box, and again
-      on any run that finds either line missing from it. Nothing in
-      BOA uses SCTP. A box where SCTP is already loaded keeps it until its
-      next reboot: /proc/sys/net/sctp exists while it is. A BOA box in an
-      LXC or OpenVZ container needs the same two lines on its host, whose
-      kernel loads the module.
+      box that runs its own kernel. Any local user could load it by opening
+      an SCTP socket, and an unpatched flaw in it gives root: nginx2root
+      chains it after the Nginx bugs above, and any other code running on a
+      box can reach it too. The system agent writes
+      /etc/modprobe.d/blacklist-sctp.conf for sctp and sctp_diag, as it
+      already does for dccp and n_hdlc, on its first run after the release
+      reaches the mirror, also with _SKYNET_MODE=OFF, once no install,
+      upgrade or nightly SQL dump holds the box, and again on any run that
+      finds either line missing from it. Nothing in BOA uses SCTP. A box
+      where SCTP is already loaded keeps it until its next reboot:
+      /proc/sys/net/sctp exists while it is. A BOA box in an LXC or OpenVZ
+      container needs the same two lines on its host, whose modprobe loads
+      the module for the container.
 
     * lfd blocks SSH password guessing again. OpenSSH 9.8 and newer logs
       failed logins as sshd-session, and the SSH rules of csf 15.00 match
