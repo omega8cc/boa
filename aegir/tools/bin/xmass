@@ -16675,15 +16675,19 @@ _xmass_verb_unwind() {
   [ "${_rc}" != "0" ] && [ "${_XMASS_CSF_KEEP}" != "YES" ] && _xmass_csf_undo_peers
   # a fenced target's cron, started by a prep-target that did not finish
   _xmass_target_cron_refence
-  # The cutover's own hold ends with its run: the phase it leaves decides
-  # (a standing mirror handed back at syncing rotates again).
-  if [ "${_XMASS_CUTOVER_RUN}" = "YES" ]; then
+  [ "$(tr -dc '0-9' 2> /dev/null < "${_XMASS_LOCK_FILE}")" = "$$" ] \
+    && rm -f "${_XMASS_LOCK_FILE}"
+  # Every cutover run, live or not, ends with the hold the phase it leaves
+  # calls for: its own, or one an autosync arm or --off in another shell
+  # laid on reading its command line (a standing mirror handed back at
+  # syncing rotates again). After the lock: an arm or --off from here on
+  # reads no run in flight and decides alike.
+  if [ "${_cmd:-}" = "cutover" ] && [ "${_XMASS_EXIT_HOLD_SYNCED:-}" != "YES" ]; then
+    _XMASS_EXIT_HOLD_SYNCED=YES
     _XMASS_CUTOVER_RUN=NO
     _xmass_load_state
     _xmass_rotation_hold_sync
   fi
-  [ "$(tr -dc '0-9' 2> /dev/null < "${_XMASS_LOCK_FILE}")" = "$$" ] \
-    && rm -f "${_XMASS_LOCK_FILE}"
   return 0
 }
 
