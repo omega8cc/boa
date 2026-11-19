@@ -973,9 +973,9 @@
       satisfy the profile's older constraints. The profile does not enable
       Commerce, and a platform in use keeps its copy.
 
-    * New platforms on Drupal core 10.6.21 carry Symfony 6.4.50, and those
-      on 11.3.21 and 11.4.12 Symfony 7.4.23, with Symfony's security fixes
-      of 4 November; 11.3.21 and 11.4.12 also carry masterminds/html5
+    * New platforms on Drupal core 10.6.22 carry Symfony 6.4.50, and those
+      on 11.3.22 and 11.4.13 Symfony 7.4.23, with Symfony's security fixes
+      of 4 November; 11.3.22 and 11.4.13 also carry masterminds/html5
       2.12.0, which Drupal 10.6 keeps at 2.10. Existing platforms keep
       their sites.
 
@@ -995,7 +995,7 @@
       2.3.2, and new OpenFed and Open Social platforms Smart Trim 2.2.2, with
       its security fix of 11 November. Existing platforms keep their sites.
 
-    * New OpenCulturas platforms are built on 3.1.8 and carry Real Name
+    * New OpenCulturas platforms are built on 3.1.9 and carry Real Name
       2.0.1, with its security fix of 11 November. Existing platforms keep
       their sites.
 
@@ -1011,6 +1011,25 @@
 
     * New EzContent platforms carry Paragraphs Edit 3.0.2, with its security
       fix of 11 November. Existing platforms keep their sites.
+
+    * New platforms on Drupal core 10.6.22, 11.3.22 and 11.4.13, and the
+      distributions built on those cores (farmOS on 4.0.11, OpenCulturas
+      on 3.1.9), carry Drupal's core security fixes of 18 November
+      (SA-CORE-2026-017, SA-CORE-2026-018). The installer path the first
+      names was already closed on every BOA site and control panel: Nginx
+      answers 404 to install.php, and settings.php is out of the web
+      server's reach. Existing platforms keep their sites.
+
+    * Grav sites get the API plugin 1.1.21 from BOA's Grav 2.2.31
+      bundle, which closes GHSA-fqv4-9pm4-v2q2: up to 1.1.20 the
+      plugin's password reset could mail a link that leads away from
+      the site. A box stages the bundle at its next Octopus pass, read
+      from the mirror, and each site then takes it with its Upgrade Grav
+      task, which refreshes the bundled plugins. A Grav site sends no
+      reset mail until its owner sets a From address and an SMTP relay,
+      and a site on the login and admin IP lock keeps /api closed to
+      other addresses. The version a box falls back to when it cannot
+      read the mirror's stamp is 2.2.31 too.
 
     * The AppArmor profiles of wkhtmltopdf and wkhtmltoimage also cover the
       copies BOA keeps in /usr/bin, the path sites are given: started by that
