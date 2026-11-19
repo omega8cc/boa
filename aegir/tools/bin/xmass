@@ -2017,9 +2017,19 @@ _xmass_rotation_hold_want() {
   [ -e /root/.proxy.cnf ] && return 1
   case "${_XMASS_PHASE}" in
     cutover|rename-failed) return 0 ;;
-    init) [ "${_XMASS_INIT_RUN}" = "YES" ] ;;
+    init)
+      # this run's own init, or one another process runs now
+      [ "${_XMASS_INIT_RUN}" = "YES" ] && return 0
+      case " $(_xmass_verb_owner_cmd) " in
+        *xmass\ init\ *) return 0 ;;
+      esac
+      return 1
+    ;;
     syncing)
       [ "${_XMASS_CUTOVER_RUN}" = "YES" ] && return 0
+      case " $(_xmass_verb_owner_cmd) " in
+        *xmass\ cutover\ *--live*) return 0 ;;
+      esac
       [ -e "${_XMASS_AUTOSYNC_CNF}" ] && return 1
       [ "${_XMASS_PROXY_MODE}" = "ha-switch" ] && return 1
       return 0
@@ -2064,19 +2074,21 @@ _xmass_rotation_hold_sync() {
   return 0
 }
 
-# Another xmass verb running now (the verb lock's owner alive and an xmass
-# run), for the verbs that take no lock: the hold is that run's to set at
-# its own state writes, and a sync from here would read the phase without
-# its run flag.
-_xmass_verb_in_flight() {
+# The command line of another xmass run holding the verb lock now (its
+# owner alive, root's, an xmass run, as _take_verb_lock tells one), else
+# nothing. The verbs that take no lock (autosync arm and --off) read through
+# it the init or the live cutover another process runs, whose run flags
+# they cannot see.
+_xmass_verb_owner_cmd() {
   local _o _c
   _o=$(tr -dc '0-9' 2> /dev/null < "${_XMASS_LOCK_FILE}" | head -c 12)
-  [ -n "${_o}" ] && [ "${_o}" != "$$" ] && [ -d "/proc/${_o}" ] || return 1
+  [ -n "${_o}" ] && [ "${_o}" != "$$" ] && [ -d "/proc/${_o}" ] || return 0
+  [ "$(awk '/^Uid:/ { print $2 " " $3; exit }' "/proc/${_o}/status" 2> /dev/null)" = "0 0" ] || return 0
   _c=$(tr '\0' ' ' 2> /dev/null < "/proc/${_o}/cmdline")
   case "${_c}" in
-    */xmass\ *|*/xmass|*\ xmass\ *) return 0 ;;
+    */xmass\ *|*\ xmass\ *) printf '%s' "${_c}" ;;
   esac
-  return 1
+  return 0
 }
 
 # Whether the standby holds this box's root pair (md5 of both files alike).
@@ -9946,7 +9958,7 @@ _xmass_write_state() {   # 1 tgt 2 status 3 mode
   mkdir -p /var/log/boa 2>/dev/null
   { echo "_LAST_MODE=$3"; echo "_LAST_STATUS=$2"; echo "_LAST_TS=$(date '+%Y-%m-%d %H:%M:%S')"; } > "${_sf}"
 }
-_xmass_require_clean_dry() {   # 1 tgt -- exit unless last run was a CLEAN DRY
+_xmass_require_clean_dry() {   # 1 tgt [2 check] -- exit unless last run was a CLEAN DRY; check: keep the token
   local _sf _m _s; _sf="$(_xmass_state_file "$1")"
   if [ ! -f "${_sf}" ]; then
     _die "--live requires a prior CLEAN dry run for ${1}; run without --live first"
@@ -9956,6 +9968,7 @@ _xmass_require_clean_dry() {   # 1 tgt -- exit unless last run was a CLEAN DRY
   if [ "${_m}" != "DRY" ] || [ "${_s}" != "CLEAN" ]; then
     _die "--live needs the last run for ${1} to be a CLEAN dry run (got mode=${_m:-none} status=${_s:-none}); re-run the dry run and clear any DENY first"
   fi
+  [ "${2:-}" = "check" ] && return 0
   _xmass_write_state "$1" "LIVE" "LIVE"   # consume the clean-dry token
 }
 _xmass_finalize_dry() {   # 1 tgt
@@ -21934,9 +21947,9 @@ _xmass_autosync_arm() {
   chmod 600 "${_XMASS_AUTOSYNC_CNF}"
   rm -f "${_XMASS_AUTOSYNC_FAILCOUNT}"
   # A standing mirror's active keeps rotating root's password: the carry
-  # brings each new pair to the standby. A verb running now sets the hold
-  # at its own next state write.
-  _xmass_verb_in_flight || _xmass_rotation_hold_sync
+  # brings each new pair to the standby (an init or a live cutover running
+  # now keeps its hold).
+  _xmass_rotation_hold_sync
   _info "======================================================"
   _info "  xmass autosync ARMED"
   _info "  Target   : ${_tgt}"
@@ -21955,10 +21968,9 @@ _xmass_autosync_off() {
     _xmass_autosync_disarm "operator --off"
     _info "The mirror keeps replicating its database; file freshness is"
     _info "manual 'xmass sync ... --live' again."
-    # Without the cadence the pair reads as a move again, unless ha-switch;
-    # a verb running now sets the hold at its own next state write.
+    # Without the cadence the pair reads as a move again, unless ha-switch.
     _xmass_load_state
-    _xmass_verb_in_flight || _xmass_rotation_hold_sync
+    _xmass_rotation_hold_sync
   else
     _info "autosync was not armed on this box"
   fi
@@ -23224,7 +23236,9 @@ _xmass_cmd_cutover() {
   # read the replica, after a pass on the target that restarts its MySQL,
   # until both threads run and the standby holds this box's pair. Stop here,
   # before the clean-dry token is used and before anything changes, when
-  # two minutes of that do not get there.
+  # two minutes of that do not get there. A missing clean dry run is said
+  # first, before any wait.
+  _xmass_require_clean_dry "${_tgt}" check
   _XMASS_CUTOVER_RUN=YES
   _xmass_rotation_hold_sync
   _xmass_wait_target_silent "${_tgt}" "cutover reads the standby's replica" die locks
