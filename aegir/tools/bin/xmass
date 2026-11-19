@@ -17405,6 +17405,298 @@ _xmass_assert_same_release() {
   _die "${_why}"
 }
 
+# The target's half of _xmass_sec_floor_gate, run there with a root prefix
+# ($1, empty on a box) and this box's tree ($2, used when the target's own
+# cannot be read). The floor is the one the target's agent enforces: the
+# _NGINX_SEC_FLOOR and _PHP_SEC_FLOOR lines of the BOA.sh.txt its clear.sh
+# fetches for its tree, from files.boa.io or else from a mirror of its list,
+# then its /root/.barracuda.cnf, which the agent sources after them.
+# Its Nginx and each PHP version the floor lists that is installed there are
+# compared by the agent's own rules: sort -V for Nginx; for PHP, the
+# version's own binary's version_compare, and a "<release>+<id>" entry needs
+# the id in /opt/phpNN/lib/boa-sec-patches. A binary that gives no version,
+# or no /usr/sbin/nginx while an Nginx floor is set, is said, not skipped as
+# the agent skips it: a cutover does not pass what it cannot read. Lines: TREE, then FLOOR <where> <nginx floor> <php floor>
+# ("-" for one not set), FLOORODD <where> when a value is not one the agent
+# could use, or NOFLOOR; NGINX and PHPV with the versions read, one BELOW
+# <what runs> <its floor> or UNREAD <what> each, STATE <file> <line> for
+# each floor state the agent keeps, LOG <file> <last line> for its two logs.
+# DONE closes it.
+_xmass_sec_floor_sh() {
+  cat <<'EOS'
+_r="${1:-}"
+_tr="$(sed -nE 's/^export _tRee=(dev|lts|pro)$/\1/p' "${_r}/var/xdrago/clear.sh" 2> /dev/null | head -n 1)"
+[ -n "${_tr}" ] || _tr="${2:-}"
+printf 'TREE\t%s\n' "${_tr}"
+_b="$(mktemp 2> /dev/null)" || _b=""
+_src=""
+_why="fetch"
+if [ -z "${_b}" ]; then
+  _why="write"
+elif [ -n "${_tr}" ]; then
+  _ls="$(ls -t "${_r}"/var/backups/boa-mirrors-*.txt 2> /dev/null | head -n 1)"
+  for _h in files.boa.io $(grep -xE '[A-Za-z0-9.-]+' "${_ls:-/dev/null}" 2> /dev/null | grep -vx 'files.boa.io'); do
+    curl -sfL --connect-timeout 10 --max-time 60 -A iCab -o "${_b}" \
+      "https://${_h}/versions/${_tr}/boa/BOA.sh.txt" 2> /dev/null
+    _c=$?
+    if [ "${_c}" -eq 0 ] && grep -q '^export _tRee=' "${_b}" 2> /dev/null; then
+      _src="${_h}"
+      break
+    fi
+    ### 23: the file could not be written here, not fetched
+    [ "${_c}" -eq 23 ] && _why="write"
+  done
+fi
+_nf=""
+_pf=""
+if [ -z "${_src}" ]; then
+  printf 'NOFLOOR\t%s\n' "${_why}"
+else
+  _nf="$(sed -n 's/^_NGINX_SEC_FLOOR=//p' "${_b}" | tail -n 1)"
+  _pf="$(sed -n 's/^_PHP_SEC_FLOOR=//p' "${_b}" | tail -n 1)"
+  ### A file that uses a floor it does not assign in this plain form sets
+  ### it some other way: read as a value that cannot be read, never as none.
+  _miss=""
+  for _v in _NGINX_SEC_FLOOR _PHP_SEC_FLOOR; do
+    grep -q "^${_v}=" "${_b}" || ! grep -qE "${_v}([^A-Za-z0-9_]|$)" "${_b}" || _miss=YES
+  done
+  _nf="${_nf#\"}"
+  _nf="${_nf%\"}"
+  _pf="${_pf#\"}"
+  _pf="${_pf%\"}"
+  _odd=""
+  case "${_miss}|${_nf}|${_pf}" in
+    YES\|*|*\|*[!0-9.]*\|*|*\|*\|*[!0-9A-Za-z.+\ -]*) _odd=tree ;;
+  esac
+  ### The agent sources /root/.barracuda.cnf after its own assignments, so a
+  ### value set there is the one it enforces: read the pair the same way. A
+  ### file that stops the read (exit, set -e or -u) leaves no end mark.
+  _cnf=""
+  if [ -z "${_odd}" ] && [ -f "${_r}/root/.barracuda.cnf" ]; then
+    _o="$(_NGINX_SEC_FLOOR="${_nf}"; _PHP_SEC_FLOOR="${_pf}"
+      . "${_r}/root/.barracuda.cnf" > /dev/null 2>&1 < /dev/null
+      printf '%s|%s|.' "${_NGINX_SEC_FLOOR}" "${_PHP_SEC_FLOOR}")"
+    case "${_o}" in
+      *'|.')
+        _o="${_o%|.}"
+        [ "${_o}" = "${_nf}|${_pf}" ] || _cnf=" and /root/.barracuda.cnf"
+        _nf="${_o%%|*}"
+        _pf="${_o#*|}"
+        case "|${_nf}|${_pf}" in
+          *\|*[!0-9.]*\|*|*\|*\|*[!0-9A-Za-z.+\ -]*) _odd=cnf ;;
+        esac
+        ;;
+      *)
+        _cnf=" and /root/.barracuda.cnf"
+        _odd=cnf
+        ;;
+    esac
+  fi
+  if [ -n "${_odd}" ]; then
+    printf 'FLOORODD\t%s%s\t%s\n' "${_src}" "${_cnf}" "${_odd}"
+    _nf=""
+    _pf=""
+  else
+    printf 'FLOOR\t%s%s\t%s\t%s\n' "${_src}" "${_cnf}" "${_nf:--}" "${_pf:--}"
+  fi
+fi
+[ -n "${_b}" ] && rm -f "${_b}"
+_ngx=""
+[ -x "${_r}/usr/sbin/nginx" ] \
+  && _ngx="$("${_r}/usr/sbin/nginx" -v 2>&1 | sed -n 's#^nginx version: nginx/\([0-9][0-9.]*\).*#\1#p' | head -n 1)"
+printf 'NGINX\t%s\n' "${_ngx:--}"
+if [ -n "${_nf}" ] && [ -z "${_ngx}" ]; then
+  if [ -x "${_r}/usr/sbin/nginx" ]; then
+    printf 'UNREAD\tNginx (/usr/sbin/nginx -v gives no version)\n'
+  else
+    printf 'UNREAD\tNginx (no /usr/sbin/nginx)\n'
+  fi
+elif [ -n "${_nf}" ] && [ "${_ngx}" != "${_nf}" ] \
+  && [ "$(printf '%s\n%s\n' "${_ngx}" "${_nf}" | sort -V | head -n 1)" = "${_ngx}" ]; then
+  printf 'BELOW\tNginx %s\tNginx %s\n' "${_ngx}" "${_nf}"
+fi
+_seen=" "
+for _fLr in ${_pf}; do
+  _fV="${_fLr%%+*}"
+  _fId=""
+  [ "${_fV}" = "${_fLr}" ] || _fId="${_fLr#*+}"
+  _e="$(echo "${_fV}" | cut -d. -f1-2 | tr -d .)"
+  _p="${_r}/opt/php${_e}/bin/php"
+  [ -x "${_p}" ] || continue
+  _iV="$("${_p}" -n -r 'echo PHP_VERSION;' 2> /dev/null)"
+  case "${_iV}" in
+    ''|*[!0-9A-Za-z.]*)
+      case "${_seen}" in
+        *" ${_e}:? "*) : ;;
+        *) _seen="${_seen}${_e}:? " && printf 'UNREAD\tPHP %s (/opt/php%s/bin/php gives no version)\n' "${_fV%.*}" "${_e}" ;;
+      esac
+      continue
+      ;;
+  esac
+  case "${_seen}" in
+    *" ${_iV} "*) : ;;
+    *) _seen="${_seen}${_iV} " && printf 'PHPV\t%s\n' "${_iV}" ;;
+  esac
+  if "${_p}" -n -r 'exit(version_compare($argv[1], $argv[2], "<") ? 0 : 1);' "${_iV}" "${_fV}" 2> /dev/null; then
+    printf 'BELOW\tPHP %s\tPHP %s\n' "${_iV}" "${_fLr}"
+  elif [ -n "${_fId}" ] && [ "${_iV}" = "${_fV}" ] \
+    && ! grep -qx -- "${_fId}" "${_r}/opt/php${_e}/lib/boa-sec-patches" 2> /dev/null; then
+    printf 'BELOW\tPHP %s without %s\tPHP %s\n' "${_iV}" "${_fId}" "${_fLr}"
+  fi
+done
+for _f in "${_r}"/etc/boa/control/sec-floor.*.txt "${_r}"/etc/boa/control/php-sec-floor.*.txt; do
+  [ -f "${_f}" ] || continue
+  printf 'STATE\t%s\t%s\n' "${_f#"${_r}"}" "$(head -n 1 "${_f}" 2> /dev/null | tr -d '\t\r' | cut -c1-200)"
+done
+for _f in sec-floor.log barracuda-sec-floor.log; do
+  [ -s "${_r}/var/log/boa/${_f}" ] || continue
+  printf 'LOG\t/var/log/boa/%s\t%s\n' "${_f}" "$(tail -n 1 "${_r}/var/log/boa/${_f}" 2> /dev/null | tr -d '\t\r' | cut -c1-300)"
+done
+echo DONE
+EOS
+}
+
+### A target below BOA's security floor must not take the sites: a box
+### whose forced pass failed (a refused MySQL root on a standby, a full disk)
+### or that has not had it yet would serve them on a release with known
+### remote holes, and the cutover would make it production before its
+### agent tried again. Read on the target itself, from the floor its own
+### agent enforces (_xmass_sec_floor_sh), each time it is called: the DRY
+### plan and the last free moment of --live. A planned switch to a standing
+### mirror is a cutover and is gated the same way. A version the target
+### cannot report, a floor value that cannot be read, no mirror serving the
+### tree's BOA.sh.txt to the target (the agent's own state there is then
+### named) and a target that cannot be asked all refuse rather than pass
+### blind, each with its own fix. 'die' (the default) refuses, 'deny'
+### reports and marks the DRY run NOT CLEAN. Putting it right stays the
+### operator's: the pass on the target, then the DRY again.
+_xmass_sec_floor_gate() {
+  local _t="$1" _how="${2:-die}"
+  local _out _k _a _b _c _tr="" _host="" _nf="" _pf="" _ngx="" _php="" _below="" _st=""
+  local _lg="" _why="" _due _tries _odd="" _nofl="" _fix="" _unr="" _when _flg="" _stf=""
+  _out=$(_xmass_sec_floor_sh \
+    | ssh -o BatchMode=yes -o ConnectTimeout=15 root@"${_t}" "bash -s -- '' ${_tRee}" 2>/dev/null)
+  if ! printf '%s\n' "${_out}" | grep -qx 'DONE'; then
+    _why="cannot read the security floor's facts on target ${_t} over ssh -- refusing to move the sites blind"
+    _fix="let root on this box log in to ${_t} again"
+  else
+    while IFS=$'\t' read -r _k _a _b _c; do
+      case "${_k}" in
+        TREE) _tr="${_a}" ;;
+        FLOOR)
+          _host="${_a}"
+          _nf="${_b}"
+          _pf="${_c}"
+          [ "${_nf}" = "-" ] && _nf=""
+          [ "${_pf}" = "-" ] && _pf=""
+          ;;
+        FLOORODD) _host="${_a}"; _odd="${_b:-tree}" ;;
+        NOFLOOR) _nofl="${_a:-fetch}" ;;
+        NGINX) _ngx="${_a}" ;;
+        PHPV) _php="${_php} ${_a}" ;;
+        BELOW) _below="${_below}, ${_a} (floor ${_b})" ;;
+        UNREAD) _unr="${_unr}, ${_a}" ;;
+        STATE)
+          ### The agent's own line: the next allowed start, the passes it
+          ### started, the set of versions they were for. After the third it
+          ### starts none for that set and, once it reads the pass as failed,
+          ### writes 4 and mails; a different set counts afresh.
+          _stf="${_stf}, ${_a}"
+          _due="${_b%% *}"
+          _tries="${_b#* }"
+          _tries="${_tries%% *}"
+          if [[ "${_due}" =~ ^[0-9]+$ ]] && [[ "${_tries}" =~ ^[0-9]+$ ]]; then
+            _when="$(date -d "@${_due}" '+%Y-%m-%d %H:%M %Z' 2>/dev/null)"
+            if [ "${_tries}" -ge 4 ]; then
+              _st="${_st}; ${_a}: three forced passes left it below, its agent starts no more for these versions"
+            elif [ "${_tries}" -eq 3 ]; then
+              _st="${_st}; ${_a}: three forced passes started, its agent starts no more for these versions"
+            elif [ "${_tries}" -eq 0 ]; then
+              _st="${_st}; ${_a}: no forced pass started yet, the first not before ${_when}"
+            else
+              _st="${_st}; ${_a}: ${_tries} forced pass(es) started, the next not before ${_when}"
+            fi
+          else
+            _st="${_st}; ${_a}: ${_b}"
+          fi
+          ;;
+        LOG)
+          _lg="${_lg}; ${_a}: ${_b}"
+          [ "${_a}" = "/var/log/boa/sec-floor.log" ] && _flg="${_b}"
+          ;;
+      esac
+    done <<< "${_out}"
+    _below="${_below#, }"
+    _unr="${_unr#, }"
+    _st="${_st#; }"
+    _lg="${_lg#; }"
+    if [ -n "${_below}" ] || [ -n "${_unr}" ]; then
+      _a="the ${_tr:-?} tree's BOA.sh.txt sets"
+      case "${_host}" in
+        *" and /root/.barracuda.cnf") _a="the ${_tr:-?} tree's BOA.sh.txt and the target's /root/.barracuda.cnf set" ;;
+      esac
+      [ -n "${_below}" ] \
+        && _why="target ${_t} runs ${_below}: below the security floor ${_a} (read from ${_host%% and *})"
+      [ -n "${_unr}" ] \
+        && _why="${_why:+${_why}; }cannot read on target ${_t}: ${_unr} -- refusing to move the sites blind"
+      ### A floor the target's own tree does not pin yet, or whose source the
+      ### mirror lacks: its agent waits, and a pass now would install the
+      ### same build. Its floor log's own last line says so.
+      ### A major OS upgrade staged there: the pass would run it unattended,
+      ### so the agent holds it, and so must the operator.
+      case "${_flg}" in
+        *"waiting for the "*" tree to "*|*"waiting for nginx-"*|*"waiting for php-"*)
+          _fix="wait until the target's agent no longer waits (its floor log line above says for what), then run 'barracuda up-${_tr:-<tree>} system' on ${_t} (in screen)"
+          ;;
+        *"is staged in /root/.barracuda.cnf"*)
+          _fix="run the major OS upgrade staged in ${_t}'s /root/.barracuda.cnf (its floor log line above names it), or remove that line, then run 'barracuda up-${_tr:-<tree>} system' there (in screen)"
+          ;;
+      esac
+    elif [ "${_odd}" = "cnf" ]; then
+      _why="the security floor read on target ${_t} from ${_host} holds a value this check cannot read, or that file stops when read -- refusing to move the sites blind"
+      _fix="let ${_t}'s /root/.barracuda.cnf read to its end, its floor lines (if any) plain release numbers or removed so the tree's values count"
+    elif [ -n "${_odd}" ]; then
+      _why="the ${_tr:-?} tree's floor read from ${_host} holds a security floor value this check cannot read -- refusing to move the sites blind"
+      _fix="wait for a ${_tr:-?} tree whose floor lines read as release numbers again"
+    elif [ "${_nofl}" = "write" ]; then
+      _why="no file could be written on target ${_t} (a full disk?), so its security floor cannot be read -- refusing to move the sites blind"
+      _fix="free space on ${_t}"
+    elif [ -n "${_nofl}" ]; then
+      ### The agent fetches the same file, so it cannot run there either
+      ### and its state stays as it is: reaching a mirror comes first.
+      if [ -n "${_st}" ]; then
+        _why="target ${_t} is below the security floor by its own agent's state (no mirror served the ${_tr:-?} tree's BOA.sh.txt to it)"
+      else
+        _why="no mirror served the ${_tr:-?} tree's BOA.sh.txt to target ${_t}, so its security floor cannot be read -- refusing to move the sites blind"
+      fi
+      _fix="let ${_t} reach files.boa.io or a mirror of its /var/backups/boa-mirrors-*.txt again (its agent fetches the same file)"
+    elif [ -z "${_nf}${_pf}" ]; then
+      _info "  security floor: none set for target ${_t} (read from ${_host})"
+      return 0
+    else
+      _a=""
+      [ -n "${_nf}" ] && _a="Nginx ${_ngx}"
+      [ -n "${_php}" ] && _a="${_a:+${_a}; }PHP${_php}"
+      _info "  security floor: target ${_t} is at or above it (${_a:-no listed PHP version installed there})"
+      [ -n "${_stf}" ] && _info "  security floor: a state its agent wrote before stands there (${_stf#, }); its next run removes it"
+      return 0
+    fi
+  fi
+  [ -n "${_fix}" ] \
+    || _fix="run 'barracuda up-${_tr:-<tree>} system' on ${_t} (in screen) and read its report in /var/backups/reports/up/barracuda/"
+  if [ "${_how}" = "deny" ]; then
+    _alrt "DENY: ${_why}"
+    [ -n "${_st}" ] && _alrt "DENY: the floor's state there: ${_st}"
+    [ -n "${_lg}" ] && _alrt "DENY: last lines there: ${_lg}"
+    _alrt "DENY: fix: ${_fix}, then re-run this DRY."
+    _XMASS_NOT_CLEAN=YES
+    return 1
+  fi
+  [ -n "${_st}" ] && _why="${_why}. The state of the floor there: ${_st}"
+  [ -n "${_lg}" ] && _why="${_why}. Last lines there: ${_lg}"
+  _die "${_why}. To go on: ${_fix}, then the DRY and this step again; nothing was changed."
+}
+
 ### An account whose aegir2boa db-import is unfinished here (cut off, a
 ### revert of it cut off, or its dispatcher still held) has a half-made
 ### panel: a cutover would freeze this box and promote the target, then stop
@@ -23724,6 +24016,7 @@ _xmass_cmd_cutover() {
     # pinned PHP version discovered inside the cutover window is the most
     # expensive possible discovery -- surface both in the plan.
     _xmass_assert_same_release "${_tgt}" deny || true
+    _xmass_sec_floor_gate "${_tgt}" deny || true
     _xmass_verify_target_accounts "${_tgt}" deny || true
     _xmass_php_coverage_gate "${_tgt}" deny || true
     _xmass_solr_coverage_gate "${_tgt}" deny || true
@@ -23811,6 +24104,9 @@ _xmass_cmd_cutover() {
   # miss that takes down EVERY migrated site at once, so it is re-checked in
   # the last free moment before the source is touched.
   _xmass_assert_same_release "${_tgt}"
+  # And so can the target's security floor: a forced pass there that failed
+  # leaves it below, and the cutover would make it production.
+  _xmass_sec_floor_gate "${_tgt}" die
   _xmass_verify_target_accounts "${_tgt}" die
   _xmass_php_coverage_gate "${_tgt}" die
   _xmass_solr_coverage_gate "${_tgt}" die

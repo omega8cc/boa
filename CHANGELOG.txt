@@ -1096,6 +1096,18 @@
       it changes anything. It found that out only at its lag wait, with the
       sites already on the 503 page.
 
+    * xmass cutover no longer moves the sites onto a target below BOA's
+      security floor. A target whose forced floor pass had failed still ran
+      the old Nginx, and the cutover, which compared only the BOA release,
+      made it production. The dry run now names such a target, its Nginx or
+      PHP build and the floor, as a blocking issue, and --live refuses it
+      before it changes anything. The floor is read on the target as its
+      own agent reads it, from the BOA.sh.txt it runs and then its
+      /root/.barracuda.cnf; a target whose floor or versions cannot be read
+      is refused too, never passed. A planned switch to a standing mirror
+      is a cutover and is checked the same way. To go on, run 'barracuda
+      up-<tree> system' on the target, then the dry run again.
+
     * A barracuda pass that switches system scripts from /bin/sh to dash
       (or bash) changes only that shell's name. It changed every /bin/sh
       in a matched file, so names that only start with it changed too:
