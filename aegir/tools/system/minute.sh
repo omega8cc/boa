@@ -219,6 +219,34 @@ _xmass_cred_check() {
 }
 _xmass_cred_check
 
+# The source of a move or a standing mirror writes a binary log for its
+# standby, and the nightly database backup writes its dumps on the same
+# disk: 'xmass binlog-guard' projects both against the disk every five
+# minutes and purges the oldest log the replicas have before it fills. The
+# rest of the fleet pays one file test; nothing on a standby or a proxy,
+# after a move's end, or with an xmass that lacks the verb. Its line a run
+# goes to the log here, so the run keeps no run log of its own
+# (_MIG_RUNLOG=none, as a caller that keeps the output says), and a run is
+# ended after 15 minutes: one that hung would hold the guard's own lock.
+_xmass_binlog_check() {
+  local _log="/var/log/boa/xmass.binlog.guard.log"
+  [ -e "/data/conf/xmass_state.cnf" ] || return 0
+  [ -e "/opt/local/bin/xmass" ] || return 0
+  [ -e "/root/.standby.cnf" ] && return 0
+  [ -e "/root/.proxy.cnf" ] && return 0
+  grep -q '^_XMASS_PHASE=complete' /data/conf/xmass_state.cnf 2> /dev/null && return 0
+  [ -n "$(find /var/log/boa/xmass.binlog.tried -mmin -5 ! -newermt now 2> /dev/null)" ] && return 0
+  grep -q '^  binlog-guard)' /opt/local/bin/xmass 2> /dev/null || return 0
+  touch /var/log/boa/xmass.binlog.tried 2> /dev/null
+  # One generation kept past 1 MiB: a line every five minutes is about
+  # three weeks.
+  if [ -n "$(find "${_log}" -size +1024k 2> /dev/null)" ]; then
+    mv -f "${_log}" "${_log}.1" 2> /dev/null
+  fi
+  _launch_checker "env _MIG_RUNLOG=none timeout -k 30 900 bash /opt/local/bin/xmass binlog-guard >> ${_log} 2>&1"
+}
+_xmass_binlog_check
+
 # Decide the fan-out cadence for this box. NORMAL runs 9 passes 6 s apart;
 # SLOW/CI run far fewer, wider-spaced passes (auto-healing watchdogs do not need
 # second granularity on a tiny or CI host). Both knobs are overridable from

@@ -4,6 +4,22 @@
 
 @=> New Features
 
+    * The source of a server move or a standing mirror now guards its disk
+      against its binary log and the night database dump. Every five
+      minutes xmass binlog-guard measures the log's rate, adds the dump's
+      uncompressed peak when the dumps land on the same filesystem, and
+      projects the next day; before that passes 88% it purges the oldest
+      binary log every replica has received, never a file the pair's
+      replica still needs, and mails the operator. It purges nothing
+      outside a standing pair, and nothing when the replica is away and
+      its status cannot be read. _XMASS_BINLOG_GUARD=NO keeps the warnings
+      and never purges; _XMASS_BINLOG_GUARD_PCT moves the line.
+
+    * The nightly database backup records its uncompressed peak, and on a
+      night that peak would take its filesystem past 95% it compresses
+      each database right after its dump instead of all at the end, and
+      says so in its incident log and mail.
+
     * Every box keeps a history of its CPU, memory, load and disks. BOA
       installed sysstat but left it switched off, so a box had no record to
       be sized from; the daily graceful.sh pass now switches it on

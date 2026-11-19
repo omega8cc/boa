@@ -6053,17 +6053,19 @@ _check_root() {
   # exactly when the mirror must not fall behind — the pass logs an ALRT and
   # the disk itself is the sibling monitors' business. carry-credentials too:
   # it reads two small files and writes two, and a standby refusing root is no
-  # better on a full source.
+  # better on a full source. binlog-guard exists for a filling disk.
   if [ -n "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ] \
     && [ "${_cmd}" != "reset-phase" ] && [ "${_cmd}" != "status" ] \
-    && [ "${_cmd}" != "autosync" ] && [ "${_cmd}" != "carry-credentials" ]; then
+    && [ "${_cmd}" != "autosync" ] && [ "${_cmd}" != "carry-credentials" ] \
+    && [ "${_cmd}" != "binlog-guard" ]; then
     _die "Disk usage at ${_DF_TEST}% — must be below 90% to proceed"
   fi
   # A filesystem out of inodes is as full as one out of space, whatever
   # df -h shows; the same verbs are exempt for the same reasons.
   if [ -n "${_DI_TEST}" ] && [ "${_DI_TEST}" -gt 90 ] \
     && [ "${_cmd}" != "reset-phase" ] && [ "${_cmd}" != "status" ] \
-    && [ "${_cmd}" != "autosync" ] && [ "${_cmd}" != "carry-credentials" ]; then
+    && [ "${_cmd}" != "autosync" ] && [ "${_cmd}" != "carry-credentials" ] \
+    && [ "${_cmd}" != "binlog-guard" ]; then
     _die "Inode usage at ${_DI_TEST}% — must be below 90% to proceed (see df -i /)"
   fi
   # A test, not ||: tr exits 0 on an empty /etc/hostname
@@ -6697,6 +6699,599 @@ _xmass_binlog_plan() {
     _XM_BINLOG_DAYS_TGT="${_nt}"
   fi
   return 0
+}
+
+###-------------BINARY LOG GUARD---------###
+
+# init plans the binary log once, from one day's rate, and a source keeps
+# writing it for as long as its move or its mirror stands. A client's bulk
+# job can triple that rate within a day, and the nightly database backup
+# (mysql_backup.sh) writes its dumps uncompressed onto the same root before
+# it compresses them: the two together once filled a source's root, and
+# MySQL then held every write of every site until space was freed by hand.
+# So minute.sh runs this guard on a source every five minutes while the
+# state names a pair (never on a standby). It measures the log's rate from
+# its own samples (the highest over the last hour, six hours and day),
+# counts the night dump's peak when the dumps land on the log's filesystem
+# (the largest mysql_backup.sh recorded in the last eight nights, or the
+# data's size as information_schema reads it until one is recorded), and
+# projects that filesystem over the next 24 hours with the hours MySQL keeps
+# the log, the whole set planned for even where mysql_backup.sh would
+# compress each database as it goes. Every read is bounded in time. Past the
+# line (88% by default, under the 90% where BOA's
+# runners, its backups and this tool stop), it holds the log to the longest
+# window that keeps the projection under it, by purging the oldest files, at
+# phase syncing only and never a file a replica still needs: MySQL never
+# purges the file a connected replica reads, nor any after it; a replica
+# whose own status can be read over ssh keeps everything from the file its
+# applier is in; the pair's replica, not connected and not readable, keeps
+# everything, and the guard says so. MySQL's own expiry stays as init set
+# it, so the hold ends by itself once the projection fits again, and a
+# guard that does not run leaves the box as it was. Each purge, and each
+# projection past the line, is mailed to the operator at most once an hour
+# (an alert after a purge mail at once), with the visible copy xoct's
+# notices carry on the vendor's own hosted servers. Never the binary log or
+# GTID off.
+#   _XMASS_BINLOG_GUARD=NO          projects and mails, never purges
+#   _XMASS_BINLOG_GUARD_PCT=<60-89> the line, in percent of the filesystem
+_XMASS_BLG_SAMPLES="/var/log/boa/xmass.binlog.samples"
+_XMASS_BLG_MAILED="/var/log/boa/xmass.binlog.mailed"
+_XMASS_BLG_DUMPEST="/var/log/boa/xmass.binlog.dumpest"
+_XMASS_BLG_PID="/run/xmass.binlog.guard.pid"
+# written by mysql_backup.sh: "<epoch> <K>" a night, the uncompressed peak
+_XMASS_DUMP_PEAK_FILE="/etc/boa/control/mysql-backup-peak.cnf"
+# xoct's _XOCT_HOSTED_CC, the same address and the same test
+_XMASS_HOSTED_CC="admin@omega8.cc"
+
+# Bounded: a guard that hangs on a read holds its pid file, and every later
+# run would stand down silently.
+_xmass_blg_q() {
+  timeout 60 mysql --defaults-file=/root/.my.cnf --connect-timeout=5 -sNe "$1" 2> /dev/null
+}
+
+# Bytes as G with one decimal.
+_xmass_blg_g() {
+  awk -v b="$1" 'BEGIN { printf "%.1f", b / 1073741824 }'
+}
+
+# The projection, from lines on stdin (bytes and epoch seconds):
+#   NOW <t>  FS <size> <used>  LINE <pct>  RET <hours MySQL keeps, 0 none>
+#   MINH <hours>  DUMP <peak> <on disk now>  DAY <bytes a day init planned>
+#   F <index> <name> <size> <mtime>   each file of the log, oldest first
+#   S <t> <index> <position>          the guard's earlier samples
+# Prints RATE <bytes an hour> <window>, LOG <bytes>, NOW_PCT, PEAK_R <bytes>
+# <pct> at the hours MySQL keeps, KEEP <hours> (the longest that keeps the
+# worst point under the line, or the floor), PEAK_K <bytes> <pct> at KEEP,
+# FIT YES|NO, HOLD YES|NO (KEEP under the hours MySQL keeps), and PURGE
+# <the first file kept> <bytes before it> <its index>, "-" when none.
+_xmass_blg_project() {
+  awk '
+    function peak(h,   k, t, cut, ex, i, nw, u, m) {
+      m = 0
+      for (k = 0; k <= 96; k++) {
+        t = now + k * 900
+        cut = t - h * 3600
+        ex = 0
+        # now, every file MySQL has not expired yet is on the disk; only
+        # a window the guard holds purges at once
+        if (k == 0 && h >= reff) ex = logb
+        else for (i = 1; i <= n; i++) if (i == n || mt[i] > cut) ex += sz[i]
+        nw = rate * ((k * 900 < h * 3600) ? k * 900 : h * 3600) / 3600
+        u = other + ex + nw + dp
+        if (u > m) m = u
+      }
+      return m
+    }
+    # the longest window whose worst point stays under the line, or the floor
+    function solve(   lo, hi, mid) {
+      pr = peak(reff)
+      if (pr <= line) keep = reff
+      else if (peak(minh) > line) keep = minh
+      else {
+        lo = minh; hi = reff
+        while (hi - lo > 1) { mid = int((lo + hi) / 2); if (peak(mid) <= line) lo = mid; else hi = mid }
+        keep = lo
+      }
+      pk = (keep == reff) ? pr : peak(keep)
+    }
+    $1 == "NOW" { now = $2 }
+    $1 == "FS" { fs = $2; used = $3 }
+    $1 == "LINE" { pct = $2 }
+    $1 == "RET" { ret = $2 }
+    $1 == "MINH" { minh = $2 }
+    $1 == "DUMP" { dpk = $2; ddisk = $3 }
+    $1 == "DAY" { day = $2 }
+    $1 == "F" { n++; idx[n] = $2; nm[n] = $3; sz[n] = $4; mt[n] = $5; byidx[$2] = $4; logb += $4 }
+    $1 == "S" { ns++; se[ns] = $2; si[ns] = $3; sp[ns] = $4 }
+    END {
+      if (n == 0 || fs <= 0) { print "FIT NONE"; exit }
+      cur = idx[n]; curpos = sz[n]
+      # the rate: bytes written since the oldest sample inside each window
+      # (a quarter of it at least), the highest of the three; a sample whose
+      # file is gone no longer counts
+      split("3600 21600 86400", W, " "); split("1h 6h 24h", WN, " ")
+      best = -1; how = ""
+      for (w = 1; w <= 3; w++) {
+        ba = 0; bb = -1
+        for (s = 1; s <= ns; s++) {
+          age = now - se[s]
+          if (age < W[w] / 4 || age > W[w] * 1.1 || age <= ba) continue
+          if (!((si[s] "") in byidx)) continue
+          b = 0; ok = 1
+          for (j = si[s] + 0; j < cur + 0; j++) { if (!((j "") in byidx)) { ok = 0; break }; b += byidx[j ""] }
+          if (!ok) continue
+          b = b - sp[s] + curpos
+          if (b < 0) continue
+          ba = age; bb = b
+        }
+        if (bb >= 0 && ba > 0) { r = bb / ba * 3600; if (r > best) { best = r; how = WN[w] } }
+      }
+      # no sample yet: the files last written in the day, or what init planned
+      if (best < 0) {
+        b = 0
+        for (i = 1; i <= n; i++) if (mt[i] > now - 86400) b += sz[i]
+        best = b / 24; how = "files"
+        if (day > 0 && day / 24 > best) { best = day / 24; how = "plan" }
+      }
+      rate = best
+      other = used - logb - ddisk
+      dp = (dpk > ddisk) ? dpk : ddisk
+      line = fs * pct / 100
+      reff = (ret > 0) ? ret : 9600
+      if (minh > reff) minh = reff
+      solve()
+      cut = now - keep * 3600
+      first = n; freed = 0
+      for (i = 1; i < n; i++) { if (mt[i] > cut) { first = i; break }; freed += sz[i] }
+      printf "RATE %.0f %s\n", rate, how
+      printf "LOG %.0f\n", logb
+      printf "NOW_PCT %d\n", used * 100 / fs
+      printf "PEAK_R %.0f %d\n", pr, pr * 100 / fs
+      printf "KEEP %d\n", keep
+      printf "PEAK_K %.0f %d\n", pk, pk * 100 / fs
+      printf "FIT %s\n", (pk <= line) ? "YES" : "NO"
+      printf "HOLD %s\n", (keep < reff) ? "YES" : "NO"
+      if (keep < reff && first > 1) printf "PURGE %s %.0f %s\n", nm[first], freed, idx[first]
+      else print "PURGE - 0 0"
+    }'
+}
+
+# The night dump's peak on the log's filesystem $1 (its mount point), in
+# bytes: sets _BLG_DPK (the whole set uncompressed, to plan for),
+# _BLG_DPK1 (its largest database, which is about the peak of a night that
+# compresses each database as it goes), _BLG_DDISK (what tonight's set holds
+# uncompressed now, while a run writes or compresses it) and _BLG_DSAYS
+# (where the figures come from). $2 = the log's base name.
+_xmass_blg_dump() {
+  local _mnt="$1" _b="$2" _dir=/data/disk/arch/sql _m _p _p1 _e _t _d _w
+  _BLG_DPK=0
+  _BLG_DPK1=0
+  _BLG_DDISK=0
+  _BLG_DSAYS="none"
+  if [ ! -e /var/xdrago/mysql_backup.sh ]; then
+    _BLG_DSAYS="no nightly backup here"
+    return 0
+  fi
+  if [ -e /root/.pause_heavy_tasks_maint.cnf ]; then
+    _BLG_DSAYS="the nightly backup is paused"
+    return 0
+  fi
+  while [[ ! -d "${_dir}" && "${_dir}" == /?* ]]; do
+    _dir="${_dir%/*}"
+  done
+  [ -n "${_dir}" ] || _dir="/"
+  _m="$(df -Pk "${_dir}/" 2> /dev/null | awk 'NR==2 { print $NF }')"
+  if [ "${_m}" != "${_mnt}" ]; then
+    _BLG_DSAYS="the dumps go to ${_m:-another filesystem}"
+    return 0
+  fi
+  # "<epoch> <whole set K> <largest database K>" a night; a line from before
+  # the largest was written counts its whole set as the largest
+  read -r _p _p1 <<< "$(awk -v c="$(( $(date +%s) - 691200 ))" '$1 ~ /^[0-9]+$/ && $2 ~ /^[0-9]+$/ && $1 >= c {
+      if ($2 + 0 > m + 0) m = $2
+      l = ($3 ~ /^[0-9]+$/) ? $3 : $2
+      if (l + 0 > n + 0) n = l
+    } END { printf "%.0f %.0f\n", m, n }' "${_XMASS_DUMP_PEAK_FILE}" 2> /dev/null)"
+  if [[ "${_p}" =~ ^[1-9][0-9]*$ ]]; then
+    _BLG_DPK=$(( _p * 1024 ))
+    [[ "${_p1}" =~ ^[0-9]+$ ]] && [ "${_p1}" -le "${_p}" ] || _p1="${_p}"
+    _BLG_DPK1=$(( _p1 * 1024 ))
+    _BLG_DSAYS="the largest of the last eight nights"
+  else
+    # until a night is recorded: the data's size, or the database folder's
+    # when that cannot be read in time; tried at most every six hours, a try
+    # that read nothing included, since a read past its time keeps running
+    # on the server
+    _e="$(head -n 1 "${_XMASS_BLG_DUMPEST}" 2> /dev/null)"
+    read -r _t _p _w <<< "${_e}"
+    if ! [[ "${_t}" =~ ^[0-9]+$ ]] \
+      || [ $(( $(date +%s) - _t )) -ge 21600 ] || [ $(( $(date +%s) - _t )) -lt 0 ]; then
+      _w=data
+      _p="$(timeout 120 mysql --defaults-file=/root/.my.cnf --connect-timeout=5 -sNe "SELECT /*+ MAX_EXECUTION_TIME(110000) */ ROUND(IFNULL(SUM(DATA_LENGTH), 0) / 1024) FROM information_schema.TABLES WHERE TABLE_SCHEMA NOT IN ('mysql', 'information_schema', 'performance_schema', 'sys') AND TABLE_NAME NOT LIKE 'cache%'" 2> /dev/null)"
+      if ! [[ "${_p}" =~ ^[0-9]+$ ]]; then
+        _w=folder
+        _p="$(timeout 120 du -sk --exclude="${_b}.[0-9]*" --exclude="${_b}.index" /var/lib/mysql 2> /dev/null | awk '{ print $1 }')"
+        [[ "${_p}" =~ ^[0-9]+$ ]] || { _p=-; _w=none; }
+      fi
+      echo "$(date +%s) ${_p} ${_w}" > "${_XMASS_BLG_DUMPEST}" 2> /dev/null
+    fi
+    if [[ "${_p}" =~ ^[0-9]+$ ]]; then
+      _BLG_DPK=$(( _p * 1024 ))
+      _BLG_DPK1="${_BLG_DPK}"
+      case "${_w}" in
+        folder) _BLG_DSAYS="estimated from the database folder's size, no night recorded yet" ;;
+        *) _BLG_DSAYS="estimated from the data's size, no night recorded yet" ;;
+      esac
+    else
+      _BLG_DSAYS="no night recorded yet, and the data's size could not be read"
+    fi
+  fi
+  # tonight's set while its run writes it, or packs it after its run marker
+  # is gone: the newest set is the run's own when the run, its marker's pid
+  # or its own process as executed by cron or by hand, started before the
+  # time in the set's name (<host>-<yymmdd-HHMMSS>, taken after the run's
+  # waits); its uncompressed part is the dump's peak on the disk now,
+  # counted once. An older set's leftovers stay where they are, beside it.
+  _d="$(ls -1dt /data/disk/arch/sql/*/ 2> /dev/null | head -n 1)"
+  _d="${_d%/}"
+  [[ "${_d##*/}" =~ -([0-9]{2})([0-9]{2})([0-9]{2})-([0-9]{2})([0-9]{2})([0-9]{2})$ ]] || return 0
+  _e="$(date -d "20${BASH_REMATCH[1]}-${BASH_REMATCH[2]}-${BASH_REMATCH[3]} ${BASH_REMATCH[4]}:${BASH_REMATCH[5]}:${BASH_REMATCH[6]}" +%s 2> /dev/null)"
+  [[ "${_e}" =~ ^[0-9]+$ ]] || return 0
+  _t="$( { tr -dc '0-9' < /run/boa_sql_backup.pid; } 2> /dev/null )"
+  { [ -n "${_t}" ] && kill -0 "${_t}" 2> /dev/null; } || _t=""
+  _t="${_t} $(pgrep -u root -U root -f '^([^ ]*/)?bash /var/xdrago/mysql_backup\.sh( |$)' 2> /dev/null | tr '\n' ' ')"
+  _t="$(printf '%s\n' ${_t} | tr -cd '0-9\n' | sort -u | paste -sd, -)"
+  [ -n "${_t}" ] || return 0
+  # the run's start: its oldest process
+  _w="$(ps -o etimes= -p "${_t}" 2> /dev/null | tr -dc '0-9\n' | sort -n | tail -n 1)"
+  [[ "${_w}" =~ ^[0-9]+$ ]] || return 0
+  [ "${_e}" -ge $(( $(date +%s) - _w - 120 )) ] || return 0
+  _p="$(timeout 120 du -sk --exclude='*.tar.zst' --exclude='*.sql.gz' "${_d}" 2> /dev/null | awk '{ print $1 }')"
+  if [[ "${_p}" =~ ^[0-9]+$ ]]; then
+    _BLG_DDISK=$(( _p * 1024 ))
+    _BLG_DSAYS="${_BLG_DSAYS}; tonight's set holds $(( _p / 1048576 )) G uncompressed now"
+  fi
+  return 0
+}
+
+# The oldest file of this box's log the pair's replica $1 still needs, as
+# its index, read from the replica's own status over ssh: the file its
+# applier is in, or the one its receiver is in when that is older. Prints
+# nothing when the status cannot be read or names another log. $2 = the
+# log's base name (mysql-bin).
+_xmass_blg_replica_floor() {
+  local _t="$1" _b="$2" _o _f _i _m=""
+  _o="$(ssh -o ConnectTimeout=10 -o BatchMode=yes -o ServerAliveInterval=10 -o ServerAliveCountMax=3 root@"${_t}" "timeout 30 mysql --defaults-file=/root/.my.cnf --connect-timeout=5 -e 'SHOW REPLICA STATUS\G' 2> /dev/null || timeout 30 mysql --defaults-file=/root/.my.cnf --connect-timeout=5 -e 'SHOW SLAVE STATUS\G' 2> /dev/null" 2> /dev/null)"
+  for _f in $(printf '%s\n' "${_o}" | awk '$1 ~ /^(Relay_Master_Log_File|Relay_Source_Log_File|Master_Log_File|Source_Log_File):$/ { print $2 }'); do
+    case "${_f}" in
+      "${_b}".*) _i="${_f##*.}" ;;
+      *) return 0 ;;
+    esac
+    [[ "${_i}" =~ ^[0-9]+$ ]] || return 0
+    _i=$(( 10#${_i} ))
+    if [ -z "${_m}" ] || [ "${_i}" -lt "${_m}" ]; then
+      _m="${_i}"
+    fi
+  done
+  [ -n "${_m}" ] && echo "${_m}"
+  return 0
+}
+
+# The name of the log's file with the index $2 in the listing $1 ("<name>
+# <size>" lines), nothing when none has it.
+_xmass_blg_name() {
+  local _f _s _i
+  while read -r _f _s; do
+    _i="${_f##*.}"
+    [[ "${_i}" =~ ^[0-9]+$ ]] || continue
+    [ "$(( 10#${_i} ))" = "$2" ] && { echo "${_f}"; return 0; }
+  done <<< "$1"
+  return 0
+}
+
+# Mails the operator; the body on stdin. $1 = PURGED or ALERT, $2 = the
+# subject, $3 = the projected percent it names. A purge is mailed at most
+# once an hour; an alert at once after a purge mail, otherwise at most once
+# an hour, and the same alert again only after six hours or once its
+# projection has risen three points. To _MY_EMAIL; on a server named under
+# .aegir.cc a visible copy to _XMASS_HOSTED_CC, left out when _MY_EMAIL
+# holds it already.
+_xmass_blg_mail() {
+  local _kind="$1" _sub="$2" _pct="${3:-0}" _to="${_ADM_EMAIL}" _lt _lk _lp _a _h _w _cc=""
+  local -a _ccw=()
+  { read -r _lt _lk _lp < "${_XMASS_BLG_MAILED}"; } 2> /dev/null
+  [[ "${_pct}" =~ ^[0-9]+$ ]] || _pct=0
+  [[ "${_lp}" =~ ^[0-9]+$ ]] || _lp=0
+  if [[ "${_lt}" =~ ^[0-9]+$ ]] && [ $(( $(date +%s) - _lt )) -ge 0 ]; then
+    _a=$(( $(date +%s) - _lt ))
+    if { [ "${_a}" -lt 3300 ] && ! { [ "${_kind}" = "ALERT" ] && [ "${_lk}" = "PURGED" ]; }; } \
+      || { [ "${_kind}" = "ALERT" ] && [ "${_lk}" = "ALERT" ] && [ "${_a}" -lt 21600 ] && [ "${_pct}" -lt $(( _lp + 3 )) ]; }; then
+      cat > /dev/null
+      echo "binlog-guard: ${_lk} mailed at $(date -d "@${_lt}" '+%H:%M' 2> /dev/null), so no mail now"
+      return 0
+    fi
+  fi
+  if [ -z "${_to}" ] || ! [[ "$(s-nail -V 2>&1)" =~ "built for Linux" ]]; then
+    cat > /dev/null
+    echo "binlog-guard: no mail sent (no _MY_EMAIL or no s-nail here)"
+    return 0
+  fi
+  _h="${_hName//[[:space:]]/}"
+  _h="${_h,,}"
+  if [[ "${_h}" == ?*.aegir.cc ]]; then
+    _cc="${_XMASS_HOSTED_CC}"
+    for _w in ${_to}; do
+      [ "${_w,,}" = "${_cc,,}" ] && _cc=""
+    done
+    [ -n "${_cc}" ] && _ccw=(-c "${_cc}")
+  fi
+  {
+    cat
+    echo
+    echo "Every run's line: /var/log/boa/xmass.binlog.guard.log"
+    echo
+    echo "--"
+    echo "This email has been sent by the binary log guard of xmass"
+  } | s-nail "${_ccw[@]}" -s "${_sub}" ${_to}
+  echo "$(date +%s) ${_kind} ${_pct}" > "${_XMASS_BLG_MAILED}" 2> /dev/null
+  echo "binlog-guard: mailed ${_to}${_cc:+, copy to ${_cc}}: ${_sub}"
+  return 0
+}
+
+_xmass_cmd_binlog_guard() {
+  local _act=YES _why="" _p _now _lb _ldir _b _v _ret _files _mnt _sz _us _line _out _o _rc
+  local _rate _rhow _log _nowp _pr _prp _keep _pk _pkp _fit _hold _pto _pfreed _pidx
+  local _ci _cp _f _s _i _first _floor _conn=NO _name _after _say _sub _h _dh _kind
+  local -a _paths=()
+  local -A _mt=()
+  [ -e /root/.standby.cnf ] && exit 0
+  [ -e /root/.proxy.cnf ] && exit 0
+  _xmass_load_state
+  case "${_XMASS_PHASE}" in
+    syncing) : ;;
+    init|cutover|rename-failed)
+      _act=NO
+      _why="phase ${_XMASS_PHASE}: a move step is under way"
+    ;;
+    *) exit 0 ;;
+  esac
+  case "${_XMASS_BINLOG_GUARD:-YES}" in
+    [Nn][Oo]|[Oo][Ff][Ff])
+      _act=NO
+      _why="_XMASS_BINLOG_GUARD=NO"
+    ;;
+  esac
+  _line="${_XMASS_BINLOG_GUARD_PCT:-88}"
+  if ! [[ "${_line}" =~ ^[0-9]+$ ]] || [ "${_line}" -lt 60 ] || [ "${_line}" -gt 89 ]; then
+    _line=88
+  fi
+  # one guard at a time: a replica read over ssh can take minutes
+  _p="$( { tr -dc '0-9' < "${_XMASS_BLG_PID}"; } 2> /dev/null )"
+  if [ -n "${_p}" ] && [ "${_p}" != "$$" ] && kill -0 "${_p}" 2> /dev/null \
+    && { tr '\0' ' ' < "/proc/${_p}/cmdline"; } 2> /dev/null | grep -qE '(^|/| )xmass binlog-guard( |$)'; then
+    exit 0
+  fi
+  echo "$$" > "${_XMASS_BLG_PID}" 2> /dev/null
+  trap 'rm -f "${_XMASS_BLG_PID}"' EXIT
+  # an init or a cutover in flight decides the log itself
+  _p="$( { tr -dc '0-9' < "${_XMASS_LOCK_FILE}"; } 2> /dev/null | head -c 12)"
+  if [ -n "${_p}" ] && kill -0 "${_p}" 2> /dev/null; then
+    case " $( { tr '\0' ' ' < "/proc/${_p}/cmdline"; } 2> /dev/null ) " in
+      *" xmass init "*|*"/xmass init "*|*" xmass cutover "*|*"/xmass cutover "*)
+        _act=NO
+        _why="an xmass init or cutover runs (pid ${_p})"
+      ;;
+    esac
+  fi
+  [ "$(_xmass_blg_q 'SELECT @@log_bin')" = "1" ] || exit 0
+  _lb="$(_xmass_blg_q 'SELECT @@log_bin_basename')"
+  case "${_lb}" in
+    /?*/?*) : ;;
+    *)
+      echo "binlog-guard $(date '+%F %T'): the binary log's path could not be read; nothing judged"
+      exit 0
+    ;;
+  esac
+  _ldir="${_lb%/*}"
+  _b="${_lb##*/}"
+  _files="$(_xmass_blg_q 'SHOW BINARY LOGS' | awk '$2 ~ /^[0-9]+$/ { print $1, $2 }')"
+  if [ -z "${_files}" ]; then
+    echo "binlog-guard $(date '+%F %T'): no binary log listed; nothing judged"
+    exit 0
+  fi
+  _v="$(_xmass_blg_q "SHOW GLOBAL VARIABLES WHERE Variable_name IN ('expire_logs_days','binlog_expire_logs_seconds')")"
+  _ret="$(printf '%s\n' "${_v}" | awk '$1 == "binlog_expire_logs_seconds" && $2 > 0 { printf "%d\n", ($2 + 3599) / 3600; f = 1 } END { if (!f) print "" }')"
+  [ -n "${_ret}" ] || _ret="$(printf '%s\n' "${_v}" | awk '$1 == "expire_logs_days" { print $2 * 24 }')"
+  [[ "${_ret}" =~ ^[0-9]+$ ]] || _ret=0
+  read -r _mnt _sz _us <<< "$(df -Pk "${_ldir}/" 2> /dev/null | awk 'NR==2 { printf "%s %.0f %.0f\n", $NF, ($3 + $4) * 1024, $3 * 1024 }')"
+  if ! [[ "${_sz}" =~ ^[1-9][0-9]*$ && "${_us}" =~ ^[0-9]+$ ]]; then
+    echo "binlog-guard $(date '+%F %T'): the filesystem of ${_ldir} could not be read; nothing judged"
+    exit 0
+  fi
+  _xmass_blg_dump "${_mnt}" "${_b}"
+  while read -r _f _s; do
+    _paths+=("${_ldir}/${_f}")
+  done <<< "${_files}"
+  while read -r _f _s; do
+    [ -n "${_f}" ] && _mt["${_f##*/}"]="${_s}"
+  done <<< "$(stat -c '%n %Y' -- "${_paths[@]}" 2> /dev/null)"
+  _now="$(date +%s)"
+  _out="$(
+    echo "NOW ${_now}"
+    echo "FS ${_sz} ${_us}"
+    echo "LINE ${_line}"
+    echo "RET ${_ret}"
+    echo "MINH 1"
+    echo "DUMP ${_BLG_DPK} ${_BLG_DDISK}"
+    _s="$(head -n 1 "${_XMASS_BINLOG_DAY_FILE}" 2> /dev/null)"
+    _s="${_s#* }"
+    [[ "${_s}" =~ ^[0-9]+$ ]] && echo "DAY $(( _s * 1024 ))" || echo "DAY 0"
+    while read -r _f _s; do
+      _i="${_f##*.}"
+      [[ "${_i}" =~ ^[0-9]+$ ]] || continue
+      echo "F $(( 10#${_i} )) ${_f} ${_s} ${_mt[${_f}]:-${_now}}"
+    done <<< "${_files}"
+    awk -v c="$(( _now - 93600 ))" '$1 ~ /^[0-9]+$/ && $1 >= c && NF == 3 { print "S", $1, $2, $3 }' "${_XMASS_BLG_SAMPLES}" 2> /dev/null
+  )"
+  _out="$(printf '%s\n' "${_out}" | _xmass_blg_project)"
+  # this run's sample, the day and two hours before it kept
+  _f="$(printf '%s\n' "${_files}" | tail -n 1)"
+  _ci="${_f%% *}"
+  _ci="${_ci##*.}"
+  _cp="${_f#* }"
+  if [[ "${_ci}" =~ ^[0-9]+$ && "${_cp}" =~ ^[0-9]+$ ]]; then
+    { awk -v c="$(( _now - 93600 ))" '$1 ~ /^[0-9]+$/ && $1 >= c && NF == 3' "${_XMASS_BLG_SAMPLES}" 2> /dev/null
+      echo "${_now} $(( 10#${_ci} )) ${_cp}"; } > "${_XMASS_BLG_SAMPLES}.tmp" 2> /dev/null \
+      && mv -f "${_XMASS_BLG_SAMPLES}.tmp" "${_XMASS_BLG_SAMPLES}" 2> /dev/null
+  fi
+  read -r _rate _rhow <<< "$(printf '%s\n' "${_out}" | awk '$1 == "RATE" { print $2, $3 }')"
+  _log="$(printf '%s\n' "${_out}" | awk '$1 == "LOG" { print $2 }')"
+  _nowp="$(printf '%s\n' "${_out}" | awk '$1 == "NOW_PCT" { print $2 }')"
+  read -r _pr _prp <<< "$(printf '%s\n' "${_out}" | awk '$1 == "PEAK_R" { print $2, $3 }')"
+  _keep="$(printf '%s\n' "${_out}" | awk '$1 == "KEEP" { print $2 }')"
+  read -r _pk _pkp <<< "$(printf '%s\n' "${_out}" | awk '$1 == "PEAK_K" { print $2, $3 }')"
+  _fit="$(printf '%s\n' "${_out}" | awk '$1 == "FIT" { print $2 }')"
+  _hold="$(printf '%s\n' "${_out}" | awk '$1 == "HOLD" { print $2 }')"
+  read -r _pto _pfreed _pidx <<< "$(printf '%s\n' "${_out}" | awk '$1 == "PURGE" { print $2, $3, $4 }')"
+  if ! [[ "${_rate}" =~ ^[0-9]+$ && "${_keep}" =~ ^[0-9]+$ && "${_prp}" =~ ^[0-9]+$ ]]; then
+    echo "binlog-guard $(date '+%F %T'): the projection could not be made; nothing judged"
+    exit 0
+  fi
+  _say="log $(_xmass_blg_g "${_log}") G at $(_xmass_blg_g "${_rate}") G an hour (${_rhow}), night dump $(_xmass_blg_g "${_BLG_DPK}") G (${_BLG_DSAYS}); ${_mnt} at ${_nowp}% now"
+  [ "${_ret}" -gt 0 ] && _h="${_ret} h" || _h="no expiry"
+  if [ "${_hold}" != "YES" ]; then
+    echo "binlog-guard $(date '+%F %T'): OK: ${_say}, ${_prp}% at worst in 24 h with the ${_h} MySQL keeps, under the ${_line}% line"
+    exit 0
+  fi
+  _say="${_say}, ${_prp}% at worst in 24 h with the ${_h} MySQL keeps, past the ${_line}% line"
+  if [ "${_fit}" = "YES" ]; then
+    _say="${_say}; ${_keep} h of log keep it at ${_pkp}%"
+  else
+    _say="${_say}; even ${_keep} h of log leave it at ${_pkp}%"
+    # what the night backup does on such a disk, planned for here as the
+    # whole set all the same
+    [ "${_BLG_DPK}" -le 0 ] || _say="${_say} (a night whose whole set would take the disk past 95% compresses each database as it goes, its largest $(_xmass_blg_g "${_BLG_DPK1}") G)"
+  fi
+  if [ "${_act}" != "YES" ]; then
+    echo "binlog-guard $(date '+%F %T'): PAST THE LINE, nothing purged (${_why}): ${_say}"
+    {
+      echo "The binary log guard on ${_hName} projects ${_mnt} past its ${_line}% line"
+      echo "within 24 hours and purged nothing: ${_why}."
+      echo
+      echo "${_say}."
+      echo
+      echo "MySQL stops every write once the filesystem is full. Free space there,"
+      echo "or purge binary logs every replica has received once the move step ends."
+    } | _xmass_blg_mail ALERT "Binary log ALERT on [${_hName}]: ${_mnt} projected at ${_prp}%, nothing purged" "${_prp}"
+    exit 0
+  fi
+  if [ "${_pto}" = "-" ] || ! [[ "${_pidx}" =~ ^[0-9]+$ ]]; then
+    echo "binlog-guard $(date '+%F %T'): HOLD at ${_keep} h, no file old enough to purge yet: ${_say}"
+    [ "${_fit}" = "YES" ] && exit 0
+    {
+      echo "The binary log guard on ${_hName} projects ${_mnt} at ${_pkp}% within 24"
+      echo "hours even with ${_keep} h of binary log kept, past its ${_line}% line:"
+      echo
+      echo "${_say}."
+      echo
+      echo "MySQL stops every write once the filesystem is full. Free space there now."
+    } | _xmass_blg_mail ALERT "Binary log ALERT on [${_hName}]: ${_mnt} projected at ${_pkp}% even at ${_keep} h" "${_pkp}"
+    exit 0
+  fi
+  # what every replica still needs: a connected one's file MySQL keeps by
+  # itself, and the pair's replica keeps the file its own status names; a
+  # state that names no replica purges nothing
+  if [ -z "${_XMASS_TARGET_IP}" ]; then
+    echo "binlog-guard $(date '+%F %T'): PAST THE LINE, nothing purged: ${_XMASS_STATE_FILE} names no replica: ${_say}"
+    {
+      echo "The binary log guard on ${_hName} projects ${_mnt} past its ${_line}% line"
+      echo "within 24 hours and purged nothing: ${_XMASS_STATE_FILE} names no replica,"
+      echo "so the log one still needs is not known."
+      echo
+      echo "${_say}."
+      echo
+      echo "Free space on ${_mnt}. MySQL stops every write once the filesystem is full."
+    } | _xmass_blg_mail ALERT "Binary log ALERT on [${_hName}]: ${_mnt} projected at ${_prp}%, no replica named, nothing purged" "${_prp}"
+    exit 0
+  fi
+  _first="$(printf '%s\n' "${_files}" | head -n 1 | awk '{ print $1 }')"
+  _first="${_first##*.}"
+  _first=$(( 10#${_first} ))
+  while read -r _dh _s; do
+    _dh="${_dh%:*}"
+    _dh="${_dh#::ffff:}"
+    [ -n "${_XMASS_TARGET_IP}" ] && [ "${_dh}" = "${_XMASS_TARGET_IP}" ] && _conn=YES
+  done <<< "$(_xmass_blg_q "SELECT HOST, STATE FROM information_schema.PROCESSLIST WHERE COMMAND LIKE 'Binlog Dump%'")"
+  _floor="$(_xmass_blg_replica_floor "${_XMASS_TARGET_IP}" "${_b}")"
+  if [ -n "${_floor}" ]; then
+    [ "${_floor}" -ge "${_pidx}" ] || _pidx="${_floor}"
+    _f="$(_xmass_blg_name "${_files}" "${_floor}")"
+    _say="${_say}; the replica ${_XMASS_TARGET_IP} needs from ${_f:-a file no longer here (index ${_floor}): it needs a new init}"
+  elif [ "${_conn}" != "YES" ]; then
+    echo "binlog-guard $(date '+%F %T'): PAST THE LINE, nothing purged: the replica ${_XMASS_TARGET_IP} is not connected and its status cannot be read: ${_say}"
+    {
+      echo "The binary log guard on ${_hName} projects ${_mnt} past its ${_line}% line"
+      echo "within 24 hours and purged nothing: the pair's replica ${_XMASS_TARGET_IP}"
+      echo "is not connected, and its own status could not be read, so the log it"
+      echo "still needs is not known."
+      echo
+      echo "${_say}."
+      echo
+      echo "Bring the replica back (it then reads the log again), or free space"
+      echo "on ${_mnt}. MySQL stops every write once the filesystem is full."
+    } | _xmass_blg_mail ALERT "Binary log ALERT on [${_hName}]: ${_mnt} projected at ${_prp}%, replica away, nothing purged" "${_prp}"
+    exit 0
+  elif [ "${_conn}" = "YES" ]; then
+    _say="${_say}; the replica ${_XMASS_TARGET_IP} reads it now (MySQL keeps the file it reads)"
+  fi
+  if [ "${_pidx}" -le "${_first}" ]; then
+    echo "binlog-guard $(date '+%F %T'): PAST THE LINE, nothing purged: every file left is still needed: ${_say}"
+    {
+      echo "The binary log guard on ${_hName} projects ${_mnt} past its ${_line}% line"
+      echo "within 24 hours and could purge nothing: every file of the log left is"
+      echo "still needed by a replica."
+      echo
+      echo "${_say}."
+      echo
+      echo "Free space on ${_mnt}. MySQL stops every write once the filesystem is full."
+    } | _xmass_blg_mail ALERT "Binary log ALERT on [${_hName}]: ${_mnt} projected at ${_prp}%, nothing purged" "${_prp}"
+    exit 0
+  fi
+  _name="$(_xmass_blg_name "${_files}" "${_pidx}")"
+  if [ -z "${_name}" ]; then
+    echo "binlog-guard $(date '+%F %T'): no file of the log has the index ${_pidx}; nothing purged: ${_say}"
+    exit 0
+  fi
+  _o="$(timeout 600 mysql --defaults-file=/root/.my.cnf --connect-timeout=5 -e "PURGE BINARY LOGS TO '${_name}'" 2>&1)"
+  _rc=$?
+  _after="$(_xmass_blg_q 'SHOW BINARY LOGS' | awk '$2 ~ /^[0-9]+$/ { s += $2; if (!f) f = $1 } END { printf "%.0f %s\n", s, f }')"
+  if [ "${_rc}" -ne 0 ]; then
+    echo "binlog-guard $(date '+%F %T'): PURGE BINARY LOGS TO '${_name}' failed (${_o//$'\n'/ }): ${_say}"
+    exit 0
+  fi
+  _us="$(df -Pk "${_ldir}/" 2> /dev/null | awk 'NR==2 { printf "%.0f\n", $3 * 100 / ($3 + $4) }')"
+  _say="${_say}; purged before ${_name}: $(_xmass_blg_g "$(( _log - ${_after%% *} ))") G freed, the log now $(_xmass_blg_g "${_after%% *}") G from ${_after#* }, ${_mnt} at ${_us}%"
+  echo "binlog-guard $(date '+%F %T'): PURGED: ${_say}"
+  if [ "${_fit}" = "YES" ]; then
+    _sub="Binary log held on [${_hName}]: kept to ${_keep} h for ${_mnt} to stay under ${_line}%"
+    _kind=PURGED
+  else
+    _sub="Binary log ALERT on [${_hName}]: ${_mnt} projected at ${_pkp}% even at ${_keep} h"
+    _kind=ALERT
+  fi
+  {
+    echo "The binary log guard on ${_hName} purged the oldest binary log, every"
+    echo "file of it already received by the replicas, to keep ${_mnt} under its"
+    echo "${_line}% line over the next 24 hours, the night database backup counted:"
+    echo
+    echo "${_say}."
+    echo
+    echo "MySQL's own expiry stays at ${_h}: the guard keeps the log to ${_keep} h only"
+    echo "while the projection needs it, and never purges a file a replica of the"
+    echo "pair has not received."
+    [ "${_fit}" = "YES" ] || echo "Even so the projection stays past the line: free space on ${_mnt}."
+  } | _xmass_blg_mail "${_kind}" "${_sub}" "${_pkp}"
+  exit 0
 }
 
 ###-------------TIME ZONE---------------###
@@ -25127,6 +25722,13 @@ case "${_cmd}" in
     _check_root
     _xmass_cmd_carry_credentials
   ;;
+  binlog-guard)
+    # Run by minute.sh every five minutes on a source while the state names a
+    # pair: the binary log and the night dump projected against the disk.
+    [ $# -eq 0 ] || _die "Usage: xmass binlog-guard"
+    _check_root
+    _xmass_cmd_binlog_guard
+  ;;
   *)
     echo ""
     echo "Usage: xmass pre-mig <source-fqdn>                    (run on the source first: publishes"
@@ -25152,6 +25754,9 @@ case "${_cmd}" in
     echo "                      sync every N minutes, default 15, until cutover/--off)"
     echo "Usage: xmass carry-credentials                        (run on source by minute.sh: root's"
     echo "                     MySQL pair to the standby once a pass has rotated it here)"
+    echo "Usage: xmass binlog-guard                             (run on source by minute.sh: purges the"
+    echo "                     oldest binary log the replicas have when the log and the night dump"
+    echo "                     would take its disk past 88% within a day)"
     echo "Usage: xmass status  [target-ip]                      (run on source)"
     echo "Usage: xmass cutover <target-ip> [--proxy-mode=...] [--proxy-deadline=...] [--live]"
     echo "                     [admail=<address>]  (a test run: see the notes)"

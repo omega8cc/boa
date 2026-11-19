@@ -352,6 +352,93 @@ _check_dump_fs() {
   return 0
 }
 
+# The night's dumps stay uncompressed side by side until the run compresses
+# them all at its end, so its peak on the filesystem it writes to is about
+# their sum: with a large database that can fill it, and a full root stops
+# MySQL's own writes (its binary log, its temporary files) for every site
+# until space is freed. Each run records that peak in _DUMP_PEAK_FILE, with
+# its largest database, which xmass's binary log guard reads as well. When the largest of the last eight
+# nights would take the filesystem past 95%, this run compresses each
+# database right after its dump instead, so its peak is about the largest
+# one alone, and says so where its other notices go.
+_DUMP_PEAK_FILE="/etc/boa/control/mysql-backup-peak.cnf"
+_DUMP_PEAK_KB=0
+_DUMP_PEAK_MAX_KB=0
+_COMPRESS_EACH=NO
+_dump_peak_plan() {
+  local _dir="${_BACKUPDIR}" _p _mnt _sz _us _pct
+  _p="$(awk -v c="$(( $(date +%s) - 691200 ))" '$1 ~ /^[0-9]+$/ && $2 ~ /^[0-9]+$/ && $1 >= c && $2 + 0 > m + 0 { m = $2 } END { printf "%.0f\n", m }' "${_DUMP_PEAK_FILE}" 2> /dev/null)"
+  [[ "${_p}" =~ ^[1-9][0-9]*$ ]] || return 0
+  while [[ ! -d "${_dir}" && "${_dir}" == /?* ]]; do
+    _dir="${_dir%/*}"
+  done
+  [[ -n "${_dir}" ]] || _dir="/"
+  read -r _mnt _sz _us <<< "$(LC_ALL=C timeout 60 df -Pk -- "${_dir}" 2>/dev/null | awk 'NR==2 { printf "%s %.0f %.0f\n", $NF, $3 + $4, $3 }')"
+  [[ "${_sz}" =~ ^[1-9][0-9]*$ && "${_us}" =~ ^[0-9]+$ ]] || return 0
+  _pct=$(( (_us + _p) * 100 / _sz ))
+  [ "${_pct}" -gt 95 ] || return 0
+  _COMPRESS_EACH=YES
+  echo "INFO: the largest dump of the last eight nights would take ${_mnt} to ${_pct}%: each database is compressed right after its dump"
+  {
+    echo "The database backup run on ${_hName} compresses each database right"
+    echo "after its dump tonight: the largest uncompressed set of the last eight"
+    echo "nights, $(( _p / 1048576 )).$(( _p % 1048576 * 10 / 1048576 )) G, would take ${_mnt} from $(( _us * 100 / _sz ))% to ${_pct}% before"
+    echo "the compress step at the end of the run. The backup is taken all the"
+    echo "same; its peak is now about the largest database alone. Free space on"
+    echo "${_mnt} or grow it to return to the usual order."
+    echo
+  } | _backup_notice "Backup compresses as it goes on [${_hName}]: ${_mnt} would reach ${_pct}%" "dump peak ${_p} K on ${_mnt}"
+}
+
+# One database's dump compressed right after it (_COMPRESS_EACH), its
+# uncompressed size added to the night's peak once its archive is in place.
+# A dump whose archive fails stays as it is: the compress step at the end
+# tries it again and counts it then, once. $1 = the database.
+_compress_as_we_go() {
+  local _p _k _n="${_COMPRESS_FAILED_N:-0}" _d="${_COMPRESS_FAILED_DBS}"
+  if [ "${_MYQUICK_USE}" = "YES" ]; then
+    _p="${_SAVELOCATION}/$1"
+  else
+    _p="${_SAVELOCATION}/$1.sql"
+  fi
+  [ -e "${_p}" ] || return 0
+  _k="$(du -sk "${_p}" 2>/dev/null | awk '{ print $1 }')"
+  if [ "${_MYQUICK_USE}" = "YES" ]; then
+    _compress_dump_dir "${_p}"
+  else
+    _compress_dump_sql "${_p}"
+  fi
+  _COMPRESS_FAILED_N="${_n}"
+  _COMPRESS_FAILED_DBS="${_d}"
+  if [ ! -e "${_p}" ] && [[ "${_k}" =~ ^[0-9]+$ ]]; then
+    _DUMP_PEAK_KB=$(( _DUMP_PEAK_KB + _k ))
+    [ "${_k}" -le "${_DUMP_PEAK_MAX_KB}" ] || _DUMP_PEAK_MAX_KB="${_k}"
+  fi
+}
+
+# The night's uncompressed peak, read before the compress step, as
+# "<epoch> <K> <largest K>": the whole set as it stands and its largest
+# entry, or with _COMPRESS_EACH the dumps compressed on the way plus what is
+# still uncompressed. The last 30 nights are kept.
+_dump_peak_note() {
+  local _k=0 _m="${_DUMP_PEAK_MAX_KB}" _e _s
+  for _e in "${_SAVELOCATION}"/*; do
+    [ -e "${_e}" ] || continue
+    if [ "${_COMPRESS_EACH}" = "YES" ]; then
+      case "${_e}" in *.tar.zst|*.sql.gz) continue ;; esac
+    fi
+    _s="$(du -sk "${_e}" 2>/dev/null | awk '{ print $1 }')"
+    [[ "${_s}" =~ ^[0-9]+$ ]] || continue
+    _k=$(( _k + _s ))
+    [ "${_s}" -le "${_m}" ] || _m="${_s}"
+  done
+  [ "${_COMPRESS_EACH}" != "YES" ] || _k=$(( _k + _DUMP_PEAK_KB ))
+  [ "${_k}" -gt 0 ] || return 0
+  mkdir -p "${_DUMP_PEAK_FILE%/*}"
+  { tail -n 29 "${_DUMP_PEAK_FILE}" 2>/dev/null; echo "$(date +%s) ${_k} ${_m}"; } > "${_DUMP_PEAK_FILE}.tmp" \
+    && mv -f "${_DUMP_PEAK_FILE}.tmp" "${_DUMP_PEAK_FILE}"
+}
+
 # migratefs relocating /data/disk/arch holds it: /run/migratefs-arch.pid
 # names a live root process that runs migratefs, matched as executed,
 # never as a word anywhere on a command line (a pid reused after a kill -9,
@@ -488,6 +575,7 @@ if ! _check_dump_fs; then
   fi
   exit 0
 fi
+_dump_peak_plan
 echo $$ > /run/boa_sql_backup.pid
 _sql_wait_drop
 ### A run that ends early (a Ctrl-C, INT, TERM or HUP during a dump ends it
@@ -1238,27 +1326,44 @@ _backup_mysql_schema() {
   rm -f "${_SAVELOCATION}/mysql.mysqldump.log"
 }
 
+### One mydumper directory into its archive. $1 = the directory.
+_compress_dump_dir() {
+  local DbPath="$1" DbName
+  [ -e "${DbPath}/metadata" ] || return 0
+  DbName=$(echo ${DbPath} | cut -d'/' -f7 | awk '{ print $1}' 2>&1)
+  cd ${_SAVELOCATION}
+  ### NEVER delete the dump until the archive that replaces it is
+  ### proven readable: an unchecked tar (disk full, zstd missing)
+  ### left a 0-byte .tar.zst and the rm then destroyed the only
+  ### copy of the night's backup.
+  if tar -c -p -I zstd -f ${DbName}-${_DATE}.tar.zst ${DbName} &> /dev/null \
+    && [ -s "${DbName}-${_DATE}.tar.zst" ] \
+    && tar -p -I zstd -tf ${DbName}-${_DATE}.tar.zst &> /dev/null; then
+    rm -f -r ${DbName}
+  else
+    echo "ALRT: compressing ${DbName} FAILED -- keeping the uncompressed dump directory"
+    rm -f ${DbName}-${_DATE}.tar.zst
+    _COMPRESS_FAILED_N=$(( ${_COMPRESS_FAILED_N:-0} + 1 ))
+    _COMPRESS_FAILED_DBS="${_COMPRESS_FAILED_DBS} ${DbName}"
+  fi
+}
+
+### One mysqldump file into its archive; gzip leaves a failed input
+### untouched. $1 = the .sql file.
+_compress_dump_sql() {
+  local DbSql="$1"
+  [ -e "${DbSql}" ] || return 0
+  if ! gzip "${DbSql}"; then
+    echo "ALRT: compressing $(basename "${DbSql}") FAILED -- keeping the uncompressed dump"
+    _COMPRESS_FAILED_N=$(( ${_COMPRESS_FAILED_N:-0} + 1 ))
+    _COMPRESS_FAILED_DBS="${_COMPRESS_FAILED_DBS} $(basename "${DbSql}" .sql)"
+  fi
+}
+
 _compress_backup() {
   if [ "${_MYQUICK_USE}" = "YES" ]; then
     for DbPath in `find ${_SAVELOCATION}/ -maxdepth 1 -mindepth 1 | sort`; do
-      if [ -e "${DbPath}/metadata" ]; then
-        DbName=$(echo ${DbPath} | cut -d'/' -f7 | awk '{ print $1}' 2>&1)
-        cd ${_SAVELOCATION}
-        ### NEVER delete the dump until the archive that replaces it is
-        ### proven readable: an unchecked tar (disk full, zstd missing)
-        ### left a 0-byte .tar.zst and the rm then destroyed the only
-        ### copy of the night's backup.
-        if tar -c -p -I zstd -f ${DbName}-${_DATE}.tar.zst ${DbName} &> /dev/null \
-          && [ -s "${DbName}-${_DATE}.tar.zst" ] \
-          && tar -p -I zstd -tf ${DbName}-${_DATE}.tar.zst &> /dev/null; then
-          rm -f -r ${DbName}
-        else
-          echo "ALRT: compressing ${DbName} FAILED -- keeping the uncompressed dump directory"
-          rm -f ${DbName}-${_DATE}.tar.zst
-          _COMPRESS_FAILED_N=$(( ${_COMPRESS_FAILED_N:-0} + 1 ))
-          _COMPRESS_FAILED_DBS="${_COMPRESS_FAILED_DBS} ${DbName}"
-        fi
-      fi
+      _compress_dump_dir "${DbPath}"
     done
     # mysql schema is always backed up with mysqldump regardless of _MYQUICK_USE,
     # so compress it separately alongside the mydumper zst archives
@@ -1275,14 +1380,9 @@ _compress_backup() {
     echo "INFO: Permissions fixed"
   else
     ### Per file, so one failure is counted and reported and the others
-    ### still get their archive; gzip leaves a failed input untouched.
+    ### still get their archive.
     for DbSql in ${_SAVELOCATION}/*.sql; do
-      [ -e "${DbSql}" ] || continue
-      if ! gzip "${DbSql}"; then
-        echo "ALRT: compressing $(basename "${DbSql}") FAILED -- keeping the uncompressed dump"
-        _COMPRESS_FAILED_N=$(( ${_COMPRESS_FAILED_N:-0} + 1 ))
-        _COMPRESS_FAILED_DBS="${_COMPRESS_FAILED_DBS} $(basename "${DbSql}" .sql)"
-      fi
+      _compress_dump_sql "${DbSql}"
     done
     chmod 600 ${_SAVELOCATION}/*.sql.gz
     chmod 700 ${_SAVELOCATION}
@@ -1550,6 +1650,9 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
       _DUMP_FAILED_DBS="${_DUMP_FAILED_DBS} ${_DB}"
       echo "ALRT: Backup FAILED for ${_DB} -- this run's archive will not carry it"
     fi
+    if [ "${_COMPRESS_EACH}" = "YES" ] && [ "${_DUMP_RC}" = "0" ] && [ "${_DB}" != "mysql" ]; then
+      _compress_as_we_go "${_DB}" &> /dev/null
+    fi
     echo
   fi
 done
@@ -1597,6 +1700,7 @@ elif [ "${_OPTIM}" = "YES" ] \
 fi
 
 echo "INFO: Completing all dbs backups on $(date)"
+_dump_peak_note
 rm -f /run/boa_sql_backup.pid
 touch /var/log/boa/last-run-backup
 
