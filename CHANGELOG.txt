@@ -1403,25 +1403,34 @@
       solr.php come back on the first pass once the version's service is
       installed and running.
 
-    * BOA's routine checks no longer start a Solr version denied on the
-      server. The Solr config pass restarted Solr 7 or 9 once after
-      putting its core files in BOA's form whenever the init script was
-      there, the minutely Java watchdog restarted a version it found down,
-      and the five-minute self-update restarted Solr after fixing its
-      start options or its Log4j files; none read the deny. A restart by
-      the pass or the watchdog in the minutes before autoupboa parked the
-      version could start a JVM after the park had stopped the old one,
-      and with the init script gone nothing stopped it again; where
-      _SKYNET_MODE=OFF stops autoupboa before its deny arms, any of them
-      could start a denied version for good. All of them now leave a
-      denied version alone, as they leave a parked one (the pass logs a
-      SOLR-OFF line), as do the Solr 4 start after a core teardown and the
-      watchdog's Solr 4 port conflict restart; once the version is back,
-      the first run makes any fix still due. autoupboa stops every process
-      of a denied version by its service user on each run, not only on the
-      run that moves its init script away, so one a barracuda pass starts
-      goes down again too, except where _SKYNET_MODE=OFF stops autoupboa
-      before its deny arms.
+    * BOA's routine checks and a barracuda pass no longer start a Solr
+      version denied on the server. The Solr config pass restarted Solr 7
+      or 9 once after putting its core files in BOA's form whenever the
+      init script was there, the minutely Java watchdog restarted a
+      version it found down, the five-minute self-update restarted Solr
+      after fixing its start options or its Log4j files, and a barracuda
+      pass started every version whose init script was in place; none read
+      the deny. A restart by the Solr config pass or the watchdog in the
+      minutes before autoupboa parked the version could start a JVM after
+      the park had stopped the old one, and with the init script gone
+      nothing stopped it again; where _SKYNET_MODE=OFF stops autoupboa
+      before its deny arms, any of them could start a denied version for
+      good. All of them now leave a denied version alone, as they leave a
+      parked one (the Solr config pass logs a SOLR-OFF line), as do the
+      Solr 4 start after a core teardown and the watchdog's Solr 4 port
+      conflict restart; a barracuda pass still installs and upgrades a
+      denied version but starts none, after a Java upgrade included. Once
+      the version is back, the first run makes any fix still due.
+      autoupboa stops every process of a denied version by its service
+      user on each run, not only on the run that moves its init script away.
+
+    * autoupboa reads the Java and Solr deny settings from
+      /root/.barracuda.cnf again right before it parks a version, not only
+      when its run starts. xmass restore-solr clears a deny, puts the init
+      script back and starts the version; when it ran while an autoupboa
+      run was on its earlier steps, that run parked the version again on
+      the setting it had read at its start and stopped it, and with the
+      deny gone nothing brought it back.
 
     * A site's solr.php is written again when its directive moves the site
       to another Solr version. The core keeps its name on every version, and

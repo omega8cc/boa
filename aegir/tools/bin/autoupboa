@@ -854,7 +854,19 @@ _stop_denied_jvm() {
   fi
 }
 
+# Deny setting $1 as /root/.barracuda.cnf gives it now, read as a source of
+# the file reads it (NO when the file sets none). The run sourced the file
+# when it started; xmass restore-solr may since have cleared a deny, put the
+# init script back and started the version, and acting on the value read
+# then would park and stop the version it just brought back, with nothing
+# left to restore it once the deny is gone.
+_cnf_deny_now() {
+  [ -e "/root/.barracuda.cnf" ] || { echo "NO"; return 0; }
+  ( unset "$1"; . /root/.barracuda.cnf > /dev/null 2>&1 < /dev/null; printf '%s' "${!1:-NO}"; exit 0 )
+}
+
 _if_disable_not_used_services() {
+  local _dJava _dJetty9 _dSolr7 _dSolr9
   if [ "${_tRee}" = "dev" ] && [ -e "/etc/boa/.ice.vm.cnf" ]; then
     echo > /var/xdrago/move_sql.sh
     echo > /var/xdrago/proc_num_ctrl.pl
@@ -909,7 +921,11 @@ _if_disable_not_used_services() {
     rm -f /run/clamav/*
   fi
 
-  if [ "${_DENY_JAVA}" = "YES" ] \
+  _dJava="$(_cnf_deny_now _DENY_JAVA)"
+  _dJetty9="$(_cnf_deny_now _DENY_JETTY9)"
+  _dSolr7="$(_cnf_deny_now _DENY_SOLR7)"
+  _dSolr9="$(_cnf_deny_now _DENY_SOLR9)"
+  if [ "${_dJava}" = "YES" ] \
     || [ -e "/root/.deny.java.cnf" ]; then
     if [ -e "/etc/init.d/solr9" ]; then
       update-rc.d -f solr9 remove &> /dev/null
@@ -932,7 +948,7 @@ _if_disable_not_used_services() {
     done
   fi
 
-  if [ "${_DENY_JETTY9}" = "YES" ] \
+  if [ "${_dJetty9}" = "YES" ] \
     || [ -e "/etc/boa/.deny.jetty9.cnf" ]; then
     if [ -e "/etc/init.d/jetty9" ]; then
       update-rc.d -f jetty9 remove &> /dev/null
@@ -942,7 +958,7 @@ _if_disable_not_used_services() {
     _stop_denied_jvm jetty9
   fi
 
-  if [ "${_DENY_SOLR7}" = "YES" ] \
+  if [ "${_dSolr7}" = "YES" ] \
     || [ -e "/etc/boa/.deny.solr7.cnf" ]; then
     if [ -e "/etc/init.d/solr7" ]; then
       update-rc.d -f solr7 remove &> /dev/null
@@ -952,7 +968,7 @@ _if_disable_not_used_services() {
     _stop_denied_jvm solr7
   fi
 
-  if [ "${_DENY_SOLR9}" = "YES" ] \
+  if [ "${_dSolr9}" = "YES" ] \
     || [ -e "/etc/boa/.deny.solr9.cnf" ]; then
     if [ -e "/etc/init.d/solr9" ]; then
       update-rc.d -f solr9 remove &> /dev/null

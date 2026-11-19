@@ -14687,26 +14687,7 @@ _initd_update() {
     _fix_root_locked_shadow
     _mrun "service ssh restart"
     _tune_memory_limits
-    if [ -x "/etc/init.d/solr9" ] && [ -e "/etc/default/solr9.in.sh" ]; then
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        _msg "INFO: Restarting Solr 9"
-      fi
-      pkill -9 -f '^[^ ]*java[0-9]* .*solr9'
-      _mrun "service solr9 start"
-    fi
-    if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        _msg "INFO: Restarting Solr 7"
-      fi
-      pkill -9 -f '^[^ ]*java[0-9]* .*solr7'
-      _mrun "service solr7 start"
-    fi
-    if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        _msg "INFO: Restarting Jetty 9"
-      fi
-      _jetty9_restart
-    fi
+    _initd_solr_start
     # cron and nginx are boot-registered and started UNCONDITIONALLY: a
     # finalized proxy is still an internet-facing nginx relay whose cron
     # carries every watchdog, and skipping these left a rebooted proxy
@@ -14811,26 +14792,7 @@ _initd_update() {
     _mrun "service ssh restart"
     _fix_on_upgrade
     _tune_memory_limits
-    if [ -x "/etc/init.d/solr9" ] && [ -e "/etc/default/solr9.in.sh" ]; then
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        _msg "INFO: Restarting Solr 9"
-      fi
-      pkill -9 -f '^[^ ]*java[0-9]* .*solr9'
-      _mrun "service solr9 start"
-    fi
-    if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        _msg "INFO: Restarting Solr 7"
-      fi
-      pkill -9 -f '^[^ ]*java[0-9]* .*solr7'
-      _mrun "service solr7 start"
-    fi
-    if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        _msg "INFO: Restarting Jetty 9"
-      fi
-      _jetty9_restart
-    fi
+    _initd_solr_start
     # nginx restarts UNCONDITIONALLY on upgrade: a finalized proxy is
     # still an internet-facing relay whose upgraded config must activate.
     # The site-serving stack (cache backend, FPM) and the MySQL tuning

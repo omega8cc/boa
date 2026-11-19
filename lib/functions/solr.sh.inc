@@ -131,7 +131,8 @@ _if_solr_nine() {
       fi
     fi
   fi
-  if [ "${_UP_JDK}" = "YES" ] && [ -e "/etc/init.d/${_N_SOLR}" ]; then
+  if [ "${_UP_JDK}" = "YES" ] && [ -e "/etc/init.d/${_N_SOLR}" ] \
+    && ! _solr_svc_denied "${_N_SOLR}"; then
     _msg "INFO: Solr 9 restart in progress - required after java upgrade"
     _mrun "service ${_N_SOLR} restart"
     _msg "INFO: Solr 9 restart completed"
@@ -218,10 +219,62 @@ _if_solr_seven() {
       fi
     fi
   fi
-  if [ "${_UP_JDK}" = "YES" ] && [ -e "/etc/init.d/${_N_SOLR}" ]; then
+  if [ "${_UP_JDK}" = "YES" ] && [ -e "/etc/init.d/${_N_SOLR}" ] \
+    && ! _solr_svc_denied "${_N_SOLR}"; then
     _msg "INFO: Solr 7 restart in progress - required after java upgrade"
     _mrun "service ${_N_SOLR} restart"
     _msg "INFO: Solr 7 restart completed"
+  fi
+}
+
+#
+# True when Solr version $1 (solr9, solr7 or jetty9) is denied on this box,
+# read as autoupboa reads it when it parks the service: the box-wide Java
+# deny or the version's own, as a setting or as a marker file. A pass still
+# installs and upgrades a version its own deny names, but starts none that
+# is denied: autoupboa parks it again at its first run after the pass, and
+# where _SKYNET_MODE=OFF stops autoupboa before its deny arms, a started one
+# would run for good.
+_solr_svc_denied() {
+  local _dv=""
+  case "${1}" in
+    solr9) _dv="${_DENY_SOLR9}" ;;
+    solr7) _dv="${_DENY_SOLR7}" ;;
+    jetty9) _dv="${_DENY_JETTY9}" ;;
+    *) return 1 ;;
+  esac
+  [ "${_DENY_JAVA}" = "YES" ] || [ -e "/root/.deny.java.cnf" ] \
+    || [ "${_dv}" = "YES" ] || [ -e "/etc/boa/.deny.${1}.cnf" ]
+}
+
+#
+# Solr 9, Solr 7 and Solr 4 (Jetty 9) started again near the end of a system
+# pass, each only while its init script is in place and it is not denied.
+_initd_solr_start() {
+  if [ -x "/etc/init.d/solr9" ] && [ -e "/etc/default/solr9.in.sh" ] \
+    && ! _solr_svc_denied solr9; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: Restarting Solr 9"
+    fi
+    # owner-any: a stale JVM of this version, whoever started it
+    pkill -9 -f '^[^ ]*java[0-9]* .*solr9'
+    _mrun "service solr9 start"
+  fi
+  if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ] \
+    && ! _solr_svc_denied solr7; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: Restarting Solr 7"
+    fi
+    # owner-any: a stale JVM of this version, whoever started it
+    pkill -9 -f '^[^ ]*java[0-9]* .*solr7'
+    _mrun "service solr7 start"
+  fi
+  if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ] \
+    && ! _solr_svc_denied jetty9; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: Restarting Jetty 9"
+    fi
+    _jetty9_restart
   fi
 }
 
@@ -368,7 +421,7 @@ _if_solr_four() {
         fi
         chmod 755 /etc/init.d/jetty9 &> /dev/null
         _mrun "update-rc.d jetty9 defaults"
-        _mrun "service jetty9 start"
+        _solr_svc_denied jetty9 || _mrun "service jetty9 start"
       fi
       echo ${_SOLR_4_VRN} > ${_SOLR_CTRL}
       _msg "INFO: MultiCore Apache Solr ${_R_SOLR} with Jetty ${_R_JETTY} installed"
@@ -377,7 +430,8 @@ _if_solr_four() {
     fi
   fi
 
-  if [ "${_UP_JDK}" = "YES" ] && [ -e "/etc/init.d/jetty9" ]; then
+  if [ "${_UP_JDK}" = "YES" ] && [ -e "/etc/init.d/jetty9" ] \
+    && ! _solr_svc_denied jetty9; then
     _msg "INFO: Jetty 9 restart in progress - required after java upgrade"
     _jetty9_restart
     _msg "INFO: Jetty 9 restart completed"
@@ -458,7 +512,7 @@ _if_solr_four() {
       cp -af /var/opt/log4j-${_LOGJ4_VRN}/*.jar /opt/jetty9/lib/ext/
       rm -f /opt/jetty9/lib/ext/*sources.jar
       chown -R jetty9:jetty9 /opt/jetty9
-      _mrun "service jetty9 start"
+      _solr_svc_denied jetty9 || _mrun "service jetty9 start"
       echo ${_SOLR_4_VRN} > ${_SOLR_CTRL}
       _msg "INFO: MultiCore Apache Solr ${_R_SOLR} with Jetty ${_R_JETTY} upgrade completed"
     fi
