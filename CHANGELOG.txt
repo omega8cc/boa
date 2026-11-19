@@ -339,6 +339,25 @@
 
 @=> Security
 
+    * Solr 9 runs with -XX:-UseBASE64Intrinsics. Java 17 and 21 decode
+      Base64 with a CPU-specific routine that, on processors with AVX-512
+      VBMI (AMD Zen 4 and newer, recent Intel Xeons), writes past its
+      buffer on a short malformed input (CVE-2026-114938), and every
+      account on a box can reach Solr's local port, which has no login.
+      The option keeps the JVM on the plain Java decoder whatever build is
+      installed. The five-minute self-update adds it to the SOLR_OPTS line
+      BOA keeps in /etc/default/solr9.in.sh and restarts Solr 9 once for
+      it. Solr 4 and Solr 7 run on Java 11, which has no such routine.
+
+    * Amazon Corretto 21, the Java Solr 9 runs on Daedalus, is replaced on
+      every box whose build is older than the one BOA names, now
+      21.0.13.1, which fixes CVE-2026-114938. Until now only a box in
+      debug mode ever took a newer Corretto, so others kept the build they
+      first got. A newer build than the named one is kept. The download's
+      SHA256 check now stops a failed or partial download before it is
+      unpacked, and the archive is removed after use; of the Corretto 21
+      trees in /opt/jdk only the new one and the one it replaced stay.
+
     * Nginx 1.31.9, upstream's security release of 18 November 2026,
       brought to every box through the security floor, which now covers
       Nginx too. Among its fixes are memory corruption in HTTP/2 flow
@@ -1080,6 +1099,14 @@
       and a lock that holds one does not install, which fails the build.
 
 @=> Important Fixes
+
+    * A Solr 7 or Solr 9 whose Java was replaced under it by a package
+      upgrade is restarted within five minutes. The daily security
+      upgrades install a fixed openjdk while Solr runs, and Solr went on
+      running the old, deleted build until the next barracuda pass, which
+      can be days away. The five-minute self-update restarts it when its
+      running java is a deleted file, at most once an hour, never on a
+      replication standby, under the xmass Solr hold or for a denied version.
 
     * A barracuda pass on the source of an xmass move no longer changes
       root's MySQL password until the move ends. The new password reached

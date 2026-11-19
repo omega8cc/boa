@@ -4647,9 +4647,18 @@ _solr_svc_denied() {
 ### down (manage_solr_config.sh and java.sh stand down on the same two
 ### markers), so neither is rewritten or restarted here, and neither is a
 ### denied version (_solr_svc_denied).
+### Solr 9 runs on Java 17 or 21, whose x86 Base64 decode intrinsic writes
+### past its buffer on CPUs with AVX-512 VBMI (CVE-2026-114938), and every
+### account on the box can reach Solr's local port. Its line carries
+### -XX:-UseBASE64Intrinsics, which keeps the JVM on the plain Java decoder
+### whatever build is installed. Solr 7 runs on Java 11, which has no such
+### decoder, and can meet a JVM that would refuse the option, so it gets
+### none. A line without the option is stale, so each box rewrites it once
+### and restarts Solr 9 for it.
 _fix_solr_defaults_line() {
   # ${1} = solr7 or solr9  ${2} = its stop port  ${3} = its stop key
-  local _svc="${1}" _port="${2}" _key="${3}" _file _stamp _sum
+  # ${4} = an extra JVM option the line must carry (optional)
+  local _svc="${1}" _port="${2}" _key="${3}" _xopt="${4}" _file _stamp _sum
   _file="/etc/default/${_svc}.in.sh"
   _stamp="/etc/boa/control/${_svc}.in.005.fixed.pid"
   [ -x "/etc/init.d/${_svc}" ] && [ -e "${_file}" ] || return 0
@@ -4657,7 +4666,8 @@ _fix_solr_defaults_line() {
   if [ -e "${_stamp}" ] \
     && grep -q "STOP\.PORT=${_port}" "${_file}" \
     && grep -q "SOLR_START_WAIT=\"10\"" "${_file}" \
-    && grep -q "update\.autoCreateFields=false" "${_file}"; then
+    && grep -q "update\.autoCreateFields=false" "${_file}" \
+    && { [ -z "${_xopt}" ] || grep -q -e "^SOLR_OPTS=.*${_key}.* ${_xopt}\"$" "${_file}"; }; then
     return 0
   fi
   _sum=$(md5sum "${_file}" 2> /dev/null | cut -d' ' -f1)
@@ -4665,7 +4675,7 @@ _fix_solr_defaults_line() {
   sed -i "s/^SOLR_STOP_KEY.*//g" "${_file}"
   sed -i "s/.*${_key}.*//g" "${_file}"
   sed -i "s/.*_WAIT.*//g" "${_file}"
-  echo "SOLR_OPTS=\"\$SOLR_OPTS -DSTOP.PORT=${_port} -DSTOP.KEY=${_key} -Dupdate.autoCreateFields=false\"" >> "${_file}"
+  echo "SOLR_OPTS=\"\$SOLR_OPTS -DSTOP.PORT=${_port} -DSTOP.KEY=${_key} -Dupdate.autoCreateFields=false${_xopt:+ ${_xopt}}\"" >> "${_file}"
   echo "SOLR_START_WAIT=\"10\"" >> "${_file}"
   echo "SOLR_STOP_WAIT=\"10\"" >> "${_file}"
   echo "SOLR_WAIT_FOR_ZK=\"10\"" >> "${_file}"
@@ -4686,11 +4696,38 @@ _fix_solr_defaults_line() {
   fi
 }
 
+### unattended-upgrades installs a fixed openjdk package under a running
+### Solr, which keeps the replaced JVM, deleted from disk, until something
+### restarts it; a barracuda pass does, but that may be days away. Such a
+### Solr is restarted here, at most once an hour, so a restart that does
+### not take is never repeated every run.
+_restart_solr_on_replaced_jvm() {
+  # ${1} = solr7 or solr9  ${2} = its port
+  local _svc="${1}" _port="${2}" _pid _exe _mark
+  _mark="/run/boa_${_svc}_jvm_restart.pid"
+  [ -x "/etc/init.d/${_svc}" ] || return 0
+  _solr_svc_denied "${_svc}" && return 0
+  _pid="$(cat "/var/${_svc}/solr-${_port}.pid" 2> /dev/null | sed 's/[^0-9]//g')"
+  [ -n "${_pid}" ] && [ -d "/proc/${_pid}" ] || return 0
+  [ "$(stat -c %U "/proc/${_pid}" 2> /dev/null)" = "${_svc}" ] || return 0
+  _exe="$(readlink "/proc/${_pid}/exe" 2> /dev/null)"
+  case "${_exe}" in
+    *"/java (deleted)") ;;
+    *) return 0 ;;
+  esac
+  [ -n "$(find "${_mark}" -mmin -60 2> /dev/null)" ] && return 0
+  touch "${_mark}"
+  echo "_restart${_svc^} for its replaced JVM ${_exe} at $(date)" >> ${_pthLog}/_fix_start_stop_ports_solr.log
+  service "${_svc}" restart
+}
+
 _fix_start_stop_ports_solr() {
   if [ ! -e "/root/.standby.cnf" ] \
     && [ ! -e "/var/log/boa/.xmass_solr_hold.pid" ]; then
-    _fix_solr_defaults_line solr9 19099 mycustomkey9
+    _fix_solr_defaults_line solr9 19099 mycustomkey9 "-XX:-UseBASE64Intrinsics"
     _fix_solr_defaults_line solr7 19077 mycustomkey7
+    _restart_solr_on_replaced_jvm solr9 9099
+    _restart_solr_on_replaced_jvm solr7 9077
   fi
   if [ -x "/etc/init.d/jetty9" ]; then
     _restartSolr4=FALSE

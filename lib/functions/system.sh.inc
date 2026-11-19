@@ -2188,16 +2188,19 @@ _tune_memory_limits() {
   fi
 
   if [ -x "/etc/init.d/solr9" ] && [ -e "/etc/default/solr9.in.sh" ]; then
-    _SOLR9_STOP_TEST=$(grep "STOP\.PORT=19099" /etc/default/solr9.in.sh 2>&1)
+    _SOLR9_STOP_TEST=$(grep "STOP\.PORT=19099.* -XX:-UseBASE64Intrinsics\"$" /etc/default/solr9.in.sh 2>&1)
     if [[ ! "${_SOLR9_STOP_TEST}" =~ "19099" ]]; then
       sed -i "s/^SOLR_STOP_PORT.*//g" /etc/default/solr9.in.sh
       wait
       sed -i "s/^SOLR_STOP_KEY.*//g" /etc/default/solr9.in.sh
       wait
+      sed -i "s/.*mycustomkey9.*//g" /etc/default/solr9.in.sh
+      wait
       ### The same line BOA.sh.txt's _fix_start_stop_ports_solr keeps: a core
       ### on Solr's stock configset guesses no field types, so a site cannot
-      ### index before its own configuration is uploaded.
-      echo "SOLR_OPTS=\"\$SOLR_OPTS -DSTOP.PORT=19099 -DSTOP.KEY=mycustomkey9 -Dupdate.autoCreateFields=false\"" >> /etc/default/solr9.in.sh
+      ### index before its own configuration is uploaded; and Java 17 or 21
+      ### stays off its x86 Base64 decode intrinsic (CVE-2026-114938).
+      echo "SOLR_OPTS=\"\$SOLR_OPTS -DSTOP.PORT=19099 -DSTOP.KEY=mycustomkey9 -Dupdate.autoCreateFields=false -XX:-UseBASE64Intrinsics\"" >> /etc/default/solr9.in.sh
     fi
     sed -i "s/^SOLR_HEAP/#SOLR_HEAP/g" /etc/default/solr9.in.sh &> /dev/null
     wait
@@ -11881,8 +11884,13 @@ _other_sys_java21_install() {
     _mrun "wget -qO ${_tmpDir}/${_tar} ${_url}"
   fi
 
-  # Verify integrity
-  _mrun "cd ${_tmpDir} && echo ${_SHA}  ${_tar} | sha256sum -c -"
+  # Verify integrity: _mrun always returns 0, so the check runs here, and a
+  # failed or partial download is never unpacked over the working Java.
+  if ! (cd "${_tmpDir}" && echo "${_SHA}  ${_tar}" | sha256sum -c - > /dev/null 2>&1); then
+    _msg "ERROR: Corretto 21 archive ${_tmpDir}/${_tar} fails its SHA256 check, not installed"
+    rm -f "${_tmpDir}/${_tar}"
+    return 1
+  fi
 
   # Extract and point stable symlinks
   _topDir="$(tar -tzf "${_tmpDir}/${_tar}" 2>/dev/null | head -n1 | cut -d/ -f1)"
@@ -11899,8 +11907,22 @@ _other_sys_java21_install() {
     return 1
   fi
 
+  _prevReal="$(readlink -f "${_linkOpt}" 2>/dev/null)"
   _mrun "ln -sfn ${_real} ${_linkOpt}"
   _mrun "ln -sfn ${_linkOpt} ${_linkJvm}"
+  rm -f "${_tmpDir}/${_tar}"
+
+  # Each refresh lays a new tree of about 300 MB: keep the new one and the
+  # one it replaced (the running Solr 9 still uses it until its restart at
+  # the end of the pass), remove the older ones.
+  if [ "$(readlink -f "${_linkJvm}/bin/java" 2>/dev/null)" = "${_real}/bin/java" ]; then
+    for _oldJdk in "${_optDir}"/amazon-corretto-21.*; do
+      [ -d "${_oldJdk}" ] || continue
+      [ "${_oldJdk}" = "${_real}" ] && continue
+      [ "${_oldJdk}" = "${_prevReal}" ] && continue
+      rm -rf -- "${_oldJdk}"
+    done
+  fi
 
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "DONE: Java 21 installed at ${_linkJvm}"
@@ -11932,16 +11954,21 @@ _other_sys_java_install() {
 
   # Special-case Java 21: do NOT use foreign apt sources (avoids Excalibur upgrade pressure)
   if [ "${_javaVer}" = "21" ] && [ "${_OS_CODE}" != "excalibur" ]; then
-    _JAVA_NEW=21.0.13
-    _JAVA_ITD=$(java21 --version 2>&1 \
+    _JAVA_NEW=21.0.13.1
+    _JAVA_ITD=$("${_javaHome}/bin/java" --version 2>&1 \
       | tr -d "\n" \
       | cut -d" " -f2 \
       | awk '{ print $1}' 2>&1)
-    if [ "${_JAVA_ITD}" != "${_JAVA_NEW}" ] \
+    ### Corretto comes from a tarball, so no apt upgrade ever brings its
+    ### security fixes: a build older than the pin is replaced on every
+    ### box, in debug mode or not (CVE-2026-114938 is fixed in 21.0.13.1).
+    ### A newer build than the pin is kept, so a later Corretto never
+    ### makes each pass download it again.
+    if [ "$(printf '%s\n' "${_JAVA_ITD}" "${_JAVA_NEW}" | sort -V | head -n1)" != "${_JAVA_NEW}" ] \
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
+      _FORCE_JAVA_UPGRADE=YES
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: Installing Java ${_JAVA_NEW}..."
-        _FORCE_JAVA_UPGRADE=YES
       fi
     fi
     if [ ! -x "${_javaHome}/bin/java" ] || [ -n "${_FORCE_JAVA_UPGRADE}" ]; then
