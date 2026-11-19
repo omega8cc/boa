@@ -837,6 +837,23 @@ _bring_all_ram_cpu_online() {
 }
 _bring_all_ram_cpu_online
 
+# Every process of a denied Solr version ($1: solr9, solr7 or jetty9)
+# stopped, by its service user where one exists, else by its JVM's title
+# among root's processes: an install adds each version's own user, and an
+# init script with no user to switch to runs the JVM as root. Each deny
+# below runs it on every pass while the deny holds, not only on the one that
+# moves the init script away: a restart already under way when the script
+# moves starts a JVM after the kill, and with the script gone no other tool
+# would stop it. A kill by the bare name would also match a process that
+# only names the version's paths, such as a transfer of its data tree.
+_stop_denied_jvm() {
+  if id "${1}" &> /dev/null; then
+    pkill -9 -u "${1}" &> /dev/null
+  else
+    pkill -9 -u root -U root -f "^[^ ]*jav[a][0-9]* .*${1}" &> /dev/null
+  fi
+}
+
 _if_disable_not_used_services() {
   if [ "${_tRee}" = "dev" ] && [ -e "/etc/boa/.ice.vm.cnf" ]; then
     echo > /var/xdrago/move_sql.sh
@@ -911,11 +928,7 @@ _if_disable_not_used_services() {
     # its title: the jetty9-only kill left a Solr 7/9 JVM running after its
     # init script was gone.
     for _jvmSvc in solr9 solr7 jetty9; do
-      if id "${_jvmSvc}" &> /dev/null; then
-        pkill -9 -u "${_jvmSvc}" &> /dev/null
-      else
-        pkill -9 -f "^[^ ]*jav[a][0-9]* .*${_jvmSvc}" &> /dev/null
-      fi
+      _stop_denied_jvm "${_jvmSvc}"
     done
   fi
 
@@ -925,8 +938,8 @@ _if_disable_not_used_services() {
       update-rc.d -f jetty9 remove &> /dev/null
       mv -f /etc/init.d/jetty9 /var/backups/jetty9.initd
       pkill -9 -f '^[^ ]*avahi-daemon( |:|$)'
-      pkill -9 -f '^[^ ]*java[0-9]* .*jetty9'
     fi
+    _stop_denied_jvm jetty9
   fi
 
   if [ "${_DENY_SOLR7}" = "YES" ] \
@@ -935,8 +948,8 @@ _if_disable_not_used_services() {
       update-rc.d -f solr7 remove &> /dev/null
       mv -f /etc/init.d/solr7 /var/backups/solr7.initd
       pkill -9 -f '^[^ ]*avahi-daemon( |:|$)'
-      pkill -9 -f '^[^ ]*java[0-9]* .*solr7'
     fi
+    _stop_denied_jvm solr7
   fi
 
   if [ "${_DENY_SOLR9}" = "YES" ] \
@@ -945,8 +958,8 @@ _if_disable_not_used_services() {
       update-rc.d -f solr9 remove &> /dev/null
       mv -f /etc/init.d/solr9 /var/backups/solr9.initd
       pkill -9 -f '^[^ ]*avahi-daemon( |:|$)'
-      pkill -9 -f '^[^ ]*java[0-9]* .*solr9'
     fi
+    _stop_denied_jvm solr9
   fi
 }
 _if_disable_not_used_services

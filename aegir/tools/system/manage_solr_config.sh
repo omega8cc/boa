@@ -1291,7 +1291,7 @@ _add_solr() {
         sed -i "/^$/d" ${_SOLR_BASE}/solr.xml &> /dev/null
         wait
         pkill -9 -f '^[^ ]*java[0-9]* .*jetty9'
-        service jetty9 start &> /dev/null
+        _solr_ver_off jetty9 || service jetty9 start &> /dev/null
       fi
       echo "New Solr ${3} with ${1} for ${2} added"
     fi
@@ -1447,8 +1447,10 @@ _delete_solr() {
       wait
       rm -rf ${1}
       _acct_in_resolved_dir "${_Dir}" rm -f -- ./solr.php &> /dev/null
+      # A teardown stops Solr 4 to drop the core, and starts it again only
+      # while the version is not off: a denied one stays down.
       pkill -9 -f '^[^ ]*java[0-9]* .*jetty9'
-      service jetty9 start &> /dev/null
+      _solr_ver_off jetty9 || service jetty9 start &> /dev/null
     fi
     echo "Deleted Solr core in ${1}"
   fi
@@ -1636,7 +1638,8 @@ _reregister_solr_core() {
 # setting sourced by _load_control or as a marker file); parked, its init
 # script moved away, which autoupboa does not undo when a deny is lifted; or
 # disarmed, the script left without its exec bit. The last two are the test
-# the box-wide steps of this pass use. Its CLI would only start a JVM to fail
+# the box-wide core steps of this pass use; its config fix and every Solr
+# start here use all three. Its CLI would only start a JVM to fail
 # on a closed port, every pass. _SOLR_OFF_PORT is the version's port.
 _solr_ver_off() {
   local _dv _mk
@@ -2209,8 +2212,21 @@ _solr_props_boa_form() {
   return 0
 }
 
+# True when Solr version $1 gets no config fix and no restart from this pass:
+# off by _solr_ver_off, so a denied version is skipped as well as one whose
+# init script is gone or not executable. autoupboa parks a denied version
+# within minutes, and a restart that races the park starts a JVM that
+# outlives its init script, which no tool stops after that. A denied
+# version gets one line in the pass log.
+_solr_fix_off() {
+  _solr_ver_off "${1}" || return 1
+  [ "${_SOLR_OFF_WHY}" = "denied" ] \
+    && echo "SOLR-OFF: ${1} is denied on this server -- no config fix and no restart"
+  return 0
+}
+
 _fix_solr9_cnf() {
-  if [ -x "/etc/init.d/solr9" ] && [ -e "/var/solr9/logs" ]; then
+  if ! _solr_fix_off solr9 && [ -e "/var/solr9/logs" ]; then
     _IF_RESTART_SOLR=NO
     for _pRp in `find /var/solr9/data/oct.*/conf/solrcore.properties -maxdepth 1 | sort`; do
       if _solr_props_boa_form "${_pRp}" solr9; then
@@ -2237,7 +2253,7 @@ _fix_solr7_core() {
 }
 
 _fix_solr7_cnf() {
-  if [ -x "/etc/init.d/solr7" ] && [ -e "/var/solr7/logs" ]; then
+  if ! _solr_fix_off solr7 && [ -e "/var/solr7/logs" ]; then
     _IF_RESTART_SOLR=NO
     for _pRp in `find /var/solr7/data/oct.*/conf/solrcore.properties -maxdepth 1 | sort`; do
       _fix_solr7_core "${_pRp}"
@@ -2943,6 +2959,10 @@ _OPTIMIZE_INTERVAL_HOURS=12
 
 _start_up() {
   _REREGISTER_DONE=0
+  # The deny settings _solr_ver_off reads, before the box-wide steps: the
+  # account loop below sources them only for its own steps.
+  # shellcheck disable=SC1091
+  [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
   _fix_solr9_cnf
   _fix_solr7_cnf
 

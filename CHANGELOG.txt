@@ -1373,6 +1373,19 @@
       solr.php come back on the first pass once the version's service is
       installed and running.
 
+    * A Solr version denied on the server is no longer started again. The
+      Solr config pass restarted Solr 7 or 9 once after putting its core
+      files in BOA's form whenever the init script was there, and the
+      minutely Java watchdog restarted a version it found down; neither
+      read the deny. A restart in the minutes before autoupboa parked the
+      version could start a JVM after the park had stopped the old one,
+      and with the init script gone nothing stopped it again. Both now
+      skip a denied version (the pass logs a SOLR-OFF line), as do the
+      Solr 4 start after a core teardown and the watchdog's Solr 4 port
+      conflict restart, and autoupboa stops every process of a denied
+      version by its service user on each run, not only on the run that
+      moves its init script away.
+
     * A site's solr.php is written again when its directive moves the site
       to another Solr version. The core keeps its name on every version, and
       the file was rewritten only when that name was missing from it, so it

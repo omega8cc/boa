@@ -231,7 +231,26 @@ _jetty_restart() {
   exit 0
 }
 
+# True when Solr version $1 (solr9, solr7 or jetty9) is denied on this box,
+# read as autoupboa reads it when it parks the service: the box-wide Java
+# deny or the version's own, as a setting or as a marker file. A denied
+# version is never started here, not even in the minutes before autoupboa
+# moves its init script away: a start racing that move leaves a JVM with no
+# init script, which the checks below no longer see.
+_solr_svc_denied() {
+  local _dv=""
+  case "${1}" in
+    solr9) _dv="${_DENY_SOLR9}" ;;
+    solr7) _dv="${_DENY_SOLR7}" ;;
+    jetty9) _dv="${_DENY_JETTY9}" ;;
+    *) return 1 ;;
+  esac
+  [ "${_DENY_JAVA}" = "YES" ] || [ -e "/root/.deny.java.cnf" ] \
+    || [ "${_dv}" = "YES" ] || [ -e "/etc/boa/.deny.${1}.cnf" ]
+}
+
 _jetty_listen_conflict_detection() {
+  _solr_svc_denied jetty9 && return 0
   if [ -e "/var/log/jetty9" ]; then
     if [ `tail --lines=500 /var/log/jetty9/*stderrout.log \
       | grep --count "Address already in use"` -gt 0 ]; then
@@ -276,7 +295,8 @@ _solr_restart_in_flight() {
 }
 
 _solr_health_check_fix() {
-  if [ -x "/etc/init.d/solr9" ] && ! _solr_restart_in_flight solr9 /opt/solr9; then
+  if [ -x "/etc/init.d/solr9" ] && ! _solr_svc_denied solr9 \
+    && ! _solr_restart_in_flight solr9 /opt/solr9; then
     _pidfile="/var/solr9/solr-9099.pid"
     if ! pgrep -u "$(_svc_uids solr9)" -U "$(_svc_uids solr9)" -f /var/solr9 || [ ! -e "${_pidfile}" ]; then
       find /tmp -mindepth 1 -maxdepth 1 -user solr9 -exec rm -rf -- {} + 2>/dev/null
@@ -299,7 +319,8 @@ _solr_health_check_fix() {
       fi
     fi
   fi
-  if [ -x "/etc/init.d/solr7" ] && ! _solr_restart_in_flight solr7 /opt/solr7; then
+  if [ -x "/etc/init.d/solr7" ] && ! _solr_svc_denied solr7 \
+    && ! _solr_restart_in_flight solr7 /opt/solr7; then
     _pidfile="/var/solr7/solr-9077.pid"
     if ! pgrep -u "$(_svc_uids solr7)" -U "$(_svc_uids solr7)" -f /var/solr7 || [ ! -e "${_pidfile}" ]; then
       find /tmp -mindepth 1 -maxdepth 1 -user solr7 -exec rm -rf -- {} + 2>/dev/null
@@ -322,7 +343,8 @@ _solr_health_check_fix() {
       fi
     fi
   fi
-  if [ -x "/etc/init.d/jetty9" ] && ! _solr_restart_in_flight jetty9 ""; then
+  if [ -x "/etc/init.d/jetty9" ] && ! _solr_svc_denied jetty9 \
+    && ! _solr_restart_in_flight jetty9 ""; then
     _pidfile="/run/jetty9.pid"
     if ! pgrep -u "$(_svc_uids jetty9)" -U "$(_svc_uids jetty9)" -f /opt/jetty9 || [ ! -e "${_pidfile}" ]; then
       find /tmp -mindepth 1 -maxdepth 1 -user jetty9 -exec rm -rf -- {} + 2>/dev/null
