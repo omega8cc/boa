@@ -8995,15 +8995,33 @@ _xmass_port_listening() {
   ss -ltn 2>/dev/null | grep -q ":${_p}[[:space:]]"
 }
 
-### Rebuild an init script the way Solr's own install_solr_service.sh does when
-### no parked copy survived. BOA never keeps a template of its own: the source
-### is the distribution's bin/init.d/solr plus four substitutions.
+### Rebuild an init script when no parked copy survived, saying in
+### _XMASS_REGEN_FROM what it was made from. Solr 7 and 9 the way Solr's own
+### install_solr_service.sh does: BOA keeps no template of its own for them, so
+### the source is the distribution's bin/init.d/solr plus four substitutions.
+### Solr 4 (jetty9) the way a system pass lays it: BOA's own template while the
+### build tree still holds it, else a link to Jetty's own jetty.sh, which the
+### next system pass replaces with that template.
 _xmass_regen_solr_initd() {
   local _svc="$1"
   local _tmpl="/opt/${_svc}/bin/init.d/solr"
   local _initd="/etc/init.d/${_svc}"
+  _XMASS_REGEN_FROM=""
   case "${_svc}" in
     solr9|solr7) : ;;
+    jetty9)
+      [ -e /etc/default/jetty9 ] && [ -x /opt/jetty9/bin/jetty.sh ] || return 1
+      if [ -f /opt/tmp/boa/aegir/conf/solr4/jetty9 ]; then
+        cp -af /opt/tmp/boa/aegir/conf/solr4/jetty9 "${_initd}" || return 1
+        chown root:root "${_initd}" || return 1
+        chmod 755 "${_initd}" || return 1
+        _XMASS_REGEN_FROM="BOA's template in /opt/tmp/boa"
+      else
+        ln -sfn /opt/jetty9/bin/jetty.sh "${_initd}" || return 1
+        _XMASS_REGEN_FROM="a link to /opt/jetty9/bin/jetty.sh (the next system pass lays BOA's template)"
+      fi
+      return 0
+    ;;
     *) return 1 ;;
   esac
   [ -e "/etc/default/${_svc}.in.sh" ] || return 1
@@ -9018,6 +9036,7 @@ _xmass_regen_solr_initd() {
   sed -i "1s#^\#\!/bin/sh\$#\#\!/bin/dash#" "${_initd}"
   chown root:root "${_initd}" || return 1
   chmod 744 "${_initd}" || return 1
+  _XMASS_REGEN_FROM="${_tmpl}"
   return 0
 }
 
@@ -10146,9 +10165,9 @@ _xmass_restore_solr_source() {
         chmod 744 "${_initd}"
         _info "  ${_svc}: init script restored from ${_parked}"
       elif _xmass_regen_solr_initd "${_svc}"; then
-        _info "  ${_svc}: init script regenerated from /opt/${_svc}/bin/init.d/solr"
+        _info "  ${_svc}: init script regenerated from ${_XMASS_REGEN_FROM}"
       else
-        _alrt "  ${_svc}: no init script, no parked copy in /var/backups, and no usable distribution template -- skipped"
+        _alrt "  ${_svc}: no init script, no parked copy in /var/backups, and nothing to make one from -- skipped"
         continue
       fi
     elif [ ! -x "${_initd}" ]; then

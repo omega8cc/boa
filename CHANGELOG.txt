@@ -1480,6 +1480,15 @@
       down until restore-solr ran again (Solr 4 also came back with the
       next barracuda pass).
 
+    * xmass restore-solr brings Solr 4 back when both its init script and
+      the parked copy in /var/backups are gone. It rebuilt a missing
+      script for Solr 7 and 9 from the distribution's template only, and
+      skipped Solr 4 with an alert, so Solr 4 stayed down until the next
+      barracuda pass. It now lays BOA's own template, as a system pass
+      does, while the build tree in /opt/tmp/boa still holds it, and
+      otherwise a link to Jetty's jetty.sh, which the next pass replaces
+      with that template; the line says which.
+
     * A site's solr.php is written again when its directive moves the site
       to another Solr version. The core keeps its name on every version, and
       the file was rewritten only when that name was missing from it, so it
