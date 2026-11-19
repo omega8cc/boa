@@ -1259,8 +1259,8 @@ _sysstat_history() {
   local _def="/etc/default/sysstat"
   local _cnf="/etc/sysstat/sysstat"
   local _crn="/etc/cron.d/sysstat"
-  local _prv="/run/boa_sysstat_default.prev"
-  local _pth _shl _fnd
+  local _prv="/run/boa_sysstat_default.prev.$$"
+  local _pth _shl _fnd _put
 
   [ "${_SYSSTAT_HISTORY}" = "NO" ] && return 0
   dpkg-query -W -f='${Status}' sysstat 2> /dev/null | grep -q 'install ok installed' || return 0
@@ -1280,8 +1280,15 @@ _sysstat_history() {
       [ -x /etc/init.d/sysstat ] && /etc/init.d/sysstat start < /dev/null > /dev/null 2>&1
       echo "$(date) sysstat switched on" >> "${_log}"
     else
-      mv -f "${_prv}" "${_def}"
-      echo "$(date) sysstat not switched on: its reconfigure failed, ${_def} put back, the next pass tries again" >> "${_log}"
+      ### Put back by a rename inside /etc/default, and only when it changed.
+      _put="put back"
+      if ! cmp -s "${_prv}" "${_def}"; then
+        cp -pf "${_prv}" "${_def}.boa.$$" && mv -f "${_def}.boa.$$" "${_def}" \
+          || _put="NOT put back (a copy stays in ${_prv})"
+      fi
+      rm -f "${_def}.boa.$$"
+      [ "${_put}" = "put back" ] && rm -f "${_prv}"
+      echo "$(date) sysstat not switched on: setting ENABLED or its reconfigure failed, ${_def} ${_put}, the next pass tries again" >> "${_log}"
       return 0
     fi
   fi
