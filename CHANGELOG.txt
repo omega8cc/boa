@@ -339,6 +339,13 @@
 
 @=> Security
 
+    * PHP 8.1.34 builds with upstream's fix for CVE-2026-129291 carried
+      back to it: a use-after-free in the way the PHP-FPM master reads its
+      workers' output, which code already running in a pool could use to
+      act as the master. The affected code came with 8.1.20, so 8.0 and
+      older do not have it. A box whose 8.1.34 was built without the fix
+      rebuilds it with its next barracuda upgrade.
+
     * Solr 9 runs with -XX:-UseBASE64Intrinsics. Java 17 and 21 decode
       Base64 with a CPU-specific routine that, on processors with AVX-512
       VBMI (AMD Zen 4 and newer, recent Intel Xeons), writes past its
