@@ -369,9 +369,10 @@
       /var/log/boa/sec-floor.log and mails the operator once, naming the
       versions, which of the three passes it was, the pass's report and its
       own last lines in /var/log/boa/barracuda-sec-floor.log (each launch
-      writes a line there first), and when the next pass starts. A pass that
-      upgraded part of what was below says what is still below, which is
-      counted afresh. The floor itself used to say nothing until the retry
+      writes a line there first), and when the next pass starts. When what
+      is below has changed since the pass started (part of it upgraded, a
+      version retired or newly below), the mail says what is still below,
+      which is counted afresh. The floor itself used to say nothing until the retry
       12 hours later and mailed only after the third pass, and a pass the
       launcher refused before it began, such as on a MySQL root password it
       could not use, sent no report of its own, so such a box stayed below
