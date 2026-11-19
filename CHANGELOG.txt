@@ -364,11 +364,13 @@
       build of an installed version starts the barracuda system pass that
       installs them, also with _SKYNET_MODE=OFF, under the floor's usual
       rules. Of upstream's seventeen advisories one reaches BOA's own
-      setup (CVE-2026-129291, the two entries above). The seven rated
-      critical need something BOA does not have: a FastCGI connection
-      Nginx keeps open, session upload progress, arguments in backtraces,
-      PHP settings sent with a request, or workers able to write PHP's
-      own log. The rest depend on a site's own code.
+      setup (CVE-2026-129291, the two entries above). Of the seven rated
+      critical, five need something BOA does not have: a FastCGI
+      connection Nginx keeps open, session upload progress, arguments in
+      backtraces, PHP settings sent with a request, or workers able to
+      write PHP's own log. The other two, in PHP's session code
+      (CVE-2026-126714, CVE-2026-129481), and the remaining nine depend
+      on a site's own code, and the fixed releases close them.
 
     * Solr 9 runs with -XX:-UseBASE64Intrinsics. Java 17 and 21 decode
       Base64 with a CPU-specific routine that, on processors with AVX-512
