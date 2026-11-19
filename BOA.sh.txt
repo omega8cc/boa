@@ -7463,6 +7463,25 @@ if [ "$(id -u)" -eq 0 ]; then
     rmmod dccp_probe &> /dev/null
   fi
 
+  ### Linux kernel SCTP hotfix: any local user can autoload sctp by opening
+  ### an SCTP socket, and an unpatched flaw in it gives root. Nothing in BOA
+  ### uses SCTP. A module already loaded cannot be removed and stays until
+  ### the next reboot; /proc/sys/net/sctp exists while SCTP is live. In a
+  ### container the host's modprobe loads modules, reading the host's files.
+  ### The file is checked by its lines, so an empty or partial one is
+  ### written again; modprobe reads only *.conf, never the .new copy.
+  _sctpConf="/etc/modprobe.d/blacklist-sctp.conf"
+  if [ -d "/etc/modprobe.d" ] \
+    && { ! grep -qsx "install sctp /bin/true" "${_sctpConf}" \
+      || ! grep -qsx "install sctp_diag /bin/true" "${_sctpConf}"; }; then
+    if printf 'install sctp /bin/true\ninstall sctp_diag /bin/true\n' \
+      2> /dev/null > "${_sctpConf}.new"; then
+      mv -f "${_sctpConf}.new" "${_sctpConf}"
+    else
+      rm -f "${_sctpConf}.new"
+    fi
+  fi
+
   if [ ! -e "/data/all/cpuinfo" ]; then
     _count_cpu
   fi
