@@ -4613,9 +4613,11 @@ MYLOADEREOF
 
 # True when Solr version $1 (solr9, solr7 or jetty9) is denied on this box,
 # read as autoupboa reads it when it parks the service: the box-wide Java
-# deny or the version's own, as a setting or as a marker file. No fix here
-# restarts a denied version: autoupboa parks it within minutes, and a start
-# racing that park leaves a JVM with no init script.
+# deny or the version's own, as a setting or as a marker file. The fixes
+# below leave a denied version alone, as they leave a parked one: their
+# restart would start it, to run until autoupboa parks it, or for good where
+# _SKYNET_MODE=OFF stops autoupboa before its deny arms. The first run after
+# the deny is lifted makes the fix and the restart if they are still due.
 _solr_svc_denied() {
   local _dv=""
   case "${1}" in
@@ -4643,14 +4645,15 @@ _solr_svc_denied() {
 ### a line that cannot be appended is logged, never a restart every tick.
 ### A replication standby and a box under the xmass Solr hold keep Solr
 ### down (manage_solr_config.sh and java.sh stand down on the same two
-### markers), so neither is rewritten or restarted here. A denied version
-### gets the rewrite and the stamp but no restart (_solr_svc_denied).
+### markers), so neither is rewritten or restarted here, and neither is a
+### denied version (_solr_svc_denied).
 _fix_solr_defaults_line() {
   # ${1} = solr7 or solr9  ${2} = its stop port  ${3} = its stop key
   local _svc="${1}" _port="${2}" _key="${3}" _file _stamp _sum
   _file="/etc/default/${_svc}.in.sh"
   _stamp="/etc/boa/control/${_svc}.in.005.fixed.pid"
   [ -x "/etc/init.d/${_svc}" ] && [ -e "${_file}" ] || return 0
+  _solr_svc_denied "${_svc}" && return 0
   if [ -e "${_stamp}" ] \
     && grep -q "STOP\.PORT=${_port}" "${_file}" \
     && grep -q "SOLR_START_WAIT=\"10\"" "${_file}" \
@@ -4678,12 +4681,8 @@ _fix_solr_defaults_line() {
   [ -e "${_stamp}" ] \
     || echo "SOLR-OPTS-ERROR: the stamp ${_stamp} could not be written at $(date)" >> ${_pthLog}/_fix_start_stop_ports_solr.log
   if [ "$(md5sum "${_file}" 2> /dev/null | cut -d' ' -f1)" != "${_sum}" ]; then
-    if _solr_svc_denied "${_svc}"; then
-      echo "_restart${_svc^} skipped, ${_svc} is denied, at $(date)" >> ${_pthLog}/_fix_start_stop_ports_solr.log
-    else
-      echo "_restart${_svc^} at $(date)" >> ${_pthLog}/_fix_start_stop_ports_solr.log
-      service "${_svc}" restart
-    fi
+    echo "_restart${_svc^} at $(date)" >> ${_pthLog}/_fix_start_stop_ports_solr.log
+    service "${_svc}" restart
   fi
 }
 
@@ -4721,7 +4720,8 @@ _fix_start_stop_ports_solr() {
 _fix_log4j_solr7() {
   _LOG4J_VRN=2.17.1
   _DO_SOLR_RESTART=
-  if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
+  if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ] \
+    && ! _solr_svc_denied solr7; then
     if [ -e "/opt/solr-7.7.3" ] \
       && [ ! -e "/opt/solr-7.7.3/server/lib/ext/log4j-core-${_LOG4J_VRN}.jar" ]; then
       cd /var/opt
@@ -4770,8 +4770,7 @@ _fix_log4j_solr7() {
     if [[ ! "${_RESULT_LOG4J}" =~ "LOG4J" ]]; then
       echo "LOG4J_FORMAT_MSG_NO_LOOKUPS=true" >> /etc/default/solr7.in.sh
     fi
-    if { [[ ! "${_RESULT_LOG4J}" =~ "LOG4J" ]] || [ ! -z "${_DO_SOLR_RESTART}" ]; } \
-      && ! _solr_svc_denied solr7; then
+    if [[ ! "${_RESULT_LOG4J}" =~ "LOG4J" ]] || [ ! -z "${_DO_SOLR_RESTART}" ]; then
       #pkill -9 -f solr7
       service solr7 restart &> /dev/null
     fi
