@@ -369,8 +369,9 @@
       connection Nginx keeps open, session upload progress, arguments in
       backtraces, PHP settings sent with a request, or workers able to
       write PHP's own log. The other two, in PHP's session code
-      (CVE-2026-126714, CVE-2026-129481), and the remaining nine depend
-      on a site's own code, and the fixed releases close them.
+      (CVE-2026-126714, CVE-2026-129481), depend on a site's own code,
+      as do most of the remaining nine, and the fixed releases close
+      them.
 
     * Solr 9 runs with -XX:-UseBASE64Intrinsics. Java 17 and 21 decode
       Base64 with a CPU-specific routine that, on processors with AVX-512
