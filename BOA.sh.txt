@@ -4616,8 +4616,8 @@ MYLOADEREOF
 # deny or the version's own, as a setting or as a marker file. The fixes
 # below leave a denied version alone, as they leave a parked one: their
 # restart would start it, to run until autoupboa parks it, or for good where
-# _SKYNET_MODE=OFF stops autoupboa before its deny arms. The first run after
-# the deny is lifted makes the fix and the restart if they are still due.
+# _SKYNET_MODE=OFF stops autoupboa before its deny arms. The first run once
+# the version is back makes the fix and the restart if they are still due.
 _solr_svc_denied() {
   local _dv=""
   case "${1}" in
