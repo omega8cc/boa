@@ -2658,7 +2658,7 @@ _sql_root_rotation_move_held() {
     | cut -d= -f2- | tr -cd 'a-z-')
   case "${_p}" in
     init|syncing|cutover|rename-failed)
-      _msg "INFO: MySQL root password rotation held: this box is a move's source (${_h})"
+      _msg "INFO: MySQL root password kept as it is: this box is a move's source (${_h})"
       return 0
     ;;
   esac
@@ -2812,9 +2812,10 @@ _sql_root_credentials_update() {
         ### root-credentialed tool on the mirror, xmass included, then fails
         ### to authenticate. The active owns the password; replication carries
         ### it; promotion resumes normal rotation.
-        if { [ -e "/root/.mysql.yes.new.password.cnf" ] \
-          || [ -e "/root/.my.cluster_root_pwd.txt" ]; } \
-          && ! _sql_root_rotation_move_held; then
+        if _sql_root_rotation_move_held; then
+          :
+        elif [ -e "/root/.mysql.yes.new.password.cnf" ] \
+          || [ -e "/root/.my.cluster_root_pwd.txt" ]; then
           _forced_mysql_root_password_update
         fi
       fi

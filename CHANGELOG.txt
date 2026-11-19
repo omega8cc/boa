@@ -1056,11 +1056,13 @@
       deletes), and lifts it when the move ends or is forgotten. A
       standing mirror's active keeps rotating: the carry serves it.
 
-    * xmass cutover --live carries root's MySQL pair to the standby first
-      and reads the replica through it, and stops before it changes
-      anything when the standby still refuses it or the replica has
-      stopped. It found that out only at its lag wait, with the sites
-      already on the 503 page.
+    * xmass cutover --live holds root's MySQL password rotation for its own
+      run (a standing mirror's too), waits for a pass on the target to end,
+      carries root's pair to the standby and reads the replica through it,
+      and goes on only once both replica threads run and the standby holds
+      the source's pair, trying again for two minutes; then it stops before
+      it changes anything. It found that out only at its lag wait, with the
+      sites already on the 503 page.
 
     * A barracuda pass that switches system scripts from /bin/sh to dash
       (or bash) changes only that shell's name. It changed every /bin/sh
