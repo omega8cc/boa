@@ -4,16 +4,21 @@
 
 @=> New Features
 
-    * The source of a server move or a standing mirror now guards its disk
-      against its binary log and the night database dump. Every five
-      minutes xmass binlog-guard measures the log's rate, adds the dump's
+    * Every server of a move now guards its disk against its binary log
+      and the night database dump: the source and its standby while the
+      move or mirror stands, the old source after its cutover (whose log
+      then rotates only with the few writes left, so MySQL's own expiry
+      stops purging it) and the new server after it. Every five minutes
+      xmass binlog-guard measures the log's rate, adds the dump's
       uncompressed peak when the dumps land on the same filesystem, and
       projects the next day; before that passes 88% it purges the oldest
-      binary log every replica has received, never a file the pair's
-      replica still needs, and mails the operator. It purges nothing
-      outside a standing pair, and nothing when the replica is away and
-      its status cannot be read. _XMASS_BINLOG_GUARD=NO keeps the warnings
-      and never purges; _XMASS_BINLOG_GUARD_PCT moves the line.
+      binary log nothing still needs, and mails the operator. On the
+      source it never purges a file the pair's replica still needs, and
+      nothing when the replica is away and its status cannot be read; on
+      the others, which nothing replicates from, nothing while any replica
+      is connected, and on a standby only while it replicates.
+      _XMASS_BINLOG_GUARD=NO keeps the warnings and never purges;
+      _XMASS_BINLOG_GUARD_PCT moves the line.
 
     * The nightly database backup records its uncompressed peak, and on a
       night that peak would take its filesystem past 95% it compresses

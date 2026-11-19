@@ -219,22 +219,28 @@ _xmass_cred_check() {
 }
 _xmass_cred_check
 
-# The source of a move or a standing mirror writes a binary log for its
-# standby, and the nightly database backup writes its dumps on the same
-# disk: 'xmass binlog-guard' projects both against the disk every five
-# minutes and purges the oldest log the replicas have before it fills. The
-# rest of the fleet pays one file test; nothing on a standby or a proxy,
-# after a move's end, or with an xmass that lacks the verb. Its line a run
-# goes to the log here, so the run keeps no run log of its own
+# Every server of a move keeps the binary log xmass set up for days, and the
+# nightly database backup writes its dumps on the same disk: 'xmass
+# binlog-guard' projects both against the disk every five minutes and purges
+# the oldest log nothing still needs before it fills. That is the source and
+# its standby while the move or mirror stands, the old source after its
+# cutover (its log then rotates only with the few writes left, so MySQL's own
+# expiry stops purging it) and the new server after it. The rest of the fleet
+# pays a few file tests; nothing on a proxy unless it is a standby again (an
+# ha-switch failback target), or with an xmass that lacks the verb. Its line
+# a run goes to the log here, so the run keeps no run log of its own
 # (_MIG_RUNLOG=none, as a caller that keeps the output says), and a run is
 # ended after 15 minutes: one that hung would hold the guard's own lock.
 _xmass_binlog_check() {
-  local _log="/var/log/boa/xmass.binlog.guard.log"
-  [ -e "/data/conf/xmass_state.cnf" ] || return 0
+  local _log="/var/log/boa/xmass.binlog.guard.log" _c _move=NO
   [ -e "/opt/local/bin/xmass" ] || return 0
-  [ -e "/root/.standby.cnf" ] && return 0
-  [ -e "/root/.proxy.cnf" ] && return 0
-  grep -q '^_XMASS_PHASE=complete' /data/conf/xmass_state.cnf 2> /dev/null && return 0
+  [ -e "/root/.proxy.cnf" ] && [ ! -e "/root/.standby.cnf" ] && return 0
+  [ -e "/data/conf/xmass_state.cnf" ] && _move=YES
+  [ -e "/root/.standby.cnf" ] && _move=YES
+  for _c in /etc/mysql/xmass_gtid.cnf /etc/mysql/*/xmass_gtid.cnf; do
+    [ -e "${_c}" ] && _move=YES
+  done
+  [ "${_move}" = "YES" ] || return 0
   [ -n "$(find /var/log/boa/xmass.binlog.tried -mmin -5 ! -newermt now 2> /dev/null)" ] && return 0
   grep -q '^  binlog-guard)' /opt/local/bin/xmass 2> /dev/null || return 0
   touch /var/log/boa/xmass.binlog.tried 2> /dev/null

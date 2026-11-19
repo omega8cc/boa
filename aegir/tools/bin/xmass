@@ -6709,8 +6709,14 @@ _xmass_binlog_plan() {
 # (mysql_backup.sh) writes its dumps uncompressed onto the same root before
 # it compresses them: the two together once filled a source's root, and
 # MySQL then held every write of every site until space was freed by hand.
-# So minute.sh runs this guard on a source every five minutes while the
-# state names a pair (never on a standby). It measures the log's rate from
+# So minute.sh runs this guard every five minutes on every server of a move
+# that keeps the log xmass set up: the source while the state names a pair;
+# its standby, which logs every row it applies at the source's rate and keeps
+# it as many days as init planned for it; the old source after its cutover,
+# whose log then rotates only with the few writes left, so MySQL's own expiry
+# stops purging it while the night dump still runs there until xtrim makes it
+# a proxy; and the new server after its cutover, which keeps the standby's
+# days with every write of the sites now its own. It measures the log's rate from
 # its own samples (the highest over the last hour, six hours and day),
 # counts the night dump's peak when the dumps land on the log's filesystem
 # (the largest mysql_backup.sh recorded in the last eight nights, or the
@@ -6720,12 +6726,21 @@ _xmass_binlog_plan() {
 # compress each database as it goes. Every read is bounded in time. Past the
 # line (88% by default, under the 90% where BOA's
 # runners, its backups and this tool stop), it holds the log to the longest
-# window that keeps the projection under it, by purging the oldest files, at
-# phase syncing only and never a file a replica still needs: MySQL never
-# purges the file a connected replica reads, nor any after it; a replica
-# whose own status can be read over ssh keeps everything from the file its
-# applier is in; the pair's replica, not connected and not readable, keeps
-# everything, and the guard says so. MySQL's own expiry stays as init set
+# window that keeps the projection under it, by purging the oldest files,
+# never a file a replica still needs. On the source, at phase syncing only:
+# MySQL never purges the file a connected replica reads, nor any after it; a
+# replica whose own status can be read over ssh keeps everything from the
+# file its applier is in; the pair's replica, not connected and not readable,
+# keeps everything, and the guard says so. Nothing replicates from the other
+# three: every replica xmass makes is seeded from a fresh snapshot of its
+# source and needs only what that source writes after it, a failback or a
+# new mirror being such a seed of the new server. So there the guard purges
+# only while no replica is connected at all (any replica connected there
+# keeps everything), on a standby only while both its replication threads run (an
+# init or a cutover step stops them), and a standby, which keeps the days init
+# planned for it, gives them up only past the line. A standby goes first:
+# an ha-switch failback target is a finalized proxy that took the standby
+# marker; any other proxy is left alone. MySQL's own expiry stays as init set
 # it, so the hold ends by itself once the projection fits again, and a
 # guard that does not run leaves the box as it was. Each purge, and each
 # projection past the line, is mailed to the operator at most once an hour
@@ -6868,6 +6883,10 @@ _xmass_blg_dump() {
   _BLG_DPK1=0
   _BLG_DDISK=0
   _BLG_DSAYS="none"
+  if [ -e /root/.standby.cnf ]; then
+    _BLG_DSAYS="none: the nightly backup does not run on a standby"
+    return 0
+  fi
   if [ ! -e /var/xdrago/mysql_backup.sh ]; then
     _BLG_DSAYS="no nightly backup here"
     return 0
@@ -7042,19 +7061,36 @@ _xmass_cmd_binlog_guard() {
   local _act=YES _why="" _p _now _lb _ldir _b _v _ret _files _mnt _sz _us _line _out _o _rc
   local _rate _rhow _log _nowp _pr _prp _keep _pk _pkp _fit _hold _pto _pfreed _pidx
   local _ci _cp _f _s _i _first _floor _conn=NO _name _after _say _sub _h _dh _kind
+  local _role _rsay="" _rd
   local -a _paths=()
   local -A _mt=()
-  [ -e /root/.standby.cnf ] && exit 0
-  [ -e /root/.proxy.cnf ] && exit 0
-  _xmass_load_state
-  case "${_XMASS_PHASE}" in
-    syncing) : ;;
-    init|cutover|rename-failed)
-      _act=NO
-      _why="phase ${_XMASS_PHASE}: a move step is under way"
-    ;;
-    *) exit 0 ;;
-  esac
+  # which server of a move this is decides what may still read its log; a
+  # standby first: an ha-switch failback target is a finalized proxy that
+  # took the standby marker, and replicates as any standby does
+  if [ -e /root/.standby.cnf ]; then
+    _role=standby
+    _rsay="a standby's own log: nothing replicates from a standby"
+  else
+    [ -e /root/.proxy.cnf ] && exit 0
+    _xmass_load_state
+    case "${_XMASS_PHASE}" in
+      syncing) _role=source ;;
+      init|cutover|rename-failed)
+        _role=source
+        _act=NO
+        _why="phase ${_XMASS_PHASE}: a move step is under way"
+      ;;
+      complete)
+        _role=retired
+        _rsay="the old source after its cutover: nothing replicates from it any more"
+      ;;
+      *)
+        [ -e "$(_xmass_mysql_conf_dir)/xmass_gtid.cnf" ] || exit 0
+        _role=promoted
+        _rsay="a server xmass set up for a move, no standby now (a move's new server): nothing replicates from it until a mirror is seeded from it"
+      ;;
+    esac
+  fi
   case "${_XMASS_BINLOG_GUARD:-YES}" in
     [Nn][Oo]|[Oo][Ff][Ff])
       _act=NO
@@ -7082,6 +7118,17 @@ _xmass_cmd_binlog_guard() {
         _why="an xmass init or cutover runs (pid ${_p})"
       ;;
     esac
+  fi
+  # a standby's init (the marker comes before its datadir is swapped) and a
+  # cutover's stop of its threads are the source's steps: purge only while
+  # it replicates
+  if [ "${_role}" = "standby" ]; then
+    _o="$( { timeout 60 mysql --defaults-file=/root/.my.cnf --connect-timeout=5 -e 'SHOW REPLICA STATUS\G' \
+      || timeout 60 mysql --defaults-file=/root/.my.cnf --connect-timeout=5 -e 'SHOW SLAVE STATUS\G'; } 2> /dev/null )"
+    if [ "$(printf '%s\n' "${_o}" | awk '$1 ~ /^(Slave|Replica)_(IO|SQL)_Running:$/ && $2 == "Yes" { n++ } END { print n + 0 }')" != "2" ]; then
+      _act=NO
+      _why="the standby's replication threads are not both running (a move step, or a fault)"
+    fi
   fi
   [ "$(_xmass_blg_q 'SELECT @@log_bin')" = "1" ] || exit 0
   _lb="$(_xmass_blg_q 'SELECT @@log_bin_basename')"
@@ -7160,7 +7207,7 @@ _xmass_cmd_binlog_guard() {
   _say="log $(_xmass_blg_g "${_log}") G at $(_xmass_blg_g "${_rate}") G an hour (${_rhow}), night dump $(_xmass_blg_g "${_BLG_DPK}") G (${_BLG_DSAYS}); ${_mnt} at ${_nowp}% now"
   [ "${_ret}" -gt 0 ] && _h="${_ret} h" || _h="no expiry"
   if [ "${_hold}" != "YES" ]; then
-    echo "binlog-guard $(date '+%F %T'): OK: ${_say}, ${_prp}% at worst in 24 h with the ${_h} MySQL keeps, under the ${_line}% line"
+    echo "binlog-guard $(date '+%F %T'): OK: ${_say}, ${_prp}% at worst in 24 h with the ${_h} MySQL keeps, under the ${_line}% line${_rsay:+ (${_rsay})}"
     exit 0
   fi
   _say="${_say}, ${_prp}% at worst in 24 h with the ${_h} MySQL keeps, past the ${_line}% line"
@@ -7198,10 +7245,39 @@ _xmass_cmd_binlog_guard() {
     } | _xmass_blg_mail ALERT "Binary log ALERT on [${_hName}]: ${_mnt} projected at ${_pkp}% even at ${_keep} h" "${_pkp}"
     exit 0
   fi
+  # nothing replicates from a standby, an old source after its cutover or a
+  # new server, so any replica connected there is one this guard knows
+  # nothing about (one set up by hand, or the pair's standby still reading a
+  # source closed by reset-phase) and the log it still needs is not known
+  if [ "${_role}" != "source" ]; then
+    _rd="$(_xmass_blg_q "SELECT COUNT(*) FROM information_schema.PROCESSLIST WHERE COMMAND LIKE 'Binlog Dump%'")"
+    if ! [[ "${_rd}" =~ ^[0-9]+$ ]] || [ "${_rd}" -gt 0 ]; then
+      if [[ "${_rd}" =~ ^[0-9]+$ ]]; then
+        _o="${_rd} replica(s) read it, where none is expected"
+        _sub="${_rd} replica(s) read it"
+      else
+        _o="the replicas reading it could not be counted"
+        _sub="its replicas not counted"
+      fi
+      echo "binlog-guard $(date '+%F %T'): PAST THE LINE, nothing purged: ${_o}: ${_say} (${_rsay})"
+      {
+        echo "The binary log guard on ${_hName} projects ${_mnt} past its ${_line}% line"
+        echo "within 24 hours and purged nothing: ${_o}, so the log still needed"
+        echo "is not known. No replica xmass makes reads this server's log (${_rsay}):"
+        echo "one set up by hand, or the pair's standby still reading a source a"
+        echo "reset-phase closed, keeps all of it."
+        echo
+        echo "${_say}."
+        echo
+        echo "Free space on ${_mnt}. MySQL stops every write once the filesystem is full."
+      } | _xmass_blg_mail ALERT "Binary log ALERT on [${_hName}]: ${_mnt} projected at ${_prp}%, ${_sub}, nothing purged" "${_prp}"
+      exit 0
+    fi
+    _say="${_say}; no replica reads this log (${_rsay})"
   # what every replica still needs: a connected one's file MySQL keeps by
   # itself, and the pair's replica keeps the file its own status names; a
   # state that names no replica purges nothing
-  if [ -z "${_XMASS_TARGET_IP}" ]; then
+  elif [ -z "${_XMASS_TARGET_IP}" ]; then
     echo "binlog-guard $(date '+%F %T'): PAST THE LINE, nothing purged: ${_XMASS_STATE_FILE} names no replica: ${_say}"
     {
       echo "The binary log guard on ${_hName} projects ${_mnt} past its ${_line}% line"
@@ -7217,32 +7293,34 @@ _xmass_cmd_binlog_guard() {
   _first="$(printf '%s\n' "${_files}" | head -n 1 | awk '{ print $1 }')"
   _first="${_first##*.}"
   _first=$(( 10#${_first} ))
-  while read -r _dh _s; do
-    _dh="${_dh%:*}"
-    _dh="${_dh#::ffff:}"
-    [ -n "${_XMASS_TARGET_IP}" ] && [ "${_dh}" = "${_XMASS_TARGET_IP}" ] && _conn=YES
-  done <<< "$(_xmass_blg_q "SELECT HOST, STATE FROM information_schema.PROCESSLIST WHERE COMMAND LIKE 'Binlog Dump%'")"
-  _floor="$(_xmass_blg_replica_floor "${_XMASS_TARGET_IP}" "${_b}")"
-  if [ -n "${_floor}" ]; then
-    [ "${_floor}" -ge "${_pidx}" ] || _pidx="${_floor}"
-    _f="$(_xmass_blg_name "${_files}" "${_floor}")"
-    _say="${_say}; the replica ${_XMASS_TARGET_IP} needs from ${_f:-a file no longer here (index ${_floor}): it needs a new init}"
-  elif [ "${_conn}" != "YES" ]; then
-    echo "binlog-guard $(date '+%F %T'): PAST THE LINE, nothing purged: the replica ${_XMASS_TARGET_IP} is not connected and its status cannot be read: ${_say}"
-    {
-      echo "The binary log guard on ${_hName} projects ${_mnt} past its ${_line}% line"
-      echo "within 24 hours and purged nothing: the pair's replica ${_XMASS_TARGET_IP}"
-      echo "is not connected, and its own status could not be read, so the log it"
-      echo "still needs is not known."
-      echo
-      echo "${_say}."
-      echo
-      echo "Bring the replica back (it then reads the log again), or free space"
-      echo "on ${_mnt}. MySQL stops every write once the filesystem is full."
-    } | _xmass_blg_mail ALERT "Binary log ALERT on [${_hName}]: ${_mnt} projected at ${_prp}%, replica away, nothing purged" "${_prp}"
-    exit 0
-  elif [ "${_conn}" = "YES" ]; then
-    _say="${_say}; the replica ${_XMASS_TARGET_IP} reads it now (MySQL keeps the file it reads)"
+  if [ "${_role}" = "source" ]; then
+    while read -r _dh _s; do
+      _dh="${_dh%:*}"
+      _dh="${_dh#::ffff:}"
+      [ -n "${_XMASS_TARGET_IP}" ] && [ "${_dh}" = "${_XMASS_TARGET_IP}" ] && _conn=YES
+    done <<< "$(_xmass_blg_q "SELECT HOST, STATE FROM information_schema.PROCESSLIST WHERE COMMAND LIKE 'Binlog Dump%'")"
+    _floor="$(_xmass_blg_replica_floor "${_XMASS_TARGET_IP}" "${_b}")"
+    if [ -n "${_floor}" ]; then
+      [ "${_floor}" -ge "${_pidx}" ] || _pidx="${_floor}"
+      _f="$(_xmass_blg_name "${_files}" "${_floor}")"
+      _say="${_say}; the replica ${_XMASS_TARGET_IP} needs from ${_f:-a file no longer here (index ${_floor}): it needs a new init}"
+    elif [ "${_conn}" != "YES" ]; then
+      echo "binlog-guard $(date '+%F %T'): PAST THE LINE, nothing purged: the replica ${_XMASS_TARGET_IP} is not connected and its status cannot be read: ${_say}"
+      {
+        echo "The binary log guard on ${_hName} projects ${_mnt} past its ${_line}% line"
+        echo "within 24 hours and purged nothing: the pair's replica ${_XMASS_TARGET_IP}"
+        echo "is not connected, and its own status could not be read, so the log it"
+        echo "still needs is not known."
+        echo
+        echo "${_say}."
+        echo
+        echo "Bring the replica back (it then reads the log again), or free space"
+        echo "on ${_mnt}. MySQL stops every write once the filesystem is full."
+      } | _xmass_blg_mail ALERT "Binary log ALERT on [${_hName}]: ${_mnt} projected at ${_prp}%, replica away, nothing purged" "${_prp}"
+      exit 0
+    elif [ "${_conn}" = "YES" ]; then
+      _say="${_say}; the replica ${_XMASS_TARGET_IP} reads it now (MySQL keeps the file it reads)"
+    fi
   fi
   if [ "${_pidx}" -le "${_first}" ]; then
     echo "binlog-guard $(date '+%F %T'): PAST THE LINE, nothing purged: every file left is still needed: ${_say}"
@@ -7267,6 +7345,17 @@ _xmass_cmd_binlog_guard() {
   _after="$(_xmass_blg_q 'SHOW BINARY LOGS' | awk '$2 ~ /^[0-9]+$/ { s += $2; if (!f) f = $1 } END { printf "%.0f %s\n", s, f }')"
   if [ "${_rc}" -ne 0 ]; then
     echo "binlog-guard $(date '+%F %T'): PURGE BINARY LOGS TO '${_name}' failed (${_o//$'\n'/ }): ${_say}"
+    {
+      echo "The binary log guard on ${_hName} projects ${_mnt} past its ${_line}% line"
+      echo "within 24 hours, and its purge did not complete (MySQL refused it, the"
+      echo "connection failed, or it ran past ten minutes; status ${_rc}):"
+      echo
+      echo "PURGE BINARY LOGS TO '${_name}': ${_o//$'\n'/ }"
+      echo
+      echo "${_say}."
+      echo
+      echo "Free space on ${_mnt}. MySQL stops every write once the filesystem is full."
+    } | _xmass_blg_mail ALERT "Binary log ALERT on [${_hName}]: ${_mnt} projected at ${_prp}%, the purge failed" "${_prp}"
     exit 0
   fi
   _us="$(df -Pk "${_ldir}/" 2> /dev/null | awk 'NR==2 { printf "%.0f\n", $3 * 100 / ($3 + $4) }')"
@@ -7280,15 +7369,24 @@ _xmass_cmd_binlog_guard() {
     _kind=ALERT
   fi
   {
-    echo "The binary log guard on ${_hName} purged the oldest binary log, every"
-    echo "file of it already received by the replicas, to keep ${_mnt} under its"
+    if [ "${_role}" = "source" ]; then
+      echo "The binary log guard on ${_hName} purged the oldest binary log, every"
+      echo "file of it already received by the replicas, to keep ${_mnt} under its"
+    else
+      echo "The binary log guard on ${_hName} purged the oldest binary log, which"
+      echo "no replica reads, to keep ${_mnt} under its"
+    fi
     echo "${_line}% line over the next 24 hours, the night database backup counted:"
     echo
     echo "${_say}."
     echo
     echo "MySQL's own expiry stays at ${_h}: the guard keeps the log to ${_keep} h only"
-    echo "while the projection needs it, and never purges a file a replica of the"
-    echo "pair has not received."
+    if [ "${_role}" = "source" ]; then
+      echo "while the projection needs it, and never purges a file a replica of the"
+      echo "pair has not received."
+    else
+      echo "while the projection needs it, and only while no replica reads it."
+    fi
     [ "${_fit}" = "YES" ] || echo "Even so the projection stays past the line: free space on ${_mnt}."
   } | _xmass_blg_mail "${_kind}" "${_sub}" "${_pkp}"
   exit 0
@@ -26040,8 +26138,9 @@ case "${_cmd}" in
     _xmass_cmd_carry_credentials
   ;;
   binlog-guard)
-    # Run by minute.sh every five minutes on a source while the state names a
-    # pair: the binary log and the night dump projected against the disk.
+    # Run by minute.sh every five minutes on every server of a move until
+    # xtrim makes it a proxy: the binary log and the night dump projected
+    # against the disk.
     [ $# -eq 0 ] || _die "Usage: xmass binlog-guard"
     _check_root
     _xmass_cmd_binlog_guard
@@ -26071,9 +26170,10 @@ case "${_cmd}" in
     echo "                      sync every N minutes, default 15, until cutover/--off)"
     echo "Usage: xmass carry-credentials                        (run on source by minute.sh: root's"
     echo "                     MySQL pair to the standby once a pass has rotated it here)"
-    echo "Usage: xmass binlog-guard                             (run on source by minute.sh: purges the"
-    echo "                     oldest binary log the replicas have when the log and the night dump"
-    echo "                     would take its disk past 88% within a day)"
+    echo "Usage: xmass binlog-guard                             (run by minute.sh on every server of a move"
+    echo "                     until xtrim makes it a proxy: purges the oldest binary log nothing still"
+    echo "                     needs when the log and the night dump would take its disk past its line,"
+    echo "                     88% by default, within a day)"
     echo "Usage: xmass status  [target-ip]                      (run on source)"
     echo "Usage: xmass cutover <target-ip> [--proxy-mode=...] [--proxy-deadline=...] [--live]"
     echo "                     [admail=<address>]  (a test run: see the notes)"
