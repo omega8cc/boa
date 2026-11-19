@@ -1240,6 +1240,63 @@ _size_swap() {
   echo "$(date) ${_sum}: the new ${_needMb} MB /swapfile would not switch on, no /swapfile on, the next pass builds one" >> "${_log}"
 }
 
+# sysstat samples CPU, memory, load and disks every ten minutes (sar), the
+# history a box is sized from. BOA installs the package, which ships switched
+# off: ENABLED="false" in /etc/default/sysstat, a file its config script
+# writes from debconf and reads back, so the file is the switch and a
+# reconfigure carries it into debconf. Its history is raised from the
+# package's 7 days to 28 (sizing reads weeks); any other value is the
+# operator's and stays. Where cron's line cannot find debian-sa1 through
+# /bin/sh (a websh older than its root PATH fix replaces the cron file's
+# PATH), the cron file gets SHELL=/bin/dash, the shell BOA gives
+# /etc/crontab, and only then. _SYSSTAT_HISTORY=NO in /root/.barracuda.cnf
+# leaves sysstat alone.
+_sysstat_history() {
+  local _log="/var/log/boa/sysstat-history.log"
+  local _def="/etc/default/sysstat"
+  local _cnf="/etc/sysstat/sysstat"
+  local _crn="/etc/cron.d/sysstat"
+  local _pth _shl _fnd
+
+  [ "${_SYSSTAT_HISTORY}" = "NO" ] && return 0
+  dpkg-query -W -f='${Status}' sysstat 2> /dev/null | grep -q 'install ok installed' || return 0
+  [ -f "${_def}" ] || return 0
+
+  if ! grep -q '^ENABLED="true"' "${_def}"; then
+    if grep -q '^ENABLED=' "${_def}"; then
+      sed -i 's/^ENABLED=.*/ENABLED="true"/' "${_def}"
+    else
+      echo 'ENABLED="true"' >> "${_def}"
+    fi
+    if grep -q '^ENABLED="true"' "${_def}" \
+      && DEBIAN_FRONTEND=noninteractive dpkg-reconfigure -f noninteractive sysstat < /dev/null > /dev/null 2>&1 \
+      && grep -q '^ENABLED="true"' "${_def}"; then
+      [ -x /etc/init.d/sysstat ] && /etc/init.d/sysstat start < /dev/null > /dev/null 2>&1
+      echo "$(date) sysstat switched on" >> "${_log}"
+    else
+      echo "$(date) sysstat not switched on: ${_def} or its reconfigure refused, the next pass tries again" >> "${_log}"
+      return 0
+    fi
+  fi
+
+  if grep -q '^HISTORY=7$' "${_cnf}" 2> /dev/null; then
+    sed -i 's/^HISTORY=7$/HISTORY=28/' "${_cnf}" \
+      && echo "$(date) sysstat history raised from 7 to 28 days" >> "${_log}"
+  fi
+
+  [ -f "${_crn}" ] || return 0
+  grep -q '^SHELL=' "${_crn}" && return 0
+  _pth="$(grep -h '^PATH=' "${_crn}" 2> /dev/null | head -n 1 | cut -d= -f2-)"
+  _fnd="$(env -i PATH="${_pth}" HOME=/root LOGNAME=root SHELL=/bin/sh /bin/sh -c 'command -v debian-sa1' < /dev/null 2> /dev/null)"
+  [ -n "${_fnd}" ] && return 0
+  [ -x /bin/dash ] || return 0
+  _shl="$(env -i PATH="${_pth}" HOME=/root LOGNAME=root SHELL=/bin/dash /bin/dash -c 'command -v debian-sa1' < /dev/null 2> /dev/null)"
+  [ -n "${_shl}" ] || return 0
+  if sed -i '1i SHELL=/bin/dash' "${_crn}" && grep -q '^SHELL=/bin/dash$' "${_crn}"; then
+    echo "$(date) ${_crn}: SHELL=/bin/dash added, cron's /bin/sh did not find debian-sa1" >> "${_log}"
+  fi
+}
+
 # Main action function
 _graceful_action() {
   echo "Starting system maintenance tasks..."
@@ -1305,6 +1362,9 @@ _graceful_action() {
   else
     echo "Swap sizing skipped: another graceful.sh run is sizing swap, a swapoff it started still runs, or /run is full"
   fi
+
+  echo "Keeping sysstat's history..."
+  _sysstat_history
 
   echo "Removing empty login-session cgroups..."
   _trim_session_cgroups

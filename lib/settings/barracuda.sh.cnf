@@ -1445,6 +1445,10 @@ _NO_CRON_AUTOSTART=NO
 ### Lets the daily graceful.sh pass size /swapfile to the RAM and to the
 ### swap use of the last 14 days. Set to NO to manage swap yourself.
 _SWAP_AUTOSIZE=YES
+###
+### Lets the daily graceful.sh pass switch on sysstat's history (sar, every
+### ten minutes, kept 28 days). Set to NO to leave sysstat as you set it.
+_SYSSTAT_HISTORY=YES
 
 ###
 ### Set max 1 min load per CPU core before killing
