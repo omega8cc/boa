@@ -364,6 +364,16 @@
       container needs the same two lines on its host, whose modprobe loads
       the module for the container.
 
+    * A forced security pass that ends with a version still below the floor
+      is told at once: the agent's first run after it logs one line in
+      /var/log/boa/sec-floor.log and mails the operator once, naming the
+      versions, which of the three passes it was, the pass's report, the
+      last lines of /var/log/boa/barracuda-sec-floor.log and when the next
+      pass starts. A failed pass used to stay silent until its retry 12
+      hours later and was mailed only after the third, so a box could stay
+      below the floor for a day unseen. The third failed pass now mails at
+      once that BOA starts no more. _INCIDENT_REPORT=OFF logs without mailing.
+
     * lfd blocks SSH password guessing again. OpenSSH 9.8 and newer logs
       failed logins as sshd-session, and the SSH rules of csf 15.00 match
       only sshd, so lfd's LF_SSHD has counted no failure since BOA moved to
