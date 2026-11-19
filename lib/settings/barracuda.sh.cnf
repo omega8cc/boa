@@ -1447,7 +1447,9 @@ _NO_CRON_AUTOSTART=NO
 _SWAP_AUTOSIZE=YES
 ###
 ### Lets the daily graceful.sh pass switch on sysstat's history (sar, every
-### ten minutes, kept 28 days). Set to NO to leave sysstat as you set it.
+### ten minutes, kept 28 days). Set to NO to leave sysstat as you set it;
+### to switch it off again, also set ENABLED="false" in /etc/default/sysstat
+### and run dpkg-reconfigure sysstat.
 _SYSSTAT_HISTORY=YES
 
 ###

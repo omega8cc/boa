@@ -1244,9 +1244,12 @@ _size_swap() {
 # history a box is sized from. BOA installs the package, which ships switched
 # off: ENABLED="false" in /etc/default/sysstat, a file its config script
 # writes from debconf and reads back, so the file is the switch and a
-# reconfigure carries it into debconf. Its history is raised from the
-# package's 7 days to 28 (sizing reads weeks); any other value is the
-# operator's and stays. Where cron's line cannot find debian-sa1 through
+# reconfigure carries it into debconf. A reconfigure that fails (a held
+# dpkg or debconf lock fails it at once) puts the file back as it was, so
+# the next pass tries again. Its history is raised from the package's 7
+# days to 28 (sizing reads weeks), and with it the package's compression
+# from 10 days to 28, since sar reads no compressed day; any other value is
+# the operator's and stays. Where cron's line cannot find debian-sa1 through
 # /bin/sh (a websh older than its root PATH fix replaces the cron file's
 # PATH), the cron file gets SHELL=/bin/dash, the shell BOA gives
 # /etc/crontab, and only then. _SYSSTAT_HISTORY=NO in /root/.barracuda.cnf
@@ -1256,6 +1259,7 @@ _sysstat_history() {
   local _def="/etc/default/sysstat"
   local _cnf="/etc/sysstat/sysstat"
   local _crn="/etc/cron.d/sysstat"
+  local _prv="/run/boa_sysstat_default.prev"
   local _pth _shl _fnd
 
   [ "${_SYSSTAT_HISTORY}" = "NO" ] && return 0
@@ -1263,6 +1267,7 @@ _sysstat_history() {
   [ -f "${_def}" ] || return 0
 
   if ! grep -q '^ENABLED="true"' "${_def}"; then
+    cp -pf "${_def}" "${_prv}" || return 0
     if grep -q '^ENABLED=' "${_def}"; then
       sed -i 's/^ENABLED=.*/ENABLED="true"/' "${_def}"
     else
@@ -1271,10 +1276,12 @@ _sysstat_history() {
     if grep -q '^ENABLED="true"' "${_def}" \
       && DEBIAN_FRONTEND=noninteractive dpkg-reconfigure -f noninteractive sysstat < /dev/null > /dev/null 2>&1 \
       && grep -q '^ENABLED="true"' "${_def}"; then
+      rm -f "${_prv}"
       [ -x /etc/init.d/sysstat ] && /etc/init.d/sysstat start < /dev/null > /dev/null 2>&1
       echo "$(date) sysstat switched on" >> "${_log}"
     else
-      echo "$(date) sysstat not switched on: ${_def} or its reconfigure refused, the next pass tries again" >> "${_log}"
+      mv -f "${_prv}" "${_def}"
+      echo "$(date) sysstat not switched on: its reconfigure failed, ${_def} put back, the next pass tries again" >> "${_log}"
       return 0
     fi
   fi
@@ -1282,6 +1289,11 @@ _sysstat_history() {
   if grep -q '^HISTORY=7$' "${_cnf}" 2> /dev/null; then
     sed -i 's/^HISTORY=7$/HISTORY=28/' "${_cnf}" \
       && echo "$(date) sysstat history raised from 7 to 28 days" >> "${_log}"
+  fi
+  if grep -q '^HISTORY=28$' "${_cnf}" 2> /dev/null \
+    && grep -q '^COMPRESSAFTER=10$' "${_cnf}" 2> /dev/null; then
+    sed -i 's/^COMPRESSAFTER=10$/COMPRESSAFTER=28/' "${_cnf}" \
+      && echo "$(date) sysstat compression moved from 10 to 28 days, so sar reads every kept day" >> "${_log}"
   fi
 
   [ -f "${_crn}" ] || return 0
