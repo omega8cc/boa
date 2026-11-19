@@ -7259,32 +7259,40 @@ _php_floor_mail() {
 # and one mail, naming the pass's report and its own last lines (those after
 # the line its launch wrote). $1 what is below, $2 PHP/Nginx, $3 host, $4 the
 # pass's number, $5 next start, $6 state, $7 the set below now, $8 the set
-# the pass was for. Part of it upgraded: what is left counts afresh. All of
-# it still below after the third pass: BOA starts no more, as the state says.
+# the pass was for. Another set below now (part upgraded, a version retired
+# or newly below): it counts afresh. The same set after the third pass: BOA
+# starts no more, as the state says. A log with no launch line yet (a pass an
+# older agent started) names no report: its newest may be an earlier pass's.
 _sec_floor_failed() {
-  local _sEc="" _rEp="" _tAil="" _nXt="" _sUb="" _wHy=""
-  _sEc=$(awk '/^=== .* security floor pass /{ b = ""; next } { b = b $0 "\n" } END { printf "%s", b }' \
-    /var/log/boa/barracuda-sec-floor.log 2> /dev/null)
-  _rEp=$(echo "${_sEc}" | grep -o '/var/backups/reports/up/barracuda/[0-9]*/barracuda-up-[0-9-]*\.log' \
-    | tail -n 1)
+  local _sEc="" _rEp="" _tAil="" _nXt="" _sUb="" _wHy="" _nOne=""
+  _nOne="none, the pass stopped before it began its work"
+  if grep -q '^=== .* security floor pass ' /var/log/boa/barracuda-sec-floor.log 2> /dev/null; then
+    _sEc=$(awk '/^=== .* security floor pass /{ b = ""; next } { b = b $0 "\n" } END { printf "%s", b }' \
+      /var/log/boa/barracuda-sec-floor.log 2> /dev/null)
+    _rEp=$(echo "${_sEc}" | grep -o '/var/backups/reports/up/barracuda/[0-9]*/barracuda-up-[0-9-]*\.log' \
+      | tail -n 1)
+  else
+    _sEc=$(tail -n 12 /var/log/boa/barracuda-sec-floor.log 2> /dev/null)
+    _nOne="under /var/backups/reports/up/barracuda/"
+  fi
   _tAil=$(echo "${_sEc}" | grep -v '^$' | tail -n 12 | sed 's/\x1b\[[0-9;]*m//g')
   _sUb="$2 security upgrade failed on [$3]"
   if [ "$7" != "$8" ]; then
-    _php_floor_log "$1 still below the security floor after barracuda system pass $4, which upgraded part of what was below; counted afresh from $(date -d "@$5" 2> /dev/null)"
-    _wHy="upgraded part of what was below, and this is still below"
-    _nXt="BOA starts a pass for what is left from $(date -d "@$5" 2> /dev/null), counted
-afresh (1 of 3). Fix what stopped it before then, or run
+    _php_floor_log "$1 still below the security floor after barracuda system pass $4, which was started for another set below; counted afresh from $(date -d "@$5" 2> /dev/null)"
+    _wHy="ended with another set below than it was started for, and this is still below"
+    _nXt="BOA starts a pass for it from $(date -d "@$5" 2> /dev/null), counted afresh
+(1 of 3). Fix what stopped it before then, or run
 'barracuda up-<tree> system' by hand once it is fixed."
   elif [ "$4" -ge 3 ]; then
     echo "$5 4 $7" > "$6"
     _php_floor_log "$1 below the security floor after three barracuda system passes; no forced pass from here on"
     _sUb="$2 security upgrade needs you on [$3]"
-    _wHy="ended without upgrading it"
+    _wHy="ended without upgrading what it was for"
     _nXt="This was the third pass: BOA starts no more for it. Fix what stopped
 it, then run 'barracuda up-<tree> system' by hand."
   else
     _php_floor_log "$1 below the security floor after barracuda system pass $4 of 3, the next due $(date -d "@$5" 2> /dev/null)"
-    _wHy="ended without upgrading it"
+    _wHy="ended without upgrading what it was for"
     _nXt="BOA starts pass $(( $4 + 1 )) of 3 from $(date -d "@$5" 2> /dev/null). Fix what
 stopped it before then, or run 'barracuda up-<tree> system' by hand
 once it is fixed."
@@ -7296,7 +7304,7 @@ $1
 
 ${_nXt}
 
-The pass's report: ${_rEp:-none, the pass stopped before it began its work}
+The pass's report: ${_rEp:-${_nOne}}
 
 Its last lines in /var/log/boa/barracuda-sec-floor.log:
 ${_tAil:-(none)}
