@@ -14765,15 +14765,16 @@ _master_queue_release() {
 # queue: an hour and more on a large database. So the upgrade starts only when
 # no transaction has been open for over a minute (a dump's consistent snapshot
 # shows in information_schema.innodb_trx even with performance_schema off),
-# after waiting up to 15 minutes; then it is left to the next pass. Nothing of
-# the client's is touched. A read that fails goes on as before.
+# after waiting up to 15 minutes; then it is left to the next pass with a NOTE
+# line, never an ALRT, which would make the launcher report the whole pass as
+# failed. Nothing of the client's is touched. A read that fails goes on as before.
 _sql_upgrade_clear_of_long_trx() {
   local _rows _n=0
   while :; do
     _rows=$(timeout 10 mysql -u root -N -B -e "SELECT IFNULL(p.USER, '-'), TIMESTAMPDIFF(SECOND, t.trx_started, NOW()) FROM information_schema.innodb_trx t LEFT JOIN information_schema.processlist p ON p.ID = t.trx_mysql_thread_id WHERE t.trx_started < NOW() - INTERVAL 60 SECOND ORDER BY t.trx_started" 2> /dev/null) || return 0
     [ -z "${_rows}" ] && return 0
     if [ "${_n}" -ge 15 ]; then
-      _msg "ALRT: ${_DB_SERVER} system tables upgrade left to the next pass: $(printf '%s\n' "${_rows}" | head -n 1 | awk '{ print "a transaction of " $1 " open for " $2 " s" }') still holds"
+      _msg "NOTE: ${_DB_SERVER} system tables upgrade left to the next pass: $(printf '%s\n' "${_rows}" | head -n 1 | awk '{ print "a transaction of " $1 " open for " $2 " s" }') still holds"
       return 1
     fi
     _msg "WAIT: ${_DB_SERVER} system tables upgrade waits for $(printf '%s\n' "${_rows}" | head -n 1 | awk '{ print "a transaction of " $1 " open for " $2 " s" }') to end, ${_n} of 15 minutes"
