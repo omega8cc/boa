@@ -579,6 +579,25 @@ _self_lock_gate() {
   done
   return 1
 }
+# Does this box carry the published tree, no older than the copy the mirror
+# serves? The same test as the local read in _fetch_versioned (BOA.sh.txt):
+# the tree's own stamp, versions/<tree>/boa/.update.txt, written by the publish
+# inside it and kept with its time by every copy, is the one served or newer.
+# A tree that is behind or no longer pulled, or a served stamp that cannot be
+# read, does not count. A box with no stamp of its own asks nothing.
+_local_tree_current() {
+  local _lst="/var/www/static/versions/${_tRee}/boa/.update.txt" _got _rc=1
+  [[ -s "${_lst}" ]] || return 1
+  _got="/var/opt/.boa.tree.stamp.$$"
+  if curl -L --max-redirs 3 -s --fail --retry 3 --retry-delay 5 -A iCab -R \
+      -o "${_got}" "https://${_USE_MIR}/versions/${_tRee}/boa/.update.txt" 2> /dev/null \
+    && [[ -s "${_got}" ]] && ! head -c 64 "${_got}" | grep -q '<' \
+    && { cmp -s "${_lst}" "${_got}" || [[ "${_lst}" -nt "${_got}" ]]; }; then
+    _rc=0
+  fi
+  rm -f "${_got}"
+  return "${_rc}"
+}
 _CLEAR_MODE="$1"
 _CLEAR_RC=0
 _SELF_LOCK_OPEN=NO
@@ -600,14 +619,15 @@ if ! _install_held && _self_lock_gate; then
   # Fetch first, require the file's own first line, and run it from stdin so the
   # invocation stays exactly what it was (BASH_SOURCE, hence the per-caller apt
   # cadence stamp, is read inside).
-  # A mirror runs the BOA.sh.txt of the tree it carries: every tool that run
-  # installs is copied from that same tree, and a copy fetched from another
-  # mirror can be a publish older or newer than those tools (one older pass
-  # installed the new tools under their previous serials). A tree this box
-  # does not carry, or a local copy that fails the same check, is fetched.
+  # A box carrying the published tree (a mirror, publisher or passive) runs
+  # that tree's BOA.sh.txt: every tool that run installs is copied from that
+  # same tree, and a copy fetched from another mirror can be a publish older
+  # or newer than those tools (one older pass installed the new tools under
+  # their previous serials). A tree this box does not carry, one behind the
+  # mirror's, or a local copy that fails the same check, is fetched.
   _boaShTmp=/var/opt/.boa.sh.txt.$$
   _boaShLcl="/var/www/static/versions/${_tRee}/boa/BOA.sh.txt"
-  if [[ -e "/var/www/static/getboa" ]] && [[ -s "${_boaShLcl}" ]] \
+  if [[ -s "${_boaShLcl}" ]] && _local_tree_current \
     && cp -f "${_boaShLcl}" "${_boaShTmp}" 2>/dev/null \
     && grep -q "^export _tRee=" "${_boaShTmp}"; then
     bash < "${_boaShTmp}"
