@@ -2889,7 +2889,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/monitor/check/hackcheck.sh "${_urlHmr}/tools/system/monitor/check/hackcheck.sh" f86
     _fetch_versioned /var/xdrago/monitor/check/hackftp.sh "${_urlHmr}/tools/system/monitor/check/hackftp.sh" f90
     _fetch_versioned /var/xdrago/monitor/check/segfault_alert.sh "${_urlHmr}/tools/system/monitor/check/segfault_alert.sh" f98
-    _fetch_versioned /var/xdrago/monitor/check/sqlcheck.sh "${_urlHmr}/tools/system/monitor/check/sqlcheck.sh" f83
+    _fetch_versioned /var/xdrago/monitor/check/sqlcheck.sh "${_urlHmr}/tools/system/monitor/check/sqlcheck.sh" f84
     _fetch_versioned /var/xdrago/monitor/check/bind9.sh "${_urlHmr}/tools/system/monitor/check/bind9.sh" f98
     _fetch_versioned /var/xdrago/monitor/check/proxysql.sh "${_urlHmr}/tools/system/monitor/check/proxysql.sh" f98
     _fetch_versioned /var/xdrago/monitor/check/droplet.sh "${_urlHmr}/tools/system/monitor/check/droplet.sh" f98

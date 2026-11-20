@@ -70,7 +70,12 @@ _check_root
 ### emptied within 5 seconds, the rules stay and the emptying is tried again 5
 ### minutes later. An operator's own row for any of these users (any other
 ### switches) is left as it is; with one for root the summary is left alone too.
-### performance_schema is off on 5.7 (BOA's my.cnf), and nothing runs there.
+### performance_schema is off on 5.7 (BOA's my.cnf): the check reads that switch
+### alone there, which takes no lock, and stops. Each statement on its tables
+### sets a lock wait shorter than its client's timeout: timeout ends the client
+### only, and a server thread queued behind a held or queued metadata lock (a
+### system tables upgrade's DROP DATABASE behind a dump's transaction) would
+### wait out lock_wait_timeout, a year by default, one more every minute.
 ###
 _digest_dump_users() {
   local _c _u _h
@@ -107,27 +112,28 @@ _digest_dump_users() {
 _keep_dumps_out_of_digests() {
   [ -e "/root/.proxy.cnf" ] && return 0
   command -v mysql >/dev/null 2>&1 || return 0
-  local _st _ps _up _u _e _h _rows _in="" _ours="" _qo="" _new="" _now _start
+  local _ps _up _u _e _h _rows _in="" _ours="" _qo="" _new="" _now _start
   local _open _since _held="" _m_start="" _m_state="" _m_time="" _m_users="" _m_since=""
   local _state="/run/boa_digest_reset.state"
+  local _lw="SET SESSION lock_wait_timeout = 5;"
   local -a _users=()
   local -A _rule=()
-  _st=$(timeout 10 mysql -N -B -e "SELECT @@GLOBAL.performance_schema, (SELECT VARIABLE_VALUE FROM performance_schema.global_status WHERE VARIABLE_NAME = 'Uptime')" 2>/dev/null) || return 0
-  IFS=$'\t' read -r _ps _up <<< "${_st}"
+  _ps=$(timeout 10 mysql -N -B -e "SELECT @@GLOBAL.performance_schema" 2>/dev/null) || return 0
   [ "${_ps}" = "1" ] || return 0
+  _up=$(timeout 10 mysql -N -B -e "${_lw} SELECT VARIABLE_VALUE FROM performance_schema.global_status WHERE VARIABLE_NAME = 'Uptime'" 2>/dev/null) || return 0
   [[ "${_up}" =~ ^[0-9]+$ ]] || return 0
   mapfile -t _users < <(_digest_dump_users)
   for _u in "${_users[@]}"; do
     _in="${_in:+${_in}, }'${_u}'"
   done
   [ -n "${_in}" ] || return 0
-  _rows=$(timeout 10 mysql -N -B -e "SELECT USER, ENABLED, HISTORY FROM performance_schema.setup_actors WHERE HOST = '%' AND ROLE = '%' AND USER IN (${_in})" 2>/dev/null) || return 0
+  _rows=$(timeout 10 mysql -N -B -e "${_lw} SELECT USER, ENABLED, HISTORY FROM performance_schema.setup_actors WHERE HOST = '%' AND ROLE = '%' AND USER IN (${_in})" 2>/dev/null) || return 0
   while IFS=$'\t' read -r _u _e _h; do
     [ -n "${_u}" ] && _rule["${_u}"]="${_e}/${_h}"
   done <<< "${_rows}"
   for _u in "${_users[@]}"; do
     if [ -z "${_rule[${_u}]+set}" ]; then
-      timeout 10 mysql -N -B -e "INSERT INTO performance_schema.setup_actors (HOST, USER, ROLE, ENABLED, HISTORY) VALUES ('%', '${_u}', '%', 'NO', 'NO')" &> /dev/null || continue
+      timeout 10 mysql -N -B -e "${_lw} INSERT INTO performance_schema.setup_actors (HOST, USER, ROLE, ENABLED, HISTORY) VALUES ('%', '${_u}', '%', 'NO', 'NO')" &> /dev/null || continue
     elif [ "${_rule[${_u}]}" != "NO/NO" ]; then
       continue
     fi
@@ -156,7 +162,7 @@ _keep_dumps_out_of_digests() {
     _m_users="-"
     _m_since=""
   fi
-  _open=$(timeout 10 mysql -N -B -e "SELECT COUNT(*) FROM performance_schema.threads WHERE INSTRUMENTED = 'YES' AND PROCESSLIST_USER IN (${_qo})" 2>/dev/null) || return 0
+  _open=$(timeout 10 mysql -N -B -e "${_lw} SELECT COUNT(*) FROM performance_schema.threads WHERE INSTRUMENTED = 'YES' AND PROCESSLIST_USER IN (${_qo})" 2>/dev/null) || return 0
   [[ "${_open}" =~ ^[0-9]+$ ]] || return 0
   if (( _open > 0 )); then
     # a refused emptying at the end of a hold keeps when the hold began
@@ -172,7 +178,7 @@ _keep_dumps_out_of_digests() {
     fi
     _held=" ${_since}"
   fi
-  if timeout 10 mysql -N -B -e "SET SESSION lock_wait_timeout = 5; TRUNCATE TABLE performance_schema.events_statements_summary_by_digest" &> /dev/null; then
+  if timeout 10 mysql -N -B -e "${_lw} TRUNCATE TABLE performance_schema.events_statements_summary_by_digest" &> /dev/null; then
     printf '%s done %s %s\n' "${_m_start}" "${_now}" "${_ours}" > "${_state}"
   else
     printf '%s wait %s %s%s\n' "${_m_start}" "${_now}" "${_m_users}" "${_held}" > "${_state}"

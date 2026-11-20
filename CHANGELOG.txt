@@ -1147,6 +1147,14 @@
       leaves the table as it is. The watchdog and accesslog tables, logs
       by design, are emptied as before.
 
+    * The minute SQL check no longer leaves a database connection waiting
+      every minute behind a lock on performance_schema. Its reads there
+      ended their client after 10 seconds while the server side waited out
+      lock_wait_timeout, a year by default: 64 waiting connections after an
+      hour while a system tables upgrade stood queued. On Percona 5.7, where
+      performance_schema is off, it now reads that switch alone, and each of
+      its statements on those tables gives up after 5 seconds.
+
     * A Solr 7 or Solr 9 whose Java was replaced under it by a package
       upgrade is restarted within five minutes. The daily security
       upgrades install a fixed openjdk while Solr runs, and Solr went on
