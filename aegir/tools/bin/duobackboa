@@ -595,6 +595,25 @@ _find_fast_mirror_early() {
   else
     _USE_MIR="files.boa.io"
   fi
+  # A mirror box (it holds a published tree's stamp) takes its files from
+  # files.aegir.cc, the one mirror name with no cache in front of it, when
+  # that name is not this box itself and serves that stamp; any other box,
+  # or a mirror box where it does not, keeps the pick above.
+  _mirStp=""
+  for _mirStp in /var/www/static/versions/*/boa/.update.txt; do
+    [[ -s "${_mirStp}" ]] && break
+    _mirStp=""
+  done
+  if [[ -n "${_mirStp}" ]]; then
+    _mirIp="$(getent ahostsv4 files.aegir.cc 2> /dev/null | awk '{ print $1; exit }')"
+    if [[ -n "${_mirIp}" ]] \
+      && ! ip -o addr show 2> /dev/null | grep -qF " ${_mirIp}/" \
+      && curl -s --fail --max-time 10 -A iCab \
+        "https://files.aegir.cc/${_mirStp#/var/www/static/}" 2> /dev/null \
+        | head -c 64 | grep -q '^[^<]'; then
+      _USE_MIR="files.aegir.cc"
+    fi
+  fi
   _urlDev="https://${_USE_MIR}/dev"
   _urlHmr="https://${_USE_MIR}/versions/${_tRee}/boa/aegir"
 }
