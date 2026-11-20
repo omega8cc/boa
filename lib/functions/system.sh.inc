@@ -14756,6 +14756,32 @@ _master_queue_release() {
   fi
 }
 
+# The routine system tables upgrade on a live 5.7 server starts with DROP
+# DATABASE IF EXISTS performance_schema, which waits for every transaction
+# holding a lock on those tables: a client's mysqldump --single-transaction
+# reads its server variables inside its transaction and holds them for the
+# whole dump. While the DROP waits, every new reader of those tables waits
+# behind it (the minute checks, other dumps), and the pass holds every task
+# queue: an hour and more on a large database. So the upgrade starts only when
+# no transaction has been open for over a minute (a dump's consistent snapshot
+# shows in information_schema.innodb_trx even with performance_schema off),
+# after waiting up to 15 minutes; then it is left to the next pass. Nothing of
+# the client's is touched. A read that fails goes on as before.
+_sql_upgrade_clear_of_long_trx() {
+  local _rows _n=0
+  while :; do
+    _rows=$(timeout 10 mysql -u root -N -B -e "SELECT IFNULL(p.USER, '-'), TIMESTAMPDIFF(SECOND, t.trx_started, NOW()) FROM information_schema.innodb_trx t LEFT JOIN information_schema.processlist p ON p.ID = t.trx_mysql_thread_id WHERE t.trx_started < NOW() - INTERVAL 60 SECOND ORDER BY t.trx_started" 2> /dev/null) || return 0
+    [ -z "${_rows}" ] && return 0
+    if [ "${_n}" -ge 15 ]; then
+      _msg "ALRT: ${_DB_SERVER} system tables upgrade left to the next pass: $(printf '%s\n' "${_rows}" | head -n 1 | awk '{ print "a transaction of " $1 " open for " $2 " s" }') still holds"
+      return 1
+    fi
+    _msg "WAIT: ${_DB_SERVER} system tables upgrade waits for $(printf '%s\n' "${_rows}" | head -n 1 | awk '{ print "a transaction of " $1 " open for " $2 " s" }') to end, ${_n} of 15 minutes"
+    sleep 60
+    _n=$(( _n + 1 ))
+  done
+}
+
 _initd_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _initd_update"
@@ -14938,8 +14964,8 @@ _initd_update() {
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "INFO: Running ${_DB_SERVER} system tables (2) upgrade..."
         fi
-        rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
-        if [ -x "/usr/bin/mysql_upgrade" ]; then
+        if [ -x "/usr/bin/mysql_upgrade" ] && _sql_upgrade_clear_of_long_trx; then
+          rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
           _mrun "mysql_upgrade -u root --force"
           _mrun "mysql_upgrade -u root --force"
         fi

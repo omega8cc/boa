@@ -1156,6 +1156,16 @@
       sub-account; the welcome says to run them on the new server, and the
       home and its file tools stay for the download.
 
+    * A barracuda pass no longer waits behind a client's long database dump
+      to upgrade the system tables of a Percona 5.7 server. The upgrade
+      drops and remakes performance_schema, and its DROP waited for every
+      transaction that read those tables, as mysqldump --single-transaction
+      does for the whole dump: on a large database the pass, and every task
+      queue it holds, waited over an hour, and every new reader of those
+      tables waited behind the DROP. The pass now waits up to 15 minutes,
+      saying so each minute, for any transaction open for over a minute to
+      end, then leaves the upgrade to the next pass.
+
     * The minute SQL check no longer leaves a database connection waiting
       every minute behind a lock on performance_schema. Its reads there
       ended their client after 10 seconds while the server side waited out
