@@ -659,7 +659,7 @@ do_publish() {
   # The sidecar hashes the COMPRESSED file (the installer verifies before
   # gunzip). Old versions are never deleted - mirrors keep them so slower
   # trees and older pins keep finding their exact filename.
-  local _t _base _comp _ref _n=0 _was="" _sum _rest _i _at
+  local _t _base _comp _ref _n=0 _was="" _sum _gz _i _at
   _detect_pub_dir
   for _t in "${_WORK_DIR}"/boa-*.deb; do
     [[ -e "${_t}" ]] || continue
@@ -679,39 +679,55 @@ do_publish() {
       rm -f "${_t}"
       continue
     fi
-    if ! gzip -9 -c "${_t}" > "${_PUB_DIR}/${_base}.gz.tmp"; then
+    # Compressed and hashed outside the mirror tree. The checksum written to
+    # the sidecar, and compared later (do_verify), is the one of these bytes,
+    # never one read back from a tree another copy may be writing into: a
+    # sidecar or a sum taken from the tree an instant after the publish can
+    # already be an older copy's. The tree sees the temporary name only for
+    # the copy, not for the whole compression, so a mirror that pulls this
+    # tree rarely takes a half-written one along, to keep it for good.
+    _gz="${_WORK_DIR}/.publish.${_base}.gz"
+    if ! gzip -9 -c "${_t}" > "${_gz}"; then
       _alrt "gzip failed: ${_base}"
-      rm -f "${_PUB_DIR}/${_base}.gz.tmp"
+      rm -f "${_gz}"
+      continue
+    fi
+    _sum="$(sha256sum < "${_gz}")"
+    _sum="${_sum%% *}"
+    if [[ ! "${_sum}" =~ ^[0-9a-f]{64}$ ]]; then
+      _alrt "sha256 failed: ${_base}.gz; not published"
+      rm -f "${_gz}"
       continue
     fi
     _was=""
     [[ -e "${_PUB_DIR}/${_base}.gz" ]] && _was="YES"
     # Checked: on a same-version republish the target already exists, and a
     # refused overwrite (immutable bit, permissions) would otherwise leave the
-    # old bytes in place while the sidecar below is rebuilt from them and the
-    # run still reports success - stale bytes, self-consistent, undetectable.
-    if ! mv -f "${_PUB_DIR}/${_base}.gz.tmp" "${_PUB_DIR}/${_base}.gz"; then
+    # old bytes in place under a new sidecar while the run still reports
+    # success.
+    if ! { cp -f "${_gz}" "${_PUB_DIR}/${_base}.gz.tmp" \
+      && mv -f "${_PUB_DIR}/${_base}.gz.tmp" "${_PUB_DIR}/${_base}.gz"; }; then
       _alrt "publish failed (cannot replace): ${_base}.gz"
-      rm -f "${_PUB_DIR}/${_base}.gz.tmp"
+      rm -f "${_PUB_DIR}/${_base}.gz.tmp" "${_gz}"
       continue
     fi
+    rm -f "${_gz}"
     # Sidecar gets the same tmp+mv treatment as the .gz: an in-place rewrite
     # would expose a new-.gz/old-sidecar window on a same-version republish,
-    # tripping spurious checksum-mismatch source fallbacks fleet-wide.
-    if ! (cd "${_PUB_DIR}" && sha256sum "${_base}.gz" > "${_base}.gz.sha256.tmp" \
-      && mv -f "${_base}.gz.sha256.tmp" "${_base}.gz.sha256"); then
+    # tripping spurious checksum-mismatch source fallbacks fleet-wide. Its
+    # line is sha256sum's own: the sum, two blanks, the name.
+    if ! { printf '%s  %s\n' "${_sum}" "${_base}.gz" > "${_PUB_DIR}/${_base}.gz.sha256.tmp" \
+      && mv -f "${_PUB_DIR}/${_base}.gz.sha256.tmp" "${_PUB_DIR}/${_base}.gz.sha256"; }; then
       # Fail closed: no sidecar means the installer will not use the package.
       _alrt "sha256 sidecar failed: ${_base}.gz; removing the package"
       rm -f "${_PUB_DIR}/${_base}.gz" "${_PUB_DIR}/${_base}.gz.sha256" \
         "${_PUB_DIR}/${_base}.gz.sha256.tmp"
       continue
     fi
-    # The build is kept until the run ends, with the checksum just written:
-    # a file that goes back to an older copy is published again from it
-    # (do_verify). A package published a second time in the run keeps its
-    # one entry in every list.
-    _sum=""
-    read -r _sum _rest < "${_PUB_DIR}/${_base}.gz.sha256"
+    # The build is kept until the run ends, with that checksum: a file that
+    # goes back to an older copy is published again from it (do_verify). A
+    # package published a second time in the run keeps its one entry in
+    # every list.
     mkdir -p "${_WORK_DIR}/.published"
     mv -f "${_t}" "${_WORK_DIR}/.published/${_base}" || rm -f "${_t}"
     _msg "published: ${_base}.gz (+ sha256)"
@@ -970,6 +986,7 @@ do_deliver() {
   # between the publish and the sync, so the files are compared with the
   # bytes written before the hook gets them, and once more after it.
   rm -rf "${_WORK_DIR}/.published"
+  rm -f "${_WORK_DIR}"/.publish.boa-*.gz
   do_publish
   do_sync
   _SYNCED_AT="${SECONDS}"
