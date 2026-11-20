@@ -8619,7 +8619,22 @@ _ltd_moved_intro() {
   printf '%s' "\n      ssh ${_who}@${1}\n"
   printf '%s' '\n   The same goes for SFTP. Here this login reaches only its own home'
   printf '%s' '\n   directory, whose files were not moved: download from it anything'
-  printf '%s\n' '\n   you still need.\n"'
+  printf '%s' '\n   you still need. Drush, Composer and the database tools no longer'
+  printf '%s\n' '\n   run here: run them on the new server.\n"'
+}
+
+# What a moved account's logins may no longer run on the server it moved from:
+# every tool that acts on a site or its database, the lists the client
+# sub-accounts' "files, not code" policy takes out ([grp:ltd-shell] in the
+# lshell template), from all three lists, overssh being the one-shot SSH
+# command's. The sites and databases left here are the copy frozen at the
+# move, and a scripted call never sees the welcome: a nightly drush sql-dump
+# over SSH kept dumping that copy, without an error, after its account moved.
+# Refused now, it fails at once. The home and its file tools stay.
+_ltd_moved_tools() {
+  echo "allowed : - ['bee', 'bower', 'bzr', 'checkmyperms', 'composer', 'cvs', 'drush', 'drush8', 'drush10', 'drush11', 'grav', 'grunt', 'guard', 'gulp', 'mybackup', 'mydumper', 'myloader', 'mysql', 'mysqldump', 'node', 'npm', 'npx', 'openssl', 's4cmd', 'sqlmagic', 'ssh', 'svn', 'vdrush', 'vendor/drush/drush/drush.php']"
+  echo "allowed_shell_escape : - ['bee', 'bower', 'composer', 'drush', 'drush8', 'drush10', 'drush11', 'grav', 'grunt', 'guard', 'gulp', 'mybackup', 'mysql', 'mysqldump', 'node', 'npm', 'npx', 'scp', 'sqlmagic', 'ssh', 'vdrush', 'vendor/drush/drush/drush.php']"
+  echo "overssh : - ['bee', 'composer', 'drush', 'drush8', 'drush10', 'drush11', 'grav', 'mydumper', 'myloader', 'mysql', 'mysqldump', 'vdrush', 'vendor/drush/drush/drush.php']"
 }
 
 # A moved account's logins on the server it moved from. Once a migration has
@@ -8629,7 +8644,8 @@ _ltd_moved_intro() {
 # part the completion notice asks the client to download from. Without a word
 # of the move such a login reads as broken. Each of the account's shell logins
 # gets a section whose welcome says where the account lives now and how to log
-# in there; its path stays the home alone. The account's name there is taken
+# in there, and which takes out every tool that acts on a site or its database
+# (_ltd_moved_tools); its path stays the home alone. The account's name there is taken
 # from the record only when a migration tool wrote it: a record adopted from an
 # older tool's copy carries a name the account could have left (xoct asks the
 # new server before it acts on one), so the welcome then names no login.
@@ -8679,6 +8695,7 @@ _ltd_moved_stanzas() {
     echo >> ${_THIS_LTD_CONF}
     echo "[${_l}]" >> ${_THIS_LTD_CONF}
     _ltd_moved_intro "${_new}" "${_old}" "${_day}" "${_there}" "${_kind}" "${_l#"${_a}"}" >> ${_THIS_LTD_CONF}
+    _ltd_moved_tools >> ${_THIS_LTD_CONF}
   done
   return 0
 }

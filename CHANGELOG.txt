@@ -1147,6 +1147,15 @@
       leaves the table as it is. The watchdog and accesslog tables, logs
       by design, are emptied as before.
 
+    * A moved account's logins on the server it left no longer run Drush,
+      Composer, Bee or the database tools there. That server keeps the
+      sites' copy frozen at the move, and a scripted call never sees the
+      login's welcome: a nightly drush sql-dump over SSH went on dumping
+      that copy, without an error, after its account moved. Such a call
+      now fails at once with lshell's "forbidden command", as for a client
+      sub-account; the welcome says to run them on the new server, and the
+      home and its file tools stay for the download.
+
     * The minute SQL check no longer leaves a database connection waiting
       every minute behind a lock on performance_schema. Its reads there
       ended their client after 10 seconds while the server side waited out
