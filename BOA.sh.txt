@@ -2184,7 +2184,13 @@ _fetch_versioned() {
       # tool unchanged) is the same bytes by definition and arms at once;
       # holding it re-downloaded every unchanged tool on every pass for an
       # hour after each release, unarmed and with its symlink unrepaired.
-      if [[ "${_fnnMove}" = "YES" ]]; then
+      # Never for a copy from this box's own tree: the up-to-date test above
+      # compares the deployed bytes with that tree on every pass, so a serial
+      # armed over bytes the tree later replaces is installed again on the
+      # next pass. Held, a tool the tree delivered before the BOA.sh.txt that
+      # names its new serial was copied again on every pass for an hour and
+      # reported as a mirror not caught up.
+      if [[ "${_fnnMove}" = "YES" ]] && [[ -z "${_lcl}" ]]; then
         local _stl="${_pthLog}/${_cnm}.stale.${_srl}.${_tRee}.${_xSrl}.pid"
         if [[ -z "$(find "${_stl}" -mmin +60 2>/dev/null)" ]]; then
           [[ -e "${_stl}" ]] || touch "${_stl}"
@@ -2992,7 +2998,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/mysql_repair.sh "${_urlHmr}/tools/system/mysql_repair.sh" f88
     _fetch_versioned /var/xdrago/purge_binlogs.sh "${_urlHmr}/tools/system/purge_binlogs.sh" f87
     _fetch_versioned /var/xdrago/checksql.sh "${_urlHmr}/tools/system/checksql.sh" f92
-    _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f58
+    _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f57
     _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f41
     _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f92
     _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f16

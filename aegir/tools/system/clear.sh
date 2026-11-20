@@ -600,8 +600,18 @@ if ! _install_held && _self_lock_gate; then
   # Fetch first, require the file's own first line, and run it from stdin so the
   # invocation stays exactly what it was (BASH_SOURCE, hence the per-caller apt
   # cadence stamp, is read inside).
+  # A mirror runs the BOA.sh.txt of the tree it carries: every tool that run
+  # installs is copied from that same tree, and a copy fetched from another
+  # mirror can be a publish older or newer than those tools (one older pass
+  # installed the new tools under their previous serials). A tree this box
+  # does not carry, or a local copy that fails the same check, is fetched.
   _boaShTmp=/var/opt/.boa.sh.txt.$$
-  if wget -q -O "${_boaShTmp}" https://${_USE_MIR}/versions/${_tRee}/boa/BOA.sh.txt \
+  _boaShLcl="/var/www/static/versions/${_tRee}/boa/BOA.sh.txt"
+  if [[ -e "/var/www/static/getboa" ]] && [[ -s "${_boaShLcl}" ]] \
+    && cp -f "${_boaShLcl}" "${_boaShTmp}" 2>/dev/null \
+    && grep -q "^export _tRee=" "${_boaShTmp}"; then
+    bash < "${_boaShTmp}"
+  elif wget -q -O "${_boaShTmp}" https://${_USE_MIR}/versions/${_tRee}/boa/BOA.sh.txt \
     && grep -q "^export _tRee=" "${_boaShTmp}"; then
     bash < "${_boaShTmp}"
   else
