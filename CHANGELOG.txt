@@ -1165,6 +1165,15 @@
       while one does. An extras entry the target lacks is named: it needs
       a barracuda pass there. The target keeps its own sizing.
 
+    * A provider's webhooks are no longer dropped in a burst. Shopify sends
+      a shop's webhooks from its own addresses with no session, and the
+      per-site cap on anonymous requests answered thousands of them in a
+      minute with 444. A POST to /shopify, /quickbooks, /stripe, /paypal,
+      /github or /gitlab followed by /webhook, or to /payment/notify, is
+      left out of that cap; the per-address limit still bounds each
+      sender, and the same paths by any other method, or with a dot
+      segment or an escape in them, count as before.
+
     * The hourly database cleanup and the nightly backup no longer empty
       a site's queue or batch table. Both judged the table by its file
       alone, and InnoDB never hands freed pages back, so the file passes
