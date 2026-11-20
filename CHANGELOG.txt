@@ -1154,6 +1154,17 @@
       completion and change notices that requests now leave from it, and a
       live pair's notices to ask for the mirror's address too.
 
+    * An xmass move carries the source server's own settings to the
+      target. A target was built from its clone, so a moved server came up
+      with ClamAV off, its sites refusing every upload, and with BOA's
+      database cleanup on, which the source had switched off. prep-target
+      and init now write the source's ClamAV, database cleanup, dump
+      retention, MySQL thread threshold and Nginx flood-guard keys on the
+      target (a legacy marker counts as its key set to YES), the cutover's
+      dry run names each one that still differs and its live run refuses
+      while one does. An extras entry the target lacks is named: it needs
+      a barracuda pass there. The target keeps its own sizing.
+
     * The hourly database cleanup and the nightly backup no longer empty
       a site's queue or batch table. Both judged the table by its file
       alone, and InnoDB never hands freed pages back, so the file passes
