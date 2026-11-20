@@ -372,6 +372,22 @@
       (CVE-2026-126714, CVE-2026-129481), depend on a site's own code, as
       do most of the remaining nine, and the fixed releases close them.
 
+    * PHP 5.6, 7.0, 7.1, 7.2, 7.3, 7.4, 8.0 and 8.1 build with twelve of
+      that release's fixes carried back to them (each version's xlts-2
+      patch): the ones Debian's LTS team (Freexian) published for its
+      PHP 7.0, 7.3 and 7.4 packages on 19 November, taken as published
+      where they apply and ported to 5.6, 7.1, 7.2, 8.0 and 8.1, the
+      last two from upstream's own commits where those fit. They cover
+      PHP-FPM (an unread request body left on a kept connection, the
+      status page, the workers' output pipes), sessions kept in files,
+      the HTTP and FTP stream wrappers, SOAP, phar signatures, the
+      timezone cache, session upload progress now off by default, and
+      php-cgi. Upstream's other five advisories are for PHP 8.3 and
+      later only.
+
+    * PHP 5.6: the HTTP stream wrapper no longer keeps a second copy of
+      every response header until the request ends.
+
     * Solr 9 runs with -XX:-UseBASE64Intrinsics. Java 17 and 21 decode
       Base64 with a CPU-specific routine that, on processors with AVX-512
       VBMI (AMD Zen 4 and newer, recent Intel Xeons), writes past its
