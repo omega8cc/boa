@@ -2501,6 +2501,174 @@ _xmass_fix_target_php() {
   return 0
 }
 
+###-------------THE SERVER'S OWN SETTINGS------------###
+###
+### A target is built from its own clone, so a switch an operator set in the
+### source's /root/.barracuda.cnf for the accounts it serves did not travel: a
+### moved server came up with ClamAV off, so the sites' scanner refused every
+### upload, and with BOA's database cleanup on, which emptied a client's job
+### queue on the first night. These keys travel with the move. The target's
+### own facts stay its own: its names and address, the clone's sizing pins
+### (_SQL_*_FORCE, _SOLR_HEAP_FORCE, _RESERVED_RAM, _LOAD_THRESHOLD,
+### _PHP_FPM_WORKERS), and the PHP set and the Java and Solr denies, which
+### have gates of their own. A legacy marker counts as its key set to YES.
+_XMASS_CARRY_KEYS="_ALLOW_CLAMAV _DENY_CLAMAV _DISABLE_MYSQL_CLEANUP _DB_BACKUPS_TTL _THREAD_THRESHOLD _NGINX_DOS_IGNORE_PATHS _NGINX_DOS_IGNORE _NGINX_DOS_STOP _NGINX_DOS_LIMIT _NGINX_DOS_LINES _NGINX_DOS_MODE"
+_XMASS_CARRY_MARKERS="/root/.allow.clamav.cnf /root/.deny.clamav.cnf /etc/boa/.disable_mysql_cleanup.cnf"
+
+### The key a legacy marker stands for.
+_xmass_carry_marker_key() {
+  case "$1" in
+    /root/.allow.clamav.cnf) echo _ALLOW_CLAMAV ;;
+    /root/.deny.clamav.cnf) echo _DENY_CLAMAV ;;
+    /etc/boa/.disable_mysql_cleanup.cnf) echo _DISABLE_MYSQL_CLEANUP ;;
+  esac
+}
+
+### The reader, the same text here and on the target: "L<tab>key<tab>line" for
+### each key's last line, "M<tab>path" for each marker present.
+_xmass_carry_reader() {
+  printf '%s' 'for _k in '"${_XMASS_CARRY_KEYS} _XTRAS_LIST"'; do _l=$(grep -E "^[[:space:]]*(export[[:space:]]+)?${_k}=" /root/.barracuda.cnf 2>/dev/null | tail -n 1); [ -n "${_l}" ] && printf "L\t%s\t%s\n" "${_k}" "${_l}"; done; for _m in '"${_XMASS_CARRY_MARKERS}"'; do [ -e "${_m}" ] && printf "M\t%s\n" "${_m}"; done; exit 0'
+}
+
+### A cnf line's value: after the first =, blanks and one pair of quotes off.
+_xmass_carry_val() {
+  local _v="${1#*=}"
+  _v="${_v#"${_v%%[![:space:]]*}"}"
+  _v="${_v%"${_v##*[![:space:]]}"}"
+  case "${_v}" in
+    \"*\") _v="${_v#\"}"; _v="${_v%\"}" ;;
+    \'*\') _v="${_v#\'}"; _v="${_v%\'}" ;;
+  esac
+  printf '%s' "${_v}"
+}
+
+### $1 the target, $2 fix (write this server's values there), deny (name each
+### difference as a DENY, the run not clean) or die (refuse). An extras entry
+### the target lacks is told in every mode: it needs a barracuda pass there.
+_xmass_box_settings_gate() {
+  local _t="$1" _mode="$2" _rd _out _rc _kind _k _l _key _sv _tv _diff="" _lines="" _aside=""
+  local _x _missx="" _re _b64
+  local -A _sl=() _tl=() _sm=() _tm=()
+  _rd="$(_xmass_carry_reader)"
+  _out="$(bash -c "${_rd}" 2> /dev/null)"
+  while IFS=$'\t' read -r _kind _k _l; do
+    case "${_kind}" in
+      L) _sl[${_k}]="${_l}" ;;
+      M) _key="$(_xmass_carry_marker_key "${_k}")"; [ -n "${_key}" ] && _sm[${_key}]=YES ;;
+    esac
+  done <<< "${_out}"
+  _out="$(ssh root@"${_t}" "${_rd}" 2> /dev/null)"
+  _rc=$?
+  if [ "${_rc}" != "0" ]; then
+    case "${_mode}" in
+      deny)
+        _alrt "DENY: ${_t}: its own settings (/root/.barracuda.cnf) could not be read"
+        _XMASS_NOT_CLEAN=YES
+        return 1
+      ;;
+      *) _die "${_t}: its own settings (/root/.barracuda.cnf) could not be read; refusing" ;;
+    esac
+  fi
+  while IFS=$'\t' read -r _kind _k _l; do
+    case "${_kind}" in
+      L) _tl[${_k}]="${_l}" ;;
+      M) _key="$(_xmass_carry_marker_key "${_k}")"; [ -n "${_key}" ] && _tm[${_key}]=YES ;;
+    esac
+  done <<< "${_out}"
+
+  for _k in ${_XMASS_CARRY_KEYS}; do
+    case "${_k}" in
+      _ALLOW_CLAMAV|_DENY_CLAMAV|_DISABLE_MYSQL_CLEANUP)
+        _sv=NO
+        _tv=NO
+        [ "${_sm[${_k}]:-}" = "YES" ] && _sv=YES
+        [ "${_tm[${_k}]:-}" = "YES" ] && _tv=YES
+        [[ "$(_xmass_carry_val "${_sl[${_k}]:-}")" =~ ^[Yy][Ee][Ss]$ ]] && _sv=YES
+        [[ "$(_xmass_carry_val "${_tl[${_k}]:-}")" =~ ^[Yy][Ee][Ss]$ ]] && _tv=YES
+        [ "${_sv}" = "${_tv}" ] && continue
+        _lines="${_lines}${_k}=${_sv}"$'\n'
+        if [ "${_sv}" = "NO" ] && [ "${_tm[${_k}]:-}" = "YES" ]; then
+          for _x in ${_XMASS_CARRY_MARKERS}; do
+            [ "$(_xmass_carry_marker_key "${_x}")" = "${_k}" ] && _aside="${_aside} ${_x}"
+          done
+        fi
+      ;;
+      *)
+        # A key this server leaves to BOA's default is not carried.
+        [ -n "${_sl[${_k}]:-}" ] || continue
+        _sv="$(_xmass_carry_val "${_sl[${_k}]}")"
+        _tv="$(_xmass_carry_val "${_tl[${_k}]:-}")"
+        [ "${_sv}" = "${_tv}" ] && [ -n "${_tl[${_k}]:-}" ] && continue
+        _lines="${_lines}${_k}=${_sl[${_k}]#*=}"$'\n'
+        [ -n "${_tl[${_k}]:-}" ] || _tv="(none)"
+      ;;
+    esac
+    _diff="${_diff} ${_k}"
+    case "${_mode}" in
+      deny) _alrt "DENY: ${_t}: ${_k} is ${_tv:-empty} there and ${_sv:-empty} here" ;;
+      *) _alrt "${_t}: ${_k} is ${_tv:-empty} there and ${_sv:-empty} here" ;;
+    esac
+  done
+
+  for _x in $(_xmass_carry_val "${_sl[_XTRAS_LIST]:-}"); do
+    case " $(_xmass_carry_val "${_tl[_XTRAS_LIST]:-}") " in
+      *" ${_x} "*) : ;;
+      *) _missx="${_missx} ${_x}" ;;
+    esac
+  done
+  if [ -n "${_missx}" ]; then
+    _alrt "${_t} lacks extras this server installs (_XTRAS_LIST):${_missx}; add them to its"
+    _alrt "_XTRAS_LIST and run 'barracuda up-<tree> system noscreen' there if the accounts use them"
+  fi
+
+  if [ -z "${_diff}" ]; then
+    _info "The server's own settings: ${_t} holds this server's values"
+    return 0
+  fi
+  case "${_mode}" in
+    deny)
+      _alrt "DENY: fix: 'xmass prep-target ${_t}$(_xmass_admail_hint)' writes this server's values there"
+      _XMASS_NOT_CLEAN=YES
+      return 1
+    ;;
+    die)
+      _die "${_t} differs from this server in its own settings:${_diff}." \
+           " Fix: 'xmass prep-target ${_t}', which writes this server's values there."
+    ;;
+  esac
+
+  # fix: one write, the target's cnf rebuilt through a scratch copy that
+  # keeps its mode, the lines sent as base64 (a value such as _NGINX_DOS_STOP
+  # holds characters no remote command line may carry as they are).
+  _re="^[[:space:]]*(export[[:space:]]+)?($(echo ${_diff} | tr ' ' '|'))="
+  _b64="$(printf '%s' "${_lines}" | base64 | tr -d '\n')"
+  case "${_b64}" in
+    *[!A-Za-z0-9+/=]*) _alrt "refusing a carry text that is not plain base64"; return 1 ;;
+  esac
+  _info "Writing this server's own settings on ${_t}:${_diff}"
+  ssh root@"${_t}" "_m=\$(stat -c %a /root/.barracuda.cnf 2>/dev/null); \
+    printf '%s' '${_b64}' | base64 -d > /root/.barracuda.cnf.carry || exit 1; \
+    grep -v -E '${_re}' /root/.barracuda.cnf > /root/.barracuda.cnf.carrynew; \
+    cat /root/.barracuda.cnf.carry >> /root/.barracuda.cnf.carrynew; \
+    rm -f /root/.barracuda.cnf.carry; \
+    [ -s /root/.barracuda.cnf.carrynew ] \
+    && chmod \${_m:-600} /root/.barracuda.cnf.carrynew \
+    && mv -f /root/.barracuda.cnf.carrynew /root/.barracuda.cnf" \
+    || { _alrt "could not write this server's own settings on ${_t}"; return 1; }
+  for _x in ${_aside}; do
+    _info "Setting ${_x} aside on ${_t} as ${_x}.pre-move: this server does not hold it"
+    ssh root@"${_t}" "mv -f '${_x}' '${_x}.pre-move'" \
+      || { _alrt "could not set ${_x} aside on ${_t}"; return 1; }
+  done
+  # Read back with the same gate; its lines go to stderr, nothing captured.
+  if ! _xmass_box_settings_gate "${_t}" deny >&2; then
+    _alrt "${_t} still differs after the write"
+    return 1
+  fi
+  _info "The server's own settings: written on ${_t}, read back the same"
+  return 0
+}
+
 ### What the target would start to honour (_mig_php_inert_choices), named before the
 ### move: on a dry run it marks the run not clean, on a live one it is an alert, since an
 ### account may mean it. $1 = the target, $2 = alrt or deny, $3 = versions a --fix-php run
@@ -16341,6 +16509,8 @@ _xmass_cmd_prep_target() {
     _xmass_php_coverage_gate "${_tgt}" die
   fi
   _xmass_webgroup_gate "${_tgt}" die
+  _xmass_box_settings_gate "${_tgt}" fix \
+    || _die "this server's own settings could not be written on ${_tgt}"
   # what converts on each box once the pair switches (the arm, phase B, the
   # master), told while both are still being set up
   _xmass_wg_box_notes "${_tgt}" | sed 's/^/  /'
@@ -17646,6 +17816,10 @@ _xmass_cmd_init() {
   _xmass_verify_target_accounts "${_tgt}" die
   _xmass_php_coverage_gate "${_tgt}" die
   _xmass_webgroup_gate "${_tgt}" die
+  # A target prepared before the carry existed gets this server's own
+  # settings here, before the first sync.
+  _xmass_box_settings_gate "${_tgt}" fix \
+    || _die "this server's own settings could not be written on ${_tgt}"
   # Solr's point of no return is HERE, not at cutover: the first sync lands
   # every source Solr tree on the target, and a landed tree suppresses BOA's
   # installer for that version permanently.
@@ -19818,6 +19992,7 @@ _xmass_cmd_cutover() {
     _xmass_assert_same_release "${_tgt}" deny || true
     _xmass_verify_target_accounts "${_tgt}" deny || true
     _xmass_php_coverage_gate "${_tgt}" deny || true
+    _xmass_box_settings_gate "${_tgt}" deny || true
     _xmass_solr_coverage_gate "${_tgt}" deny || true
     _xmass_webgroup_gate "${_tgt}" deny || true
     _xmass_a2b_cutover_gate deny || true
@@ -19901,6 +20076,7 @@ _xmass_cmd_cutover() {
   _xmass_assert_same_release "${_tgt}"
   _xmass_verify_target_accounts "${_tgt}" die
   _xmass_php_coverage_gate "${_tgt}" die
+  _xmass_box_settings_gate "${_tgt}" die
   _xmass_solr_coverage_gate "${_tgt}" die
   _xmass_webgroup_gate "${_tgt}" die
   _xmass_a2b_cutover_gate die
