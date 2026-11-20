@@ -579,24 +579,35 @@ _self_lock_gate() {
   done
   return 1
 }
-# Does this box carry the published tree, no older than the copy the mirror
-# serves? The same test as the local read in _fetch_versioned (BOA.sh.txt):
-# the tree's own stamp, versions/<tree>/boa/.update.txt, written by the publish
-# inside it and kept with its time by every copy, is the one served or newer.
-# A tree that is behind or no longer pulled, or a served stamp that cannot be
-# read, does not count. A box with no stamp of its own asks nothing.
+# Does this box carry the published tree, and does no mirror serve a newer
+# copy of it? The same test as the local read in _fetch_versioned
+# (BOA.sh.txt): the tree's own stamp, versions/<tree>/boa/.update.txt, written
+# by the publish inside it and kept with its time by every copy, against the
+# stamp of every mirror name this box uses and of files.aegir.cc, which no
+# cache fronts (a box whose tree stopped is still the origin of its own
+# name). At least one name must answer, and none may serve a stamp that
+# differs and is not older. A box with no stamp of its own asks nothing.
 _local_tree_current() {
-  local _lst="/var/www/static/versions/${_tRee}/boa/.update.txt" _got _rc=1
+  local _lst="/var/www/static/versions/${_tRee}/boa/.update.txt" _got _lms _lmn
+  local _lnm=0 _lnw=""
   [[ -s "${_lst}" ]] || return 1
   _got="/var/opt/.boa.tree.stamp.$$"
-  if curl -L --max-redirs 3 -s --fail --retry 3 --retry-delay 5 -A iCab -R \
-      -o "${_got}" "https://${_USE_MIR}/versions/${_tRee}/boa/.update.txt" 2> /dev/null \
-    && [[ -s "${_got}" ]] && ! head -c 64 "${_got}" | grep -q '<' \
-    && { cmp -s "${_lst}" "${_got}" || [[ "${_lst}" -nt "${_got}" ]]; }; then
-    _rc=0
-  fi
+  _lms="$(grep -E '^[a-z0-9.-]+$' /var/backups/boa-mirrors-2026-07.txt 2> /dev/null)"
+  [[ -n "${_lms}" ]] \
+    || _lms="files.boa.io files.o8.io files.host8.biz files.aegir.biz files.aoboshi.com"
+  # files.aegir.cc as well, the one name with no cache in front of it
+  _lms="files.aegir.cc $(grep -vx 'files\.aegir\.cc' <<< "${_lms}")"
+  for _lmn in ${_lms}; do
+    rm -f "${_got}"
+    curl -L --max-redirs 3 -s --fail --max-time 10 -A iCab -R -o "${_got}" \
+      "https://${_lmn}/versions/${_tRee}/boa/.update.txt" 2> /dev/null || continue
+    [[ -s "${_got}" ]] && [[ "$(wc -c < "${_got}")" -le 512 ]] \
+      && ! grep -q '<' "${_got}" || continue
+    _lnm=$(( _lnm + 1 ))
+    cmp -s "${_lst}" "${_got}" || [[ "${_lst}" -nt "${_got}" ]] || _lnw="${_lnw} ${_lmn}"
+  done
   rm -f "${_got}"
-  return "${_rc}"
+  [[ "${_lnm}" -gt 0 ]] && [[ -z "${_lnw}" ]]
 }
 _CLEAR_MODE="$1"
 _CLEAR_RC=0
@@ -623,17 +634,20 @@ if ! _install_held && _self_lock_gate; then
   # that tree's BOA.sh.txt: every tool that run installs is copied from that
   # same tree, and a copy fetched from another mirror can be a publish older
   # or newer than those tools (one older pass installed the new tools under
-  # their previous serials). A tree this box does not carry, one behind the
-  # mirror's, or a local copy that fails the same check, is fetched.
+  # their previous serials). A tree this box does not carry, one a mirror
+  # serves newer, or a local copy that fails the same check, is fetched. The
+  # run is told which copy it is (_LCL_TREE_KEY, _LCL_TREE_OK), so the tools it
+  # installs come from the same place: the tree's copy reads the tree, a
+  # downloaded copy downloads them.
   _boaShTmp=/var/opt/.boa.sh.txt.$$
   _boaShLcl="/var/www/static/versions/${_tRee}/boa/BOA.sh.txt"
   if [[ -s "${_boaShLcl}" ]] && _local_tree_current \
     && cp -f "${_boaShLcl}" "${_boaShTmp}" 2>/dev/null \
     && grep -q "^export _tRee=" "${_boaShTmp}"; then
-    bash < "${_boaShTmp}"
+    _LCL_TREE_KEY="versions/${_tRee}/boa" _LCL_TREE_OK=YES bash < "${_boaShTmp}"
   elif wget -q -O "${_boaShTmp}" https://${_USE_MIR}/versions/${_tRee}/boa/BOA.sh.txt \
     && grep -q "^export _tRee=" "${_boaShTmp}"; then
-    bash < "${_boaShTmp}"
+    _LCL_TREE_KEY="versions/${_tRee}/boa" _LCL_TREE_OK=NO bash < "${_boaShTmp}"
   else
     [ -d "/var/log/boa" ] \
       && echo "$(date) OOPS: ${_USE_MIR} served no usable BOA.sh.txt for the ${_tRee} tree" \

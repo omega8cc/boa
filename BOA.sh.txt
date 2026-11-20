@@ -1987,37 +1987,58 @@ _fetch_versioned() {
   # tree went current at 19:01:29 and a mirror still received the previous bytes at
   # 19:03:10, 101 seconds later. Cache purges are best-effort and cannot be relied on.
   # The webroot mirrors the URL path 1:1, so drop scheme+host and graft it on.
-  # Only a tree no older than the copy the mirror serves is read: one behind, or
-  # no longer pulled, would put older bytes over newer ones. The tree's stamp,
+  # Only a tree no mirror serves a newer copy of is read: one behind, or no
+  # longer pulled, would put older bytes over newer ones. The tree's stamp,
   # versions/<tree>/boa/.update.txt, is written by the publish inside the tree
   # and moved in with it, so it dates the tools beside it, and every copy of the
-  # tree (the mirrors' pull, a migration's copy) keeps its time. The local tree
-  # counts when its stamp is the one served, or newer (a mirror ahead of an
-  # intermediary), and not when the served one cannot be read. Decided once per
-  # tree and mirror in a run; a box with no stamp of its own asks nothing. A tree
-  # this box does not hold, one behind, or a file the tree lacks falls through to
-  # curl.
-  local _lcl="" _lrt _lst _lgt
+  # tree (the mirrors' pull, a migration's copy) keeps its time. Every mirror
+  # name this box uses is asked (the list the mirror pick reads, and
+  # files.aegir.cc, which no cache fronts), never one alone: a box whose tree
+  # stopped is still the origin of its own name. The local tree counts when at
+  # least one name answers with a stamp and none serves one that differs from
+  # it and is not older, so a mirror ahead of an intermediary still reads its
+  # own bytes. Asked once per tree in a run, and
+  # not at all when clear.sh passes its answer for the copy of BOA.sh.txt it ran
+  # (_LCL_TREE_KEY, _LCL_TREE_OK): the tools then come from where BOA.sh.txt
+  # came from. A box with no stamp of its own asks nothing. A tree this box does
+  # not hold, one behind, or a file the tree lacks falls through to curl.
+  local _lcl="" _lrt _lst _lgt _lms _lmn _lnm _lnw
   _lrt="${_url#*://}"
   _lrt="${_lrt#*/}"
   if [[ "${_lrt}" =~ ^(versions/[^/]+/boa)/ ]]; then
     _lrt="${BASH_REMATCH[1]}"
     _lst="/var/www/static/${_lrt}/.update.txt"
-    if [[ -s "${_lst}" ]] && [[ "${_LCL_TREE_KEY:-}" != "${_url%%/"${_lrt}"/*}/${_lrt}" ]]; then
-      _LCL_TREE_KEY="${_url%%/"${_lrt}"/*}/${_lrt}"
+    if [[ -s "${_lst}" ]] && [[ "${_LCL_TREE_KEY:-}" != "${_lrt}" ]]; then
+      _LCL_TREE_KEY="${_lrt}"
       _LCL_TREE_OK=NO
+      _lnm=0
+      _lnw=""
       _lgt="${_pthLog}/.tree.stamp.$$"
-      # shellcheck disable=SC2086  # _crlGet is a flag string
-      if curl ${_crlGet} -R -o "${_lgt}" "${_LCL_TREE_KEY}/.update.txt" 2>/dev/null \
-        && [[ -s "${_lgt}" ]] && ! head -c 64 "${_lgt}" | grep -q '<' \
-        && { cmp -s "${_lst}" "${_lgt}" || [[ "${_lst}" -nt "${_lgt}" ]]; }; then
-        _LCL_TREE_OK=YES
-      else
-        echo "The local ${_lrt} tree is not read: ${_LCL_TREE_KEY%%/"${_lrt}"} serves a newer one, or no stamp"
-      fi
+      _lms="$(grep -E '^[a-z0-9.-]+$' /var/backups/boa-mirrors-2026-07.txt 2>/dev/null)"
+      [[ -n "${_lms}" ]] \
+        || _lms="files.boa.io files.o8.io files.host8.biz files.aegir.biz files.aoboshi.com"
+      # files.aegir.cc as well, the one name with no cache in front of it
+      _lms="files.aegir.cc $(grep -vx 'files\.aegir\.cc' <<< "${_lms}")"
+      for _lmn in ${_lms}; do
+        rm -f "${_lgt}"
+        curl -L --max-redirs 3 -s --fail --max-time 10 -A iCab -R -o "${_lgt}" \
+          "https://${_lmn}/${_lrt}/.update.txt" 2>/dev/null || continue
+        [[ -s "${_lgt}" ]] && [[ "$(wc -c < "${_lgt}")" -le 512 ]] \
+          && ! grep -q '<' "${_lgt}" || continue
+        _lnm=$(( _lnm + 1 ))
+        cmp -s "${_lst}" "${_lgt}" || [[ "${_lst}" -nt "${_lgt}" ]] || _lnw="${_lnw} ${_lmn}"
+      done
       rm -f "${_lgt}"
+      if [[ "${_lnm}" -gt 0 ]] && [[ -z "${_lnw}" ]]; then
+        _LCL_TREE_OK=YES
+      elif [[ -n "${_lnw}" ]]; then
+        echo "The local ${_lrt} tree is not read: a newer one is served at${_lnw}"
+      else
+        echo "The local ${_lrt} tree is not read: no mirror answered with its stamp"
+      fi
     fi
-    if [[ -s "${_lst}" ]] && [[ "${_LCL_TREE_OK:-}" == "YES" ]]; then
+    if [[ -s "${_lst}" ]] && [[ "${_LCL_TREE_KEY:-}" == "${_lrt}" ]] \
+      && [[ "${_LCL_TREE_OK:-}" == "YES" ]]; then
       _lcl="${_url#*://}"
       _lcl="/var/www/static/${_lcl#*/}"
       [[ -s "${_lcl}" ]] || _lcl=""
@@ -3025,7 +3046,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/mysql_repair.sh "${_urlHmr}/tools/system/mysql_repair.sh" f88
     _fetch_versioned /var/xdrago/purge_binlogs.sh "${_urlHmr}/tools/system/purge_binlogs.sh" f87
     _fetch_versioned /var/xdrago/checksql.sh "${_urlHmr}/tools/system/checksql.sh" f92
-    _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f56
+    _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f55
     _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f41
     _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f92
     _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f16
