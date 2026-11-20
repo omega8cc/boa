@@ -2000,9 +2000,16 @@ _fetch_versioned() {
   # own bytes. Asked once per tree in a run, and
   # not at all when clear.sh passes its answer for the copy of BOA.sh.txt it ran
   # (_LCL_TREE_KEY, _LCL_TREE_OK): the tools then come from where BOA.sh.txt
-  # came from. A box with no stamp of its own asks nothing. A tree this box does
-  # not hold, one behind, or a file the tree lacks falls through to curl.
+  # came from. That answer counts only when clear.sh, the parent of this run,
+  # gave it (_LCL_TREE_BY, its pid), never from a shell's leftover exports. A
+  # box with no stamp of its own asks nothing. A tree this box does not hold,
+  # one behind, or a file the tree lacks falls through to curl.
   local _lcl="" _lrt _lst _lgt _lms _lmn _lnm _lnw
+  if [[ "${_LCL_TREE_BY:-}" != "run:$$" ]]; then
+    [[ "${_LCL_TREE_BY:-}" == "${PPID}" ]] || unset _LCL_TREE_KEY _LCL_TREE_OK
+    _LCL_TREE_BY="run:$$"
+    export -n _LCL_TREE_KEY _LCL_TREE_OK _LCL_TREE_BY 2>/dev/null
+  fi
   _lrt="${_url#*://}"
   _lrt="${_lrt#*/}"
   if [[ "${_lrt}" =~ ^(versions/[^/]+/boa)/ ]]; then
@@ -3046,7 +3053,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/mysql_repair.sh "${_urlHmr}/tools/system/mysql_repair.sh" f88
     _fetch_versioned /var/xdrago/purge_binlogs.sh "${_urlHmr}/tools/system/purge_binlogs.sh" f87
     _fetch_versioned /var/xdrago/checksql.sh "${_urlHmr}/tools/system/checksql.sh" f92
-    _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f55
+    _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f54
     _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f41
     _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f92
     _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f16

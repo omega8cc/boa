@@ -607,7 +607,13 @@ _local_tree_current() {
     cmp -s "${_lst}" "${_got}" || [[ "${_lst}" -nt "${_got}" ]] || _lnw="${_lnw} ${_lmn}"
   done
   rm -f "${_got}"
-  [[ "${_lnm}" -gt 0 ]] && [[ -z "${_lnw}" ]]
+  [[ "${_lnm}" -gt 0 ]] && [[ -z "${_lnw}" ]] && return 0
+  if [[ -n "${_lnw}" ]]; then
+    echo "The local versions/${_tRee}/boa tree is not read: a newer one is served at${_lnw}"
+  else
+    echo "The local versions/${_tRee}/boa tree is not read: no mirror answered with its stamp"
+  fi
+  return 1
 }
 _CLEAR_MODE="$1"
 _CLEAR_RC=0
@@ -638,16 +644,19 @@ if ! _install_held && _self_lock_gate; then
   # serves newer, or a local copy that fails the same check, is fetched. The
   # run is told which copy it is (_LCL_TREE_KEY, _LCL_TREE_OK), so the tools it
   # installs come from the same place: the tree's copy reads the tree, a
-  # downloaded copy downloads them.
+  # downloaded copy downloads them. _LCL_TREE_BY, this script's pid, is how the
+  # run knows the answer came from its parent.
   _boaShTmp=/var/opt/.boa.sh.txt.$$
   _boaShLcl="/var/www/static/versions/${_tRee}/boa/BOA.sh.txt"
   if [[ -s "${_boaShLcl}" ]] && _local_tree_current \
     && cp -f "${_boaShLcl}" "${_boaShTmp}" 2>/dev/null \
     && grep -q "^export _tRee=" "${_boaShTmp}"; then
-    _LCL_TREE_KEY="versions/${_tRee}/boa" _LCL_TREE_OK=YES bash < "${_boaShTmp}"
+    _LCL_TREE_KEY="versions/${_tRee}/boa" _LCL_TREE_OK=YES _LCL_TREE_BY="$$" \
+      bash < "${_boaShTmp}"
   elif wget -q -O "${_boaShTmp}" https://${_USE_MIR}/versions/${_tRee}/boa/BOA.sh.txt \
     && grep -q "^export _tRee=" "${_boaShTmp}"; then
-    _LCL_TREE_KEY="versions/${_tRee}/boa" _LCL_TREE_OK=NO bash < "${_boaShTmp}"
+    _LCL_TREE_KEY="versions/${_tRee}/boa" _LCL_TREE_OK=NO _LCL_TREE_BY="$$" \
+      bash < "${_boaShTmp}"
   else
     [ -d "/var/log/boa" ] \
       && echo "$(date) OOPS: ${_USE_MIR} served no usable BOA.sh.txt for the ${_tRee} tree" \
