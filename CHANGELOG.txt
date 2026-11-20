@@ -369,9 +369,8 @@
       connection Nginx keeps open, session upload progress, arguments in
       backtraces, PHP settings sent with a request, or workers able to
       write PHP's own log. The other two, in PHP's session code
-      (CVE-2026-126714, CVE-2026-129481), depend on a site's own code,
-      as do most of the remaining nine, and the fixed releases close
-      them.
+      (CVE-2026-126714, CVE-2026-129481), depend on a site's own code, as
+      do most of the remaining nine, and the fixed releases close them.
 
     * Solr 9 runs with -XX:-UseBASE64Intrinsics. Java 17 and 21 decode
       Base64 with a CPU-specific routine that, on processors with AVX-512
@@ -1136,6 +1135,17 @@
       and a lock that holds one does not install, which fails the build.
 
 @=> Important Fixes
+
+    * The hourly database cleanup and the nightly backup no longer empty
+      a site's queue or batch table. Both judged the table by its file
+      alone, and InnoDB never hands freed pages back, so the file passes
+      1 GB from deleted rows: a moved server's first night emptied a
+      queue that still held thousands of waiting jobs. Such a table is
+      now rebuilt online, which gives the space back and keeps every row;
+      one whose rows really fill that much is rebuilt at most once a week,
+      and a rebuild that meets a lock gives up after five seconds and
+      leaves the table as it is. The watchdog and accesslog tables, logs
+      by design, are emptied as before.
 
     * A Solr 7 or Solr 9 whose Java was replaced under it by a package
       upgrade is restarted within five minutes. The daily security
