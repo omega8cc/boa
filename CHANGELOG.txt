@@ -1136,6 +1136,15 @@
 
 @=> Important Fixes
 
+    * The migration notices tell the client that outgoing requests move to
+      the new address. They spoke of the new address only for DNS, the
+      incoming side, so a client whose outside services accept requests
+      only from listed addresses (shop, payment and accounting APIs)
+      learned of the change when those calls failed after the cutover. The
+      start notice says to add the new address before the switch, the
+      completion and change notices that requests now leave from it, and a
+      live pair's notices to ask for the mirror's address too.
+
     * The hourly database cleanup and the nightly backup no longer empty
       a site's queue or batch table. Both judged the table by its file
       alone, and InnoDB never hands freed pages back, so the file passes

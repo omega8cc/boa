@@ -1720,7 +1720,23 @@ For all of those, point DNS straight at the new address. There is nothing to wai
   if [ "${_ctx}" = "retire" ]; then
     _MIG_DNS_BLOCK=""
     _MIG_COVERAGE_BLOCK=""
+    _MIG_OUTBOUND_BLOCK=""
     return 0
+  fi
+
+  ### The address pair speaks of DNS, which is the incoming side. A client
+  ### whose outside services accept requests only from listed addresses
+  ### (shop, payment and accounting APIs) learned of the outgoing change
+  ### only when those calls failed after the cutover, so both notices say it.
+  local _mirror=""
+  [ "${_MIG_MODE}" = "ha-switch" ] && _mirror=" Your service can also run from its live mirror: ask us for the mirror's address and list it as well."
+  if [ "${_ctx}" = "start" ]; then
+    _MIG_OUTBOUND_BLOCK="Outgoing requests: from the switch, every request your sites and their scheduled tasks send to outside services (shop, payment and accounting APIs, or any other service they call) will leave from the new address above. If such a service accepts requests only from listed addresses, add the new address there before the switch. The old address will forward incoming traffic only and cannot send requests for you.${_mirror}"
+  else
+    _MIG_OUTBOUND_BLOCK="Outgoing requests: every request your sites and their scheduled tasks send to outside services (shop, payment and accounting APIs, or any other service they call) now leaves from the new address. If such a service accepts requests only from listed addresses, add the new address there. The old address forwards incoming traffic only and cannot send requests for you.${_mirror}"
+    _MIG_ADDR_BLOCK="${_MIG_ADDR_BLOCK}
+
+${_MIG_OUTBOUND_BLOCK}"
   fi
 
   ### xoct export can run before anyone has chosen a mode. Only a genuinely
@@ -2752,6 +2768,8 @@ Hello,
 This notification is to inform you that the migration of your Ægir hosting system to the new platform has started.
 
 YOUR NEW SYSTEM IP ADDRESS IS: [${_tgt}]
+
+${_MIG_OUTBOUND_BLOCK}
 
 You will receive another message once the migration is complete, with the updated addresses and everything else you need to know.
 
