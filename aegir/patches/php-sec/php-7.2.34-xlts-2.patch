@@ -1,0 +1,1552 @@
+diff --git a/ext/date/tests/GHSA-gr4f-wgx5-jpfv.phpt b/ext/date/tests/GHSA-gr4f-wgx5-jpfv.phpt
+new file mode 100644
+index 0000000..9ca9866
+--- /dev/null
++++ b/ext/date/tests/GHSA-gr4f-wgx5-jpfv.phpt
+@@ -0,0 +1,24 @@
++--TEST--
++GHSA-gr4f-wgx5-jpfv: DATEG(tzcache) use-after-free
++--CREDITS--
++Sebastian Bergmann
++--CGI--
++--ENV--
++QUERY_STRING=a=1&b=2
++--SKIPIF--
++<?php
++if (!extension_loaded('session')) die('skip session extension not available');
++if (!extension_loaded('zend-test')) die('skip zend-test extension not available');
++?>
++--INI--
++error_log="{TMP}/GHSA-gr4f-wgx5-jpfv.log"
++log_errors=1
++max_input_vars=1
++zend_test.warn_on_startup=1
++--FILE--
++<?php
++echo "Hello world\n";
++?>
++--EXPECTF--
++Warning: Unknown: Input variables exceeded 1. To increase the limit change max_input_vars in php.ini. in Unknown on line 0
++Hello world%r(?:\n\nWarning: Test startup warning from zend_test in Unknown on line 0)?%r
+diff --git a/ext/phar/tests/ghsa-68fq-fh7h-f8gr.phpt b/ext/phar/tests/ghsa-68fq-fh7h-f8gr.phpt
+new file mode 100644
+index 0000000..73d6fb1
+--- /dev/null
++++ b/ext/phar/tests/ghsa-68fq-fh7h-f8gr.phpt
+@@ -0,0 +1,121 @@
++--TEST--
++GHSA-68fq-fh7h-f8gr (OpenSSL signature bypass by downgrading the algorithm to a keyless one)
++--SKIPIF--
++<?php
++if (!extension_loaded("phar")) die("skip phar extension not available");
++if (!extension_loaded("openssl")) die("skip openssl extension not available");
++if (!in_array("OpenSSL", Phar::getSupportedSignatures())) die("skip openssl support required");
++?>
++--INI--
++phar.readonly=0
++phar.require_hash=1
++--FILE--
++<?php
++$base = __DIR__ . '/' . basename(__FILE__, '.php');
++$private = openssl_pkey_get_private(file_get_contents(__DIR__ . '/files/private.pem'));
++$pkey = '';
++openssl_pkey_export($private, $pkey, null, ['config' => __DIR__ . '/files/openssl.cnf']);
++$pubkey = openssl_pkey_get_details($private)['key'];
++
++function build(string $file, string $pkey): string
++{
++    $phar = new Phar($file);
++    $phar['main.php'] = '<?php echo "GENUINE\n";';
++    $phar->setStub('<?php __HALT_COMPILER();');
++    $phar->setSignatureAlgorithm(Phar::OPENSSL, $pkey);
++
++    return file_get_contents($file);
++}
++
++// a phar built in this process comes back from the cache, so each case is read under its own name
++function open(string $file, string $archive, $pubkey)
++{
++    file_put_contents($file, $archive);
++    if ($pubkey !== null) {
++        file_put_contents($file . '.pubkey', $pubkey);
++    }
++
++    try {
++        echo (new Phar($file))->getSignature()['hash_type'], "\n";
++    } catch (UnexpectedValueException $e) {
++        echo $e->getMessage(), "\n";
++    }
++}
++
++function downgrade_phar(string $archive): string
++{
++    // the last 12 bytes are [length][algorithm]["GBMB"], the signature sits just before them
++    $siglen = unpack('V', substr($archive, -12, 4))[1];
++    $message = substr($archive, 0, strlen($archive) - 12 - $siglen);
++
++    return $message . hash('sha256', $message, true) . pack('V', 0x0003) . 'GBMB'; // 0x0003 is PHAR_SIG_SHA256
++}
++
++function downgrade_tar(string $archive): string
++{
++    for ($offset = 0; $offset + 512 <= strlen($archive); ) {
++        $size = (int) octdec(trim(substr($archive, $offset + 124, 12), " \0")); // octal size field of a 512 byte header
++
++        if (rtrim(substr($archive, $offset, 100), "\0") === '.phar/signature.bin') {
++            // the signed message stops at this header, so rewriting the entry content leaves it alone
++            $blob = pack('VV', 0x0003, 32) . hash('sha256', substr($archive, 0, $offset), true); // [algorithm][digest length][digest]
++
++            return substr_replace($archive, str_pad($blob, $size, "\0"), $offset + 512, $size);
++        }
++
++        $offset += 512 + (($size + 511) & ~511);
++    }
++
++    throw new RuntimeException('no signature entry');
++}
++
++function downgrade_zip(string $archive): string
++{
++    $eocd = strrpos($archive, "PK\x05\x06");
++    $cdir = unpack('V', substr($archive, $eocd + 16, 4))[1]; // the eocd holds the directory offset at +16 and the archive comment length at +20
++    $comment = substr($archive, $eocd + 22, unpack('v', substr($archive, $eocd + 20, 2))[1]);
++
++    for ($record = $cdir; substr($archive, $record, 4) === "PK\x01\x02"; ) {
++        $namelen = unpack('v', substr($archive, $record + 28, 2))[1];
++
++        if (substr($archive, $record + 46, $namelen) === '.phar/signature.bin') {
++            $size = unpack('V', substr($archive, $record + 24, 4))[1];
++            $local = unpack('V', substr($archive, $record + 42, 4))[1];
++            $content = $local + 30 + unpack('v', substr($archive, $local + 26, 2))[1] + unpack('v', substr($archive, $local + 28, 2))[1];
++            // the signed message is everything before the local entry plus the directory up to this record
++            $message = substr($archive, 0, $local) . substr($archive, $cdir, $record - $cdir) . $comment;
++            $blob = pack('VV', 0x0003, 32) . hash('sha256', $message, true);
++
++            return substr_replace($archive, str_pad($blob, $size, "\0"), $content, $size);
++        }
++
++        $record += 46 + $namelen + unpack('v', substr($archive, $record + 30, 2))[1] + unpack('v', substr($archive, $record + 32, 2))[1];
++    }
++
++    throw new RuntimeException('no signature entry');
++}
++
++foreach (['phar' => 'downgrade_phar', 'phar.tar' => 'downgrade_tar', 'phar.zip' => 'downgrade_zip'] as $suffix => $downgrade) {
++    $archive = build($base . '.source.' . $suffix, $pkey);
++    open($base . '.signed.' . $suffix, $archive, $pubkey);
++    open($base . '.tampered.' . $suffix, $downgrade($archive), $pubkey);
++    open($base . '.nokey.' . $suffix, $downgrade($archive), null);
++}
++?>
++--CLEAN--
++<?php
++$base = __DIR__ . '/' . basename(__FILE__, '.clean.php');
++foreach (glob($base . '.*.phar*') as $file) {
++    unlink($file);
++}
++?>
++--EXPECTF--
++OpenSSL
++phar "%stampered.phar" SHA256 signature could not be verified: openssl public key found, but the signature does not use openssl
++SHA-256
++OpenSSL
++phar error: tar-based phar "%stampered.phar.tar" signature cannot be verified: openssl public key found, but the signature does not use openssl
++SHA-256
++OpenSSL
++phar error: signature cannot be verified: openssl public key found, but the signature does not use openssl in zip-based phar "%stampered.phar.zip"
++SHA-256
+diff --git a/ext/phar/util.c b/ext/phar/util.c
+index 5c27316..0d7f07a 100644
+--- a/ext/phar/util.c
++++ b/ext/phar/util.c
+@@ -1510,6 +1510,23 @@ int phar_verify_signature(php_stream *fp, size_t end_of_phar, uint32_t sig_type,
+ 
+ 	php_stream_rewind(fp);
+ 
++	if (sig_type != PHAR_SIG_OPENSSL) {
++		php_stream_statbuf ssb;
++		char *pfile;
++		zend_bool has_pubkey;
++
++		spprintf(&pfile, 0, "%s.pubkey", fname);
++		has_pubkey = php_stream_stat_path_ex(pfile, PHP_STREAM_URL_STAT_QUIET, &ssb, NULL) == 0;
++		efree(pfile);
++
++		if (has_pubkey) {
++			if (error) {
++				spprintf(error, 0, "openssl public key found, but the signature does not use openssl");
++			}
++			return FAILURE;
++		}
++	}
++
+ 	switch (sig_type) {
+ 		case PHAR_SIG_OPENSSL: {
+ #ifdef PHAR_HAVE_OPENSSL
+diff --git a/ext/session/mod_files.c b/ext/session/mod_files.c
+index b313d8b..69f30ff 100644
+--- a/ext/session/mod_files.c
++++ b/ext/session/mod_files.c
+@@ -240,9 +240,9 @@ static int ps_files_write(ps_files *data, zend_string *key, zend_string *val)
+ 		return FAILURE;
+ 	}
+ 
+-	/* Truncate file if the amount of new data is smaller than the existing data set. */
+-	if (ZSTR_LEN(val) < data->st_size) {
+-		php_ignore_value(ftruncate(data->fd, 0));
++	if (ftruncate(data->fd, 0) != 0) {
++		php_error_docref(NULL, E_WARNING, "ftruncate() failed: %s (%d)", strerror(errno), errno);
++		return FAILURE;
+ 	}
+ 
+ #if defined(HAVE_PWRITE)
+diff --git a/ext/session/session.c b/ext/session/session.c
+index 40a38f8..af215a0 100644
+--- a/ext/session/session.c
++++ b/ext/session/session.c
+@@ -816,7 +816,7 @@ PHP_INI_BEGIN()
+ 
+ 	/* Upload progress */
+ 	STD_PHP_INI_BOOLEAN("session.upload_progress.enabled",
+-	                                                "1",     ZEND_INI_PERDIR, OnUpdateBool,        rfc1867_enabled, php_ps_globals, ps_globals)
++	                                                "0",     ZEND_INI_PERDIR, OnUpdateBool,        rfc1867_enabled, php_ps_globals, ps_globals)
+ 	STD_PHP_INI_BOOLEAN("session.upload_progress.cleanup",
+ 	                                                "1",     ZEND_INI_PERDIR, OnUpdateBool,        rfc1867_cleanup, php_ps_globals, ps_globals)
+ 	STD_PHP_INI_ENTRY("session.upload_progress.prefix",
+@@ -2826,6 +2826,7 @@ static PHP_GINIT_FUNCTION(ps) /* {{{ */
+ 	ps_globals->mod = NULL;
+ 	ps_globals->serializer = NULL;
+ 	ps_globals->mod_data = NULL;
++	ps_globals->rfc1867_enabled = 0;
+ 	ps_globals->session_status = php_session_none;
+ 	ps_globals->default_mod = NULL;
+ 	ps_globals->mod_user_implemented = 0;
+diff --git a/ext/soap/php_encoding.c b/ext/soap/php_encoding.c
+index daffc8a..591d2c7 100644
+--- a/ext/soap/php_encoding.c
++++ b/ext/soap/php_encoding.c
+@@ -2038,7 +2038,7 @@ static int calc_dimension_12(const char* str)
+ 		}
+ 		str++;
+ 	}
+-	return i;
++	return i != 0 ? i : 1;
+ }
+ 
+ static int* get_position_12(int dimension, const char* str)
+diff --git a/ext/soap/php_xml.c b/ext/soap/php_xml.c
+index 0e3339f..5a18051 100644
+--- a/ext/soap/php_xml.c
++++ b/ext/soap/php_xml.c
+@@ -53,6 +53,9 @@ static void cleanup_xml_node(xmlNodePtr node)
+ 				xmlUnlinkNode(trav);
+ 				xmlFreeNode(trav);
+ 			}
++		} else if (trav->type == XML_DTD_NODE) {
++			/* Attribute-value entity references can share content with the DTD.
++			 * Keep it alive until the document itself is freed. */
+ 		} else if ((trav->type != XML_ELEMENT_NODE) &&
+ 		           (trav->type != XML_CDATA_SECTION_NODE)) {
+ 			xmlUnlinkNode(trav);
+diff --git a/ext/soap/tests/GHSA-4646-p932-gw34.phpt b/ext/soap/tests/GHSA-4646-p932-gw34.phpt
+new file mode 100644
+index 0000000..7ae4cc3
+--- /dev/null
++++ b/ext/soap/tests/GHSA-4646-p932-gw34.phpt
+@@ -0,0 +1,33 @@
++--TEST--
++GHSA-4646-p932-gw34: DTD entity references must not outlive their declarations
++--POST--
++<?xml version="1.0" encoding="UTF-8"?>
++<!DOCTYPE Envelope [<!ENTITY e "boom">]>
++<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/"
++                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
++                   xmlns:xsd="http://www.w3.org/2001/XMLSchema"
++                   xmlns:ns1="urn:t">
++  <SOAP-ENV:Header>
++    <h SOAP-ENV:actor="&e;" SOAP-ENV:mustUnderstand="1"/>
++  </SOAP-ENV:Header>
++  <SOAP-ENV:Body>
++    <ns1:echo_><param0 xsi:type="xsd:string">x</param0></ns1:echo_>
++  </SOAP-ENV:Body>
++</SOAP-ENV:Envelope>
++--FILE--
++<?php
++function echo_($x) {
++    return $x;
++}
++
++$server = new SoapServer(null, [
++    'uri' => 'urn:t',
++    'style' => SOAP_RPC,
++    'use' => SOAP_ENCODED,
++]);
++$server->addFunction('echo_');
++$server->handle();
++?>
++--EXPECT--
++<?xml version="1.0" encoding="UTF-8"?>
++<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/"><SOAP-ENV:Body><SOAP-ENV:Fault><faultcode>SOAP-ENV:Server</faultcode><faultstring>DTD are not supported by SOAP</faultstring></SOAP-ENV:Fault></SOAP-ENV:Body></SOAP-ENV:Envelope>
+diff --git a/ext/soap/tests/GHSA-q23r-hr55-xmpg-wsdl.phpt b/ext/soap/tests/GHSA-q23r-hr55-xmpg-wsdl.phpt
+new file mode 100644
+index 0000000..d560504
+--- /dev/null
++++ b/ext/soap/tests/GHSA-q23r-hr55-xmpg-wsdl.phpt
+@@ -0,0 +1,83 @@
++--TEST--
++GHSA-q23r-hr55-xmpg: Unbounded array walk on empty wsdl:arraySize
++--EXTENSIONS--
++soap
++--INI--
++soap.wsdl_cache_enabled=0
++--FILE--
++<?php
++
++const WSDL = __DIR__ . '/GHSA-q23r-hr55-xmpg-wsdl.wsdl';
++
++function itemType() { return ['A', 'B', 'C']; }
++function sizeOnly() { return ['A', 'B', 'C']; }
++
++function request($operation) {
++    return <<<XML
++<?xml version="1.0"?>
++<env:Envelope
++    xmlns:env="http://www.w3.org/2003/05/soap-envelope"
++    xmlns:m="urn:arraysize">
++
++    <env:Body>
++        <m:{$operation}/>
++    </env:Body>
++</env:Envelope>
++XML;
++}
++
++class ReplayClient extends SoapClient
++{
++    public $arrayType;
++
++    public function __construct($arrayType) {
++        $this->arrayType = $arrayType;
++        parent::__construct(WSDL);
++    }
++
++    public function __doRequest($request, $location, $action, $version, $oneWay = 0) {
++        return <<<XML
++<?xml version="1.0"?>
++<env:Envelope
++    xmlns:env="http://www.w3.org/2003/05/soap-envelope"
++    xmlns:ns1="urn:arraysize"
++    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
++    xmlns:xsd="http://www.w3.org/2001/XMLSchema">
++
++    <env:Body>
++        <ns1:{$this->arrayType}Response>
++            <result xsi:type="ns1:{$this->arrayType}Array">
++                <item xsi:type="xsd:string">A</item>
++                <item xsi:type="xsd:string">B</item>
++                <item xsi:type="xsd:string">C</item>
++            </result>
++        </ns1:{$this->arrayType}Response>
++    </env:Body>
++</env:Envelope>
++XML;
++    }
++}
++
++$server = new SoapServer(WSDL);
++$server->addFunction(['itemType', 'sizeOnly']);
++
++foreach (['itemType', 'sizeOnly'] as $operation) {
++    ob_start();
++    $server->handle(request($operation));
++    $response = ob_get_clean();
++
++    preg_match('/arraySize="[^"]*"/', $response, $matches);
++    echo 'encode ', $operation, ' => ', isset($matches[0]) ? $matches[0] : 'none', "\n";
++}
++
++foreach (['ItemType', 'SizeOnly'] as $arrayType) {
++    $client = new ReplayClient($arrayType);
++    echo 'decode ', $arrayType, ' => ', json_encode($client->{lcfirst($arrayType)}()), "\n";
++}
++
++?>
++--EXPECT--
++encode itemType => arraySize="3"
++encode sizeOnly => arraySize="3"
++decode ItemType => ["A","B","C"]
++decode SizeOnly => ["A","B","C"]
+diff --git a/ext/soap/tests/GHSA-q23r-hr55-xmpg-wsdl.wsdl b/ext/soap/tests/GHSA-q23r-hr55-xmpg-wsdl.wsdl
+new file mode 100644
+index 0000000..55b5b92
+--- /dev/null
++++ b/ext/soap/tests/GHSA-q23r-hr55-xmpg-wsdl.wsdl
+@@ -0,0 +1,67 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<definitions xmlns="http://schemas.xmlsoap.org/wsdl/"
++             xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
++             xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
++             xmlns:xsd="http://www.w3.org/2001/XMLSchema"
++             xmlns:enc12="http://www.w3.org/2003/05/soap-encoding"
++             xmlns:tns="urn:arraysize"
++             targetNamespace="urn:arraysize">
++
++  <types>
++    <xsd:schema targetNamespace="urn:arraysize">
++      <xsd:import namespace="http://www.w3.org/2003/05/soap-encoding"/>
++
++      <xsd:complexType name="ItemTypeArray">
++        <xsd:complexContent>
++          <xsd:restriction base="enc12:Array">
++            <xsd:attribute ref="enc12:itemType" wsdl:itemType="xsd:string"/>
++            <xsd:attribute ref="enc12:arraySize" wsdl:arraySize=""/>
++          </xsd:restriction>
++        </xsd:complexContent>
++      </xsd:complexType>
++
++      <xsd:complexType name="SizeOnlyArray">
++        <xsd:complexContent>
++          <xsd:restriction base="enc12:Array">
++            <xsd:attribute ref="enc12:arraySize" wsdl:arraySize=""/>
++          </xsd:restriction>
++        </xsd:complexContent>
++      </xsd:complexType>
++    </xsd:schema>
++  </types>
++
++  <message name="emptyRequest"/>
++  <message name="itemTypeResponse"><part name="result" type="tns:ItemTypeArray"/></message>
++  <message name="sizeOnlyResponse"><part name="result" type="tns:SizeOnlyArray"/></message>
++
++  <portType name="ArrayPortType">
++    <operation name="itemType">
++      <input message="tns:emptyRequest"/>
++      <output message="tns:itemTypeResponse"/>
++    </operation>
++    <operation name="sizeOnly">
++      <input message="tns:emptyRequest"/>
++      <output message="tns:sizeOnlyResponse"/>
++    </operation>
++  </portType>
++
++  <binding name="ArrayBinding" type="tns:ArrayPortType">
++    <soap:binding style="rpc" transport="http://schemas.xmlsoap.org/soap/http"/>
++    <operation name="itemType">
++      <soap:operation soapAction="itemType"/>
++      <input><soap:body use="encoded" namespace="urn:arraysize" encodingStyle="http://www.w3.org/2003/05/soap-encoding"/></input>
++      <output><soap:body use="encoded" namespace="urn:arraysize" encodingStyle="http://www.w3.org/2003/05/soap-encoding"/></output>
++    </operation>
++    <operation name="sizeOnly">
++      <soap:operation soapAction="sizeOnly"/>
++      <input><soap:body use="encoded" namespace="urn:arraysize" encodingStyle="http://www.w3.org/2003/05/soap-encoding"/></input>
++      <output><soap:body use="encoded" namespace="urn:arraysize" encodingStyle="http://www.w3.org/2003/05/soap-encoding"/></output>
++    </operation>
++  </binding>
++
++  <service name="ArrayService">
++    <port name="ArrayPort" binding="tns:ArrayBinding">
++      <soap:address location="test://"/>
++    </port>
++  </service>
++</definitions>
+diff --git a/ext/soap/tests/GHSA-q23r-hr55-xmpg.phpt b/ext/soap/tests/GHSA-q23r-hr55-xmpg.phpt
+new file mode 100644
+index 0000000..18e22de
+--- /dev/null
++++ b/ext/soap/tests/GHSA-q23r-hr55-xmpg.phpt
+@@ -0,0 +1,66 @@
++--TEST--
++GHSA-q23r-hr55-xmpg: Out-of-bounds read on empty SOAP-ENC:arraySize
++--EXTENSIONS--
++json
++soap
++--FILE--
++<?php
++
++function echo_back($data) { $GLOBALS['decoded'][] = $data; return null; }
++
++function request($arraySize, $itemType = '') {
++    $itemTypeAttribute = $itemType === '' ? '' : "SOAP-ENC:itemType=\"{$itemType}\"";
++
++    return <<<XML
++<?xml version="1.0"?>
++<SOAP-ENV:Envelope
++    xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/"
++    xmlns:SOAP-ENC="http://schemas.xmlsoap.org/soap/encoding/"
++    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
++    xmlns:xsd="http://www.w3.org/2001/XMLSchema">
++
++    <SOAP-ENV:Body SOAP-ENV:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
++        <echo_back>
++            <data xsi:type="SOAP-ENC:Array" {$itemTypeAttribute} SOAP-ENC:arraySize="{$arraySize}">
++                <item xsi:type="xsd:string">A</item>
++                <item xsi:type="xsd:string">B</item>
++                <item xsi:type="xsd:string">C</item>
++            </data>
++        </echo_back>
++    </SOAP-ENV:Body>
++</SOAP-ENV:Envelope>
++XML;
++}
++
++function decode(SoapServer $server, $request) {
++    ob_start();
++    $server->handle($request);
++    $response = ob_get_clean();
++
++    if (strpos($response, '<SOAP-ENV:Fault>') !== false) {
++        return 'fault: ' . strip_tags($response);
++    }
++
++    return json_encode(array_pop($GLOBALS['decoded']));
++}
++
++$server = new SoapServer(null, ['uri' => 'http://test']);
++$server->addFunction('echo_back');
++
++$GLOBALS['decoded'] = [];
++
++foreach (['', ' ', 'abc', '*', '3', '2 2'] as $arraySize) {
++    echo var_export($arraySize, true), ' => ', decode($server, request($arraySize)), "\n";
++}
++
++echo "itemType => ", decode($server, request('', 'xsd:string')), "\n";
++
++?>
++--EXPECT--
++'' => ["A","B","C"]
++' ' => ["A","B","C"]
++'abc' => ["A","B","C"]
++'*' => ["A","B","C"]
++'3' => ["A","B","C"]
++'2 2' => [["A","B"],["C"]]
++itemType => ["A","B","C"]
+diff --git a/ext/standard/ftp_fopen_wrapper.c b/ext/standard/ftp_fopen_wrapper.c
+index e23ffee..82af26c 100644
+--- a/ext/standard/ftp_fopen_wrapper.c
++++ b/ext/standard/ftp_fopen_wrapper.c
+@@ -148,7 +148,7 @@ static php_stream *php_ftp_fopen_connect(php_stream_wrapper *wrapper, const char
+ 		return NULL;
+ 	}
+ 
+-	use_ssl = resource->scheme && (strlen(resource->scheme) > 3) && resource->scheme[3] == 's';
++	use_ssl = resource->scheme && !strcasecmp(resource->scheme, "ftps");
+ 
+ 	/* use port 21 if one wasn't specified */
+ 	if (resource->port == 0)
+diff --git a/ext/standard/http_fopen_wrapper.c b/ext/standard/http_fopen_wrapper.c
+index a16d9ac..077611e 100644
+--- a/ext/standard/http_fopen_wrapper.c
++++ b/ext/standard/http_fopen_wrapper.c
+@@ -209,25 +209,21 @@ static zend_bool php_stream_http_response_header_trim(char *http_header_line,
+ }
+ 
+ /* Process folding headers of the current line and if there are none, parse last full response
+- * header line. It returns NULL if the last header is finished, otherwise it returns updated
+- * last header line.  */
+-static zend_string *php_stream_http_response_headers_parse(php_stream_wrapper *wrapper,
++ * header line. It returns true if the current line was folded into the last header line,
++ * otherwise false.  */
++static zend_bool php_stream_http_response_headers_parse(php_stream_wrapper *wrapper,
+ 		php_stream *stream, php_stream_context *context, int options,
+-		zend_string *last_header_line_str, char *header_line, size_t *header_line_length,
++		smart_str *last_header, char *header_line, size_t *header_line_length,
+ 		int response_code, zval *response_header,
+ 		php_stream_http_response_header_info *header_info)
+ {
+-	char *last_header_line = ZSTR_VAL(last_header_line_str);
+-	size_t last_header_line_length = ZSTR_LEN(last_header_line_str);
+-	char *last_header_line_end = ZSTR_VAL(last_header_line_str) + ZSTR_LEN(last_header_line_str) - 1;
+-
+ 	/* Process non empty header line. */
+ 	if (header_line && (*header_line != '\n' && *header_line != '\r')) {
+ 		/* Removing trailing white spaces. */
+ 		if (php_stream_http_response_header_trim(header_line, header_line_length) &&
+ 				*header_line_length == 0) {
+ 			/* Only spaces so treat as an empty folding header. */
+-			return last_header_line_str;
++			return 1;
+ 		}
+ 
+ 		/* Process folding headers if starting with a space or a tab. */
+@@ -242,20 +238,20 @@ static zend_string *php_stream_http_response_headers_parse(php_stream_wrapper *w
+ 			/* It has to have some characters because it would get returned after the call
+ 			 * php_stream_http_response_header_trim above. */
+ 			ZEND_ASSERT(http_folded_header_line_length > 0);
+-			/* Concatenate last header line, space and current header line. */
+-			size_t len = last_header_line_length + 1 + http_folded_header_line_length;
+-			zend_string *extended_header_str = zend_string_alloc(len, 0);
+-			memcpy(ZSTR_VAL(extended_header_str), last_header_line, last_header_line_length);
+-			ZSTR_VAL(extended_header_str)[last_header_line_length] = ' ';
+-			memcpy(ZSTR_VAL(extended_header_str) + last_header_line_length + 1, http_folded_header_line, http_folded_header_line_length);
+-			ZSTR_VAL(extended_header_str)[len] = '\0';
+-			zend_string_free(last_header_line_str);
+-			last_header_line_str = extended_header_str;
+-			/* Return new header line. */
+-			return last_header_line_str;
++			/* Append space and current header line to the last header line. */
++			smart_str_appendc(last_header, ' ');
++			smart_str_appendl(last_header, http_folded_header_line, http_folded_header_line_length);
++			return 1;
+ 		}
+ 	}
+ 
++	smart_str_0(last_header);
++	zend_string *last_header_line_str = last_header->s;
++	last_header->s = NULL;
++	char *last_header_line = ZSTR_VAL(last_header_line_str);
++	size_t last_header_line_length = ZSTR_LEN(last_header_line_str);
++	char *last_header_line_end = ZSTR_VAL(last_header_line_str) + ZSTR_LEN(last_header_line_str) - 1;
++
+ 	/* Find header separator position. */
+ 	char *last_header_value = memchr(last_header_line, ':', last_header_line_length);
+ 	if (last_header_value) {
+@@ -267,7 +263,7 @@ static zend_string *php_stream_http_response_headers_parse(php_stream_wrapper *w
+ 				php_stream_wrapper_log_error(wrapper, options,
+ 					"HTTP invalid response format (space in header name)!");
+ 				zend_string_free(last_header_line_str);
+-				return NULL;
++				return 0;
+ 			}
+ 			++last_header_name;
+ 		}
+@@ -285,7 +281,7 @@ static zend_string *php_stream_http_response_headers_parse(php_stream_wrapper *w
+ 		php_stream_wrapper_log_error(wrapper, options,
+ 				"HTTP invalid response format (no colon in header line)!");
+ 		zend_string_free(last_header_line_str);
+-		return NULL;
++		return 0;
+ 	}
+ 
+ 	zend_bool store_header = 1;
+@@ -310,7 +306,7 @@ static zend_string *php_stream_http_response_headers_parse(php_stream_wrapper *w
+ 					"HTTP Location header size is over the limit of %d bytes",
+ 					HTTP_HEADER_MAX_LOCATION_SIZE);
+ 			zend_string_free(last_header_line_str);
+-			return NULL;
++			return 0;
+ 		}
+ 		if (header_info->location_len == 0) {
+ 			header_info->location = emalloc(last_header_value_len + 1);
+@@ -358,7 +354,7 @@ static zend_string *php_stream_http_response_headers_parse(php_stream_wrapper *w
+ 		zend_string_free(last_header_line_str);
+ 	}
+ 
+-	return NULL;
++	return 0;
+ }
+ 
+ static php_stream *php_stream_url_wrap_http_ex(php_stream_wrapper *wrapper,
+@@ -375,7 +371,7 @@ static php_stream *php_stream_url_wrap_http_ex(php_stream_wrapper *wrapper,
+ 	zval *ua_zval = NULL, *tmpzval = NULL, ssl_proxy_peer_name;
+ 	int reqok = 0;
+ 	char *http_header_line = NULL;
+-	zend_string *last_header_line_str = NULL;
++	smart_str last_header = {0};
+ 	php_stream_http_response_header_info header_info;
+ 	char tmp_line[128];
+ 	size_t chunk_size = 0;
+@@ -435,7 +431,7 @@ static php_stream *php_stream_url_wrap_http_ex(php_stream_wrapper *wrapper,
+ 			request_fulluri = zend_is_true(tmpzval);
+ 		}
+ 
+-		use_ssl = resource->scheme && (strlen(resource->scheme) > 4) && resource->scheme[4] == 's';
++		use_ssl = resource->scheme && !strcasecmp(resource->scheme, "https");
+ 		/* choose default ports */
+ 		if (use_ssl && resource->port == 0)
+ 			resource->port = 443;
+@@ -1022,12 +1018,12 @@ finish:
+ 				last_line = 0;
+ 			}
+ 			
+-			if (last_header_line_str != NULL) {
++			if (last_header.s != NULL) {
+ 				/* Parse last header line. */
+-				last_header_line_str = php_stream_http_response_headers_parse(wrapper, stream,
+-						context, options, last_header_line_str, http_header_line,
++				zend_bool folded = php_stream_http_response_headers_parse(wrapper, stream,
++						context, options, &last_header, http_header_line,
+ 						&http_header_line_length, response_code, response_header, &header_info);
+-				if (EXPECTED(last_header_line_str == NULL)) {
++				if (EXPECTED(!folded)) {
+ 					if (UNEXPECTED(header_info.error)) {
+ 						php_stream_close(stream);
+ 						stream = NULL;
+@@ -1051,20 +1047,20 @@ finish:
+ 			}
+ 			if (last_line) {
+ 				/* For the last line the last header line must be NULL. */
+-				ZEND_ASSERT(last_header_line_str == NULL);
++				ZEND_ASSERT(last_header.s == NULL);
+ 				break;
+ 			}
+ 			/* Save current line as the last line so it gets parsed in the next round. */
+-			last_header_line_str = zend_string_init(http_header_line, http_header_line_length, 0);
++			smart_str_appendl(&last_header, http_header_line, http_header_line_length);
+ 		} else {
+ 			break;
+ 		}
+ 	}
+ 
+ 	/* If the stream was closed early, we still want to process the last line to keep BC. */
+-	if (last_header_line_str != NULL) {
++	if (last_header.s != NULL) {
+ 		php_stream_http_response_headers_parse(wrapper, stream, context, options,
+-				last_header_line_str, NULL, NULL, response_code, response_header, &header_info);
++				&last_header, NULL, NULL, response_code, response_header, &header_info);
+ 	}
+ 
+ 	if (!reqok || (header_info.location != NULL && header_info.follow_location)) {
+@@ -1187,6 +1183,8 @@ out:
+ 
+ 	smart_str_free(&req_buf);
+ 
++	smart_str_free(&last_header);
++
+ 	if (http_header_line) {
+ 		efree(http_header_line);
+ 	}
+diff --git a/ext/standard/tests/http/ghsa-f6gg-rchx-xw8j.phpt b/ext/standard/tests/http/ghsa-f6gg-rchx-xw8j.phpt
+new file mode 100644
+index 0000000..4ee5d31
+--- /dev/null
++++ b/ext/standard/tests/http/ghsa-f6gg-rchx-xw8j.phpt
+@@ -0,0 +1,61 @@
++--TEST--
++GHSA-f6gg-rchx-xw8j: mixed-case HTTPS URLs must use TLS
++--EXTENSIONS--
++openssl
++--SKIPIF--
++<?php
++if (!function_exists('proc_open')) die('skip proc_open() not available');
++?>
++--FILE--
++<?php
++$serverCode = <<<'CODE'
++    $server = stream_socket_server('tcp://127.0.0.1:0', $errno, $errstr);
++    phpt_notify_server_start($server);
++
++    $conn = stream_socket_accept($server);
++    $request = fread($conn, 1);
++
++    if ($request === "\x16") {
++        $result = 'TLS';
++    } else {
++        while (($line = stream_get_line($conn, 8192, "\r\n")) !== false) {
++            $request .= $line . "\r\n";
++            if ($line === '') {
++                break;
++            }
++        }
++        $request .= stream_get_contents($conn, strlen('opensec-sensitive-body'));
++        $result = strpos($request, 'Authorization: Basic ') !== false
++            && strpos($request, 'X-Opensec-Request: validation') !== false
++            && strpos($request, 'opensec-sensitive-body') !== false
++                ? 'plaintext credentials and body'
++                : 'unexpected plaintext request';
++    }
++
++    fclose($conn);
++    fclose($server);
++    phpt_notify(WORKER_DEFAULT_NAME, $result);
++CODE;
++
++$clientCode = <<<'CODE'
++    $context = stream_context_create([
++        'http' => [
++            'method' => 'POST',
++            'content' => 'opensec-sensitive-body',
++            'header' => "X-Opensec-Request: validation\r\n",
++        ],
++        'ssl' => [
++            'verify_peer' => false,
++            'verify_peer_name' => false,
++        ],
++    ]);
++    var_dump(@file_get_contents('HTTPS://alice:secret@{{ ADDR }}/secret', false, $context));
++    echo phpt_wait();
++CODE;
++
++include sprintf('%s/../../../openssl/tests/ServerClientTestCase-8.1.inc', __DIR__);
++ServerClientTestCase::getInstance()->run($clientCode, $serverCode);
++?>
++--EXPECT--
++bool(false)
++TLS
+diff --git a/ext/standard/tests/streams/ghsa-f6gg-rchx-xw8j.phpt b/ext/standard/tests/streams/ghsa-f6gg-rchx-xw8j.phpt
+new file mode 100644
+index 0000000..f15134f
+--- /dev/null
++++ b/ext/standard/tests/streams/ghsa-f6gg-rchx-xw8j.phpt
+@@ -0,0 +1,34 @@
++--TEST--
++GHSA-f6gg-rchx-xw8j: mixed-case FTPS URLs must enable TLS
++--EXTENSIONS--
++openssl
++--SKIPIF--
++<?php
++if (!function_exists('proc_open')) die('skip proc_open() not available');
++?>
++--FILE--
++<?php
++$serverCode = <<<'CODE'
++    $server = stream_socket_server('tcp://127.0.0.1:0', $errno, $errstr);
++    phpt_notify_server_start($server);
++
++    $conn = stream_socket_accept($server);
++    fwrite($conn, "220 Ready\r\n");
++    $command = stream_get_line($conn, 8192, "\r\n");
++
++    fclose($conn);
++    fclose($server);
++    phpt_notify(WORKER_DEFAULT_NAME, $command);
++CODE;
++
++$clientCode = <<<'CODE'
++    var_dump(@fopen('FTPS://{{ ADDR }}/secret', 'r'));
++    echo phpt_wait();
++CODE;
++
++include sprintf('%s/../../../openssl/tests/ServerClientTestCase-8.1.inc', __DIR__);
++ServerClientTestCase::getInstance()->run($clientCode, $serverCode);
++?>
++--EXPECT--
++bool(false)
++AUTH TLS
+diff --git a/ext/zend_test/test.c b/ext/zend_test/test.c
+index 5181808..4f819ed 100644
+--- a/ext/zend_test/test.c
++++ b/ext/zend_test/test.c
+@@ -210,6 +210,18 @@ static zend_function_entry zend_test_trait_methods[] = {
+     ZEND_FE_END
+ };
+ 
++static PHP_INI_MH(OnUpdateZendTestWarnOnStartup)
++{
++	if (zend_ini_parse_bool(new_value)) {
++		zend_error(E_WARNING, "Test startup warning from zend_test");
++	}
++	return SUCCESS;
++}
++
++PHP_INI_BEGIN()
++	PHP_INI_ENTRY("zend_test.warn_on_startup", "0", PHP_INI_SYSTEM, OnUpdateZendTestWarnOnStartup)
++PHP_INI_END()
++
+ PHP_MINIT_FUNCTION(zend_test)
+ {
+ 	zend_class_entry class_entry;
+@@ -233,11 +245,16 @@ PHP_MINIT_FUNCTION(zend_test)
+ 	zend_declare_property_null(zend_test_trait, "testProp", sizeof("testProp")-1, ZEND_ACC_PUBLIC);
+ 
+ 	zend_register_class_alias("_ZendTestClassAlias", zend_test_class);
++
++	REGISTER_INI_ENTRIES();
++
+ 	return SUCCESS;
+ }
+ 
+ PHP_MSHUTDOWN_FUNCTION(zend_test)
+ {
++	UNREGISTER_INI_ENTRIES();
++
+ 	return SUCCESS;
+ }
+ 
+diff --git a/main/SAPI.c b/main/SAPI.c
+index 142e93d..fa5c9fc 100644
+--- a/main/SAPI.c
++++ b/main/SAPI.c
+@@ -502,7 +502,8 @@ SAPI_API void sapi_deactivate(void)
+ 	zend_llist_destroy(&SG(sapi_headers).headers);
+ 	if (SG(request_info).request_body) {
+ 		SG(request_info).request_body = NULL;
+-	} else if (SG(server_context)) {
++	}
++	if (SG(server_context)) {
+ 		if (!SG(post_read)) {
+ 			/* make sure we've consumed all request input data */
+ 			char dummy[SAPI_POST_BLOCK_SIZE];
+diff --git a/main/fastcgi.c b/main/fastcgi.c
+index 10dc4e6..f7b7536 100644
+--- a/main/fastcgi.c
++++ b/main/fastcgi.c
+@@ -1051,6 +1051,10 @@ static int fcgi_read_request(fcgi_request *req)
+ 	int len, padding;
+ 	unsigned char buf[FCGI_MAX_LENGTH+8];
+ 
++	if (UNEXPECTED(req->in_len != 0)) {
++		return 0;
++	}
++
+ 	req->keep = 0;
+ 	req->ended = 0;
+ 	req->in_len = 0;
+@@ -1314,6 +1318,8 @@ void fcgi_close(fcgi_request *req, int force, int destroy)
+ 		req->nodelay = 0;
+ #endif
+ 		req->fd = -1;
++		/* a partially read STDIN record does not outlive its connection */
++		req->in_len = 0;
+ 
+ 		req->hook.on_close();
+ 	}
+diff --git a/main/main.c b/main/main.c
+index 92c19e4..987f45a 100644
+--- a/main/main.c
++++ b/main/main.c
+@@ -696,15 +696,7 @@ PHPAPI ZEND_COLD void php_log_err_with_severity(char *log_message, int syslog_ty
+ 			zend_string *error_time_str;
+ 
+ 			time(&error_time);
+-#ifdef ZTS
+-			if (!php_during_module_startup()) {
+-				error_time_str = php_format_date("d-M-Y H:i:s e", 13, error_time, 1);
+-			} else {
+-				error_time_str = php_format_date("d-M-Y H:i:s e", 13, error_time, 0);
+-			}
+-#else
+-			error_time_str = php_format_date("d-M-Y H:i:s e", 13, error_time, 1);
+-#endif
++			error_time_str = php_format_date("d-M-Y H:i:s e", 13, error_time, PG(modules_activated) && EG(active));
+ 			len = spprintf(&tmp, 0, "[%s] %s%s", ZSTR_VAL(error_time_str), log_message, PHP_EOL);
+ #ifdef PHP_WIN32
+ 			php_flock(fd, 2);
+diff --git a/sapi/cgi/cgi_main.c b/sapi/cgi/cgi_main.c
+index 205d559..2d31da2 100644
+--- a/sapi/cgi/cgi_main.c
++++ b/sapi/cgi/cgi_main.c
+@@ -1302,9 +1302,9 @@ static void init_request_info(fcgi_request *request)
+ 						 */
+ 						size_t slen = len - strlen(pt);
+ 						size_t pilen = env_path_info ? strlen(env_path_info) : 0;
+-						char *path_info = env_path_info ? env_path_info + pilen - slen : NULL;
++						char *path_info = (env_path_info && pilen > slen) ? env_path_info + pilen - slen : NULL;
+ 
+-						if (orig_path_info != path_info) {
++						if (path_info && orig_path_info != path_info) {
+ 							if (orig_path_info) {
+ 								char old;
+ 
+diff --git a/sapi/cgi/tests/ghsa-5j3f-64r7-f564.phpt b/sapi/cgi/tests/ghsa-5j3f-64r7-f564.phpt
+new file mode 100644
+index 0000000..73c34f9
+--- /dev/null
++++ b/sapi/cgi/tests/ghsa-5j3f-64r7-f564.phpt
+@@ -0,0 +1,60 @@
++--TEST--
++GHSA-5j3f-64r7-f564 (PATH_INFO underflow when the stripped suffix is longer than PATH_INFO)
++--SKIPIF--
++<?php include "skipif.inc"; ?>
++--FILE--
++<?php
++include "include.inc";
++
++$php = get_cgi_path();
++$script = __DIR__ . "/ghsa-5j3f-64r7-f564.target.php";
++file_put_contents($script, '<?php var_dump(isset($_SERVER["PATH_INFO"]) ? $_SERVER["PATH_INFO"] : null, isset($_SERVER["ORIG_PATH_INFO"]) ? $_SERVER["ORIG_PATH_INFO"] : null);');
++
++function run_cgi($php, $env) {
++    /* Keep what is needed to start the binary (e.g. sanitizer runtime on Windows). */
++    $base_env = array_filter([
++        "PATH" => getenv("PATH"),
++        "SystemRoot" => getenv("SystemRoot"),
++    ], 'is_string');
++    $p = proc_open(
++        escapeshellarg($php) . " -n -d cgi.fix_pathinfo=1",
++        [0 => ["pipe", "r"], 1 => ["pipe", "w"]],
++        $pipes,
++        null,
++        $env + ["REDIRECT_STATUS" => "1", "REQUEST_METHOD" => "GET"] + $base_env
++    );
++    fclose($pipes[0]);
++    $out = stream_get_contents($pipes[1]);
++    fclose($pipes[1]);
++    proc_close($p);
++    echo substr($out, strpos($out, "\r\n\r\n") + 4);
++}
++
++echo "Suffix shorter than PATH_INFO\n";
++run_cgi($php, ["SCRIPT_FILENAME" => "$script/b", "PATH_INFO" => "/a/b"]);
++
++echo "Suffix longer than PATH_INFO\n";
++run_cgi($php, ["SCRIPT_FILENAME" => "$script/xxxxxxxxxxxxxxxx", "PATH_INFO" => "/x"]);
++
++echo "Suffix taken from PATH_TRANSLATED\n";
++run_cgi($php, [
++    "SCRIPT_FILENAME" => $php,
++    "PATH_TRANSLATED" => "$script/xxxxxxxxxxxxxxxx",
++    "REDIRECT_URL" => "/redirected",
++    "PATH_INFO" => "/x",
++]);
++?>
++--CLEAN--
++<?php
++@unlink(__DIR__ . "/ghsa-5j3f-64r7-f564.target.php");
++?>
++--EXPECT--
++Suffix shorter than PATH_INFO
++string(2) "/b"
++string(4) "/a/b"
++Suffix longer than PATH_INFO
++string(2) "/x"
++NULL
++Suffix taken from PATH_TRANSLATED
++string(2) "/x"
++NULL
+diff --git a/sapi/fpm/fpm/fpm_children.c b/sapi/fpm/fpm/fpm_children.c
+index 05513f0..a54703d 100644
+--- a/sapi/fpm/fpm/fpm_children.c
++++ b/sapi/fpm/fpm/fpm_children.c
+@@ -68,7 +68,11 @@ static void fpm_child_close(struct fpm_child_s *child, int in_event_loop) /* {{{
+ 			fpm_event_fire(&child->ev_stdout);
+ 		}
+ 		if (child->fd_stdout != -1) {
++			if (in_event_loop) {
++				fpm_event_del(&child->ev_stdout);
++			}
+ 			close(child->fd_stdout);
++			child->fd_stdout = -1;
+ 		}
+ 	}
+ 
+@@ -77,7 +81,11 @@ static void fpm_child_close(struct fpm_child_s *child, int in_event_loop) /* {{{
+ 			fpm_event_fire(&child->ev_stderr);
+ 		}
+ 		if (child->fd_stderr != -1) {
++			if (in_event_loop) {
++				fpm_event_del(&child->ev_stderr);
++			}
+ 			close(child->fd_stderr);
++			child->fd_stderr = -1;
+ 		}
+ 	}
+ 
+diff --git a/sapi/fpm/fpm/fpm_status.c b/sapi/fpm/fpm/fpm_status.c
+index 2c0d770..45ca3c1 100644
+--- a/sapi/fpm/fpm/fpm_status.c
++++ b/sapi/fpm/fpm/fpm_status.c
+@@ -45,6 +45,20 @@ int fpm_status_init_child(struct fpm_worker_pool_s *wp) /* {{{ */
+ }
+ /* }}} */
+ 
++static char *fpm_status_escape(char *str, int encode, zend_string **tmp)
++{
++	*tmp = NULL;
++	if (str[0] == '\0') {
++		return NULL;
++	}
++	if (encode) {
++		*tmp = php_escape_html_entities_ex((unsigned char *) str, strlen(str), 1,
++				ENT_DISALLOWED | ENT_HTML_DOC_XML1 | ENT_COMPAT, NULL, /* double_encode */ 1);
++		return ZSTR_VAL(*tmp);
++	}
++	return str;
++}
++
+ int fpm_status_handle_request(void) /* {{{ */
+ {
+ 	struct fpm_scoreboard_s scoreboard, *scoreboard_p;
+@@ -387,8 +401,10 @@ int fpm_status_handle_request(void) /* {{{ */
+ 		if (full_syntax) {
+ 			unsigned int i;
+ 			int first;
+-			zend_string *tmp_query_string, *tmp_request_uri_string;
+-			char *query_string, *request_uri_string;
++			zend_string *tmp_request_method_string, *tmp_request_uri_string, *tmp_query_string;
++			zend_string *tmp_auth_user_string, *tmp_script_filename_string;
++			char *request_method_string, *request_uri_string, *query_string;
++			char *auth_user_string, *script_filename_string;
+ 			struct timeval duration, now;
+ #ifdef HAVE_FPM_LQ
+ 			float cpu;
+@@ -415,33 +431,11 @@ int fpm_status_handle_request(void) /* {{{ */
+ 					}
+ 				}
+ 
+-				request_uri_string = NULL;
+-				tmp_request_uri_string = NULL;
+-				if (proc.request_uri[0] != '\0') {
+-					if (encode) {
+-						tmp_request_uri_string = php_escape_html_entities_ex(
+-								(unsigned char*)proc.request_uri,
+-								strlen(proc.request_uri), 1, ENT_DISALLOWED | ENT_HTML_DOC_XML1 | ENT_COMPAT,
+-								NULL, /* double_encode */ 1);
+-						request_uri_string = ZSTR_VAL(tmp_request_uri_string);
+-					} else {
+-						request_uri_string = proc.request_uri;
+-					}
+-				}
+-
+-				query_string = NULL;
+-				tmp_query_string = NULL;
+-				if (proc.query_string[0] != '\0') {
+-					if (!encode) {
+-						query_string = proc.query_string;
+-					} else {
+-						tmp_query_string = php_escape_html_entities_ex(
+-								(unsigned char*)proc.query_string,
+-								strlen(proc.query_string), 1, ENT_DISALLOWED | ENT_HTML_DOC_XML1 | ENT_COMPAT,
+-								NULL, /* double_encode */ 1);
+-						query_string = ZSTR_VAL(tmp_query_string);
+-					}
+-				}
++				request_method_string = fpm_status_escape(proc.request_method, encode, &tmp_request_method_string);
++				request_uri_string = fpm_status_escape(proc.request_uri, encode, &tmp_request_uri_string);
++				query_string = fpm_status_escape(proc.query_string, encode, &tmp_query_string);
++				auth_user_string = fpm_status_escape(proc.auth_user, encode, &tmp_auth_user_string);
++				script_filename_string = fpm_status_escape(proc.script_filename, encode, &tmp_script_filename_string);
+ 
+ #ifdef HAVE_FPM_LQ
+ 				/* prevent NaN */
+@@ -465,26 +459,33 @@ int fpm_status_handle_request(void) /* {{{ */
+ 					now_epoch - proc.start_epoch,
+ 					proc.requests,
+ 					duration.tv_sec * 1000000UL + duration.tv_usec,
+-					proc.request_method[0] != '\0' ? proc.request_method : "-",
++					request_method_string ? request_method_string : "-",
+ 					request_uri_string ? request_uri_string : "-",
+ 					query_string ? "?" : "",
+ 					query_string ? query_string : "",
+ 					proc.content_length,
+-					proc.auth_user[0] != '\0' ? proc.auth_user : "-",
+-					proc.script_filename[0] != '\0' ? proc.script_filename : "-",
+-#ifdef HAVE_FPM_LQ
++					auth_user_string ? auth_user_string : "-",
++					script_filename_string ? script_filename_string : "-",
+ 					proc.request_stage == FPM_REQUEST_ACCEPTING ? cpu : 0.,
+-#endif
+ 					proc.request_stage == FPM_REQUEST_ACCEPTING ? proc.memory : 0);
+ 				PUTS(buffer);
+ 				efree(buffer);
+ 
++				if (tmp_request_method_string) {
++					zend_string_free(tmp_request_method_string);
++				}
+ 				if (tmp_request_uri_string) {
+ 					zend_string_free(tmp_request_uri_string);
+ 				}
+ 				if (tmp_query_string) {
+ 					zend_string_free(tmp_query_string);
+ 				}
++				if (tmp_auth_user_string) {
++					zend_string_free(tmp_auth_user_string);
++				}
++				if (tmp_script_filename_string) {
++					zend_string_free(tmp_script_filename_string);
++				}
+ 			}
+ 
+ 			if (full_post) {
+diff --git a/sapi/fpm/tests/gh24046-stdio-pipe-double-close.phpt b/sapi/fpm/tests/gh24046-stdio-pipe-double-close.phpt
+new file mode 100644
+index 0000000..9969950
+--- /dev/null
++++ b/sapi/fpm/tests/gh24046-stdio-pipe-double-close.phpt
+@@ -0,0 +1,75 @@
++--TEST--
++GH-24046 (FPM: worker stdio pipe fd closed twice when a child process outlives the worker)
++--SKIPIF--
++<?php include "skipif.inc"; ?>
++--FILE--
++<?php
++
++require_once "tester.inc";
++
++$cfg = <<<EOT
++[global]
++error_log = {{FILE:LOG}}
++[unconfined]
++listen = {{ADDR}}
++pm = static
++pm.max_children = 1
++pm.max_requests = 1
++catch_workers_output = yes
++EOT;
++
++$code = <<<'EOT'
++<?php
++/* dup() of the worker's stderr pipe that is inherited by the background process */
++$stderr = fopen('php://stderr', 'a');
++if (@fwrite($stderr, "log line\n") === false) {
++    echo "write to stderr failed";
++    exit;
++}
++if (isset($_GET['bg'])) {
++    exec('sleep 3 > /dev/null 2>&1 &');
++}
++echo "ok";
++EOT;
++
++$tester = new FPM\Tester($cfg, $code);
++$tester->start();
++$tester->expectLogStartNotices();
++/* The worker exits after this request while the background process still holds
++ * its stderr pipe open. The replacement worker gets the same pipe fd numbers. */
++$tester->request('bg=1')->expectBody('ok');
++/* Wait for the postponed free of the exited worker. */
++usleep(1500000);
++$tester->request()->expectBody('ok');
++$tester->terminate();
++/* Tester::expectNoLogPattern() is not available here, check the log file directly */
++$logFile = substr(__FILE__, 0, -4) . '.log';
++for ($i = 0; $i < 50 && strpos((string) @file_get_contents($logFile), 'bye-bye') === false; $i++) {
++    usleep(100000);
++}
++$log = (string) @file_get_contents($logFile);
++if (preg_match('/unable to (remove|read)/', $log)) {
++    echo "ERROR: unexpected message in the log\n", $log;
++}
++$addr = $tester->getAddr();
++$tester->close();
++/* The background process also inherits the listening socket: wait until it is
++ * gone, otherwise the next FPM test cannot bind the same port. */
++for ($i = 0; $i < 50; $i++) {
++    $socket = @stream_socket_server('tcp://' . $addr);
++    if ($socket) {
++        fclose($socket);
++        break;
++    }
++    usleep(100000);
++}
++
++?>
++Done
++--EXPECT--
++Done
++--CLEAN--
++<?php
++require_once "tester.inc";
++FPM\Tester::clean();
++?>
+diff --git a/sapi/fpm/tests/ghsa-3mg3-cr28-46gc-status-xss.phpt b/sapi/fpm/tests/ghsa-3mg3-cr28-46gc-status-xss.phpt
+new file mode 100644
+index 0000000..1d74ca5
+--- /dev/null
++++ b/sapi/fpm/tests/ghsa-3mg3-cr28-46gc-status-xss.phpt
+@@ -0,0 +1,61 @@
++--TEST--
++FPM: GHSA-3mg3-cr28-46gc - status xss via request method, auth user and script filename
++--SKIPIF--
++<?php include "skipif.inc"; ?>
++--FILE--
++<?php
++
++require_once "tester.inc";
++
++$cfg = <<<EOT
++[global]
++error_log = {{FILE:LOG}}
++[unconfined]
++listen = {{ADDR}}
++pm = static
++pm.max_children = 3
++pm.status_path = /status
++catch_workers_output = yes
++EOT;
++
++$code = <<<EOT
++<?php
++usleep(300000);
++EOT;
++
++$scriptFilename = __DIR__ . '/ghsa-3mg3-cr28-46gc-<svg>.php';
++file_put_contents($scriptFilename, $code);
++
++$tester = new FPM\Tester($cfg, $code);
++$tester->start();
++$tester->expectLogStartNotices();
++$responses = $tester
++        ->multiRequest([
++                [
++                    'uri' => '/ghsa-3mg3-cr28-46gc-<svg>.php',
++                    'headers' => [
++                        'REQUEST_METHOD' => '<svg>',
++                        'HTTP_AUTHORIZATION' => 'Basic ' . base64_encode('"<svg onload=x>:x'),
++                        'SCRIPT_FILENAME' => $scriptFilename,
++                    ],
++                ],
++                ['uri' => '/status', 'query' => 'full&html', 'delay' => 100000],
++        ]);
++var_dump(strpos($responses[1]->getBody(), '<svg'));
++var_dump(substr_count($responses[1]->getBody(), '&lt;svg'));
++$tester->terminate();
++$tester->expectLogTerminatingNotices();
++$tester->close();
++
++?>
++Done
++--EXPECT--
++bool(false)
++int(4)
++Done
++--CLEAN--
++<?php
++require_once "tester.inc";
++FPM\Tester::clean();
++@unlink(__DIR__ . '/ghsa-3mg3-cr28-46gc-<svg>.php');
++?>
+diff --git a/sapi/fpm/tests/unread-body-keep-conn.phpt b/sapi/fpm/tests/unread-body-keep-conn.phpt
+new file mode 100644
+index 0000000..75f61c4
+--- /dev/null
++++ b/sapi/fpm/tests/unread-body-keep-conn.phpt
+@@ -0,0 +1,125 @@
++--TEST--
++FPM: unread request body cannot become a new request on a kept connection
++--SKIPIF--
++<?php include "skipif.inc"; ?>
++--FILE--
++<?php
++
++require_once "tester.inc";
++
++function record(int $type, string $content, int $id): string
++{
++    return pack('CCnnCC', 1, $type, $id, strlen($content), 0, 0) . $content;
++}
++
++function params(array $params): string
++{
++    $encoded = '';
++    $encodeLength = static function (int $length): string {
++        return $length < 128 ? chr($length) : pack('N', $length | 0x80000000);
++    };
++    foreach ($params as $name => $value) {
++        $encoded .= $encodeLength(strlen($name)) . $encodeLength(strlen($value)) . $name . $value;
++    }
++    return $encoded;
++}
++
++function request(int $id, bool $keep, array $params, string $stdin): string
++{
++    return record(1, pack('nCxxxxx', 1, $keep), $id)
++        . record(4, params($params), $id)
++        . record(4, '', $id)
++        . record(5, $stdin, $id)
++        . record(5, '', $id);
++}
++
++function transact(string $address, string $request): string
++{
++    list($host, $port) = explode(':', $address);
++    $socket = fsockopen($host, (int) $port);
++    stream_set_timeout($socket, 3);
++    $written = 0;
++    while ($written < strlen($request)) {
++        $written += fwrite($socket, substr($request, $written));
++    }
++    stream_socket_shutdown($socket, STREAM_SHUT_WR);
++    $response = stream_get_contents($socket);
++    fclose($socket);
++    return $response;
++}
++
++$config = <<<CFG
++[global]
++error_log = {{FILE:LOG}}
++[unconfined]
++listen = {{ADDR}}
++pm = static
++pm.max_children = 1
++catch_workers_output = yes
++CFG;
++
++$code = <<<'PHP'
++<?php
++if ($_SERVER['REMOTE_ADDR'] === '203.0.113.1') {
++    echo "smuggled\n";
++} else {
++    $input = fopen('php://input', 'r');
++    echo "outer\n";
++}
++PHP;
++
++$tester = new FPM\Tester($config, $code);
++$script = $tester->makeSourceFile();
++$tester->start();
++$tester->expectLogStartNotices();
++
++$hiddenParams = [
++    'GATEWAY_INTERFACE' => 'FastCGI/1.0',
++    'REQUEST_METHOD' => 'GET',
++    'SCRIPT_FILENAME' => $script,
++    'SCRIPT_NAME' => '/smuggled.php',
++    'REQUEST_URI' => '/smuggled.php',
++    'SERVER_PROTOCOL' => 'HTTP/1.1',
++    'REMOTE_ADDR' => '203.0.113.1',
++    'CONTENT_LENGTH' => '0',
++];
++$hidden = request(2, false, $hiddenParams, '');
++$body = str_pad("--B\r\nContent-Disposition: form-data\r\n\r\n", 12000, 'A');
++$body = substr_replace($body, $hidden, 5120, strlen($hidden));
++
++$outerParams = [
++    'GATEWAY_INTERFACE' => 'FastCGI/1.0',
++    'REQUEST_METHOD' => 'POST',
++    'SCRIPT_FILENAME' => $script,
++    'SCRIPT_NAME' => '/open.php',
++    'REQUEST_URI' => '/open.php',
++    'SERVER_PROTOCOL' => 'HTTP/1.1',
++    'REMOTE_ADDR' => '127.0.0.1',
++    'CONTENT_TYPE' => 'multipart/form-data; boundary=B',
++    'CONTENT_LENGTH' => (string) strlen($body),
++];
++foreach ([false, true] as $keep) {
++    $response = transact($tester->getAddr(), request(1, $keep, $outerParams, $body));
++    echo 'keep ', $keep ? 'on' : 'off', ': ',
++        strpos($response, 'smuggled') !== false ? 'smuggled' : 'safe', "\n";
++}
++
++$body = 'A' . $hidden;
++$outerParams['CONTENT_TYPE'] = 'application/octet-stream';
++$outerParams['CONTENT_LENGTH'] = '1';
++$response = transact($tester->getAddr(), request(1, true, $outerParams, $body));
++echo 'partial frame: ',
++    strpos($response, 'smuggled') !== false ? 'smuggled' : 'safe', "\n";
++
++$tester->terminate();
++$tester->close();
++?>
++--EXPECT--
++keep off: safe
++keep on: safe
++partial frame: safe
++--CLEAN--
++<?php
++require_once "tester.inc";
++FPM\Tester::clean();
++?>
+diff --git a/sapi/fpm/tests/unread-body-partial-record.phpt b/sapi/fpm/tests/unread-body-partial-record.phpt
+new file mode 100644
+index 0000000..2b819b7
+--- /dev/null
++++ b/sapi/fpm/tests/unread-body-partial-record.phpt
+@@ -0,0 +1,127 @@
++--TEST--
++FPM: partially read STDIN record does not make the worker reject later connections
++--SKIPIF--
++<?php include "skipif.inc"; ?>
++--FILE--
++<?php
++
++require_once "tester.inc";
++
++function record(int $type, string $content, int $id): string
++{
++    return pack('CCnnCC', 1, $type, $id, strlen($content), 0, 0) . $content;
++}
++
++function params(array $params): string
++{
++    $encoded = '';
++    $encodeLength = static function (int $length): string {
++        return $length < 128 ? chr($length) : pack('N', $length | 0x80000000);
++    };
++    foreach ($params as $name => $value) {
++        $encoded .= $encodeLength(strlen($name)) . $encodeLength(strlen($value)) . $name . $value;
++    }
++    return $encoded;
++}
++
++function request(int $id, bool $keep, array $params, string $stdin): string
++{
++    return record(1, pack('nCxxxxx', 1, $keep), $id)
++        . record(4, params($params), $id)
++        . record(4, '', $id)
++        . record(5, $stdin, $id)
++        . record(5, '', $id);
++}
++
++function transact(string $address, string $request): string
++{
++    list($host, $port) = explode(':', $address);
++    $socket = fsockopen($host, (int) $port);
++    stream_set_timeout($socket, 3);
++    $written = 0;
++    while ($written < strlen($request)) {
++        $written += fwrite($socket, substr($request, $written));
++    }
++    stream_socket_shutdown($socket, STREAM_SHUT_WR);
++    $response = stream_get_contents($socket);
++    fclose($socket);
++    return $response;
++}
++
++$config = <<<CFG
++[global]
++error_log = {{FILE:LOG}}
++[unconfined]
++listen = {{ADDR}}
++pm = static
++pm.max_children = 1
++catch_workers_output = yes
++CFG;
++
++$code = <<<'PHP'
++<?php
++if ($_SERVER['REMOTE_ADDR'] === '203.0.113.1') {
++    echo "smuggled\n";
++} else {
++    echo "outer ", strlen(file_get_contents('php://input')), "\n";
++}
++PHP;
++
++$tester = new FPM\Tester($config, $code);
++$script = $tester->makeSourceFile();
++$tester->start();
++$tester->expectLogStartNotices();
++
++$hiddenParams = [
++    'GATEWAY_INTERFACE' => 'FastCGI/1.0',
++    'REQUEST_METHOD' => 'GET',
++    'SCRIPT_FILENAME' => $script,
++    'SCRIPT_NAME' => '/smuggled.php',
++    'REQUEST_URI' => '/smuggled.php',
++    'SERVER_PROTOCOL' => 'HTTP/1.1',
++    'REMOTE_ADDR' => '203.0.113.1',
++    'CONTENT_LENGTH' => '0',
++];
++$hidden = request(2, false, $hiddenParams, '');
++$outerParams = [
++    'GATEWAY_INTERFACE' => 'FastCGI/1.0',
++    'REQUEST_METHOD' => 'POST',
++    'SCRIPT_FILENAME' => $script,
++    'SCRIPT_NAME' => '/open.php',
++    'REQUEST_URI' => '/open.php',
++    'SERVER_PROTOCOL' => 'HTTP/1.1',
++    'REMOTE_ADDR' => '127.0.0.1',
++    'CONTENT_TYPE' => 'application/octet-stream',
++    'CONTENT_LENGTH' => '1',
++];
++$plainParams = ['REQUEST_METHOD' => 'GET', 'CONTENT_LENGTH' => '0'] + $outerParams;
++unset($plainParams['CONTENT_TYPE']);
++
++/* The STDIN record is longer than CONTENT_LENGTH so it is left partially read. */
++foreach ([false, true] as $keep) {
++    $response = transact($tester->getAddr(), request(1, $keep, $outerParams, 'A' . $hidden));
++    echo 'keep ', $keep ? 'on' : 'off', ': ',
++        strpos($response, 'smuggled') !== false ? 'smuggled' : 'safe', ', ',
++        strpos($response, 'outer 1') !== false ? 'served' : 'not served', "\n";
++    /* The only worker must still serve new connections. */
++    foreach ([1, 2] as $n) {
++        $response = transact($tester->getAddr(), request(1, false, $plainParams, ''));
++        echo "  next connection $n: ", strpos($response, 'outer 0') !== false ? 'served' : 'not served', "\n";
++    }
++}
++
++$tester->terminate();
++$tester->close();
++?>
++--EXPECT--
++keep off: safe, served
++  next connection 1: served
++  next connection 2: served
++keep on: safe, served
++  next connection 1: served
++  next connection 2: served
++--CLEAN--
++<?php
++require_once "tester.inc";
++FPM\Tester::clean();
++?>
