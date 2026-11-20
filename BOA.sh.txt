@@ -7281,7 +7281,7 @@ _php_fpm_worker_output_off() {
 # for this pass alone: a pass that may break an old Octopus instance until
 # that is upgraded as well is still safer than a known remote code execution
 # hole, and a system pass leaves the master Ægir instance as it is.
-_PHP_SEC_FLOOR="8.2.36 8.3.37 8.4.28 8.5.13 8.6.0 7.4.33+cve-2026-109618-109619 8.0.30+cve-2026-109618-109619 8.1.34+cve-2026-109618-109619 8.1.34+cve-2026-129291 5.6.40+sury-105 5.6.40+openssl3-pkey-export 7.0.33+sury-93 7.0.33+openssl3-pkey-export 7.1.33+sury-81 7.2.34+sury-66 7.3.33+sury-35 7.4.33+sury-31 8.0.30+sury-25 8.1.34+sury-9 5.6.40+xlts-1 7.0.33+xlts-1 7.1.33+xlts-1 7.2.34+xlts-1 7.3.33+xlts-1 7.4.33+xlts-1 8.0.30+xlts-1"
+_PHP_SEC_FLOOR="8.2.36 8.3.37 8.4.28 8.5.13 8.6.0 7.4.33+cve-2026-109618-109619 8.0.30+cve-2026-109618-109619 8.1.34+cve-2026-109618-109619 8.1.34+cve-2026-129291 5.6.40+sury-105 5.6.40+openssl3-pkey-export 7.0.33+sury-93 7.0.33+openssl3-pkey-export 7.1.33+sury-81 7.2.34+sury-66 7.3.33+sury-35 7.4.33+sury-31 8.0.30+sury-25 8.1.34+sury-9 5.6.40+xlts-1 7.0.33+xlts-1 7.1.33+xlts-1 7.2.34+xlts-1 7.3.33+xlts-1 7.4.33+xlts-1 8.0.30+xlts-1 5.6.40+xlts-2 7.0.33+xlts-2 7.1.33+xlts-2 7.2.34+xlts-2 7.3.33+xlts-2 7.4.33+xlts-2 8.0.30+xlts-2 8.1.34+xlts-2"
 
 # Nginx security floor: the first release no box may run below, e.g.
 # "1.31.9"; empty means off. A box whose /usr/sbin/nginx is older gets the

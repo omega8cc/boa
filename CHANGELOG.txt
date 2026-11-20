@@ -383,7 +383,8 @@
       the HTTP and FTP stream wrappers, SOAP, phar signatures, the
       timezone cache, session upload progress now off by default, and
       php-cgi. Upstream's other five advisories are for PHP 8.3 and
-      later only.
+      later only. The PHP security floor brings every box running one of
+      them to the patched build.
 
     * PHP 5.6: the HTTP stream wrapper no longer keeps a second copy of
       every response header until the request ends.
