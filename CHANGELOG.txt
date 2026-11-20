@@ -1136,6 +1136,15 @@
 
 @=> Important Fixes
 
+    * mysqlbinlog runs on a BOA server again with no extra option. BOA's
+      my.cnf named the client character set in [client], which every
+      client reads, and mysqlbinlog, which has no such option, stopped at
+      once, so reading a binary log needed --no-defaults. The line is now
+      loose-default-character-set: the clients that know it apply it as
+      before (utf8mb4), and mysqlbinlog only warns. It reaches a server
+      with its next MySQL configuration pass, unless the server keeps
+      its own my.cnf (_CUSTOM_CONFIG_SQL=YES).
+
     * The migration notices tell the client that outgoing requests move to
       the new address. They spoke of the new address only for DNS, the
       incoming side, so a client whose outside services accept requests
