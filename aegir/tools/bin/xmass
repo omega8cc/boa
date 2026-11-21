@@ -24777,6 +24777,17 @@ _xmass_post_mig_solr() {
   return 0
 }
 
+# A barracuda or octopus run on this box, as clear.sh's _installer_alive
+# reads it: anchored, so a command line that only names a launcher (an
+# editor, a checksum, a remote install driven from here) counts as none.
+_xmass_installer_alive() {
+  pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/barracuda( |$)" > /dev/null 2>&1 && return 0
+  pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/octopus( |$)" > /dev/null 2>&1 && return 0
+  pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-" > /dev/null 2>&1 && return 0
+  pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1 && return 0
+  return 1
+}
+
 _xmass_post_mig() {
   # Run on TARGET after DNS is updated and traffic flows directly.
   # Ensures Solr, nginx, and BOA runners are in clean state.
@@ -24818,7 +24829,15 @@ _xmass_post_mig() {
   for _fpm in /etc/init.d/php*-fpm; do
     [ -x "${_fpm}" ] && service "$(basename "${_fpm}")" restart &>/dev/null
   done
-  rm -f /run/boa_wait.pid
+  # A migration can leave the run marker behind, and it holds every task
+  # queue here. A pass the cutover re-armed may hold it already: its task
+  # queue and the database broker's switch inside it read the marker, so a
+  # marker goes only while no barracuda or octopus run is there to own it.
+  if _xmass_installer_alive; then
+    _info "  /run/boa_wait.pid kept: a barracuda or octopus run holds it"
+  else
+    rm -f /run/boa_wait.pid
+  fi
   # A refetch or a system pass that restored a live copy first left the
   # parked one behind: stale bytes that read as a park again whenever the
   # live name goes missing. Removed once the live copy is there.
