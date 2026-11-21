@@ -6203,7 +6203,7 @@ CSFSTANDBY
     _fetch_versioned ${_usrBin}/fix-drupal-site-ownership.sh       "${_urlHmr}/${_tBn}/fix-drupal-site-ownership.sh"       f61
     _fetch_versioned ${_usrBin}/lock-local-drush-permissions.sh    "${_urlHmr}/${_tBn}/lock-local-drush-permissions.sh"    f91
     _fetch_versioned ${_usrBin}/fix-drupal-site-symlinks.sh        "${_urlHmr}/${_tBn}/fix-drupal-site-symlinks.sh"        f96
-    _fetch_versioned ${_usrBin}/boa-dbctl                          "${_urlHmr}/${_tBn}/boa-dbctl"                          f09
+    _fetch_versioned ${_usrBin}/boa-dbctl                          "${_urlHmr}/${_tBn}/boa-dbctl"                          f08
   fi
   mkdir -p ${_optBin}
   # Per-file, serial-gated, retry-on-failure fetch of the core /opt/local/bin
@@ -6235,7 +6235,7 @@ CSFSTANDBY
     # while a backup run is in flight.
     _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f44 --guard duplicity
     _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f31 --guard /local/bin/barracuda
-    _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f84 --guard /local/bin/boa
+    _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f83 --guard /local/bin/boa
     _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/${_tBn}/dcysetup" f91 --guard duplicity
     _fetch_versioned ${_optBin}/dhcpfix "${_urlHmr}/${_tBn}/dhcpfix" f98 --guard /local/bin/dhcpfix
     _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/${_tBn}/duobackboa" f43 --guard duplicity

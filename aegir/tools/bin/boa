@@ -4033,19 +4033,27 @@ _purge_db_users_drop() {
 
 # The purged account's databases stay, so their names stay held: where the
 # database broker's registry is in use here, its entries of account $1 turn
-# purged (no account's), and a reservation with no database is let go.
+# purged (no account's), and a reservation with no database is let go. Its
+# site database users go too, on every box the broker is installed on,
+# switched or not: only those its records name exactly, each saved first,
+# which only this call reads, while those records are in place and nothing
+# of the account runs. Every line the broker answers is printed: what it
+# dropped, and each user it kept with why.
 _purge_dbctl_mark() {
-  local _out
-  [ -d /var/lib/mysql/boa_dbreg ] || return 0
+  local _out _rc
   if [ ! -x /usr/local/bin/boa-dbctl ]; then
-    echo "ALRT: the database broker is not installed: ${1}'s registry entries are not marked purged"
-    return 1
-  fi
-  if _out=$(/usr/local/bin/boa-dbctl purge --account "${1}" 2>&1); then
-    echo "${_out##*$'\n'}"
+    echo "the database broker is not installed: ${1}'s site database users are kept"
+    if [ -d /var/lib/mysql/boa_dbreg ]; then
+      echo "ALRT: the database broker is not installed: ${1}'s registry entries are not marked purged"
+      return 1
+    fi
     return 0
   fi
-  echo "ALRT: ${1}'s registry entries are not marked purged: ${_out##*$'\n'}"
+  _out=$(/usr/local/bin/boa-dbctl purge --account "${1}" 2>&1)
+  _rc=$?
+  [ -n "${_out}" ] && printf '%s\n' "${_out}"
+  [ "${_rc}" = "0" ] && return 0
+  echo "ALRT: the database broker's purge of ${1} did not finish: its registry entries may not be marked purged, and the site users it did not drop are kept"
   echo "ALRT: run: boa-dbctl purge --account ${1}"
   return 1
 }
@@ -4547,7 +4555,8 @@ _octopus_cleanup() {
         fi
         # Its identities' processes were ended just above, so no task of
         # its own opens a session with them again: its two database users
-        # go now.
+        # go now, and then the site users its records name, which the trees
+        # below take with them.
         _purge_db_users_drop
         _purge_dbctl_mark "${_usEr}"
         # What the account's identities left in the shared temporary places

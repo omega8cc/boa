@@ -1171,6 +1171,14 @@
       block alone, so no resolve takes a version on Packagist's malware list
       and a lock that holds one does not install, which fails the build.
 
+    * boa cleanup purge drops the site database users of the account it
+      purges, through the database broker on every box, armed or not: only
+      those its site records still name exactly, on this server, that no
+      other account or record claims and that hold rights on their own
+      databases only, each saved first in /var/backups/boa/dbrights. Its
+      databases stay, as before. Each user it keeps is named with why;
+      those earlier purges left stay for boa-dbctl leftovers.
+
 @=> Important Fixes
 
     * A Clone, Restore or Migrate whose database load stops first on a
