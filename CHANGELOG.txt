@@ -1160,6 +1160,14 @@
       made the database broker refuse the switch the pass asked for. The
       marker now goes only while no barracuda or octopus run is there.
 
+    * A copying task refused for space no longer reads as needing exactly
+      what is free. Its figures were each rounded to a tenth of a
+      gigabyte, so a disk a few megabytes short read "needs about 3 GB
+      free ... but only 3 GB is free". Where the need and the free space
+      round alike that way, the refusal, its re-check before the deploy
+      and the dump's rewritten-copy warning now give all three figures in
+      MB, or in KB or bytes when those still tie.
+
     * The database broker (boa-dbctl) carries the reference for Percona
       8.4.11-12, which a barracuda upgrade now installs: without it the
       census read reference=none there and no account could be switched
