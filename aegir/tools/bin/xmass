@@ -4660,10 +4660,20 @@ for _I in "${_A}" "${_A}.ftp"; do
   # Re-adopt the uid the orphaned tree still carries, or the repair leaves
   # every file on the box owned by a number with no name.
   _U=$(stat -c %u "${_H}" 2>/dev/null)
+  # A user here who is not one of the account's identities holds that
+  # number: a fresh one would leave the home and its tree with that user,
+  # so nothing is made. nobody carries what a move found no user for, as
+  # the number below does.
+  _UH=""
   case "${_U}" in
     ''|*[!0-9]*|0) _U="" ;;
-    *) getent passwd "${_U}" > /dev/null 2>&1 && _U="" ;;
+    *)
+      _UH=$(getent passwd 2> /dev/null | awk -F: -v u="${_U}" -v a="${_A}" \
+        '$3 == u && $1 != a && index($1, a ".") != 1 && $1 != "nobody" { print $1; exit }')
+      [ -z "${_UH}" ] || echo "XMID-FAILED: ${_I} not made: ${_H} carries uid ${_U}, which ${_UH} holds on this server, a user that is not ${_A}'s; a new number would leave ${_H} and what it holds with ${_UH}: read whose files ${_H} holds, and run again once that number is no other user's"
+      getent passwd "${_U}" > /dev/null 2>&1 && _U="" ;;
   esac
+  [ -z "${_UH}" ] || continue
   # nor the number a move gives a file whose owner no user had: several
   # accounts' files can land under it, and none is the account's
   [ -n "${_NL:-}" ] && [ "${_U}" = "${_NL}" ] && _U=""
