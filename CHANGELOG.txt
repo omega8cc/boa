@@ -1153,6 +1153,12 @@
 
 @=> Important Fixes
 
+    * The database broker (boa-dbctl) carries the reference for Percona
+      8.4.11-12, which a barracuda upgrade now installs: without it the
+      census read reference=none there and no account could be switched
+      unforced. The lines were recorded on untouched 8.4.11-12 servers
+      and match 8.4.11-11's installed state.
+
     * mysqlbinlog runs on a BOA server again with no extra option. BOA's
       my.cnf named the client character set in [client], which every
       client reads, and mysqlbinlog, which has no such option, stopped at
