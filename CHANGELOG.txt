@@ -1168,6 +1168,14 @@
       and the dump's rewritten-copy warning now give all three figures in
       MB, or in KB or bytes when those still tie.
 
+    * The database broker (boa-dbctl) and the account purge read the
+      database login of an account installed on 127.0.0.1, whose server
+      alias Aegir names after that host (server_127.0.0.1). The broker
+      read only server_localhost and server_master, so such an account
+      was never switched and its instance user, holding every right,
+      stopped every other account's switch on the box; a purge left that
+      user, every right included, on the server.
+
     * The database broker (boa-dbctl) carries the reference for Percona
       8.4.11-12, which a barracuda upgrade now installs: without it the
       census read reference=none there and no account could be switched
