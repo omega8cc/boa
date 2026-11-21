@@ -3174,7 +3174,7 @@ SELECT COUNT(*) FROM ${_REG_TBL} WHERE account = ${_a} AND state <> 'purged';" \
 # loses the same rows. Sets _PS_DROP and _PS_KEPT (users, and records that
 # name no plain user) and _PS_BAD (a save or a drop that failed).
 _ps_sites() {
-  local _why="" _sp _ds _dn _du _pp _pu _u _i _ok=$'\n' _ko=$'\n'
+  local _why="" _sp _ds _dn _du _pp _pu _u _i _ok=$'\n' _ko=$'\n' _t _gu _gh _up _hp _d _rest
   local -a _cand=() _go=() _sig=()
   _PS_DROP=0
   _PS_KEPT=0
@@ -3222,6 +3222,14 @@ _ps_sites() {
   [[ "${#_cand[@]}" -gt 0 ]] || return 0
   _al_load
   _settle_defs_read
+  # the users other logins hold as a role or a default role, or proxy, read
+  # once for every user
+  _PS_DEP=$'\n'
+  while IFS='|' read -r _t _gu _gh _up _hp _d _rest; do
+    case "${_t}" in
+      proxies_priv|role_edges|default_roles) _PS_DEP="${_PS_DEP}${_d}"$'\n' ;;
+    esac
+  done <<< "${_AL_GR}"
   for _u in "${_cand[@]}"; do
     if ! _ps_user "${_u}"; then
       _ps_kept "${_u}" "${_PS_WHY}"
@@ -3377,7 +3385,7 @@ _ps_record() {
 # as a role or proxy it, the stored objects), for user $1. Into _PS_WHY
 # when it fails.
 _ps_user() {
-  local _px _t _gu _gh _up _hp _d _rest _k _sx _nx _dx
+  local _px _k _sx _nx _dx
   _PS_WHY=""
   _u_claim "${1}"
   if [[ -n "${_UC_K}" ]]; then
@@ -3394,22 +3402,18 @@ _ps_user() {
     return 1
   fi
   _px=$(_hex "${1}")
-  while IFS='|' read -r _t _gu _gh _up _hp _d _rest; do
-    case "${_t}" in
-      proxies_priv|role_edges|default_roles) ;;
-      *) continue ;;
-    esac
-    if [[ "${_d}" == "${_px}" ]]; then
-      _PS_WHY="another login holds it as a role, or proxies it"
-      return 1
-    fi
-  done <<< "${_AL_GR}"
+  if [[ "${_PS_DEP}" == *$'\n'"${_px}"$'\n'* ]]; then
+    _PS_WHY="another login holds it as a role, or proxies it"
+    return 1
+  fi
   if [[ "${_ST_DEFS_OK}" != "YES" ]]; then
     _PS_WHY="${_ST_DEFS_WHY}: nothing is dropped on a guess"
     return 1
   fi
-  # definers as the server keeps them, compared without case
+  # definers as the server keeps them, compared without case; the objects
+  # are walked only when one may be its
   _px=$(_hex "$(printf '%s@' "${1}" | tr '[:upper:]' '[:lower:]')")
+  [[ "${_ST_DEFS}" == *"|${_px}"* ]] || return 0
   while IFS='|' read -r _k _sx _nx _dx; do
     [[ -n "${_k}" && "${_dx}" == "${_px}"* ]] || continue
     _PS_WHY="it defines ${_k} $(_log_safe "$(_unhex "${_sx}")").$(_log_safe "$(_unhex "${_nx}")"): a drop would leave that without its definer"
