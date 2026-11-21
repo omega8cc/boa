@@ -411,6 +411,25 @@
       the new one, the one it replaced and any a running JVM uses stay. A
       real folder where BOA's Java 21 link belongs is reported and left.
 
+    * Java 11, which Solr 4 and Solr 7 run on Daedalus and Excalibur, now
+      comes from Amazon Corretto, as Solr 9's Java 21 does. It came from
+      Debian's bullseye security suite through a temporary Devuan list,
+      whose support ended on 31 August 2026; its packages left the main
+      mirror, so every pass failed to fetch the newer build and boxes kept
+      the one they had, with no more updates. The next system pass moves
+      BOA's own links, /usr/lib/jvm/java-11-openjdk and /usr/bin/java11, to
+      the Corretto tree whatever Debian build the box has, and its closing
+      restart puts both Solrs on it; Debian's package stays installed and
+      unused. Later passes replace a Corretto 11 older than the one BOA
+      names, now 11.0.33.1, in debug mode or not, and say so when java11
+      still is not that build or newer after an install.
+
+    * Java 17, which Excalibur installs from Daedalus's security suite
+      through a list added for the install only, is installed again on
+      every box whose build is older than the one BOA names, now 17.0.21.1.
+      Until now only a box in debug mode did, so others kept the build they
+      first got, as no ordinary apt upgrade reaches that suite.
+
     * Nginx 1.31.9, upstream's security release of 18 November 2026,
       brought to every box through the security floor, which now covers
       Nginx too. Among its fixes are memory corruption in HTTP/2 flow
