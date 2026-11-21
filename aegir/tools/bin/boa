@@ -3830,10 +3830,13 @@ _purge_read_in() {
       && _boa_read_here "${2}" ) ;;
   esac
 }
-# The database user(s) the server aliases in the directory $1 name in master_db.
+# The database user(s) the server aliases in the directory $1 name in
+# master_db: a local server's alias is named after its host (localhost,
+# 127.0.0.1), or it is server_master for the box's own name.
 _purge_master_db_users() {
   local _f
-  for _f in server_localhost.alias.drushrc.php server_master.alias.drushrc.php; do
+  for _f in server_localhost.alias.drushrc.php server_127.0.0.1.alias.drushrc.php \
+    server_master.alias.drushrc.php; do
     _purge_read_in "${1}" "${_f}" \
       | sed -n "s#^ *'master_db' => '[a-z]*://\([^:@']*\):.*#\1#p"
   done | sort -u

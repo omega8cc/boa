@@ -3540,7 +3540,9 @@ _master_db() {
 }
 
 # The instance login of the Aegir root $1 (an account's home, or the
-# master's) for user $2, from the server alias that names it: _CTX the
+# master's) for user $2, from the server alias that names it (Aegir names
+# a local database server's alias after its host: localhost, 127.0.0.1,
+# or the box's own name, whose server is server_master): _CTX the
 # alias context, _MDB_HOST its host, _PW its password. 1 when no alias
 # gives one; _RL_WHY then holds the word of _master_db's refusal when an
 # alias names the user and its password is refused, _RL_NOTE its note (a
@@ -3550,7 +3552,7 @@ _root_login() {
   _CTX=""
   _RL_WHY=""
   _RL_NOTE=""
-  for _c in server_localhost server_master; do
+  for _c in server_localhost server_127.0.0.1 server_master; do
     _t=$(_acct_read_in "${1}/.drush" "${_c}.alias.drushrc.php")
     [[ -n "${_t}" ]] || continue
     if ! _master_db "${_t}"; then
@@ -6892,7 +6894,7 @@ _zombie_inst() {
   _PW=""
   _ZI_WHY=""
   [[ -f "${_tb}" && ! -L "${_tb}" ]] || return 1
-  for _c in server_localhost server_master; do
+  for _c in server_localhost server_127.0.0.1 server_master; do
     _t=$(timeout 300 tar --occurrence=1 -xzOf "${_tb}" "${_DISK#/}/${_p}/.drush/${_c}.alias.drushrc.php" \
       2> /dev/null 7>&- 8>&- 9>&- | head -c 1048576)
     [[ -n "${_t}" ]] || continue
