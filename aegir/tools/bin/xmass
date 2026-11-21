@@ -14616,10 +14616,13 @@ _xmass_src_fqdn() {
   echo "${_f}"
 }
 
-# The per-host twin of the account gate: holds only the sites named under the
-# listed hostname (the global settings chain matches the request's Host; a
-# Grav or Textpattern vhost named under the box hostname tests the file's
-# presence). Same symlink-safe shape as the account gate above.
+# The per-host twin of the account gate: holds only the sites whose own name
+# carries the listed hostname (MAIN_SITE_NAME, else the server name, never
+# the request's Host), the account's control panel exempt. Drupal and
+# Backdrop sites run the rule in global-mode.inc, Grav and Textpattern sites
+# in global-http-off.php; only an older Grav or Textpattern vhost still tests
+# the file in nginx, by path. Same symlink-safe shape as the account gate
+# above.
 _xmass_plant_host_gate() {
   local _oct="$1"
   local _fqdn="$2"
