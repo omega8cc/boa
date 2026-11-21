@@ -908,6 +908,108 @@ REMOTE
   return "${_X_RC}"
 }
 
+# The account $1's own places here, each a real directory: its home, its own
+# part of each attached store (/mnt/<m>/files/<oN>, its files store and what
+# else of it the legs copy from there, whatever /mnt leads to), the homes of
+# its .ftp and client logins and its gem and npm trees.
+_xcopy_acct_places() {
+  local _a="${1}" _p
+  [[ "${_a}" =~ ^[a-z0-9-]+$ ]] || return 0
+  for _p in "/data/disk/${_a}" /mnt/*/files/"${_a}" "/home/${_a}".* "/opt/user/gems/${_a}.ftp" "/opt/user/npm/${_a}.ftp"; do
+    case "${_p}" in
+      /home/*)
+        # a client login is oN.<client> or oN.<client>-dev; the PHP-FPM
+        # users' homes are www-data's, never the account's
+        [[ "${_p#/home/}" =~ ^${_a}\.[a-z0-9]+(-dev)?$ ]] || continue
+        [ "${_p}" = "/home/${_a}.web" ] && continue
+        ;;
+      /mnt/*)
+        [[ "${_p}" =~ ^/mnt/[A-Za-z0-9._-]+/files/${_a}$ ]] || continue
+        ;;
+    esac
+    [ -d "${_p}" ] && [ ! -L "${_p}" ] && echo "${_p}"
+  done
+  return 0
+}
+# _XCOPY_NAMELESS_LIST set to the numbers no user has here that own an entry
+# in the account $1's places (_xcopy_acct_places), space-separated, walked
+# once a run by the user map. Nothing while passwd does not answer: every
+# number would look like no user's. A walk cut off, or short of the files
+# store's volume, sets _XCOPY_NAMELESS_SHORT: a number it did not meet and no
+# record names travels as that number, as before. Never in a subshell: the
+# list is kept for the run.
+_xcopy_nameless_walk() {
+  local _a="${1}" _p _l
+  local -a _r=()
+  _XCOPY_NAMELESS_LIST=""
+  _XCOPY_NAMELESS_SHORT=""
+  [[ "${_a}" =~ ^[a-z0-9-]+$ ]] || return 0
+  getent passwd root > /dev/null 2>&1 || return 0
+  while IFS= read -r _p; do
+    [ -n "${_p}" ] && _r+=("${_p}")
+  done < <(_xcopy_acct_places "${_a}")
+  if [ "${#_r[@]}" -gt 0 ]; then
+    # find's status on a line of its own: a find killed mid-line leaves a
+    # part of a number before it
+    _l="$( { env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_r[@]}" -xdev -nouser -printf '%U\n' 2> /dev/null
+        printf '\nXMNW-RC:%s\n' "$?"; } | grep -E '^([1-9][0-9]*|XMNW-RC:[0-9]+)$' | sort -u)"
+    _XCOPY_NAMELESS_LIST="$(printf '%s\n' "${_l}" | grep -E '^[1-9][0-9]*$' | sort -un | tr '\n' ' ')"
+    _l="$(printf '%s\n' "${_l}" | sed -n 's/^XMNW-RC://p' | head -n 1)"
+    [[ "${_l}" =~ ^[0-9]+$ ]] && [ "${_l}" -lt 128 ] || _XCOPY_NAMELESS_SHORT=YES
+  fi
+  # the files store's volume not there: the walk did not reach it
+  if [ -L "/data/disk/${_a}/static/files" ] && [ ! -d "/data/disk/${_a}/static/files" ]; then
+    _XCOPY_NAMELESS_SHORT=YES
+  fi
+  return 0
+}
+# The numbers no user has here that own the account $1's files, each on its
+# own line with how its legs carry it: "<uid> own" when root recorded it here
+# as one of the account's removed identities (/data/conf/acct-uids/<oN>.gone,
+# which the ltd worker and the Octopus upgrade write before deluser frees
+# it), "<uid> none" for any other: another account's removed identity, a
+# gone account's, or one no record names. Root's control folder checks here
+# take only the first as the account's own, and a move keeps that: by number
+# alone either would land on whatever the target holds the number for,
+# another account's identity or a number free for its next one. Every number
+# root recorded here is listed whether or not the walk met it: an entry for
+# a number that owns nothing in the account's places moves nothing. A number
+# is no one's only when one list of passwd that holds root lacks it and a
+# lookup of it says so too: a read that failed part way, or a lookup that
+# failed, must never make a user's number look like no one's. A number a
+# user has travels by that user's name, as before. The caller walks first
+# (_xcopy_nameless_walk), in the shell that keeps the list.
+_xcopy_nameless_owners() {
+  local _a="${1}" _d=/data/conf/acct-uids _f _u _n _x _r
+  local -A _own=() _rec=() _seen=() _has=()
+  [[ "${_a}" =~ ^[a-z0-9-]+$ ]] || return 0
+  while IFS=: read -r _n _x _u _; do
+    [[ "${_u}" =~ ^[0-9]+$ ]] && _has[${_u}]=1
+  done < <(getent passwd 2> /dev/null)
+  [ -n "${_has[0]:-}" ] || return 0
+  for _f in "${_d}"/*.gone "${_d}/.purged"; do
+    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
+    while read -r _u _x; do
+      [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+      _rec[${_u}]=1
+      [ "${_f}" = "${_d}/${_a}.gone" ] && _own[${_u}]=1
+    done < "${_f}"
+  done
+  for _u in ${_XCOPY_NAMELESS_LIST} "${!_rec[@]}"; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    [ -z "${_seen[${_u}]:-}${_has[${_u}]:-}" ] || continue
+    _seen[${_u}]=1
+    getent passwd "${_u}" > /dev/null 2>&1
+    _r=$?
+    [ "${_r}" -eq 2 ] || continue
+    if [ -n "${_own[${_u}]:-}" ]; then
+      echo "${_u} own"
+    else
+      echo "${_u} none"
+    fi
+  done | sort -n
+}
+
 # The account's identities here map onto the target's: each onto its own
 # name there (xcopy copies under the same name only, _xcopy_refuse_rename;
 # on a rename, kept as a second line of defence, onto the destination's of
@@ -920,19 +1022,37 @@ REMOTE
 # An identity whose name the target does not have (yet: a client's login
 # comes with the limited-shell worker; a PHP-FPM user oN.<ver>.web exists
 # only for a version that box runs) maps onto <dst> itself, so the
-# target's identities are asked; a list that cannot be read is refused,
-# never guessed (a DENY, the dry run is not clean, a live run stops). The
-# map names every identity: no wildcard, which an older rsync would hand
-# to the receiving shell. Sets _XCOPY_UMAP.
+# target's identities are asked; a list that cannot be read (no answer,
+# one cut short, or one without root) is refused, never guessed (a DENY,
+# the dry run is not clean, a live run stops). The map names every
+# identity: no wildcard, which an older rsync would hand to the
+# receiving shell.
+# The numbers no user has here that own the account's files follow the
+# names (_xcopy_nameless_owners), each by number: one root recorded here as
+# the account's removed identity onto <dst>, any other onto
+# _XCOPY_NAMELESS_UID, which no user has and no tool hands out, so the
+# target never holds the account's files under a number free for, or held
+# by, another account's identity, and its checks read them as these do
+# here. A target where a user has that number gets those onto nobody,
+# which no account's check trusts, or, with no nobody either, as numbers,
+# as before; a line says so, the dry run's too. The lines name the numbers
+# the walk met. Sets _XCOPY_UMAP.
 _xcopy_acct_umap() {   # 1 account here 2 account on the target 3 target
-  local _n _t _have="" _m=""
+  local _n _t _ans="" _have="" _m="" _u _k _own="" _none="" _rfree=YES _to="" _d="" _w=land
   _XCOPY_UMAP=""
   if [[ "${1}" =~ ^[a-zA-Z0-9_-]+$ ]] && [[ "${2}" =~ ^[a-zA-Z0-9_-]+$ ]]; then
-    _have=$(ssh -o BatchMode=yes -o ConnectTimeout=15 root@"${3}" \
-      "getent passwd | cut -d: -f1 | grep -E '^${2}(\.[a-zA-Z0-9._-]+)?\$' | sed 's/^/XMID:/'" \
-      2>/dev/null | grep -x -E 'XMID:[a-zA-Z0-9._-]+' | cut -d: -f2)
+    _ans=$(ssh -o BatchMode=yes -o ConnectTimeout=15 root@"${3}" \
+      "getent passwd | cut -d: -f1,3 | grep -E '^(root|nobody|${2}(\.[a-zA-Z0-9._-]+)?):|:${_XCOPY_NAMELESS_UID}\$' | sed 's/^/XMID:/'; echo XMID-END" \
+      2>/dev/null)
   fi
-  if ! grep -qxF -- "${2}" <<< "${_have}"; then
+  # read through pipes, never a here-string: a full /tmp must not turn
+  # into a DENY of its own
+  _have=$(printf '%s\n' "${_ans}" | grep -x -E 'XMID:[a-zA-Z0-9._-]+:[0-9]+' | cut -d: -f2)
+  # held whatever the holder's name
+  printf '%s\n' "${_ans}" | grep -q -E "^XMID:[^:]*:${_XCOPY_NAMELESS_UID}\$" && _rfree=NO
+  if ! printf '%s\n' "${_ans}" | grep -qx 'XMID-END' \
+    || ! printf '%s\n' "${_have}" | grep -qxF root \
+    || ! printf '%s\n' "${_have}" | grep -qxF -- "${2}"; then
     echo "DENY: could not read the identities of ${2} on ${3}, or ${2} is not installed there yet; the copy of ${1} is never owned by a guessed name"
     _XCOPY_NOT_CLEAN=YES
     [ "${_MODE}" = "LIVE" ] && exit 1
@@ -940,9 +1060,47 @@ _xcopy_acct_umap() {   # 1 account here 2 account on the target 3 target
   fi
   for _n in $(getent passwd | cut -d: -f1 | grep -E "^${1}(\.[a-zA-Z0-9._-]+)?$"); do
     _t="${2}${_n#"${1}"}"
-    grep -qxF -- "${_t}" <<< "${_have}" || _t="${2}"
+    printf '%s\n' "${_have}" | grep -qxF -- "${_t}" || _t="${2}"
     _m="${_m:+${_m},}${_n}:${_t}"
   done
+  _xcopy_nameless_walk "${1}"
+  while read -r _u _k; do
+    case "${_k}" in
+      own)
+        _m="${_m:+${_m},}${_u}:${2}"
+        # said for a number the walk met: the records keep numbers that may
+        # own nothing here
+        case " ${_XCOPY_NAMELESS_LIST} " in
+          *" ${_u} "*) _own="${_own} ${_u}" ;;
+        esac
+        ;;
+      none)
+        _to="${_XCOPY_NAMELESS_UID}"
+        if [ "${_rfree}" != "YES" ]; then
+          _to=""
+          printf '%s\n' "${_have}" | grep -qxF nobody && _to=nobody
+        fi
+        [ -z "${_to}" ] || _m="${_m:+${_m},}${_u}:${_to}"
+        case " ${_XCOPY_NAMELESS_LIST} " in
+          *" ${_u} "*) _none="${_none} ${_u}" ;;
+        esac
+        ;;
+    esac
+  done < <(_xcopy_nameless_owners "${1}")
+  [ "${_MODE}" = "LIVE" ] || { _d="[DRY] "; _w="would land"; }
+  [ -z "${_own}" ] \
+    || echo "INFO: ${1}: ${_d}its files owned by its removed identities (uid${_own}) ${_w} as ${2} on ${3}"
+  if [ -n "${_none}" ]; then
+    if [ "${_rfree}" = "YES" ]; then
+      echo "INFO: ${1}: ${_d}its files owned by a uid no user has here and no record names its own (${_none# }) ${_w} as uid ${_XCOPY_NAMELESS_UID} on ${3}, which no user has and none is given"
+    elif [ "${_to}" = "nobody" ]; then
+      echo "ALRT: ${1}: ${_d}a user has uid ${_XCOPY_NAMELESS_UID} on ${3}: its files owned by a uid no user has here and no record names its own (${_none# }) ${_w} as nobody there"
+    else
+      echo "ALRT: ${1}: ${_d}a user has uid ${_XCOPY_NAMELESS_UID} on ${3} and it has no nobody: its files owned by a uid no user has here and no record names its own (${_none# }) keep those numbers"
+    fi
+  fi
+  [ -z "${_XCOPY_NAMELESS_SHORT}" ] \
+    || echo "ALRT: ${1}: ${_d}the walk of its places for files whose owner no user has here was cut short: a number it did not meet and no record names keeps that number on ${3}"
   _XCOPY_UMAP="${_m}"
   return 0
 }
@@ -8033,6 +8191,11 @@ _XCOPY_NOT_CLEAN=NO
 _XCOPY_GMAP=""
 _XCOPY_AMAP=""
 _XCOPY_UMAP=""
+# the number a file whose owner no user has here, and no record names the
+# account's own, lands as on the target: xmass's _XMASS_NAMELESS_UID
+_XCOPY_NAMELESS_UID=65533
+_XCOPY_NAMELESS_LIST=""
+_XCOPY_NAMELESS_SHORT=""
 _XCOPY_FORCE=""
 ### Set by create's --fix-php alone (_xcopy_php_coverage_gate).
 _XCOPY_FIX_PHP=""
