@@ -2319,8 +2319,10 @@ _finalize_distro() {
     _PENDING_NOTE=""
     return 1
   fi
-  # A distribution that carries Drush has to be able to run it (_drush_starts).
-  if _run_as_o8 "test -f '${_wd}/vendor/drush/drush/drush.php'" && ! _drush_starts "${_wd}"; then
+  # A distribution that carries Drush has to be able to run it (_drush_starts), one
+  # without drush.php too: a server runs drush.php for the install, the database
+  # updates and the start check, so a Drush that has none (Drush 15) fails here.
+  if _run_as_o8 "test -d '${_wd}/vendor/drush/drush'" && ! _drush_starts "${_wd}"; then
     _record_fail "${_label} (drush does not start)"
     _FALLBACK_NOTE=""
     _FIX_NOTE=""
@@ -2528,13 +2530,30 @@ _core_from_12() {
   [[ "${1%%.*}" =~ ^[0-9]+$ ]] && (( ${1%%.*} >= 12 ))
 }
 
+_core_caps_drush() {
+  # $1 = a core line or version. True for Drupal 11.5 and newer before 12, the cores
+  # Drush 15 accepts.
+  local _min="${1#*.}"
+  [[ "$1" == 11.* ]] || return 1
+  _min="${_min%%[!0-9]*}"
+  [[ "${_min}" =~ ^[0-9]+$ ]] && (( 10#${_min} >= 5 ))
+}
+
 _core_drush_spec() {
-  # $1 = a core line. What its drush require names. No Drush release resolves on
-  # Drupal 12 yet: 14.x-dev does, with its two dev-only dependencies required at
-  # the root as well. Back to plain drush/drush once a release resolves. The legacy
-  # majors take the last Drush line that ran on them: 10 on Drupal 8, 11 on 9.
+  # $1 = a core line, a core version, or empty. What its drush require names. No
+  # released Drush that BOA runs resolves on Drupal 12: 14.x-dev does, with its two
+  # dev-only dependencies required at the root as well, and Drush 14 will never be
+  # released. From Drupal 11.5 on, before 12, Drush 13 by name: the bare require
+  # picks Drush 15 once it is tagged, which has no drush.php and runs only under
+  # core's dr, while a server's install, database updates and start check run
+  # drush.php. The legacy majors take the last Drush line that ran on them: 10 on
+  # Drupal 8, 11 on 9.
   if _core_from_12 "$1"; then
     printf '%s\n' "grasmash/yaml-cli:4.x-dev chi-teck/drupal-code-generator:^4@dev drush/drush:^14@dev"
+    return 0
+  fi
+  if _core_caps_drush "$1"; then
+    printf '%s\n' "drush/drush:^13"
     return 0
   fi
   case "${1%%.*}" in
@@ -2680,7 +2699,7 @@ build_cms() {
   if ! { _composer_prepare "${_wd}" \
          && _run_as_o8 "cd '${_wd}' && composer require --no-update --no-scripts ${_CMS_RECIPES}" \
          && _with_core_fallback "${_wd}" "cms" _composer_build \
-         && _run_as_o8 "cd '${_wd}' && composer require drush/drush drupal/migrate_plus drupal/migrate_tools drupal/migrate_upgrade --no-scripts --update-no-dev"; }; then
+         && _run_as_o8 "cd '${_wd}' && composer require $(_core_drush_spec "$(_detect_core_version "${_wd}" 2>/dev/null)") drupal/migrate_plus drupal/migrate_tools drupal/migrate_upgrade --no-scripts --update-no-dev"; }; then
     _record_fail "cms"
     return 1
   fi
@@ -2925,7 +2944,7 @@ build_opigno() {
          && _run_as_o8 "cd '${_wd}' && composer require --no-update --no-scripts h5p/h5p-core:'1.27.*'" \
          && _run_as_o8 "cd '${_wd}' && composer require --no-update --no-scripts 'drupal/address:${_OPIGNO_ADDRESS}' 'commerceguys/addressing:${_OPIGNO_ADDRESSING}'" \
          && _with_core_fallback "${_wd}" "opigno" _composer_build \
-         && _run_as_o8 "cd '${_wd}' && composer require drush/drush --no-scripts --update-no-dev"; }; then
+         && _run_as_o8 "cd '${_wd}' && composer require $(_core_drush_spec "$(_detect_core_version "${_wd}" 2>/dev/null)") --no-scripts --update-no-dev"; }; then
     _record_fail "opigno"
     return 1
   fi
@@ -2971,7 +2990,7 @@ build_social() {
   if ! { _composer_prepare "${_wd}" \
          && _run_as_o8 "cd '${_wd}' && composer require --no-update --no-scripts ${_SOCIAL_DISTPKG}:'${_SOCIAL_CONSTRAINT}'" \
          && _with_core_fallback "${_wd}" "social" _composer_build \
-         && _run_as_o8 "cd '${_wd}' && composer require drush/drush --no-scripts --update-no-dev"; }; then
+         && _run_as_o8 "cd '${_wd}' && composer require $(_core_drush_spec "$(_detect_core_version "${_wd}" 2>/dev/null)") --no-scripts --update-no-dev"; }; then
     _record_fail "social"
     return 1
   fi
@@ -3270,7 +3289,7 @@ build_civicrm_drupal() {
            && composer config --no-plugins extra.compile-mode all \
            && composer require --no-update --no-scripts${_req}" \
          && _composer_build "${_wd}" \
-         && _run_as_o8 "cd '${_wd}' && composer require $(_core_drush_spec 11) --no-scripts --update-no-dev"; }; then
+         && _run_as_o8 "cd '${_wd}' && composer require $(_core_drush_spec "$(_detect_core_version "${_wd}" 2>/dev/null)") --no-scripts --update-no-dev"; }; then
     _record_fail "civicrm_drupal"
     return 1
   fi
