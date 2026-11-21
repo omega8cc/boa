@@ -1220,13 +1220,14 @@
     * The Migrate form's count of upgrades no longer counts a package
       that is disabled on the site and newer on the target platform.
 
-    * Two platforms built from the same Drupal 9 to 12 release no longer
-      show dozens of upgrades on the Migrate form. A platform Verify read
-      a module with no update function at its major version times 1000
-      (10000 on Drupal 10), above the 8000 Drupal installs it at, and a
-      theme or custom module with no version key at Drupal's release
-      where the site's Verify recorded none. Both now read what Drupal
-      and Composer record, and a downgrade below the old floor is seen.
+    * Two platforms built from the same release no longer show dozens of
+      upgrades on the Migrate form. On Drupal 9 to 12 a platform Verify
+      read a module with no update function at its major version times
+      1000 (10000 on Drupal 10), above the 8000 Drupal installs it at;
+      and a custom module with no version key (from Drupal 7 on), or such
+      a theme (from Drupal 8 on), read as Drupal's release on the
+      platform and as none on the site. Both now read what Drupal and
+      Composer record, and a downgrade below the old floor is seen.
 
     * The database broker (boa-dbctl) and the account purge read the
       database login of an account installed on 127.0.0.1, whose server
