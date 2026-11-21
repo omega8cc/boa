@@ -1180,6 +1180,19 @@
       and the dump's rewritten-copy warning now give all three figures in
       MB, or in KB or bytes when those still tie.
 
+    * A Clone, or a Migrate that renames a site, queued under a name
+      another live site still holds no longer takes that site over. The
+      forms refuse such a name, but a task queued without its form (by a
+      script, or by a task that queues another) reached the backend: it
+      pointed the site's alias and vhost at the copy and set its files
+      store aside before the panel refused the new name. The panel now
+      stops such a task before it runs, and the backend refuses a name
+      whose alias still names another site's folder, as Grav and
+      Textpattern already did, before anything is copied or moved.
+
+    * The Migrate form's count of upgrades no longer counts a package
+      that is disabled on the site and newer on the target platform.
+
     * The database broker (boa-dbctl) and the account purge read the
       database login of an account installed on 127.0.0.1, whose server
       alias Aegir names after that host (server_127.0.0.1). The broker
