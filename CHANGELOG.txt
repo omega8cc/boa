@@ -1154,6 +1154,15 @@
 
 @=> Important Fixes
 
+    * A Clone, Restore or Migrate whose database load stops first on a
+      deadlock or a lock wait timeout loads the dump again instead of
+      refusing it. Another session, MySQL's own background threads among
+      them, can hold a lock on the new database for a moment, and the task
+      was rolled back as an incomplete import. The load now runs again from
+      the start, at most twice, a few seconds apart, with a note in the
+      task log; a first error of any other kind, or errors left after the
+      third run, still refuse the import.
+
     * xmass post-mig no longer takes the run marker from a barracuda or
       octopus run that is still going. A failback re-arms the moved
       accounts' upgrades, and one can start before post-mig: removing its
