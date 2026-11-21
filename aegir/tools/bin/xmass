@@ -4668,9 +4668,13 @@ for _I in "${_A}" "${_A}.ftp"; do
   case "${_U}" in
     ''|*[!0-9]*|0) _U="" ;;
     *)
-      _UH=$(getent passwd 2> /dev/null | awk -F: -v u="${_U}" -v a="${_A}" \
+      # the lookup's own answer first, then the list for a second holder of
+      # the number: a list read part way must not let one through
+      _UH=$(getent passwd "${_U}" 2> /dev/null | cut -d: -f1)
+      case "${_UH}" in "${_A}"|"${_A}".*|nobody) _UH="" ;; esac
+      [ -n "${_UH}" ] || _UH=$(getent passwd 2> /dev/null | awk -F: -v u="${_U}" -v a="${_A}" \
         '$3 == u && $1 != a && index($1, a ".") != 1 && $1 != "nobody" { print $1; exit }')
-      [ -z "${_UH}" ] || echo "XMID-FAILED: ${_I} not made: ${_H} carries uid ${_U}, which ${_UH} holds on this server, a user that is not ${_A}'s; a new number would leave ${_H} and what it holds with ${_UH}: read whose files ${_H} holds, and run again once that number is no other user's"
+      [ -z "${_UH}" ] || echo "XMID-FAILED: ${_I} not made: ${_H} carries uid ${_U}, which ${_UH} holds on this server, a user that is not ${_A}'s; a new number would leave ${_H} and what it holds with ${_UH}: read whose files ${_H} holds, then move ${_H} aside or free that number, and run again"
       getent passwd "${_U}" > /dev/null 2>&1 && _U="" ;;
   esac
   [ -z "${_UH}" ] || continue
