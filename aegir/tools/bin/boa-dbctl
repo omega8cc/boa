@@ -3202,7 +3202,8 @@ _ps_sites() {
     [[ -z "${_pp}" || "${_sp}" != "${_pp}" ]] || continue
     if [[ "${_du}" == "-" ]]; then
       _PS_KEPT=$(( _PS_KEPT + 1 ))
-      printf 'kept site %s: its record names no plain database user\n' "$(_log_safe "${_sp}")"
+      # a site path _rec_sites passes is plain
+      printf 'kept site %s: its record names no plain database user\n' "${_sp}"
       continue
     fi
     [[ "${_ko}" != *$'\n'"${_du}"$'\n'* ]] || continue
@@ -3471,7 +3472,7 @@ _ps_rows() {
         return 1
       fi
     fi
-    [[ "${_k}" == "w" && "${_d}" == "$(_db_esc "${_u}")" ]] && continue
+    # a database-level row read as the name it spells, escapes taken off
     if [[ "${_k}" == "w" ]]; then
       _db_literal "${_d}"
       if [[ "${_PAT}" == "YES" && "${_d}" != "${_u}" ]]; then
@@ -3484,8 +3485,9 @@ _ps_rows() {
     _rk "${_LIT}"
     [[ "${_RK}" == "${_n}" ]] && continue
     # another name: only a dead one, which MySQL keeps after a drop, and
-    # never one the registry gives to another account
-    if [[ -n "${_sx}" ]] || _schema_exists "${_LIT}"; then
+    # never one the registry gives to another account (a schema of the
+    # name in another case, where the server folds names, is not dead)
+    if _schema_exists "${_LIT}"; then
       _PS_WHY="it holds a grant on the database $(_log_safe "${_LIT}")"
       return 1
     fi
@@ -3503,10 +3505,6 @@ _ps_rows() {
 _ps_drop() {
   local _u="${1}" _ux _x _h _left=0
   _ux=$(_hex "${_u}")
-  if _reg_get "${_u}" && [[ "${_E_ACCOUNT}" != "${_ACCT}" ]]; then
-    _ps_kept "${_u}" "the registry gives its database to ${_E_ACCOUNT}"
-    return 0
-  fi
   _ps_rows "${_u}"
   case "$?" in
     0) ;;
