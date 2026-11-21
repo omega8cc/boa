@@ -1174,6 +1174,18 @@
       unforced. The lines were recorded on untouched 8.4.11-12 servers
       and match 8.4.11-11's installed state.
 
+    * A Drupal 11.5 or newer codebase is given Drush 13, never Drush 15.
+      Where a codebase brings no Drush of its own, Provision's Verify asked
+      Composer for the newest one, and staticbuild did the same for its
+      core lines and distributions: the day Drush 15 is tagged that would
+      install it, which has no drush.php and no site:install and runs only
+      under Drupal's own dr, while BOA installs sites and runs database
+      updates through drush.php. Both now ask for drush/drush:^13 there, the
+      same constraint Composer writes for the Drush 13 it picks today; older
+      cores, which Drush 15 does not accept, keep the plain require.
+      staticbuild also fails a distribution whose Drush has no drush.php
+      instead of passing it unstarted.
+
     * A platform whose codebase carries Drush 15 keeps serving its sites
       when Provision locks it. Drush 15 adds a file that Composer's
       autoloader loads on every request from inside vendor/drush, and the
