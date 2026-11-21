@@ -1159,6 +1159,16 @@
       unforced. The lines were recorded on untouched 8.4.11-12 servers
       and match 8.4.11-11's installed state.
 
+    * A platform whose codebase carries Drush 15 keeps serving its sites
+      when Provision locks it. Drush 15 adds a file that Composer's
+      autoloader loads on every request from inside vendor/drush, and the
+      lock held vendor/drush at 0400, which no account can enter, so every
+      page of every site on the platform, every Drush 8 task and Drupal's
+      own dr stopped with a fatal error. Where the autoloader names such a
+      file, the lock now keeps vendor/drush open (and opens one an earlier
+      lock closed); the Symfony Console folders still close, so Drush 15,
+      which runs only under dr, cannot start at rest.
+
     * mysqlbinlog runs on a BOA server again with no extra option. BOA's
       my.cnf named the client character set in [client], which every
       client reads, and mysqlbinlog, which has no such option, stopped at
