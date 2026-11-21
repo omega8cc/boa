@@ -3177,9 +3177,11 @@ _xmass_carry_marker_key() {
 }
 
 ### The reader, the same text here and on the target: "L<tab>key<tab>line" for
-### each key's last line, "M<tab>path" for each marker present.
+### each key's last line, "M<tab>path" for each marker present, and
+### "H<tab>YES|NO": whether the server is a hosted one, by the test barracuda
+### makes (/root/.host8.cnf, or a host name ending in .aegir.cc).
 _xmass_carry_reader() {
-  printf '%s' 'for _k in '"${_XMASS_CARRY_KEYS} _XTRAS_LIST"'; do _l=$(grep -E "^[[:space:]]*(export[[:space:]]+)?${_k}=" /root/.barracuda.cnf 2>/dev/null | tail -n 1); [ -n "${_l}" ] && printf "L\t%s\t%s\n" "${_k}" "${_l}"; done; for _m in '"${_XMASS_CARRY_MARKERS}"'; do [ -e "${_m}" ] && printf "M\t%s\n" "${_m}"; done; exit 0'
+  printf '%s' 'for _k in '"${_XMASS_CARRY_KEYS} _XTRAS_LIST"'; do _l=$(grep -E "^[[:space:]]*(export[[:space:]]+)?${_k}=" /root/.barracuda.cnf 2>/dev/null | tail -n 1); [ -n "${_l}" ] && printf "L\t%s\t%s\n" "${_k}" "${_l}"; done; for _m in '"${_XMASS_CARRY_MARKERS}"'; do [ -e "${_m}" ] && printf "M\t%s\n" "${_m}"; done; _hs=NO; [ -e /root/.host8.cnf ] && _hs=YES; _hn=$(cat /etc/hostname 2>/dev/null | tr -d "\n"); [ -n "${_hn}" ] || _hn=$(hostname -f 2>/dev/null); case "${_hn}" in *.aegir.cc) _hs=YES ;; esac; printf "H\t%s\n" "${_hs}"; exit 0'
 }
 
 ### A cnf line's value: after the first =, blanks and one pair of quotes off.
@@ -3197,9 +3199,12 @@ _xmass_carry_val() {
 ### $1 the target, $2 fix (write this server's values there), deny (name each
 ### difference as a DENY, the run not clean) or die (refuse). An extras entry
 ### the target lacks is told in every mode: it needs a barracuda pass there.
+### A hosted target is not told about ADM, FTP and IMG: its every barracuda
+### pass installs Adminer, the FTP server and the image tools whatever its
+### _XTRAS_LIST says (_if_install_adminer, _mode_detection, the IMG packages).
 _xmass_box_settings_gate() {
   local _t="$1" _mode="$2" _rd _out _rc _kind _k _l _key _sv _tv _diff="" _lines="" _aside=""
-  local _x _missx="" _re _b64
+  local _x _missx="" _re _b64 _th=NO
   local -A _sl=() _tl=() _sm=() _tm=()
   _rd="$(_xmass_carry_reader)"
   _out="$(bash -c "${_rd}" 2> /dev/null)"
@@ -3225,6 +3230,7 @@ _xmass_box_settings_gate() {
     case "${_kind}" in
       L) _tl[${_k}]="${_l}" ;;
       M) _key="$(_xmass_carry_marker_key "${_k}")"; [ -n "${_key}" ] && _tm[${_key}]=YES ;;
+      H) [ "${_k}" = "YES" ] && _th=YES ;;
     esac
   done <<< "${_out}"
 
@@ -3264,9 +3270,14 @@ _xmass_box_settings_gate() {
 
   for _x in $(_xmass_carry_val "${_sl[_XTRAS_LIST]:-}"); do
     case " $(_xmass_carry_val "${_tl[_XTRAS_LIST]:-}") " in
-      *" ${_x} "*) : ;;
-      *) _missx="${_missx} ${_x}" ;;
+      *" ${_x} "*) continue ;;
     esac
+    if [ "${_th}" = "YES" ]; then
+      case "${_x}" in
+        ADM|FTP|IMG) continue ;;
+      esac
+    fi
+    _missx="${_missx} ${_x}"
   done
   if [ -n "${_missx}" ]; then
     _alrt "${_t} lacks extras this server installs (_XTRAS_LIST):${_missx}; add them to its"

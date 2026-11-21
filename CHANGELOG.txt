@@ -1223,7 +1223,9 @@
       target (a legacy marker counts as its key set to YES), the cutover's
       dry run names each one that still differs and its live run refuses
       while one does. An extras entry the target lacks is named: it needs
-      a barracuda pass there. The target keeps its own sizing.
+      a barracuda pass there. A hosted target is not told about Adminer,
+      the FTP server or the image tools, which its every pass installs
+      whatever its list says. The target keeps its own sizing.
 
     * A provider's webhooks are no longer dropped in a burst. Shopify sends
       a shop's webhooks from its own addresses with no session, and the
