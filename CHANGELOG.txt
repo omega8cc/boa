@@ -1138,7 +1138,8 @@
       reset mail until its owner sets a From address and an SMTP relay,
       and a site on the login and admin IP lock keeps /api closed to
       other addresses. The version a box falls back to when it cannot
-      read the mirror's stamp is 2.2.31 too.
+      read the mirror's stamp is 2.2.32, whose bundle carries API 1.1.23
+      and Login 3.13.5.
 
     * The AppArmor profiles of wkhtmltopdf and wkhtmltoimage also cover the
       copies BOA keeps in /usr/bin, the path sites are given: started by that
