@@ -1160,8 +1160,10 @@
       them, can hold a lock on the new database for a moment, and the task
       was rolled back as an incomplete import. The load now runs again from
       the start, at most twice, a few seconds apart, with a note in the
-      task log; a first error of any other kind, or errors left after the
-      third run, still refuse the import.
+      task log, once the events its first run made are dropped; a first
+      error of any other kind, another session of the site's own database
+      login on the new database, or errors left after the third run, still
+      refuse the import.
 
     * xmass post-mig no longer takes the run marker from a barracuda or
       octopus run that is still going. A failback re-arms the moved
