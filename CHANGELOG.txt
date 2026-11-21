@@ -1153,6 +1153,13 @@
 
 @=> Important Fixes
 
+    * xmass post-mig no longer takes the run marker from a barracuda or
+      octopus run that is still going. A failback re-arms the moved
+      accounts' upgrades, and one can start before post-mig: removing its
+      marker let that account's task queue run beside the upgrade and
+      made the database broker refuse the switch the pass asked for. The
+      marker now goes only while no barracuda or octopus run is there.
+
     * The database broker (boa-dbctl) carries the reference for Percona
       8.4.11-12, which a barracuda upgrade now installs: without it the
       census read reference=none there and no account could be switched
