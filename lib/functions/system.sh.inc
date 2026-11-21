@@ -11796,12 +11796,55 @@ _sys_packages_update() {
   fi
 }
 
-_other_sys_java21_install() {
+#
+# The paths of BOA's Corretto ${1} (${2}: the Debian arch token). Java 21's
+# link sits where its package would put it; Java 11's is BOA's own name, next
+# to the tree an earlier pass installed from a package, which stays as dpkg
+# left it. The java11 command follows that link. It is what opens the Solr 4
+# and Solr 7 install, so it is laid on amd64 alone, where BOA lays its other
+# Java commands; java21 stays _java_check_fix's.
+_corretto_paths() {
+  _crtMaj="${1}"
+  _binLnk=""
+  case "${_crtMaj}" in
+    11)
+      _linkJvm="/usr/lib/jvm/java-11-openjdk"
+      [ "${2}" = "amd64" ] && _binLnk="/usr/bin/java11"
+    ;;
+    *) _linkJvm="/usr/lib/jvm/java-${_crtMaj}-openjdk-${2}" ;;
+  esac
+  _optDir="/opt/jdk"
+  _linkOpt="${_optDir}/corretto-${_crtMaj}"
+}
+
+#
+# True when ${1} resolves to the java of a Corretto ${_crtMaj} tree directly
+# in BOA's /opt/jdk (a /opt/jdk that is itself a link included).
+_corretto_java_is_boa() {
+  local _r _o _t
+  _r="$(readlink -f "${1}" 2>/dev/null)"
+  _o="$(readlink -f "${_optDir}" 2>/dev/null)"
+  [ -n "${_r}" ] && [ -n "${_o}" ] || return 1
+  case "${_r}" in
+    "${_o}/"*/bin/java) ;;
+    *) return 1 ;;
+  esac
+  _t="${_r#"${_o}/"}"
+  _t="${_t%/bin/java}"
+  case "${_t}" in
+    */*) return 1 ;;
+    amazon-corretto-"${_crtMaj}".*) return 0 ;;
+  esac
+  return 1
+}
+
+_other_sys_corretto_install() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _other_sys_java21_install"
+    _msg "PROC: _other_sys_corretto_install"
   fi
 
-  _debArch="$1"
+  _crtMaj="$1"
+  _debArch="$2"
 
   # Map Debian arch -> Corretto arch tokens
   case "${_debArch}" in
@@ -11815,17 +11858,14 @@ _other_sys_java21_install() {
     ;;
   esac
 
-  _javaHome="/usr/lib/jvm/java-21-openjdk-${_debArch}"
-  _base="amazon-corretto-21-${_crtArch}-linux"
-  _optDir="/opt/jdk"
-  _linkOpt="${_optDir}/corretto-21"
-  _linkJvm="${_javaHome}"
+  _corretto_paths "${_crtMaj}" "${_debArch}"
+  _base="amazon-corretto-${_crtMaj}-${_crtArch}-linux"
 
-  # BOA's own Java 21 is a link to Corretto. A real directory there (a
+  # BOA's own Java is a link to Corretto. A real directory there (a
   # package's tree) would take the new link inside it, and every pass would
   # download again: say so and leave it.
   if [ -d "${_linkJvm}" ] && [ ! -L "${_linkJvm}" ]; then
-    _msg "WARN: ${_linkJvm} is a directory, not BOA's link to Corretto 21: not replaced"
+    _msg "WARN: ${_linkJvm} is a directory, not BOA's link to Corretto ${_crtMaj}: not replaced"
     return 1
   fi
 
@@ -11834,20 +11874,20 @@ _other_sys_java21_install() {
 
   # The archive goes to a directory made for this run that only root can
   # enter: under a fixed name in /tmp any account could hold or swap it.
-  _c21Stage=""
-  _tmpDir="$(mktemp -d /tmp/.corretto21.XXXXXX 2>/dev/null)"
+  _crtStage=""
+  _tmpDir="$(mktemp -d /tmp/.corretto${_crtMaj}.XXXXXX 2>/dev/null)"
   if [ -z "${_tmpDir}" ] || [ ! -d "${_tmpDir}" ]; then
-    _msg "ERROR: Unable to make a private directory for the Corretto 21 download"
+    _msg "ERROR: Unable to make a private directory for the Corretto ${_crtMaj} download"
     return 1
   fi
-  _corretto21_fetch_lay
-  _c21Ret=$?
+  _corretto_fetch_lay
+  _crtRet=$?
   rm -rf -- "${_tmpDir}"
-  [ -n "${_c21Stage}" ] && rm -rf -- "${_c21Stage}"
-  return "${_c21Ret}"
+  [ -n "${_crtStage}" ] && rm -rf -- "${_crtStage}"
+  return "${_crtRet}"
 }
 
-_corretto21_fetch_lay() {
+_corretto_fetch_lay() {
   # Prefer JRE tarball; fall back to JDK tarball if needed.
   _kind="jre"
   _tar="${_base}-${_kind}.tar.gz"
@@ -11864,7 +11904,7 @@ _corretto21_fetch_lay() {
       _SHA="$(curl -fsSL "${_shaUrl}" 2>/dev/null | awk '{print $1}')"
     fi
     if [ -z "${_SHA}" ]; then
-      _msg "ERROR: Unable to fetch SHA256 for Corretto 21 (${_crtArch})"
+      _msg "ERROR: Unable to fetch SHA256 for Corretto ${_crtMaj} (${_crtArch})"
       return 1
     fi
     _mrun "curl -fL --retry 3 --retry-delay 2 -o ${_tmpDir}/${_tar} ${_url}"
@@ -11878,7 +11918,7 @@ _corretto21_fetch_lay() {
       _SHA="$(wget -qO- "${_shaUrl}" 2>/dev/null | awk '{print $1}')"
     fi
     if [ -z "${_SHA}" ]; then
-      _msg "ERROR: Unable to fetch SHA256 for Corretto 21 (${_crtArch})"
+      _msg "ERROR: Unable to fetch SHA256 for Corretto ${_crtMaj} (${_crtArch})"
       return 1
     fi
     _mrun "wget -qO ${_tmpDir}/${_tar} ${_url}"
@@ -11898,7 +11938,7 @@ _corretto21_fetch_lay() {
       _SHA="$(wget -qO- "${_shaUrl}" 2>/dev/null | awk '{print $1}')"
     fi
     if [ -z "${_SHA}" ]; then
-      _msg "ERROR: Unable to fetch SHA256 for Corretto 21 (${_crtArch})"
+      _msg "ERROR: Unable to fetch SHA256 for Corretto ${_crtMaj} (${_crtArch})"
       return 1
     fi
     _mrun "wget -qO ${_tmpDir}/${_tar} ${_url}"
@@ -11907,14 +11947,14 @@ _corretto21_fetch_lay() {
   # Verify integrity: _mrun always returns 0, so the check runs here, and a
   # failed or partial download is never unpacked over the working Java.
   if ! (cd "${_tmpDir}" && echo "${_SHA}  ${_tar}" | sha256sum -c - > /dev/null 2>&1); then
-    _msg "ERROR: Corretto 21 archive ${_tar} fails its SHA256 check, not installed"
+    _msg "ERROR: Corretto ${_crtMaj} archive ${_tar} fails its SHA256 check, not installed"
     return 1
   fi
 
   # Extract and point stable symlinks
   _topDir="$(tar -tzf "${_tmpDir}/${_tar}" 2>/dev/null | head -n1 | cut -d/ -f1)"
   case "${_topDir}" in
-    amazon-corretto-21.*) ;;
+    amazon-corretto-"${_crtMaj}".*) ;;
     *)
       _msg "ERROR: Unable to read Corretto archive structure: ${_tar}"
       return 1
@@ -11925,52 +11965,53 @@ _corretto21_fetch_lay() {
   # with its version there (a tree a full disk cut short keeps bin/java and
   # lacks its libraries) before it takes its name: a tree of the same name,
   # the one BOA's links may point at, is only moved aside then.
-  _c21Stage="$(mktemp -d "${_optDir}/.corretto21-stage.XXXXXX" 2>/dev/null)"
-  if [ -z "${_c21Stage}" ] || [ ! -d "${_c21Stage}" ]; then
-    _c21Stage=""
+  _crtStage="$(mktemp -d "${_optDir}/.corretto${_crtMaj}-stage.XXXXXX" 2>/dev/null)"
+  if [ -z "${_crtStage}" ] || [ ! -d "${_crtStage}" ]; then
+    _crtStage=""
     _msg "ERROR: Unable to make a stage folder in ${_optDir}"
     return 1
   fi
-  if ! tar --no-same-owner -xzf "${_tmpDir}/${_tar}" -C "${_c21Stage}" > /dev/null 2>&1; then
-    _msg "ERROR: Corretto 21 archive ${_tar} could not be unpacked in ${_optDir}"
+  if ! tar --no-same-owner -xzf "${_tmpDir}/${_tar}" -C "${_crtStage}" > /dev/null 2>&1; then
+    _msg "ERROR: Corretto ${_crtMaj} archive ${_tar} could not be unpacked in ${_optDir}"
     return 1
   fi
-  _c21Ver="$("${_c21Stage}/${_topDir}/bin/java" --version 2>/dev/null | awk '/^openjdk [0-9]/{print $2; exit}')"
-  case "${_c21Ver}" in
+  _crtVer="$("${_crtStage}/${_topDir}/bin/java" --version 2>/dev/null | awk '/^openjdk [0-9]/{print $2; exit}')"
+  case "${_crtVer}" in
     ''|*[!0-9.]*)
-      _msg "ERROR: Unpacked Corretto 21 ${_topDir} does not run, links left as they were"
+      _msg "ERROR: Unpacked Corretto ${_crtMaj} ${_topDir} does not run, links left as they were"
       return 1
     ;;
   esac
 
   _real="${_optDir}/${_topDir}"
   _prevReal="$(readlink -f "${_linkOpt}" 2>/dev/null)"
-  _c21Old=""
+  _crtOld=""
   if [ -e "${_real}" ] || [ -L "${_real}" ]; then
-    _c21Old="$(mktemp -u "${_optDir}/.corretto21-old.XXXXXX")"
-    if ! mv -f -- "${_real}" "${_c21Old}"; then
+    _crtOld="$(mktemp -u "${_optDir}/.corretto${_crtMaj}-old.XXXXXX")"
+    if ! mv -f -- "${_real}" "${_crtOld}"; then
       _msg "ERROR: Unable to move the earlier ${_real} aside, links left as they were"
       return 1
     fi
   fi
-  if ! mv -f -- "${_c21Stage}/${_topDir}" "${_real}"; then
-    [ -n "${_c21Old}" ] && mv -f -- "${_c21Old}" "${_real}"
+  if ! mv -f -- "${_crtStage}/${_topDir}" "${_real}"; then
+    [ -n "${_crtOld}" ] && mv -f -- "${_crtOld}" "${_real}"
     _msg "ERROR: Unable to put the new tree at ${_real}, links left as they were"
     return 1
   fi
   _mrun "ln -sfn ${_real} ${_linkOpt}"
   _mrun "ln -sfn ${_linkOpt} ${_linkJvm}"
+  [ -n "${_binLnk}" ] && _mrun "ln -sfn ${_linkJvm}/bin/java ${_binLnk}"
 
   # Each refresh lays a new tree of about 300 MB: keep the new one and the
-  # one it replaced (the running Solr 9 still uses it until its restart at
-  # the end of the pass), remove the older ones, but never a tree a running
-  # JVM was started from. Every path is compared resolved, so a box whose
-  # /opt is a link prunes too.
+  # one it replaced (a running Solr still uses it until its restart at the
+  # end of the pass), remove the older ones, but never a tree a running JVM
+  # was started from. Every path is compared resolved, so a box whose /opt
+  # is a link prunes too.
   _realR="$(readlink -f "${_real}" 2>/dev/null)"
   if [ -n "${_realR}" ] \
     && [ "$(readlink -f "${_linkJvm}/bin/java" 2>/dev/null)" = "${_realR}/bin/java" ]; then
     _liveExe="$(for _e in /proc/[0-9]*/exe; do readlink "${_e}" 2>/dev/null; done)"
-    for _oldJdk in "${_optDir}"/amazon-corretto-21.* "${_optDir}"/.corretto21-old.*; do
+    for _oldJdk in "${_optDir}/amazon-corretto-${_crtMaj}."* "${_optDir}/.corretto${_crtMaj}-old."*; do
       [ -d "${_oldJdk}" ] || continue
       _oldR="$(readlink -f "${_oldJdk}" 2>/dev/null)"
       [ -n "${_oldR}" ] || continue
@@ -11982,7 +12023,7 @@ _corretto21_fetch_lay() {
   fi
 
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "DONE: Java 21 ${_c21Ver} installed at ${_linkJvm}"
+    _msg "DONE: Java ${_crtMaj} ${_crtVer} installed at ${_linkJvm}"
   fi
 }
 
@@ -12008,76 +12049,96 @@ _other_sys_java_install() {
   _javaHome="/usr/lib/jvm/java-${_javaVer}-openjdk-${_debArch}"
 
   _FORCE_JAVA_UPGRADE=
+  _JAVA_NEW=
 
-  # Special-case Java 21: do NOT use foreign apt sources (avoids Excalibur upgrade pressure)
+  ### Java 21 (Excalibur has its own package) and Java 11 come from Amazon
+  ### Corretto tarballs, never from a foreign apt source: Java 11's last
+  ### Debian suite, bullseye-security, ended in August 2026 and its builds
+  ### left the mirror, so its install failed on every pass and left the box
+  ### on the build it had.
   if [ "${_javaVer}" = "21" ] && [ "${_OS_CODE}" != "excalibur" ]; then
+    # CVE-2026-114938 is fixed in 21.0.13.1
     _JAVA_NEW=21.0.13.1
-    _JAVA_ITD=$("${_javaHome}/bin/java" --version 2>/dev/null \
+  elif [ "${_javaVer}" = "11" ]; then
+    _JAVA_NEW=11.0.33.1
+  fi
+  if [ -n "${_JAVA_NEW}" ]; then
+    _corretto_paths "${_javaVer}" "${_debArch}"
+    _JAVA_ITD=$("${_linkJvm}/bin/java" --version 2>/dev/null \
       | awk '/^openjdk [0-9]/{print $2; exit}')
     ### Corretto comes from a tarball, so no apt upgrade ever brings its
     ### security fixes: a build older than the pin is replaced on every
-    ### box, in debug mode or not (CVE-2026-114938 is fixed in 21.0.13.1),
-    ### and so is one whose version cannot be read (a broken tree). A newer
-    ### build than the pin is kept, so a later Corretto never makes each
-    ### pass download it again.
+    ### box, in debug mode or not, and so is one whose version cannot be
+    ### read (a broken tree) and a Java that is not BOA's Corretto at all
+    ### (Java 11 from its package, before the move). A newer build than the
+    ### pin is kept, so a later Corretto never makes each pass download it
+    ### again.
     case "${_JAVA_ITD}" in
       ''|*[!0-9.]*) _JAVA_ITD="0" ;;
     esac
     # A run that was killed leaves its download and stage folders behind:
     # root's own, of these names only, older than two hours, on every pass
     # (the trailing slash enters a /opt/jdk that is a link).
-    find /tmp/ -mindepth 1 -maxdepth 1 -type d -name '.corretto21.*' \
+    find /tmp/ -mindepth 1 -maxdepth 1 -type d -name ".corretto${_javaVer}.*" \
       -user root -mmin +120 -exec rm -rf -- {} + 2>/dev/null
-    find /opt/jdk/ -mindepth 1 -maxdepth 1 -type d -name '.corretto21-stage.*' \
+    find "${_optDir}/" -mindepth 1 -maxdepth 1 -type d -name ".corretto${_javaVer}-stage.*" \
       -user root -mmin +120 -exec rm -rf -- {} + 2>/dev/null
-    # A tree a reinstall moved aside goes once no JVM runs from it (Solr 9
+    # A tree a reinstall moved aside goes once no JVM runs from it (a Solr
     # leaves it at the restart that ends the pass that moved it).
-    for _c21Aside in /opt/jdk/.corretto21-old.*; do
-      [ -d "${_c21Aside}" ] || continue
-      _c21AsideR="$(readlink -f "${_c21Aside}" 2>/dev/null)"
-      [ -n "${_c21AsideR}" ] || continue
+    for _crtAside in "${_optDir}/.corretto${_javaVer}-old."*; do
+      [ -d "${_crtAside}" ] || continue
+      _crtAsideR="$(readlink -f "${_crtAside}" 2>/dev/null)"
+      [ -n "${_crtAsideR}" ] || continue
       for _e in /proc/[0-9]*/exe; do readlink "${_e}" 2>/dev/null; done \
-        | grep -q -F -- "${_c21AsideR}/" && continue
-      rm -rf -- "${_c21Aside}"
+        | grep -q -F -- "${_crtAsideR}/" && continue
+      rm -rf -- "${_crtAside}"
     done
     if [ "$(printf '%s\n' "${_JAVA_ITD}" "${_JAVA_NEW}" | sort -V | head -n1)" != "${_JAVA_NEW}" ] \
+      || ! _corretto_java_is_boa "${_linkJvm}/bin/java" \
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
       _FORCE_JAVA_UPGRADE=YES
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: Installing Java ${_JAVA_NEW}..."
       fi
-    fi
-    if [ ! -x "${_javaHome}/bin/java" ] || [ -n "${_FORCE_JAVA_UPGRADE}" ]; then
-      _other_sys_java21_install "${_debArch}"
+      _other_sys_corretto_install "${_javaVer}" "${_debArch}"
+      # What the Solrs and the sites run (the java11 command where BOA lays
+      # one, else BOA's link) must be BOA's Corretto at the pin or newer
+      # now, said in debug mode or not.
+      _corretto_paths "${_javaVer}" "${_debArch}"
+      _crtRun="${_binLnk:-${_linkJvm}/bin/java}"
+      _JAVA_ITD=$("${_crtRun}" --version 2>/dev/null \
+        | awk '/^openjdk [0-9]/{print $2; exit}')
+      case "${_JAVA_ITD}" in
+        ''|*[!0-9.]*) _JAVA_ITD="" ;;
+      esac
+      if [ -z "${_JAVA_ITD}" ] \
+        || ! _corretto_java_is_boa "${_crtRun}" \
+        || [ "$(printf '%s\n' "${_JAVA_ITD}" "${_JAVA_NEW}" | sort -V | head -n1)" != "${_JAVA_NEW}" ]; then
+        _msg "WARN: Java ${_javaVer} is ${_JAVA_ITD:-not answering} at ${_crtRun} ($(readlink -f "${_crtRun}" 2>/dev/null)) after the install, not Corretto ${_JAVA_NEW} or newer"
+      fi
+    elif [ -n "${_binLnk}" ] \
+      && [ "$(readlink -f "${_binLnk}" 2>/dev/null)" != "$(readlink -f "${_linkJvm}/bin/java" 2>/dev/null)" ]; then
+      ln -sfn "${_linkJvm}/bin/java" "${_binLnk}"
     fi
     return 0
   fi
 
-  # Special-case Java 11/17 force install if version is too old
-  if [ "${_javaVer}" = "11" ]; then
-    _JAVA_NEW=11.0.32.1
-    _JAVA_ITD=$(java11 --version 2>&1 \
-      | tr -d "\n" \
-      | cut -d" " -f2 \
-      | awk '{ print $1}' 2>&1)
-    if [ "${_JAVA_ITD}" != "${_JAVA_NEW}" ] \
-      || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        _msg "INFO: Installing Java ${_JAVA_NEW}..."
-        _FORCE_JAVA_UPGRADE=YES
-      fi
-    fi
-  elif [ "${_javaVer}" = "17" ]; then
+  ### Java 17 (on Excalibur) comes from a suite added for its install only,
+  ### so no apt upgrade of the box ever brings its fixes: a build older than
+  ### the pin is installed again, in debug mode or not, and so is one whose
+  ### version cannot be read.
+  if [ "${_javaVer}" = "17" ]; then
     _JAVA_NEW=17.0.21.1
-    _JAVA_ITD=$(java17 --version 2>&1 \
-      | tr -d "\n" \
-      | cut -d" " -f2 \
-      | awk '{ print $1}' 2>&1)
-    if [ "${_JAVA_ITD}" != "${_JAVA_NEW}" ] \
+    _JAVA_ITD=$("${_javaHome}/bin/java" --version 2>/dev/null \
+      | awk '/^openjdk [0-9]/{print $2; exit}')
+    case "${_JAVA_ITD}" in
+      ''|*[!0-9.]*) _JAVA_ITD="0" ;;
+    esac
+    if [ "$(printf '%s\n' "${_JAVA_ITD}" "${_JAVA_NEW}" | sort -V | head -n1)" != "${_JAVA_NEW}" ] \
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
+      _FORCE_JAVA_UPGRADE=YES
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: Installing Java ${_JAVA_NEW}..."
-        _FORCE_JAVA_UPGRADE=YES
       fi
     fi
   fi
@@ -12135,6 +12196,18 @@ EOF
     rm -f "${_aptNoValidUntil}"
 
     _apt_clean_update
+
+    if [ -n "${_JAVA_NEW}" ]; then
+      _JAVA_ITD=$("${_javaHome}/bin/java" --version 2>/dev/null \
+        | awk '/^openjdk [0-9]/{print $2; exit}')
+      case "${_JAVA_ITD}" in
+        ''|*[!0-9.]*) _JAVA_ITD="" ;;
+      esac
+      if [ -z "${_JAVA_ITD}" ] \
+        || [ "$(printf '%s\n' "${_JAVA_ITD}" "${_JAVA_NEW}" | sort -V | head -n1)" != "${_JAVA_NEW}" ]; then
+        _msg "WARN: Java ${_javaVer} is ${_JAVA_ITD:-not answering} after the install from ${_systVer}, not ${_JAVA_NEW} or newer"
+      fi
+    fi
   fi
 }
 

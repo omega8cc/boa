@@ -401,7 +401,7 @@ _if_solr_four() {
       chown -R jetty9:jetty9 /opt/jetty9
       chown -R jetty9:jetty9 /var/log/jetty9
       echo "JAVA=/usr/bin/java11 # BOA ${_xSrl} Path to Java 11 on ${_OS_CODE}" > /etc/default/jetty9
-      echo "JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64 # BOA ${_xSrl} Path to Java 11 on ${_OS_CODE}" >> /etc/default/jetty9
+      echo "JAVA_HOME=/usr/lib/jvm/java-11-openjdk # BOA ${_xSrl} Path to Java 11 on ${_OS_CODE}" >> /etc/default/jetty9
       echo "NO_START=0 # Start on boot" >> /etc/default/jetty9
       echo "JETTY_HOST=127.0.0.1 # Listen on localhost" >> /etc/default/jetty9
       echo "JETTY_PORT=8099 # Run on this port" >> /etc/default/jetty9
@@ -453,7 +453,7 @@ _if_solr_four() {
     _JETTY9_JAVA_TEST=$(grep "BOA ${_xSrl} Path to Java 11 on ${_OS_CODE}" /etc/default/jetty9 2>&1)
     if [[ ! "${_JETTY9_JAVA_TEST}" =~ "BOA ${_xSrl} Path to Java 11 on ${_OS_CODE}" ]]; then
       echo "JAVA=/usr/bin/java11 # BOA ${_xSrl} Path to Java 11 on ${_OS_CODE}" > /etc/default/jetty9
-      echo "JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64 # BOA ${_xSrl} Path to Java 11 on ${_OS_CODE}" >> /etc/default/jetty9
+      echo "JAVA_HOME=/usr/lib/jvm/java-11-openjdk # BOA ${_xSrl} Path to Java 11 on ${_OS_CODE}" >> /etc/default/jetty9
       echo "NO_START=0 # Start on boot" >> /etc/default/jetty9
       echo "JETTY_HOST=127.0.0.1 # Listen on localhost" >> /etc/default/jetty9
       echo "JETTY_PORT=8099 # Run on this port" >> /etc/default/jetty9
