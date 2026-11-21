@@ -5141,7 +5141,7 @@ _xmass_sync_shell_credentials() {
   # only: never read or written through a link the account put on the way.
   if [ "${_set}" = "YES" ] && [ -e "${_u}/log/pass.txt" ]; then
     _xmass_in_real_dir "${_u}/log" rsync -aEAX --no-links ${_ieni} -e ssh \
-      ${_XMASS_GMAP:+"--groupmap=${_XMASS_GMAP}"} ${_XMASS_UMAP:+"--usermap=${_XMASS_UMAP}"} \
+      ${_XMASS_GMAP:+"--groupmap=${_XMASS_GMAP}"} ${_XMASS_UMAP:+"--usermap=${_XMASS_UMAP}"} $(_xmass_map_setid_off) \
       --no-devices --no-specials --rsync-path="$(_xmass_pin_rpath "${_u}/log")" \
       ./pass.txt "root@${_t}:./" 2>/dev/null \
       || _alrt "  ${_acct}: could not carry log/pass.txt (password IS set; re-run to converge)"
@@ -5153,7 +5153,7 @@ _xmass_sync_shell_credentials() {
   # through a link put at the name or on the way.
   if [ -e "/home/${_acct}.ftp/users" ] || [ -L "/home/${_acct}.ftp/users" ]; then
     _xmass_in_real_dir "/home/${_acct}.ftp/users" rsync -aEAX ${_ieni} -e ssh \
-      ${_XMASS_GMAP:+"--groupmap=${_XMASS_GMAP}"} ${_XMASS_UMAP:+"--usermap=${_XMASS_UMAP}"} --no-devices --no-specials \
+      ${_XMASS_GMAP:+"--groupmap=${_XMASS_GMAP}"} ${_XMASS_UMAP:+"--usermap=${_XMASS_UMAP}"} $(_xmass_map_setid_off) --no-devices --no-specials \
       --rsync-path="$(_xmass_pin_rpath "/home/${_acct}.ftp/users")" \
       ./ "root@${_t}:./" 2>/dev/null \
       || _alrt "  ${_acct}: could not carry the sub-account password store (not a real directory here, or the copy failed)"
@@ -5184,7 +5184,7 @@ _xmass_sync_shell_credentials() {
         _um="${_um#,}"
         _um="${_um%,}"
         _xmass_in_real_dir "/home/${_acct}.${_n}/.ssh" rsync -aEAXu ${_ieni} -e ssh \
-          ${_XMASS_GMAP:+"--groupmap=${_XMASS_GMAP}"} ${_XMASS_UMAP:+"--usermap=${_um}"} --no-devices --no-specials \
+          ${_XMASS_GMAP:+"--groupmap=${_XMASS_GMAP}"} ${_XMASS_UMAP:+"--usermap=${_um}"} $(_xmass_map_setid_off) --no-devices --no-specials \
           --rsync-path="$(_xmass_pin_rpath "/home/${_acct}.${_n}/.ssh")" \
           ./ "root@${_t}:./" 2>/dev/null \
           || _alrt "  ${_acct}: could not carry .ssh for ${_acct}.${_n} (not a real directory here, or the copy failed)"
@@ -5199,7 +5199,7 @@ _xmass_sync_shell_credentials() {
       if [ -e "/home/${_acct}.${_n}/.ssh" ] || [ -L "/home/${_acct}.${_n}/.ssh" ]; then
         ssh root@"${_t}" "mkdir -p /var/backups/migrate-subuser-ssh/${_acct}.${_n}" &> /dev/null
         if _xmass_in_real_dir "/home/${_acct}.${_n}/.ssh" rsync -aEAXu ${_ieni} -e ssh \
-          ${_XMASS_GMAP:+"--groupmap=${_XMASS_GMAP}"} ${_XMASS_UMAP:+"--usermap=${_XMASS_UMAP}"} --no-devices --no-specials ./ \
+          ${_XMASS_GMAP:+"--groupmap=${_XMASS_GMAP}"} ${_XMASS_UMAP:+"--usermap=${_XMASS_UMAP}"} $(_xmass_map_setid_off) --no-devices --no-specials ./ \
           "root@${_t}:/var/backups/migrate-subuser-ssh/${_acct}.${_n}/.ssh/" 2>/dev/null; then
           _info "  ${_acct}: sub-account ${_acct}.${_n} not created on ${_t} yet; password converges via the"
           _info "  ${_acct}: carried store, and its keys are staged at /var/backups/migrate-subuser-ssh/${_acct}.${_n}/.ssh"
@@ -11210,7 +11210,7 @@ _xmass_rsync() {
     local _err
     _err=$(mktemp /tmp/xmass-rsync-err.XXXXXX 2>/dev/null) || _err=""
     # shellcheck disable=SC2086
-    rsync "$@" ${_XMASS_GMAP:+--groupmap="${_XMASS_GMAP}"} ${_XMASS_UMAP:+--usermap="${_XMASS_UMAP}"} --no-devices --no-specials 2>>"${_err:-/dev/stderr}" || _rc=$?
+    rsync "$@" ${_XMASS_GMAP:+--groupmap="${_XMASS_GMAP}"} ${_XMASS_UMAP:+--usermap="${_XMASS_UMAP}"} $(_xmass_map_setid_off) --no-devices --no-specials 2>>"${_err:-/dev/stderr}" || _rc=$?
     [ -s "${_err}" ] && cat "${_err}" >&2
     if [ "${_rc}" = "23" ] && [ -n "${_err}" ] && _xmass_rsync_vanished_only "${_err}"; then
       _rc=24
@@ -11527,7 +11527,7 @@ _xmass_put_on_root() {
   # as this box's number, and no destination pass follows an autosync or
   # the cutover's final pass
   _xmass_at_canon_dir "${_real}" rsync -aEAXqu --no-devices --no-specials ${_ie} \
-    ${_XMASS_GMAP:+"--groupmap=${_XMASS_GMAP}"} ${_XMASS_UMAP:+"--usermap=${_XMASS_UMAP}"} \
+    ${_XMASS_GMAP:+"--groupmap=${_XMASS_GMAP}"} ${_XMASS_UMAP:+"--usermap=${_XMASS_UMAP}"} $(_xmass_map_setid_off) \
     "${_rp[@]}" -e ssh ./ root@"${_th}":"${_to}" 2>>"${_err:-/dev/stderr}" || _rc=$?
   [ -s "${_err}" ] && cat "${_err}" >&2
   # 23 with only vanished-file errors is the rc-24 case (see _xmass_rsync_vanished_only)
@@ -11591,7 +11591,7 @@ _xmass_put_on_mount() {
   local _rc=0 _err
   _err=$(mktemp /tmp/xmass-rsync-err.XXXXXX 2>/dev/null) || _err=""
   _xmass_at_canon_dir "${_real}" rsync -aEAXqu --no-devices --no-specials ${_ie} \
-    ${_XMASS_GMAP:+"--groupmap=${_XMASS_GMAP}"} ${_XMASS_UMAP:+"--usermap=${_XMASS_UMAP}"} \
+    ${_XMASS_GMAP:+"--groupmap=${_XMASS_GMAP}"} ${_XMASS_UMAP:+"--usermap=${_XMASS_UMAP}"} $(_xmass_map_setid_off) \
     "${_rp[@]}" -e ssh ./ root@"${_th}":"${_to}" 2>>"${_err:-/dev/stderr}" || _rc=$?
   [ -s "${_err}" ] && cat "${_err}" >&2
   if [ "${_rc}" = "23" ] && [ -n "${_err}" ] && _xmass_rsync_vanished_only "${_err}"; then
@@ -12884,6 +12884,17 @@ _xmass_nameless_plan() {
   [ -z "${_none}" ] \
     || _info "  ${_oct}: [DRY] its files owned by a uid no user has here and no record names its own (${_none# }) would land as uid ${_XMASS_NAMELESS_UID} on ${_tgt}, unless a user has that number there"
   return 0
+}
+
+# Set-ID bits never ride a leg that maps owners or groups: rsync sets a
+# file's mode after its owner, so a set-uid or set-gid file a map gives
+# another owner or group (a login the target lacks onto the account, a
+# number no user has onto 65533, the account's group onto users) would keep
+# its bits under that owner. Files only: a folder's set-gid, the web
+# group's, stays. No BOA writer makes a set-ID file in an account's places.
+# Prints the rsync option while a map is set, nothing otherwise.
+_xmass_map_setid_off() {
+  [ -z "${_XMASS_GMAP}${_XMASS_UMAP}" ] || printf '%s' '--chmod=Fug-s'
 }
 
 # Set _XMASS_UMAP, the user map every leg of one account carries beside its

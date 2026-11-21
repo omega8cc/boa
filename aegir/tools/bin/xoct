@@ -5941,6 +5941,17 @@ _xoct_nameless_owners() {
   done | sort -n
 }
 
+# Set-ID bits never ride a leg that maps owners or groups: rsync sets a
+# file's mode after its owner, so a set-uid or set-gid file a map gives
+# another owner or group (a login the target lacks onto the account, a
+# number no user has onto 65533, the account's group onto users) would keep
+# its bits under that owner. Files only: a folder's set-gid, the web
+# group's, stays. No BOA writer makes a set-ID file in an account's places.
+# Prints the rsync option while a map is set, nothing otherwise.
+_xoct_map_setid_off() {
+  [ -z "${_XOCT_GMAP}${_XOCT_UMAP}" ] || printf '%s' '--chmod=Fug-s'
+}
+
 ### The account's identities here map onto the target's: on a copy under
 ### the same name each onto its own name there, on a rename onto the
 ### destination's of the same suffix (<src> onto <dst>, <src>.ftp onto
@@ -9446,10 +9457,10 @@ _xoct_rsync() {
     # A leg that reads a status 23 itself names a file in _XOCT_RSYNC_ERR:
     # the errors go there, and the leg prints them (_xoct_leg_rc)
     if [ -n "${_XOCT_RSYNC_ERR:-}" ]; then
-      rsync "$@" ${_XOCT_GMAP:+"--groupmap=${_XOCT_GMAP}"} ${_XOCT_UMAP:+"--usermap=${_XOCT_UMAP}"} --no-devices --no-specials 2>> "${_XOCT_RSYNC_ERR}"
+      rsync "$@" ${_XOCT_GMAP:+"--groupmap=${_XOCT_GMAP}"} ${_XOCT_UMAP:+"--usermap=${_XOCT_UMAP}"} $(_xoct_map_setid_off) --no-devices --no-specials 2>> "${_XOCT_RSYNC_ERR}"
       return
     fi
-    rsync "$@" ${_XOCT_GMAP:+"--groupmap=${_XOCT_GMAP}"} ${_XOCT_UMAP:+"--usermap=${_XOCT_UMAP}"} --no-devices --no-specials
+    rsync "$@" ${_XOCT_GMAP:+"--groupmap=${_XOCT_GMAP}"} ${_XOCT_UMAP:+"--usermap=${_XOCT_UMAP}"} $(_xoct_map_setid_off) --no-devices --no-specials
   else
     echo "[DRY-PLAN] would rsync: $*"
   fi
@@ -9599,7 +9610,7 @@ _xoct_put_on_root() {
     fi
     # the store is files/ and private/: the web group map rides it too
     if ! _xoct_in_canon_dir "${_real}" rsync -aEAXqu --no-devices --no-specials ${_ie} \
-      ${_XOCT_GMAP:+"--groupmap=${_XOCT_GMAP}"} ${_XOCT_UMAP:+"--usermap=${_XOCT_UMAP}"} \
+      ${_XOCT_GMAP:+"--groupmap=${_XOCT_GMAP}"} ${_XOCT_UMAP:+"--usermap=${_XOCT_UMAP}"} $(_xoct_map_setid_off) \
       --rsync-path="$(_xoct_canon_rpath "${_dreal}")" -e ssh ./ root@"${_th}":./; then
       echo "DENY: rsync to ${_dstRoot} on target root failed"
       return 3
@@ -9609,7 +9620,7 @@ _xoct_put_on_root() {
   _q="$(_shq "${_dstRoot}")"
   ssh root@"${_th}" "if [ -L '${_q}' ]; then rm -f '${_q}'; elif [ -e '${_q}' ] && [ ! -d '${_q}' ]; then rm -f '${_q}'; fi; mkdir -p '${_q}'"
   if ! _xoct_in_canon_dir "${_real}" rsync -aEAXqu --no-devices --no-specials ${_ie} \
-    ${_XOCT_GMAP:+"--groupmap=${_XOCT_GMAP}"} ${_XOCT_UMAP:+"--usermap=${_XOCT_UMAP}"} -e ssh ./ root@"${_th}":"${_dstRoot}/"; then
+    ${_XOCT_GMAP:+"--groupmap=${_XOCT_GMAP}"} ${_XOCT_UMAP:+"--usermap=${_XOCT_UMAP}"} $(_xoct_map_setid_off) -e ssh ./ root@"${_th}":"${_dstRoot}/"; then
     echo "DENY: rsync to ${_dstRoot} on target root failed"
     return 3
   fi
@@ -9635,7 +9646,7 @@ _xoct_put_on_mount() {
       return 3
     fi
     if ! _xoct_in_canon_dir "${_real}" rsync -aEAXqu --no-devices --no-specials ${_ie} \
-      ${_XOCT_GMAP:+"--groupmap=${_XOCT_GMAP}"} ${_XOCT_UMAP:+"--usermap=${_XOCT_UMAP}"} \
+      ${_XOCT_GMAP:+"--groupmap=${_XOCT_GMAP}"} ${_XOCT_UMAP:+"--usermap=${_XOCT_UMAP}"} $(_xoct_map_setid_off) \
       --rsync-path="$(_xoct_canon_rpath "${_mreal}")" -e ssh ./ root@"${_th}":./; then
       echo "DENY: ${_lbl}: rsync to target mount ${_mntDest} failed; target link left untouched"
       return 3
@@ -9656,7 +9667,7 @@ _xoct_put_on_mount() {
   fi
   ssh root@"${_th}" "mkdir -p '${_qm}'"
   if ! _xoct_in_canon_dir "${_real}" rsync -aEAXqu --no-devices --no-specials ${_ie} \
-    ${_XOCT_GMAP:+"--groupmap=${_XOCT_GMAP}"} ${_XOCT_UMAP:+"--usermap=${_XOCT_UMAP}"} -e ssh ./ root@"${_th}":"${_mntDest}/"; then
+    ${_XOCT_GMAP:+"--groupmap=${_XOCT_GMAP}"} ${_XOCT_UMAP:+"--usermap=${_XOCT_UMAP}"} $(_xoct_map_setid_off) -e ssh ./ root@"${_th}":"${_mntDest}/"; then
     echo "DENY: ${_lbl}: rsync to target mount ${_mntDest} failed; target link left untouched"
     return 3
   fi
