@@ -1229,6 +1229,10 @@
       platform and as none on the site. Both now read what Drupal and
       Composer record, and a downgrade below the old floor is seen.
 
+    * A platform Verify records a module that core still ships beside its
+      contrib successor (forum, action, telephone) at the contrib copy a
+      site runs, as Drupal itself resolves it, no longer at core's copy.
+
     * The database broker (boa-dbctl) and the account purge read the
       database login of an account installed on 127.0.0.1, whose server
       alias Aegir names after that host (server_127.0.0.1). The broker
