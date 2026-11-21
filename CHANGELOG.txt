@@ -803,6 +803,25 @@
       account's removed identity, or, for an account laid there new, for
       an account that is gone: it says so and makes no user.
 
+    * xoct and xcopy carry such files the same way: a number recorded as
+      one of the account's removed identities lands as the account on
+      the new server (the new name on an xoct rename), any other as
+      65533, or as nobody where a user there holds 65533; a line names
+      these numbers, a dry run's too. An answer about the new server's
+      users that lacks its end or root is refused as an unreadable one.
+
+    * A move no longer lands a set-uid or set-gid file under an owner or
+      group its map gave it: xmass, xoct and xcopy take those bits off
+      the files every mapped leg copies. rsync sets a file's mode after
+      its owner, so a client login's set-uid file landed as the
+      account's, and a number's as 65533's. A folder keeps its set-gid.
+
+    * xmass's repair of a target's missing users no longer makes an
+      identity under a fresh number while a user of the target that is
+      not one of the account's identities holds the number its home
+      carries: the home stayed with that user. It names the user and
+      makes no identity.
+
     * Before the ltd worker removes a client login, it ends every process
       the login runs, in any root: a process in a chroot or a user
       namespace outlived the removal and went on writing as the freed
