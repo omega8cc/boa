@@ -4,6 +4,11 @@
 
 @=> New Features
 
+    * The site page of an upgraded Drupal 10+ site says how old its
+      way-back copy is and what it uses on disk (files and database),
+      measured once after the move; the copy is kept until the user
+      deletes it, as before.
+
     * From Drupal 12's first release on, staticbuild builds its Drupal 12
       lines and distributions with Drush 15, which has no drush.php and
       runs under Drupal's own dr: its development branch until it is
@@ -1376,6 +1381,27 @@
       as missing from its own platform on the Migrate form; a module
       inside a theme's folder, or a theme engine, is no longer recorded as
       a theme.
+
+    * The panel reads each site's, platform's and install profile's own
+      package records. A profile's packages are recorded under the number
+      of its record on the platform, which can equal a site's or a
+      platform's node: the Migrate form, the batch Migrate and the
+      Upgrade counted that node's modules with the profile's, so a target
+      that lacks a module the site runs could look complete; a platform
+      could show another platform's Drupal release, and deleting such a
+      site deleted the profile's records too. Where the number and the
+      platform are both the same, the Upgrade refuses and names the two
+      records, and the Migrate form says its counts may mix them.
+
+    * An Upgrade cut off from outside (a reboot, an out-of-memory kill,
+      the queue's reaper) left the next Upgrade of the site refused over
+      its way-back copy with no word of why. Each run now marks the step
+      it is in and clears the mark when it ends, so the next one names
+      the run and when it was cut off, and tells one cut off before its
+      move from one cut off during it (ask support). Removing such a copy
+      by itself is built and stays switched off until it is armed. A
+      way-back copy of a site named temp.<site> no longer stops the
+      Upgrade of <site>.
 
     * The database broker (boa-dbctl) and the account purge read the
       database login of an account installed on 127.0.0.1, whose server
