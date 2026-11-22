@@ -4,11 +4,11 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 
-### match the box's installed BOA tree -- the hardcoded dev asked the target
-### for a dev-tree account (boa in-octopus ... ${_tRee}) from an lts or pro
-### box, which sends it through the dev-licence gate. Derive from the box's
-### own self-report; fall back to the newest tools ctrl marker, then to the
-### historical dev default. Verbatim in xoct and xmass.
+### This box's installed BOA tree. create installs the copy for the
+### target's own tree (_mig_target_tree), with this one as the fallback
+### when the target cannot say. Derive from the box's own self-report; fall
+### back to the newest tools ctrl marker, then to the historical dev default.
+### Verbatim in xoct and xmass.
 _tRee=$(boa info 2>/dev/null \
   | grep -oE 'Barracuda BOA-[0-9.]+-(dev|lts|pro)' \
   | tail -1 \
@@ -256,26 +256,29 @@ _mig_port_answers() {
 ### one, which says nothing too. A refused or silent port gets the one scan.
 ### The keys go to a file first, so a known_hosts that cannot be written is
 ### one failure, never a scan that seemed to say nothing.
-### Returns 0 once a key for the host is known.
+### Returns 0 once a key for the host is known. With a file as $2 the keys
+### go there in place of known_hosts, for a caller that checks a key before
+### it trusts one, and 0 means the file holds what the host served.
 _mig_keyscan() {
-  local _e _o _h _k _n=0 _b=""
+  local _e _o _h _k _n=0 _b="" _f="${2:-/root/.ssh/known_hosts}"
   _h="$(printf '%s' "${1}" | tr -cd 'A-Za-z0-9._:-')"
   while :; do
     _e="$(mktemp /tmp/mig-scan.XXXXXX 2> /dev/null)" \
       && _o="$(mktemp /tmp/mig-keys.XXXXXX 2> /dev/null)" || {
       rm -f "${_e}"
-      ssh-keyscan -H -T 10 "${1}" >> /root/.ssh/known_hosts 2> /dev/null
-      ssh-keygen -F "${1}" > /dev/null 2>&1
+      ssh-keyscan -H -T 10 "${1}" >> "${_f}" 2> /dev/null
+      if [ -n "${2:-}" ]; then [ -s "${2}" ]; else ssh-keygen -F "${1}" > /dev/null 2>&1; fi
       return $?
     }
     ssh-keyscan -H -T 10 "${1}" > "${_o}" 2> "${_e}"
-    if [ -s "${_o}" ] && ! cat "${_o}" 2> /dev/null >> /root/.ssh/known_hosts; then
-      echo "${_h}: cannot write /root/.ssh/known_hosts" >&2
+    if [ -s "${_o}" ] && ! cat "${_o}" 2> /dev/null >> "${_f}"; then
+      echo "${_h}: cannot write ${_f}" >&2
       rm -f "${_e}" "${_o}"
       return 1
     fi
     rm -f "${_o}"
-    if ssh-keygen -F "${1}" > /dev/null 2>&1; then
+    if { [ -n "${2:-}" ] && [ -s "${2}" ]; } \
+      || { [ -z "${2:-}" ] && ssh-keygen -F "${1}" > /dev/null 2>&1; }; then
       _mig_drop_through "${_h}"
       rm -f "${_e}"
       return 0
@@ -300,6 +303,132 @@ _mig_keyscan() {
     rm -f "${_e}"
     return 1
   done
+}
+
+### $1 the host, $2 the client's own words from a call to it that failed,
+### $3 "inuse" when this box reached the host with the held key before.
+### When the client says the key the host serves is not the one this box
+### holds for it, prints the key served, the entries held in the file the
+### client names, the check to make and the command that forgets them, puts
+### both fingerprints in _MIG_HOSTKEY_SAYS for the caller's own refusal and
+### returns 0. Any other failure returns 1 with nothing printed.
+### The words count only when they are the client's changed-key warning and
+### nothing else, from its first line to its last, and every value is read
+### from its own line of that warning. The other end can put text of its
+### choosing into the client's output before any key is checked (a disconnect
+### message, the algorithm list of a failed negotiation, each printed with its
+### line breaks), but only inside a line the client starts itself, so such
+### output never begins with the warning. A build that words the warning
+### another way is not understood, and the caller's own refusal stands.
+### Nothing is forgotten here: an address handed on to a new server reads the
+### same as another server answering in its place, and only the operator can
+### tell which it is.
+_MIG_HOSTKEY_SAYS=""
+_mig_hostkey_changed() {
+  local _h _w _t _fp _f _l _n="" _x _ht _hfp _same="" _first="" _pub _skip=NO
+  _MIG_HOSTKEY_SAYS=""
+  case "${2}" in
+    *"REMOTE HOST IDENTIFICATION HAS CHANGED"*) : ;;
+    *) return 1 ;;
+  esac
+  _w="$(printf '%s\n' "${2}" | tr -d '\r' | grep -v '^[[:space:]]*$')"
+  printf '%s\n' "${_w}" | awk '
+    function no() { ok = 0; exit }
+    BEGIN { ok = 1; n = 0; end = 0 }
+    { n++ }
+    n == 1 || n == 3 { if ($0 !~ /^@+$/) no(); next }
+    n == 2 { if ($0 !~ /^@ +WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED! +@$/) no(); next }
+    n == 4 { if ($0 != "IT IS POSSIBLE THAT SOMEONE IS DOING SOMETHING NASTY!") no(); next }
+    n == 5 { if ($0 != "Someone could be eavesdropping on you right now (man-in-the-middle attack)!") no(); next }
+    n == 6 { if ($0 != "It is also possible that a host key has just been changed.") no(); next }
+    n == 7 { if ($0 !~ /^The fingerprint for the [A-Za-z0-9-]+ key sent by the remote host is$/) no(); next }
+    n == 8 { if ($0 !~ /^SHA256:[A-Za-z0-9+\/]+\.$/ || length($0) != 51) no(); next }
+    n == 9 { if ($0 != "Please contact your system administrator.") no(); next }
+    n == 10 { if ($0 !~ /^Add correct host key in \/.+ to get rid of this message\.$/) no(); next }
+    n == 11 { if ($0 !~ /^Offending [A-Za-z0-9-]+ key in \/.+:[0-9]+$/) no(); next }
+    end == 0 && /^  / { next }
+    end == 0 { if ($0 !~ /^Host key for .+ has changed and you have requested strict checking\.$/) no(); end = 1; next }
+    end == 1 { if ($0 != "Host key verification failed.") no(); end = 2; next }
+    { no() }
+    END { exit (ok == 1 && end == 2) ? 0 : 1 }' || return 1
+  _h="$(printf '%s' "${1}" | tr -cd 'A-Za-z0-9._:-' | tr '[:upper:]' '[:lower:]')"
+  _t="$(printf '%s\n' "${_w}" \
+    | sed -n '7s/^The fingerprint for the \([A-Za-z0-9-]*\) key sent by the remote host is$/\1/p')"
+  _fp="$(printf '%s\n' "${_w}" | sed -n '8s/\.$//p')"
+  _f="$(printf '%s\n' "${_w}" | sed -n '11s/^Offending [^ ]* key in \(\/.*\):[0-9][0-9]*$/\1/p')"
+  [ -f "${_f}" ] || _f=/root/.ssh/known_hosts
+  echo "ALRT: ${_h} serves an SSH host key that is not the one this box holds for it:"
+  echo "ALRT:   served now: ${_t} ${_fp}"
+  while IFS= read -r _l; do
+    case "${_l}" in
+      "# Host "*" found: line "*)
+        _n="${_l##*found: line }"
+        # a certificate authority or a revoked key is no held host key, and
+        # the command below leaves both in place
+        case "${_n}" in
+          *CA*|*REVOKED*) _skip=YES ;;
+          *) _skip=NO ;;
+        esac
+        _n="${_n%%[!0-9]*}"
+        ;;
+      *)
+        [ "${_skip}" = "NO" ] || continue
+        read -r _x _ht _hfp _x <<< "${_l}"
+        [ -n "${_hfp}" ] || continue
+        echo "ALRT:   held here:  ${_ht} ${_hfp} (${_f} line ${_n:-?})"
+        [ -n "${_first}" ] || _first="${_ht} ${_hfp}"
+        [ -n "${_same}" ] || [ "${_ht}" != "${_t}" ] || _same="${_ht} ${_hfp}"
+        _n=""
+        ;;
+    esac
+  done < <(ssh-keygen -l -E sha256 -F "${_h}" -f "${_f}" 2> /dev/null)
+  # the file of that key type, as the server names its key files: lower
+  # case, a dash written as an underscore
+  _pub="$(printf '%s' "${_t}" | tr '[:upper:]-' '[:lower:]_' | tr -cd 'a-z0-9_')"
+  [ -n "${_pub}" ] || _pub="ed25519"
+  if [ "${3:-}" = "inuse" ]; then
+    echo "ALRT: This box reached ${_h} with the key it holds before. Host keys made anew there read like this, and so does another server answering in its place: find out which before anything is removed."
+  else
+    echo "ALRT: An address handed on to a new server reads like this, and so does another server answering in its place."
+  fi
+  echo "ALRT: Check on ${_h} itself, reached some other way than from this box (its console, its host):"
+  echo "ALRT:   ssh-keygen -l -f /etc/ssh/ssh_host_${_pub}_key.pub"
+  echo "ALRT: Only when that prints the fingerprint served now, forget the old entries here and run this command again:"
+  printf 'ALRT:   ssh-keygen -R %s -f %q\n' "${_h}" "${_f}"
+  _MIG_HOSTKEY_SAYS="served ${_t} ${_fp}, held ${_same:-${_first:-none listed}}"
+  return 0
+}
+
+
+### This box's SSH host key fingerprints, from the files its SSH server is
+### set to serve (the default names when its settings cannot be read), for a
+### source that is served a key it does not hold for this address. The first
+### of ED25519, ECDSA and RSA among them goes to _MIG_HOSTKEY_MAIN.
+_MIG_HOSTKEY_MAIN=""
+_mig_tell_host_keys() {
+  local _k _l _t _all=""
+  _MIG_HOSTKEY_MAIN=""
+  echo "INFO: This box's SSH host key fingerprints, to compare when a source is served a key it does not hold for this address:"
+  while IFS= read -r _k; do
+    [ -f "${_k}.pub" ] || continue
+    _l="$(ssh-keygen -l -E sha256 -f "${_k}.pub" 2> /dev/null \
+      | awk '{ t = $NF; gsub(/[()]/, "", t); print t, $2; exit }')"
+    [ -n "${_l}" ] || continue
+    echo "INFO:   ${_l}"
+    _all="${_all}${_l}"$'\n'
+  done < <(
+    sshd -T 2> /dev/null | awk 'tolower($1) == "hostkey" { print $2 }' | grep . \
+      || ls /etc/ssh/ssh_host_*_key 2> /dev/null
+  )
+  if [ -z "${_all}" ]; then
+    echo "ALRT: could not read this box's SSH host key files; 'ssh-keygen -l -f /etc/ssh/ssh_host_ed25519_key.pub' prints the main one"
+    return 0
+  fi
+  for _t in ED25519 ECDSA RSA; do
+    _MIG_HOSTKEY_MAIN="$(printf '%s' "${_all}" | grep -m 1 "^${_t} SHA256:")"
+    [ -z "${_MIG_HOSTKEY_MAIN}" ] || break
+  done
+  return 0
 }
 
 ###
@@ -735,6 +864,19 @@ for _R in "/data/disk/\${_A}" "/home/\${_A}.ftp" /home/"\${_A}".* "/opt/user/gem
   # the FPM pool users' homes (oN.web, oN.NN.web) are www-data's, never the
   # account's: the same root set the tool walks
   case "\${_R}" in /home/*.web) continue ;; esac
+  # a folder in the shared toolchain parents (root's, sticky, open to every
+  # user) is the account's only when root or one of its own identities owns
+  # it: another account can make the name first, and its files are left as
+  # they are (the parent being sticky, no one else can swap such a folder)
+  case "\${_R}" in
+    /opt/user/*)
+      _O="\$(stat -c %U -- "\${_R}" 2>/dev/null)"
+      case "\${_O}" in
+        root|"\${_A}"|"\${_A}".*) ;;
+        *) echo "INFO: target group pass for \${_A}: \$(printf '%s' "\${_R}" | LC_ALL=C tr -c '[:print:]' '?') is owned by \${_O:-an owner that cannot be read}, not by \${_A} or root: left out"; continue ;;
+      esac
+      ;;
+  esac
   # regrouped through a no-follow handle on each name inside the directory
   # find holds, never by name: only a directory, or a regular file with one
   # link, whose handle is still in none of those groups, so a hard link to
@@ -746,8 +888,8 @@ for _R in "/data/disk/\${_A}" "/home/\${_A}.ftp" /home/"\${_A}".* "/opt/user/gem
 done
 # log/ is the account's own: the record is read and removed only inside the
 # real directory, never through a link or into a FIFO put there
-_W="\$(cd -P /data/disk 2>/dev/null && pwd -P)/\${_A}/log"
-( cd -P -- "/data/disk/\${_A}/log" 2>/dev/null && [ "\$(pwd -P)" = "\${_W}" ] \
+_W="\$(cd -P /data/disk 2>/dev/null && /bin/pwd -P)/\${_A}/log"
+( cd -P -- "/data/disk/\${_A}/log" 2>/dev/null && [ "\$(/bin/pwd -P)" = "\${_W}" ] \
     && [ -f ./instance-group.txt ] || exit 0
   _GID=\$(getent group "\${_A}" 2>/dev/null | cut -d: -f3)
   { [ "\${_G}" = "\${_A}" ] \
@@ -766,6 +908,119 @@ REMOTE
   return "${_X_RC}"
 }
 
+# The account $1's own places here, each a real directory: its home, its own
+# part of each attached store (/mnt/<m>/files/<oN>, its files store and what
+# else of it the legs copy from there, whatever /mnt leads to), the homes of
+# its .ftp and client logins and its gem and npm trees.
+_xcopy_acct_places() {
+  local _a="${1}" _p
+  [[ "${_a}" =~ ^[a-z0-9-]+$ ]] || return 0
+  for _p in "/data/disk/${_a}" /mnt/*/files/"${_a}" "/home/${_a}".* "/opt/user/gems/${_a}.ftp" "/opt/user/npm/${_a}.ftp"; do
+    case "${_p}" in
+      /home/*)
+        # a client login is oN.<client> or oN.<client>-dev; the PHP-FPM
+        # users' homes are www-data's, never the account's
+        [[ "${_p#/home/}" =~ ^${_a}\.[a-z0-9]+(-dev)?$ ]] || continue
+        [ "${_p}" = "/home/${_a}.web" ] && continue
+        ;;
+      /mnt/*)
+        [[ "${_p}" =~ ^/mnt/[A-Za-z0-9._-]+/files/${_a}$ ]] || continue
+        ;;
+    esac
+    [ -d "${_p}" ] && [ ! -L "${_p}" ] && echo "${_p}"
+  done
+  return 0
+}
+# _XCOPY_NAMELESS_LIST set to the numbers no user has here that own an entry
+# in the account $1's places (_xcopy_acct_places), space-separated, walked
+# once a run by the user map. Nothing while passwd does not answer: every
+# number would look like no user's. A walk cut off, or short of the files
+# store's volume, sets _XCOPY_NAMELESS_SHORT: a number it did not meet and no
+# record names travels as that number, as before. Never in a subshell: the
+# list is kept for the run.
+_xcopy_nameless_walk() {
+  local _a="${1}" _p _l
+  local -a _r=()
+  _XCOPY_NAMELESS_LIST=""
+  _XCOPY_NAMELESS_SHORT=""
+  [[ "${_a}" =~ ^[a-z0-9-]+$ ]] || return 0
+  getent passwd root > /dev/null 2>&1 || return 0
+  while IFS= read -r _p; do
+    [ -n "${_p}" ] && _r+=("${_p}")
+  done < <(_xcopy_acct_places "${_a}")
+  if [ "${#_r[@]}" -gt 0 ]; then
+    # find's status on a line of its own: a find killed mid-line leaves a
+    # part of a number before it
+    _l="$( { env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_r[@]}" -xdev -nouser -printf '%U\n' 2> /dev/null
+        printf '\nXMNW-RC:%s\n' "$?"; } | grep -E '^([1-9][0-9]*|XMNW-RC:[0-9]+)$' | sort -u)"
+    _XCOPY_NAMELESS_LIST="$(printf '%s\n' "${_l}" | grep -E '^[1-9][0-9]*$' | sort -un | tr '\n' ' ')"
+    _l="$(printf '%s\n' "${_l}" | sed -n 's/^XMNW-RC://p' | head -n 1)"
+    [[ "${_l}" =~ ^[0-9]+$ ]] && [ "${_l}" -lt 128 ] || _XCOPY_NAMELESS_SHORT=YES
+  fi
+  # the files store's volume not there: the walk did not reach it
+  if [ -L "/data/disk/${_a}/static/files" ] && [ ! -d "/data/disk/${_a}/static/files" ]; then
+    _XCOPY_NAMELESS_SHORT=YES
+  fi
+  return 0
+}
+# The numbers no user has here that own the account $1's files, each on its
+# own line with how its legs carry it: "<uid> own" when root recorded it here
+# as one of the account's removed identities (/data/conf/acct-uids/<oN>.gone,
+# which the ltd worker and the Octopus upgrade write before deluser frees
+# it), "<uid> none" for any other: another account's removed identity, a
+# gone account's, or one no record names. Root's control folder checks here
+# take only the first as the account's own, and a move keeps that: by number
+# alone either would land on whatever the target holds the number for,
+# another account's identity or a number free for its next one. Every number
+# root recorded here is listed whether or not the walk met it: an entry for
+# a number that owns nothing in the account's places moves nothing. A number
+# is no one's only when one list of passwd that holds root lacks it and a
+# lookup of it says so too: a read that failed part way, or a lookup that
+# failed, must never make a user's number look like no one's. A number a
+# user has travels by that user's name, as before. The caller walks first
+# (_xcopy_nameless_walk), in the shell that keeps the list.
+_xcopy_nameless_owners() {
+  local _a="${1}" _d=/data/conf/acct-uids _f _u _n _x _r
+  local -A _own=() _rec=() _seen=() _has=()
+  [[ "${_a}" =~ ^[a-z0-9-]+$ ]] || return 0
+  while IFS=: read -r _n _x _u _; do
+    [[ "${_u}" =~ ^[0-9]+$ ]] && _has[${_u}]=1
+  done < <(getent passwd 2> /dev/null)
+  [ -n "${_has[0]:-}" ] || return 0
+  for _f in "${_d}"/*.gone "${_d}/.purged"; do
+    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
+    while read -r _u _x; do
+      [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+      _rec[${_u}]=1
+      [ "${_f}" = "${_d}/${_a}.gone" ] && _own[${_u}]=1
+    done < "${_f}"
+  done
+  for _u in ${_XCOPY_NAMELESS_LIST} "${!_rec[@]}"; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    [ -z "${_seen[${_u}]:-}${_has[${_u}]:-}" ] || continue
+    _seen[${_u}]=1
+    getent passwd "${_u}" > /dev/null 2>&1
+    _r=$?
+    [ "${_r}" -eq 2 ] || continue
+    if [ -n "${_own[${_u}]:-}" ]; then
+      echo "${_u} own"
+    else
+      echo "${_u} none"
+    fi
+  done | sort -n
+}
+
+# Set-ID bits never ride a leg that maps owners or groups: rsync sets a
+# file's mode after its owner, so a set-uid or set-gid file a map gives
+# another owner or group (a login the target lacks onto the account, a
+# number no user has onto 65533, the account's group onto users) would keep
+# its bits under that owner. Files only: a folder's set-gid, the web
+# group's, stays. No BOA writer makes a set-ID file in an account's places.
+# Prints the rsync option while a map is set, nothing otherwise.
+_xcopy_map_setid_off() {
+  [ -z "${_XCOPY_GMAP}${_XCOPY_UMAP}" ] || printf '%s' '--chmod=Fug-s'
+}
+
 # The account's identities here map onto the target's: each onto its own
 # name there (xcopy copies under the same name only, _xcopy_refuse_rename;
 # on a rename, kept as a second line of defence, onto the destination's of
@@ -778,19 +1033,37 @@ REMOTE
 # An identity whose name the target does not have (yet: a client's login
 # comes with the limited-shell worker; a PHP-FPM user oN.<ver>.web exists
 # only for a version that box runs) maps onto <dst> itself, so the
-# target's identities are asked; a list that cannot be read is refused,
-# never guessed (a DENY, the dry run is not clean, a live run stops). The
-# map names every identity: no wildcard, which an older rsync would hand
-# to the receiving shell. Sets _XCOPY_UMAP.
+# target's identities are asked; a list that cannot be read (no answer,
+# one cut short, or one without root) is refused, never guessed (a DENY,
+# the dry run is not clean, a live run stops). The map names every
+# identity: no wildcard, which an older rsync would hand to the
+# receiving shell.
+# The numbers no user has here that own the account's files follow the
+# names (_xcopy_nameless_owners), each by number: one root recorded here as
+# the account's removed identity onto <dst>, any other onto
+# _XCOPY_NAMELESS_UID, which no user has and no tool hands out, so the
+# target never holds the account's files under a number free for, or held
+# by, another account's identity, and its checks read them as these do
+# here. A target where a user has that number gets those onto nobody,
+# which no account's check trusts, or, with no nobody either, as numbers,
+# as before; a line says so, the dry run's too. The lines name the numbers
+# the walk met. Sets _XCOPY_UMAP.
 _xcopy_acct_umap() {   # 1 account here 2 account on the target 3 target
-  local _n _t _have="" _m=""
+  local _n _t _ans="" _have="" _m="" _u _k _own="" _none="" _rfree=YES _to="" _d="" _w=land
   _XCOPY_UMAP=""
   if [[ "${1}" =~ ^[a-zA-Z0-9_-]+$ ]] && [[ "${2}" =~ ^[a-zA-Z0-9_-]+$ ]]; then
-    _have=$(ssh -o BatchMode=yes -o ConnectTimeout=15 root@"${3}" \
-      "getent passwd | cut -d: -f1 | grep -E '^${2}(\.[a-zA-Z0-9._-]+)?\$' | sed 's/^/XMID:/'" \
-      2>/dev/null | grep -x -E 'XMID:[a-zA-Z0-9._-]+' | cut -d: -f2)
+    _ans=$(ssh -o BatchMode=yes -o ConnectTimeout=15 root@"${3}" \
+      "getent passwd | cut -d: -f1,3 | grep -E '^(root|nobody|${2}(\.[a-zA-Z0-9._-]+)?):|:${_XCOPY_NAMELESS_UID}\$' | sed 's/^/XMID:/'; echo XMID-END" \
+      2>/dev/null)
   fi
-  if ! grep -qxF -- "${2}" <<< "${_have}"; then
+  # read through pipes, never a here-string: a full /tmp must not turn
+  # into a DENY of its own
+  _have=$(printf '%s\n' "${_ans}" | grep -x -E 'XMID:[a-zA-Z0-9._-]+:[0-9]+' | cut -d: -f2)
+  # held whatever the holder's name
+  printf '%s\n' "${_ans}" | grep -q -E "^XMID:[^:]*:${_XCOPY_NAMELESS_UID}\$" && _rfree=NO
+  if ! printf '%s\n' "${_ans}" | grep -qx 'XMID-END' \
+    || ! printf '%s\n' "${_have}" | grep -qxF root \
+    || ! printf '%s\n' "${_have}" | grep -qxF -- "${2}"; then
     echo "DENY: could not read the identities of ${2} on ${3}, or ${2} is not installed there yet; the copy of ${1} is never owned by a guessed name"
     _XCOPY_NOT_CLEAN=YES
     [ "${_MODE}" = "LIVE" ] && exit 1
@@ -798,9 +1071,47 @@ _xcopy_acct_umap() {   # 1 account here 2 account on the target 3 target
   fi
   for _n in $(getent passwd | cut -d: -f1 | grep -E "^${1}(\.[a-zA-Z0-9._-]+)?$"); do
     _t="${2}${_n#"${1}"}"
-    grep -qxF -- "${_t}" <<< "${_have}" || _t="${2}"
+    printf '%s\n' "${_have}" | grep -qxF -- "${_t}" || _t="${2}"
     _m="${_m:+${_m},}${_n}:${_t}"
   done
+  _xcopy_nameless_walk "${1}"
+  while read -r _u _k; do
+    case "${_k}" in
+      own)
+        _m="${_m:+${_m},}${_u}:${2}"
+        # said for a number the walk met: the records keep numbers that may
+        # own nothing here
+        case " ${_XCOPY_NAMELESS_LIST} " in
+          *" ${_u} "*) _own="${_own} ${_u}" ;;
+        esac
+        ;;
+      none)
+        _to="${_XCOPY_NAMELESS_UID}"
+        if [ "${_rfree}" != "YES" ]; then
+          _to=""
+          printf '%s\n' "${_have}" | grep -qxF nobody && _to=nobody
+        fi
+        [ -z "${_to}" ] || _m="${_m:+${_m},}${_u}:${_to}"
+        case " ${_XCOPY_NAMELESS_LIST} " in
+          *" ${_u} "*) _none="${_none} ${_u}" ;;
+        esac
+        ;;
+    esac
+  done < <(_xcopy_nameless_owners "${1}")
+  [ "${_MODE}" = "LIVE" ] || { _d="[DRY] "; _w="would land"; }
+  [ -z "${_own}" ] \
+    || echo "INFO: ${1}: ${_d}its files owned by its removed identities (uid${_own}) ${_w} as ${2} on ${3}"
+  if [ -n "${_none}" ]; then
+    if [ "${_rfree}" = "YES" ]; then
+      echo "INFO: ${1}: ${_d}its files owned by a uid no user has here and no record names its own (${_none# }) ${_w} as uid ${_XCOPY_NAMELESS_UID} on ${3}, which no user has and none is given"
+    elif [ "${_to}" = "nobody" ]; then
+      echo "ALRT: ${1}: ${_d}a user has uid ${_XCOPY_NAMELESS_UID} on ${3}: its files owned by a uid no user has here and no record names its own (${_none# }) ${_w} as nobody there"
+    else
+      echo "ALRT: ${1}: ${_d}a user has uid ${_XCOPY_NAMELESS_UID} on ${3} and it has no nobody: its files owned by a uid no user has here and no record names its own (${_none# }) keep those numbers"
+    fi
+  fi
+  [ -z "${_XCOPY_NAMELESS_SHORT}" ] \
+    || echo "ALRT: ${1}: ${_d}the walk of its places for files whose owner no user has here was cut short: a number it did not meet and no record names keeps that number on ${3}"
   _XCOPY_UMAP="${_m}"
   return 0
 }
@@ -953,6 +1264,280 @@ _disable_chattr() {
   fi
 }
 
+### A copy keeps the names its source serves, and public DNS keeps them on
+### the source: an order this box made for one could only fail, under the
+### account's Let's Encrypt registration that travelled with tools/le, whose
+### failed validations count against the source's own orders too. Each copied
+### site gets the stop marker under its own name before its verify, so the
+### verify keeps the certificate that travelled and the nightly renews none
+### here. A marker already there is left as it is; one put here is owned by
+### the account and added to log/xcopy_le_kept.txt at once, so a run stopped
+### halfway lists every marker it put. A name under this box's own one (the
+### rename gave it to this box) gets none. An account with no tools/le/.ctrl
+### has never had a site with SSL on, so there is nothing to keep. hosting_le
+### honours the marker on a verify only beside the site's certificate, so a
+### site with SSL on and none is named. A copy that is ever to serve the
+### names gets its listed markers removed, then each site verified.
+_XCOPY_LE_KEPT=""
+_xcopy_le_mark_here() {
+  local _t="./.${1}.put.$$.${RANDOM}"
+  { [ -e "./${1}" ] || [ -L "./${1}" ]; } && return 2
+  rm -f -- "${_t}"
+  if perl -e "${_XCOPY_PUT_PL}" "${_t}" "${2}" "${3}" 644 < /dev/null \
+    && mv -f -T -- "${_t}" "./${1}"; then
+    return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+### The name $1 added to log/xcopy_le_kept.txt (one name a line, sorted).
+_xcopy_le_list_add() {
+  { _xcopy_read_in "${_USR}/log" xcopy_le_kept.txt
+    echo
+    printf '%s\n' "${1}"; } | grep -E '^[A-Za-z0-9][A-Za-z0-9.-]*$' | sort -u \
+    | _xcopy_in_real_dir "${_USR}/log" _xcopy_write_here xcopy_le_kept.txt
+}
+_xcopy_le_keep() {
+  local _u _g _rc
+  [[ "${1}" =~ ^[A-Za-z0-9][A-Za-z0-9.-]*$ ]] || return 1
+  case " ${_XCOPY_LE_KEPT} " in
+    *" ${1} "*) return 0 ;;
+  esac
+  if [ -n "${_hName}" ]; then
+    case "${1}" in
+      "${_hName}"|*".${_hName}") return 0 ;;
+    esac
+  fi
+  _xcopy_in_real_dir "${_USR}/tools/le/.ctrl" true || return 0
+  _u=$(id -u -- "${_THIS_HM_USER}" 2> /dev/null)
+  _g=$(id -g -- "${_THIS_HM_USER}" 2> /dev/null)
+  [[ "${_u}" =~ ^[0-9]+$ ]] && [[ "${_g}" =~ ^[0-9]+$ ]] || return 1
+  _xcopy_in_real_dir "${_USR}/tools/le/.ctrl" \
+    _xcopy_le_mark_here "dont-overwrite-${1}.pid" "${_u}" "${_g}"
+  _rc=$?
+  if [ "${_rc}" -eq 0 ]; then
+    _XCOPY_LE_KEPT="${_XCOPY_LE_KEPT} ${1}"
+    _xcopy_le_list_add "${1}" \
+      || echo "ALRT: site ${1} on ${_oct}: its stop marker is put but could not be listed in ${_USR}/log/xcopy_le_kept.txt"
+  elif [ "${_rc}" -ne 2 ]; then
+    echo "ALRT: site ${1} on ${_oct}: its Let's Encrypt stop marker could not be put; its verify can order a certificate for the source's name"
+  fi
+  _xcopy_le_order_named "${1}" || return 0
+  if ! _xcopy_in_real_dir "${_USR}/tools/le/certs/${1}" true \
+    && _xcopy_read_in "${_USR}/.drush" "${1}.alias.drushrc.php" \
+      | grep -qE "'ssl_enabled' => '?[12]'?"; then
+    echo "WARN: site ${1} on ${_oct}: no certificate travelled for it, so its verify here can still order one for the source's name, which fails while DNS points at the source"
+  fi
+  return 0
+}
+### Whether hosting_le's verify orders for the site $1 at all: it names the
+### site's redirect target when there is one, and leaves out the service
+### domains and the .nodns. names, and the .temp., .tmp., .test., .dev. kind
+### unless the account's ssl-yes-dev flag names it.
+_xcopy_le_order_named() {
+  local _m="${1}" _r
+  _r=$(_xcopy_read_in "${_USR}/.drush" "${1}.alias.drushrc.php" \
+    | sed -n "s/^.*'redirection' => '\([A-Za-z0-9][A-Za-z0-9.-]*\)'.*$/\1/p" | head -1)
+  [ -n "${_r}" ] && _m="${_r}"
+  case "${_m}" in
+    *.host8.biz|*.host8.io|*.host8.cc|*.boa.biz|*.boa.io|*.boa.cc) return 1 ;;
+    *.aegir.biz|*.aegir.io|*.aegir.cc|*.o8.biz|*.o8.io|*.o8.cc|*.nodns.*) return 1 ;;
+  esac
+  [ -e "${_USR}/static/control/ssl-yes-dev-${_m}.info" ] && return 0
+  case "${_m}" in
+    *.temp.*|*.tmp.*|*.temporary.*|*.test.*|*.testing.*|*.dev.*|*.devel.*) return 1 ;;
+  esac
+  return 0
+}
+### What this import put, said once at its end.
+_xcopy_le_kept_put() {
+  local _n
+  [ -n "${_XCOPY_LE_KEPT}" ] || return 0
+  _n=$(printf '%s\n' ${_XCOPY_LE_KEPT} | wc -l | tr -d ' ')
+  echo "INFO: ${_n} copied site(s) of ${_oct} keep the certificate that travelled and order none here:"
+  echo "INFO: a stop marker each in ${_USR}/tools/le/.ctrl, listed in ${_USR}/log/xcopy_le_kept.txt;"
+  echo "INFO: remove those markers, then verify each site, before this copy serves any of the names"
+}
+### The verify task of each site this import scheduled one for, kept in
+### log/import_verifies.txt for post-mig on this box to report: the verifies
+### run once post-mig starts cron here. The site's newest verify is read
+### before the scheduling and after it, and taken only when the call made it,
+### when it is the one already queued that the panel hands back (the rename
+### queues one), or when it changed during the call; otherwise the site is
+### kept with none: a call that made no task leaves only the source's own
+### verifies, which never ran here.
+_XCOPY_VERIFY_SITES=""
+_XCOPY_VERIFY_DB=""
+_XCOPY_VERIFY_PRE=""
+_XCOPY_VERIFY_AT=""
+### The newest verify task of the site $1 as "<nid> <status> <changed>".
+_xcopy_verify_last() {
+  [ -n "${_XCOPY_VERIFY_DB}" ] || return 0
+  mysql --silent -u root -N -B "${_XCOPY_VERIFY_DB}" -e "SELECT t.nid, t.task_status, tn.changed FROM hosting_task t JOIN node tn ON tn.nid = t.nid AND tn.vid = t.vid JOIN node s ON s.nid = t.rid JOIN hosting_site hs ON hs.vid = s.vid WHERE s.type = 'site' AND s.title = '${1}' AND hs.status <> -2 AND t.task_type = 'verify' ORDER BY t.nid DESC LIMIT 1" 2> /dev/null \
+    | head -1 | tr '\t' ' ' | tr -cd '0-9 -'
+}
+_xcopy_verify_before() {
+  _XCOPY_VERIFY_PRE=""
+  _XCOPY_VERIFY_AT=$(date +%s)
+  [[ "${1}" =~ ^[A-Za-z0-9][A-Za-z0-9.-]*$ ]] || return 0
+  [ -n "${_XCOPY_VERIFY_DB}" ] \
+    || _XCOPY_VERIFY_DB=$(_xcopy_read_in "${_USR}/log" panel_db.txt | tr -cd 'A-Za-z0-9_')
+  _XCOPY_VERIFY_PRE=$(_xcopy_verify_last "${1}")
+}
+_xcopy_verify_note() {
+  local _nid=0 _n _s _c _pn _ps _pc
+  [[ "${1}" =~ ^[A-Za-z0-9][A-Za-z0-9.-]*$ ]] || return 0
+  read -r _n _s _c <<< "$(_xcopy_verify_last "${1}")"
+  read -r _pn _ps _pc <<< "${_XCOPY_VERIFY_PRE}"
+  if [[ "${_n}" =~ ^[0-9]+$ ]]; then
+    if [[ ! "${_pn}" =~ ^[0-9]+$ ]] || [ "${_n}" -gt "${_pn}" ]; then
+      _nid="${_n}"
+    elif [ "${_n}" = "${_pn}" ] && { [ "${_ps}" = "0" ] || [ "${_ps}" = "-1" ]; }; then
+      _nid="${_n}"
+    elif [[ "${_c}" =~ ^[0-9]+$ ]] && [ "${_c}" -ge "${_XCOPY_VERIFY_AT}" ]; then
+      _nid="${_n}"
+    fi
+  fi
+  _XCOPY_VERIFY_SITES="${_XCOPY_VERIFY_SITES} ${1}:${_nid}"
+  [ "${_nid}" = "0" ] \
+    && echo "ALRT: site ${1} on ${_oct}: the panel holds no verify of it from this import; post-mig reports it as not found"
+  return 0
+}
+### A list an earlier import left (or one that travelled in log/) is
+### replaced, or removed when this import scheduled no verify.
+_xcopy_verify_list_put() {
+  if [ -z "${_XCOPY_VERIFY_SITES}" ] || [ -z "${_XCOPY_VERIFY_DB}" ]; then
+    _xcopy_in_real_dir "${_USR}/log" rm -f -- ./import_verifies.txt
+    return 0
+  fi
+  { echo "db=${_XCOPY_VERIFY_DB}"
+    printf '%s\n' ${_XCOPY_VERIFY_SITES} | sed 's/^\(.*\):\([0-9]*\)$/site=\1 \2/'; } \
+    | _xcopy_in_real_dir "${_USR}/log" _xcopy_write_here import_verifies.txt
+}
+### The first error line of the task $2's current run in the panel database
+### $1, as the panel's task log shows it: the client's escapes undone (a line
+### break or tab read as a space), tags and anything not printable taken out,
+### cut to 300 characters; nothing when there is none. The task id is digits
+### only and the database name a plain identifier, as the list that names
+### them is read.
+_xcopy_verify_first_error() {
+  [[ "${1}" =~ ^[A-Za-z0-9_]{1,64}$ ]] && [[ "${2}" =~ ^[0-9]{1,12}$ ]] || return 0
+  mysql --silent -u root -N -B "${1}" -e "SELECT l.message FROM hosting_task_log l JOIN node n ON n.vid = l.vid WHERE n.nid = ${2} AND l.type = 'error' ORDER BY l.lid LIMIT 1" 2> /dev/null \
+    | head -n 1 \
+    | sed -e 's/\\\\/\x1f/g' -e 's/\\[ntr0]/ /g' -e 's/\x1f/\\/g' -e 's/<[^>]*>//g' \
+    | tr -c '[:print:]' ' ' | tr -s ' ' | cut -c1-300 | sed 's/^ *//; s/ *$//'
+}
+### Run by post-mig on the target: each copied site's verify that an import
+### scheduled, waited for up to 30 minutes once cron runs again (not at all
+### when cron is down: the verifies cannot run), and its result printed and
+### kept in log/import_verifies.report.txt. Only a list root wrote after the
+### account's imported.pid is read (the account owns log/ and could put one
+### of its own there); it is removed once reported, so a later post-mig says
+### nothing again. A panel database that is gone ends the wait at once and
+### the list is kept as import_verifies.unread.txt; a server that cannot be
+### reached for two minutes ends it too, and the list stays for a later
+### post-mig.
+_xcopy_verify_report() {
+  local _l _a _u _txt _db _pairs _ids _rows _p _s _id _st _pend _end _rep
+  local _ok _warn _fail _left _n _next _cron=YES _gone _qf _sch _src _why
+  pgrep -x cron > /dev/null 2>&1 || _cron=NO
+  for _l in /data/disk/*/log/import_verifies.txt; do
+    [ -f "${_l}" ] || continue
+    _u="${_l%/log/import_verifies.txt}"
+    _a="${_u##*/}"
+    [[ "${_a}" =~ ^[a-z0-9]+$ ]] || continue
+    [ -f "${_u}/log/imported.pid" ] || continue
+    [ "${_u}/log/imported.pid" -nt "${_l}" ] && continue
+    if ! _txt=$(_xcopy_in_real_dir "${_u}/log" _xcopy_read_root_here import_verifies.txt); then
+      echo "ALRT: ${_a}: ${_l} is not a list this tool wrote; not read"
+      continue
+    fi
+    _db=$(printf '%s\n' "${_txt}" | sed -n 's/^db=\([A-Za-z0-9_]\{1,64\}\)$/\1/p' | head -1)
+    _pairs=$(printf '%s\n' "${_txt}" \
+      | sed -n 's/^site=\([A-Za-z0-9][A-Za-z0-9.-]*\) \([0-9]\{1,12\}\)$/\1:\2/p' | sort -u)
+    if [ -z "${_db}" ] || [ -z "${_pairs}" ]; then
+      echo "ALRT: ${_a}: ${_l} cannot be read; its copied sites' verifies are not reported"
+      _xcopy_in_real_dir "${_u}/log" mv -f -T -- ./import_verifies.txt ./import_verifies.unread.txt
+      continue
+    fi
+    _ids=$(printf '%s\n' ${_pairs} | sed 's/^.*://' | grep -v '^0$' | sort -u | tr '\n' ',')
+    _ids="${_ids%,}"
+    _n=$(printf '%s\n' ${_pairs} | wc -l | tr -d ' ')
+    if [ "${_cron}" = "YES" ]; then
+      echo "INFO: ${_a}: waiting up to 30 minutes for the verifies of ${_n} copied site(s)"
+      _end=$(( $(date +%s) + 1800 ))
+    else
+      echo "ALRT: ${_a}: cron is not running, so the verifies of its ${_n} copied site(s) cannot run; their state now:"
+      _end=0
+    fi
+    _next=$(( $(date +%s) + 120 ))
+    _rows=""
+    _gone=""
+    _qf=""
+    while [ -n "${_ids}" ]; do
+      if ! _rows=$(mysql --silent -u root -N -B "${_db}" -e "SELECT t.nid, t.task_status FROM hosting_task t JOIN node tn ON tn.nid = t.nid AND tn.vid = t.vid WHERE t.nid IN (${_ids})" 2> /dev/null); then
+        _rows=""
+        [ -n "${_qf}" ] || _qf=$(date +%s)
+        _sch=$(mysql --silent -u root -N -B -e "SELECT SCHEMA_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = '${_db}'" 2> /dev/null)
+        _src=$?
+        if [ "${_src}" -eq 0 ] && [ -z "${_sch}" ]; then
+          _gone=GONE
+          break
+        fi
+        if [ $(( $(date +%s) - _qf )) -ge 120 ] || [ "$(date +%s)" -ge "${_end}" ]; then
+          _gone=UNREAD
+          break
+        fi
+        sleep 20
+        continue
+      fi
+      _qf=""
+      _pend=$(printf '%s\n' "${_rows}" | awk -F'\t' '$2 == 0 || $2 == -1' | wc -l | tr -d ' ')
+      [ "${_pend}" -eq 0 ] && break
+      [ "$(date +%s)" -ge "${_end}" ] && break
+      if [ "$(date +%s)" -ge "${_next}" ]; then
+        echo "INFO: ${_a}: ${_pend} of ${_n} verifies still queued or running"
+        _next=$(( $(date +%s) + 120 ))
+      fi
+      sleep 20
+    done
+    if [ "${_gone}" = "GONE" ]; then
+      echo "ALRT: ${_a}: its panel database ${_db} is gone; its copied sites' verifies are not reported"
+      _xcopy_in_real_dir "${_u}/log" mv -f -T -- ./import_verifies.txt ./import_verifies.unread.txt
+      continue
+    elif [ "${_gone}" = "UNREAD" ]; then
+      echo "ALRT: ${_a}: its panel database ${_db} could not be read; the list stays for the next post-mig"
+      continue
+    fi
+    _ok=0; _warn=0; _fail=0; _left=0; _rep=""
+    for _p in ${_pairs}; do
+      _s="${_p%:*}"
+      _id="${_p##*:}"
+      _st=""
+      [ "${_id}" != "0" ] \
+        && _st=$(printf '%s\n' "${_rows}" | awk -F'\t' -v i="${_id}" '$1 == i { print $2 }' | head -1)
+      case "${_st}" in
+        1) _ok=$(( _ok + 1 ))
+           _rep="${_rep}INFO: ${_a}: site ${_s} verify OK"$'\n' ;;
+        3) _warn=$(( _warn + 1 ))
+           _rep="${_rep}WARN: ${_a}: site ${_s} verify ended with warnings (task ${_id})"$'\n' ;;
+        2) _fail=$(( _fail + 1 ))
+           _why=$(_xcopy_verify_first_error "${_db}" "${_id}")
+           _rep="${_rep}ALRT: ${_a}: site ${_s} verify FAILED (task ${_id}): ${_why:-read its log in the panel}"$'\n' ;;
+        0|-1) _left=$(( _left + 1 ))
+           _rep="${_rep}ALRT: ${_a}: site ${_s} verify still queued or running (task ${_id})"$'\n' ;;
+        *) _fail=$(( _fail + 1 ))
+           _rep="${_rep}ALRT: ${_a}: site ${_s}: its verify task from the import could not be found in the panel"$'\n' ;;
+      esac
+    done
+    _rep="${_rep}INFO: ${_a}: ${_n} copied site(s) verified: ${_ok} OK, ${_warn} with warnings, ${_fail} failed, ${_left} unfinished"$'\n'
+    printf '%s' "${_rep}"
+    printf '%s' "${_rep}" | _xcopy_in_real_dir "${_u}/log" _xcopy_write_here import_verifies.report.txt
+    _xcopy_in_real_dir "${_u}/log" rm -f -- ./import_verifies.txt
+  done
+  return 0
+}
+
 ### The --runner-wait option of a forced verify in an import's verify stage:
 ### what is left of one budget for the whole stage, set where the panel's
 ### hosting knows the option; nothing once 30 s or less is left, or without
@@ -1031,10 +1616,19 @@ _migrate_sites() {
     fi
     if [ -e "${_USR}/.drush/${_Dom}.alias.drushrc.php" ]; then
       echo Dom is ${_Dom}
+      ### Every copied site keeps the certificate that travelled (see
+      ### _xcopy_le_keep), whether or not its verify runs now.
+      if [ "${_cmd}" = "import" ] && [ "${_XCOPY_SITES_STAGE}" != "load" ]; then
+        _xcopy_le_keep "${_Dom}"
+      fi
       # .drush is oN's: the alias read inside the real directory, never
-      # through a link or into a FIFO put at the name
-      _Dir=$(_xcopy_read_in "${_USR}/.drush" "${_Dom}.alias.drushrc.php" | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g")
-      _Plr=$(_xcopy_read_in "${_USR}/.drush" "${_Dom}.alias.drushrc.php" | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g")
+      # through a link or into a FIFO put at the name; each value is read
+      # whole by its own key: a Platform Path may hold a colon, and another
+      # key's value may end in site_path or root
+      _Dir=$(_xcopy_read_in "${_USR}/.drush" "${_Dom}.alias.drushrc.php" \
+        | sed -n "s/^[[:space:]]*'site_path'[[:space:]]*=>[[:space:]]*'\([^']*\)'.*/\1/p" | head -n 1)
+      _Plr=$(_xcopy_read_in "${_USR}/.drush" "${_Dom}.alias.drushrc.php" \
+        | sed -n "s/^[[:space:]]*'root'[[:space:]]*=>[[:space:]]*'\([^']*\)'.*/\1/p" | head -n 1)
       # site_path comes from the account's own alias and points into its own
       # tree: it is confined to the account and drushrc.php is read inside its
       # real directory, so root reads and writes a site only there. _DIR_OK
@@ -1094,7 +1688,9 @@ _migrate_sites() {
         _XCOPY_MET_DIRS="${_XCOPY_MET_DIRS} ${_SIDN}"
         case " ${_XCOPY_LOADED_DIRS} " in
           *" ${_SIDN} "*)
+            _xcopy_verify_before "${_Dom}"
             _run_drush8_hmr_cmd "hosting-task @${_Dom} verify --force$(_xcopy_runner_wait_opt)"
+            _xcopy_verify_note "${_Dom}"
             echo "INFO: site ${_Dom} verify on ${_oct} scheduled"
           ;;
           *)
@@ -1142,13 +1738,11 @@ _migrate_sites() {
           _DB_FRESH=NO
           if [ ! -d "/var/lib/mysql/${_DBN}" ]; then
             _DB_FRESH=YES
-            if [ -e "/data/conf/${_USR}_use_proxysql.txt" ]; then
-              _SQL_CONNECT=127.0.0.1
-              _THIS_DB_PORT=6033
-              mysqladmin -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
-            else
-              mysqladmin -u root flush-privileges
-            fi
+            # The CREATE DATABASE below uses the connection set before the
+            # import: the host from barracuda.cnf, the port from the account's
+            # own octopus.cnf (ProxySQL's, 6033, for an account boa in-oct
+            # installed). No marker picks another here.
+            mysqladmin -u root flush-privileges
             [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL3 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
             if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
               _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>/dev/null | tr -d '\n')
@@ -1177,13 +1771,7 @@ ALTER USER '${_DBN}'@'%' IDENTIFIED BY '${_DBP}';
 EOFMYSQL
             _xcopy_db_revoke_wildcard "${_DBN}" localhost
             _xcopy_db_revoke_wildcard "${_DBN}" %
-            if [ -e "/data/conf/${_USR}_use_proxysql.txt" ]; then
-              _SQL_CONNECT=127.0.0.1
-              _THIS_DB_PORT=6033
-              mysqladmin -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
-            else
-              mysqladmin -u root flush-privileges
-            fi
+            mysqladmin -u root flush-privileges
             echo "INFO: site ${_Dom} db setup on ${_oct} complete"
           else
             echo "ALRT: site ${_Dom} db ${_DBN} already exists!"
@@ -1207,10 +1795,6 @@ EOFMYSQL
             _XCOPY_IMPORT_FAILED_DBS="${_XCOPY_IMPORT_FAILED_DBS} ${_DBN}:not-owned"
             echo "ALRT: site ${_Dom} db ${_DBN} exists but the account cannot prove it owns it -- NOT loaded"
           elif [ -e "${_USR}/src/${_DBN}" ]; then
-            if [ -e "/data/conf/${_USR}_use_proxysql.txt" ]; then
-              _SQL_CONNECT=127.0.0.1
-              _THIS_DB_PORT=6033
-            fi
             [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL4 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp"
             if [ -x "/usr/local/bin/mydumper" ]; then
               _MYQUICK_ITD=$(mydumper -V 2>&1 \
@@ -1243,7 +1827,9 @@ EOFMYSQL
             ### a transferred dir without it is a partial/hollow dump and
             ### loading it would silently restore an incomplete database.
             ### The load is binlogged, so a replica of this box gets it too.
+            ### A 5.7 dump's utf8mb4 tables keep utf8mb4_general_ci on 8.x.
             _myloader_binlog_opts
+            _myloader_utf8mb4_opts
             if ! _xcopy_in_real_dir "${_USR}/src/${_DBN}" test -e ./metadata; then
               _XCOPY_IMPORT_FAIL=$(( ${_XCOPY_IMPORT_FAIL:-0} + 1 ))
               _XCOPY_IMPORT_FAILED_DBS="${_XCOPY_IMPORT_FAILED_DBS} ${_DBN}"
@@ -1257,6 +1843,7 @@ EOFMYSQL
               --threads=4 \
               --drop-table=DROP \
               "${_MYLOADER_BINLOG[@]}" \
+              "${_MYLOADER_UTF8MB4[@]}" \
               --verbose=2; then
               _XCOPY_SITE_IMPORT_OK=YES
               echo "INFO: site ${_Dom} db import on ${_oct} complete"
@@ -1302,7 +1889,9 @@ EOFMYSQL
               _XCOPY_LOADED_NAMES="${_XCOPY_LOADED_NAMES} ${_SIDN}=${_Dom}"
             fi
           elif [ -e "${_USR}/.drush/${_Dom}.alias.drushrc.php" ]; then
+            _xcopy_verify_before "${_Dom}"
             _run_drush8_hmr_cmd "hosting-task @${_Dom} verify --force$(_xcopy_runner_wait_opt)"
+            _xcopy_verify_note "${_Dom}"
             echo "INFO: site ${_Dom} verify on ${_oct} scheduled"
           else
             echo "ALRT: site ${_Dom} verify failure due to missing ${_USR}/.drush/${_Dom}.alias.drushrc.php"
@@ -1517,10 +2106,10 @@ _xcopy_heal_fpm_pins() {
   # import runs with cron stopped, so the parked copy is run here.
   [ -e "${_ltd}" ] || _ltd=/var/xdrago/.manage_ltd_users.sh.off
   if [ -e "${_ltd}" ]; then
-    bash "${_ltd}" &> /dev/null
+    _ACCT_RELOAD_HOLD=NO bash "${_ltd}" &> /dev/null
     # The sockets exist now; re-arm the include generator for pass two.
     _xcopy_in_real_dir "${_ctl}" rm -f -- ./.multi-nginx-fpm.pid
-    bash "${_ltd}" &> /dev/null
+    _ACCT_RELOAD_HOLD=NO bash "${_ltd}" &> /dev/null
   else
     _ltd=/var/xdrago/manage_ltd_users.sh
   fi
@@ -1540,7 +2129,7 @@ _xcopy_heal_fpm_pins() {
     echo "ALRT: account ${_acct}: pinned PHP pool(s) NOT live after heal:${_missing}"
     echo "ALRT: those sites are being served by the account default pool --"
     echo "ALRT: check /opt/php<NN>/bin/php exists here and re-run:"
-    echo "ALRT:   bash ${_ltd}"
+    echo "ALRT:   _ACCT_RELOAD_HOLD=NO bash ${_ltd}"
   else
     echo "INFO: account ${_acct}: every pinned PHP pool is live"
   fi
@@ -2116,6 +2705,21 @@ _xcopy_panel_context_name() {
   return 0
 }
 
+# This server's name as export records it in log/sourcefqdn.txt: the account's
+# own server_master alias (a target keeps its own, so on a server that received
+# the account it names that server), else hostname -f. Read inside the real
+# .drush, never through a link put at it.
+_xcopy_this_fqdn() {
+  local _f
+  _f=$(_xcopy_read_in "${_USR}/.drush" server_master.alias.drushrc.php \
+    | grep "remote_host" \
+    | head -1 \
+    | sed "s/.*remote_host.*=>//; s/[' ,;]//g")
+  _f=${_f//[^a-zA-Z0-9.\-]/}
+  [ -z "${_f}" ] && _f=$(hostname -f 2>/dev/null | tr -d '\n')
+  printf '%s' "${_f}"
+}
+
 # The db_name line of the panel site $1's drushrc.php, as found: read inside
 # the real site directory, so a link or a FIFO at the name, or a link in the
 # account's part of the path, gives nothing. The callers keep only
@@ -2142,7 +2746,7 @@ _xcopy_import_precheck() {
   elif [ ! -e "${_USR}/src/prev_hostmaster.sql" ]; then
     _why="${_USR}/src/prev_hostmaster.sql is missing; export and transfer have not completed"
   elif [ -z "$(_xcopy_read_in "${_USR}/log" sourcefqdn.txt | tr -cd 'a-zA-Z0-9.-')" ]; then
-    _why="${_USR}/log/sourcefqdn.txt is missing or empty; on the source remove src/prev_hostmaster.sql, log/exported.pid and log/transferred.pid of ${_oct}, then export and transfer again"
+    _why="${_USR}/log/sourcefqdn.txt is missing or empty; on the source run 'xcopy reset-state ${_oct}', then export and transfer again"
   elif [ -z "${_THIS_HM_SITE}" ] || [ ! -e "${_THIS_HM_SITE}/drushrc.php" ]; then
     _why="the hostmaster alias names ${_THIS_HM_SITE:-no site_path}, which has no drushrc.php on this box"
   else
@@ -2435,7 +3039,7 @@ _xcopy_create_adopt_hint() {   # 1 = account here 2 = account on the target 3 = 
 # account held without that marker, a marker that cannot be read, a
 # probe that answers neither way. Read-only on the target.
 _xcopy_create_owner_gate() {   # 1 = account here 2 = account on the target 3 = target
-  local _h _f _held _mark _mh _mo _mu _mi _nu _ni
+  local _h _f _held _mark _mh _mo _mu _mi _nu _ni _e _said=""
   _XCOPY_CREATE_HELD=""
   if [[ ! "${1}" =~ ^[a-zA-Z0-9._-]+$ ]] || [[ ! "${2}" =~ ^[a-zA-Z0-9._-]+$ ]]; then
     echo "ALRT: refusing create: invalid account name '${1}'/'${2}'"
@@ -2448,11 +3052,23 @@ _xcopy_create_owner_gate() {   # 1 = account here 2 = account on the target 3 = 
   _f="$(_xcopy_create_marker "${2}")"
   # The create's first contact: a target that does not answer is given up
   # after 15 s, not after the system's TCP connect timeout.
-  _held=$(ssh -o ConnectTimeout=15 root@"${3}" "if getent passwd ${2} > /dev/null 2>&1; then echo HELD; else echo FREE; fi" 2> /dev/null)
+  # Its own words are kept: a target whose key is not the one held here for
+  # its address is named as that.
+  _e="$(mktemp /tmp/mig-said.XXXXXX 2> /dev/null)" || _e=""
+  _held=$(ssh -o ConnectTimeout=15 root@"${3}" "if getent passwd ${2} > /dev/null 2>&1; then echo HELD; else echo FREE; fi" 2> "${_e:-/dev/null}")
+  if [ -n "${_e}" ]; then
+    _said="$(cat "${_e}" 2> /dev/null)"
+    rm -f "${_e}"
+  fi
   case "${_held}" in
     FREE) return 0 ;;
     HELD) : ;;
     *)
+      if _mig_hostkey_changed "${3}" "${_said}"; then
+        echo "ALRT: refusing create: ${3} serves a host key that is not the one this box holds for that address"
+        echo "ALRT: (${_MIG_HOSTKEY_SAYS}); make the check named above, forget the old entries here, then run this command again"
+        exit 1
+      fi
       echo "ALRT: refusing create: could not read whether ${3} holds an account named ${2}"
       exit 1
       ;;
@@ -2491,6 +3107,680 @@ _xcopy_create_mark() {   # 1 = account here 2 = account on the target 3 = target
   _f="$(_xcopy_create_marker "${2}")"
   _ts="$(date -u '+%Y-%m-%d %H:%M:%S UTC' 2> /dev/null)"
   ssh root@"${3}" "_u=\$(id -u ${2} 2> /dev/null); _i=\$(stat -c %i:%W /data/disk/${2} 2> /dev/null); case \"\${_u}/\${_i}\" in *[!0-9:/]*) exit 1 ;; [0-9]*/[0-9]*:[0-9]*) : ;; *) exit 1 ;; esac; _t=/root/.${2}.migration-create.put.\$\$; rm -f -- \"\${_t}\"; printf '%s\n' '# Put by create: the account this migration installed here.' '_MIG_CREATE_SRC_HOST=${_h}' '_MIG_CREATE_SRC_OCT=${1}' \"_MIG_CREATE_TGT_UID=\${_u}\" \"_MIG_CREATE_TGT_INODE=\${_i}\" '_MIG_CREATE_STAMPED=${_ts}' | perl -e '${_XCOPY_PUT_PL}' \"\${_t}\" 0 0 600 && mv -f -T -- \"\${_t}\" ${_f} && exit 0; rm -f -- \"\${_t}\"; exit 1"
+}
+
+###-------------TARGET PHP COVERAGE----###
+###
+### A copy is served on the target from the account's own control files,
+### which the transfer carries: a PHP version in force here that the target
+### lacks would silently serve those sites on another PHP there. create
+### refuses such a target before anything is installed, every live transfer
+### and pretransfer checks again, and a dry one names a choice the target
+### would start to honour. The same text as in xoct, prefixes aside.
+
+### Normalise a PHP version token to the dotted form BOA control files use;
+### prints nothing for a token that is not a known BOA PHP version.
+_mig_php_norm() {
+  local _t="${1//[^0-9.]/}"
+  case "${_t}" in
+    8.6|86) echo 8.6 ;;
+    8.5|85) echo 8.5 ;;
+    8.4|84) echo 8.4 ;;
+    8.3|83) echo 8.3 ;;
+    8.2|82) echo 8.2 ;;
+    8.1|81) echo 8.1 ;;
+    8.0|80) echo 8.0 ;;
+    7.4|74) echo 7.4 ;;
+    7.3|73) echo 7.3 ;;
+    7.2|72) echo 7.2 ;;
+    7.1|71) echo 7.1 ;;
+    7.0|70) echo 7.0 ;;
+    5.6|56) echo 5.6 ;;
+  esac
+}
+
+### The account's own control folder, judged as the ltd worker and the backup
+### tools judge it (the same three helpers, one text wherever they are
+### defined): a control/ another account's login made says nothing of
+### this account's PHP, so its files are not read.
+# The uids root's walks over the account $1's trees act on, comma-separated:
+# root's own (0, what root wrote there for the account) and those of every
+# identity of the account as passwd names them: oN and oN.<name>, that is its
+# .ftp login, its client sub-accounts oN.<client> and oN.<client>-dev and its
+# PHP-FPM users oN.web and oN.<ver>.web. An account name holds no dot, so the
+# match is exact: o1 never takes o10's. Status 1, and nothing, unless the
+# account itself is in passwd. The numbers of the account's removed
+# identities that root recorded in /data/conf/acct-uids/<oN>.gone (the ltd
+# worker, before deluser frees one) are listed too while no user has them.
+# Root's check of the control folder, its reads of the control files and its
+# hand-overs into that folder take a uid no passwd entry names only when it
+# is listed: another account's removed login leaves files under such a number
+# too. Its other hand-overs, mode walks and removal walks still take any.
+_acct_walk_uids() {
+  local _a="${1}" _n _p _u _r _x="0" _self=NO
+  case "${_a}" in
+    ""|*[!a-z0-9-]*) return 1 ;;
+  esac
+  while IFS=: read -r _n _p _u _r; do
+    [[ "${_n}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]] || continue
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    _x="${_x},${_u}"
+    [ "${_n}" = "${_a}" ] && _self=YES
+  done < <(getent passwd 2> /dev/null)
+  [ "${_self}" = "YES" ] || return 1
+  # the account's removed identities, their numbers recorded by root before
+  # deluser freed them; a number a user has again is not taken
+  while IFS= read -r _u; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    getent passwd "${_u}" > /dev/null 2>&1 && continue
+    _x="${_x},${_u}"
+  done 2> /dev/null < "/data/conf/acct-uids/${_a}.gone"
+  echo "${_x}"
+}
+# The whole of an account's control/, judged once before a run acts on it:
+# run inside the account's real static/, it prints OK when control/ and
+# everything in it, never followed through a link, and static/ and every
+# directory above it up to /, are root's or one of the account's identities'
+# (the uids given first, _acct_walk_uids, with the account's recorded
+# removed identities), ABSENT when there is no control/, and otherwise why
+# not, on one line.
+# Every other account's .ftp login is in the box-wide group, which an account
+# not yet on its own group still has on static/: such a login could put a
+# control/ of its own there, or a file of its own in a group-writable
+# directory below it, for root to act on as the account's.
+_ACCT_CTRL_OWN_PL='use Fcntl;
+my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, shift @ARGV // "");
+sub own { my $u = shift; return exists $own{$u} ? 1 : 0; }
+sub isd { ($_[0] & 0170000) == 0040000 }
+sub nm { (my $v = shift) =~ s/[^\x20-\x7e]/?/g; return substr($v, 0, 200); }
+sub refuse { print "$_[0]\n"; exit 0; }
+my ($p, $top, @d, @x) = (".", 0);
+for (1 .. 256) {
+  @x = stat($p) or refuse("static/ cannot be read");
+  own($x[4]) or refuse("a directory above control/ is owned by uid $x[4]");
+  if (@d && $x[0] == $d[0] && $x[1] == $d[1]) { $top = 1; last; }
+  @d = @x;
+  $p .= "/..";
+}
+$top or refuse("static/ is too deep");
+my @s = lstat("./control");
+unless (@s) { print(($!{ENOENT} ? "ABSENT" : "control/ cannot be read") . "\n"); exit 0; }
+isd($s[2]) or refuse("control is not a directory");
+my ($n, @q) = (0, ["control", @s]);
+while (my $e = shift @q) {
+  my ($f, @t) = @$e;
+  own($t[4]) or refuse(nm($f) . " is owned by uid $t[4]" . (defined(getpwuid($t[4])) ? "" : ", which no user has and root never recorded for this account: if the file is its own, give it to its .ftp login"));
+  next unless isd($t[2]);
+  opendir(my $h, "./$f") or refuse(nm($f) . " cannot be read");
+  for my $b (readdir($h)) {
+    next if $b eq "." || $b eq "..";
+    ++$n > 100000 and refuse("control/ holds more than 100000 entries");
+    my @u = lstat("./$f/$b") or next;
+    push @q, ["$f/$b", @u];
+  }
+  closedir($h);
+}
+print "OK\n";
+exit 0;'
+# 0 when the account $1's control/ is its own as _ACCT_CTRL_OWN_PL judges it
+# (or it has none); otherwise why not on stdout, status 1. A run that acts
+# on what control/ says leaves the account as it is when it is not.
+_acct_ctrl_own() {
+  local _a="${1}" _o _r _want
+  # an account not in passwd (not made yet, or removed) has nothing to
+  # judge it by: read as before
+  _o=$(_acct_walk_uids "${_a}" 2> /dev/null) || return 0
+  [ -e "/data/disk/${_a}/static" ] || [ -L "/data/disk/${_a}/static" ] || return 0
+  _want="$(cd -P -- /data/disk 2> /dev/null && /bin/pwd -P)/${_a}/static"
+  _r=$(cd -P -- "/data/disk/${_a}/static" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] \
+    && perl -e "${_ACCT_CTRL_OWN_PL}" -- "${_o}" 2> /dev/null)
+  case "${_r}" in
+    OK|ABSENT) return 0 ;;
+  esac
+  echo "${_r:-static/ is not a real directory}"
+  return 1
+}
+
+### Union of the PHP versions in force for this account, each counted only when
+### its PHP is installed here: root's record of the PHP its pool and command
+### line run on (_PHP_FPM_VERSION and _PHP_CLI_VERSION in its octopus.cnf,
+### which every Octopus pass writes into fpm.info and cli.info where they
+### are missing, and the transfer carries those), the account-level
+### static/control/{fpm,cli}.info defaults, the per-site column of
+### static/control/multi-fpm.info (dotted and shorthand forms both count),
+### every line of static/control/cli-per-platform.info and
+### fpm-per-platform.info, and the phpNN.info marker that steers the command
+### line. The last three are read as websh reads them: the file's first 64 KiB
+### and 200 lines, '#' opening a comment, a line counting only as "<folder>
+### <version>", the version's digits only; the marker is the highest one whose
+### PHP is installed here. A choice naming a PHP this server lacks does nothing
+### here and is never required of the target: the account writes these files,
+### and one line of its own must not hold the copy back or have a PHP built on
+### the target; _mig_php_inert_choices names it before the copy.
+_mig_php_here() {
+  [ -n "${1}" ] && [ -x "/opt/php${1//./}/bin/php" ]
+}
+_mig_php_versions_needed() {
+  local _u="$1" _f _v _dom _rest _line _k _e _mk="" _txt _n _out=""
+  for _k in _PHP_FPM_VERSION _PHP_CLI_VERSION; do
+    _v="$(grep -a "^${_k}=" "/root/.${_u##*/}.octopus.cnf" 2> /dev/null | tail -n 1)"
+    _v="$(_mig_php_norm "${_v#*=}")"
+    _mig_php_here "${_v}" && _out="${_out} ${_v}"
+  done
+  ### root's record alone when the control folder is not the account's own
+  if ! _acct_ctrl_own "${_u##*/}" > /dev/null; then
+    echo "${_out}" | tr ' ' '\n' | sort -u | tr '\n' ' '
+    return 0
+  fi
+  ### read inside the account's real static/control, never through a link
+  ### or into a FIFO put there
+  for _f in fpm.info cli.info; do
+    _v="$(_mig_php_norm "$(_xcopy_read_in "${_u}/static/control" "${_f}" | tr -d ' \t\r\n')")"
+    _mig_php_here "${_v}" && _out="${_out} ${_v}"
+  done
+  if [ -e "${_u}/static/control/multi-fpm.info" ]; then
+    while read -r _dom _v _rest; do
+      ### place.holder.dont.remove is manage_ltd_users' filler line, not a
+      ### site pin -- counting it would refuse migrations over a version no
+      ### site actually uses.
+      case "${_dom}" in \#*|""|place.holder.dont.remove) continue ;; esac
+      _v="$(_mig_php_norm "${_v}")"
+      _mig_php_here "${_v}" && _out="${_out} ${_v}"
+    done <<< "$(_xcopy_read_in "${_u}/static/control" multi-fpm.info)"
+  fi
+  for _f in cli-per-platform.info fpm-per-platform.info; do
+    [ -e "${_u}/static/control/${_f}" ] || continue
+    _txt=""; _n=0
+    _txt="$(_xcopy_read_in "${_u}/static/control" "${_f}" | head -c 65536)"
+    while IFS= read -r _line; do
+      _n=$(( _n + 1 ))
+      [ "${_n}" -gt 200 ] && break
+      _line="${_line%%#*}"
+      read -r _k _v _rest <<< "${_line}"
+      [ -n "${_k}" ] && [ -n "${_v}" ] && [ -z "${_rest}" ] || continue
+      _v="$(_mig_php_norm "${_v//[!0-9]/}")"
+      _mig_php_here "${_v}" && _out="${_out} ${_v}"
+    done <<< "${_txt}"
+  done
+  if _xcopy_in_real_dir "${_u}/static/control" true; then
+    for _e in 56 70 71 72 73 74 80 81 82 83 84 85 86; do
+      [ -e "${_u}/static/control/php${_e}.info" ] && [ -x "/opt/php${_e}/bin/php" ] && _mk="${_e}"
+    done
+  fi
+  [ -n "${_mk}" ] && _out="${_out} $(_mig_php_norm "${_mk}")"
+  echo "${_out}" | tr ' ' '\n' | sort -u | tr '\n' ' '
+}
+
+### Choices that do nothing on this server because it lacks their PHP, and that a
+### target with that PHP would start to honour at the cutover: the account-wide fpm.info
+### or cli.info, a line of multi-fpm.info, cli-per-platform.info or fpm-per-platform.info,
+### and a phpNN.info marker above the highest one in force here (a lower one stays out of
+### force wherever it runs).
+### One "<x.y> <what>" a row; every name is the account's, so only a plain alphabet
+### reaches the operator's console. $1 = the account's directory.
+_mig_php_inert_choices() {
+  local _u="$1" _f _v _nn _dom _rest _line _k _e _mk=0 _txt _n
+  ### nothing of a control folder that is not the account's own
+  _acct_ctrl_own "${_u##*/}" > /dev/null || return 0
+  for _f in fpm.info cli.info; do
+    _v="$(_mig_php_norm "$(_xcopy_read_in "${_u}/static/control" "${_f}" | tr -d ' \t\r\n')")"
+    [ -n "${_v}" ] && [ ! -x "/opt/php${_v//./}/bin/php" ] || continue
+    echo "${_v} its ${_f}"
+  done
+  if [ -e "${_u}/static/control/multi-fpm.info" ]; then
+    while read -r _dom _v _rest; do
+      case "${_dom}" in \#*|""|place.holder.dont.remove) continue ;; esac
+      _v="$(_mig_php_norm "${_v}")"
+      [ -n "${_v}" ] && [ ! -x "/opt/php${_v//./}/bin/php" ] || continue
+      _dom="${_dom//[^A-Za-z0-9._~\/-]/?}"
+      echo "${_v} the multi-fpm.info line for ${_dom:0:120}"
+    done <<< "$(_xcopy_read_in "${_u}/static/control" multi-fpm.info)"
+  fi
+  for _f in cli-per-platform.info fpm-per-platform.info; do
+    [ -e "${_u}/static/control/${_f}" ] || continue
+    _n=0
+    _txt="$(_xcopy_read_in "${_u}/static/control" "${_f}" | head -c 65536)"
+    while IFS= read -r _line; do
+      _n=$(( _n + 1 ))
+      [ "${_n}" -gt 200 ] && break
+      _line="${_line%%#*}"
+      _k=""; _v=""; _rest=""
+      read -r _k _v _rest <<< "${_line}"
+      [ -n "${_k}" ] && [ -n "${_v}" ] && [ -z "${_rest}" ] || continue
+      _v="$(_mig_php_norm "${_v//[!0-9]/}")"
+      [ -n "${_v}" ] && [ ! -x "/opt/php${_v//./}/bin/php" ] || continue
+      _k="${_k//[^A-Za-z0-9._~\/-]/?}"
+      echo "${_v} line ${_n} of ${_f} (${_k:0:120})"
+    done <<< "${_txt}"
+  done
+  _xcopy_in_real_dir "${_u}/static/control" true || return 0
+  for _e in 56 70 71 72 73 74 80 81 82 83 84 85 86; do
+    [ -e "${_u}/static/control/php${_e}.info" ] || continue
+    if [ -x "/opt/php${_e}/bin/php" ]; then
+      _mk="${_e}"
+    fi
+  done
+  for _e in 56 70 71 72 73 74 80 81 82 83 84 85 86; do
+    [ -e "${_u}/static/control/php${_e}.info" ] && [ ! -x "/opt/php${_e}/bin/php" ] && [ "${_e}" -gt "${_mk}" ] || continue
+    _nn="$(_mig_php_norm "${_e}")"
+    echo "${_nn} the php${_e}.info marker"
+  done
+}
+
+### Where an account-wide fpm.info ($1 = fpm) or cli.info ($1 = cli) naming the
+### PHP $2 lands on a server whose installed versions are $3 (" 8.3 8.4 "): $2
+### itself when installed, else the first installed one of its fallback chain.
+### The chain is the ltd worker's (manage_ltd_users.sh: fpm_fallback and
+### fallback), after the Octopus pass's own ladder (satellite.sh.inc), which runs
+### first on a moved account and writes what it finds back into the file: for
+### fpm.info 8.0 and 7.4 that ladder takes 8.1 before the worker's 8.3. With
+### nothing of the chain installed, the web side keeps the version the account
+### runs ($4) where it is installed, else 8.4 (the worker's default pool); the
+### command line runs the server's own default PHP ($5, /usr/bin/php). On a
+### target the Octopus pass writes an unresolved version into the cnf itself,
+### so there the web side lands on 8.4 ($4 empty).
+_mig_php_lands() {
+  local _k="$1" _v="$2" _have="$3" _cur="$4" _def="$5" _chain="" _c
+  case "${_v}" in
+    8.6) _chain="8.5 8.4 8.3 8.2 8.1" ;;
+    8.5) _chain="8.4 8.3 8.2 8.1" ;;
+    8.4) _chain="8.3 8.2 8.1" ;;
+    8.3) _chain="8.2 8.1" ;;
+    8.2) _chain="8.1 8.3" ;;
+    8.1) _chain="8.2 8.3" ;;
+    8.0|7.4) if [ "${_k}" = "fpm" ]; then _chain="8.1 8.3"; else _chain="8.1"; fi ;;
+    7.3|7.2|7.1|7.0|5.6) _chain="7.4" ;;
+  esac
+  case "${_have}" in *" ${_v} "*) echo "${_v}"; return 0 ;; esac
+  for _c in ${_chain}; do
+    case "${_have}" in *" ${_c} "*) echo "${_c}"; return 0 ;; esac
+  done
+  if [ "${_k}" = "fpm" ]; then
+    case "${_have}" in *" ${_cur:-none} "*) echo "${_cur}"; return 0 ;; esac
+    echo 8.4
+  else
+    echo "${_def}"
+  fi
+}
+
+### An account-wide fpm.info or cli.info naming a PHP that neither server has
+### lands on its fallback on each (_mig_php_lands): named when the two differ,
+### since the account then moves to another PHP at the cutover with nothing
+### said. $1 = the account, $2 = the target, $3 = alrt or deny, $4 = the
+### version, $5 = what names it, $6 = the versions the target has or a fix
+### installs there, $7 = the account's directory. A phpNN.info marker in force
+### outranks cli.info (websh), and the marker rows name its own moves.
+_xcopy_php_lands_report() {
+  local _acct="$1" _t="$2" _how="$3" _v="$4" _w="$5" _there="$6" _u="$7" _k _cur="" _here=" " _e _a _b _dh="" _dt=""
+  case "${_w}" in
+    "its fpm.info") _k=fpm ;;
+    "its cli.info") _k=cli ;;
+    *) return 0 ;;
+  esac
+  ### no answer from the target: never a guess
+  [ -n "${_there// /}" ] || return 0
+  for _e in 5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3 8.4 8.5 8.6; do
+    [ -x "/opt/php${_e//./}/bin/php" ] && _here="${_here}${_e} "
+  done
+  if [ "${_k}" = "fpm" ]; then
+    _cur="$(grep -a "^_PHP_FPM_VERSION=" "/root/.${_acct}.octopus.cnf" 2> /dev/null | tail -n 1)"
+    _cur="$(_mig_php_norm "${_cur#*=}")"
+  else
+    ### a marker in force here or there: cli.info does nothing on that side
+    if _xcopy_in_real_dir "${_u}/static/control" true; then
+      for _e in 5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3 8.4 8.5 8.6; do
+        [ -e "${_u}/static/control/php${_e//./}.info" ] || continue
+        case "${_here} ${_there} " in *" ${_e} "*) return 0 ;; esac
+      done
+    fi
+    ### the server's own default PHP, /usr/bin/php, on each side
+    _dh="$(readlink -f /usr/bin/php 2> /dev/null)"
+    _dh="${_dh#*/php}"
+    _dh="$(_mig_php_norm "${_dh%%/*}")"
+    _dt="$(ssh root@"${_t}" 'readlink -f /usr/bin/php' 2> /dev/null)"
+    _dt="${_dt#*/php}"
+    _dt="$(_mig_php_norm "${_dt%%/*}")"
+    [ -n "${_dt}" ] || return 0
+  fi
+  _a="$(_mig_php_lands "${_k}" "${_v}" "${_here}" "${_cur}" "${_dh}")"
+  _b="$(_mig_php_lands "${_k}" "${_v}" " ${_there} " "" "${_dt}")"
+  [ "${_a}" != "${_b}" ] || return 0
+  _a="${_a:+PHP ${_a}}"
+  _b="${_b:+PHP ${_b}}"
+  if [ "${_how}" = "deny" ]; then
+    echo "DENY: ${_acct}: ${_w} names PHP ${_v}, which neither server has, so it runs on ${_a:-the PHP it runs now} here and would run on ${_b:-the PHP it runs now} on ${_t} from the cutover. Write the PHP it should run on in it."
+    _XCOPY_NOT_CLEAN=YES
+  else
+    echo "ALRT: ${_acct}: ${_w} names PHP ${_v}, which neither server has, so it runs on ${_a:-the PHP it runs now} here and would run on ${_b:-the PHP it runs now} on ${_t} from the cutover."
+  fi
+}
+
+### The tree the TARGET runs, for target-side barracuda/octopus verbs; the
+### local _tRee belongs to THIS box and a cross-tree migration must not push
+### the source's tree through the target's licence gate.
+_mig_target_tree() {
+  local _t="$1" _tt
+  _tt=$(ssh root@"${_t}" "boa info 2>/dev/null" 2>/dev/null \
+    | grep -oE 'Barracuda BOA-[0-9.]+-(dev|lts|pro)' \
+    | tail -1 \
+    | grep -oE '(dev|lts|pro)$')
+  if [ -z "${_tt}" ]; then
+    echo "ALRT: could not detect the BOA tree on ${_t}; falling back to local '${_tRee}'" >&2
+    _tt="${_tRee}"
+  fi
+  echo "${_tt}"
+}
+
+### What the target would start to honour (_mig_php_inert_choices), named before the
+### copy: on a dry run it holds the --live back, on a live one it is an alert, since the
+### account may mean it. $1 = the account's directory, $2 = the target, $3 = alrt or deny,
+### $4 = versions a --fix-php run installs there.
+_xcopy_php_inert_report() {
+  local _u="$1" _t="$2" _how="$3" _fix=" ${4:-} " _acct _rows _row _v _w _have
+  _acct="$(basename "${_u}")"
+  _rows="$(_mig_php_inert_choices "${_u}")"
+  [ -n "${_rows}" ] || return 0
+  _have=" $(ssh root@"${_t}" 'for _e in 5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3 8.4 8.5 8.6; do [ -x "/opt/php${_e//./}/bin/php" ] && echo "${_e}"; done' 2>/dev/null | tr '\n' ' ') "
+  while IFS= read -r _row; do
+    _v="${_row%% *}"
+    _w="${_row#* }"
+    case "${_have}${_fix}" in
+      *" ${_v} "*) ;;
+      *)
+        _xcopy_php_lands_report "${_acct}" "${_t}" "${_how}" "${_v}" "${_w}" "${_have}${_fix}" "${_u}"
+        continue ;;
+    esac
+    if [ "${_how}" = "deny" ]; then
+      echo "DENY: ${_acct}: ${_w} names PHP ${_v}, which this server lacks, so it does nothing here; on ${_t} it applies from the cutover. Delete it, or install PHP ${_v} here."
+      _XCOPY_NOT_CLEAN=YES
+    else
+      echo "ALRT: ${_acct}: ${_w} names PHP ${_v}, which this server lacks, so it does nothing here; on ${_t} it applies from the cutover."
+    fi
+  done <<< "${_rows}"
+}
+
+### Verify every needed PHP version is installed on the target -- the same
+### /opt/phpNN/bin/php probe BOA's own fallback ladders use. A missing version
+### is fatal by default, because served-on-the-wrong-PHP is the silent failure
+### this whole step exists to prevent. With --fix-php the missing versions are
+### appended to the target's _PHP_MULTI_INSTALL and one barracuda system run
+### is driven remotely to build them (a full system pass: a few minutes).
+### --fix-php is a create option, so only create offers it.
+_xcopy_php_coverage_gate() {
+  local _u="$1" _t="$2" _need _v _sv _miss="" _why
+  ### a control folder another account made holds no PHP choice of this
+  ### account's: its PHP would not be known on the target
+  if ! _why="$(_acct_ctrl_own "${_u##*/}")"; then
+    echo "ERROR: ${_u}/static/control is not $(basename "${_u}")'s own (${_why}): its PHP choices are not read"
+    echo "ERROR: remove what another account made there (the ltd worker's ALERT names it), then run this again"
+    return 1
+  fi
+  _need="$(_mig_php_versions_needed "${_u}")"
+  if [ -z "${_need// /}" ]; then
+    _xcopy_php_inert_report "${_u}" "${_t}" alrt
+    return 0
+  fi
+  echo "INFO: PHP versions required by $(basename "${_u}"): ${_need}"
+  for _v in ${_need}; do
+    _sv=${_v//[^0-9]/}
+    if ! ssh root@"${_t}" "[ -x /opt/php${_sv}/bin/php ]" 2>/dev/null; then
+      _miss="${_miss} ${_v}"
+    fi
+  done
+  _miss="${_miss## }"
+  if [ "${_XCOPY_FIX_PHP}" = "YES" ]; then
+    _xcopy_php_inert_report "${_u}" "${_t}" alrt "${_miss}"
+  else
+    _xcopy_php_inert_report "${_u}" "${_t}" alrt
+  fi
+  [ -z "${_miss}" ] && return 0
+  echo "ALRT: target ${_t} lacks PHP version(s) required by $(basename "${_u}"): ${_miss}"
+  if [ "${_XCOPY_FIX_PHP}" = "YES" ]; then
+    _mig_fix_target_php "${_t}" "${_miss}" || return 1
+    for _v in ${_miss}; do
+      _sv=${_v//[^0-9]/}
+      if ! ssh root@"${_t}" "[ -x /opt/php${_sv}/bin/php ]" 2>/dev/null; then
+        echo "ERROR: PHP ${_v} still missing on ${_t} after the fix run"
+        return 1
+      fi
+    done
+    return 0
+  fi
+  echo "ERROR: a pinned PHP version missing on the target means every affected site"
+  echo "ERROR: silently falls back to a different PHP after migration."
+  echo "ERROR: Fix on the target: add '${_miss}' to _PHP_MULTI_INSTALL in /root/.barracuda.cnf"
+  echo "ERROR: and run: barracuda up-<tree> system noscreen"
+  [ "${_cmd:-}" = "create" ] \
+    && echo "ERROR: Or re-run this command with --fix-php to do both automatically."
+  return 1
+}
+
+### Extend the target's _PHP_MULTI_INSTALL with the missing versions and run
+### one barracuda system pass there to build them. Idempotent: versions
+### already listed are not repeated, and barracuda itself is safe to re-run.
+_mig_fix_target_php() {
+  local _t="$1" _add="$2" _cur _new _v _nv _tree _rc
+  # Normalise the fetched value token by token: the raw line may carry an
+  # inline comment or quotes, and anything not a known PHP version must
+  # never reach the remote root shell that rewrites the cnf.
+  _cur=$(ssh root@"${_t}" "grep '^_PHP_MULTI_INSTALL=' /root/.barracuda.cnf 2>/dev/null" 2>/dev/null \
+    | tail -1 | sed -E 's/^[^=]*=//; s/#.*$//; s/"//g' | tr -d '\n')
+  _new=""
+  for _v in ${_cur} ${_add}; do
+    _nv="$(_mig_php_norm "${_v}")"
+    [ -n "${_nv}" ] || continue
+    case " ${_new} " in
+      *" ${_nv} "*) : ;;
+      *) _new="${_new} ${_nv}" ;;
+    esac
+  done
+  _new="${_new## }"
+  if [ -z "${_new}" ]; then
+    echo "ALRT: computed empty _PHP_MULTI_INSTALL for ${_t}; refusing"
+    return 1
+  fi
+  ### Belt-and-braces before the value reaches a remote sed: it is built only
+  ### from _mig_php_norm output, so it can hold nothing but digits, dots and
+  ### spaces -- assert that rather than trust it.
+  case "${_new}" in
+    *[!0-9.\ ]*) echo "ALRT: refusing to write a non-version _PHP_MULTI_INSTALL value"; return 1 ;;
+  esac
+  echo "INFO: setting _PHP_MULTI_INSTALL=\"${_new}\" on ${_t}"
+  ### Rewrite in place (keeps the line with the comment that documents it);
+  ### append only when the key is absent. The temp+size guard means a failed
+  ### write can never blank the box's barracuda.cnf.
+  ssh root@"${_t}" "_m=\$(stat -c %a /root/.barracuda.cnf 2>/dev/null); \
+    if grep -q '^_PHP_MULTI_INSTALL=' /root/.barracuda.cnf; then \
+      sed 's|^_PHP_MULTI_INSTALL=.*|_PHP_MULTI_INSTALL=\\\"${_new}\\\"|' \
+        /root/.barracuda.cnf > /root/.barracuda.cnf.phpnew; \
+    else \
+      cp -af /root/.barracuda.cnf /root/.barracuda.cnf.phpnew \
+      && echo '_PHP_MULTI_INSTALL=\"${_new}\"' >> /root/.barracuda.cnf.phpnew; \
+    fi; \
+    [ -s /root/.barracuda.cnf.phpnew ] \
+    && chmod \${_m:-600} /root/.barracuda.cnf.phpnew \
+    && mv -f /root/.barracuda.cnf.phpnew /root/.barracuda.cnf" \
+    || { echo "ERROR: could not update _PHP_MULTI_INSTALL on ${_t}"; return 1; }
+  _tree="$(_mig_target_tree "${_t}")"
+  case "${_tree}" in
+    dev|lts|pro) : ;;
+    *) echo "ALRT: invalid tree token '${_tree}' -- refusing the remote barracuda run"; return 1 ;;
+  esac
+  echo "INFO: driving 'barracuda up-${_tree} system noscreen' on ${_t} to build the missing PHP set;"
+  echo "INFO: this is a full system pass and typically takes a few minutes"
+  ssh root@"${_t}" "barracuda up-${_tree} system noscreen"
+  _rc=$?
+  # 3: the pass ran to its end WITH ERRORS (its log on the target says
+  # why); what this step needs is checked by the caller right after
+  if [ "${_rc}" = "3" ]; then
+    echo "WARN: barracuda system run on ${_t} completed WITH ERRORS; checking the PHP versions it was run for"
+  elif [ "${_rc}" != "0" ]; then
+    echo "ERROR: barracuda system run on ${_t} returned ${_rc}"
+    return 1
+  fi
+  return 0
+}
+
+###-------------SHELL CREDENTIALS----###
+###
+### Mirrored from xoct (bodies identical with the prefixes swapped).
+###
+### Shell text the target expands to the uid the login $1.ftp of this box
+### lands on there when a copy maps owners by name: the target's uid for the
+### name, else this box's uid. Only the login's: the files re-asserted with
+### it (the PHP pins, the password store) are the login's own. Empty when it
+### has no uid here.
+_xcopy_landed_uids_sh() {
+  local _n="${1}.ftp" _i
+  [[ "${1}" =~ ^[A-Za-z0-9._-]+$ ]] || return 0
+  _i="$(id -u -- "${_n}" 2> /dev/null)"
+  [[ "${_i}" =~ ^[0-9]+$ ]] || return 0
+  printf '%s' "\$(id -u -- ${_n} 2> /dev/null || echo ${_i})"
+}
+### The regular file ./$1 of the current (pinned) directory copied, forced
+### (no -u), to the same name in the real directory $3 on the target $2, $4
+### the caller's rsync error option. A link is never carried and neither end
+### resolves a name on its path through a link the account put there. Nothing
+### travels when ./$1 is not a regular file.
+_xcopy_put_file_remote_here() {
+  [ -f "./${1}" ] && [ ! -L "./${1}" ] || return 0
+  _xcopy_rsync -aEAX --no-links ${4} \
+    --rsync-path="$(_xcopy_rsync_path_in "${3}")" -e ssh \
+    "./${1}" "root@${2}:./${1}"
+}
+### The regular files of the current (pinned) sub-account password store of
+### the account $1, each put under the name it takes for the account $2
+### into the real store directory on the target $3: a link is never sent,
+### and the receiver never writes through one. The new name is read by a
+### shell on the target (rsync before 3.2.4 sends it unescaped), so a name
+### that is not shell-safe is refused.
+_xcopy_users_put_here() {
+  local _e _n
+  for _e in ./*; do
+    [ -f "${_e}" ] && [ ! -L "${_e}" ] || continue
+    _n="${_e#./}"
+    case "${_n}" in
+      ''|-*|*[!A-Za-z0-9._@+,=-]*)
+        echo "ALRT: sub-account password store entry $(printf '%q' "${_n}") is not a shell-safe name -- not carried"
+        continue
+        ;;
+    esac
+    _n="${_n#"${1}".}"
+    # shellcheck disable=SC2086
+    _xcopy_rsync -aEAX --no-links ${_ieni} \
+      --rsync-path="$(_xcopy_rsync_path_mk_in "/home/${2}.ftp/users")" -e ssh \
+      "${_e}" "root@${3}:./${2}.${_n}"
+  done
+}
+### Whether the sub-user $1 has a .ssh to carry: a real directory, or none
+### (quietly); one that is not a real directory is reported and left.
+_xcopy_subuser_ssh_ok() {
+  [ -e "/home/${1}/.ssh" ] || [ -L "/home/${1}/.ssh" ] || return 1
+  _xcopy_in_real_dir "/home/${1}/.ssh" true && return 0
+  echo "ALRT: /home/${1}/.ssh is not a real directory -- not followed; its keys not carried"
+  return 1
+}
+### Carry the client shell identity, so the copy keeps the client's own
+### logins: the main <acct>.ftp shadow hash and log/pass.txt (kept consistent
+### as a pair), the sub-account password store /home/<acct>.ftp/users (whose
+### carried entries manage_ltd_users honours at sub-user creation), and each
+### existing sub-user's shadow hash and .ssh where the target user already
+### exists (later passes converge the rest). LIVE operations only -- never
+### call this from a DRY path.
+_xcopy_sync_shell_credentials() {
+  local _src="$1" _dst="$2" _t="$3"
+  local _sUsr="/data/disk/${_src}" _dUsr="/data/disk/${_dst}"
+  local _hash _d _n _e _set=NO
+  _hash=$(getent shadow "${_src}.ftp" 2>/dev/null | cut -d: -f2)
+  if [ -n "${_hash}" ] && [ "${_hash}" != "*" ] && [ "${_hash}" != "!" ]; then
+    if ssh root@"${_t}" "getent passwd ${_dst}.ftp" &> /dev/null; then
+      if printf '%s.ftp:%s\n' "${_dst}" "${_hash}" | ssh root@"${_t}" "chpasswd -e"; then
+        _set=YES
+        echo "INFO: carried ${_src}.ftp shell/SFTP password to ${_dst}.ftp on ${_t}"
+      else
+        echo "ALRT: could not set the carried password for ${_dst}.ftp on ${_t}"
+      fi
+    else
+      echo "ALRT: user ${_dst}.ftp missing on ${_t}; password not carried yet (re-run converges)"
+    fi
+  fi
+  ### pass.txt travels ONLY when the paired hash actually landed: it is what
+  ### the client is shown, and shipping it after a failed chpasswd would
+  ### advertise a password that does not work. A re-run converges both.
+  ### log/ is oN's on both boxes: a regular file only, from the real
+  ### directory into the real directory.
+  if [ "${_set}" = "YES" ] && [ -e "${_sUsr}/log/pass.txt" ]; then
+    _xcopy_in_real_dir "${_sUsr}/log" _xcopy_put_file_remote_here \
+      pass.txt "${_t}" "${_dUsr}/log" "${_ieni}"
+  elif [ -e "${_sUsr}/log/pass.txt" ]; then
+    echo "ALRT: NOT carrying log/pass.txt for ${_dst} -- the shadow hash was not set on ${_t}"
+  fi
+  ### The store is keyed by FULL sub-user name, so a rename must rewrite the
+  ### entry filenames -- an rsync of the directory would land <src>-named
+  ### files that manage_ltd_users never looks for on the target. The store
+  ### is the account's on both boxes: its regular files are sent from inside
+  ### the real directory into the real one, and the owner and modes are set
+  ### there without following a link put at any name.
+  if [ -e "/home/${_src}.ftp/users" ] || [ -L "/home/${_src}.ftp/users" ]; then
+    if _xcopy_in_real_dir "/home/${_src}.ftp/users" true; then
+      ssh root@"${_t}" "mkdir -p /home/${_dst}.ftp/users" &> /dev/null
+      _xcopy_in_real_dir "/home/${_src}.ftp/users" \
+        _xcopy_users_put_here "${_src}" "${_dst}" "${_t}"
+      ### The group is the account's group ON THE TARGET (its own once
+      ### converted there, the box-wide one until then), asked of the target
+      ### itself: the two boxes are in different states for the length of a
+      ### rollout. The directory is the one this shell holds ("."); each
+      ### entry is re-asserted through a no-follow handle, only when it is a
+      ### regular file with one link that is already the login's, or the
+      ### owner the copy of the source's store lands on there, so a hard link
+      ### to another file, or a root-only file (log/pass.txt) renamed into the
+      ### store, is never handed over or chmodded.
+      _xcopy_remote_in "${_t}" "/home/${_dst}.ftp/users" \
+        "_g=\$(id -gn ${_dst} 2>/dev/null); [ \"\$_g\" = ${_dst} ] || _g=users; chown -- ${_dst}.ftp:\$_g . 2>/dev/null; chmod 700 .; _ro ${_dst}.ftp:\$_g 600 \"$(_xcopy_landed_uids_sh "${_src}")\" ./*; true" &> /dev/null
+    else
+      echo "ALRT: /home/${_src}.ftp/users is not a real directory -- not followed; its password store not carried"
+    fi
+  fi
+  for _d in "${_sUsr}"/clients/*/; do
+    [ -d "${_d}" ] || continue
+    _n=$(basename "${_d}")
+    # the name is read by a shell on the target
+    case "${_n}" in
+      ''|-*|*[!A-Za-z0-9._@+,=-]*) continue ;;
+    esac
+    getent passwd "${_src}.${_n}" &> /dev/null || continue
+    _hash=$(getent shadow "${_src}.${_n}" 2>/dev/null | cut -d: -f2)
+    [ -n "${_hash}" ] && [ "${_hash}" != "*" ] && [ "${_hash}" != "!" ] || continue
+    if ssh root@"${_t}" "getent passwd ${_dst}.${_n}" &> /dev/null; then
+      if printf '%s.%s:%s\n' "${_dst}" "${_n}" "${_hash}" | ssh root@"${_t}" "chpasswd -e"; then
+        echo "INFO: carried sub-account password for ${_dst}.${_n} on ${_t}"
+      else
+        echo "ALRT: could not carry the sub-account password for ${_dst}.${_n} on ${_t}"
+      fi
+      ### The sub-user's keys: from the real directory into the real one.
+      if _xcopy_subuser_ssh_ok "${_src}.${_n}"; then
+        _xcopy_in_real_dir "/home/${_src}.${_n}/.ssh" _xcopy_copy_mk_here "${_t}" \
+          "/home/${_dst}.${_n}/.ssh" '' -aEAXqu ${_ieni}
+      fi
+    else
+      ### The sub-user does not exist there yet: manage_ltd_users creates it
+      ### from clients/ on its next pass (after post-mig while the target's
+      ### runners are parked) and honours the carried store entry above, so
+      ### the password converges. Its .ssh cannot be placed before the home
+      ### exists -- stage it for the post-creation pass instead.
+      if _xcopy_subuser_ssh_ok "${_src}.${_n}"; then
+        ssh root@"${_t}" "mkdir -p /var/backups/migrate-subuser-ssh/${_dst}.${_n}" &> /dev/null
+        _xcopy_in_real_dir "/home/${_src}.${_n}/.ssh" _xcopy_rsync -aEAXqu ${_ieni} -e ssh \
+          ./ "root@${_t}:/var/backups/migrate-subuser-ssh/${_dst}.${_n}/.ssh/"
+        echo "INFO: sub-account ${_dst}.${_n} not created on ${_t} yet; password converges via the"
+        echo "INFO: carried store, and its keys are staged at /var/backups/migrate-subuser-ssh/${_dst}.${_n}/.ssh"
+      else
+        echo "INFO: sub-account ${_dst}.${_n} not created on ${_t} yet; its carried password"
+        echo "INFO: store entry makes it converge when manage_ltd_users creates it there"
+      fi
+    fi
+  done
+  return 0
 }
 
 _migrate_prepare() {
@@ -2558,6 +3848,7 @@ _migrate_prepare() {
   # The panel site is the account's: drushrc.php is read inside its real
   # directory, never through a link or into a FIFO. Read before anything
   # below changes the box, so the refusal that follows leaves it as it was.
+  _HDB=""
   if [ -e "${_THIS_HM_SITE}/drushrc.php" ]; then
     _HDB=$(_xcopy_panel_db_line "${_THIS_HM_SITE}")
     echo "raw _HDB is ${_HDB}"
@@ -2573,6 +3864,13 @@ _migrate_prepare() {
     && [ -z "${_HDB}" ]; then
     echo "ERROR: import for ${_oct}: ${_THIS_HM_SITE}/drushrc.php names no panel database"
     echo "ERROR: nothing was imported and nothing on this box was changed; fix the cause and re-run"
+    exit 1
+  fi
+  # An export with no panel to dump would ship the sites alone, or beside a
+  # panel dump an older copy left in src/.
+  if [ "${_cmd}" = "export" ] && [ -z "${_HDB}" ]; then
+    echo "ERROR: export for ${_oct}: ${_THIS_HM_SITE:-the panel site}/drushrc.php names no panel database"
+    echo "ERROR: nothing was exported and nothing on this box was changed; fix the cause and re-run"
     exit 1
   fi
   # The create switched the upgrade notice off already under admail=; asked
@@ -2608,17 +3906,64 @@ _migrate_prepare() {
   # src/ belongs to oN: make it a real directory (a link the account put at the
   # name is removed) so the dump below cannot be steered elsewhere.
   _xcopy_in_real_dir "${_USR}" _xcopy_realdir_here src
+  ### An export makes its state afresh. An earlier run's failure latch goes, so
+  ### a run that stops at the panel leaves none for a transfer to take for an
+  ### export; and every per-site dump folder in src/ goes (an earlier copy's,
+  ### or one a killed run left), so a site this run does not dump has no
+  ### folder for the transfer to send and the import to load as current.
+  ### A transfer stamp newer than the failure latch is a transfer forced over
+  ### that failed export: this export is the one the target must get, so the
+  ### stamp goes too, before the latch (a run stopped between the two leaves
+  ### the pair for the next export to clear). An older stamp, or one with no
+  ### latch, stays: a fresh copy starts with reset-state.
+  if [ "${_cmd}" = "export" ]; then
+    _XCOPY_FORCED_SENT=""
+    if [ -e "${_USR}/log/export_failed.pid" ] && [ -e "${_USR}/log/transferred.pid" ] \
+      && [ "${_USR}/log/transferred.pid" -nt "${_USR}/log/export_failed.pid" ]; then
+      _XCOPY_FORCED_SENT=YES
+      _xcopy_in_real_dir "${_USR}/log" rm -f -- ./transferred.pid
+    fi
+    _xcopy_in_real_dir "${_USR}/log" rm -f -- ./export_failed.pid
+    _xcopy_in_real_dir "${_USR}/src" _xcopy_rm_site_dumps_here
+    _XCOPY_LEFT=""
+    if [ "${_XCOPY_FORCED_SENT}" = "YES" ] \
+      && { [ -e "${_USR}/log/transferred.pid" ] || [ -L "${_USR}/log/transferred.pid" ]; }; then
+      _XCOPY_LEFT=" log/transferred.pid"
+    fi
+    if [ -e "${_USR}/log/export_failed.pid" ] || [ -L "${_USR}/log/export_failed.pid" ]; then
+      _XCOPY_LEFT="${_XCOPY_LEFT} log/export_failed.pid"
+    fi
+    if _XCOPY_LEFT_SRC="$(_xcopy_in_real_dir "${_USR}/src" _xcopy_names_left_here site-dumps)"; then
+      _XCOPY_LEFT="${_XCOPY_LEFT}${_XCOPY_LEFT_SRC// / src/}"
+    else
+      _XCOPY_LEFT="${_XCOPY_LEFT} src/ (not entered)"
+    fi
+    if [ -n "${_XCOPY_LEFT}" ]; then
+      echo "ERROR: export for ${_oct}: an earlier export's state stays in ${_USR}:${_XCOPY_LEFT}"
+      echo "ERROR: nothing was dumped; fix the cause and re-run"
+      exit 1
+    fi
+    if [ "${_XCOPY_FORCED_SENT}" = "YES" ]; then
+      echo "INFO: export for ${_oct}: the transfer forced over the failed export is cleared (log/transferred.pid);"
+      echo "INFO: the next transfer sends this export in its place"
+    fi
+  fi
+  ### Every export takes the panel afresh, as it takes every site: a copy's
+  ### source keeps serving, so a panel dump already in src/ (left by an import
+  ### this box once received, an export killed or retried, or a stamp removed
+  ### by hand) is older than the sites dumped beside it, and the target would
+  ### import that older panel. log/sourcefqdn.txt is written with it.
+  _XCOPY_HM_DUMP_OK=""
   if [ "${_cmd}" = "export" ] \
     && [ ! -z "${_HDB}" ] \
-    && [ ! -e "${_USR}/src/prev_hostmaster.sql" ] \
     && [ ! -e "${_USR}/log/exported.pid" ]; then
       # Full hostmaster DB dump. renameaegirhost rewrites the source host/IP
       # across the entire DB on import and its task queue regenerates db-host
       # and alias entries, so a per-table allowlist (which silently dropped any
       # unlisted or newly added schema table) is no longer needed.
       # Written into the real src/ as a fresh file renamed over the name, so a
-      # link the account put at prev_hostmaster.sql (even a dangling one, past
-      # the -e guard above) is replaced, never followed to create its target.
+      # dump already there, or a link the account put at prev_hostmaster.sql
+      # (even a dangling one), is replaced, never followed to create its target.
       _mysqldump_gtid_opts
       [ "${#_MYSQLDUMP_GTID[@]}" -eq 0 ] \
         && echo "INFO: this mysqldump takes no --set-gtid-purged: its dump carries no GTID state"
@@ -2651,12 +3996,7 @@ _migrate_prepare() {
       # refuses without it. Travels with the log/ transfer sync.
       # The alias is read and the record put inside the real .drush and
       # log/ (both oN's), never through a link put at either name.
-      _SRC_FQDN=$(_xcopy_read_in "${_USR}/.drush" server_master.alias.drushrc.php \
-        | grep "remote_host" \
-        | head -1 \
-        | sed "s/.*remote_host.*=>//; s/[' ,;]//g")
-      _SRC_FQDN=${_SRC_FQDN//[^a-zA-Z0-9.\-]/}
-      [ -z "${_SRC_FQDN}" ] && _SRC_FQDN=$(hostname -f 2>/dev/null | tr -d '\n')
+      _SRC_FQDN=$(_xcopy_this_fqdn)
       printf '%s' "${_SRC_FQDN}" \
         | _xcopy_in_real_dir "${_USR}/log" _xcopy_write_here sourcefqdn.txt
     else
@@ -2774,6 +4114,14 @@ _migrate_prepare() {
     fi
     printf '%s' "${_HDB}" \
       | _xcopy_in_real_dir "${_USR}/log" _xcopy_write_here panel_db.txt
+    ### A 5.7 panel dump's utf8mb4 tables keep utf8mb4_general_ci on 8.x
+    ### (_mig_utf8mb4_client_opt, asked of the server the dump goes to); a
+    ### pour through ProxySQL is left as it was.
+    _XCOPY_POUR_UTF8MB4=()
+    if [ "${_THIS_DB_PORT}" = "3306" ]; then
+      _mig_utf8mb4_client_opt -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp
+      _XCOPY_POUR_UTF8MB4=("${_MYSQL_UTF8MB4[@]}")
+    fi
     if [ ! -z "${_dst}" ]; then
       if [ "${_oct}" = "${_dst}" ]; then
         [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL5 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp"
@@ -2787,7 +4135,7 @@ _migrate_prepare() {
         if ! ( set -o pipefail
           _xcopy_in_real_dir "${_USR}/src" _xcopy_cat_here prev_hostmaster.sql \
             | mysql --binary-mode --silent -u root -h${_SQL_CONNECT} \
-              -P${_THIS_DB_PORT} --protocol=tcp ${_HDB} ); then
+              "${_XCOPY_POUR_UTF8MB4[@]}" -P${_THIS_DB_PORT} --protocol=tcp ${_HDB} ); then
           echo "ERROR: hostmaster dump import into ${_HDB} FAILED -- this import is INCOMPLETE"
           echo "ERROR: nothing was stamped; fix the cause, then re-run the FULL import"
           exit 1
@@ -2807,7 +4155,7 @@ _migrate_prepare() {
       if ! ( set -o pipefail
         _xcopy_in_real_dir "${_USR}/src" _xcopy_cat_here prev_hostmaster.sql \
           | mysql --binary-mode --silent -u root -h${_SQL_CONNECT} \
-            -P${_THIS_DB_PORT} --protocol=tcp ${_HDB} ); then
+            "${_XCOPY_POUR_UTF8MB4[@]}" -P${_THIS_DB_PORT} --protocol=tcp ${_HDB} ); then
         echo "ERROR: hostmaster dump import into ${_HDB} FAILED -- this import is INCOMPLETE"
         echo "ERROR: nothing was stamped; fix the cause, then re-run the FULL import"
         exit 1
@@ -2942,7 +4290,35 @@ _migrate_prepare() {
       && [ ! -z "${_CLIENT_SUBSCR}" ] \
       && [ ! -z "${_CLIENT_CORES}" ]; then
       ### An account the target already holds is this migration's only
-      ### under its create marker: asked before anything changes there.
+      ### under its create marker: asked before --fix-php or anything else
+      ### changes the target.
+      _xcopy_create_owner_gate "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
+      ### The PHP set in force here must exist on the target BEFORE anything
+      ### is installed there; a missing version means silent fallback to a
+      ### different PHP on the copied sites (as in xoct).
+      _xcopy_php_coverage_gate "${_USR}" "${_tgt}" || exit 1
+      ### Install from the TARGET's own tree: a cross-tree copy must not push
+      ### this box's tree through the target's licence gate (as in xoct).
+      _TGT_TREE="$(_mig_target_tree "${_tgt}")"
+      case "${_TGT_TREE}" in
+        dev|lts|pro) : ;;
+        *)
+          echo "ALRT: invalid tree token '${_TGT_TREE}' from the target probe; refusing create"
+          exit 1
+        ;;
+      esac
+      if [ "${_TGT_TREE}" != "${_tRee}" ]; then
+        echo "ALRT: source tree is ${_tRee} but target ${_tgt} runs ${_TGT_TREE}; installing for ${_TGT_TREE}"
+      fi
+      ### A ProxySQL account here is born ProxySQL-wired on the target, not
+      ### retro-fitted: in-oct is in-octopus plus that wiring.
+      _IN_VERB=in-octopus
+      if [ -e "/data/conf/${_oct}_use_proxysql.txt" ]; then
+        _IN_VERB=in-oct
+        echo "INFO: source account uses ProxySQL; installing with 'boa in-oct'"
+      fi
+      ### Asked again: the PHP pass above is a full system pass, and the
+      ### target may have taken the name meanwhile.
       _xcopy_create_owner_gate "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
       ### Skipped only when the marked account is also really installed, on
       ### what only an install produces (xoct asks the same): one whose cnf or
@@ -2995,9 +4371,16 @@ _migrate_prepare() {
         _xcopy_wg_seed "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
         _xcopy_dbarm_seed "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
         _XCOPY_INSTALL_ON=YES
-        ssh root@${_tgt} "/opt/local/bin/boa in-octopus ${_CLIENT_EMAIL} ${_TGT_HM_USER} ${_tRee} ${_CLIENT_OPTION} ${_CLIENT_SUBSCR} ${_CLIENT_CORES} noscreen"
+        ssh root@${_tgt} "/opt/local/bin/boa ${_IN_VERB} ${_CLIENT_EMAIL} ${_TGT_HM_USER} ${_TGT_TREE} ${_CLIENT_OPTION} ${_CLIENT_SUBSCR} ${_CLIENT_CORES} noscreen"
         _INSTALL_RC=$?
-        if [ "${_INSTALL_RC}" != "0" ]; then
+        ### The launcher's status alone is not the account (the install can
+        ### die for its own reasons): it is proven to exist before anything
+        ### else is done there, as xoct proves it.
+        _TGT_BORN=$(ssh root@${_tgt} "getent passwd ${_TGT_HM_USER} >/dev/null 2>&1 \
+          && [ -e /root/.${_TGT_HM_USER}.octopus.cnf ] \
+          && [ -s /data/disk/${_TGT_HM_USER}/log/octopus_log.txt ] \
+          && echo BORN" 2>/dev/null)
+        if [ "${_INSTALL_RC}" != "0" ] || [ "${_TGT_BORN}" != "BORN" ]; then
           ### 255 is the connection lost, not the launcher's answer: the
           ### remote install may go on and make the account after this, so
           ### both seeds stay there for a re-run whose install uses them; any
@@ -3007,7 +4390,8 @@ _migrate_prepare() {
             _xcopy_dbarm_unseed "${_TGT_HM_USER}" "${_tgt}"
             _xcopy_wg_unseed "${_TGT_HM_USER}" "${_tgt}"
           fi
-          echo "ALRT: install of ${_TGT_HM_USER} on ${_tgt} failed or was refused (launcher rc=${_INSTALL_RC}, see its output above); nothing further was changed there"
+          echo "ALRT: install of ${_TGT_HM_USER} on ${_tgt} did not happen (launcher rc=${_INSTALL_RC}, see its output above); nothing further was changed there"
+          echo "ALRT: re-run this create once ${_tgt} is quiet"
           exit 1
         fi
         if [ "${_SILENT_MARKER}" = "YES" ]; then
@@ -3025,6 +4409,9 @@ _migrate_prepare() {
           echo "ALRT: the create marker for ${_TGT_HM_USER} could not be put on ${_tgt}; a re-run of this create will refuse the account"
           _xcopy_create_adopt_hint "${_oct}" "${_TGT_HM_USER}" "${_tgt}" "$(_xcopy_create_src_host)"
         fi
+      fi
+      if [ -e "/data/conf/${_oct}_use_proxysql.txt" ]; then
+        ssh root@${_tgt} "mkdir -p /data/conf && echo ProxySQL > /data/conf/${_TGT_HM_USER}_use_proxysql.txt"
       fi
       ssh root@${_tgt} "/bin/rm -f /data/disk/${_TGT_HM_USER}/tools/le/.ctrl/ssl-demo-mode.pid"
       ssh root@${_tgt} "/bin/rm -f /data/disk/${_TGT_HM_USER}/tools/le/config"
@@ -3094,12 +4481,19 @@ _migrate_prepare() {
       echo "ALRT: export for ${_oct}: ${_XCOPY_EXPORT_FAIL} site database export(s) FAILED:${_XCOPY_EXPORT_FAILED_DBS}"
       echo "ERROR: NOT stamping exported.pid; transfer and import will refuse this account"
       echo "ERROR: fix the cause, then re-run 'xcopy export ${_oct} ${_tgt}${_dst:+ ${_dst}}'"
-      echo "ERROR: (site dumps are redone in place; the hostmaster dump is kept)"
+      echo "ERROR: (a re-run dumps the control panel and every site again)"
       _XCOPY_RUN_FAIL=YES
-    elif [ -s "${_USR}/src/prev_hostmaster.sql" ]; then
+    ### Stamped only over a panel dump this run made: one already in src/
+    ### is an older copy's (an import this box received, an earlier export).
+    elif [ "${_XCOPY_HM_DUMP_OK}" = "YES" ] \
+      && [ -s "${_USR}/src/prev_hostmaster.sql" ]; then
       _xcopy_in_real_dir "${_USR}/log" rm -f -- ./export_failed.pid
       _xcopy_in_real_dir "${_USR}/log" _xcopy_touch_here exported.pid
       echo "INFO: export for ${_oct}: every site database dump completed; exported.pid stamped"
+    else
+      echo "ERROR: export for ${_oct}: this run made no control panel dump"
+      echo "ERROR: NOT stamping exported.pid; transfer and import will refuse this account"
+      _XCOPY_RUN_FAIL=YES
     fi
   fi
   if [ "${_cmd}" = "import" ]; then
@@ -3127,6 +4521,8 @@ _migrate_prepare() {
     _xcopy_flush_caches_target
     # Carried FPM markers would leave every pinned site on the default pool.
     _xcopy_heal_fpm_pins "${_THIS_HM_USER}"
+    _xcopy_le_kept_put
+    _xcopy_verify_list_put
     if [ "${_XCOPY_IMPORT_FAIL:-0}" != "0" ]; then
       {
         echo "failed=${_XCOPY_IMPORT_FAIL}"
@@ -3176,12 +4572,21 @@ _xcopy_detect_target_mnt() {
 # Resolve the target's attached mount into _TGT_MNT ("" = none), aborting the run on a
 # failed query, an empty target host, or more than one mount. $1 = target host.
 _xcopy_resolve_target_mnt() {
-  local _raw
+  local _raw _e _said=""
   if [ -z "$1" ]; then
     echo "ERROR: empty target host — refusing"
     exit 1
   fi
-  _raw="$(_xcopy_detect_target_mnt "$1")"
+  # the client's own words are kept and shown as before; a target whose key
+  # is not the one held here for its address is named as that
+  if _e="$(mktemp /tmp/mig-said.XXXXXX 2> /dev/null)"; then
+    _raw="$(_xcopy_detect_target_mnt "$1" 2> "${_e}")"
+    _said="$(cat "${_e}" 2> /dev/null)"
+    rm -f "${_e}"
+    [ -z "${_said}" ] || printf '%s\n' "${_said}" >&2
+  else
+    _raw="$(_xcopy_detect_target_mnt "$1")"
+  fi
   case "${_raw}" in
     MULTI)
       echo "ERROR: target $1 has multiple /mnt mounts; BOA supports a single attached mount — refusing"
@@ -3189,6 +4594,12 @@ _xcopy_resolve_target_mnt() {
       ;;
     NONE) _TGT_MNT="" ;;
     "")
+      if _mig_hostkey_changed "$1" "${_said}"; then
+        echo "ERROR: target $1 serves a host key that is not the one this box holds for that address"
+        echo "ERROR: (${_MIG_HOSTKEY_SAYS}) — refusing. Make the check named above,"
+        echo "ERROR: forget the old entries here, then run this command again"
+        exit 1
+      fi
       echo "ERROR: could not query /mnt on target $1 (ssh failed?) — refusing"
       exit 1
       ;;
@@ -3245,13 +4656,20 @@ _xcopy_in_real_dir() {
   local _d="${1}" _want
   shift
   _want="$(_xcopy_real_want "${_d}")"
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] && "$@" )
 }
 # ./$1 in the current (pinned) directory: never through a link, never
 # blocked on a FIFO, at most 1 MiB; empty for anything else.
 _xcopy_read_here() {
   timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
     bs=1048576 count=1 status=none 2> /dev/null
+}
+# ./$1 in the current (pinned) directory, printed only when it is a regular
+# file owned by root with one link, checked on the one handle that reads it
+# (at most 1 MiB): an account can put a file of its own at a name in a
+# directory it owns.
+_xcopy_read_root_here() {
+  perl -e 'use Fcntl; sysopen(my $h, $ARGV[0], O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit 1; my @s = stat($h) or exit 1; exit 1 unless -f _ && $s[4] == 0 && $s[3] == 1; my $d = ""; defined(read($h, $d, 1048576)) or exit 1; print $d; exit 0' -- "./${1}"
 }
 # The words of $1 that are host names (letters, digits, dots, dashes, a
 # leading wildcard), space-separated; anything else is dropped. The words
@@ -3295,23 +4713,36 @@ _xcopy_touch_here() {
 # directory the account can write (a hard link renamed over the name before a
 # chown by name would hand another file to that owner).
 _XCOPY_PUT_PL='use Fcntl; my ($n, $u, $g, $m) = @ARGV; local $/; my $d = <STDIN>; sysopen(my $h, $n, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600) or exit 1; (print {$h} $d) or exit 1; chown($u, $g, $h) or exit 1; chmod(oct($m) & 0666, $h) or exit 1; close($h) or exit 1; exit 0'
+# The owner $1:$2 (numeric; -1 leaves it) and the mode $3 (none when empty)
+# re-asserted on each existing name ./$5 ... through one handle opened
+# O_NOFOLLOW|O_NONBLOCK, and only when that handle is a regular file with one
+# link whose owner is already $1 or one of the uids in the comma-separated
+# $4: a link, a FIFO, a hard link to another file, or a file of some other
+# identity (root's included: a root-only file renamed onto the name is never
+# handed over) is left as it is, never handed to the account or chmodded.
+# What root puts for the account is created with its final owner instead.
+_XCOPY_REASSERT_PL='use Fcntl; my ($u, $g, $m, $x, @f) = @ARGV; my %ok = map { $_ => 1 } ($u, split(/,/, $x)); for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); if (@s && -f _ && $s[3] == 1 && $ok{$s[4]}) { chown($u, $g, $h) if $u >= 0; chmod(oct($m), $h) if length $m; } close($h); } exit 0'
 # The same rule on the target box: the commands $3 run on the target $1
 # inside the real directory $2 (below /data/disk or /home every name on the
 # path a real directory), where _rr reads a name without following a link or
-# blocking on a FIFO and _rp puts one as a fresh file through _XCOPY_PUT_PL,
+# blocking on a FIFO, _rp puts one as a fresh file through _XCOPY_PUT_PL,
 # renamed over the name (empty when no content is given; $3 the owner:group
-# it is created with, root's when empty or when it does not resolve). The
-# target account is the tenant's once its identity has travelled. The perl
-# text is spliced in unquoted here, so it lands on the target inside single
-# quotes.
+# it is created with, root's when empty or when it does not resolve), and _ro
+# re-asserts owner:group $1 and mode $2 on names through _XCOPY_REASSERT_PL
+# ($3 the further uids the names may carry). The target account is the
+# tenant's once its identity has travelled. Both perl texts are spliced in
+# unquoted here, so each lands on the target inside single quotes: both are
+# set above this line (as in xoct).
 _XCOPY_REMOTE_CTRL_FN='_rr() { timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock bs=1048576 count=1 status=none 2> /dev/null; }
-_rp() { local _t="./.${1}.put.$$.${RANDOM}" _u=-1 _g=-1; if [ -n "${3}" ]; then _u="$(id -u -- "${3%%:*}" 2> /dev/null)"; _g="$(getent group "${3#*:}" 2> /dev/null | cut -d: -f3)"; case "${_u}:${_g}" in :*|*:|*[!0-9:]*) _u=-1; _g=-1 ;; esac; fi; rm -f -- "${_t}"; if { [ -n "${2}" ] && printf "%s\n" "${2}"; true; } | perl -e '"'${_XCOPY_PUT_PL}'"' "${_t}" "${_u}" "${_g}" 644 && mv -f -T -- "${_t}" "./${1}"; then return 0; fi; rm -f -- "${_t}"; return 1; }'
+_rid() { local _u _g; _u="$(id -u -- "${1%%:*}" 2> /dev/null)"; _g="$(getent group "${1#*:}" 2> /dev/null | cut -d: -f3)"; case "${_u}:${_g}" in :*|*:|*[!0-9:]*) _u=-1; _g=-1 ;; esac; printf "%s %s\n" "${_u}" "${_g}"; }
+_rp() { local _t="./.${1}.put.$$.${RANDOM}" _i="-1 -1"; [ -n "${3}" ] && _i="$(_rid "${3}")"; rm -f -- "${_t}"; if { [ -n "${2}" ] && printf "%s\n" "${2}"; true; } | perl -e '"'${_XCOPY_PUT_PL}'"' "${_t}" "${_i% *}" "${_i#* }" 644 && mv -f -T -- "${_t}" "./${1}"; then return 0; fi; rm -f -- "${_t}"; return 1; }
+_ro() { local _i; _i="$(_rid "${1}")"; shift; perl -e '"'${_XCOPY_REASSERT_PL}'"' -- "${_i% *}" "${_i#* }" "$@" 2> /dev/null; }'
 _xcopy_remote_in() {
   local _a=/data/disk
   case "${2}" in /home/?*) _a=/home ;; esac
   ssh root@"${1}" "${_XCOPY_REMOTE_CTRL_FN}
-_w=\"\$(cd -P ${_a} 2> /dev/null && pwd -P)${2#"${_a}"}\"
-cd -P -- \"${2}\" 2> /dev/null && [ \"\$(pwd -P)\" = \"\${_w}\" ] && { ${3}; }"
+_w=\"\$(cd -P ${_a} 2> /dev/null && /bin/pwd -P)${2#"${_a}"}\"
+cd -P -- \"${2}\" 2> /dev/null && [ \"\$(/bin/pwd -P)\" = \"\${_w}\" ] && { ${3}; }"
 }
 # The commands $3 inside the real static/control of the account $2 there.
 _xcopy_remote_ctrl() {
@@ -3327,7 +4758,7 @@ _xcopy_rsync_path_in() {
     /home/?*) _a=/home ;;
     /opt/user/?*) _a=/opt/user ;;
   esac
-  printf '%s' "cd -P -- '${1}' && [ \"\$(pwd -P)\" = \"\$(cd -P ${_a} && pwd -P)${1#"${_a}"}\" ] && rsync"
+  printf '%s' "cd -P -- '${1}' && [ \"\$(/bin/pwd -P)\" = \"\$(cd -P ${_a} && /bin/pwd -P)${1#"${_a}"}\" ] && rsync"
 }
 # The entries of the current (pinned) directory the glob $3 names (empty:
 # the directory's contents), expanded here, copied with the rsync options
@@ -3336,22 +4767,52 @@ _xcopy_rsync_path_in() {
 _xcopy_copy_here() {
   local _h="${1}" _d="${2}" _g="${3}"
   shift 3
+  _xcopy_glob_names "${_g}" || return 0
   # shellcheck disable=SC2086
   _xcopy_rsync "$@" --rsync-path="$(_xcopy_rsync_path_in "${_d}")" -e ssh \
     ./${_g} "root@${_h}:./"
+}
+### True when the glob $1 names an entry of the current directory, or is
+### empty (the directory's contents). A glob that names nothing copies
+### nothing: rsync would be handed the pattern itself and print an error
+### for a folder that is only empty.
+_xcopy_glob_names() {
+  local _m
+  [ -n "${1}" ] || return 0
+  # shellcheck disable=SC2086
+  for _m in ./${1}; do
+    { [ -e "${_m}" ] || [ -L "${_m}" ]; } && return 0
+  done
+  return 1
 }
 # As _xcopy_rsync_path_in, but the last name of $1 is made a real directory
 # first (a link the account put there is removed, a missing directory made):
 # for a leg whose target directory the install does not create.
 _xcopy_rsync_path_mk_in() {
-  local _d="${1}" _a=/data/disk _p _n
+  local _d="${1}" _a=/data/disk _p _n _m _c
   case "${_d}" in
     /home/?*) _a=/home ;;
     /opt/user/?*) _a=/opt/user ;;
   esac
   _p="${_d%/*}"
   _n="${_d##*/}"
-  printf '%s' "_a=\"\$(cd -P ${_a} && pwd -P)\"; cd -P -- '${_p}' && [ \"\$(pwd -P)\" = \"\${_a}${_p#"${_a}"}\" ] && { [ -L './${_n}' ] && rm -f './${_n}'; [ -d './${_n}' ] || mkdir './${_n}'; } && cd -P -- './${_n}' && [ \"\$(pwd -P)\" = \"\${_a}${_d#"${_a}"}\" ] && rsync"
+  # The client toolchain trees' parents are shared and BOA's own: root's,
+  # sticky and world-writable, as the ltd worker makes them. A target where
+  # Ruby or Node was never set up has none, and the account's tree would not
+  # travel: the parent is made there first (never through a link). Any
+  # account there can make the login's name in them first, so the copy goes
+  # only into a tree root or one of the account's own identities (the
+  # account, <account>.<name>) owns, read from inside it.
+  _m=""
+  _c=""
+  case "${_p}" in
+    /opt/user/*/*) ;;
+    /opt/user/?*)
+      _m="[ -L /opt/user ] || [ -d /opt/user ] || mkdir -m 755 /opt/user; [ -L '${_p}' ] || [ -d '${_p}' ] || { mkdir -m 1777 '${_p}' && chown root:root '${_p}'; }; "
+      _c="case \"\$(stat -c %U .)\" in root|'${_n%%.*}'|'${_n%%.*}'.*) ;; *) echo \"${_d} is owned by \$(stat -c %U .), not by ${_n%%.*} or root: not entered\" >&2; false ;; esac && "
+      ;;
+  esac
+  printf '%s' "${_m}_a=\"\$(cd -P ${_a} && /bin/pwd -P)\"; cd -P -- '${_p}' && [ \"\$(/bin/pwd -P)\" = \"\${_a}${_p#"${_a}"}\" ] && { [ -L './${_n}' ] && rm -f './${_n}'; [ -d './${_n}' ] || mkdir './${_n}'; } && cd -P -- './${_n}' && [ \"\$(/bin/pwd -P)\" = \"\${_a}${_d#"${_a}"}\" ] && ${_c}rsync"
 }
 # The entries of the current (pinned) directory the glob $3 names copied into
 # the real directory $2 on the target $1, the target directory created when
@@ -3359,6 +4820,7 @@ _xcopy_rsync_path_mk_in() {
 _xcopy_copy_mk_here() {
   local _h="${1}" _d="${2}" _g="${3}"
   shift 3
+  _xcopy_glob_names "${_g}" || return 0
   # shellcheck disable=SC2086
   _xcopy_rsync "$@" --rsync-path="$(_xcopy_rsync_path_mk_in "${_d}")" -e ssh \
     ./${_g} "root@${_h}:./"
@@ -3374,9 +4836,9 @@ _xcopy_real_want() {
     /opt/user/?*) _a=/opt/user ;;
   esac
   if [ -n "${_a}" ]; then
-    printf '%s' "$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+    printf '%s' "$(cd -P -- "${_a}" 2> /dev/null && /bin/pwd -P)${_d#"${_a}"}"
   else
-    printf '%s' "$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+    printf '%s' "$(cd -P -- "${_d%/*}" 2> /dev/null && /bin/pwd -P)/${_d##*/}"
   fi
 }
 ### "$@" run inside the canonical directory $1, only once pwd -P lands
@@ -3388,14 +4850,14 @@ _xcopy_in_canon_dir() {
     /?*) ;;
     *) return 1 ;;
   esac
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_d}" ] && "$@" )
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_d}" ] && "$@" )
 }
 ### The --rsync-path that starts the receiver inside the canonical directory
 ### $1 on the target, and only once pwd -P says it is there.
 _xcopy_canon_rpath() {
   local _q
   _q="$(_shq "${1}")"
-  printf '%s' "cd -P -- '${_q}' && [ \"\$(pwd -P)\" = '${_q}' ] && rsync"
+  printf '%s' "cd -P -- '${_q}' && [ \"\$(/bin/pwd -P)\" = '${_q}' ] && rsync"
 }
 ### Whether the canonical path $2 belongs to the account $1: its own tree,
 ### or its own part of an attached store, <mount>/files/<oN>/, the layout
@@ -3422,7 +4884,7 @@ _xcopy_own_path() {
     esac
   fi
   if [ -L /mnt ]; then
-    _m="$(cd -P -- /mnt 2> /dev/null && pwd -P)"
+    _m="$(cd -P -- /mnt 2> /dev/null && /bin/pwd -P)"
     case "${_m}" in
       ''|/|/mnt|/data|/data/*) ;;
       *)
@@ -3467,11 +4929,11 @@ _xcopy_own_parent_cd() {
   while [ -n "${_e}" ] && [ ! -e "${_e}" ]; do
     _e="${_e%/*}"
   done
-  _xcopy_own_path "${_a}" "$(cd -P -- "${_e:-/}" 2> /dev/null && pwd -P)" \
+  _xcopy_own_path "${_a}" "$(cd -P -- "${_e:-/}" 2> /dev/null && /bin/pwd -P)" \
     || return 1
   mkdir -p -- "${_p}" 2> /dev/null
   cd -P -- "${_p}" 2> /dev/null || return 1
-  _xcopy_own_path "${_a}" "$(pwd -P)"
+  _xcopy_own_path "${_a}" "$(/bin/pwd -P)"
 }
 ### Run there as above: make the directory $3 of the account $2 ready for a
 ### copy and print XCREAL with its canonical path. A link at the last name
@@ -3484,7 +4946,7 @@ _xcopy_own_dir_ready() {
   esac
   _xcopy_own_parent_cd "${_a}" "${3}" || return 1
   if [ -L "./${_n}" ]; then
-    _r="$(cd -P -- "./${_n}" 2> /dev/null && pwd -P)"
+    _r="$(cd -P -- "./${_n}" 2> /dev/null && /bin/pwd -P)"
     if [ "${_m}" != "keep" ] || ! _xcopy_own_path "${_a}" "${_r}"; then
       rm -f -- "./${_n}" || return 1
     fi
@@ -3493,7 +4955,7 @@ _xcopy_own_dir_ready() {
   fi
   [ -d "./${_n}" ] || mkdir -- "./${_n}" || return 1
   cd -P -- "./${_n}" 2> /dev/null || return 1
-  _r="$(pwd -P)"
+  _r="$(/bin/pwd -P)"
   _xcopy_own_path "${_a}" "${_r}" || return 1
   printf 'XCREAL %s\n' "${_r}"
 }
@@ -3513,13 +4975,13 @@ _xcopy_own_link_ready() {
     rm -f -- "./${_n}"
   fi
   ln -sfn -- "${3}" "./${_n}" || return 1
-  printf 'XCREAL %s/%s\n' "$(pwd -P)" "${_n}"
+  printf 'XCREAL %s/%s\n' "$(/bin/pwd -P)" "${_n}"
 }
 ### Run there as above: link the account $1's name $2 to its store entry $3
 ### only once $3 is a directory in the account's own tree or store, so a
 ### directory at $2 never gives way to a link that leads nowhere.
 _xcopy_own_store_link_ready() {
-  _xcopy_own_path "${1}" "$(cd -P -- "${3}" 2> /dev/null && pwd -P)" || return 1
+  _xcopy_own_path "${1}" "$(cd -P -- "${3}" 2> /dev/null && /bin/pwd -P)" || return 1
   _xcopy_own_link_ready "${1}" "${2}" "${3}"
 }
 ### Run there: make each of the account $1's own control panel stores, the
@@ -3537,16 +4999,16 @@ _xcopy_own_store_link_ready() {
 _xcopy_own_panel_carry() {
   local _a="${1}" _o _n _p _t _m
   local -a _ps _st
-  _n="$(cd -P -- "${3}" 2> /dev/null && pwd -P)" || return 1
+  _n="$(cd -P -- "${3}" 2> /dev/null && /bin/pwd -P)" || return 1
   [ "${_n}" = "${3}" ] || return 1
   if [ ! -e "${2}" ] && [ ! -L "${2}" ]; then
     printf 'XCREAL %s\n' "${_n}"
     return 0
   fi
-  _o="$(cd -P -- "${2}" 2> /dev/null && pwd -P)" || return 1
+  _o="$(cd -P -- "${2}" 2> /dev/null && /bin/pwd -P)" || return 1
   if ! _xcopy_own_path "${_a}" "${_o}"; then
     # the account's part of the attached store through a /mnt that is a link
-    _m="$(cd -P -- /mnt 2> /dev/null && pwd -P)"
+    _m="$(cd -P -- /mnt 2> /dev/null && /bin/pwd -P)"
     case "${_o}/" in
       "${_m}"/?*) _xcopy_own_path "${_a}" "/mnt${_o#"${_m}"}" || return 1 ;;
       *) return 1 ;;
@@ -3558,17 +5020,17 @@ _xcopy_own_panel_carry() {
       case "${_p}" in ''|.|..|*/*) continue ;; esac
       [ -d "${_o}/${_p}" ] && [ ! -L "${_o}/${_p}" ] || continue
       _t=".${_p}.carry"
-      ( cd -P -- "${_n}" 2> /dev/null && [ "$(pwd -P)" = "${_n}" ] \
+      ( cd -P -- "${_n}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_n}" ] \
         && rm -rf -- "./${_t}" && mkdir -- "./${_t}" ) || return 1
-      ( cd -P -- "${_o}/${_p}" 2> /dev/null && [ "$(pwd -P)" = "${_o}/${_p}" ] || exit 9
+      ( cd -P -- "${_o}/${_p}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_o}/${_p}" ] || exit 9
         tar -cf - --numeric-owner --acls --xattrs --one-file-system . ) \
-        | ( cd -P -- "${_n}/${_t}" 2> /dev/null && [ "$(pwd -P)" = "${_n}/${_t}" ] || exit 9
+        | ( cd -P -- "${_n}/${_t}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_n}/${_t}" ] || exit 9
           tar -xpf - --numeric-owner --acls --xattrs )
       _st=("${PIPESTATUS[@]}")
       if [ "${_st[0]:-9}" -gt 1 ] || [ "${_st[1]:-9}" -ne 0 ] \
-        || ! ( cd -P -- "${_n}" 2> /dev/null && [ "$(pwd -P)" = "${_n}" ] \
+        || ! ( cd -P -- "${_n}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_n}" ] \
           && rm -rf -- "./${_p}" && mv -T -- "./${_t}" "./${_p}" ); then
-        ( cd -P -- "${_n}" 2> /dev/null && [ "$(pwd -P)" = "${_n}" ] && rm -rf -- "./${_t}" )
+        ( cd -P -- "${_n}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_n}" ] && rm -rf -- "./${_t}" )
         return 1
       fi
     done
@@ -3592,7 +5054,7 @@ _xcopy_own_dir_carry() {
   [ -L "./${_n}" ] || { _xcopy_own_dir_ready dir "${_a}" "${2}"; return $?; }
   [ -d "./${_n}" ] || return 1
   _lt="$(readlink -- "./${_n}")" || return 1
-  _w="$(pwd -P)"
+  _w="$(/bin/pwd -P)"
   _l="${_lt}"
   case "${_l}" in
     /*) ;;
@@ -3611,7 +5073,7 @@ _xcopy_own_dir_carry() {
     return 1
   fi
   cd -P -- "./${_n}" 2> /dev/null || return 1
-  _r="$(pwd -P)"
+  _r="$(/bin/pwd -P)"
   _xcopy_own_path "${_a}" "${_r}" || return 1
   printf 'XCREAL %s\n' "${_r}"
 }
@@ -3627,17 +5089,17 @@ _xcopy_real_mnt_dir() {
   case "${_d}/" in
     *//*|*/./*|*/../*) return 1 ;;
   esac
-  _c="$(cd -P -- /mnt 2> /dev/null && pwd -P)" || return 1
+  _c="$(cd -P -- /mnt 2> /dev/null && /bin/pwd -P)" || return 1
   [ -n "${_c}" ] || return 1
   _e="${_d}"
   while [ -n "${_e}" ] && [ ! -e "${_e}" ]; do
     _e="${_e%/*}"
   done
-  [ "$(cd -P -- "${_e:-/}" 2> /dev/null && pwd -P)" = "${_c}${_e#/mnt}" ] || return 1
+  [ "$(cd -P -- "${_e:-/}" 2> /dev/null && /bin/pwd -P)" = "${_c}${_e#/mnt}" ] || return 1
   mkdir -p -- "${_d}" 2> /dev/null
   _c="${_c}${_d#/mnt}"
   cd -P -- "${_d}" 2> /dev/null || return 1
-  [ "$(pwd -P)" = "${_c}" ] || return 1
+  [ "$(/bin/pwd -P)" = "${_c}" ] || return 1
   printf 'XCREAL %s\n' "${_c}"
 }
 ### Run one of the placement helpers above as root on the box $1, with the
@@ -3685,7 +5147,7 @@ _xcopy_leg_ok() {
 ### which carries it once, fit-checked. backup-exports/ travels only as the
 ### mover link, as it always did.
 _xcopy_backups_leg() {
-  local _u="${1}" _d="${2}" _h="${3}" _ie="${4}" _n="${5}" _l _b _r _to _rc
+  local _u="${1}" _d="${2}" _h="${3}" _ie="${4}" _n="${5}" _l _b _r _to _rc _XCOPY_RSYNC_ERR=""
   _l="$(readlink "${_u}/${_n}" 2> /dev/null)"
   _b="${_l#"${_u}/static/files/"}"
   if [ -L "${_u}/${_n}" ] && [ "${_b}" != "${_l}" ] \
@@ -3711,7 +5173,7 @@ _xcopy_backups_leg() {
       /mnt/*) return 0 ;;
     esac
   fi
-  _r="$(cd -P -- "${_u}/${_n}" 2> /dev/null && pwd -P)"
+  _r="$(cd -P -- "${_u}/${_n}" 2> /dev/null && /bin/pwd -P)"
   if [ -z "${_r}" ] || ! _xcopy_own_path "${_u##*/}" "${_r}"; then
     echo "DENY: ${_u}/${_n} resolves to ${_r:-nothing}, outside the account's own tree and store -- not followed, not copied"
     _XCOPY_NOT_CLEAN=YES
@@ -3731,13 +5193,145 @@ _xcopy_backups_leg() {
   ### an empty backups/ has nothing for the glob to name
   [ -n "$(_xcopy_in_canon_dir "${_r}" find . -mindepth 1 -maxdepth 1 \
     -name '[!.]*' -print -quit 2> /dev/null)" ] || return 0
+  [ "${_MODE}" = "LIVE" ] && _XCOPY_RSYNC_ERR="$(mktemp /tmp/xmig-leg-err.XXXXXX 2> /dev/null)"
+  ### a backup the glob named and a rotation removed before the copy read
+  ### it is skipped, as one removed during the copy is
   # shellcheck disable=SC2086
   _xcopy_in_canon_dir "${_r}" _xcopy_copy_canon_here "${_h}" "${_to:-${_d}/${_n}}" '*' \
-    -aEAXqu ${_ie}
-  _rc=$?
-  ### 24: files that vanished while the copy ran (a rotated backup)
+    -aEAXqu --ignore-missing-args ${_ie}
+  _rc="$(_xcopy_leg_rc "$?")"
+  ### 24, or a 23 only vanished files caused: files gone while the copy ran
+  ### (a rotated backup)
   if [ "${_rc}" != "0" ] && [ "${_rc}" != "24" ] && [ "${_MODE}" = "LIVE" ]; then
     echo "DENY: ${_u}/${_n} copy to ${_h} failed (rc ${_rc})"
+    _XCOPY_NOT_CLEAN=YES
+    _XCOPY_STORE_RC=1
+    return 1
+  fi
+  return 0
+}
+### rsync exit 23 ("some files/attrs were not transferred") is the same
+### benign event as 24 when every error rsync printed is a sender-side ENOENT:
+### a file that vanished after rsync listed it is reported through whichever
+### call met it first (the xattr or ACL read, the lstat, the open, the
+### opendir) and the run exits 23, not 24. A client's own gem or npm run, or a
+### backup rotated during the copy, does exactly that. link_stat is a source
+### argument gone before the copy read it: the backups leg passes its glob's
+### names with --ignore-missing-args, so a backup rotated before the read is
+### skipped there; anywhere else it is no vanished file. Any receiver-side
+### error and any other errno keep 23 as the failure it is. xmass reads its
+### copies the same way (_xmass_rsync_vanished_only).
+### $1 = the captured rsync stderr; returns 0 when 23 may be read as 24.
+_xcopy_rsync_vanished_only() {
+  local _err="$1" _bad
+  [ -s "${_err}" ] || return 1
+  grep -q 'No such file or directory' "${_err}" || return 1
+  grep -qE 'rsync: (\[sender\] )?link_stat ' "${_err}" && return 1
+  # Every line must be one of these, or 23 stays a failure: a sender ENOENT
+  # (rsync before 3.2.3, a legacy source, prints no [sender] role tag, so the
+  # untagged form is accepted only for the sender's own listing calls), the
+  # vanished file or directory warning, rsync's closing lines, ssh's notes on
+  # a host key it added and on a key exchange that is not post-quantum (an
+  # older or armoured peer, OpenSSH 10.1 and later), an empty line. The
+  # receiver reports some failures without an rsync prefix (a file that failed
+  # verification, a name too long to make): such a line is no vanished file.
+  # ssh ends each line it writes to stderr with a carriage return as well.
+  _bad=$(tr -d '\r' < "${_err}" | grep -vE '^rsync: \[sender\] .*No such file or directory \(2\)$' \
+    | grep -vE '^rsync: (get_xattr_names|get_xattr_data|get_acl|readlink_stat|send_files|opendir)[ :(].*No such file or directory \(2\)$' \
+    | grep -vE '^(rsync: (\[sender\] )?)?(file|directory) has vanished: ' \
+    | grep -vE '^rsync error: some files/attrs were not transferred \(see previous errors\) \(code 23\)' \
+    | grep -vE '^rsync warning: some files vanished before they could be transferred \(code 24\)' \
+    | grep -vE '^Warning: Permanently added ' \
+    | grep -vE '^\*\* (WARNING: connection is not using a post-quantum key exchange algorithm\.|This session may be vulnerable to "store now, decrypt later" attacks\.|The server may need to be upgraded\. See https://openssh\.com/pq\.html)$' \
+    | grep -vE '^[[:space:]]*$' \
+    | head -1)
+  [ -z "${_bad}" ]
+}
+### The status a leg's copy counts as. $1 = the copy's status; the errors
+### the leg kept in _XCOPY_RSYNC_ERR are printed (on stderr, as rsync printed
+### them) and the file removed. A 23 that only vanished files caused is 24.
+### Prints the status, and nothing else on stdout.
+_xcopy_leg_rc() {
+  local _rc="${1}"
+  if [ -n "${_XCOPY_RSYNC_ERR:-}" ]; then
+    [ -s "${_XCOPY_RSYNC_ERR}" ] && cat "${_XCOPY_RSYNC_ERR}" >&2
+    if [ "${_rc}" = "23" ] && _xcopy_rsync_vanished_only "${_XCOPY_RSYNC_ERR}"; then
+      _rc=24
+      echo "INFO: rsync rc=23 carried only vanished-file errors (a file gone between listing and read), read as rc=24" >&2
+    fi
+    rm -f -- "${_XCOPY_RSYNC_ERR}"
+  fi
+  echo "${_rc}"
+}
+### The client toolchain tree $2 (/opt/user/<tree>/<login>) on the target
+### $1, read before its leg, dry or live. Its parent is sticky and
+### world-writable, so another account there can make the login's name
+### first: the copy would fill a tree that account owns, and the ltd worker
+### never hands such a tree over. The leg goes ahead when the name is not
+### there or is a link (the receiver makes the tree, or removes the link
+### first), or when root or one of the account's own identities (the
+### account, <account>.<name>) owns it; anything else, a parent that is not
+### a real directory, or a target that does not answer, is a DENY. The
+### receiver reads the owner again from inside the tree before it copies.
+_xcopy_toolchain_leaf_ok() {   # 1 = target  2 = the tree there
+  local _h="${1}" _d="${2}" _p _n _o _r _why
+  _p="${_d%/*}"
+  _n="${_d##*/}"
+  _o="${_n%%.*}"
+  _r=$(ssh -n -o BatchMode=yes -o ConnectTimeout=15 root@"${_h}" \
+    "_a=\"\$(cd -P /opt/user 2> /dev/null && /bin/pwd -P)\"; cd -P -- '${_p}' 2> /dev/null || { echo XTL:none; exit 0; }; [ \"\$(/bin/pwd -P)\" = \"\${_a}${_p#/opt/user}\" ] || { echo XTL:parent; exit 0; }; if [ -L './${_n}' ] || [ ! -e './${_n}' ]; then echo XTL:none; else echo \"XTL:own:\$(stat -c %U -- './${_n}')\"; fi" \
+    2> /dev/null | grep -a '^XTL:' | tail -n 1)
+  case "${_r}" in
+    XTL:none|XTL:own:root|"XTL:own:${_o}"|"XTL:own:${_o}".*) return 0 ;;
+    XTL:own:?*) _why="it is owned by ${_r#XTL:own:}, not by ${_o} or root" ;;
+    XTL:parent) _why="${_p} there is not a real directory" ;;
+    *) _why="it could not be read there" ;;
+  esac
+  echo "DENY: ${_d} on ${_h}: ${_why} -- not entered, the tree of ${_n} does not travel"
+  _XCOPY_NOT_CLEAN=YES
+  [ "${_MODE}" = "LIVE" ] && _XCOPY_STORE_RC=1
+  return 1
+}
+### The same rule on this box, before the copy: the parents here are as open,
+### so another account can have made the login's name first here too, and the
+### copy would carry that owner to the target, where the ltd worker never
+### hands the tree over. A tree that is missing or a link is the leg's own to
+### skip. The parent is sticky, so a tree root or the account owns cannot be
+### swapped for another's between this read and the copy.
+_xcopy_toolchain_src_ok() {   # 1 = the tree here
+  local _s="${1}" _n _o _u
+  _n="${_s##*/}"
+  _o="${_n%%.*}"
+  [ -d "${_s}" ] && [ ! -L "${_s}" ] || return 0
+  _u="$(stat -c %U -- "${_s}" 2> /dev/null)"
+  case "${_u}" in
+    root|"${_o}"|"${_o}".*) return 0 ;;
+  esac
+  echo "DENY: ${_s} here is owned by ${_u:-an owner that cannot be read}, not by ${_o} or root -- the tree of ${_n} does not travel"
+  _XCOPY_NOT_CLEAN=YES
+  [ "${_MODE}" = "LIVE" ] && _XCOPY_STORE_RC=1
+  return 1
+}
+### The client toolchain tree $3 here copied to $4 on the target $1 ($2 the
+### rsync error option): from inside the real directory into the real one
+### there, once that tree is the account's here (_xcopy_toolchain_src_ok)
+### and there (_xcopy_toolchain_leaf_ok). A
+### copy that fails counts as a failed backups copy does: named, and the
+### live transfer is not marked complete; a run after the cause is gone
+### copies what is missing. 24 (files that vanished while the copy ran, the
+### client's own tool at work) is no failure, nor a 23 only such files caused
+### (_xcopy_leg_rc). A tree this box does not have is nothing to copy.
+_xcopy_toolchain_leg() {   # 1 = target  2 = rsync error option  3 = tree here  4 = tree there
+  local _h="${1}" _ie="${2}" _s="${3}" _d="${4}" _rc _XCOPY_RSYNC_ERR=""
+  _xcopy_leg_ok "${_s}" || return 0
+  _xcopy_toolchain_src_ok "${_s}" || return 1
+  _xcopy_toolchain_leaf_ok "${_h}" "${_d}" || return 1
+  [ "${_MODE}" = "LIVE" ] && _XCOPY_RSYNC_ERR="$(mktemp /tmp/xmig-leg-err.XXXXXX 2> /dev/null)"
+  # shellcheck disable=SC2086
+  _xcopy_in_real_dir "${_s}" _xcopy_copy_mk_here "${_h}" "${_d}" '' -aEAXqu ${_ie}
+  _rc="$(_xcopy_leg_rc "$?")"
+  if [ "${_rc}" != "0" ] && [ "${_rc}" != "24" ] && [ "${_MODE}" = "LIVE" ]; then
+    echo "DENY: ${_s} copy to ${_h} failed (rc ${_rc})"
     _XCOPY_NOT_CLEAN=YES
     _XCOPY_STORE_RC=1
     return 1
@@ -3855,15 +5449,6 @@ _xcopy_owner_ids() {
   [[ "${_u}" =~ ^[0-9]+$ ]] && [[ "${_g}" =~ ^[0-9]+$ ]] || return 1
   printf '%s %s\n' "${_u}" "${_g}"
 }
-# The owner $1:$2 (numeric; -1 leaves it) and the mode $3 (none when empty)
-# re-asserted on each existing name ./$5 ... through one handle opened
-# O_NOFOLLOW|O_NONBLOCK, and only when that handle is a regular file with one
-# link whose owner is already $1 or one of the uids in the comma-separated
-# $4: a link, a FIFO, a hard link to another file, or a file of some other
-# identity (root's included: a root-only file renamed onto the name is never
-# handed over) is left as it is, never handed to the account or chmodded.
-# What root puts for the account is created with its final owner instead.
-_XCOPY_REASSERT_PL='use Fcntl; my ($u, $g, $m, $x, @f) = @ARGV; my %ok = map { $_ => 1 } ($u, split(/,/, $x)); for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); if (@s && -f _ && $s[3] == 1 && $ok{$s[4]}) { chown($u, $g, $h) if $u >= 0; chmod(oct($m), $h) if length $m; } close($h); } exit 0'
 # Re-assert owner:group $1 and mode $2 on the regular file ./$3 of the current
 # (pinned) directory through _XCOPY_REASSERT_PL: only a regular file with one
 # link, owned already by $1, is changed, through the handle that checked it,
@@ -3938,6 +5523,240 @@ _xcopy_realdir_here() {
   [ -L "./${1}" ] && rm -f -- "./${1}"
   [ -d "./${1}" ] || mkdir -p -- "./${1}"
 }
+# The dumps in the current (pinned) src/ directory removed, whatever stands at
+# each name: the glob expands here, never in a directory a link put in its
+# place names, and rm -r removes a link as a link.
+_xcopy_rm_sql_dumps_here() {
+  rm -rf -- ./*.sql
+}
+# The per-site dump folders in the current (pinned) src/ directory removed: a
+# real directory holding mydumper's metadata file. The transfer adds to the
+# target's folders and never removes from them, and the import loads every
+# file there, so a folder left from an earlier copy would load that copy's
+# tables and chunks with the new ones. A link is never followed.
+_xcopy_rm_site_dumps_here() {
+  local _e
+  for _e in ./*/; do
+    _e="${_e%/}"
+    [ -L "${_e}" ] && continue
+    if [ -d "${_e}" ] && [ -f "${_e}/metadata" ] && [ ! -L "${_e}/metadata" ]; then
+      rm -rf -- "${_e}"
+    fi
+  done
+}
+# The names among "$@" still in the current (pinned) directory, each after a
+# space; a *.sql argument stands for every dump there, a site-dumps argument
+# for every per-site dump folder.
+_xcopy_names_left_here() {
+  local _n _f
+  for _n in "$@"; do
+    if [ "${_n}" = "*.sql" ]; then
+      for _f in ./*.sql; do
+        if [ -e "${_f}" ] || [ -L "${_f}" ]; then
+          printf ' %s' "${_f#./}"
+        fi
+      done
+    elif [ "${_n}" = "site-dumps" ]; then
+      for _f in ./*/; do
+        _f="${_f%/}"
+        [ -L "${_f}" ] && continue
+        if [ -d "${_f}" ] && [ -f "${_f}/metadata" ] && [ ! -L "${_f}/metadata" ]; then
+          printf ' %s/' "${_f#./}"
+        fi
+      done
+    elif [ -e "./${_n}" ] || [ -L "./${_n}" ]; then
+      printf ' %s' "${_n}"
+    fi
+  done
+}
+# The per-site dump folders in the current (pinned) src/ directory, one name
+# a line, each a name of letters, digits, dot, dash and underscore only: a
+# folder of any other name is left out whole. A link is never followed.
+_xcopy_site_dump_names_here() {
+  local _e
+  for _e in ./*/; do
+    _e="${_e%/}"
+    [ -L "${_e}" ] && continue
+    if [ -d "${_e}" ] && [ -f "${_e}/metadata" ] && [ ! -L "${_e}/metadata" ]; then
+      _e="${_e#./}"
+      case "${_e}" in
+        ''|.|..|*[!A-Za-z0-9_.-]*) continue ;;
+      esac
+      printf '%s\n' "${_e}"
+    fi
+  done
+}
+# A live transfer's site dumps go in place of any the target holds: an
+# earlier transfer of this copy (one forced over a failed export) left its
+# folders in the target's src/, and the copy adds to a folder without
+# removing from it, so the import would load that run's files with this
+# one's. Inside the real src/ there (none, or a link the copy replaces,
+# holds nothing), every real folder holding mydumper's metadata goes, and
+# each name this export sends: a failed dump's folder has no metadata. The
+# panel dump and the account's other folders stay. $1 the target, $2 the
+# account's directory there, $3 the folders this export sends, one a line
+# as _xcopy_site_dump_names_here lists them (a line of other than letters,
+# digits, dot, dash and underscore is not sent). Status 1, named, when the
+# target could not be read or keeps a folder. Mirrors xoct.
+_XCOPY_REMOTE_DUMPS_CLEAR='if [ -L ./src ] || [ ! -e ./src ]; then
+  echo CLEAR
+elif cd -P -- ./src && [ "$(/bin/pwd -P)" = "${_w}/src" ]; then
+  for _e in ./*/; do
+    _e="${_e%/}"
+    [ -L "${_e}" ] && continue
+    if [ -d "${_e}" ] && [ -f "${_e}/metadata" ] && [ ! -L "${_e}/metadata" ]; then
+      rm -rf -- "${_e}"
+    fi
+  done
+  rm -rf --@NAMES@
+  _l=""
+  for _e in ./*/; do
+    _e="${_e%/}"
+    [ -L "${_e}" ] && continue
+    if [ -d "${_e}" ] && [ -f "${_e}/metadata" ] && [ ! -L "${_e}/metadata" ]; then
+      _l="${_l} ${_e#./}/"
+    fi
+  done
+  for _e in@NAMES@; do
+    if [ -e "${_e}" ] || [ -L "${_e}" ]; then
+      _l="${_l} ${_e#./}"
+    fi
+  done
+  echo "CLEAR${_l:+ LEFT${_l}}"
+fi'
+_xcopy_target_dumps_clear() {
+  local _n _q="" _o
+  while IFS= read -r _n; do
+    case "${_n}" in
+      ''|.|..|*[!A-Za-z0-9_.-]*) continue ;;
+    esac
+    _q="${_q} './${_n}'"
+  done <<< "${3}"
+  _o="$(_xcopy_remote_in "${1}" "${2}" "${_XCOPY_REMOTE_DUMPS_CLEAR//@NAMES@/${_q}}" 2> /dev/null)"
+  case "${_o}" in
+    CLEAR) return 0 ;;
+    "CLEAR LEFT "*)
+      echo "ERROR: ${1}:${2}/src keeps an earlier transfer's site dumps:${_o#CLEAR LEFT}"
+      ;;
+    *)
+      echo "ERROR: ${1}:${2}/src could not be read or cleared of an earlier transfer's site dumps"
+      ;;
+  esac
+  return 1
+}
+# The copy state of the account on this box cleared, so a copy can start
+# again or a copy be refreshed. On the source: the export and transfer
+# stamps, which refuse a new export and transfer, and the panel dump, which
+# the next export replaces. On a target: the import stamp, which refuses a new
+# import, and the recorded panel database. Either side: the failure latches,
+# every dump directly in src/ and the per-site dump folders (on a target the
+# next transfer adds to a folder left there, and the import would load both
+# copies' files). Kept: the list of the stop markers a copy put
+# (log/xcopy_le_kept.txt, as the markers stay), log/sourcefqdn.txt (written by
+# every export) and xoct's proxy records (log/proxied.pid and the root proxied
+# marker). xoct keeps its move state in the same stamps, so this is never run
+# on an account in the middle of an xoct move. src/ and log/ are oN's: each
+# name is removed inside the real directory, never through a link put there,
+# and a link at src or log itself refuses the whole reset before anything is
+# removed.
+_xcopy_reset_state() {
+  local _U="/data/disk/${_oct}" _d _left="" _bad="" _l
+  local -a _log=(exported.pid transferred.pid imported.pid export_failed.pid import_failed.pid panel_db.txt)
+  if [[ ! "${_oct}" =~ ^[a-zA-Z0-9][a-zA-Z0-9._-]*$ ]] \
+    || [ ! -d "${_U}" ] || [ ! -e "/root/.${_oct}.octopus.cnf" ]; then
+    echo "Usage: xcopy reset-state {o1} (an Octopus account on this box)"
+    exit 1
+  fi
+  for _d in src log; do
+    if [ -e "${_U}/${_d}" ] || [ -L "${_U}/${_d}" ]; then
+      _xcopy_in_real_dir "${_U}/${_d}" true || _bad="${_bad} ${_d}"
+    fi
+  done
+  if [ -n "${_bad}" ]; then
+    echo "ERROR: not this account's own directory in ${_U}:${_bad}; nothing was removed"
+    exit 1
+  fi
+  echo "ALRT: clearing the copy state of ${_oct} on this box:"
+  echo "ALRT:   src/*.sql (the panel dump, prev_hostmaster.sql) and the per-site"
+  echo "ALRT:   dump folders in src/ (each holding mydumper's metadata file),"
+  echo "ALRT:   log/{exported,transferred,imported}.pid,"
+  echo "ALRT:   log/{export_failed,import_failed}.pid and"
+  echo "ALRT:   log/panel_db.txt (the recorded import panel database)"
+  ### Each check reads the real directory again: one that cannot be entered
+  ### now (a link swapped in since the check above) is named, never read as
+  ### cleared.
+  if [ -d "${_U}/src" ]; then
+    _xcopy_in_real_dir "${_U}/src" _xcopy_rm_sql_dumps_here
+    _xcopy_in_real_dir "${_U}/src" _xcopy_rm_site_dumps_here
+    if _l="$(_xcopy_in_real_dir "${_U}/src" _xcopy_names_left_here '*.sql' site-dumps)"; then
+      [ -z "${_l}" ] || _left="${_left}${_l// / src/}"
+    else
+      _left="${_left} src/ (not entered)"
+    fi
+  fi
+  if [ -d "${_U}/log" ]; then
+    _xcopy_in_real_dir "${_U}/log" rm -f -- "${_log[@]/#/./}"
+    if _l="$(_xcopy_in_real_dir "${_U}/log" _xcopy_names_left_here "${_log[@]}")"; then
+      [ -z "${_l}" ] || _left="${_left}${_l// / log/}"
+    else
+      _left="${_left} log/ (not entered)"
+    fi
+  fi
+  if [ -n "${_left}" ]; then
+    echo "ERROR: still there in ${_U}:${_left}"
+    exit 1
+  fi
+  echo "INFO: copy state cleared for ${_oct}, the dumps in src/ with it"
+  echo "INFO: on a target, clear it before a new transfer, never between that transfer and its import:"
+  echo "INFO: it would remove the dumps the transfer brought"
+}
+# noproxy ends a copy on its source, which keeps serving the account: the
+# export and transfer stamps and the export's dumps (the panel dump and the
+# per-site dump folders, about the size of the account's databases) go. Left
+# in place, the stamp kept the nightly from removing the account's ghost vhosts
+# for good (it reads an export stamp as a move in flight), refused the next
+# copy, and the panel dump went out again with a later export. Only after a
+# transfer from here: an account that never left this box keeps its export.
+# Another dump in src/ is not the export's and stays. A failure to clear
+# fails the verb.
+_xcopy_source_done() {
+  local _l _left=""
+  local -a _st=(exported.pid transferred.pid export_failed.pid)
+  if [ ! -e "${_USR}/log/transferred.pid" ] && [ ! -L "${_USR}/log/transferred.pid" ]; then
+    echo "INFO: ${_oct} was not transferred from this box: its export state stays"
+    return 0
+  fi
+  if ! _xcopy_in_real_dir "${_USR}/log" true \
+    || { { [ -e "${_USR}/src" ] || [ -L "${_USR}/src" ]; } \
+      && ! _xcopy_in_real_dir "${_USR}/src" true; }; then
+    echo "ALRT: ${_USR}/log or ${_USR}/src is not the account's own directory: its export state stays"
+    _XCOPY_RUN_FAIL=YES
+    return 1
+  fi
+  ### Each check reads the real directory again: one that cannot be entered
+  ### now is named, never read as cleared.
+  if [ -d "${_USR}/src" ]; then
+    _xcopy_in_real_dir "${_USR}/src" rm -rf -- ./prev_hostmaster.sql
+    _xcopy_in_real_dir "${_USR}/src" _xcopy_rm_site_dumps_here
+    if _l="$(_xcopy_in_real_dir "${_USR}/src" _xcopy_names_left_here prev_hostmaster.sql site-dumps)"; then
+      [ -z "${_l}" ] || _left="${_left}${_l// / src/}"
+    else
+      _left="${_left} src/ (not entered)"
+    fi
+  fi
+  _xcopy_in_real_dir "${_USR}/log" rm -f -- "${_st[@]/#/./}"
+  if _l="$(_xcopy_in_real_dir "${_USR}/log" _xcopy_names_left_here "${_st[@]}")"; then
+    [ -z "${_l}" ] || _left="${_left}${_l// / log/}"
+  else
+    _left="${_left} log/ (not entered)"
+  fi
+  if [ -n "${_left}" ]; then
+    echo "ALRT: the copy of ${_oct} ended, but these are still there in ${_USR}:${_left}"
+    _XCOPY_RUN_FAIL=YES
+    return 1
+  fi
+  echo "INFO: the copy of ${_oct} ended here: its export and transfer stamps and its dumps in src/ are cleared"
+}
 # The whole regular file ./$1 of the current (pinned) directory streamed to
 # stdout without following a link (unbounded, for a DB dump): a link put at the
 # name yields nothing, a FIFO never blocks past the read.
@@ -3995,6 +5814,79 @@ _myloader_binlog_opts() {
   if myloader --help 2>&1 | grep -qE -- '^[[:space:]]+--ignore-set([[:space:]]|=)'; then
     _MYLOADER_BINLOG=(--ignore-set=SQL_LOG_BIN)
   fi
+  return 0
+}
+### A Percona 5.7 dump names a utf8mb4 table's character set and no
+### collation (utf8mb4_general_ci was that set's default there). Loaded on
+### 8.0 or later, such a table and every column of it took that server's
+### default, utf8mb4_0900_ai_ci: the copy no longer matched its source, nor
+### what an in-place upgrade of the source keeps, and a join on columns of
+### two collations fails (error 1267). A dump made on 8.0 or later names the
+### collation of every utf8mb4 table and column, so the old default changes
+### nothing for them. No dump names one for a stored routine's parameters
+### and return type: they take the loading session's default, the old one
+### here, which is what a server upgraded in place from 5.7 still holds for
+### its older routines; one made on 8.x with 8.x's default comes back with
+### the old one. The old default is given only where the server takes it for
+### a session (_mig_utf8mb4_takes): 8.4 warns the setting is deprecated and
+### will become read-only, and a session that cannot set it would fail the
+### whole load. _MYLOADER_UTF8MB4 is then the option file that adds the old
+### default to myloader's own session settings (it replaces none of them;
+### written when missing or different); otherwise it stays empty. Worked out
+### once per run, and a myloader that cannot be given the file is named once.
+### A client load asks its own server (_mig_utf8mb4_client_opt).
+_MIG_UTF8MB4_DONE=""
+_MYLOADER_UTF8MB4=()
+### Whether the server the client options "$@" name takes the old default
+### for a session (0), or not (1, with a warning unless it is a 5.x server,
+### whose own default it is).
+_mig_utf8mb4_takes() {
+  local _v
+  _v=$(mysql --silent "$@" -N -B -e "SET SESSION default_collation_for_utf8mb4 = utf8mb4_general_ci; SELECT @@SESSION.default_collation_for_utf8mb4" 2> /dev/null)
+  [ "${_v}" = "utf8mb4_general_ci" ] && return 0
+  _v=$(mysql --silent "$@" -N -B -e "SELECT VERSION()" 2> /dev/null)
+  case "${_v}" in
+    5.*) ;;
+    *) echo "WARN: the database server here does not take default_collation_for_utf8mb4 for a session: a utf8mb4 table a Percona 5.7 dump names no collation for loads with this server's default, not utf8mb4_general_ci" ;;
+  esac
+  return 1
+}
+_myloader_utf8mb4_opts() {
+  local _f=/etc/boa/myloader-utf8mb4.cnf _want _tmp
+  [ -n "${_MIG_UTF8MB4_DONE}" ] && return 0
+  _MIG_UTF8MB4_DONE=YES
+  _MYLOADER_UTF8MB4=()
+  _mig_utf8mb4_takes -u root || return 0
+  _want=$'[myloader_session_variables]\ndefault_collation_for_utf8mb4 = utf8mb4_general_ci'
+  if myloader --help 2>&1 | grep -qE -- '^[[:space:]]+--defaults-extra-file([[:space:]]|=|$)' \
+    && [[ ! -d "${_f}" ]]; then
+    if [[ ! -f "${_f}" || -L "${_f}" || "$(cat "${_f}" 2> /dev/null)" != "${_want}" ]]; then
+      mkdir -p "${_f%/*}" 2> /dev/null
+      _tmp=$(mktemp "${_f}.XXXXXX" 2> /dev/null)
+      if [ -n "${_tmp}" ] \
+        && printf '%s\n' "${_want}" > "${_tmp}" && chmod 644 "${_tmp}" && mv -f "${_tmp}" "${_f}"; then
+        _MYLOADER_UTF8MB4=(--defaults-extra-file="${_f}")
+      else
+        rm -f "${_tmp}"
+      fi
+    else
+      _MYLOADER_UTF8MB4=(--defaults-extra-file="${_f}")
+    fi
+  fi
+  if [ "${#_MYLOADER_UTF8MB4[@]}" -eq 0 ]; then
+    echo "WARN: myloader here cannot be given ${_f}: a utf8mb4 table a Percona 5.7 dump names no collation for loads as utf8mb4_0900_ai_ci"
+  fi
+  return 0
+}
+### The same for a client load into the server named by the client options
+### "$@": sets _MYSQL_UTF8MB4 to the --init-command that gives the session the
+### old default when that server takes it, to nothing otherwise, so the
+### option never reaches a server that would refuse the connection.
+_MYSQL_UTF8MB4=()
+_mig_utf8mb4_client_opt() {
+  _MYSQL_UTF8MB4=()
+  _mig_utf8mb4_takes "$@" || return 0
+  _MYSQL_UTF8MB4=(--init-command="SET SESSION default_collation_for_utf8mb4 = utf8mb4_general_ci")
   return 0
 }
 ### A table a load has just written can read as empty to the query optimiser
@@ -4101,7 +5993,7 @@ _mydumper_session() {
   _MYDUMPER_PREV="$!"
   trap '_p="${_MYDUMPER_PID}"; [ -z "${_p}" ] && [ "$!" != "${_MYDUMPER_PREV}" ] && _p="$!"; [ -n "${_p}" ] && kill -9 "${_p}" 2> /dev/null; exit 130' INT TERM HUP
   ( cd -P -- "${_d}" 2> /dev/null \
-    && { [ "${_want}" = "-" ] || [ "$(pwd -P)" = "${_want}" ]; } \
+    && { [ "${_want}" = "-" ] || [ "$(/bin/pwd -P)" = "${_want}" ]; } \
     && exec setsid -w "$@" ) < /dev/null &
   _MYDUMPER_PID=$!
   wait "${_MYDUMPER_PID}"
@@ -4189,17 +6081,27 @@ _mydumper_lockwait_opts() {
 ### the server stored for it: a plain SET before its CREATE and the file's
 ### mode after it (myloader stops on a versioned-comment SET in the middle
 ### of a file). Mode words 8.x refuses are left out, so a 5.7 dump loads
-### there. It reads the file whole, never through a link, and replaces it
+### there. A routine's utf8mb4 parameters and return value take the loading
+### session's default_collation_for_utf8mb4, which no dump names: a routine
+### whose parameters (and return value) share one of the two defaults that
+### setting takes gets it the same way, the session's own value back after
+### it, read on any server (a 5.x or MariaDB one names utf8mb4_general_ci
+### there, which a load on MySQL 8 then keeps; a server that refuses that
+### read gives the modes alone); each is a statement prepared from one that
+### names MySQL 8, so a 5.x or MariaDB server, which has no such setting,
+### runs DO 0 in its place. It reads the file whole, never through a link, and replaces it
 ### through a new one in the same directory. Exits 1, the file as it was,
 ### when a line cannot be placed; 2 when an object had no mode to give.
 _MYDUMPER_MODES_PL='use strict; use Fcntl;
-my ($f) = @ARGV; my (%m, @o, $p, $miss);
+my ($f) = @ARGV; my (%m, %c, @o, $p, $q, $miss);
 my $gone = qr/^(?:NO_AUTO_CREATE_USER|NO_FIELD_OPTIONS|NO_KEY_OPTIONS|NO_TABLE_OPTIONS|DB2|MAXDB|MSSQL|MYSQL323|MYSQL40|ORACLE|POSTGRESQL)$/;
 for (split /\n/, (defined $ENV{_MYDUMPER_MODES} ? $ENV{_MYDUMPER_MODES} : "")) {
-  my ($t, $h, $s) = split /\t/, $_, 3;
+  my ($t, $h, $s, $k) = split /\t/, $_, 4;
   next unless defined $s && $t =~ /^(?:TRIGGER|FUNCTION|PROCEDURE|EVENT)$/
     && $h =~ /^[0-9A-Fa-f]+$/ && $s =~ /^[A-Z0-9_,]*$/;
   $m{$t . " " . lc($h)} = join(",", grep { $_ !~ $gone } split(/,/, $s));
+  $c{$t . " " . lc($h)} = $k if defined $k && $t =~ /^(?:FUNCTION|PROCEDURE)$/
+    && $k =~ /^utf8mb4_(?:general_ci|0900_ai_ci)$/;
 }
 sysopen(my $in, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit 1;
 my @st = stat($in); exit 1 unless @st && -f _;
@@ -4211,17 +6113,27 @@ for my $x (@l[0 .. ($#l < 9 ? $#l : 9)]) {
 exit 1 unless defined $fm;
 for my $i (0 .. $#l) {
   my $x = $l[$i];
-  if ($p && $x =~ /^SET character_set_client = \@PREV_CHARACTER_SET_CLIENT;$/) {
-    push @o, "SET SQL_MODE=\x27$fm\x27;\n"; $p = 0;
+  if (($p || $q) && $x =~ /^SET character_set_client = \@PREV_CHARACTER_SET_CLIENT;$/) {
+    push @o, "SET SQL_MODE=\x27$fm\x27;\n" if $p;
+    push @o, "SET \@BOA_UTF8MB4_SQL = IF(VERSION() LIKE \x278.%\x27, \x27SET SESSION default_collation_for_utf8mb4 = \@BOA_PREV_UTF8MB4\x27, \x27DO 0\x27);\n",
+      "PREPARE boa_utf8mb4 FROM \@BOA_UTF8MB4_SQL;\n", "EXECUTE boa_utf8mb4;\n", "DEALLOCATE PREPARE boa_utf8mb4;\n" if $q;
+    $p = 0; $q = 0;
   }
   push @o, $x;
   next unless $x =~ /^DROP (TRIGGER|FUNCTION|PROCEDURE|EVENT) IF EXISTS `((?:[^`]|``)+)`;$/;
   my ($t, $n) = ($1, $2); $n =~ s/``/`/g;
-  exit 0 if $i < $#l && $l[$i + 1] =~ /^SET SQL_MODE=/;
-  my $s = $m{$t . " " . unpack("H*", $n)};
+  exit 0 if $i < $#l && $l[$i + 1] =~ /^SET (?:SQL_MODE=|\@BOA_UTF8MB4_SQL )/;
+  my $key = $t . " " . unpack("H*", $n);
+  my $s = $m{$key};
   if (defined $s) { push @o, "SET SQL_MODE=\x27$s\x27;\n"; $p = 1; } else { $miss = 1; }
+  if (defined $c{$key}) {
+    push @o, "SET \@BOA_UTF8MB4_SQL = IF(VERSION() LIKE \x278.%\x27, \x27SET \@BOA_PREV_UTF8MB4 = \@\@SESSION.default_collation_for_utf8mb4,"
+      . " SESSION default_collation_for_utf8mb4 = \x27\x27$c{$key}\x27\x27\x27, \x27DO 0\x27);\n",
+      "PREPARE boa_utf8mb4 FROM \@BOA_UTF8MB4_SQL;\n", "EXECUTE boa_utf8mb4;\n";
+    $q = 1;
+  }
 }
-exit 1 if $p;
+exit 1 if $p || $q;
 my $w = $f . ".modes";
 sysopen(my $out, $w, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600) or exit 1;
 if (!(print {$out} @o) || !close($out) || !chmod($st[2] & 07777, $w)
@@ -4235,13 +6147,21 @@ exit($miss ? 2 : 0);'
 ### mydumper wrote them), 2 when an object or a file kept the dump's mode.
 ### It never fails a dump: the caller says what was left.
 _mydumper_object_modes() {
-  local _db="${1}" _dir="${2}" _q _modes _f _rc=0
+  local _db="${1}" _dir="${2}" _q _c _modes _f _rc=0
   shift 2
   [[ "${_db}" =~ ^[A-Za-z0-9_]+$ ]] || return 2
-  _q="SELECT 'TRIGGER', HEX(TRIGGER_NAME), SQL_MODE FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = '${_db}'"
-  _q="${_q} UNION ALL SELECT ROUTINE_TYPE, HEX(ROUTINE_NAME), SQL_MODE FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA = '${_db}'"
-  _q="${_q} UNION ALL SELECT 'EVENT', HEX(EVENT_NAME), SQL_MODE FROM information_schema.EVENTS WHERE EVENT_SCHEMA = '${_db}'"
-  _modes=$("$@" -N -B -e "${_q}" 2> /dev/null) || return 1
+  _c="IFNULL((SELECT IF(COUNT(DISTINCT p.COLLATION_NAME) = 1, MIN(p.COLLATION_NAME), '') FROM information_schema.PARAMETERS p"
+  _c="${_c} WHERE p.SPECIFIC_SCHEMA = r.ROUTINE_SCHEMA AND p.SPECIFIC_NAME = r.ROUTINE_NAME AND p.ROUTINE_TYPE = r.ROUTINE_TYPE"
+  _c="${_c} AND p.COLLATION_NAME IN ('utf8mb4_general_ci', 'utf8mb4_0900_ai_ci')), '')"
+  while :; do
+    _q="SELECT 'TRIGGER', HEX(TRIGGER_NAME), SQL_MODE, '' FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = '${_db}'"
+    _q="${_q} UNION ALL SELECT r.ROUTINE_TYPE, HEX(r.ROUTINE_NAME), r.SQL_MODE, ${_c} FROM information_schema.ROUTINES r WHERE r.ROUTINE_SCHEMA = '${_db}'"
+    _q="${_q} UNION ALL SELECT 'EVENT', HEX(EVENT_NAME), SQL_MODE, '' FROM information_schema.EVENTS WHERE EVENT_SCHEMA = '${_db}'"
+    _modes=$("$@" -N -B -e "${_q}" 2> /dev/null) && break
+    [[ "${_c}" != "''" ]] || return 1
+    echo "WARN: the stored routines' utf8mb4 defaults of ${_db} could not be read: its routines load with the loading server's default" >&2
+    _c="''"
+  done
   [[ -n "${_modes}" ]] || return 0
   for _f in "${_dir}"/*-schema-post.sql "${_dir}"/*-schema-triggers.sql; do
     if [[ -L "${_f}" ]]; then
@@ -4263,7 +6183,13 @@ _xcopy_rsync() {
     # _XCOPY_GMAP maps the account's own group and its web group (see
     # _xcopy_acct_gmap, _xcopy_webgroup_gate); _XCOPY_UMAP its identities
     # (see _xcopy_acct_umap).
-    rsync "$@" ${_XCOPY_GMAP:+"--groupmap=${_XCOPY_GMAP}"} ${_XCOPY_UMAP:+"--usermap=${_XCOPY_UMAP}"} --no-devices --no-specials
+    # A leg that reads a status 23 itself names a file in _XCOPY_RSYNC_ERR:
+    # the errors go there, and the leg prints them (_xcopy_leg_rc)
+    if [ -n "${_XCOPY_RSYNC_ERR:-}" ]; then
+      rsync "$@" ${_XCOPY_GMAP:+"--groupmap=${_XCOPY_GMAP}"} ${_XCOPY_UMAP:+"--usermap=${_XCOPY_UMAP}"} $(_xcopy_map_setid_off) --no-devices --no-specials 2>> "${_XCOPY_RSYNC_ERR}"
+      return
+    fi
+    rsync "$@" ${_XCOPY_GMAP:+"--groupmap=${_XCOPY_GMAP}"} ${_XCOPY_UMAP:+"--usermap=${_XCOPY_UMAP}"} $(_xcopy_map_setid_off) --no-devices --no-specials
   else
     echo "[DRY-PLAN] would rsync: $*"
   fi
@@ -4384,7 +6310,7 @@ _xcopy_tgt_kind() {
   local _qd _qm
   _qd="$(_shq "$2")"
   _qm="$(_shq "${3:-}")"
-  ssh -n root@"$1" "d='${_qd}'; m='${_qm}'; k=N; if [ -L \"\$d\" ]; then k=L; r=\$(cd -P \"\$d\" 2>/dev/null && pwd -P); [ -n \"\$m\" ] && [ -n \"\$r\" ] && [ \"\$r\" = \"\$(cd -P \"\$m\" 2>/dev/null && pwd -P)\" ] && k=M; elif [ -d \"\$d\" ]; then k=D; fi; echo \"XCKIND \$k\"" 2>/dev/null \
+  ssh -n root@"$1" "d='${_qd}'; m='${_qm}'; k=N; if [ -L \"\$d\" ]; then k=L; r=\$(cd -P \"\$d\" 2>/dev/null && /bin/pwd -P); [ -n \"\$m\" ] && [ -n \"\$r\" ] && [ \"\$r\" = \"\$(cd -P \"\$m\" 2>/dev/null && /bin/pwd -P)\" ] && k=M; elif [ -d \"\$d\" ]; then k=D; fi; echo \"XCKIND \$k\"" 2>/dev/null \
     | grep -m1 '^XCKIND ' | awk '{print $2}'
 }
 
@@ -4413,7 +6339,7 @@ _xcopy_put_on_root() {
     fi
     # the store is files/ and private/: the web group map rides it too
     if ! _xcopy_in_canon_dir "${_real}" rsync -aEAXqu --no-devices --no-specials ${_ie} \
-      ${_XCOPY_GMAP:+"--groupmap=${_XCOPY_GMAP}"} ${_XCOPY_UMAP:+"--usermap=${_XCOPY_UMAP}"} \
+      ${_XCOPY_GMAP:+"--groupmap=${_XCOPY_GMAP}"} ${_XCOPY_UMAP:+"--usermap=${_XCOPY_UMAP}"} $(_xcopy_map_setid_off) \
       --rsync-path="$(_xcopy_canon_rpath "${_dreal}")" -e ssh ./ root@"${_th}":./; then
       echo "DENY: rsync to ${_dstRoot} on target root failed"
       return 3
@@ -4423,7 +6349,7 @@ _xcopy_put_on_root() {
   _q="$(_shq "${_dstRoot}")"
   ssh root@"${_th}" "if [ -L '${_q}' ]; then rm -f '${_q}'; elif [ -e '${_q}' ] && [ ! -d '${_q}' ]; then rm -f '${_q}'; fi; mkdir -p '${_q}'"
   if ! _xcopy_in_canon_dir "${_real}" rsync -aEAXqu --no-devices --no-specials ${_ie} \
-    ${_XCOPY_GMAP:+"--groupmap=${_XCOPY_GMAP}"} ${_XCOPY_UMAP:+"--usermap=${_XCOPY_UMAP}"} -e ssh ./ root@"${_th}":"${_dstRoot}/"; then
+    ${_XCOPY_GMAP:+"--groupmap=${_XCOPY_GMAP}"} ${_XCOPY_UMAP:+"--usermap=${_XCOPY_UMAP}"} $(_xcopy_map_setid_off) -e ssh ./ root@"${_th}":"${_dstRoot}/"; then
     echo "DENY: rsync to ${_dstRoot} on target root failed"
     return 3
   fi
@@ -4449,7 +6375,7 @@ _xcopy_put_on_mount() {
       return 3
     fi
     if ! _xcopy_in_canon_dir "${_real}" rsync -aEAXqu --no-devices --no-specials ${_ie} \
-      ${_XCOPY_GMAP:+"--groupmap=${_XCOPY_GMAP}"} ${_XCOPY_UMAP:+"--usermap=${_XCOPY_UMAP}"} \
+      ${_XCOPY_GMAP:+"--groupmap=${_XCOPY_GMAP}"} ${_XCOPY_UMAP:+"--usermap=${_XCOPY_UMAP}"} $(_xcopy_map_setid_off) \
       --rsync-path="$(_xcopy_canon_rpath "${_mreal}")" -e ssh ./ root@"${_th}":./; then
       echo "DENY: ${_lbl}: rsync to target mount ${_mntDest} failed; target link left untouched"
       return 3
@@ -4470,7 +6396,7 @@ _xcopy_put_on_mount() {
   fi
   ssh root@"${_th}" "mkdir -p '${_qm}'"
   if ! _xcopy_in_canon_dir "${_real}" rsync -aEAXqu --no-devices --no-specials ${_ie} \
-    ${_XCOPY_GMAP:+"--groupmap=${_XCOPY_GMAP}"} ${_XCOPY_UMAP:+"--usermap=${_XCOPY_UMAP}"} -e ssh ./ root@"${_th}":"${_mntDest}/"; then
+    ${_XCOPY_GMAP:+"--groupmap=${_XCOPY_GMAP}"} ${_XCOPY_UMAP:+"--usermap=${_XCOPY_UMAP}"} $(_xcopy_map_setid_off) -e ssh ./ root@"${_th}":"${_mntDest}/"; then
     echo "DENY: ${_lbl}: rsync to target mount ${_mntDest} failed; target link left untouched"
     return 3
   fi
@@ -4520,7 +6446,7 @@ _xcopy_handle_store() {
       case "${_link}" in /mnt/*) _onMnt=YES ;; esac
     fi
   elif [ -d "${_src}" ]; then
-    _real="$(cd -P -- "${_src}" 2>/dev/null && pwd -P)"
+    _real="$(cd -P -- "${_src}" 2>/dev/null && /bin/pwd -P)"
     if [ -z "${_real}" ]; then
       _act=DENY; _reason="${_src} cannot be entered"
     elif [ -n "${_acct}" ] && ! _xcopy_store_is_own "${_acct}" "${_real}" "${_rule}"; then
@@ -4787,6 +6713,129 @@ _xcopy_learn_peer_host_key() {
   return 0
 }
 
+### The addresses this box shows a target, as xoct reads them (its _mig_*
+### twins), for the firewall check below.
+_mig_valid_ip()  { [[ "$1" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; }
+
+### This box's routable IPv4 identity -- what records are written with and the
+### "old address" the client mails print. _MY_OWNIP (barracuda.cnf) is the
+### authoritative value, matching the rest of the migration tooling; the
+### hostname -I scan is only the fallback, because on a multi-homed box its
+### first address can be a private one.
+_mig_my_ip() {
+  local _ip="${_MY_OWNIP}"
+  if ! [[ "${_ip}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] || [[ "${_ip}" =~ ^127\. ]]; then
+    _ip="$(hostname -I 2>/dev/null | tr ' ' '\n' \
+      | grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}$' \
+      | grep -vE '^127\.' | head -1)"
+  fi
+  printf '%s' "${_ip}"
+}
+
+### Every routable IPv4 this box holds, space-separated: the target must trust
+### them all (the relay's egress interface is not always the primary address).
+_mig_my_ips() {
+  local _l
+  _l="$(hostname -I 2>/dev/null | tr ' ' '\n' \
+    | grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}$' \
+    | grep -vE '^127\.' | tr '\n' ' ')"
+  _l="${_l%"${_l##*[![:space:]]}"}"
+  [ -z "${_l}" ] && _l="$(_mig_my_ip)"
+  printf '%s' "${_l}"
+}
+
+### Whether one csf file's text covers an address the way the target's
+### hackcheck reads it: the address at the start of a line (optionally /32),
+### in a |s= or |d= rule, or inside a CIDR range outside a comment.
+_xcopy_csf_text_covers_ip() {
+  local _ip="$1" _txt="$2" _rx _cidr _bits _mask _net _addr _o1 _o2 _o3 _o4
+  _rx="${_ip//./\\.}"
+  grep -qE "(^[[:space:]]*|\|s=|\|d=)${_rx}(/32)?([[:space:]#|]|\$)" <<< "${_txt}" && return 0
+  IFS=. read -r _o1 _o2 _o3 _o4 <<< "${_ip}"
+  _addr=$(( (_o1 << 24) + (_o2 << 16) + (_o3 << 8) + _o4 ))
+  while read -r _cidr; do
+    [ -n "${_cidr}" ] || continue
+    _bits="${_cidr#*/}"
+    [ "${_bits}" -le 32 ] 2>/dev/null || continue
+    IFS=. read -r _o1 _o2 _o3 _o4 <<< "${_cidr%/*}"
+    _net=$(( (_o1 << 24) + (_o2 << 16) + (_o3 << 8) + _o4 ))
+    _mask=$(( _bits == 0 ? 0 : (0xFFFFFFFF << (32 - _bits)) & 0xFFFFFFFF ))
+    [ $(( _addr & _mask )) -eq $(( _net & _mask )) ] && return 0
+  done <<< "$(cut -d'#' -f1 <<< "${_txt}" | grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}')"
+  return 1
+}
+
+### A copy needs every address of this box in the target's csf.allow and
+### csf.ignore before anything travels, as xoct's move does (the documented
+### firewall step). Without either, the target's hackcheck bans this box for
+### the pre-auth lines of the host-key scan, and a create's remote install
+### loses its session halfway, reporting only a lost connection. Refuses
+### while an address is in neither file, warns while it is in one. Its read
+### is the first contact with the target (the scan runs after it), so its
+### login accepts a host key this box has not met yet. xoct's
+### _xoct_require_peer_whitelist twin, without its xmass-run exemption (xmass
+### never runs xcopy). Unlike xoct, xcopy takes a target by name too, and its
+### key step scans such a name: one is checked here as an address is (its
+### login records the key, so that scan finds it known and opens nothing).
+_xcopy_require_peer_whitelist() {
+  local _p="$1" _out _allow _ignore _ip _miss="" _half="" _e _said=""
+  _mig_valid_ip "${_p}" || [[ "${_p}" =~ ^[A-Za-z0-9][A-Za-z0-9.:-]*$ ]] || return 0
+  _e="$(mktemp /tmp/mig-said.XXXXXX 2> /dev/null)" || _e=""
+  _out="$(ssh -o ConnectTimeout=15 -o BatchMode=yes -o StrictHostKeyChecking=accept-new root@"${_p}" \
+    "if [ -x /usr/sbin/csf ] && [ -e /etc/csf/csf.allow ]; then echo XCOPY-CSF-ALLOW; cat /etc/csf/csf.allow; echo; echo XCOPY-CSF-IGNORE; cat /etc/csf/csf.ignore 2>/dev/null; echo; echo XCOPY-CSF-END; else echo XCOPY-CSF-NONE; fi" 2> "${_e:-/dev/null}")"
+  if [ -n "${_e}" ]; then
+    _said="$(cat "${_e}" 2> /dev/null)"
+    rm -f "${_e}"
+  fi
+  if [ "${_out}" = "XCOPY-CSF-NONE" ]; then
+    echo "INFO: ${_p} runs no csf; no firewall entries to check"
+    return 0
+  fi
+  if ! grep -qx "XCOPY-CSF-END" <<< "${_out}"; then
+    # the first login to the target: a key that is not the one held here
+    # for its address is named as that, never as a firewall step
+    if _mig_hostkey_changed "${_p}" "${_said}"; then
+      echo "ERROR: ${_p} serves a host key that is not the one this box holds for that address"
+      echo "ERROR: (${_MIG_HOSTKEY_SAYS}); nothing travelled. Make the check named above,"
+      echo "ERROR: forget the old entries here, then run this command again"
+      return 1
+    fi
+    echo "ERROR: could not read the firewall of ${_p} over ssh before anything travels."
+    echo "ERROR: The usual cause is the firewall step not done yet: on ${_p}, add these lines"
+    for _ip in $(_mig_my_ips); do
+      echo "ERROR:   ${_ip} # Legacy Proxy   (to /etc/csf/csf.allow and to /etc/csf/csf.ignore)"
+    done
+    echo "ERROR: then run csf -ra there; if this box was just banned, lift it there with csf -tr <ip>."
+    echo "ERROR: Also check that ${_p} trusts this box's key (xcopy pre-mig on both boxes)."
+    return 1
+  fi
+  _allow="$(sed -n '/^XCOPY-CSF-ALLOW$/,/^XCOPY-CSF-IGNORE$/p' <<< "${_out}" | sed '1d;$d')"
+  _ignore="$(sed -n '/^XCOPY-CSF-IGNORE$/,/^XCOPY-CSF-END$/p' <<< "${_out}" | sed '1d;$d')"
+  for _ip in $(_mig_my_ips); do
+    if _xcopy_csf_text_covers_ip "${_ip}" "${_allow}"; then
+      _xcopy_csf_text_covers_ip "${_ip}" "${_ignore}" || _half="${_half} ${_ip}:csf.ignore"
+    elif _xcopy_csf_text_covers_ip "${_ip}" "${_ignore}"; then
+      _half="${_half} ${_ip}:csf.allow"
+    else
+      _miss="${_miss} ${_ip}"
+    fi
+  done
+  if [ -n "${_miss}" ]; then
+    echo "ERROR: ${_p} does not trust this box in its firewall: its hackcheck would ban this box"
+    echo "ERROR: for the host-key scan and cut the transfer halfway. On ${_p}, before anything travels:"
+    for _ip in ${_miss}; do
+      echo "ERROR:   echo '${_ip} # Legacy Proxy' >> /etc/csf/csf.allow"
+      echo "ERROR:   echo '${_ip} # Legacy Proxy' >> /etc/csf/csf.ignore"
+    done
+    echo "ERROR:   csf -ra"
+    return 1
+  fi
+  for _ip in ${_half}; do
+    echo "ALRT: ${_ip%%:*} is in only one of the firewall files on ${_p}; add '${_ip%%:*} # Legacy Proxy' to /etc/csf/${_ip#*:} too, then csf -ra"
+  done
+  return 0
+}
+
 # xcopy copies an account under its own name only. A fourth argument naming
 # another account is a rename, which is xoct's: xcopy rewrites no old account
 # name in the copied vhosts, aliases or panel database (its import renames
@@ -4817,7 +6866,10 @@ _migrate_init() {
     echo "_USR ${_oct} is not eligible for migration: system dir"
     exit 1
   fi
-  if [ ! -e "${_USR}/tools/le/dehydrated" ] && [ "${_oct}" != "shared" ]; then
+  ### The release check is an account's. The shared and xusage legs name
+  ### none, and there is no /data/disk/xusage to read.
+  if [ ! -e "${_USR}/tools/le/dehydrated" ] && [ "${_oct}" != "shared" ] \
+    && [ "${_oct}" != "xusage" ]; then
     echo
     echo "ERROR: This version of xcopy migration tool supports only BOA-3.2.2 or newer"
     echo "ERROR: Please upgrade ${_oct} instance to current BOA head before trying again"
@@ -4825,26 +6877,71 @@ _migrate_init() {
     echo
     exit 1
   fi
-  if [ -e "/data/conf/${_USR}_use_proxysql.txt" ]; then
-    _SQL_CONNECT=127.0.0.1
-    _THIS_DB_PORT=6033
+  ### No ProxySQL marker picks a connection here: the account's own
+  ### octopus.cnf, sourced below before the export and import, sets the port
+  ### of the calls that name one (ProxySQL's for an account boa in-oct
+  ### installed); mydumper, myloader and the mysql and mysqladmin calls that
+  ### name no port use this box's own server.
+  ### With no target the usage records leg would address this box itself.
+  if [ "${_oct}" = "xusage" ] && [ -z "${_tgt}" ]; then
+    echo "ERROR: ${_cmd} xusage needs a target: xcopy ${_cmd} xusage <target>"
+    exit 1
   fi
   ### The verbs that reach the target learn its host key before their first
   ### contact (the hold read before them would pass an unknown key by
   ### silently). An account's export, import and noproxy reach no peer; the
-  ### shared and xusage legs reach the target whatever the verb.
+  ### shared and xusage legs reach the target whatever the verb. The same
+  ### verbs check the target's firewall trusts this box before anything
+  ### travels, and before the host key scan: the scan opens a connection per
+  ### key type, each closed before login, and a single such line can get this
+  ### box banned by the target's hackcheck.
   case "${_cmd}:${_oct}" in
     create:*|pretransfer:*|transfer:*|*:shared|*:xusage)
+      _xcopy_require_peer_whitelist "${_tgt}" || exit 1
       _xcopy_learn_peer_host_key "${_tgt}"
       ;;
   esac
   if [ "${_oct}" = "xusage" ]; then
+    ### The box's usage records alone, which the shared leg also carries:
+    ### for a second pass close to the move. The same dry run first.
     echo "INFO: ${_cmd} for ${_oct} to ${_tgt} start"
-    if [ -e "/var/log/boa/usage" ]; then
-      _xcopy_rsync -aEAXq ${_ieni} -e ssh /var/log/boa/usage/* root@${_tgt}:/var/log/boa/usage/
+    ### One login that runs nothing comes first: a key that is not the one
+    ### held here is named, and a target that takes no login is refused,
+    ### before a dry run calls the copy clean or anything travels.
+    local _xu_said
+    _xu_said="$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" true 2>&1 < /dev/null)" || {
+      if _mig_hostkey_changed "${_tgt}" "${_xu_said}"; then
+        echo "ERROR: ${_tgt} serves a host key that is not the one this box holds for it"
+        echo "ERROR: (${_MIG_HOSTKEY_SAYS}); nothing travelled. Make the check named above,"
+        echo "ERROR: forget the old entries here, then run this command again"
+      else
+        _xu_said="${_xu_said//$'\r'/}"
+        _xu_said="${_xu_said##*$'\n'}"
+        _xu_said="${_xu_said//[^[:print:]]/?}"
+        echo "ERROR: ${_cmd} for ${_oct}: no login to ${_tgt} (${_xu_said:0:200}); nothing travelled"
+      fi
+      _XCOPY_NOT_CLEAN=YES
+      if [ "${_MODE}" = "DRY" ]; then
+        echo "DENY: ${_cmd} for ${_oct}: no usable login to ${_tgt}, as the ERROR above says"
+        _xcopy_finalize_dry "${_oct}" "${_tgt}"
+      fi
+      exit 1
+    }
+    [ "${_MODE}" = "LIVE" ] && _xcopy_require_clean_dry "${_oct}" "${_tgt}"
+    if compgen -G "/var/log/boa/usage/*" > /dev/null; then
+      if ! _xcopy_rsync -aEAXq ${_ieni} -e ssh /var/log/boa/usage/* root@${_tgt}:/var/log/boa/usage/; then
+        echo "ERROR: ${_cmd} for ${_oct}: the copy of /var/log/boa/usage to ${_tgt} failed"
+        exit 1
+      fi
       echo "INFO: ${_cmd} for ${_oct} /var/log/boa/usage complete"
+    else
+      echo "INFO: ${_cmd} for ${_oct}: this box holds no usage records, nothing to copy"
     fi
-    echo "INFO: ${_cmd} for ${_oct} to ${_tgt} complete"
+    if [ "${_MODE}" = "LIVE" ]; then
+      echo "INFO: ${_cmd} for ${_oct} to ${_tgt} complete"
+    else
+      _xcopy_finalize_dry "${_oct}" "${_tgt}"
+    fi
   elif [ "${_oct}" = "shared" ]; then
     echo "INFO: ${_cmd} for ${_oct} to ${_tgt} start"
     # Refuse an empty target: an empty ssh host resolves to localhost, so the arch
@@ -4988,6 +7085,19 @@ _migrate_init() {
       exit 1
     elif [ "${_cmd}" = "transfer" ] && [ -e "${_USR}/log/transferred.pid" ]; then
       echo "_USR ${_oct} is not eligible for migration: already transferred"
+      if [ -e "${_USR}/log/export_failed.pid" ] \
+        && [ "${_USR}/log/transferred.pid" -nt "${_USR}/log/export_failed.pid" ]; then
+        echo "INFO: that transfer was forced over the failed export (log/export_failed.pid): fix the cause and re-run"
+        echo "INFO: 'xcopy export ${_oct} ${_tgt}${_dst:+ ${_dst}}', then transfer the fixed export"
+      fi
+      exit 1
+    ### A transfer carries what this run's export made. With no export, src/
+    ### and log/ can hold an older copy's panel dump and source hostname (an
+    ### import this box once received), which the target would import.
+    elif [ "${_cmd}" = "transfer" ] && [ ! -e "${_USR}/log/exported.pid" ] \
+      && [ ! -e "${_USR}/log/export_failed.pid" ]; then
+      echo "_USR ${_oct} is not eligible for migration: not exported"
+      echo "INFO: run 'xcopy export ${_oct} ${_tgt}${_dst:+ ${_dst}}' first"
       exit 1
     elif [ "${_cmd}" = "transfer" ] && [ -e "${_USR}/log/export_failed.pid" ] \
       && [ "${_XCOPY_FORCE}" != "YES" ]; then
@@ -4995,6 +7105,17 @@ _migrate_init() {
       echo "ALRT: log/export_failed.pid is present -- the last export left FAILED site dumps:"
       _xcopy_read_in "${_USR}/log" export_failed.pid | sed "s/^/ALRT:   /"
       echo "INFO: re-run 'xcopy export' after fixing the cause, or pass --force to transfer anyway"
+      exit 1
+    ### The stamps travel with the transfer and stay on a target whose import
+    ### stopped short: there they are the sending server's export, with its
+    ### dumps. Export records the server it ran on; --force passes no other.
+    elif [ "${_cmd}" = "transfer" ] \
+      && [ "$(_xcopy_read_in "${_USR}/log" sourcefqdn.txt | tr -cd 'a-zA-Z0-9.-')" \
+        != "$(_xcopy_this_fqdn | tr -cd 'a-zA-Z0-9.-')" ]; then
+      echo "_USR ${_oct} is not eligible for migration: exported on another server"
+      echo "INFO: log/sourcefqdn.txt names '$(_xcopy_read_in "${_USR}/log" sourcefqdn.txt | tr -cd 'a-zA-Z0-9.-')', this server is '$(_xcopy_this_fqdn | tr -cd 'a-zA-Z0-9.-')'"
+      echo "INFO: a copy this server received and did not finish importing: finish that import here first"
+      echo "INFO: otherwise run 'xcopy reset-state ${_oct}', then 'xcopy export ${_oct} ${_tgt}${_dst:+ ${_dst}}'"
       exit 1
     elif [ "${_cmd}" = "import" ] && [ -e "${_USR}/log/export_failed.pid" ] \
       && [ "${_XCOPY_FORCE}" != "YES" ]; then
@@ -5052,11 +7173,41 @@ _migrate_init() {
           _xcopy_leg_ok "${_USR}/distro" \
             && _xcopy_in_real_dir "${_USR}/distro" _xcopy_copy_mk_here "${_tgt}" \
               "${_DST}/distro" '*' -aEAXqu ${_ieni}
-          _xcopy_leg_ok "${_USR}/src" \
+          ### src/ travels with the transfer alone, after this run's export:
+          ### before it, src/ can hold an older copy's panel dump and site
+          ### dump folders (an import this box once received), and the
+          ### transfer adds to the target's folders without removing from
+          ### them, so the import would load that copy's files with the new.
+          ### On the target, an earlier transfer's site dumps go first.
+          if [ "${_cmd}" = "transfer" ] && [ "${_MODE}" = "LIVE" ]; then
+            if ! _xcopy_target_dumps_clear "${_tgt}" "${_DST}" \
+              "$(_xcopy_in_real_dir "${_USR}/src" _xcopy_site_dump_names_here)"; then
+              echo "ERROR: ${_cmd} for ${_oct}: src/ NOT sent and the transfer NOT marked complete; fix the cause and re-run"
+              exit 1
+            fi
+          elif [ "${_cmd}" = "transfer" ]; then
+            echo "[DRY-PLAN] would clear an earlier transfer's site dumps in ${_tgt}:${_DST}/src"
+          fi
+          [ "${_cmd}" = "transfer" ] \
+            && _xcopy_leg_ok "${_USR}/src" \
             && _xcopy_in_real_dir "${_USR}/src" _xcopy_copy_mk_here "${_tgt}" \
               "${_DST}/src" '*' -aEAXqu ${_ieni}
           _xcopy_transfer_static_symlink_safe "${_USR}" "${_tgt}" "${_DST}" "${_ieni}" "${_TGT_MNT}"
           #
+          # The sub-account password store must land BEFORE clients/ does:
+          # manage_ltd_users creates sub-users from clients/ on its first
+          # pass that sees them and honours a pre-existing store entry (the
+          # carried password) only if it is already there. Forced (no -u): the
+          # target's fresh install must never shadow the carried credentials.
+          # The store is the account's: sent from inside the real directory
+          # into the real directory on the target (made when missing). Its
+          # entries are keyed by the full sub-user name, so it travels whole
+          # under the account's own name only (as in xoct).
+          if [ "${_DST##*/}" = "${_oct}" ]; then
+            _xcopy_leg_ok "/home/${_oct}.ftp/users" \
+              && _xcopy_in_real_dir "/home/${_oct}.ftp/users" _xcopy_copy_mk_here \
+                "${_tgt}" "/home/${_DST##*/}.ftp/users" '' -aEAX ${_ieni}
+          fi
           # clients/ is oN's on both boxes: pinned both ends, target made real.
           _xcopy_leg_ok "${_USR}/clients" \
             && _xcopy_in_real_dir "${_USR}/clients" _xcopy_copy_mk_here "${_tgt}" \
@@ -5064,7 +7215,12 @@ _migrate_init() {
           # instance-group.txt records the SOURCE box's conversion (its gid);
           # it must never travel, the destination pass writes its own, and
           # web-group-notes.txt (a temp copy of it too) names the source
-          # box's web-group state.
+          # box's web-group state. imported.pid, import_failed.pid and
+          # panel_db.txt record an import this box once received (the
+          # account came here as a copy or a move): sent on, the target's
+          # import would refuse the account as already imported, or take
+          # the recorded panel database where one of that name exists there.
+          # The target's own import writes its own.
           # log/ is oN's on both boxes: copied from inside the real directory
           # into the real directory, the glob expanded there. The account's
           # own log/email.txt then goes over the install's copy (one address,
@@ -5073,7 +7229,8 @@ _migrate_init() {
           if _xcopy_leg_ok "${_USR}/log"; then
             _xcopy_in_real_dir "${_USR}/log" _xcopy_copy_here "${_tgt}" "${_DST}/log" '*' \
               -aEAXqu ${_ieni} --exclude=instance-group.txt '--exclude=.instance-group.txt.put.*' --exclude=proxy-failed.pid \
-              --exclude=web-group-notes.txt '--exclude=.web-group-notes.txt.put.*'
+              --exclude=web-group-notes.txt '--exclude=.web-group-notes.txt.put.*' \
+              --exclude=imported.pid --exclude=import_failed.pid --exclude=panel_db.txt
             _xcopy_in_real_dir "${_USR}/log" _xcopy_copy_here "${_tgt}" "${_DST}/log" 'email.txt' \
               -aEAXq --no-links ${_ieni}
           fi
@@ -5104,6 +7261,33 @@ _migrate_init() {
           _xcopy_leg_ok "/home/${_oct}.ftp/.ssh" \
             && _xcopy_in_real_dir "/home/${_oct}.ftp/.ssh" _xcopy_copy_mk_here \
               "${_tgt}" "/home/${_DST##*/}.ftp/.ssh" '' -aEAXqu ${_ieni}
+
+          # Client-installed toolchains live outside /data/disk in the lshell
+          # jail's writable trees: copied AS-IS (as in xoct). The parents are
+          # sticky and world-writable, so each leaf is its owner's to replace:
+          # pinned as the account legs are, and entered on the target only
+          # when it is the account's (_xcopy_toolchain_leg).
+          _xcopy_toolchain_leg "${_tgt}" "${_ieni}" \
+            "/opt/user/gems/${_oct}.ftp" "/opt/user/gems/${_DST##*/}.ftp"
+          _xcopy_toolchain_leg "${_tgt}" "${_ieni}" \
+            "/opt/user/npm/${_oct}.ftp" "/opt/user/npm/${_DST##*/}.ftp"
+
+          # The PHP coverage gate re-runs on every LIVE transfer: the control
+          # files the pass above carried, changed here since create, must
+          # never name a version in force here that the target lacks. A dry
+          # run names a choice the target would start to honour (as in xoct).
+          # The client's shell credentials converge on every LIVE transfer
+          # too, never in a dry run: they change the target.
+          if [ "${_MODE}" = "LIVE" ]; then
+            if ! _xcopy_php_coverage_gate "${_USR}" "${_tgt}"; then
+              echo "ERROR: ${_cmd} for ${_oct}: target PHP coverage failed AFTER the file sync;"
+              echo "ERROR: NOT marking the transfer complete -- fix the target PHP set and re-run"
+              exit 1
+            fi
+            _xcopy_sync_shell_credentials "${_oct}" "${_DST##*/}" "${_tgt}"
+          else
+            _xcopy_php_inert_report "${_USR}" "${_tgt}" deny
+          fi
 
           ### The target keeps its own panel aliases (hostmaster, hm and
           ### server_master). Import reads the hostmaster alias to find the
@@ -5226,6 +7410,9 @@ _migrate_init() {
           service nginx reload
           # log/ is oN's: stamped inside the real directory, never through a link
           echo COMPLETE | _xcopy_in_real_dir "${_USR}/log" _xcopy_write_here proxied.pid
+        fi
+        if [ "${_cmd}" = "noproxy" ]; then
+          _xcopy_source_done
         fi
       fi
       if [ "${_XCOPY_RUN_FAIL}" = "YES" ]; then
@@ -5494,6 +7681,8 @@ _post_mig() {
       echo "ALRT: cron did not start; the BOA runners and every scheduled job are DOWN"
       echo "ALRT: start it manually: /etc/init.d/cron start"
     fi
+    # On the target: how each copied site's verify ended.
+    _xcopy_verify_report
     exit 0
   fi
 }
@@ -5562,6 +7751,9 @@ _pre_mig() {
       echo Preparing target ${_hName} for incoming migration...
       echo Add remote id_ed25519.pub to authorized_keys here...
       _xcopy_trust_source_key || exit 1
+      ### A source that holds another key for this box's address is refused
+      ### at its first login here; these are the lines it compares.
+      _mig_tell_host_keys
     fi
   fi
   echo All done!
@@ -5789,7 +7981,10 @@ _check_root() {
     NR==1 { for (i=1; i<=NF; i++) if ($i=="Use%" || $i=="Capacity") u=i }
     NR==2 && u { gsub(/%/,"",$u); print $u }')"
   [[ "${_DF_TEST}" =~ ^[0-9]+$ ]] || _DF_TEST=""
-  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ]; then
+  # reset-state only removes files (the copy stamps, the panel dump): refusing
+  # it on a full disk would keep the dump that may be filling it.
+  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ] \
+    && [ "${_cmd}" != "reset-state" ]; then
     echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
     echo "ERROR: We can not proceed until it is below 90/100"
     exit 1
@@ -5798,7 +7993,9 @@ _check_root() {
     NR==1 { for (i=1; i<=NF; i++) if ($i=="IUse%") u=i }
     NR==2 && u { gsub(/%/,"",$u); print $u }')"
   [[ "${_DI_TEST}" =~ ^[0-9]+$ ]] || _DI_TEST=""
-  if [ ! -z "${_DI_TEST}" ] && [ "${_DI_TEST}" -gt 90 ]; then
+  # Out of inodes is as full as out of space; the same verb runs.
+  if [ ! -z "${_DI_TEST}" ] && [ "${_DI_TEST}" -gt 90 ] \
+    && [ "${_cmd}" != "reset-state" ]; then
     echo "ERROR: Your disk is almost out of inodes !!! ${_DI_TEST}/100"
     echo "ERROR: We can not proceed until inode use is below 90/100"
     echo "ERROR: Every file takes an inode, free space alone is not enough: df -i /"
@@ -5854,6 +8051,8 @@ _mig_runlog_start() {
   [ -n "${_verb}" ] || return 0
   case "${_tool}:${_verb}" in
     xmass:status) return 0 ;;
+    # run by minute.sh, which keeps its output in /var/log/boa/xmass.cred.log
+    xmass:carry-credentials) return 0 ;;
     xmass:autosync)
       case " $* " in
         *" --run "*|*" --status "*) return 0 ;;
@@ -5996,12 +8195,21 @@ _mig_runlog_start xcopy "$@"
 # explicit --live is required (accepted only after a CLEAN dry run for the same
 # account+target — the autosymlink --batch model). Only --prefixed mode flags are
 # recognised (and stripped), so no positional argument is ever mistaken for one.
+# A shared or xusage run given any other verb is a live run: it needs, and uses up,
+# a clean dry run of the same word and target.
 _MODE=LIVE
 _XCOPY_NOT_CLEAN=NO
 _XCOPY_GMAP=""
 _XCOPY_AMAP=""
 _XCOPY_UMAP=""
+# the number a file whose owner no user has here, and no record names the
+# account's own, lands as on the target: xmass's _XMASS_NAMELESS_UID
+_XCOPY_NAMELESS_UID=65533
+_XCOPY_NAMELESS_LIST=""
+_XCOPY_NAMELESS_SHORT=""
 _XCOPY_FORCE=""
+### Set by create's --fix-php alone (_xcopy_php_coverage_gate).
+_XCOPY_FIX_PHP=""
 ### admail=<address>, any verb, any position, as xoct takes it: a test or
 ### canary run that must never mail a client. xcopy sends no notices of its
 ### own; under admail= its create installs only with the install's welcome
@@ -6040,6 +8248,25 @@ case "$1" in
           ### An unknown --flag must never fall through to the positionals:
           ### the next free slot is the fourth argument (a destination name,
           ### which xcopy refuses unless it is the account's own).
+          echo "ERROR: unknown option '${_a}' for $1"
+          exit 1
+          ;;
+        *) _margs+=("${_a}") ;;
+      esac
+    done
+    set -- "${_margs[@]}"
+    ;;
+  create)
+    ### --fix-php lets create extend the target's _PHP_MULTI_INSTALL and
+    ### drive one barracuda system pass there when a PHP version in force
+    ### here is missing; without it the PHP coverage gate refuses with the
+    ### recipe. An unknown --flag must never fall through to the
+    ### positionals: the next free slot is the fourth argument.
+    _margs=()
+    for _a in "$@"; do
+      case "${_a}" in
+        --fix-php) _XCOPY_FIX_PHP=YES ;;
+        --*)
           echo "ERROR: unknown option '${_a}' for $1"
           exit 1
           ;;
@@ -6126,7 +8353,7 @@ _take_verb_lock() {
   [ "$(id -u)" = "0" ] || return 0
   while :; do
     if ( set -C; echo "$$" > "${_XCOPY_LOCK_FILE}" ) 2>/dev/null; then
-      trap '_xcopy_chattr_back; rm -f "${_XCOPY_LOCK_FILE}"' EXIT
+      trap '[ -n "${_XCOPY_RSYNC_ERR:-}" ] && rm -f -- "${_XCOPY_RSYNC_ERR}"; _xcopy_chattr_back; rm -f "${_XCOPY_LOCK_FILE}"' EXIT
       trap 'rm -f "${_XCOPY_LOCK_FILE}"; exit 130' INT TERM HUP
       return 0
     fi
@@ -6202,7 +8429,7 @@ _xcopy_sql_maint_hold() {
     # Signals masked first: one landing in here would run the exit below inside
     # this trap and skip the release, pausing the watchdog for hours. The release
     # goes before the chattr step, the one part that can block on a sick disk.
-    trap 'trap "" INT TERM HUP; _xcopy_sql_maint_release; _xcopy_chattr_back; rm -f "${_XCOPY_LOCK_FILE}"' EXIT
+    trap 'trap "" INT TERM HUP; _xcopy_sql_maint_release; _xcopy_chattr_back; [ -n "${_XCOPY_RSYNC_ERR:-}" ] && rm -f -- "${_XCOPY_RSYNC_ERR}"; rm -f "${_XCOPY_LOCK_FILE}"' EXIT
     trap 'exit 130' INT TERM HUP
     if [ -z "${_XCOPY_SQL_MAINT_BEAT}" ] || ! kill -0 "${_XCOPY_SQL_MAINT_BEAT}" 2>/dev/null; then
       # Detached, not a child of this shell: the bare `wait` calls in this
@@ -6243,7 +8470,7 @@ _xcopy_sql_maint_release() {
 }
 
 case "$1" in
-  export|create|import|pretransfer|transfer|noproxy|pre-mig|post-mig|ssl-gen)
+  export|create|import|pretransfer|transfer|noproxy|reset-state|pre-mig|post-mig|ssl-gen)
     _take_verb_lock "$1"
   ;;
 esac
@@ -6292,6 +8519,11 @@ case "$1" in
             _check_root
             _migrate_init
   ;;
+  reset-state) _cmd="$1"
+            _oct="$2"
+            _check_root
+            _xcopy_reset_state
+  ;;
   pre-mig)  _cmd="$1"
             _hst="$2"
             _check_root
@@ -6311,8 +8543,11 @@ case "$1" in
             echo "Usage: xcopy {pre-mig} {source-fqdn} (source vms: publishes its key and prints its fingerprint)"
             echo "Usage: xcopy {pre-mig} {source-fqdn} --key-fp=SHA256:... (target vms: the fingerprint the source printed)"
             echo "Usage: xcopy {export|create|pretransfer|transfer|noproxy} {o1|shared} {target-ip}"
+            echo "Usage: xcopy {pretransfer|transfer} {xusage} {target-ip} (the usage records alone: a dry run, then --live)"
             echo "       (the account keeps its name: xoct moves an account under a new one)"
+            echo "Usage: xcopy {create} {o1} {target-ip} [--fix-php] (installs the PHP versions in force here that the target lacks)"
             echo "Usage: xcopy {import} {o1} {target-ip} (target vms)"
+            echo "Usage: xcopy {reset-state} {o1} (clear the copy state here for a new or refreshed copy)"
             echo "Usage: xcopy {post-mig} {fqdn} (source+target vms)"
             echo
             echo "Usage: xcopy {ssl-gen}"

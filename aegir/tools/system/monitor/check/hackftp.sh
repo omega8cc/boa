@@ -134,7 +134,13 @@ _recycle_log() {
 #
 # BOA runs pure-ftpd (DontResolve/-H), which logs to /var/log/messages as:
 #   "... host pure-ftpd: (?@1.2.3.4) [WARNING] Authentication failed for user [name]"
-#   "... host pure-ftpd: (?@1.2.3.4) [WARNING] Sorry, cleartext sessions are not accepted"
+#
+# pure-ftpd's refusal of a session without TLS ("Sorry, cleartext sessions
+# and weak ciphers are not accepted") is not counted. The current pure-ftpd
+# answers a plain login with it but logs nothing, and logs it only when a TLS
+# start fails, which a client that rejects the server's self-signed
+# certificate does as well as a scanner: counting it would ban customers'
+# FTPS clients.
 #
 # The peer IP is the server-written "(?@<ip>)" prefix; the login name is
 # attacker-controlled and logged later inside "[...]". We anchor extraction on
@@ -177,35 +183,38 @@ _makeactions() {
     exec 3< <(tail -c +$(( _last_offset + 1 )) "${_MESSAGES_LOG}" 2>/dev/null)
   fi
 
-  while IFS= read -r _line <&3; do
-    _line="${_line//[^a-zA-Z0-9: $'\t'\/@_()*/\[\].,\-]/}"
+  while LC_ALL=C IFS= read -r _line <&3; do
+    # Keep only the characters the checks below read; the slash inside the
+    # set is escaped, since an unescaped one ends the pattern.
+    _line="${_line//[^a-zA-Z0-9: $'\t'\/@_()*\[\].,\-]/}"
 
-    if [[ "${_line}" =~ "Authentication failed for user" ]] || \
-       [[ "${_line}" =~ "Sorry, cleartext sessions are not accepted" ]]; then
+    if [[ "${_line}" =~ "Authentication failed for user" ]]; then
 
       _line_is_recent "${_line}" || continue
 
       # Extract the peer IP from pure-ftpd's server-written prefix -- the FIRST
-      # parenthesised "(user@host)" token AFTER the "pure-ftpd:" program tag. That
-      # tag is written by pure-ftpd/syslog, never the client, so anchoring on it is
-      # injection-proof: the attacker-controlled login name (logged later inside
-      # "[...]", and which may itself contain a "(x@1.2.3.4)" token because the
-      # sanitiser keeps parentheses) can never be reached by the match. We take THAT
-      # token's host and require it to be IPv4 -- we deliberately do NOT let a free
-      # "@<ipv4>" =~ search run, because on a non-IPv4 first paren (an IPv6 or
-      # IPv4-mapped peer) it would skip the real prefix and match the attacker's
-      # "(x@8.8.8.8)" username token, banning an attacker-framed third party.
-      # Position-invariant across classic and ISO 8601 syslog (the tag precedes both
-      # message variants).
+      # parenthesised "(user@host)" token right after the "pure-ftpd:" program
+      # tag, and that tag only in the place the syslog header gives the program
+      # (classic or ISO 8601 stamp, then the host). The client never writes the
+      # tag, so the attacker-controlled login name (logged later inside "[...]",
+      # and which may itself contain a "(x@1.2.3.4)" token because the sanitiser
+      # keeps parentheses) can never be reached by the match. A local program
+      # writing to the log socket picks its own tag, and a setuid one logs words
+      # a local user chose, so "pure-ftpd:" anywhere else in a line is not the
+      # server's. We take THAT token's host and require it to be IPv4 -- we
+      # deliberately do NOT let a free "@<ipv4>" =~ search run, because on a
+      # non-IPv4 first paren (an IPv6 or IPv4-mapped peer) it would skip the real
+      # prefix and match the attacker's "(x@8.8.8.8)" username token, banning an
+      # attacker-framed third party.
       #
       # IPv4-mapped IPv6 peer (::ffff:1.2.3.4 -- the default log form for an IPv4
       # client on a dual-stack pure-ftpd): recover the embedded IPv4 so a real
       # client is still banned. A pure IPv6 peer has no IPv4 form, so _is_ipv4 skips
       # it (csf is IPv4-only) rather than mis-attributing the ban.
       local _ip=""
-      local _ftp_peer_re='pure-ftpd(\[[0-9]+\])?:[[:space:]]*\(([^()]*)@([^()]*)\)'
+      local _ftp_peer_re='^([A-Z][a-z]{2} +[0-9]{1,2} [0-9]{2}:[0-9]{2}:[0-9]{2}|[0-9]{4}-[0-9]{2}-[0-9]{2}T[^ ]+) [^ ]+ pure-ftpd(\[[0-9]+\])?:[[:space:]]*\(([^()]*)@([^()]*)\)'
       if [[ "${_line}" =~ ${_ftp_peer_re} ]]; then
-        _ip="${BASH_REMATCH[3]}"
+        _ip="${BASH_REMATCH[4]}"
       fi
       [[ "${_ip}" == *:*.*.*.* ]] && _ip="${_ip##*:}"
 

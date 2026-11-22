@@ -18,6 +18,7 @@ types {
   application/rss+xml                   rss;
   application/rtf                       rtf;
   application/vnd.android.package-archive apk;
+  application/vnd.apple.mpegurl         m3u8;
   application/vnd.google-earth.kml+xml  kml;
   application/vnd.google-earth.kmz      kmz;
   application/vnd.ms-excel              xls;
@@ -60,6 +61,7 @@ types {
   application/vnd.sun.xml.writer.global      sxg;
   application/vnd.sun.xml.writer.template    stw;
   application/vnd.wap.wmlc              wmlc;
+  application/wasm                      wasm;
   application/x-7z-compressed           7z;
   application/x-bittorrent              torrent;
   application/x-chrome-extension        crx;
@@ -83,6 +85,7 @@ types {
   application/x-xpinstall               xpi;
   application/xhtml+xml                 xhtml;
   application/xml                       rdf;
+  application/xspf+xml                  xspf;
   application/zip                       zip;
   audio/flac                            flac;
   audio/midi                            mid midi kar;
@@ -118,6 +121,7 @@ types {
   text/x-vcard                          vcf;
   text/xml                              xml;
   video/3gpp                            3gpp 3gp;
+  video/mp2t                            ts;
   video/mp4                             mp4 m4v f4v f4p;
   video/mpeg                            mpeg mpg;
   video/ogg                             ogv;

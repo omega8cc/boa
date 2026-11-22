@@ -134,7 +134,20 @@ setFilePerms(){
     fi
 }
 
+# With the store armed, nginx reads a hosted account's own files only as
+# root's judged copies (/opt/local/bin/ngxstore): they are brought up to date
+# before any configuration is read, from a clean environment. Not armed, the
+# tool only puts the account paths back if it finds them switched. A failure
+# of it never stops nginx.
+_ngxstore_sync() {
+    if [ -x /opt/local/bin/ngxstore ]; then
+        env -i PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin \
+            timeout 300 /opt/local/bin/ngxstore sync --quiet > /dev/null 2>&1
+    fi
+}
+
 configtest() {
+    _ngxstore_sync
     $DAEMON -t -c $NGINX_CONF_FILE
 }
 
@@ -284,6 +297,7 @@ start() {
         log_end_msg $SCRIPT_ERROR
         rc=0
     else
+        _ngxstore_sync
         # Check if the ULIMIT is set in /etc/default/nginx
         if [ -n "$ULIMIT" ]; then
             # Set the ulimits
@@ -325,6 +339,32 @@ stop() {
     fi
 
     return
+}
+
+# A restart stops every site before it starts nginx again, so with a
+# configuration nginx -t rejects (one broken line in a file root keeps under
+# /data/conf is enough) every site stays down. The running nginx is kept
+# instead and the caller gets a non-zero status, as with reload. With no
+# nginx running there is nothing to keep and start goes ahead as before; on a
+# standby held by its marker files the restart stops nginx as before, since
+# start() keeps a held web tier down.
+restart_tested() {
+    isRunning
+    isAlive=$?
+
+    if [ "${isAlive}" -eq $TRUE ] \
+      && { [ ! -e "/root/.standby.cnf" ] \
+        || [ -e "/root/.standby.serve.cnf" ] \
+        || [ -e "/var/log/boa/.standby_promoted.pid" ]; } \
+      && ! configtest; then
+        log_failure_msg "$DESCRIPTION not restarted: nginx -t failed, the running nginx is kept"
+        rc=1
+        return
+    fi
+
+    stop
+    sleep 1
+    start
 }
 
 reload() {
@@ -456,12 +496,7 @@ case "$1" in
         stop
         ;;
     restart|force-reload)
-        stop
-        # if [ $rc -ne 0 ]; then
-        #     script_exit
-        # fi
-        sleep 1
-        start
+        restart_tested
         ;;
     reload)
         $1

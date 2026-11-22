@@ -228,7 +228,7 @@ for my $f (@ARGV) {
 }'
 _xtra_app_modes() {
   ( PATH=/usr/local/bin:/usr/bin:/bin
-    cd -P -- "${1}" 2> /dev/null && [ "$(pwd -P)" = "${1}" ] || exit 1
+    cd -P -- "${1}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${1}" ] || exit 1
     find . \( -type d -o -type f \) \
       -execdir perl -e "${_XTRA_FCHMOD_PL}" {} + ) &> /dev/null
 }
@@ -260,7 +260,7 @@ _xtra_has_acl() {
 # moved into $2: renamed, never followed.
 _xtra_adminer_names_move() {
   ( PATH=/usr/local/bin:/usr/bin:/bin
-    cd -P -- "${1}" 2> /dev/null && [ "$(pwd -P)" = "${1}" ] || exit 1
+    cd -P -- "${1}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${1}" ] || exit 1
     find . -mindepth 1 -maxdepth 1 ! -name access ! -name '.access.retired.*' \
       -exec mv -f -t "${2}" -- {} + ) &> /dev/null
 }

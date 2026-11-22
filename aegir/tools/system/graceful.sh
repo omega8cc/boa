@@ -5,6 +5,19 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 
+# Duplicity runs in flight, counted from root's processes alone: root's own
+# duplicity, and root's mybackup pass, which runs an account's queued restore
+# as the account through su. An account's own process is never counted: the
+# account's site code runs as its backend user in tasks and can give a
+# process any command line.
+_dcy_live_count() {
+  local _a _b _c
+  _a=$(pgrep -u root -U root -fc '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)' 2> /dev/null)
+  _b=$(pgrep -u root -U root -fc '^[^ ]*duplicity( |$)' 2> /dev/null)
+  _c=$(pgrep -u root -U root -fc '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*mybackup( |$)' 2> /dev/null)
+  echo $(( ${_a:-0} + ${_b:-0} + ${_c:-0} ))
+}
+
 # Function to check if the script is run as root
 _check_root() {
   if [ "$(id -u)" -ne 0 ]; then
@@ -50,69 +63,423 @@ if [ -e "/run/boa_php_idle_quiesce.pid" ]; then
   rm -f /run/boa_php_idle_quiesce.pid
 fi
 
-_find_fast_mirror_early() {
-  _ffMirr=/opt/local/bin/ffmirror
-  if [ -x "${_ffMirr}" ]; then
-    _ffList="/var/backups/boa-mirrors-2026-07.txt"
-    [ -d "/var/backups" ] || mkdir -p /var/backups
-    if [ ! -e "${_ffList}" ]; then
-      echo "files.boa.io"  > ${_ffList}
-      echo "files.o8.io" >> ${_ffList}
-      echo "files.host8.biz" >> ${_ffList}
-      echo "files.aegir.biz" >> ${_ffList}
-      echo "files.aoboshi.com" >> ${_ffList}
-    fi
-    if [ -e "${_ffList}" ]; then
-      _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
-      if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]]; then
-        _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
-        _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
-        _USE_MIR="${_CHECK_MIRROR}"
-        [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.boa.io"
-      else
-        _USE_MIR="files.boa.io"
+# nginx's geoip_country reads /usr/share/GeoIP/GeoIPv6.dat, or GeoIP.dat on a
+# box without it: the X-GeoIP-Country headers and the GEOIP_COUNTRY_CODE, CODE3
+# and NAME values PHP gets. The IPv6 edition answers IPv4 visitors too, by the
+# IPv4-mapped address nginx looks them up by. The distro's copies hold data
+# from December 2019, so address blocks that changed hands since name the
+# wrong country. Once a month both are rebuilt from DB-IP's IP to Country Lite
+# (CC BY 4.0, https://db-ip.com) in the same legacy formats, so the variables
+# and the form of their values stay as they were (libGeoIP supplies the
+# three-letter code and the name). A new file replaces the old one by a
+# rename, only once every range reads back right, and the old one is never
+# removed first: nginx does not start without it. A month DB-IP has not
+# published yet falls back to the month before; a failed fetch keeps the
+# files and is tried again the next night.
+_refresh_country_db() {
+  local _dat="/usr/share/GeoIP/GeoIP.dat" _dat6="/usr/share/GeoIP/GeoIPv6.dat"
+  local _log="/var/log/boa/country-db.log"
+  local _now _prev _have _m _tmp _new _new6 _info _got _done
+  [ -x "/usr/bin/python3" ] && [ -d "/usr/share/GeoIP" ] || return 0
+  # A run killed between its mktemp and its cleanup leaves these behind; a
+  # run takes minutes, so half a day apart never meets a live one.
+  find /usr/share/GeoIP -maxdepth 1 -type f -name '.GeoIP*.dat.??????' \
+    -mmin +720 -delete 2> /dev/null
+  find /var/backups -maxdepth 1 -type d -name '.boa-geoip.??????' \
+    -mmin +720 -exec rm -rf {} + 2> /dev/null
+  _now=$(date -u +%Y-%m)
+  _prev=$(date -u -d "$(date -u +%Y-%m-01) -1 day" +%Y-%m)
+  # The month both files were built from; none when they differ.
+  _have=$(tail -c 120 "${_dat}" 2> /dev/null | tr -c '[:print:]' '\n' \
+    | grep -oE 'DB-IP Country Lite [0-9]{4}-[0-9]{2}' | tail -n 1 \
+    | grep -oE '[0-9]{4}-[0-9]{2}$')
+  _m=$(tail -c 120 "${_dat6}" 2> /dev/null | tr -c '[:print:]' '\n' \
+    | grep -oE 'DB-IP Country Lite [0-9]{4}-[0-9]{2}' | tail -n 1 \
+    | grep -oE '[0-9]{4}-[0-9]{2}$')
+  [ "${_m}" = "${_have}" ] || _have=""
+  [ "${_have}" = "${_now}" ] && return 0
+  if ! _tmp=$(mktemp -d /var/backups/.boa-geoip.XXXXXX 2> /dev/null); then
+    echo "$(date) GeoIP.dat: no work folder in /var/backups, kept ${_have:-the distro data}" >> "${_log}"
+    return 0
+  fi
+  _got=""
+  for _m in "${_now}" "${_prev}"; do
+    [ "${_m}" = "${_have}" ] && _got=none && break
+    curl -fsS --max-time 300 -o "${_tmp}/dbip.csv.gz" \
+      "https://download.db-ip.com/free/dbip-country-lite-${_m}.csv.gz" &> /dev/null \
+      && gzip -t "${_tmp}/dbip.csv.gz" &> /dev/null && _got="${_m}" && break
+  done
+  if [ -z "${_got}" ]; then
+    echo "$(date) GeoIP.dat: no DB-IP file for ${_now} or ${_prev}, kept ${_have:-the files as they are}" >> "${_log}"
+  elif [ "${_got}" != "none" ]; then
+    _info="DB-IP Country Lite ${_got} CC BY 4.0 db-ip.com"
+    _new=$(mktemp /usr/share/GeoIP/.GeoIP.dat.XXXXXX 2> /dev/null)
+    _new6=$(mktemp /usr/share/GeoIP/.GeoIPv6.dat.XXXXXX 2> /dev/null)
+    if [ -n "${_new}" ] && [ -n "${_new6}" ] \
+      && /usr/bin/python3 -I - "${_tmp}/dbip.csv.gz" "${_new}" "${_new6}" "${_info}" \
+      /usr/bin/geoiplookup /usr/bin/geoiplookup6 >> "${_tmp}/convert.log" 2>&1 <<'PYCOUNTRY'
+import gc, gzip, os, socket, struct, subprocess, sys
+from bisect import bisect_right
+
+# libGeoIP's country table: a legacy .dat stores the position in it.
+CODES = (
+  "-- AP EU AD AE AF AG AI AL AM CW AO AQ AR AS AT AU AW AZ BA BB BD BE BF BG"
+  " BH BI BJ BM BN BO BR BS BT BV BW BY BZ CA CC CD CF CG CH CI CK CL CM CN CO"
+  " CR CU CV CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR"
+  " SX GA GB GD GE GF GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU"
+  " ID IE IL IN IO IQ IR IS IT JM JO JP KE KG KH KI KM KN KP KR KW KY KZ LA LB"
+  " LC LI LK LR LS LT LU LV LY MA MC MD MG MH MK ML MM MN MO MP MQ MR MS MT MU"
+  " MV MW MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL"
+  " PM PN PR PS PT PW PY QA RE RO RU RW SA SB SC SD SE SG SH SI SJ SK SL SM SN"
+  " SO SR ST SV SY SZ TC TD TF TG TH TJ TK TM TN TO TL TR TT TV TW TZ UA UG UM"
+  " US UY UZ VA VC VE VG VI VN VU WF WS YE YT RS ZA ZM ME ZW A1 A2 O1 AX GG IM"
+  " JE BL MF BQ SS O1").split()
+BEGIN = 16776960
+
+def fail(msg):
+  sys.stderr.write("%s\n" % msg)
+  sys.exit(1)
+
+if len(CODES) != 256:
+  fail("country table has %d entries" % len(CODES))
+index = {}
+for i, c in enumerate(CODES):
+  if i > 0 and c not in index:
+    index[c] = i
+
+src, out4, out6, info, look4, look6 = sys.argv[1:7]
+
+# A code the table lacks (XK) or DB-IP's ZZ reads as unknown, an empty value.
+rows4, rows6 = [], []
+with gzip.open(src, "rt", encoding="ascii", errors="replace") as f:
+  for line in f:
+    p = line.strip().split(",")
+    if len(p) < 3:
+      continue
+    v6 = ":" in p[0]
+    try:
+      if v6:
+        s = int.from_bytes(socket.inet_pton(socket.AF_INET6, p[0]), "big")
+        e = int.from_bytes(socket.inet_pton(socket.AF_INET6, p[1]), "big")
+      else:
+        s = struct.unpack("!I", socket.inet_aton(p[0]))[0]
+        e = struct.unpack("!I", socket.inet_aton(p[1]))[0]
+    except (OSError, socket.error, ValueError):
+      fail("bad address in %r" % line[:80])
+    c = p[2].strip()
+    if len(c) != 2 or not c.isalpha() or not c.isupper() or e < s:
+      fail("bad row %r" % line[:80])
+    (rows6 if v6 else rows4).append((s, e, index.get(c, 0)))
+n4, n6 = len(rows4), len(rows6)
+if n4 < 100000:
+  fail("only %d IPv4 rows" % n4)
+if n6 < 10000:
+  fail("only %d IPv6 rows" % n6)
+
+def ranges(rows, top):
+  """Ranges that cover all of 0..top once, neighbours of one country merged;
+  a gap reads as unknown."""
+  rows.sort()
+  starts, ends, ids = [], [], []
+  def put(s, e, i):
+    if ids and ids[-1] == i and ends[-1] + 1 == s:
+      ends[-1] = e
+    else:
+      starts.append(s)
+      ends.append(e)
+      ids.append(i)
+  nxt = 0
+  for s, e, i in rows:
+    if s < nxt:
+      fail("overlapping rows at %x" % s)
+    if s > nxt:
+      put(nxt, s - 1, 0)
+    put(s, e, i)
+    nxt = e + 1
+  if nxt <= top:
+    put(nxt, top, 0)
+  return starts, ends, ids
+
+S4, E4, I4 = ranges(rows4, 0xFFFFFFFF)
+del rows4
+if len(set(I4)) < 200:
+  fail("only %d countries" % len(set(I4)))
+
+# The IPv6 file answers IPv4 addresses too, mapped (::ffff:a.b.c.d, the form
+# nginx looks an IPv4 client up by) and compatible (::a.b.c.d), as the
+# distro's copy does: those two blocks take the IPv4 data, whatever IPv6
+# rows cover them.
+WIN = (0, 0xFFFF << 32)
+def cut(rows):
+  out = []
+  for s, e, i in rows:
+    pieces = [(s, e)]
+    for w in WIN:
+      we = w + 0xFFFFFFFF
+      kept = []
+      for a, b in pieces:
+        if b < w or a > we:
+          kept.append((a, b))
+          continue
+        if a < w:
+          kept.append((a, w - 1))
+        if b > we:
+          kept.append((we + 1, b))
+      pieces = kept
+    out.extend((a, b, i) for a, b in pieces)
+  return out
+rows6 = cut(rows6)
+for w in WIN:
+  rows6.extend((w + s, w + e, i) for s, e, i in zip(S4, E4, I4))
+S6, E6, I6 = ranges(rows6, (1 << 128) - 1)
+del rows6
+gc.collect()
+
+# A binary tree of 6-byte nodes, two 3-byte little-endian records each: a
+# record at or above BEGIN is a leaf (BEGIN + country), any other is the
+# next node. libGeoIP starts at node 0 with the top bit (31 or 127).
+def make(starts, ends, ids, top):
+  tree = bytearray()
+  def build(lo, bits):
+    k = bisect_right(starts, lo) - 1
+    if bits < top and ends[k] >= lo + (1 << bits) - 1:
+      return BEGIN + ids[k]
+    node = len(tree) // 6
+    tree.extend(b"\0" * 6)
+    left = build(lo, bits - 1)
+    right = build(lo + (1 << (bits - 1)), bits - 1)
+    tree[node * 6:node * 6 + 6] = struct.pack("<I", left)[:3] + struct.pack("<I", right)[:3]
+    return node
+  build(0, top)
+  if len(tree) // 6 >= BEGIN:
+    fail("tree too large")
+  return tree
+
+def seek(tree, ip, depth, off=0):
+  """The country for the low depth bits of ip from node off; -1 - node when
+  no leaf comes first."""
+  for d in range(depth - 1, -1, -1):
+    b = off * 6 + (3 if ip >> d & 1 else 0)
+    x = tree[b] | tree[b + 1] << 8 | tree[b + 2] << 16
+    if x >= BEGIN:
+      return x - BEGIN
+    off = x
+  return -1 - off
+
+# Every range is read back at both ends before either file may be used; in
+# the IPv6 file each IPv4 block from the node 96 bits down.
+T4 = make(S4, E4, I4, 32)
+for s, e, i in zip(S4, E4, I4):
+  if seek(T4, s, 32) != i or seek(T4, e, 32) != i:
+    fail("IPv4 read-back differs at %d" % s)
+T6 = make(S6, E6, I6, 128)
+inwin = lambda a: any(w <= a <= w + 0xFFFFFFFF for w in WIN)
+for s, e, i in zip(S6, E6, I6):
+  if not inwin(s) and (seek(T6, s, 128) != i or seek(T6, e, 128) != i):
+    fail("IPv6 read-back differs at %x" % s)
+for w in WIN:
+  node = -1 - seek(T6, w >> 32, 96)
+  if node < 0:
+    fail("no IPv4 block at %x" % w)
+  for s, e, i in zip(S4, E4, I4):
+    if seek(T6, s, 32, node) != i or seek(T6, e, 32, node) != i:
+      fail("IPv4 read-back in the IPv6 file differs at %x" % (w + s))
+
+# The distro's layout: the tree, three zero bytes, the description
+# geoiplookup -v shows, then the edition marker (1 country, 12 country v6).
+for out, tree, ed in ((out4, T4, 1), (out6, T6, 12)):
+  with open(out, "wb") as f:
+    f.write(bytes(tree) + b"\0\0\0" + info.encode("ascii") + b"\xff\xff\xff" + bytes([ed]))
+    f.flush()
+    os.fsync(f.fileno())
+
+# The library nginx links reads a spread of ranges from the new files, where
+# its geoiplookup tools are installed (libgeoip-dev brings them). It looks a
+# Teredo address (2001:0::/32) up by the IPv4 client the address carries, not
+# by the tree, so ranges starting there are left out of the spread.
+def spot(tool, out, addrs):
+  if not os.access(tool, os.X_OK):
+    return
+  for ip, want in addrs:
+    r = subprocess.run([tool, "-f", out, ip], stdout=subprocess.PIPE,
+                       stderr=subprocess.STDOUT, universal_newlines=True)
+    if (": %s," % CODES[want]) not in r.stdout:
+      fail("%s gives %r for %s, the source %s" % (os.path.basename(tool), r.stdout.strip(), ip, CODES[want]))
+k4 = [k for k in range(len(I4)) if I4[k] > 0]
+k4 = k4[::max(1, len(k4) // 64)]
+spot(look4, out4, [(socket.inet_ntoa(struct.pack("!I", S4[k])), I4[k]) for k in k4])
+k6 = [k for k in range(len(I6)) if I6[k] > 0 and not inwin(S6[k]) and S6[k] >> 96 != 0x20010000]
+k6 = k6[::max(1, len(k6) // 64)]
+a6 = [(socket.inet_ntop(socket.AF_INET6, S6[k].to_bytes(16, "big")), I6[k]) for k in k6]
+a6 += [("::ffff:" + socket.inet_ntoa(struct.pack("!I", S4[k])), I4[k]) for k in k4[::4]]
+spot(look6, out6, a6)
+print("%d IPv4 rows, %d IPv6 rows, %d and %d nodes" % (n4, n6, len(T4) // 6, len(T6) // 6))
+PYCOUNTRY
+    then
+      chmod 644 "${_new}" "${_new6}"
+      _done=""
+      mv -f "${_new}" "${_dat}" 2> /dev/null && _done="GeoIP.dat"
+      mv -f "${_new6}" "${_dat6}" 2> /dev/null && _done="${_done:+${_done} and }GeoIPv6.dat"
+      if [ -n "${_done}" ]; then
+        echo "$(date) ${_done}: ${_info} ($(tail -n 1 "${_tmp}/convert.log"))" >> "${_log}"
+        if nginx -t &> /dev/null; then
+          service nginx reload &> /dev/null
+        else
+          echo "$(date) GeoIP.dat: nginx -t fails, so nginx was not reloaded; it reads the new data at its next reload or start" >> "${_log}"
+        fi
+      fi
+      if [ "${_done}" != "GeoIP.dat and GeoIPv6.dat" ]; then
+        echo "$(date) GeoIP.dat: DB-IP ${_got} could not be renamed into place for both files (done: ${_done:-none}), kept ${_have:-the files as they are} for the rest" >> "${_log}"
       fi
     else
-      _USE_MIR="files.boa.io"
+      echo "$(date) GeoIP.dat: DB-IP ${_got} not used, kept ${_have:-the files as they are}: $(tail -n 1 "${_tmp}/convert.log" 2> /dev/null)" >> "${_log}"
     fi
-  else
-    _USE_MIR="files.boa.io"
+    rm -f "${_new}" "${_new6}" 2> /dev/null
   fi
-  export _urlDev="https://${_USE_MIR}/dev"
+  rm -rf "${_tmp}"
 }
 
-# Function to download GeoLite2 databases
-_fetch_geoip() {
+# The server template names a country file (GeoIPv6.dat, else GeoIP.dat) only
+# when it is there, since nginx does not start with a geoip_country file
+# missing. So a config rendered while both were missing runs with every
+# country empty, and one rendered before its file went missing stops nginx at
+# the next restart; neither says so by itself. Nor does a monthly update that
+# keeps failing: the data only ages, and the distribution's copy from 2019
+# names the wrong country for blocks that changed hands since. So data older
+# than the month before (DB-IP may not have published this one yet), or not
+# DB-IP's, is reported too, and GoAccess's DB-IP files the same way while its
+# reports are on. Once a day a dated line in /var/log/boa/nginx.incident.log
+# and a mail to _MY_EMAIL unless _INCIDENT_REPORT is OFF (both read from the
+# config _check_root sourced).
+_check_country_db() {
+  local _cfg="/var/aegir/config/server_master/nginx.conf"
+  local _log="/var/log/boa/nginx.incident.log" _stamp="/run/boa_country_db_alert.pid"
+  local _goa="/usr/share/GeoIP/dbip-lite-mmdb.month"
+  local _txt _lvl _mail _host _today _file _m _prev
+  [ -s "${_cfg}" ] || return 0
+  _prev=$(date -u -d "$(date -u +%Y-%m-01) -1 day" +%Y-%m)
+  _file=$(grep -m 1 "^[[:space:]]*geoip_country " "${_cfg}" 2> /dev/null \
+    | awk '{print $2}' | tr -d ';')
+  if [ -z "${_file}" ]; then
+    _txt="${_cfg} has no geoip_country line: every visitor's country is empty until the next Verify of the server renders it with /usr/share/GeoIP/GeoIPv6.dat or GeoIP.dat present"
+  elif [ ! -s "${_file}" ]; then
+    _txt="${_file} is missing and ${_cfg} names it: nginx will not start until the file is back (apt-get install --reinstall geoip-database)"
+  else
+    _m=$(tail -c 120 "${_file}" 2> /dev/null | tr -c '[:print:]' '\n' \
+      | grep -oE 'DB-IP Country Lite [0-9]{4}-[0-9]{2}' | tail -n 1 \
+      | grep -oE '[0-9]{4}-[0-9]{2}$')
+    if [ -z "${_m}" ]; then
+      _txt="${_file} holds no DB-IP data (the distribution's copy is from 2019): the monthly update from DB-IP keeps failing, see /var/log/boa/country-db.log"
+    elif [[ "${_m}" < "${_prev}" ]]; then
+      _txt="${_file} holds DB-IP's data of ${_m}: the monthly update from DB-IP keeps failing, see /var/log/boa/country-db.log"
+    fi
+  fi
+  if [ "${_ENABLE_GOACCESS}" = "YES" ]; then
+    _m=$( { tr -dc '0-9-' < "${_goa}"; } 2> /dev/null)
+    [ -s "${_goa%/*}/dbip-city-lite.mmdb" ] && [ -s "${_goa%/*}/dbip-asn-lite.mmdb" ] || _m=""
+    if [ -z "${_m}" ]; then
+      _m="missing"
+    elif [[ "${_m}" < "${_prev}" ]]; then
+      _m="from ${_m}"
+    else
+      _m=""
+    fi
+    if [ -n "${_m}" ]; then
+      _txt="${_txt:+${_txt}; }GoAccess's DB-IP City and ASN files are ${_m}: their monthly update keeps failing, see /var/log/boa/country-db.log"
+    fi
+  fi
+  [ -n "${_txt}" ] || return 0
+  # The stamp holds the day it alerted: an age test against a daily cron that
+  # reaches this point a little earlier one night skips that night.
+  _today=$(date +%F)
+  [ "$(cat "${_stamp}" 2> /dev/null)" = "${_today}" ] && return 0
+  echo "${_today}" > "${_stamp}" 2> /dev/null
+  mkdir -p "${_log%/*}" 2> /dev/null
+  echo "$(date) country database: ${_txt}" >> "${_log}"
+  _lvl="${_INCIDENT_REPORT^^}"
+  _lvl="${_lvl//[^A-Z]/}"
+  [ "${_lvl}" != "OFF" ] && [ "${_lvl}" != "NO" ] || return 0
+  _mail="${_MY_EMAIL//\\@/@}"
+  if [ -z "${_mail}" ] || ! command -v s-nail > /dev/null 2>&1; then
+    return 0
+  fi
+  _host="$(tr -d '\n' 2> /dev/null < /etc/hostname)"
+  [ -n "${_host}" ] || _host="$(hostname -f 2> /dev/null)"
+  printf '%s\n' "nginx country database on ${_host}" "" "${_txt}" "" \
+    "Logged to ${_log}" "" "--" "This email has been sent by BOA graceful.sh" \
+    | s-nail -s "ALERT [${_host}]: nginx country database" "${_mail}" > /dev/null 2>&1
+  return 0
+}
 
-  # Prepare GeoIP directories
-  echo "Setting up GeoIP directories..."
-  mkdir -p /usr/share/GeoIP
-  chmod 755 /usr/share/GeoIP
-
-  # Download and install GeoIP databases
-  echo "Downloading GeoIP databases..."
-  mkdir -p /opt/tmp
-  cd /opt/tmp
-  rm -f /opt/tmp/Geo*
-
-  # For GeoIP2 ASN database:
-  wget -q -U iCab ${_urlDev}/src/GeoLite2-ASN.mmdb.gz
-  gunzip GeoLite2-ASN.mmdb.gz &> /dev/null
-  cp -af GeoLite2-ASN.mmdb /usr/share/GeoIP/
-
-  # For GeoIP2 City database:
-  wget -q -U iCab ${_urlDev}/src/GeoLite2-City.mmdb.gz
-  gunzip GeoLite2-City.mmdb.gz &> /dev/null
-  cp -af GeoLite2-City.mmdb /usr/share/GeoIP/
-
-  # For GeoIP2 Country database:
-  wget -q -U iCab ${_urlDev}/src/GeoLite2-Country.mmdb.gz
-  gunzip GeoLite2-Country.mmdb.gz &> /dev/null
-  cp -af GeoLite2-Country.mmdb /usr/share/GeoIP/
-
-  chmod 644 /usr/share/GeoIP/*
-  rm -f /opt/tmp/Geo*
-  cd
+# GoAccess, when the nightly per-site reports are on (_ENABLE_GOACCESS=YES),
+# takes its visitors' country, continent and city from DB-IP's IP to City Lite
+# and their network from its ASN Lite (CC BY 4.0, https://db-ip.com), kept in
+# /usr/share/GeoIP and refreshed once a month like the country files above;
+# weblogx names them in its GoAccess config. A file is used only when its
+# metadata, at its end where a cut-short download loses it, names its kind,
+# and then replaces the old one by a rename. The GeoLite2 files earlier
+# passes fetched from the mirror stay where they are.
+_refresh_goaccess_db() {
+  local _dir="/usr/share/GeoIP" _log="/var/log/boa/country-db.log"
+  local _stamp="/usr/share/GeoIP/dbip-lite-mmdb.month"
+  local _now _prev _have _m _tmp _got _f _kind _bad _new _new_city _new_asn
+  [ -d "${_dir}" ] || return 0
+  # A killed run's temp copy (City Lite is over 100 MB) goes even once the
+  # reports are switched off.
+  find "${_dir}" -maxdepth 1 -type f -name '.dbip-*-lite.mmdb.??????' \
+    -mmin +720 -delete 2> /dev/null
+  [ "${_ENABLE_GOACCESS}" = "YES" ] || return 0
+  _now=$(date -u +%Y-%m)
+  _prev=$(date -u -d "$(date -u +%Y-%m-01) -1 day" +%Y-%m)
+  _have=$( { tr -dc '0-9-' < "${_stamp}"; } 2> /dev/null)
+  [ -s "${_dir}/dbip-city-lite.mmdb" ] && [ -s "${_dir}/dbip-asn-lite.mmdb" ] || _have=""
+  [ "${_have}" = "${_now}" ] && return 0
+  if ! _tmp=$(mktemp -d /var/backups/.boa-geoip.XXXXXX 2> /dev/null); then
+    echo "$(date) GoAccess mmdb: no work folder in /var/backups, kept ${_have:-the files as they are}" >> "${_log}"
+    return 0
+  fi
+  _got=""
+  for _m in "${_now}" "${_prev}"; do
+    [ "${_m}" = "${_have}" ] && _got=none && break
+    _bad=""
+    for _f in city asn; do
+      curl -fsS --max-time 900 -o "${_tmp}/${_f}.mmdb.gz" \
+        "https://download.db-ip.com/free/dbip-${_f}-lite-${_m}.mmdb.gz" &> /dev/null \
+        && gzip -t "${_tmp}/${_f}.mmdb.gz" &> /dev/null || _bad="${_f}"
+      [ -n "${_bad}" ] && break
+    done
+    [ -z "${_bad}" ] && _got="${_m}" && break
+  done
+  if [ -z "${_got}" ]; then
+    echo "$(date) GoAccess mmdb: no DB-IP City and ASN files for ${_now} or ${_prev}, kept ${_have:-the files as they are}" >> "${_log}"
+  elif [ "${_got}" != "none" ]; then
+    _new_city=$(mktemp "${_dir}/.dbip-city-lite.mmdb.XXXXXX" 2> /dev/null)
+    _new_asn=$(mktemp "${_dir}/.dbip-asn-lite.mmdb.XXXXXX" 2> /dev/null)
+    _bad=""
+    for _f in city asn; do
+      _kind="DBIP-City-Lite"
+      _new="${_new_city}"
+      if [ "${_f}" = "asn" ]; then
+        _kind="DBIP-ASN-Lite"
+        _new="${_new_asn}"
+      fi
+      if [ -z "${_new}" ] || ! gunzip -c "${_tmp}/${_f}.mmdb.gz" > "${_new}" 2> /dev/null \
+        || ! tail -c 131072 "${_new}" | LC_ALL=C grep -a -q -F "MaxMind.com" \
+        || ! tail -c 131072 "${_new}" | LC_ALL=C grep -a -q -F "${_kind}"; then
+        _bad="${_bad} ${_f}"
+      fi
+    done
+    if [ -z "${_bad}" ] && chmod 644 "${_new_city}" "${_new_asn}" \
+      && mv -f "${_new_city}" "${_dir}/dbip-city-lite.mmdb" \
+      && mv -f "${_new_asn}" "${_dir}/dbip-asn-lite.mmdb"; then
+      echo "${_got}" > "${_stamp}"
+      echo "$(date) GoAccess mmdb: dbip-city-lite.mmdb and dbip-asn-lite.mmdb, DB-IP ${_got}" >> "${_log}"
+    else
+      echo "$(date) GoAccess mmdb: DB-IP ${_got} not used (failed:${_bad:- rename}), kept ${_have:-the files as they are}" >> "${_log}"
+    fi
+    rm -f "${_new_city}" "${_new_asn}" 2> /dev/null
+  fi
+  rm -rf "${_tmp}"
 }
 
 # Delete only the bounce notices (null sender, listed as MAILER-DAEMON).
@@ -447,7 +814,7 @@ _reload_idle_fpm_versions() {
   [ -d "${_tuneDir}" ] || return 0
   _now=$(date +%s)
   _from=$(( _now - 86400 ))
-  for _mPid in $(pgrep -f '^php-fpm: master process'); do
+  for _mPid in $(pgrep -u root -U root -f '^php-fpm: master process'); do
     _mVer=$(tr '\0' ' ' 2> /dev/null < "/proc/${_mPid}/cmdline" \
       | grep -o '/opt/php[0-9]\+/' | head -n1)
     _mVer="${_mVer//[^0-9]/}"
@@ -481,7 +848,7 @@ _reload_idle_fpm_versions() {
       # What the version holds after the reload, read from its master then
       # (a fresh master starts at a baseline of some tens of MB).
       sleep 3
-      _mNew=$(pgrep -f "^php-fpm: master process \(/opt/php${_mVer}/" | head -n1)
+      _mNew=$(pgrep -u root -U root -f "^php-fpm: master process \(/opt/php${_mVer}/" | head -n1)
       _after="?"
       [ -n "${_mNew}" ] && _after=$(_fpm_shared_resident_mb "${_mNew}")
       echo "$(date) php${_mVer}-fpm reloaded: no worker for a day, opcache and APCu held ${_shm} MB before, ${_after} MB after" >> "${_relLog}"
@@ -873,6 +1240,82 @@ _size_swap() {
   echo "$(date) ${_sum}: the new ${_needMb} MB /swapfile would not switch on, no /swapfile on, the next pass builds one" >> "${_log}"
 }
 
+# sysstat samples CPU, memory, load and disks every ten minutes (sar), the
+# history a box is sized from. BOA installs the package, which ships switched
+# off: ENABLED="false" in /etc/default/sysstat, a file its config script
+# writes from debconf and reads back, so the file is the switch and a
+# reconfigure carries it into debconf. A reconfigure that fails (a held
+# dpkg or debconf lock fails it at once) puts the file back as it was, so
+# the next pass tries again. Its history is raised from the package's 7
+# days to 28 (sizing reads weeks), and with it the package's compression
+# from 10 days to 28, since sar reads no compressed day; any other value is
+# the operator's and stays. Where cron's line cannot find debian-sa1 through
+# /bin/sh (a websh older than its root PATH fix replaces the cron file's
+# PATH), the cron file gets SHELL=/bin/dash, the shell BOA gives
+# /etc/crontab, and only then. _SYSSTAT_HISTORY=NO in /root/.barracuda.cnf
+# leaves sysstat alone.
+_sysstat_history() {
+  local _log="/var/log/boa/sysstat-history.log"
+  local _def="/etc/default/sysstat"
+  local _cnf="/etc/sysstat/sysstat"
+  local _crn="/etc/cron.d/sysstat"
+  local _prv="/run/boa_sysstat_default.prev.$$"
+  local _pth _shl _fnd _put
+
+  [ "${_SYSSTAT_HISTORY}" = "NO" ] && return 0
+  dpkg-query -W -f='${Status}' sysstat 2> /dev/null | grep -q 'install ok installed' || return 0
+  [ -f "${_def}" ] || return 0
+
+  if ! grep -q '^ENABLED="true"' "${_def}"; then
+    cp -pf "${_def}" "${_prv}" || return 0
+    if grep -q '^ENABLED=' "${_def}"; then
+      sed -i 's/^ENABLED=.*/ENABLED="true"/' "${_def}"
+    else
+      echo 'ENABLED="true"' >> "${_def}"
+    fi
+    if grep -q '^ENABLED="true"' "${_def}" \
+      && DEBIAN_FRONTEND=noninteractive dpkg-reconfigure -f noninteractive sysstat < /dev/null > /dev/null 2>&1 \
+      && grep -q '^ENABLED="true"' "${_def}"; then
+      rm -f "${_prv}"
+      [ -x /etc/init.d/sysstat ] && /etc/init.d/sysstat start < /dev/null > /dev/null 2>&1
+      echo "$(date) sysstat switched on" >> "${_log}"
+    else
+      ### Put back by a rename inside /etc/default, and only when it changed.
+      _put="put back"
+      if ! cmp -s "${_prv}" "${_def}"; then
+        cp -pf "${_prv}" "${_def}.boa.$$" && mv -f "${_def}.boa.$$" "${_def}" \
+          || _put="NOT put back (a copy stays in ${_prv})"
+      fi
+      rm -f "${_def}.boa.$$"
+      [ "${_put}" = "put back" ] && rm -f "${_prv}"
+      echo "$(date) sysstat not switched on: setting ENABLED or its reconfigure failed, ${_def} ${_put}, the next pass tries again" >> "${_log}"
+      return 0
+    fi
+  fi
+
+  if grep -q '^HISTORY=7$' "${_cnf}" 2> /dev/null; then
+    sed -i 's/^HISTORY=7$/HISTORY=28/' "${_cnf}" \
+      && echo "$(date) sysstat history raised from 7 to 28 days" >> "${_log}"
+  fi
+  if grep -q '^HISTORY=28$' "${_cnf}" 2> /dev/null \
+    && grep -q '^COMPRESSAFTER=10$' "${_cnf}" 2> /dev/null; then
+    sed -i 's/^COMPRESSAFTER=10$/COMPRESSAFTER=28/' "${_cnf}" \
+      && echo "$(date) sysstat compression moved from 10 to 28 days, so sar reads every kept day" >> "${_log}"
+  fi
+
+  [ -f "${_crn}" ] || return 0
+  grep -q '^SHELL=' "${_crn}" && return 0
+  _pth="$(grep -h '^PATH=' "${_crn}" 2> /dev/null | head -n 1 | cut -d= -f2-)"
+  _fnd="$(env -i PATH="${_pth}" HOME=/root LOGNAME=root SHELL=/bin/sh /bin/sh -c 'command -v debian-sa1' < /dev/null 2> /dev/null)"
+  [ -n "${_fnd}" ] && return 0
+  [ -x /bin/dash ] || return 0
+  _shl="$(env -i PATH="${_pth}" HOME=/root LOGNAME=root SHELL=/bin/dash /bin/dash -c 'command -v debian-sa1' < /dev/null 2> /dev/null)"
+  [ -n "${_shl}" ] || return 0
+  if sed -i '1i SHELL=/bin/dash' "${_crn}" && grep -q '^SHELL=/bin/dash$' "${_crn}"; then
+    echo "$(date) ${_crn}: SHELL=/bin/dash added, cron's /bin/sh did not find debian-sa1" >> "${_log}"
+  fi
+}
+
 # Main action function
 _graceful_action() {
   echo "Starting system maintenance tasks..."
@@ -939,17 +1382,19 @@ _graceful_action() {
     echo "Swap sizing skipped: another graceful.sh run is sizing swap, a swapoff it started still runs, or /run is full"
   fi
 
+  echo "Keeping sysstat's history..."
+  _sysstat_history
+
   echo "Removing empty login-session cgroups..."
   _trim_session_cgroups
 
   echo "Checking for PHP-FPM versions idle all day..."
   _reload_idle_fpm_versions
 
-  # Setup GeoIP directories
-  if [ ! -e "/usr/share/GeoIP/GeoLite2-City.mmdb" ]; then
-    _find_fast_mirror_early
-    _fetch_geoip
-  fi
+  echo "Checking the country database nginx reads..."
+  _refresh_country_db
+  _refresh_goaccess_db
+  _check_country_db
 
   # Cleanup for /opt/tmp/sess*
   rm -f /opt/tmp/sess*
@@ -957,7 +1402,8 @@ _graceful_action() {
   _purge_weekly_backups
 
   # Speed cleanup
-  _IF_BCP="$(pgrep -f '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)'; pgrep -f '^[^ ]*duplicity( |$)')"
+  _IF_BCP=""
+  [ "$(_dcy_live_count)" -gt 0 ] && _IF_BCP=YES
   if [ -z "${_IF_BCP}" ] && [ ! -e "/run/speed_cleanup.pid" ] && [ ! -e "/root/.giant_traffic.cnf" ]; then
     echo "Performing speed cleanup..."
     touch /run/speed_cleanup.pid
@@ -994,10 +1440,10 @@ _boa_pass_active() {
   # maintenance mute) so a stale marker cannot park this script forever.
   [ -n "$(find /run/boa_xmass_init.pid /root/.standby.init.pid -mmin -2880 2> /dev/null)" ] && return 0
   [ -n "$(find /run/boa_sql_maintenance.pid -mmin -240 2> /dev/null)" ] && return 0
-  pgrep -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1 && return 0
-  pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/(barracuda|octopus)( |$)" > /dev/null 2>&1 && return 0
-  pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-" > /dev/null 2>&1 && return 0
-  pgrep -f "^(/[^ ]*/)?(bash|sh|su) .*/aegir/scripts/AegirSetup[ABC]\.sh\.txt" > /dev/null 2>&1 && return 0
+  pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1 && return 0
+  pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/(barracuda|octopus)( |$)" > /dev/null 2>&1 && return 0
+  pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-" > /dev/null 2>&1 && return 0
+  pgrep -u root -U root -f "^(/[^ ]*/)?(bash|sh|su) .*/aegir/scripts/AegirSetup[ABC]\.sh\.txt" > /dev/null 2>&1 && return 0
   return 1
 }
 

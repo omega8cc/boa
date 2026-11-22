@@ -220,11 +220,11 @@ _mfs_in_real_dir() {
     /data/disk|/data/disk/?*) _a=/data/disk ;;
   esac
   if [ -n "${_a}" ]; then
-    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+    _want="$(cd -P -- "${_a}" 2> /dev/null && /bin/pwd -P)${_d#"${_a}"}"
   else
-    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && /bin/pwd -P)/${_d##*/}"
   fi
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] && "$@" )
 }
 
 # What ./$1 is in the current (pinned) directory, never following it:
@@ -515,7 +515,7 @@ _manage_single_lock() {
   if [ -n "${_SINGLE_INSTANCE_LIB_VER:-}" ] && command -v _single_instance_lock >/dev/null 2>&1; then
     _single_instance_lock
   else
-    _CNT=$(pgrep -fc "(^|(^| )[^ ]*bash )[^ ]*/$(basename "$0")( |$)")
+    _CNT=$(pgrep -u root -U root -fc "(^|(^| )[^ ]*bash )[^ ]*/$(basename "$0")( |$)")
     if [ "${_CNT:-0}" -gt 2 ]; then
       echo "Too many $(basename "$0") running $(date) (count=${_CNT})"
       exit 0
@@ -806,10 +806,10 @@ _mfs_recheck_here() {
   find -P . -mindepth 1 -type d -cnewer "${_wk}/start" -print0 > "${_wk}/dirs" 2> /dev/null || return 1
   find -P . -type f -cnewer "${_wk}/start" -printf '%k %p\0' > "${_wk}/sized" 2> /dev/null || return 1
   : > "${_wk}/trees" || return 1
-  while IFS= read -r -u 9 -d '' _d; do
+  while LC_ALL=C IFS= read -r -u 9 -d '' _d; do
     _chg["${_d}"]=1
   done 9< "${_wk}/dirs"
-  while IFS= read -r -u 9 -d '' _d; do
+  while LC_ALL=C IFS= read -r -u 9 -d '' _d; do
     _p="${_d%/*}"
     if [ "${_p}" = "." ]; then
       [ -n "${_topChg}" ] || continue
@@ -829,15 +829,15 @@ _mfs_recheck_here() {
   # Sized without leaving the store: a tree from inside it, entered only
   # while it is still the directory listed (one gone or re-pointed since
   # counts nothing), a file as find saw it.
-  _here=$(pwd -P) || return 1
-  while IFS= read -r -u 9 -d '' _d; do
+  _here=$(/bin/pwd -P) || return 1
+  while LC_ALL=C IFS= read -r -u 9 -d '' _d; do
     _k=$(cd -P -- "${_d}" 2> /dev/null \
-      && [ "$(pwd -P)" = "${_here}/${_d#./}" ] && du -s -k . 2> /dev/null)
+      && [ "$(/bin/pwd -P)" = "${_here}/${_d#./}" ] && du -s -k . 2> /dev/null)
     _k="${_k%%[!0-9]*}"
     _kb=$(( _kb + ${_k:-0} ))
   done 9< "${_wk}/trees"
   # A file below a tree copied again is copied with it.
-  while IFS= read -r -u 9 -d '' _d; do
+  while LC_ALL=C IFS= read -r -u 9 -d '' _d; do
     _k="${_d%% *}"
     _d="${_d#* }"
     _q="${_d%/*}"
@@ -853,7 +853,7 @@ _mfs_recheck_here() {
   _MFS_RECHECK="${_n} directory trees and ${_f} files, ${_kb}K"
   [ "${_kb}" -le $(( _RECHECK_MAX_MB * 1024 )) ] || return 2
   [ "${_how}" = "count" ] && return 0
-  while IFS= read -r -u 9 -d '' _d; do
+  while LC_ALL=C IFS= read -r -u 9 -d '' _d; do
     rsync -a -c --no-devices --no-specials "${_d}/" "${_dst}/${_d#./}/" 2> /dev/null || return 1
   done 9< "${_wk}/trees"
   if [ -s "${_wk}/files" ]; then
@@ -1271,7 +1271,7 @@ fi
 # resolve it. A target breaking either rule, as given or as it resolves,
 # would build a store the rest of BOA ignores, so it is refused before
 # anything moves.
-_TARGET_R="$(cd -P -- "${_TARGET}" 2>/dev/null && pwd -P)"
+_TARGET_R="$(cd -P -- "${_TARGET}" 2>/dev/null && /bin/pwd -P)"
 if [ -z "${_TARGET_R}" ]; then
   echo "ERROR: target ${_TARGET} cannot be resolved"
   exit 1

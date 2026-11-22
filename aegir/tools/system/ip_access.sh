@@ -65,7 +65,7 @@ _ipv4_regex="^${_ipv4}(/(3[0-2]|[12][0-9]|[0-9]))?$"
 _hex="[0-9A-Fa-f]{1,4}"
 _ipv6_core="(\
 (${_hex}:){7}${_hex}|\
-(${_hex}:){1,7}:|\
+(${_hex}:){1,6}:|\
 (${_hex}:){1,6}:${_hex}|\
 (${_hex}:){1,5}(:${_hex}){1,2}|\
 (${_hex}:){1,4}(:${_hex}){1,3}|\
@@ -126,11 +126,11 @@ _acct_in_real_dir() {
     /data/disk/?*) _a=/data/disk ;;
   esac
   if [ -n "${_a}" ]; then
-    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+    _want="$(cd -P -- "${_a}" 2> /dev/null && /bin/pwd -P)${_d#"${_a}"}"
   else
-    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && /bin/pwd -P)/${_d##*/}"
   fi
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] && "$@" )
 }
 # ./$1 in the current (pinned) directory with the content $2 (0644): a
 # fresh file created exclusively, then renamed over the name, so a link or a
@@ -177,6 +177,89 @@ _ACCT_COPY_PL='use Fcntl; my $c = shift; local $/ = "\0"; my $rc = 0; while (def
 _acct_copy_here() {
   rm -f -- "${2}"
   printf '%s\0' "./${1}" "${2}" | perl -e "${_ACCT_COPY_PL}" 33554432
+}
+#
+# An account's static/control is taken only as its own. Every other
+# account's .ftp login is in the box-wide group, which an account not yet on
+# its own group still has on static/ and on what its login makes there, so
+# such a login could put a directory of its own at control/, or a file of
+# its own in a group-writable directory below it, for root to act on as the
+# account's. A name is taken only when it, the directory it is in and every
+# directory above that up to / are root's or one of the account's
+# identities' (the uids given second, _acct_walk_uids, with the account's
+# recorded removed identities); otherwise it reads as not there. Status 0 taken, 2 no
+# such name in a place of the account's, 1 refused.
+#   e  the name exists (lstat; a link of the account's only when it leads
+#      somewhere) and is the account's
+#   r  the name's bytes through one handle opened without following a
+#      link or blocking on a FIFO, only when it is a regular file of the
+#      account's no longer than the count given third
+_ACCT_OWN_READ_PL='use Fcntl;
+my ($op, $o, $c, $n) = @ARGV;
+exit 1 unless defined $n && $n =~ m{^[^/\0]+$};
+my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, $o);
+sub own { my $u = shift; return exists $own{$u} ? 1 : 0; }
+my ($p, $ok, @d, @x) = (".", 0);
+for (1 .. 256) {
+  @x = stat($p) or last;
+  last unless own($x[4]);
+  if (@d && $x[0] == $d[0] && $x[1] == $d[1]) { $ok = 1; last; }
+  @d = @x;
+  $p .= "/..";
+}
+exit 1 unless $ok;
+if ($op eq "e") { my @s = lstat("./$n") or exit($!{ENOENT} ? 2 : 1); exit 1 unless own($s[4]); exit(-e "./$n" ? 0 : 2); }
+exit 1 unless $op eq "r" && $c =~ /^[0-9]+$/;
+sysopen(my $h, "./$n", O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or exit($!{ENOENT} ? 2 : 1);
+my @s = stat($h);
+exit 1 unless @s && -f _ && own($s[4]);
+my ($d, $r) = ("");
+while ($r = sysread($h, my $b, 65536)) { $d .= $b; last if length($d) > $c; }
+exit 1 unless defined $r && length($d) <= $c;
+binmode(STDOUT);
+print $d;
+exit 0;'
+# The uids root's walks over the account $1's trees act on, comma-separated:
+# root's own (0, what root wrote there for the account) and those of every
+# identity of the account as passwd names them: oN and oN.<name>, that is
+# its .ftp login, its client sub-accounts oN.<client> and oN.<client>-dev
+# and its PHP-FPM users oN.web and oN.<ver>.web. An account name holds no
+# dot, so the match is exact: o1 never takes o10's. Status 1, and nothing,
+# unless the account itself is in passwd.
+_acct_walk_uids() {
+  local _a="${1}" _n _p _u _r _x="0" _self=NO
+  case "${_a}" in
+    ""|*[!a-z0-9-]*) return 1 ;;
+  esac
+  while IFS=: read -r _n _p _u _r; do
+    [[ "${_n}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]] || continue
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    _x="${_x},${_u}"
+    [ "${_n}" = "${_a}" ] && _self=YES
+  done < <(getent passwd 2> /dev/null)
+  [ "${_self}" = "YES" ] || return 1
+  # the account's removed identities, their numbers recorded by root before
+  # deluser freed them; a number a user has again is not taken
+  while IFS= read -r _u; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    getent passwd "${_u}" > /dev/null 2>&1 && continue
+    _x="${_x},${_u}"
+  done 2> /dev/null < "/data/conf/acct-uids/${_a}.gone"
+  echo "${_x}"
+}
+# ./$1 of the current (pinned) directory copied into the root-only file $2
+# whole (at most 32 MiB), as _acct_copy_here copies it, only as the account
+# $3's own (_ACCT_OWN_READ_PL; an account no passwd entry names: as before).
+# Status 1 when it was not.
+_acct_own_copy_here() {
+  local _o
+  _o=$(_acct_walk_uids "${3}") || { _acct_copy_here "${1}" "${2}"; return; }
+  rm -f -- "${2}"
+  ( umask 077
+    perl -e "${_ACCT_OWN_READ_PL}" r "${_o}" 33554432 "${1}" > "${2}" ) 2> /dev/null \
+    && return 0
+  rm -f -- "${2}"
+  return 1
 }
 # The names $2... of the current (pinned) directory copied under their own
 # names into the root-only directory $1 as _ACCT_COPY_PL copies, each whole
@@ -437,7 +520,7 @@ _ensure_owners() {
   # the index. $1 = control file, $2 = the context's vhost.d dir.
   local _line _s _need=""
   [[ -n "${_front_on}" && -z "${_owners_built}" ]] || return 0
-  while IFS= read -r _line; do
+  while LC_ALL=C IFS= read -r _line; do
     _line="${_line%%#*}"
     [[ -z "${_line// /}" ]] && continue
     read -r _s _ <<< "${_line}"
@@ -679,7 +762,7 @@ _front_signature() {
   local _line _s
   echo "front:${_front_on}"
   [[ -n "${_front_on}" ]] || return 0
-  while IFS= read -r _line; do
+  while LC_ALL=C IFS= read -r _line; do
     _line="${_line%%#*}"
     [[ -z "${_line// /}" ]] && continue
     read -r _s _ <<< "${_line}"
@@ -718,15 +801,25 @@ _server_ip=""
 _valid_ip "${_server_ip}" || _server_ip=""
 
 _get_ssh_ips() {
-  # `who --ips` is unavailable on Excalibur and newer, so read currently
-  # established inbound SSH peers from netstat instead — the BOA-canonical
-  # source for logged-in IPs.  netstat prints the foreign address as
-  # `<addr>:<port>`; the port is always the final `:field`, so strip it with a
-  # trailing-`:port` chop rather than splitting on the first colon — that yields
-  # the peer address for BOTH families (IPv4 `1.2.3.4:22` -> `1.2.3.4`, IPv6
-  # `2001:db8::2:50913` -> `2001:db8::2`).  Each harvested token is validated by
-  # _valid_ip before it reaches an `allow` line, so a parsed-garbage / scoped
-  # (fe80::1%eth0) token can never break configtest.
+  # The addresses of the logged-in SSH sessions. A bare connection to sshd
+  # (a scanner, a login still being refused) is no session and must not
+  # count: every change of this set rebuilds every account's lists and
+  # reloads nginx, and is never held. sshd titles a session's processes
+  # `<user>@<tty>` (`sshd: root@pts/0`, `sshd-session: root@notty`) or, once
+  # its login succeeded, `<user> [postauth]` (before OpenSSH 10.5 a login
+  # with no shell or command yet, a tunnel, is `<user>` alone); a connection
+  # before its login shows `[accepted]`, `[net]`, `[preauth]`, `<user>
+  # [priv]`, `unknown [priv]` or `sshd-auth: ...`. The sockets those session processes hold, by inode, are
+  # the established connections that count: only their descriptors are read,
+  # never every process's as `ss -p` would. Where ss or pgrep is missing or
+  # fails, or ss gives a connection no inode, the peer counts, as every
+  # established peer did before: an address too many beats a lockout.
+  # (`who --ips` is unavailable on Excalibur and newer, and utmp holds no
+  # entry for a session without a terminal.) The port is always the final
+  # `:field`, so it is chopped from the end (ss brackets an IPv6 address);
+  # each harvested token is validated by _valid_ip before it reaches an
+  # `allow` line, so a parsed-garbage / scoped (fe80::1%eth0) token can never
+  # break configtest.
   # sshd may serve a custom _SSH_PORT, but the declared cnf value is not
   # always the effective one: hosted boxes and a failed sshd -t validation
   # force 22, and a cnf edit reaches sshd only on a firewall pass. Harvest
@@ -734,6 +827,9 @@ _get_ssh_ips() {
   # sourced -- sourcing a slice resets config vars) and every port the live
   # sshd config serves, so a default-port box can never lose its peers and
   # a custom-port box is still covered.
+  # The caller's IFS is not this function's: scan_nginx.sh splits on
+  # newlines and tabs alone, which would leave every ss line unsplit.
+  local IFS=$' \t\n'
   local _p _ports="22" _cnf_port _sshd_ports
   _cnf_port=$(sed -n 's/^_SSH_PORT=//p' /root/.barracuda.cnf 2>/dev/null \
     | tail -n 1 | sed 's/[[:space:]]*#.*$//' | tr -d '" ')
@@ -744,14 +840,151 @@ _get_ssh_ips() {
       _ports="${_ports} ${_p}"
     fi
   done
+  local _f="" _out="" _line _peer _ino _x _pid _pids _rpids _rc _rrc
+  local _re='^sshd(-session)?: [^][:space:]@[]+(@|[[:space:]]*$| \[postauth\])'
+  local -a _fds=() _rfds=()
+  local -A _held=() _rheld=()
+  for _p in ${_ports}; do
+    _f="${_f:+${_f} or }sport = :${_p}"
+  done
+  if command -v ss > /dev/null 2>&1 && command -v pgrep > /dev/null 2>&1 \
+    && _out=$(unset COLUMNS; ss -tneH state established "( ${_f} )" 2>/dev/null); then
+    [[ -n "${_out}" ]] || return 0
+    # A session's process runs as its user before OpenSSH 10.5, so the
+    # titles are read whoever owns them; any account can title its own
+    # process so, and hold a socket on a port sshd does not serve (a cnf
+    # port sshd has not taken up yet). A connection counts only when root's
+    # own sshd, the session's privileged monitor, holds its socket too.
+    # owner-any: every user's sessions, told by the sockets root's sshd holds
+    _pids=$(pgrep -f "${_re}" 2>/dev/null)
+    _rc=$?
+    _rpids=$(pgrep -u 0 -U 0 -f '^sshd(-session)?: ' 2>/dev/null)
+    _rrc=$?
+    if (( _rc <= 1 && _rrc <= 1 )); then
+      for _pid in ${_pids}; do
+        _fds+=("/proc/${_pid}/fd")
+      done
+      for _pid in ${_rpids}; do
+        _rfds+=("/proc/${_pid}/fd")
+      done
+      if (( ${#_fds[@]} > 0 && ${#_rfds[@]} > 0 )); then
+        while IFS= read -r _x; do
+          _x="${_x#socket:[}"
+          _x="${_x%]}"
+          [[ "${_x}" =~ ^[0-9]+$ ]] && _held["${_x}"]=1
+        done < <(find "${_fds[@]}" -lname 'socket:*' -printf '%l\n' 2>/dev/null)
+        while IFS= read -r _x; do
+          _x="${_x#socket:[}"
+          _x="${_x%]}"
+          [[ "${_x}" =~ ^[0-9]+$ ]] && _rheld["${_x}"]=1
+        done < <(find "${_rfds[@]}" -lname 'socket:*' -printf '%l\n' 2>/dev/null)
+      fi
+      while IFS= read -r _line; do
+        read -r _ _ _ _peer _ <<< "${_line}"
+        _peer="${_peer%:*}"
+        _peer="${_peer#[}"
+        _peer="${_peer%]}"
+        [[ "${_peer}" =~ ^::ffff:[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] && _peer="${_peer#::ffff:}"
+        [[ -n "${_peer}" ]] || continue
+        # A loopback peer counts for nothing: any account can open one, the
+        # lists always allow 127.0.0.1 and ::1, and the abuse guard scores
+        # only public addresses.
+        case "${_peer}" in
+          127.*|::1|::ffff:127.*) continue ;;
+        esac
+        # ino:0 is a connection sshd has not accepted yet, no session; a
+        # line with no inode at all cannot be told, so it counts.
+        if [[ "${_line}" =~ [[:space:]]ino:([0-9]+) ]]; then
+          _ino="${BASH_REMATCH[1]}"
+          [[ "${_ino}" != 0 && -n "${_held[${_ino}]:-}" && -n "${_rheld[${_ino}]:-}" ]] \
+            || continue
+        fi
+        echo "${_peer}"
+      done <<< "${_out}" | sort -u
+      return 0
+    fi
+  fi
   netstat -tn 2>/dev/null \
-    | awk -v p=":(${_ports// /|})$" '$6 == "ESTABLISHED" && $4 ~ p { addr=$5; sub(/:[0-9]+$/, "", addr); print addr }' \
+    | awk -v p=":(${_ports// /|})$" '$6 == "ESTABLISHED" && $4 ~ p { addr=$5; sub(/:[0-9]+$/, "", addr); if (addr !~ /^(127\.|::1$|::ffff:127\.)/) print addr }' \
     | sort -u
 }
 _ssh_ips=$(_get_ssh_ips)
 # The server IP is baked into every fragment, so a healed address must
 # fire the change-gate exactly like a changed SSH-peer set.
 _ssh_ips_hash=$(echo "${_ssh_ips} ${_server_ip}" | md5sum | awk '{print $1}')
+
+# An account's change reloads the box-wide nginx at most once in
+# _ACCT_RELOAD_SECS for this tool: a change inside that time waits, its
+# markers untouched, for the first pass after it, which judges it afresh. The
+# account's last reload is a root-only stamp beside its restart requests'.
+_ACCT_RELOAD_SECS=900
+_ACCT_REQ_DIR="/run/boa_acct_requests"
+_RELOAD_TOOL="ip_access"
+# Status 0 while the account $1's last reload by this tool is younger than
+# the allowance; a held change is said once. Root's own run that must apply at
+# once (edgetest, a run by hand) sets _ACCT_RELOAD_HOLD=NO in its environment.
+_acct_reload_held() {
+  local _st="${_ACCT_REQ_DIR}/${_RELOAD_TOOL}.${1}" _ts _now
+  [[ "${_ACCT_RELOAD_HOLD:-}" == "NO" ]] && return 1
+  _now=$(date +%s)
+  _ts=$(tr -dc '0-9' 2> /dev/null < "${_st}")
+  [[ "${_ts}" =~ ^[1-9][0-9]{0,11}$ ]] || return 1
+  (( _now - _ts >= 0 && _now - _ts < _ACCT_RELOAD_SECS )) || return 1
+  if [[ ! -e "${_st}.noted" ]]; then
+    : > "${_st}.noted"
+    echo "${_RELOAD_TOOL} change of ${1} waits: its last reload was under $(( _ACCT_RELOAD_SECS / 60 )) minutes ago."
+  fi
+  return 0
+}
+_acct_reload_stamp() {
+  mkdir -p -m 0700 "${_ACCT_REQ_DIR}" 2> /dev/null
+  _ACCT_PREV_STAMP=$(tr -dc '0-9' 2> /dev/null < "${_ACCT_REQ_DIR}/${_RELOAD_TOOL}.${1}")
+  date +%s > "${_ACCT_REQ_DIR}/${_RELOAD_TOOL}.${1}"
+  rm -f "${_ACCT_REQ_DIR}/${_RELOAD_TOOL}.${1}.noted"
+}
+# The account $1's stamp taken back, the one before it put back as it was,
+# after a run whose configtest or reload failed and whose revert reloaded
+# nothing either: that run applied nothing and dropped the account's front
+# copies, so the next pass must be free to rebuild them, not 15 minutes on. A
+# revert that did reload keeps the stamp: a list of the account's own that
+# fails configtest would otherwise reload nginx on every pass.
+_acct_reload_unstamp() {
+  if [[ -n "${_ACCT_PREV_STAMP:-}" ]]; then
+    echo "${_ACCT_PREV_STAMP}" > "${_ACCT_REQ_DIR}/${_RELOAD_TOOL}.${1}"
+  else
+    rm -f "${_ACCT_REQ_DIR}/${_RELOAD_TOOL}.${1}"
+  fi
+}
+# The SSH addresses the account $1's lists now carry (the server's own with
+# them), one a line, recorded by root beside its stamp when a reload applied
+# them or a standby whose web tier is held wrote them. Never when the run
+# reverts: the last-good copy is from the run that recorded its set, and a
+# new login's address must stay free to apply at once.
+_acct_ssh_record() {
+  mkdir -p -m 0700 "${_ACCT_REQ_DIR}" 2> /dev/null
+  printf '%s\n' ${_ssh_ips} ${_server_ip} | sort -u > "${_ACCT_REQ_DIR}/${_RELOAD_TOOL}.${1}.ssh"
+}
+# Root's record forgotten where this run's lists stay on disk but nginx may
+# not have loaded them (a failed configtest or reload kept them for want of
+# a readable last-good copy): with no record every logged-in address reads
+# as new, so the next run applies them at once.
+_acct_ssh_forget() {
+  rm -f "${_ACCT_REQ_DIR}/${_RELOAD_TOOL}.${1}.ssh"
+}
+# Status 0 when a logged-in SSH address joined: one root's own record of the
+# set the account $1's lists last took lacks (no record: joined). A login
+# leaving, or one that comes back, only narrows or keeps those lists, so it
+# waits like any change. The account's own marker is no judge of this:
+# config/includes is the account's, so it could move the marker away and have
+# every change it makes read as a new login's, which is never held.
+_acct_ssh_changed() {
+  local _rec _a
+  _rec=$(cat "${_ACCT_REQ_DIR}/${_RELOAD_TOOL}.${1}.ssh" 2> /dev/null) || return 0
+  for _a in ${_ssh_ips} ${_server_ip}; do
+    grep -qxF -- "${_a}" <<< "${_rec}" || return 0
+  done
+  return 1
+}
 
 _process_context() {
   local _input_file="$1" _nginx_path="$2" _backup_dir="$3" _vhost_dir="$4"
@@ -768,13 +1001,25 @@ _process_context() {
   local _new="${_work}/new" _front_new="${_work}/front"
   local _ctrl="${_work}/ctrl" _mk="${_work}/mk"
 
-  # The control file is read only as the copy taken from its real directory.
-  # One that cannot be copied keeps its lists as a deleted one does, and its
-  # front copies still follow their sites' names.
-  local _current_mod_time
+  # The control file is read only as the copy taken from its real directory,
+  # an account's only as its own (_acct_own_copy_here). One that cannot be
+  # copied keeps its lists as a deleted one does, and its front copies still
+  # follow their sites' names.
+  local _current_mod_time _acct="" _copy=_acct_copy_here
+  case "${_input_file}" in
+    /data/disk/?*/static/control/*)
+      _acct="${_input_file#/data/disk/}"
+      _acct="${_acct%%/*}"
+      _copy=_acct_own_copy_here
+      ;;
+  esac
   _current_mod_time=$(stat -c %Y "${_input_file}" 2>/dev/null) || return 0
-  if ! _acct_in_real_dir "${_input_file%/*}" _acct_copy_here "${_input_file##*/}" "${_ctrl}"; then
-    echo "${_input_file} is not a regular file in a real directory; skipped."
+  if ! _acct_in_real_dir "${_input_file%/*}" "${_copy}" "${_input_file##*/}" "${_ctrl}" ${_acct:+"${_acct}"}; then
+    if [[ -n "${_acct}" ]]; then
+      echo "${_input_file} is not the account's own regular file in a real directory; skipped."
+    else
+      echo "${_input_file} is not a regular file in a real directory; skipped."
+    fi
     _front_keep_valid "${_front_path}" "${_vhost_dir}" "${_nginx_path}/.access_front_hash"
     return 0
   fi
@@ -805,6 +1050,10 @@ _process_context() {
      && "${_front_hash}" == "${_previous_front_hash}" ]]; then
     return 0
   fi
+  # A login's address joining the anti-lockout lists is never held: it is how
+  # an account that locked itself out gets back in (_acct_ssh_changed).
+  [[ -n "${_acct}" ]] && ! _acct_ssh_changed "${_acct}" \
+    && _acct_reload_held "${_acct}" && return 0
 
   _acct_in_real_dir "${_nginx_path%/*}" \
     mkdir -p -- "./${_nginx_path##*/}" "./${_front_path##*/}" 2> /dev/null
@@ -825,7 +1074,7 @@ _process_context() {
   local -a _ip_list
   rm -rf -- "${_new}" "${_front_new}"
   mkdir -m 0755 -- "${_new}" "${_front_new}" || return 1
-  while IFS= read -r _line; do
+  while LC_ALL=C IFS= read -r _line; do
     _line="${_line%%#*}"
     [[ -z "${_line// /}" ]] && continue
     read -ra _fields <<< "${_line}"
@@ -885,6 +1134,7 @@ _process_context() {
     _acct_in_real_dir "${_nginx_path}" _acct_put_pairs_here \
       .access_last_mod_time "${_current_mod_time}" .ssh_ips_hash "${_ssh_ips_hash}" \
       .access_emit_version "${_emit_version}" .access_front_hash "${_front_hash}"
+    [[ -n "${_acct}" ]] && _acct_ssh_record "${_acct}"
     echo "ip_access written (${_input_file}); replication standby -- reload skipped (web tier held)."
     return 0
   fi
@@ -893,7 +1143,8 @@ _process_context() {
   # front copies are dropped on every failure and never restored: they only
   # narrow what the front lets through, and an older set could still claim a
   # name that has since moved to another site.
-  local _ct
+  local _ct _rl=""
+  [[ -n "${_acct}" ]] && _acct_reload_stamp "${_acct}"
   _ct=$(service nginx configtest 2>&1)
   if [[ $? -ne 0 ]]; then
     echo "Nginx configtest failed after ip_access update (${_input_file}): ${_ct}"
@@ -911,15 +1162,16 @@ _process_context() {
             "ip_access: restoring the last-good backup FAILED (${_input_file})" \
             "restoring ${_last_good_backup} FAILED after the fragments were removed."
         fi
-        service nginx reload
+        service nginx reload && _rl=yes
       else
         _policy_alert "ip_access.refused.${_input_file}" \
           "ip_access: last-good backup unreadable, fragments kept (${_input_file})" \
           "last-good backup ${_last_good_backup} is unreadable -- keeping the" \
           "fragments now on disk rather than deleting them for an archive" \
           "that cannot be restored. Fix ${_input_file} and re-run."
+        [[ -n "${_acct}" ]] && _acct_ssh_forget "${_acct}"
         # With the front copies gone the rest may pass again.
-        service nginx configtest &> /dev/null && service nginx reload
+        service nginx configtest &> /dev/null && service nginx reload && _rl=yes
       fi
     else
       # No last-good yet (a first run failed configtest). nginx never reloaded the
@@ -930,8 +1182,9 @@ _process_context() {
       _acct_in_real_dir "${_nginx_path}" _confs_drop_here > /dev/null
     fi
     # The front copies were dropped: forget the front state so the next pass
-    # rebuilds them.
+    # rebuilds them, held by nothing.
     _acct_in_real_dir "${_nginx_path}" rm -f -- ./.access_front_hash
+    [[ -n "${_acct}" && -z "${_rl}" ]] && _acct_reload_unstamp "${_acct}"
     return 1
   fi
 
@@ -946,14 +1199,18 @@ _process_context() {
             "ip_access: restoring the last-good backup FAILED (${_input_file})" \
             "restoring ${_last_good_backup} FAILED after the fragments were removed."
         fi
-        service nginx reload
+        service nginx reload && _rl=yes
       else
         _policy_alert "ip_access.refused.${_input_file}" \
           "ip_access: last-good backup unreadable, fragments kept (${_input_file})" \
           "last-good backup ${_last_good_backup} is unreadable -- fragments left in place."
+        [[ -n "${_acct}" ]] && _acct_ssh_forget "${_acct}"
       fi
+    else
+      [[ -n "${_acct}" ]] && _acct_ssh_forget "${_acct}"
     fi
     _acct_in_real_dir "${_nginx_path}" rm -f -- ./.access_front_hash
+    [[ -n "${_acct}" && -z "${_rl}" ]] && _acct_reload_unstamp "${_acct}"
     return 1
   fi
 
@@ -969,6 +1226,7 @@ _process_context() {
   _acct_in_real_dir "${_nginx_path}" _acct_put_pairs_here \
     .access_last_mod_time "${_current_mod_time}" .ssh_ips_hash "${_ssh_ips_hash}" \
     .access_emit_version "${_emit_version}" .access_front_hash "${_front_hash}"
+  [[ -n "${_acct}" ]] && _acct_ssh_record "${_acct}"
   echo "ip_access updated (${_input_file}): ${_configured[*]:-none}; Nginx reloaded."
   return 0
 }

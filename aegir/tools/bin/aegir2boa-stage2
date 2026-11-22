@@ -538,13 +538,15 @@ _vhostd()  { echo "${_AEGIR_ROOT}/config/server_master/nginx/vhost.d"; }
 _pred()    { echo "${_AEGIR_ROOT}/config/server_master/nginx/pre.d"; }
 _stub_of() { echo "$(_pred)/a2b_503_$1.conf"; }
 
-# parse a site's alias for site_path/root (xoct:221-222 pattern; callers
-# pass the trailing quote - "root'" - so the pattern is NOT re-quoted here:
-# wrapping it as 'root'' can never match and every alias read comes back
-# empty)
+# a value of a context's alias, read whole by its key: callers pass the key
+# with its trailing quote ("root'"), and only the line that sets that key
+# answers, so a path holding a colon or a blank reads whole and another
+# value ending in the key's name ('platform' => '@platform_xroot') is never
+# taken for it
 _alias_val() {
-  grep "$2" "${_AEGIR_ROOT}/.drush/$1.alias.drushrc.php" 2>/dev/null \
-    | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g" | head -1
+  local _k="${2%\'}"
+  sed -n "s/^[[:space:]]*'${_k}'[[:space:]]*=>[[:space:]]*'\([^']*\)'.*/\1/p" \
+    "${_AEGIR_ROOT}/.drush/$1.alias.drushrc.php" 2>/dev/null | head -n 1
 }
 
 # parse a drushrc option (xoct:224-233 pattern), sanitized by the caller
@@ -998,8 +1000,11 @@ _measure_and_log() {
   return 0
 }
 
+# --comments keeps the dump's header and its completion line even where the
+# source's own option files say skip-comments or compact: the target reads the
+# server version there (_t_utf8mb4_opt), and the panel dump's check its end.
 _mysqldump_flags() {
-  local _fl="--single-transaction --quick --no-autocommit --skip-add-locks --hex-blob"
+  local _fl="--single-transaction --quick --no-autocommit --skip-add-locks --hex-blob --comments"
   mysqldump --help 2>/dev/null | grep -q 'no-tablespaces' && _fl="${_fl} --no-tablespaces"
   _mysqldump_gtid_opts
   [[ "${#_MYSQLDUMP_GTID[@]}" -eq 0 ]] || _fl="${_fl} ${_MYSQLDUMP_GTID[*]}"
@@ -1044,6 +1049,107 @@ _mysqldump_objects_opts() {   # 1 defaults-file 2 dbn 3 uri
     fi
   fi
   return 0
+}
+
+### A routine's utf8mb4 parameters and return value take the loading
+### session's default_collation_for_utf8mb4, which no dump names, so a load
+### on MySQL 8 gave a routine made under utf8mb4_general_ci the server's
+### default. mysqldump writes each routine after its DROP line, between a
+### line setting the routine's sql_mode and one putting the saved sql_mode
+### back: a routine whose parameters (and return value) share one of the two
+### defaults that setting takes gets it after the first and the session's
+### own value back after the second, as the MyQuick dumps and the panel's
+### classic dump write them, each a statement prepared from one naming
+### MySQL 8 (a 5.x or MariaDB server, which has no such setting, runs DO 0
+### in its place). Reads the dump on stdin and writes it on stdout, one line
+### at a time; _MYSQLDUMP_ROUTINES holds each routine's type, hex name and
+### default, tab-separated, one per line. Exits 1 when a write fails.
+_MYSQLDUMP_ROUTINES_PL='use strict;
+binmode(STDIN); binmode(STDOUT);
+my (%c, $p, $r);
+for (split /\n/, (defined $ENV{_MYSQLDUMP_ROUTINES} ? $ENV{_MYSQLDUMP_ROUTINES} : "")) {
+  my ($t, $h, $k) = split /\t/, $_, 3;
+  next unless defined $k && $t =~ /^(?:FUNCTION|PROCEDURE)$/ && $h =~ /^[0-9A-Fa-f]+$/
+    && $k =~ /^utf8mb4_(?:general_ci|0900_ai_ci)$/;
+  $c{$t . " " . lc($h)} = $k;
+}
+while (defined(my $x = <STDIN>)) {
+  print $x or exit 1;
+  next unless %c && substr($x, 0, 9) eq "/*!50003 ";
+  if ($x =~ /^\/\*!50003 DROP (FUNCTION|PROCEDURE) IF EXISTS `((?:[^`]|``)+)` \*\/;\n\z/) {
+    my ($t, $n) = ($1, $2); $n =~ s/``/`/g;
+    $p = $c{$t . " " . unpack("H*", $n)};
+  }
+  elsif (defined $p && $x =~ /^\/\*!50003 SET sql_mode +=[ ]+\x27[A-Z0-9_,]*\x27 \*\/ ;\n\z/) {
+    print "SET \@BOA_UTF8MB4_SQL = IF(VERSION() LIKE \x278.%\x27, \x27SET \@BOA_PREV_UTF8MB4 = \@\@SESSION.default_collation_for_utf8mb4,"
+      . " SESSION default_collation_for_utf8mb4 = \x27\x27$p\x27\x27\x27, \x27DO 0\x27);\n",
+      "PREPARE boa_utf8mb4 FROM \@BOA_UTF8MB4_SQL;\n", "EXECUTE boa_utf8mb4;\n" or exit 1;
+    undef $p; $r = 1;
+  }
+  elsif ($r && $x =~ /^\/\*!50003 SET sql_mode +=[ ]+\@saved_sql_mode \*\/ ;\n\z/) {
+    print "SET \@BOA_UTF8MB4_SQL = IF(VERSION() LIKE \x278.%\x27, \x27SET SESSION default_collation_for_utf8mb4 = \@BOA_PREV_UTF8MB4\x27, \x27DO 0\x27);\n",
+      "PREPARE boa_utf8mb4 FROM \@BOA_UTF8MB4_SQL;\n", "EXECUTE boa_utf8mb4;\n", "DEALLOCATE PREPARE boa_utf8mb4;\n" or exit 1;
+    $r = 0;
+  }
+}
+close(STDOUT) or exit 1;
+exit 0;'
+
+### Sets _MYSQLDUMP_ROUTINES for _MYSQLDUMP_ROUTINES_PL: each stored routine
+### of database $1 with the utf8mb4 default its parameters and return value
+### share (empty when they share none), read with the client command that
+### follows (a MySQL 5.5 or later or a MariaDB before 11.5 names
+### utf8mb4_general_ci, which a load on MySQL 8 then keeps; MariaDB 11.5's
+### own default gives no lines, and a server with no
+### information_schema.PARAMETERS refuses the read). A refused read is said
+### on stderr and leaves it empty, so the dump is written as it always was.
+_mysqldump_routine_colls() {
+  local _db="$1" _q _r
+  shift
+  _MYSQLDUMP_ROUTINES=""
+  [[ "${_db}" =~ ^[A-Za-z0-9_]+$ ]] || return 1
+  _q="SELECT r.ROUTINE_TYPE, HEX(r.ROUTINE_NAME), IFNULL((SELECT IF(COUNT(DISTINCT p.COLLATION_NAME) = 1, MIN(p.COLLATION_NAME), '') FROM information_schema.PARAMETERS p"
+  _q="${_q} WHERE p.SPECIFIC_SCHEMA = r.ROUTINE_SCHEMA AND p.SPECIFIC_NAME = r.ROUTINE_NAME AND p.ROUTINE_TYPE = r.ROUTINE_TYPE"
+  _q="${_q} AND p.COLLATION_NAME IN ('utf8mb4_general_ci', 'utf8mb4_0900_ai_ci')), '') FROM information_schema.ROUTINES r WHERE r.ROUTINE_SCHEMA = '${_db}'"
+  if ! _r=$("$@" -N -B -e "${_q}" 2> /dev/null); then
+    echo "WARN: the stored routines' utf8mb4 defaults of ${_db} could not be read: its routines load with the loading server's default" >&2
+    return 1
+  fi
+  _MYSQLDUMP_ROUTINES="${_r}"
+  return 0
+}
+
+### A dump's routines take their own utf8mb4 default along, written as the
+### dump goes (_MYSQLDUMP_ROUTINES_PL), so no second copy of it is made; a
+### database with none passes as it is.
+_mysqldump_routine_lines() {
+  if [[ "${_MYSQLDUMP_ROUTINES}" == *$'\t'utf8mb4_* ]]; then
+    _MYSQLDUMP_ROUTINES="${_MYSQLDUMP_ROUTINES}" perl -e "${_MYSQLDUMP_ROUTINES_PL}"
+  else
+    cat
+  fi
+}
+
+# A site database dumped as the site's own login into $3, its stored
+# routines taking their own utf8mb4 default along when the dump carries them
+# (--routines in _MYSQLDUMP_OBJ): a source on MySQL 8 holds routines a load
+# there would otherwise give the target's default. The defaults are read with
+# the same login; a refused read says so and the dump goes as before. Either
+# side of the pipe failing fails the dump.
+_site_dump() {   # 1 defaults-file 2 dbn 3 dump file
+  local -a _ps
+  _MYSQLDUMP_ROUTINES=""
+  case " ${_MYSQLDUMP_OBJ} " in
+    *" --routines "*)
+      _mysqldump_routine_colls "$2" _login_only mysql --defaults-extra-file="$1" 2>> "${_LOG}" \
+        || _alrt "site database $2: its stored routines' utf8mb4 defaults could not be read: they load with the target's default"
+      ;;
+  esac
+  # shellcheck disable=SC2046,SC2086
+  _login_only mysqldump --defaults-extra-file="$1" $(_mysqldump_flags) ${_MYSQLDUMP_OBJ} "$2" \
+    2>> "${_LOG}" | _mysqldump_routine_lines > "$3"
+  _ps=("${PIPESTATUS[@]}")
+  [ "${_ps[0]}" = "0" ] && [ "${_ps[1]}" = "0" ]
 }
 
 # -E/-A/-X (executability/ACLs/xattrs) need rsync >= 3.0; a Debian-6-era
@@ -1513,7 +1619,7 @@ verb_create() {
          _die "in-octopus finished but /data/disk/${_ACCOUNT} does not exist on ${_TARGET}"; }
   # tools/le is the account's: the name is removed inside the real .ctrl
   # only, never through a link put on the way
-  ssh "root@${_TARGET}" "cd -P -- /data/disk/${_ACCOUNT}/tools/le/.ctrl 2>/dev/null && test \"\$(pwd -P)\" = \"\$(cd -P /data/disk && pwd -P)/${_ACCOUNT}/tools/le/.ctrl\" && /bin/rm -f ./ssl-demo-mode.pid" 2>/dev/null
+  ssh "root@${_TARGET}" "cd -P -- /data/disk/${_ACCOUNT}/tools/le/.ctrl 2>/dev/null && test \"\$(/bin/pwd -P)\" = \"\$(cd -P /data/disk && /bin/pwd -P)/${_ACCOUNT}/tools/le/.ctrl\" && /bin/rm -f ./ssl-demo-mode.pid" 2>/dev/null
 
   # hard quiescence on PROCESSES only: /var/xdrago/run-<oN> is a standing
   # file (persistent dispatcher trigger), so its existence never means busy
@@ -1633,9 +1739,7 @@ _export_one() {   # 1 ctx 2 uri  (returns non-zero on per-site failure)
   chmod 700 "${_AEGIR_ROOT}/src" "${_AEGIR_ROOT}/src/a2b" 2>/dev/null
   _myd="$(_mysql_defaults "${_dbn}" "${_dbp}")"
   _mysqldump_objects_opts "${_myd}" "${_dbn}" "${_uri}"
-  # shellcheck disable=SC2046,SC2086
-  if ! _login_only mysqldump --defaults-extra-file="${_myd}" $(_mysqldump_flags) ${_MYSQLDUMP_OBJ} "${_dbn}" \
-      > "${_AEGIR_ROOT}/src/a2b/${_dbn}.sql" 2>>"${_LOG}"; then
+  if ! _site_dump "${_myd}" "${_dbn}" "${_AEGIR_ROOT}/src/a2b/${_dbn}.sql"; then
     rm -f "${_myd}" "${_AEGIR_ROOT}/src/a2b/${_dbn}.sql"
     _alrt "site ${_uri}: mysqldump FAILED - stub stays up (data-consistency over uptime); revert --site ${_uri} to unpause"
     return 1
@@ -1775,7 +1879,7 @@ verb_export() {
 # is the remote shell text that enters it (the rsync receiver's
 # --rsync-path runs it first, so the relative destination resolves there).
 _a2b_rcd_a2b() {
-  printf 'cd -P -- /data/disk/%s/static/a2b && test "$(pwd -P)" = "$(cd -P /data/disk && pwd -P)/%s/static/a2b" && test "$(stat -c %%u .)" = 0' \
+  printf 'cd -P -- /data/disk/%s/static/a2b && test "$(/bin/pwd -P)" = "$(cd -P /data/disk && /bin/pwd -P)/%s/static/a2b" && test "$(stat -c %%u .)" = 0' \
     "${_ACCOUNT}" "${_ACCOUNT}"
 }
 # A tree walk that hands the landed names over (find -execdir, inside the
@@ -1884,7 +1988,7 @@ verb_transfer() {
   # static/a2b made inside the real static/ (root's, as mkdir made it),
   # never through a link; one that is anyone else's is refused, and nobody
   # but root may write it
-  ssh "root@${_TARGET}" "cd -P -- ${_dst}/static && test \"\$(pwd -P)\" = \"\$(cd -P /data/disk && pwd -P)/${_ACCOUNT}/static\" && { test ! -L ./a2b || rm -f ./a2b; } && { test -d ./a2b || mkdir ./a2b; } && $(_a2b_rcd_a2b) && chmod go-w ." \
+  ssh "root@${_TARGET}" "cd -P -- ${_dst}/static && test \"\$(/bin/pwd -P)\" = \"\$(cd -P /data/disk && /bin/pwd -P)/${_ACCOUNT}/static\" && { test ! -L ./a2b || rm -f ./a2b; } && { test -d ./a2b || mkdir ./a2b; } && $(_a2b_rcd_a2b) && chmod go-w ." \
     || _die "${_dst}/static/a2b on ${_TARGET} is not a real directory of root's - refusing to land platforms there"
   local _done_plat=" " _tgtGrp=""
   for _mf in ${_mfl}; do
@@ -1934,7 +2038,7 @@ _G=\$(getent group '${_tgtGrp}' 2>/dev/null | cut -d: -f3)
 case "\${_U}:\${_G}" in :*|*:|*[!0-9:]*) exit 1 ;; esac
 $(_a2b_rcd_a2b) || exit 1
 cd -P -- './${_plat}' 2>/dev/null || exit 1
-[ "\$(pwd -P)" = "\$(cd -P /data/disk && pwd -P)/${_ACCOUNT}/static/a2b/${_plat}" ] || exit 1
+[ "\$(/bin/pwd -P)" = "\$(cd -P /data/disk && /bin/pwd -P)/${_ACCOUNT}/static/a2b/${_plat}" ] || exit 1
 env PATH=/usr/local/bin:/usr/bin:/bin find . \( -type d -o -type f \) -execdir perl -e "\${_P}" "\${_U}" "\${_G}" {} +
 REOWN
         _done_plat="${_done_plat}${_plat} "
@@ -2031,6 +2135,19 @@ for _R in "/data/disk/\${_A}" "/home/\${_A}.ftp" /home/"\${_A}".* "/opt/user/gem
   # the FPM pool users' homes (oN.web, oN.NN.web) are www-data's, never the
   # account's: the same root set the tool walks
   case "\${_R}" in /home/*.web) continue ;; esac
+  # a folder in the shared toolchain parents (root's, sticky, open to every
+  # user) is the account's only when root or one of its own identities owns
+  # it: another account can make the name first, and its files are left as
+  # they are (the parent being sticky, no one else can swap such a folder)
+  case "\${_R}" in
+    /opt/user/*)
+      _O="\$(stat -c %U -- "\${_R}" 2>/dev/null)"
+      case "\${_O}" in
+        root|"\${_A}"|"\${_A}".*) ;;
+        *) echo "INFO: target group pass for \${_A}: \$(printf '%s' "\${_R}" | LC_ALL=C tr -c '[:print:]' '?') is owned by \${_O:-an owner that cannot be read}, not by \${_A} or root: left out"; continue ;;
+      esac
+      ;;
+  esac
   # regrouped through a no-follow handle on each name inside the directory
   # find holds, never by name: only a directory, or a regular file with one
   # link, whose handle is still in none of those groups, so a hard link to
@@ -2042,8 +2159,8 @@ for _R in "/data/disk/\${_A}" "/home/\${_A}.ftp" /home/"\${_A}".* "/opt/user/gem
 done
 # log/ is the account's own: the record is read and removed only inside the
 # real directory, never through a link or into a FIFO put there
-_W="\$(cd -P /data/disk 2>/dev/null && pwd -P)/\${_A}/log"
-( cd -P -- "/data/disk/\${_A}/log" 2>/dev/null && [ "\$(pwd -P)" = "\${_W}" ] \
+_W="\$(cd -P /data/disk 2>/dev/null && /bin/pwd -P)/\${_A}/log"
+( cd -P -- "/data/disk/\${_A}/log" 2>/dev/null && [ "\$(/bin/pwd -P)" = "\${_W}" ] \
     && [ -f ./instance-group.txt ] || exit 0
   _GID=\$(getent group "\${_A}" 2>/dev/null | cut -d: -f3)
   { [ "\${_G}" = "\${_A}" ] \
@@ -2272,7 +2389,7 @@ _t_freeze_conns() {
 _t_freeze_off() { _a2b_in_real_dir "${_ACCT_ROOT}/log" rm -f -- ./proxied.pid; }
 _t_owl_drain() {
   local _waited=0
-  while pgrep -f "[o]wl\.sh" >/dev/null 2>&1; do
+  while pgrep -u root -U root -f "[o]wl\.sh" >/dev/null 2>&1; do
     [[ "${_waited}" -ge 1800 ]] && _die "owl.sh pass still active after 1800s - retry later"
     _info "owl.sh pass active - waiting before destructive steps"
     sleep 30; _waited=$(( _waited + 30 ))
@@ -2330,6 +2447,33 @@ _t_dispatch_off() {
     sleep 10; _waited=$(( _waited + 10 ))
   done
 }
+# A task dispatcher (run-<account>) root may run or hand back: a regular file
+# with one link, owned by root, that no group or other user can write. Any
+# other copy was made or kept where another user could write it (a parked
+# copy outlives its account, whose number is given out again; a second link
+# stays writable through the other name), so root never runs or returns it.
+_dispatcher_trusted() {
+  local _s
+  [ -f "${1}" ] && [ ! -L "${1}" ] || return 1
+  _s=$(stat -c '%u %h %a' -- "${1}" 2> /dev/null) || return 1
+  case "${_s}" in
+    "0 1 "[0-7][0-7][0-7] | "0 1 "[0-7][0-7][0-7][0-7]) ;;
+    *) return 1 ;;
+  esac
+  (( (8#${_s##* } & 8#022) == 0 ))
+}
+
+# A parked copy that is not root's alone is set aside under a dot name beside
+# it, never handed back, and named in dispatcher.incident.log.
+_dispatcher_set_aside() {
+  local _s
+  _s=$(stat -c 'owner %U (uid %u), %h links, mode %a' -- "${1}" 2> /dev/null)
+  mv -f -- "${1}" "${1%/*}/.untrusted-${1##*/}.$(date +%s)" 2> /dev/null || return 1
+  [ -d /var/log/boa ] && echo "$(date) set aside, not handed back: ${1} (${_s:-unreadable}): not root's alone" \
+    >> /var/log/boa/dispatcher.incident.log
+  return 0
+}
+
 # The held dispatcher goes back. With none held, one BOA's agent pass parked
 # in off-run while the freeze stood (it parks the dispatcher of every
 # frozen account there) goes back instead, unless the account is relayed,
@@ -2340,22 +2484,38 @@ _t_dispatch_off() {
 # panel came from a box where its import was cut off): only an import
 # here that reaches its hand-back ends that hold.
 _t_dispatch_on() {
-  local _old="${_ACCT_ROOT}/log/a2b/held-run-${_ACCOUNT}" _off="/var/backups/off-run/run-${_ACCOUNT}"
+  local _old="${_ACCT_ROOT}/log/a2b/held-run-${_ACCOUNT}" _off="/var/backups/off-run/run-${_ACCOUNT}" _aside=0
   if [[ -e "${_STATE_DIR}/failover-hold" || -L "${_STATE_DIR}/failover-hold" ]]; then
     _alrt "dispatcher run-${_ACCOUNT} stays held: its panel came here with a failover from a box where its import was cut off (${_STATE_DIR}/failover-hold); an import here that finishes ends that hold"
     return 0
   fi
-  if [[ -e "$(_t_held_run)" ]]; then
-    mv -f "$(_t_held_run)" "/var/xdrago/run-${_ACCOUNT}"
-    _info "dispatcher run-${_ACCOUNT} restored"
-  elif [[ ! -e "/var/xdrago/run-${_ACCOUNT}" && -f "${_off}" && ! -L "${_off}" \
+  # A held or parked copy goes back only when it is root's alone (runner.sh
+  # runs no other); any other is set aside and the dispatcher rebuilt.
+  if [[ -e "$(_t_held_run)" || -L "$(_t_held_run)" ]]; then
+    if _dispatcher_trusted "$(_t_held_run)"; then
+      mv -f "$(_t_held_run)" "/var/xdrago/run-${_ACCOUNT}"
+      _info "dispatcher run-${_ACCOUNT} restored"
+      return 0
+    fi
+    _dispatcher_set_aside "$(_t_held_run)"
+    _alrt "dispatcher run-${_ACCOUNT} held at $(_t_held_run) is not root's alone: set aside, not handed back"
+    _aside=1
+  fi
+  if [[ ! -e "/var/xdrago/run-${_ACCOUNT}" && -f "${_off}" && ! -L "${_off}" \
     && ! -e "${_ACCT_ROOT}/log/CANCELLED" && ! -e "${_ACCT_ROOT}/log/proxy-failed.pid" ]] \
     && { [[ ! -e "${_ACCT_ROOT}/log/proxied.pid" && ! -L "${_ACCT_ROOT}/log/proxied.pid" ]] \
       || [[ "$(_a2b_in_real_dir "${_ACCT_ROOT}/log" _a2b_read_here proxied.pid | head -n 1)" = "A2B-IMPORT-FREEZE" ]]; }; then
-    mv -f "${_off}" "/var/xdrago/run-${_ACCOUNT}"
-    _info "dispatcher run-${_ACCOUNT} restored from ${_off}"
-  elif [[ ! -e "/var/xdrago/run-${_ACCOUNT}" ]] \
-    && [[ -e "${_old}" || -L "${_old}" ]]; then
+    if _dispatcher_trusted "${_off}"; then
+      mv -f "${_off}" "/var/xdrago/run-${_ACCOUNT}"
+      _info "dispatcher run-${_ACCOUNT} restored from ${_off}"
+      return 0
+    fi
+    _dispatcher_set_aside "${_off}"
+    _alrt "dispatcher run-${_ACCOUNT} parked at ${_off} is not root's alone: set aside, not handed back"
+    _aside=1
+  fi
+  if [[ ! -e "/var/xdrago/run-${_ACCOUNT}" ]] \
+    && [[ "${_aside}" = "1" || -e "${_old}" || -L "${_old}" ]]; then
     _t_dispatch_rebuild
   fi
 }
@@ -2372,7 +2532,7 @@ _t_dispatch_rebuild() {
   for _f in /var/xdrago/run-*; do
     _n="${_f#/var/xdrago/run-}"
     [[ "${_n}" != "${_ACCOUNT}" && -f "${_f}" && ! -L "${_f}" ]] || continue
-    [[ "$(stat -c '%u %h' -- "${_f}" 2>/dev/null)" = "0 1" ]] || continue
+    _dispatcher_trusted "${_f}" || continue
     [[ "$(grep -c '^_H_USER=' -- "${_f}" 2>/dev/null)" = "1" ]] || continue
     grep -qxF -- "_H_USER=${_n}" "${_f}" 2>/dev/null || continue
     _src="${_n}"
@@ -2490,11 +2650,11 @@ _a2b_in_real_dir() {
     /data/disk/?*) _a=/data/disk ;;
   esac
   if [ -n "${_a}" ]; then
-    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+    _want="$(cd -P -- "${_a}" 2> /dev/null && /bin/pwd -P)${_d#"${_a}"}"
   else
-    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && /bin/pwd -P)/${_d##*/}"
   fi
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] && "$@" )
 }
 # ./$1 read without following a link or blocking on a FIFO, at most 1 MiB.
 _a2b_read_here() {
@@ -2532,6 +2692,19 @@ _a2b_ctrl_dir_here() {
   [ -d ./control ] || mkdir -p ./control
 }
 
+# The ltd worker applies an account's own multi-fpm.info change at most once in
+# 15 minutes and tells it from the box's by root's record of the text it last
+# applied (/var/backups/ltd/fpmcore/<account>.mfpm.applied). A row this import
+# writes is root's: recorded as applied, so the worker's next pass puts it in
+# force at once, as the box's change. Only when the record holds the text this
+# write started from: an account's own change that waits keeps waiting (this
+# row with it), and with no record the worker holds nothing anyway.
+_a2b_ltd_applied() {   # 1 text before 2 text after
+  local _f="/var/backups/ltd/fpmcore/${_ACCOUNT}.mfpm.applied"
+  [[ -f "${_f}" && ! -L "${_f}" ]] || return 0
+  [[ "$(cat -- "${_f}" 2> /dev/null)" == "$1" ]] || return 0
+  printf '%s\n' "$2" > "${_f}.$$" && mv -f -- "${_f}.$$" "${_f}"
+}
 _FPM_WANT=""
 _t_fpm_map() {   # 1 uri 2 dmajor; sets _FPM_WANT ("" = no mapping wanted)
   local _uri="$1" _dmaj="$2"
@@ -2553,9 +2726,11 @@ _t_fpm_map() {   # 1 uri 2 dmajor; sets _FPM_WANT ("" = no mapping wanted)
   # so grep "^a.example.com " would false-match "aXexample.com" and
   # silently skip the second site's pool line
   if ! awk -v u="${_uri}" '$1==u{f=1} END{exit !f}' <<< "${_txt}" 2>/dev/null; then
-    if _a2b_in_real_dir "${_ctd}" _a2b_put_here multi-fpm.info \
-      "$(printf '%s\n%s\n' "${_txt}" "${_uri} ${_FPM_WANT}" | sed '/^$/d')" \
+    local _new
+    _new=$(printf '%s\n%s\n' "${_txt}" "${_uri} ${_FPM_WANT}" | sed '/^$/d')
+    if _a2b_in_real_dir "${_ctd}" _a2b_put_here multi-fpm.info "${_new}" \
       "${_ACCOUNT}:$(_acct_group "${_ACCOUNT}")"; then
+      _a2b_ltd_applied "${_txt}" "${_new}"
       _info "site ${_uri}: multi-fpm.info -> ${_FPM_WANT}"
     else
       _alrt "site ${_uri}: could not write its multi-fpm.info line"
@@ -3001,6 +3176,59 @@ _t_drop_made_db() {   # 1 dbn
   mysql --silent -u root -e "DROP DATABASE IF EXISTS \`$1\`" >/dev/null 2>&1
 }
 
+# A dump made on MySQL 5.x or MariaDB before 11.5 names no collation on a
+# utf8mb4 table or column that kept that server's default, utf8mb4_general_ci,
+# and MySQL 8 gives such a table its own default, utf8mb4_0900_ai_ci, unless
+# the loading session holds the old one. The dump's header names the server it
+# was made on ("-- Server version" and a tab). Sets _T_UTF8MB4 to the client
+# option that gives the load's session the old default, where the server the
+# client options $3... name takes the setting; to nothing for a dump made on
+# another version, for one with no header (said), or for a server that refuses
+# the setting (said, unless it is a 5.x server, whose own default it is). A
+# dump made on MariaDB 11.5 or later is named: its default,
+# utf8mb4_uca1400_ai_ci, is not MySQL's, and its load is left as it is.
+_t_utf8mb4_opt() {   # 1 dumpfile 2 label 3... client options
+  local _f="$1" _lbl="$2" _l _i=0 _old="" _ver="" _v
+  shift 2
+  _T_UTF8MB4=()
+  [[ -f "${_f}" && -r "${_f}" ]] || return 0
+  while [[ "${_i}" -lt 12 ]] && IFS= read -r _l; do
+    _i=$(( _i + 1 ))
+    if [[ "${_l}" =~ ^--\ Server\ version[[:space:]]+(([0-9]+)\.([0-9]+)[^[:space:]]*) ]]; then
+      _ver="${BASH_REMATCH[1]}"
+      if [[ "${BASH_REMATCH[2]}" = "5" ]]; then
+        _old=YES
+      elif [[ "${_l}" == *MariaDB* ]]; then
+        if [[ "${BASH_REMATCH[2]}" = "10" ]] \
+          || { [[ "${BASH_REMATCH[2]}" = "11" ]] && [[ "${BASH_REMATCH[3]}" -lt 5 ]]; }; then
+          _old=YES
+        else
+          _alrt "${_lbl}: its dump was made on MariaDB ${_ver}, whose utf8mb4 default utf8mb4_uca1400_ai_ci is not MySQL's: its utf8mb4 tables and columns that name no collation load with this server's default"
+        fi
+      fi
+      break
+    fi
+  done < "${_f}"
+  if [[ -z "${_ver}" ]]; then
+    _alrt "${_lbl}: its dump names no server version: its utf8mb4 tables and columns that name no collation load with this server's default"
+    return 0
+  fi
+  [[ "${_old}" = "YES" ]] || return 0
+  # the caller's options first: mysql takes --defaults-file only there
+  _v="$(mysql "$@" --silent -N -B -e "SET SESSION default_collation_for_utf8mb4 = utf8mb4_general_ci; SELECT @@SESSION.default_collation_for_utf8mb4" 2>/dev/null)"
+  if [[ "${_v}" = "utf8mb4_general_ci" ]]; then
+    _T_UTF8MB4=(--init-command="SET SESSION default_collation_for_utf8mb4 = utf8mb4_general_ci")
+    _info "${_lbl}: its dump was made on ${_ver}: utf8mb4 tables and columns that name no collation load as utf8mb4_general_ci, the one they had there"
+    return 0
+  fi
+  _v="$(mysql "$@" --silent -N -B -e "SELECT VERSION()" 2>/dev/null)"
+  case "${_v}" in
+    5.*) ;;
+    *) _alrt "${_lbl}: this database server does not take default_collation_for_utf8mb4 for a session: the utf8mb4 tables and columns its ${_ver} dump names no collation for load with this server's default, not utf8mb4_general_ci" ;;
+  esac
+  return 0
+}
+
 # create db+user with the site's own creds (xoct:279-285 model, utf8mb4)
 _t_site_db_create_load() {   # 1 dbn 2 dbp 3 dumpfile 4 dmajor
   local _dbn="$1" _dbp="$2" _dump="$3" _dmaj="$4" _dbe _st _ev _sch _had _urc
@@ -3087,7 +3315,9 @@ EOFMYSQL6
   # definer or a sql_mode are changed, never a row of data. The load is
   # judged on both sides of the pipe (a dump sed cannot read hands mysql
   # nothing, which it takes as done), and one that fails drops the database
-  # made above, so a re-run lands it fresh.
+  # made above, so a re-run lands it fresh. A dump made on 5.x or an older
+  # MariaDB keeps its utf8mb4 collations (_t_utf8mb4_opt).
+  _t_utf8mb4_opt "${_dump}" "db ${_dbn}" -u root
   sed -E -e '1{/^\/\*M!999999/d;}' \
     -e "s#^(/\\*!50013 DEFINER=)(\`[^\`]*\`|\"[^\"]*\")@(\`[^\`]*\`|\"[^\"]*\")#\\1\`${_dbn}\`@\`localhost\`#" \
     -e "s#^(/\\*!50003 CREATE\\*/ /\\*!50017 DEFINER=)(\`[^\`]*\`|\"[^\"]*\")@(\`[^\`]*\`|\"[^\"]*\")#\\1\`${_dbn}\`@\`localhost\`#" \
@@ -3097,7 +3327,7 @@ EOFMYSQL6
     -e "/^\\/\\*!50003 SET sql_mode/s/NO_AUTO_CREATE_USER,//" \
     -e "/^\\/\\*!50003 SET sql_mode/s/,NO_AUTO_CREATE_USER//" \
     -e "/^\\/\\*!50003 SET sql_mode/s/'NO_AUTO_CREATE_USER'/''/" \
-    "${_dump}" | mysql --silent -u root "${_dbn}"
+    "${_dump}" | mysql --silent -u root "${_T_UTF8MB4[@]}" "${_dbn}"
   _st="${PIPESTATUS[*]}"
   if [[ "${_st}" != "0 0" ]]; then
     if _t_drop_made_db "${_dbn}"; then
@@ -3210,9 +3440,11 @@ _import_db_route() {
   if [[ ! -e "${_step}.3.done" ]]; then
     _as_octo "drush8 @hostmaster sql-drop -y" >>"${_LOG}" 2>&1 || _die "sql-drop failed"
     _info "step 2: target hostmaster tables dropped"
-    # 3. import with sandbox strip
+    # 3. import with sandbox strip, keeping a 5.x or older MariaDB dump's
+    # utf8mb4 collations (_t_utf8mb4_opt)
+    _t_utf8mb4_opt "${_src}/hostmaster.sql" "hostmaster db" --defaults-file=/root/.my.cnf
     sed '1{/^\/\*M!999999/d}' "${_src}/hostmaster.sql" \
-      | mysql --defaults-file=/root/.my.cnf "${_hdb}" || _die "hostmaster import failed - restore from ${_undo}/a2b-pre-import.sql"
+      | mysql --defaults-file=/root/.my.cnf "${_T_UTF8MB4[@]}" "${_hdb}" || _die "hostmaster import failed - restore from ${_undo}/a2b-pre-import.sql"
     _measure_and_log "${_hdb}" --defaults-file=/root/.my.cnf
     touch "${_step}.3.done"
     _info "step 3: vanilla hostmaster db imported"

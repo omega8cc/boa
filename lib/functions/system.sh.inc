@@ -1155,6 +1155,10 @@ _global_inc_conf_update() {
     "${_locCnf}/global/global-window-d7.inc" global-window-d7.inc
   _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
     "${_locCnf}/global/global-window-bd.inc" global-window-bd.inc
+  ### The chained backend for a process without APCu lands before the Valkey
+  ### include that lists it (which checks the file is readable first).
+  _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
+    "${_locCnf}/global/global-chained-d8.services.yml" global-chained-d8.services.yml
   _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
     "${_locCnf}/global/global-if-valkey.inc" global-if-valkey.inc
   _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
@@ -1176,6 +1180,17 @@ _global_inc_conf_update() {
   fi
   _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
     "${_locCnf}/global/global-bd.inc" global-bd.inc
+  ### The migration gate for Grav and Textpattern sites lands first.
+  _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
+    "${_locCnf}/global/global-http-off.php" global-http-off.php
+  ### Grav's setup file: a Grav vhost names it in GRAV_SETUP_PATH while nginx
+  ### finds it, so web requests create group-writable folders.
+  _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
+    "${_locCnf}/global/global-grav-setup.php" global-grav-setup.php
+  ### The setup file a Grav vhost names once it leaves the gate to PHP: the
+  ### gate, then the setup file above, so it lands after both.
+  _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
+    "${_locCnf}/global/global-grav-gate.php" global-grav-gate.php
   ### The legacy-path dispatcher is deployed LAST: it only hands off to the
   ### per-core chain above, so it must never land without the chain present.
   _acct_in_real_dir /data/conf _sys_conf_cp_here ./global.inc \
@@ -1648,6 +1663,25 @@ _valkey_ceiling_derive() {
   fi
 }
 
+# A finalized proxy (/root/.proxy.cnf) keeps MySQL for its local control
+# panels alone, and the plan under it is cut to a small one afterwards.
+# mysqld touches about a tenth of its configured buffer pool as it starts,
+# whatever data it holds, so a pool written from this box's RAM for the
+# hosting it used to do, or pinned for it, gets mysqld killed for memory
+# on the small plan before it answers. The pool stays at the floor on such
+# a box, a pin included; xtrim finalize writes the same figure into my.cnf.
+_SQL_POOL_PROXY_FLOOR=256
+_sql_pool_proxy_floor() {
+  if [ -e "/root/.proxy.cnf" ] \
+    && [ -n "${_USE_POOL_SQL}" ] \
+    && [ "${_USE_POOL_SQL}" -gt "${_SQL_POOL_PROXY_FLOOR}" ]; then
+    if [ -n "${_SQL_BUFFER_POOL_FORCE}" ]; then
+      _msg "NOTE: _SQL_BUFFER_POOL_FORCE=${_SQL_BUFFER_POOL_FORCE} is not used on a finalized proxy"
+    fi
+    _USE_POOL_SQL="${_SQL_POOL_PROXY_FLOOR}"
+  fi
+}
+
 # _USE_POOL_SQL carries the buffer pool budget separately from
 # _USE_SQL so a pool pin can never inflate the per-session
 # tmp_table/max_heap budget, and the log file size keeps deriving
@@ -1670,6 +1704,7 @@ _sql_pin_overrides() {
       _msg "NOTE: Ignoring invalid _SQL_BUFFER_POOL_FORCE=${_SQL_BUFFER_POOL_FORCE}"
     fi
   fi
+  _sql_pool_proxy_floor
   if [ -n "${_SQL_TMP_TABLE_FORCE}" ]; then
     if _sql_pin_valid "${_SQL_TMP_TABLE_FORCE}" "16" "${_RAW_RAM}"; then
       _TMP_SQL="${_SQL_TMP_TABLE_FORCE}M"
@@ -2153,16 +2188,19 @@ _tune_memory_limits() {
   fi
 
   if [ -x "/etc/init.d/solr9" ] && [ -e "/etc/default/solr9.in.sh" ]; then
-    _SOLR9_STOP_TEST=$(grep "STOP\.PORT=19099" /etc/default/solr9.in.sh 2>&1)
+    _SOLR9_STOP_TEST=$(grep "STOP\.PORT=19099.* -XX:-UseBASE64Intrinsics\"$" /etc/default/solr9.in.sh 2>&1)
     if [[ ! "${_SOLR9_STOP_TEST}" =~ "19099" ]]; then
       sed -i "s/^SOLR_STOP_PORT.*//g" /etc/default/solr9.in.sh
       wait
       sed -i "s/^SOLR_STOP_KEY.*//g" /etc/default/solr9.in.sh
       wait
+      sed -i "s/.*mycustomkey9.*//g" /etc/default/solr9.in.sh
+      wait
       ### The same line BOA.sh.txt's _fix_start_stop_ports_solr keeps: a core
       ### on Solr's stock configset guesses no field types, so a site cannot
-      ### index before its own configuration is uploaded.
-      echo "SOLR_OPTS=\"\$SOLR_OPTS -DSTOP.PORT=19099 -DSTOP.KEY=mycustomkey9 -Dupdate.autoCreateFields=false\"" >> /etc/default/solr9.in.sh
+      ### index before its own configuration is uploaded; and Java 17 or 21
+      ### stays off its x86 Base64 decode intrinsic (CVE-2026-114938).
+      echo "SOLR_OPTS=\"\$SOLR_OPTS -DSTOP.PORT=19099 -DSTOP.KEY=mycustomkey9 -Dupdate.autoCreateFields=false -XX:-UseBASE64Intrinsics\"" >> /etc/default/solr9.in.sh
     fi
     sed -i "s/^SOLR_HEAP/#SOLR_HEAP/g" /etc/default/solr9.in.sh &> /dev/null
     wait
@@ -2729,10 +2767,13 @@ _php_vrn_dotted() {
 # inside a comment, a domain or a longer value does not count;
 # _php_if_versions_cleanup_cnf skips comment rows and domains too.
 _php_eight_six_asked() {
-  local _c _f _v
+  local _c _f _v _a
   for _c in /data/disk/*/static/control; do
-    # the account's own directory: never a link, never a FIFO opened
+    # the account's own directory: never a link, never a FIFO opened, and
+    # never one another account made
     _acct_in_real_dir "${_c}" true || continue
+    _a="${_c#/data/disk/}"
+    _acct_ctrl_own_seen "${_a%%/*}" || continue
     for _f in fpm.info cli.info; do
       _v="$(_acct_read_in "${_c}" "${_f}" | tr -cd '0-9.')"
       case "${_v}" in
@@ -2818,10 +2859,13 @@ _php_eight_six_hosted_cnf() {
 #   switch naming a PHP that is not installed is ignored by both, so it adds
 #   nothing here either.
 _php_versions_pinned_more() {
-  local _c _f _v _k _rest _line _e _mk _txt _n _out=""
+  local _c _f _v _k _rest _line _e _mk _txt _n _out="" _a
   for _c in /data/disk/*/static/control; do
-    # the account's own directory: never a link, never a FIFO opened
+    # the account's own directory: never a link, never a FIFO opened, and
+    # never one another account made
     _acct_in_real_dir "${_c}" true || continue
+    _a="${_c#/data/disk/}"
+    _acct_ctrl_own_seen "${_a%%/*}" || continue
     for _f in fpm.info cli.info; do
       _v="$(_php_vrn_dotted "$(_acct_read_in "${_c}" "${_f}" | tr -cd '0-9')")"
       [ -n "${_v}" ] && [ "${_v}" != "8.6" ] && _out="${_out} ${_v}"
@@ -2872,8 +2916,10 @@ _php_legacy_versions_cleanup_cnf() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _php_legacy_versions_cleanup_cnf"
   fi
+  # the PHP choices below are read only from control folders the accounts own
+  _acct_ctrl_judge_all
   _PHP_CLI_LEGACY_IF_USED_A=$(_acct_read_all log cli.txt | grep "5\.2" 2>&1)
-  _PHP_CLI_LEGACY_IF_USED_B=$(_acct_read_all static/control cli.info | grep "5\.2" 2>&1)
+  _PHP_CLI_LEGACY_IF_USED_B=$(_acct_read_all static/control cli.info | LC_ALL=C grep -a "5\.2" 2>&1)
   _PHP_CLI_LEGACY_IF_USED_C=$(grep "CLI.*5\.2" /root/.*.octopus.cnf 2>&1)
   if [[ "${_PHP_CLI_LEGACY_IF_USED_A}" =~ "5.2" ]] \
     || [[ "${_PHP_CLI_LEGACY_IF_USED_B}" =~ "5.2" ]] \
@@ -2885,7 +2931,7 @@ _php_legacy_versions_cleanup_cnf() {
   fi
 
   _PHP_FPM_LEGACY_IF_USED_A=$(_acct_read_all log fpm.txt | grep "5\.2" 2>&1)
-  _PHP_FPM_LEGACY_IF_USED_B=$(_acct_read_all static/control fpm.info | grep "5\.2" 2>&1)
+  _PHP_FPM_LEGACY_IF_USED_B=$(_acct_read_all static/control fpm.info | LC_ALL=C grep -a "5\.2" 2>&1)
   _PHP_FPM_LEGACY_IF_USED_C=$(grep "FPM.*5\.2" /root/.*.octopus.cnf 2>&1)
   if [[ "${_PHP_FPM_LEGACY_IF_USED_A}" =~ "5.2" ]] \
     || [[ "${_PHP_FPM_LEGACY_IF_USED_B}" =~ "5.2" ]] \
@@ -2897,7 +2943,7 @@ _php_legacy_versions_cleanup_cnf() {
   fi
 
   _PHP_CLI_LEGACY_IF_USED_A=$(_acct_read_all log cli.txt | grep "5\.3" 2>&1)
-  _PHP_CLI_LEGACY_IF_USED_B=$(_acct_read_all static/control cli.info | grep "5\.3" 2>&1)
+  _PHP_CLI_LEGACY_IF_USED_B=$(_acct_read_all static/control cli.info | LC_ALL=C grep -a "5\.3" 2>&1)
   _PHP_CLI_LEGACY_IF_USED_C=$(grep "CLI.*5\.3" /root/.*.octopus.cnf 2>&1)
   if [[ "${_PHP_CLI_LEGACY_IF_USED_A}" =~ "5.3" ]] \
     || [[ "${_PHP_CLI_LEGACY_IF_USED_B}" =~ "5.3" ]] \
@@ -2909,7 +2955,7 @@ _php_legacy_versions_cleanup_cnf() {
   fi
 
   _PHP_FPM_LEGACY_IF_USED_A=$(_acct_read_all log fpm.txt | grep "5\.3" 2>&1)
-  _PHP_FPM_LEGACY_IF_USED_B=$(_acct_read_all static/control fpm.info | grep "5\.3" 2>&1)
+  _PHP_FPM_LEGACY_IF_USED_B=$(_acct_read_all static/control fpm.info | LC_ALL=C grep -a "5\.3" 2>&1)
   _PHP_FPM_LEGACY_IF_USED_C=$(grep "FPM.*5\.3" /root/.*.octopus.cnf 2>&1)
   if [[ "${_PHP_FPM_LEGACY_IF_USED_A}" =~ "5.3" ]] \
     || [[ "${_PHP_FPM_LEGACY_IF_USED_B}" =~ "5.3" ]] \
@@ -2921,7 +2967,7 @@ _php_legacy_versions_cleanup_cnf() {
   fi
 
   _PHP_CLI_LEGACY_IF_USED_A=$(_acct_read_all log cli.txt | grep "5\.4" 2>&1)
-  _PHP_CLI_LEGACY_IF_USED_B=$(_acct_read_all static/control cli.info | grep "5\.4" 2>&1)
+  _PHP_CLI_LEGACY_IF_USED_B=$(_acct_read_all static/control cli.info | LC_ALL=C grep -a "5\.4" 2>&1)
   _PHP_CLI_LEGACY_IF_USED_C=$(grep "CLI.*5\.4" /root/.*.octopus.cnf 2>&1)
   if [[ "${_PHP_CLI_LEGACY_IF_USED_A}" =~ "5.4" ]] \
     || [[ "${_PHP_CLI_LEGACY_IF_USED_B}" =~ "5.4" ]] \
@@ -2933,7 +2979,7 @@ _php_legacy_versions_cleanup_cnf() {
   fi
 
   _PHP_FPM_LEGACY_IF_USED_A=$(_acct_read_all log fpm.txt | grep "5\.4" 2>&1)
-  _PHP_FPM_LEGACY_IF_USED_B=$(_acct_read_all static/control fpm.info | grep "5\.4" 2>&1)
+  _PHP_FPM_LEGACY_IF_USED_B=$(_acct_read_all static/control fpm.info | LC_ALL=C grep -a "5\.4" 2>&1)
   _PHP_FPM_LEGACY_IF_USED_C=$(grep "FPM.*5\.4" /root/.*.octopus.cnf 2>&1)
   if [[ "${_PHP_FPM_LEGACY_IF_USED_A}" =~ "5.4" ]] \
     || [[ "${_PHP_FPM_LEGACY_IF_USED_B}" =~ "5.4" ]] \
@@ -2945,7 +2991,7 @@ _php_legacy_versions_cleanup_cnf() {
   fi
 
   _PHP_CLI_LEGACY_IF_USED_A=$(_acct_read_all log cli.txt | grep "5\.5" 2>&1)
-  _PHP_CLI_LEGACY_IF_USED_B=$(_acct_read_all static/control cli.info | grep "5\.5" 2>&1)
+  _PHP_CLI_LEGACY_IF_USED_B=$(_acct_read_all static/control cli.info | LC_ALL=C grep -a "5\.5" 2>&1)
   _PHP_CLI_LEGACY_IF_USED_C=$(grep "CLI.*5\.5" /root/.*.octopus.cnf 2>&1)
   if [[ "${_PHP_CLI_LEGACY_IF_USED_A}" =~ "5.5" ]] \
     || [[ "${_PHP_CLI_LEGACY_IF_USED_B}" =~ "5.5" ]] \
@@ -2957,7 +3003,7 @@ _php_legacy_versions_cleanup_cnf() {
   fi
 
   _PHP_FPM_LEGACY_IF_USED_A=$(_acct_read_all log fpm.txt | grep "5\.5" 2>&1)
-  _PHP_FPM_LEGACY_IF_USED_B=$(_acct_read_all static/control fpm.info | grep "5\.5" 2>&1)
+  _PHP_FPM_LEGACY_IF_USED_B=$(_acct_read_all static/control fpm.info | LC_ALL=C grep -a "5\.5" 2>&1)
   _PHP_FPM_LEGACY_IF_USED_C=$(grep "FPM.*5\.5" /root/.*.octopus.cnf 2>&1)
   if [[ "${_PHP_FPM_LEGACY_IF_USED_A}" =~ "5.5" ]] \
     || [[ "${_PHP_FPM_LEGACY_IF_USED_B}" =~ "5.5" ]] \
@@ -3045,6 +3091,8 @@ _php_if_versions_cleanup_cnf() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _php_if_versions_cleanup_cnf"
   fi
+  # the PHP choices below are read only from control folders the accounts own
+  _acct_ctrl_judge_all
   if [ -e "/root/.allow-php-multi-install-cleanup.cnf" ] \
     || [ -e "/root/.run-to-excalibur.cnf" ] \
     || [ -e "/root/.run-to-daedalus.cnf" ] \
@@ -3143,8 +3191,8 @@ _php_if_versions_cleanup_cnf() {
 
       ### Add PHP 5.6 if used
       _is_PHP_multi_five_six=$(grep "5\.6" <<< "${_mltPinVrns}" 2>&1)
-      _is_PHP_FPM_five_six=$(_acct_read_all static/control fpm.info | grep "5\.6" 2>&1)
-      _is_PHP_CLI_five_six=$(_acct_read_all static/control cli.info | grep "5\.6" 2>&1)
+      _is_PHP_FPM_five_six=$(_acct_read_all static/control fpm.info | LC_ALL=C grep -a "5\.6" 2>&1)
+      _is_PHP_CLI_five_six=$(_acct_read_all static/control cli.info | LC_ALL=C grep -a "5\.6" 2>&1)
       _is_PHP_five_six=
       if [[ "${_is_PHP_multi_five_six}" =~ "5.6" ]] \
         || [[ "${_is_PHP_FPM_five_six}" =~ "5.6" ]] \
@@ -3155,8 +3203,8 @@ _php_if_versions_cleanup_cnf() {
 
       ### Add PHP 7.0 if used
       _is_PHP_multi_seven_zero=$(grep "7\.0" <<< "${_mltPinVrns}" 2>&1)
-      _is_PHP_FPM_seven_zero=$(_acct_read_all static/control fpm.info | grep "7\.0" 2>&1)
-      _is_PHP_CLI_seven_zero=$(_acct_read_all static/control cli.info | grep "7\.0" 2>&1)
+      _is_PHP_FPM_seven_zero=$(_acct_read_all static/control fpm.info | LC_ALL=C grep -a "7\.0" 2>&1)
+      _is_PHP_CLI_seven_zero=$(_acct_read_all static/control cli.info | LC_ALL=C grep -a "7\.0" 2>&1)
       _is_PHP_seven_zero=
       if [[ "${_is_PHP_multi_seven_zero}" =~ "7.0" ]] \
         || [[ "${_is_PHP_FPM_seven_zero}" =~ "7.0" ]] \
@@ -3167,8 +3215,8 @@ _php_if_versions_cleanup_cnf() {
 
       ### Add PHP 7.1 if used
       _is_PHP_multi_seven_one=$(grep "7\.1" <<< "${_mltPinVrns}" 2>&1)
-      _is_PHP_FPM_seven_one=$(_acct_read_all static/control fpm.info | grep "7\.1" 2>&1)
-      _is_PHP_CLI_seven_one=$(_acct_read_all static/control cli.info | grep "7\.1" 2>&1)
+      _is_PHP_FPM_seven_one=$(_acct_read_all static/control fpm.info | LC_ALL=C grep -a "7\.1" 2>&1)
+      _is_PHP_CLI_seven_one=$(_acct_read_all static/control cli.info | LC_ALL=C grep -a "7\.1" 2>&1)
       _is_PHP_seven_one=
       if [[ "${_is_PHP_multi_seven_one}" =~ "7.1" ]] \
         || [[ "${_is_PHP_FPM_seven_one}" =~ "7.1" ]] \
@@ -3179,8 +3227,8 @@ _php_if_versions_cleanup_cnf() {
 
       ### Add PHP 7.2 if used
       _is_PHP_multi_seven_two=$(grep "7\.2" <<< "${_mltPinVrns}" 2>&1)
-      _is_PHP_FPM_seven_two=$(_acct_read_all static/control fpm.info | grep "7\.2" 2>&1)
-      _is_PHP_CLI_seven_two=$(_acct_read_all static/control cli.info | grep "7\.2" 2>&1)
+      _is_PHP_FPM_seven_two=$(_acct_read_all static/control fpm.info | LC_ALL=C grep -a "7\.2" 2>&1)
+      _is_PHP_CLI_seven_two=$(_acct_read_all static/control cli.info | LC_ALL=C grep -a "7\.2" 2>&1)
       _is_PHP_seven_two=
       if [[ "${_is_PHP_multi_seven_two}" =~ "7.2" ]] \
         || [[ "${_is_PHP_FPM_seven_two}" =~ "7.2" ]] \
@@ -3191,8 +3239,8 @@ _php_if_versions_cleanup_cnf() {
 
       ### Add PHP 7.3 if used
       _is_PHP_multi_seven_three=$(grep "7\.3" <<< "${_mltPinVrns}" 2>&1)
-      _is_PHP_FPM_seven_three=$(_acct_read_all static/control fpm.info | grep "7\.3" 2>&1)
-      _is_PHP_CLI_seven_three=$(_acct_read_all static/control cli.info | grep "7\.3" 2>&1)
+      _is_PHP_FPM_seven_three=$(_acct_read_all static/control fpm.info | LC_ALL=C grep -a "7\.3" 2>&1)
+      _is_PHP_CLI_seven_three=$(_acct_read_all static/control cli.info | LC_ALL=C grep -a "7\.3" 2>&1)
       _is_PHP_seven_three=
       if [[ "${_is_PHP_multi_seven_three}" =~ "7.3" ]] \
         || [[ "${_is_PHP_FPM_seven_three}" =~ "7.3" ]] \
@@ -3203,8 +3251,8 @@ _php_if_versions_cleanup_cnf() {
 
       ### Add PHP 7.4 if used
       _is_PHP_multi_seven_four=$(grep "7\.4" <<< "${_mltPinVrns}" 2>&1)
-      _is_PHP_FPM_seven_four=$(_acct_read_all static/control fpm.info | grep "7\.4" 2>&1)
-      _is_PHP_CLI_seven_four=$(_acct_read_all static/control cli.info | grep "7\.4" 2>&1)
+      _is_PHP_FPM_seven_four=$(_acct_read_all static/control fpm.info | LC_ALL=C grep -a "7\.4" 2>&1)
+      _is_PHP_CLI_seven_four=$(_acct_read_all static/control cli.info | LC_ALL=C grep -a "7\.4" 2>&1)
       _is_PHP_seven_four=
       if [[ "${_is_PHP_multi_seven_four}" =~ "7.4" ]] \
         || [[ "${_is_PHP_FPM_seven_four}" =~ "7.4" ]] \
@@ -3215,8 +3263,8 @@ _php_if_versions_cleanup_cnf() {
 
       ### Add PHP 8.0 if used
       _is_PHP_multi_eight_zero=$(grep "8\.0" <<< "${_mltPinVrns}" 2>&1)
-      _is_PHP_FPM_eight_zero=$(_acct_read_all static/control fpm.info | grep "8\.0" 2>&1)
-      _is_PHP_CLI_eight_zero=$(_acct_read_all static/control cli.info | grep "8\.0" 2>&1)
+      _is_PHP_FPM_eight_zero=$(_acct_read_all static/control fpm.info | LC_ALL=C grep -a "8\.0" 2>&1)
+      _is_PHP_CLI_eight_zero=$(_acct_read_all static/control cli.info | LC_ALL=C grep -a "8\.0" 2>&1)
       _is_PHP_eight_zero=
       if [[ "${_is_PHP_multi_eight_zero}" =~ "8.0" ]] \
         || [[ "${_is_PHP_FPM_eight_zero}" =~ "8.0" ]] \
@@ -3227,8 +3275,8 @@ _php_if_versions_cleanup_cnf() {
 
       ### Add PHP 8.1 if used
       _is_PHP_multi_eight_one=$(grep "8\.1" <<< "${_mltPinVrns}" 2>&1)
-      _is_PHP_FPM_eight_one=$(_acct_read_all static/control fpm.info | grep "8\.1" 2>&1)
-      _is_PHP_CLI_eight_one=$(_acct_read_all static/control cli.info | grep "8\.1" 2>&1)
+      _is_PHP_FPM_eight_one=$(_acct_read_all static/control fpm.info | LC_ALL=C grep -a "8\.1" 2>&1)
+      _is_PHP_CLI_eight_one=$(_acct_read_all static/control cli.info | LC_ALL=C grep -a "8\.1" 2>&1)
       _is_PHP_eight_one=
       if [[ "${_is_PHP_multi_eight_one}" =~ "8.1" ]] \
         || [[ "${_is_PHP_FPM_eight_one}" =~ "8.1" ]] \
@@ -3239,8 +3287,8 @@ _php_if_versions_cleanup_cnf() {
 
       ### Add PHP 8.2 if used
       _is_PHP_multi_eight_two=$(grep "8\.2" <<< "${_mltPinVrns}" 2>&1)
-      _is_PHP_FPM_eight_two=$(_acct_read_all static/control fpm.info | grep "8\.2" 2>&1)
-      _is_PHP_CLI_eight_two=$(_acct_read_all static/control cli.info | grep "8\.2" 2>&1)
+      _is_PHP_FPM_eight_two=$(_acct_read_all static/control fpm.info | LC_ALL=C grep -a "8\.2" 2>&1)
+      _is_PHP_CLI_eight_two=$(_acct_read_all static/control cli.info | LC_ALL=C grep -a "8\.2" 2>&1)
       _is_PHP_eight_two=
       if [[ "${_is_PHP_multi_eight_two}" =~ "8.2" ]] \
         || [[ "${_is_PHP_FPM_eight_two}" =~ "8.2" ]] \
@@ -3251,8 +3299,8 @@ _php_if_versions_cleanup_cnf() {
 
       ### Add PHP 8.3 if used
       _is_PHP_multi_eight_three=$(grep "8\.3" <<< "${_mltPinVrns}" 2>&1)
-      _is_PHP_FPM_eight_three=$(_acct_read_all static/control fpm.info | grep "8\.3" 2>&1)
-      _is_PHP_CLI_eight_three=$(_acct_read_all static/control cli.info | grep "8\.3" 2>&1)
+      _is_PHP_FPM_eight_three=$(_acct_read_all static/control fpm.info | LC_ALL=C grep -a "8\.3" 2>&1)
+      _is_PHP_CLI_eight_three=$(_acct_read_all static/control cli.info | LC_ALL=C grep -a "8\.3" 2>&1)
       _is_PHP_eight_three=
       if [[ "${_is_PHP_multi_eight_three}" =~ "8.3" ]] \
         || [[ "${_is_PHP_FPM_eight_three}" =~ "8.3" ]] \
@@ -3263,8 +3311,8 @@ _php_if_versions_cleanup_cnf() {
 
       ### Add PHP 8.4 if used
       _is_PHP_multi_eight_four=$(grep "8\.4" <<< "${_mltPinVrns}" 2>&1)
-      _is_PHP_FPM_eight_four=$(_acct_read_all static/control fpm.info | grep "8\.4" 2>&1)
-      _is_PHP_CLI_eight_four=$(_acct_read_all static/control cli.info | grep "8\.4" 2>&1)
+      _is_PHP_FPM_eight_four=$(_acct_read_all static/control fpm.info | LC_ALL=C grep -a "8\.4" 2>&1)
+      _is_PHP_CLI_eight_four=$(_acct_read_all static/control cli.info | LC_ALL=C grep -a "8\.4" 2>&1)
       _is_PHP_eight_four=
       if [[ "${_is_PHP_multi_eight_four}" =~ "8.4" ]] \
         || [[ "${_is_PHP_FPM_eight_four}" =~ "8.4" ]] \
@@ -3275,8 +3323,8 @@ _php_if_versions_cleanup_cnf() {
 
       ### Add PHP 8.5 if used
       _is_PHP_multi_eight_five=$(grep "8\.5" <<< "${_mltPinVrns}" 2>&1)
-      _is_PHP_FPM_eight_five=$(_acct_read_all static/control fpm.info | grep "8\.5" 2>&1)
-      _is_PHP_CLI_eight_five=$(_acct_read_all static/control cli.info | grep "8\.5" 2>&1)
+      _is_PHP_FPM_eight_five=$(_acct_read_all static/control fpm.info | LC_ALL=C grep -a "8\.5" 2>&1)
+      _is_PHP_CLI_eight_five=$(_acct_read_all static/control cli.info | LC_ALL=C grep -a "8\.5" 2>&1)
       _is_PHP_eight_five=
       if [[ "${_is_PHP_multi_eight_five}" =~ "8.5" ]] \
         || [[ "${_is_PHP_FPM_eight_five}" =~ "8.5" ]] \
@@ -3791,6 +3839,7 @@ _barracuda_cnf() {
     echo "_USE_BATCH_GUARD=${_USE_BATCH_GUARD}"               >> ${_barCnf}
     echo "_USE_TASK_GUARD=${_USE_TASK_GUARD}"                 >> ${_barCnf}
     echo "_USE_CRON_GUARD=${_USE_CRON_GUARD}"                 >> ${_barCnf}
+    echo "_USE_CONTAINER_GUARD=${_USE_CONTAINER_GUARD}"       >> ${_barCnf}
     echo "_XDR9000=${_XDR9000}"                               >> ${_barCnf}
 
     echo "###"                                                >> ${_barCnf}
@@ -3940,6 +3989,7 @@ _barracuda_cnf() {
     echo "_FORCE_CI_BOX=${_FORCE_CI_BOX:-NO}"             >> ${_barCnf}
     echo "_NO_CRON_AUTOSTART=${_NO_CRON_AUTOSTART:-NO}"   >> ${_barCnf}
     echo "_SWAP_AUTOSIZE=${_SWAP_AUTOSIZE:-YES}"         >> ${_barCnf}
+    echo "_SYSSTAT_HISTORY=${_SYSSTAT_HISTORY:-YES}"     >> ${_barCnf}
 
     echo "###"                                                >> ${_barCnf}
     echo "### Barracuda"                                      >> ${_barCnf}
@@ -4344,6 +4394,10 @@ _barracuda_cnf() {
     if [[ ! "${_SWAP_AUTOSIZE_TEST}" =~ "_SWAP_AUTOSIZE=" ]]; then
       echo "_SWAP_AUTOSIZE=${_SWAP_AUTOSIZE:-YES}" >> ${_barCnf}
     fi
+    _SYSSTAT_HISTORY_TEST=$(grep "^_SYSSTAT_HISTORY=" ${_barCnf} 2>&1)
+    if [[ ! "${_SYSSTAT_HISTORY_TEST}" =~ "_SYSSTAT_HISTORY=" ]]; then
+      echo "_SYSSTAT_HISTORY=${_SYSSTAT_HISTORY:-YES}" >> ${_barCnf}
+    fi
     _convert_etcboa_markers_to_cnf
 
     _CUSTOM_CONFIG_CSF_TEST=$(grep _CUSTOM_CONFIG_CSF ${_barCnf} 2>&1)
@@ -4493,6 +4547,11 @@ _barracuda_cnf() {
     _USE_CRON_GUARD_TEST=$(grep _USE_CRON_GUARD ${_barCnf} 2>&1)
     if [[ ! "${_USE_CRON_GUARD_TEST}" =~ "_USE_CRON_GUARD" ]]; then
       echo "_USE_CRON_GUARD=${_USE_CRON_GUARD}" >> ${_barCnf}
+    fi
+
+    _USE_CONTAINER_GUARD_TEST=$(grep _USE_CONTAINER_GUARD ${_barCnf} 2>&1)
+    if [[ ! "${_USE_CONTAINER_GUARD_TEST}" =~ "_USE_CONTAINER_GUARD" ]]; then
+      echo "_USE_CONTAINER_GUARD=${_USE_CONTAINER_GUARD}" >> ${_barCnf}
     fi
 
     _XDR9000_TEST=$(grep _XDR9000 ${_barCnf} 2>&1)
@@ -4938,9 +4997,12 @@ _barracuda_cnf() {
             _acct_put_in "${_Ctrl}" cli.txt "${_PHP_SINGLE_INSTALL}"
             ### _msg "INFO: Forced PHP ${_PHP_SINGLE_INSTALL} in ${_Ctrl}"
           done
+          ### never into a control folder another account made
+          _acct_ctrl_judge_all
           for _Ctrl in /data/disk/*/static/control; do
             _ctrlUsr="${_Ctrl#/data/disk/}"
             _ctrlUsr="${_ctrlUsr%%/*}"
+            _acct_ctrl_own_seen "${_ctrlUsr}" || continue
             _ctrlOwn="${_ctrlUsr}.ftp:$(_acct_group "${_ctrlUsr}")"
             _acct_in_real_dir "${_Ctrl}" _acct_pin_here fpm.info \
               "${_PHP_SINGLE_INSTALL}" "${_ctrlOwn}"
@@ -6523,7 +6585,7 @@ _sshd_install_src() {
       mkdir -p /var/lib/sshd
       chmod -R 700 /var/lib/sshd/
       chown -R root:sys /var/lib/sshd/
-      useradd -r -U -d /var/lib/sshd/ -c "sshd privsep" -s /bin/false sshd &> /dev/null
+      _sys_user_add high useradd -r -U -d /var/lib/sshd/ -c "sshd privsep" -s /bin/false sshd &> /dev/null
     fi
     _PKG_CONFIG_PATH="${_SSL_LIB_PATH}/pkgconfig"
     cd /var/opt
@@ -7732,6 +7794,9 @@ _switch_to_dash() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _switch_to_dash"
   fi
+  # /bin/sh only as a whole name: a longer one that starts with it
+  # (/usr/bin/sha256sum, /bin/sh5, /bin/sh.distrib) is left as it is
+  local _SH_END='\([^A-Za-z0-9_.-]\|$\)'
   # a link, not a copy: a second regular file beside /usr/bin/dash drifts on
   # the next dash upgrade and stops the merged /usr conversion
   if [ -x "/usr/bin/dash" ] && [ ! -e "/bin/dash" ]; then
@@ -7739,11 +7804,11 @@ _switch_to_dash() {
   fi
   if [ -x "/bin/dash" ]; then
     _get_bin_paths
-    sed -i "s/:\/bin\/sh/:\/bin\/dash/g" /etc/passwd &> /dev/null
-    sed -i "s/\/bin\/sh/\/bin\/dash/g"   /etc/crontab &> /dev/null
-    sed -i "s/\/bin\/sh/\/bin\/dash/g"   /etc/init.d/ssh &> /dev/null
-    sed -i "s/\/bin\/sh/\/bin\/dash/g"   /etc/csf/uninstall.sh &> /dev/null
-    sed -i "s/\/bin\/sh/\/bin\/dash/g"   /etc/csf/remove_apf_bfd.sh &> /dev/null
+    sed -i "s/:\/bin\/sh${_SH_END}/:\/bin\/dash\1/g" /etc/passwd &> /dev/null
+    sed -i "s/\/bin\/sh${_SH_END}/\/bin\/dash\1/g"   /etc/crontab &> /dev/null
+    sed -i "s/\/bin\/sh${_SH_END}/\/bin\/dash\1/g"   /etc/init.d/ssh &> /dev/null
+    sed -i "s/\/bin\/sh${_SH_END}/\/bin\/dash\1/g"   /etc/csf/uninstall.sh &> /dev/null
+    sed -i "s/\/bin\/sh${_SH_END}/\/bin\/dash\1/g"   /etc/csf/remove_apf_bfd.sh &> /dev/null
     for p in ${_X_BIN_PATHS}; do
       if [ -e "$p" ]; then
         for f in `find $p ! -perm -4000 ! -perm -2000 -type f`; do
@@ -7763,7 +7828,7 @@ _switch_to_dash() {
               && [ "$f" != "/bin/websh" ] \
               && [ "$f" != "/usr/bin/websh" ] \
               && [ "$f" != "/opt/local/bin/websh" ]; then
-              sed -i "s/\/bin\/sh/\/bin\/dash/g" $f &> /dev/null
+              sed -i "s/\/bin\/sh${_SH_END}/\/bin\/dash\1/g" $f &> /dev/null
               wait
             fi
             _SHELL_TEST=
@@ -7773,7 +7838,7 @@ _switch_to_dash() {
               && [ "$f" != "/bin/websh" ] \
               && [ "$f" != "/usr/bin/websh" ] \
               && [ "$f" != "/opt/local/bin/websh" ]; then
-              sed -i "s/\/usr\/bin\/sh/\/bin\/dash/g" $f &> /dev/null
+              sed -i "s/\/usr\/bin\/sh${_SH_END}/\/bin\/dash\1/g" $f &> /dev/null
               wait
             fi
             _SHELL_TEST=
@@ -7783,7 +7848,7 @@ _switch_to_dash() {
               && [ "$f" != "/bin/websh" ] \
               && [ "$f" != "/usr/bin/websh" ] \
               && [ "$f" != "/opt/local/bin/websh" ]; then
-              sed -i "s/\/bin\/sh/\/bin\/dash/g" $f &> /dev/null
+              sed -i "s/\/bin\/sh${_SH_END}/\/bin\/dash\1/g" $f &> /dev/null
               wait
             fi
           fi
@@ -7799,17 +7864,19 @@ _switch_to_bash() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _switch_to_bash"
   fi
+  # /bin/sh only as a whole name (see _switch_to_dash)
+  local _SH_END='\([^A-Za-z0-9_.-]\|$\)'
   # a link, not a copy (see _switch_to_dash)
   if [ -x "/usr/bin/bash" ] && [ ! -e "/bin/bash" ]; then
     ln -sfn /usr/bin/bash /bin/bash
   fi
   if [ -x "/bin/bash" ]; then
     _get_bin_paths
-    sed -i "s/:\/bin\/sh/:\/bin\/bash/g" /etc/passwd &> /dev/null
-    sed -i "s/\/bin\/sh/\/bin\/bash/g"   /etc/crontab &> /dev/null
-    sed -i "s/\/bin\/sh/\/bin\/bash/g"   /etc/init.d/ssh &> /dev/null
-    sed -i "s/\/bin\/sh/\/bin\/bash/g"   /etc/csf/uninstall.sh &> /dev/null
-    sed -i "s/\/bin\/sh/\/bin\/bash/g"   /etc/csf/remove_apf_bfd.sh &> /dev/null
+    sed -i "s/:\/bin\/sh${_SH_END}/:\/bin\/bash\1/g" /etc/passwd &> /dev/null
+    sed -i "s/\/bin\/sh${_SH_END}/\/bin\/bash\1/g"   /etc/crontab &> /dev/null
+    sed -i "s/\/bin\/sh${_SH_END}/\/bin\/bash\1/g"   /etc/init.d/ssh &> /dev/null
+    sed -i "s/\/bin\/sh${_SH_END}/\/bin\/bash\1/g"   /etc/csf/uninstall.sh &> /dev/null
+    sed -i "s/\/bin\/sh${_SH_END}/\/bin\/bash\1/g"   /etc/csf/remove_apf_bfd.sh &> /dev/null
     for p in ${_X_BIN_PATHS}; do
       if [ -e "$p" ]; then
         for f in `find $p ! -perm -4000 ! -perm -2000 -type f`; do
@@ -7829,7 +7896,7 @@ _switch_to_bash() {
               && [ "$f" != "/bin/websh" ] \
               && [ "$f" != "/usr/bin/websh" ] \
               && [ "$f" != "/opt/local/bin/websh" ]; then
-              sed -i "s/\/bin\/sh/\/bin\/bash/g" $f &> /dev/null
+              sed -i "s/\/bin\/sh${_SH_END}/\/bin\/bash\1/g" $f &> /dev/null
               wait
             fi
             _SHELL_TEST=
@@ -7839,7 +7906,7 @@ _switch_to_bash() {
               && [ "$f" != "/bin/websh" ] \
               && [ "$f" != "/usr/bin/websh" ] \
               && [ "$f" != "/opt/local/bin/websh" ]; then
-              sed -i "s/\/usr\/bin\/sh/\/bin\/bash/g" $f &> /dev/null
+              sed -i "s/\/usr\/bin\/sh${_SH_END}/\/bin\/bash\1/g" $f &> /dev/null
               wait
             fi
             _SHELL_TEST=
@@ -7849,7 +7916,7 @@ _switch_to_bash() {
               && [ "$f" != "/bin/websh" ] \
               && [ "$f" != "/usr/bin/websh" ] \
               && [ "$f" != "/opt/local/bin/websh" ]; then
-              sed -i "s/\/bin\/sh/\/bin\/bash/g" $f &> /dev/null
+              sed -i "s/\/bin\/sh${_SH_END}/\/bin\/bash\1/g" $f &> /dev/null
               wait
             fi
           fi
@@ -8362,6 +8429,37 @@ _if_enforce_apparmor_profiles() {
 }
 
 #
+# AppArmor judges the path a link resolves to: with /var/lib/mysql a link onto
+# a folder of the attached mount, the MySQL profiles allow that folder through
+# their local include. Each local file is always there (a profile names it):
+# BOA's lines sit between its markers, anything else in it is left as it is,
+# and a real folder at the path leaves no BOA lines. Prints CHANGED when a
+# file changed. Kept in step with the copy in move_sql.sh.
+_apparmor_mysql_local() {
+  local _r="" _p _f _old _new _blk=""
+  [ -d /etc/apparmor.d ] || return 0
+  mkdir -p /etc/apparmor.d/local 2> /dev/null || return 0
+  if [ -L /var/lib/mysql ]; then
+    _r="$(readlink -f /var/lib/mysql 2> /dev/null)"
+    { [[ "${_r}" =~ ^(/[A-Za-z0-9._-]+)+$ ]] && [ "${_r}" != "/var/lib/mysql" ] && [ -d "${_r}" ]; } || _r=""
+  fi
+  [ -z "${_r}" ] || _blk="# BOA: the database folder BEGIN"$'\n'"  ${_r}/ rwk,"$'\n'"  ${_r}/** rwk,"$'\n'"# BOA: the database folder END"
+  for _p in usr.sbin.mysqld usr.bin.mysqld_safe usr.bin.mysql; do
+    _f="/etc/apparmor.d/local/${_p}"
+    _old=""
+    [ ! -f "${_f}" ] || _old="$(cat "${_f}" 2> /dev/null)"
+    _new="$(printf '%s\n' "${_old}" | sed '/^# BOA: the database folder BEGIN$/,/^# BOA: the database folder END$/d')"
+    if [ -n "${_blk}" ]; then
+      [ -z "${_new}" ] && _new="${_blk}" || _new="${_new}"$'\n'"${_blk}"
+    fi
+    if [ ! -f "${_f}" ] || [ "${_new}" != "${_old}" ]; then
+      printf '%s\n' "${_new}" > "${_f}.boa.$$" && mv -f "${_f}.boa.$$" "${_f}" && echo CHANGED
+    fi
+  done
+  return 0
+}
+
+#
 # Sync AppArmor profiles.
 _sync_apparmor_profiles() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -8409,6 +8507,9 @@ _sync_apparmor_profiles() {
         [ -f "${_profArm}" ] && mv -f "${_profArm}" ${_backArmr} &> /dev/null
       done
       cp -af ${_locCnf}/apparmor/* /etc/apparmor.d/
+      # the MySQL profiles include their local file: it must be there, with
+      # the folder a link at /var/lib/mysql names, before any of them is read
+      _apparmor_mysql_local > /dev/null
       # BOA's dhclient profile takes the name its package uses on this system:
       # with two files for one program aa-enforce and aa-complain refuse the set.
       if [ -e "/etc/apparmor.d/usr.sbin.dhclient" ]; then
@@ -8678,6 +8779,37 @@ _web_tier_up_while_unarmed() {
   fi
 }
 
+# The DHCP servers named in root dhclient's lease files, one dotted quad a
+# line. Never from log text: any local program can log a "DHCPREQUEST ... to
+# <address>" or a "dhclient ... Failed" line.
+_dhcp_lease_servers() {
+  local _p _lf
+  local _oct="(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])"
+  for _p in $(pgrep -u root -x dhclient 2> /dev/null); do
+    _lf=$(tr '\0' '\n' 2> /dev/null < "/proc/${_p}/cmdline" \
+      | sed -n '/^-lf$/{n;p;q;}')
+    [ -n "${_lf}" ] || _lf="/var/lib/dhcp/dhclient.leases"
+    [ -f "${_lf}" ] && [ ! -L "${_lf}" ] || continue
+    [ "$(stat -c %u "${_lf}" 2> /dev/null)" = "0" ] || continue
+    sed -n -E 's/^[[:space:]]*option dhcp-server-identifier[[:space:]]+([0-9.]+);.*$/\1/p' "${_lf}"
+  done | grep -E "^(${_oct}\.){3}${_oct}$" | sort -u
+}
+
+# dhclient renews its lease by unicast to the server that granted it, and
+# csf's egress filter drops that unless csf.allow lets udp/67 out to it. Adds
+# the allow line of each lease server that has none and prints that server;
+# lines already in csf.allow stay, whoever wrote them.
+_dhcp_allow_lease_servers() {
+  local _srv
+  [ -e "/etc/csf/csf.allow" ] || return 0
+  for _srv in $(_dhcp_lease_servers); do
+    if ! grep -qE "^udp\|out\|d=67\|d=${_srv//./\\.}([[:space:]#]|$)" /etc/csf/csf.allow; then
+      echo "udp|out|d=67|d=${_srv} # Local DHCP out" >> /etc/csf/csf.allow
+      echo "${_srv}"
+    fi
+  done
+}
+
 _finale() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _finale"
@@ -8857,21 +8989,8 @@ _finale() {
       fi
     fi
     csf -e  &> /dev/null
-    sed -i "s/.*DHCP.*//g" /etc/csf/csf.allow
     sed -i "/^$/d" /etc/csf/csf.allow
-    if [ -e "/var/log/daemon.log" ]; then
-      _DHCP_LOG="/var/log/daemon.log"
-    else
-      _DHCP_LOG="/var/log/syslog"
-    fi
-    grep DHCPREQUEST "${_DHCP_LOG}" | awk '{print $12}' | sort -u | while read -r _IP; do
-      if [[ ${_IP} =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
-        IFS='.' read -r oct1 oct2 oct3 oct4 <<< "${_IP}"
-        if (( oct1 <= 255 && oct2 <= 255 && oct3 <= 255 && oct4 <= 255 )); then
-          echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow
-        fi
-      fi
-    done
+    _dhcp_allow_lease_servers > /dev/null
     if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
       csf -ra &> /dev/null
       synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
@@ -9023,6 +9142,47 @@ _if_heal_logind_leak() {
   _trim_session_cgroups
 }
 
+#
+# Answer the ACPI power button with an ordinary halt. A provider's console,
+# a hypervisor's shutdown and a host's own reboot press that button and
+# wait; since systemd is gone nothing on a Devuan box answers it, so the box
+# runs on through the grace time and has its power cut, and MySQL recovers
+# from a crash at the next start. acpid carries the event and the
+# distribution's acpi-support-base carries the rule: its script runs
+# shutdown -h -P now, which stops every service through its init script,
+# clean-boa-env among them. Left alone where there is no button to press: a
+# machine without ACPI tables, an OpenVZ or VServer guest, a container.
+_has_acpi_power_button() {
+  [ -e "/sys/firmware/acpi/tables/FACP" ] || return 1
+  case "${_VMFAMILY:-}" in
+    VZ|VS) return 1 ;;
+  esac
+  ! grep -qa 'container=' /proc/1/environ 2> /dev/null
+}
+_acpi_power_button_ensure() {
+  local _PKG
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _acpi_power_button_ensure"
+  fi
+  _has_acpi_power_button || return 0
+  for _PKG in acpid acpi-support-base; do
+    if ! _pkg_installed "${_PKG}"; then
+      _mrun "${_INSTAPP} ${_PKG}"
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "apt-get install ${_PKG} -y -qq"
+      fi
+    fi
+  done
+  # The rule counts only while the daemon runs.
+  if _pkg_installed "acpid" && ! pgrep -x acpid > /dev/null 2>&1; then
+    _mrun "service acpid start"
+  fi
+  if ! pgrep -x acpid > /dev/null 2>&1 \
+    || ! ls /etc/acpi/events/powerbtn* > /dev/null 2>&1; then
+    _msg "NOTE: no ACPI power button rule is active here, so a provider's power-off cuts this system after its grace time"
+  fi
+}
+
 _run_aptitude_deps_install() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _run_aptitude_deps_install"
@@ -9069,6 +9229,9 @@ _run_aptitude_deps_install() {
       _mrun "dpkg --purge ${_lgcySlgd}"
     fi
   done
+  # FAST upgrades skip the package section below, so the power button's
+  # rule is ensured on every run as well.
+  _acpi_power_button_ensure
   # A box that already carries elogind's PAM module leaks a cgroup per login
   # session whatever brought it, and the FULL-mode removal of the polkit
   # stack below runs only on a fresh install, so heal it on every run.
@@ -11633,12 +11796,55 @@ _sys_packages_update() {
   fi
 }
 
-_other_sys_java21_install() {
+#
+# The paths of BOA's Corretto ${1} (${2}: the Debian arch token). Java 21's
+# link sits where its package would put it; Java 11's is BOA's own name, next
+# to the tree an earlier pass installed from a package, which stays as dpkg
+# left it. The java11 command follows that link. It is what opens the Solr 4
+# and Solr 7 install, so it is laid on amd64 alone, where BOA lays its other
+# Java commands; java21 stays _java_check_fix's.
+_corretto_paths() {
+  _crtMaj="${1}"
+  _binLnk=""
+  case "${_crtMaj}" in
+    11)
+      _linkJvm="/usr/lib/jvm/java-11-openjdk"
+      [ "${2}" = "amd64" ] && _binLnk="/usr/bin/java11"
+    ;;
+    *) _linkJvm="/usr/lib/jvm/java-${_crtMaj}-openjdk-${2}" ;;
+  esac
+  _optDir="/opt/jdk"
+  _linkOpt="${_optDir}/corretto-${_crtMaj}"
+}
+
+#
+# True when ${1} resolves to the java of a Corretto ${_crtMaj} tree directly
+# in BOA's /opt/jdk (a /opt/jdk that is itself a link included).
+_corretto_java_is_boa() {
+  local _r _o _t
+  _r="$(readlink -f "${1}" 2>/dev/null)"
+  _o="$(readlink -f "${_optDir}" 2>/dev/null)"
+  [ -n "${_r}" ] && [ -n "${_o}" ] || return 1
+  case "${_r}" in
+    "${_o}/"*/bin/java) ;;
+    *) return 1 ;;
+  esac
+  _t="${_r#"${_o}/"}"
+  _t="${_t%/bin/java}"
+  case "${_t}" in
+    */*) return 1 ;;
+    amazon-corretto-"${_crtMaj}".*) return 0 ;;
+  esac
+  return 1
+}
+
+_other_sys_corretto_install() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _other_sys_java21_install"
+    _msg "PROC: _other_sys_corretto_install"
   fi
 
-  _debArch="$1"
+  _crtMaj="$1"
+  _debArch="$2"
 
   # Map Debian arch -> Corretto arch tokens
   case "${_debArch}" in
@@ -11652,16 +11858,36 @@ _other_sys_java21_install() {
     ;;
   esac
 
-  _javaHome="/usr/lib/jvm/java-21-openjdk-${_debArch}"
-  _base="amazon-corretto-21-${_crtArch}-linux"
-  _tmpDir="/tmp"
-  _optDir="/opt/jdk"
-  _linkOpt="${_optDir}/corretto-21"
-  _linkJvm="${_javaHome}"
+  _corretto_paths "${_crtMaj}" "${_debArch}"
+  _base="amazon-corretto-${_crtMaj}-${_crtArch}-linux"
+
+  # BOA's own Java is a link to Corretto. A real directory there (a
+  # package's tree) would take the new link inside it, and every pass would
+  # download again: say so and leave it.
+  if [ -d "${_linkJvm}" ] && [ ! -L "${_linkJvm}" ]; then
+    _msg "WARN: ${_linkJvm} is a directory, not BOA's link to Corretto ${_crtMaj}: not replaced"
+    return 1
+  fi
 
   _mrun "mkdir -p ${_optDir}"
   _mrun "mkdir -p /usr/lib/jvm"
 
+  # The archive goes to a directory made for this run that only root can
+  # enter: under a fixed name in /tmp any account could hold or swap it.
+  _crtStage=""
+  _tmpDir="$(mktemp -d /tmp/.corretto${_crtMaj}.XXXXXX 2>/dev/null)"
+  if [ -z "${_tmpDir}" ] || [ ! -d "${_tmpDir}" ]; then
+    _msg "ERROR: Unable to make a private directory for the Corretto ${_crtMaj} download"
+    return 1
+  fi
+  _corretto_fetch_lay
+  _crtRet=$?
+  rm -rf -- "${_tmpDir}"
+  [ -n "${_crtStage}" ] && rm -rf -- "${_crtStage}"
+  return "${_crtRet}"
+}
+
+_corretto_fetch_lay() {
   # Prefer JRE tarball; fall back to JDK tarball if needed.
   _kind="jre"
   _tar="${_base}-${_kind}.tar.gz"
@@ -11678,10 +11904,9 @@ _other_sys_java21_install() {
       _SHA="$(curl -fsSL "${_shaUrl}" 2>/dev/null | awk '{print $1}')"
     fi
     if [ -z "${_SHA}" ]; then
-      _msg "ERROR: Unable to fetch SHA256 for Corretto 21 (${_crtArch})"
+      _msg "ERROR: Unable to fetch SHA256 for Corretto ${_crtMaj} (${_crtArch})"
       return 1
     fi
-    _mrun "rm -f ${_tmpDir}/${_tar}"
     _mrun "curl -fL --retry 3 --retry-delay 2 -o ${_tmpDir}/${_tar} ${_url}"
   elif command -v wget >/dev/null 2>&1; then
     _SHA="$(wget -qO- "${_shaUrl}" 2>/dev/null | awk '{print $1}')"
@@ -11693,10 +11918,9 @@ _other_sys_java21_install() {
       _SHA="$(wget -qO- "${_shaUrl}" 2>/dev/null | awk '{print $1}')"
     fi
     if [ -z "${_SHA}" ]; then
-      _msg "ERROR: Unable to fetch SHA256 for Corretto 21 (${_crtArch})"
+      _msg "ERROR: Unable to fetch SHA256 for Corretto ${_crtMaj} (${_crtArch})"
       return 1
     fi
-    _mrun "rm -f ${_tmpDir}/${_tar}"
     _mrun "wget -qO ${_tmpDir}/${_tar} ${_url}"
   else
     # If neither exists, install wget from the current OS repos only (no extra sources).
@@ -11714,36 +11938,92 @@ _other_sys_java21_install() {
       _SHA="$(wget -qO- "${_shaUrl}" 2>/dev/null | awk '{print $1}')"
     fi
     if [ -z "${_SHA}" ]; then
-      _msg "ERROR: Unable to fetch SHA256 for Corretto 21 (${_crtArch})"
+      _msg "ERROR: Unable to fetch SHA256 for Corretto ${_crtMaj} (${_crtArch})"
       return 1
     fi
-    _mrun "rm -f ${_tmpDir}/${_tar}"
     _mrun "wget -qO ${_tmpDir}/${_tar} ${_url}"
   fi
 
-  # Verify integrity
-  _mrun "cd ${_tmpDir} && echo ${_SHA}  ${_tar} | sha256sum -c -"
+  # Verify integrity: _mrun always returns 0, so the check runs here, and a
+  # failed or partial download is never unpacked over the working Java.
+  if ! (cd "${_tmpDir}" && echo "${_SHA}  ${_tar}" | sha256sum -c - > /dev/null 2>&1); then
+    _msg "ERROR: Corretto ${_crtMaj} archive ${_tar} fails its SHA256 check, not installed"
+    return 1
+  fi
 
   # Extract and point stable symlinks
   _topDir="$(tar -tzf "${_tmpDir}/${_tar}" 2>/dev/null | head -n1 | cut -d/ -f1)"
-  if [ -z "${_topDir}" ]; then
-    _msg "ERROR: Unable to read Corretto archive structure: ${_tmpDir}/${_tar}"
+  case "${_topDir}" in
+    amazon-corretto-"${_crtMaj}".*) ;;
+    *)
+      _msg "ERROR: Unable to read Corretto archive structure: ${_tar}"
+      return 1
+    ;;
+  esac
+
+  # The tree is unpacked beside the others in a stage folder and must answer
+  # with its version there (a tree a full disk cut short keeps bin/java and
+  # lacks its libraries) before it takes its name: a tree of the same name,
+  # the one BOA's links may point at, is only moved aside then.
+  _crtStage="$(mktemp -d "${_optDir}/.corretto${_crtMaj}-stage.XXXXXX" 2>/dev/null)"
+  if [ -z "${_crtStage}" ] || [ ! -d "${_crtStage}" ]; then
+    _crtStage=""
+    _msg "ERROR: Unable to make a stage folder in ${_optDir}"
     return 1
   fi
-
-  _mrun "tar --no-same-owner -xzf ${_tmpDir}/${_tar} -C ${_optDir}"
+  if ! tar --no-same-owner -xzf "${_tmpDir}/${_tar}" -C "${_crtStage}" > /dev/null 2>&1; then
+    _msg "ERROR: Corretto ${_crtMaj} archive ${_tar} could not be unpacked in ${_optDir}"
+    return 1
+  fi
+  _crtVer="$("${_crtStage}/${_topDir}/bin/java" --version 2>/dev/null | awk '/^openjdk [0-9]/{print $2; exit}')"
+  case "${_crtVer}" in
+    ''|*[!0-9.]*)
+      _msg "ERROR: Unpacked Corretto ${_crtMaj} ${_topDir} does not run, links left as they were"
+      return 1
+    ;;
+  esac
 
   _real="${_optDir}/${_topDir}"
-  if [ ! -x "${_real}/bin/java" ]; then
-    _msg "ERROR: Extracted Corretto path missing bin/java: ${_real}"
+  _prevReal="$(readlink -f "${_linkOpt}" 2>/dev/null)"
+  _crtOld=""
+  if [ -e "${_real}" ] || [ -L "${_real}" ]; then
+    _crtOld="$(mktemp -u "${_optDir}/.corretto${_crtMaj}-old.XXXXXX")"
+    if ! mv -f -- "${_real}" "${_crtOld}"; then
+      _msg "ERROR: Unable to move the earlier ${_real} aside, links left as they were"
+      return 1
+    fi
+  fi
+  if ! mv -f -- "${_crtStage}/${_topDir}" "${_real}"; then
+    [ -n "${_crtOld}" ] && mv -f -- "${_crtOld}" "${_real}"
+    _msg "ERROR: Unable to put the new tree at ${_real}, links left as they were"
     return 1
   fi
-
   _mrun "ln -sfn ${_real} ${_linkOpt}"
   _mrun "ln -sfn ${_linkOpt} ${_linkJvm}"
+  [ -n "${_binLnk}" ] && _mrun "ln -sfn ${_linkJvm}/bin/java ${_binLnk}"
+
+  # Each refresh lays a new tree of about 300 MB: keep the new one and the
+  # one it replaced (a running Solr still uses it until its restart at the
+  # end of the pass), remove the older ones, but never a tree a running JVM
+  # was started from. Every path is compared resolved, so a box whose /opt
+  # is a link prunes too.
+  _realR="$(readlink -f "${_real}" 2>/dev/null)"
+  if [ -n "${_realR}" ] \
+    && [ "$(readlink -f "${_linkJvm}/bin/java" 2>/dev/null)" = "${_realR}/bin/java" ]; then
+    _liveExe="$(for _e in /proc/[0-9]*/exe; do readlink "${_e}" 2>/dev/null; done)"
+    for _oldJdk in "${_optDir}/amazon-corretto-${_crtMaj}."* "${_optDir}/.corretto${_crtMaj}-old."*; do
+      [ -d "${_oldJdk}" ] || continue
+      _oldR="$(readlink -f "${_oldJdk}" 2>/dev/null)"
+      [ -n "${_oldR}" ] || continue
+      [ "${_oldR}" = "${_realR}" ] && continue
+      [ "${_oldR}" = "${_prevReal}" ] && continue
+      printf '%s\n' "${_liveExe}" | grep -q -F -- "${_oldR}/" && continue
+      rm -rf -- "${_oldJdk}"
+    done
+  fi
 
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "DONE: Java 21 installed at ${_linkJvm}"
+    _msg "DONE: Java ${_crtMaj} ${_crtVer} installed at ${_linkJvm}"
   fi
 }
 
@@ -11769,52 +12049,96 @@ _other_sys_java_install() {
   _javaHome="/usr/lib/jvm/java-${_javaVer}-openjdk-${_debArch}"
 
   _FORCE_JAVA_UPGRADE=
+  _JAVA_NEW=
 
-  # Special-case Java 21: do NOT use foreign apt sources (avoids Excalibur upgrade pressure)
+  ### Java 21 (Excalibur has its own package) and Java 11 come from Amazon
+  ### Corretto tarballs, never from a foreign apt source: Java 11's last
+  ### Debian suite, bullseye-security, ended in August 2026 and its builds
+  ### left the mirror, so its install failed on every pass and left the box
+  ### on the build it had.
   if [ "${_javaVer}" = "21" ] && [ "${_OS_CODE}" != "excalibur" ]; then
-    _JAVA_NEW=21.0.13
-    _JAVA_ITD=$(java21 --version 2>&1 \
-      | tr -d "\n" \
-      | cut -d" " -f2 \
-      | awk '{ print $1}' 2>&1)
-    if [ "${_JAVA_ITD}" != "${_JAVA_NEW}" ] \
+    # CVE-2026-114938 is fixed in 21.0.13.1
+    _JAVA_NEW=21.0.13.1
+  elif [ "${_javaVer}" = "11" ]; then
+    _JAVA_NEW=11.0.33.1
+  fi
+  if [ -n "${_JAVA_NEW}" ]; then
+    _corretto_paths "${_javaVer}" "${_debArch}"
+    _JAVA_ITD=$("${_linkJvm}/bin/java" --version 2>/dev/null \
+      | awk '/^openjdk [0-9]/{print $2; exit}')
+    ### Corretto comes from a tarball, so no apt upgrade ever brings its
+    ### security fixes: a build older than the pin is replaced on every
+    ### box, in debug mode or not, and so is one whose version cannot be
+    ### read (a broken tree) and a Java that is not BOA's Corretto at all
+    ### (Java 11 from its package, before the move). A newer build than the
+    ### pin is kept, so a later Corretto never makes each pass download it
+    ### again.
+    case "${_JAVA_ITD}" in
+      ''|*[!0-9.]*) _JAVA_ITD="0" ;;
+    esac
+    # A run that was killed leaves its download and stage folders behind:
+    # root's own, of these names only, older than two hours, on every pass
+    # (the trailing slash enters a /opt/jdk that is a link).
+    find /tmp/ -mindepth 1 -maxdepth 1 -type d -name ".corretto${_javaVer}.*" \
+      -user root -mmin +120 -exec rm -rf -- {} + 2>/dev/null
+    find "${_optDir}/" -mindepth 1 -maxdepth 1 -type d -name ".corretto${_javaVer}-stage.*" \
+      -user root -mmin +120 -exec rm -rf -- {} + 2>/dev/null
+    # A tree a reinstall moved aside goes once no JVM runs from it (a Solr
+    # leaves it at the restart that ends the pass that moved it).
+    for _crtAside in "${_optDir}/.corretto${_javaVer}-old."*; do
+      [ -d "${_crtAside}" ] || continue
+      _crtAsideR="$(readlink -f "${_crtAside}" 2>/dev/null)"
+      [ -n "${_crtAsideR}" ] || continue
+      for _e in /proc/[0-9]*/exe; do readlink "${_e}" 2>/dev/null; done \
+        | grep -q -F -- "${_crtAsideR}/" && continue
+      rm -rf -- "${_crtAside}"
+    done
+    if [ "$(printf '%s\n' "${_JAVA_ITD}" "${_JAVA_NEW}" | sort -V | head -n1)" != "${_JAVA_NEW}" ] \
+      || ! _corretto_java_is_boa "${_linkJvm}/bin/java" \
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
+      _FORCE_JAVA_UPGRADE=YES
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: Installing Java ${_JAVA_NEW}..."
-        _FORCE_JAVA_UPGRADE=YES
       fi
-    fi
-    if [ ! -x "${_javaHome}/bin/java" ] || [ -n "${_FORCE_JAVA_UPGRADE}" ]; then
-      _other_sys_java21_install "${_debArch}"
+      _other_sys_corretto_install "${_javaVer}" "${_debArch}"
+      # What the Solrs and the sites run (the java11 command where BOA lays
+      # one, else BOA's link) must be BOA's Corretto at the pin or newer
+      # now, said in debug mode or not.
+      _corretto_paths "${_javaVer}" "${_debArch}"
+      _crtRun="${_binLnk:-${_linkJvm}/bin/java}"
+      _JAVA_ITD=$("${_crtRun}" --version 2>/dev/null \
+        | awk '/^openjdk [0-9]/{print $2; exit}')
+      case "${_JAVA_ITD}" in
+        ''|*[!0-9.]*) _JAVA_ITD="" ;;
+      esac
+      if [ -z "${_JAVA_ITD}" ] \
+        || ! _corretto_java_is_boa "${_crtRun}" \
+        || [ "$(printf '%s\n' "${_JAVA_ITD}" "${_JAVA_NEW}" | sort -V | head -n1)" != "${_JAVA_NEW}" ]; then
+        _msg "WARN: Java ${_javaVer} is ${_JAVA_ITD:-not answering} at ${_crtRun} ($(readlink -f "${_crtRun}" 2>/dev/null)) after the install, not Corretto ${_JAVA_NEW} or newer"
+      fi
+    elif [ -n "${_binLnk}" ] \
+      && [ "$(readlink -f "${_binLnk}" 2>/dev/null)" != "$(readlink -f "${_linkJvm}/bin/java" 2>/dev/null)" ]; then
+      ln -sfn "${_linkJvm}/bin/java" "${_binLnk}"
     fi
     return 0
   fi
 
-  # Special-case Java 11/17 force install if version is too old
-  if [ "${_javaVer}" = "11" ]; then
-    _JAVA_NEW=11.0.32.1
-    _JAVA_ITD=$(java11 --version 2>&1 \
-      | tr -d "\n" \
-      | cut -d" " -f2 \
-      | awk '{ print $1}' 2>&1)
-    if [ "${_JAVA_ITD}" != "${_JAVA_NEW}" ] \
+  ### Java 17 (on Excalibur) comes from a suite added for its install only,
+  ### so no apt upgrade of the box ever brings its fixes: a build older than
+  ### the pin is installed again, in debug mode or not, and so is one whose
+  ### version cannot be read.
+  if [ "${_javaVer}" = "17" ]; then
+    _JAVA_NEW=17.0.21.1
+    _JAVA_ITD=$("${_javaHome}/bin/java" --version 2>/dev/null \
+      | awk '/^openjdk [0-9]/{print $2; exit}')
+    case "${_JAVA_ITD}" in
+      ''|*[!0-9.]*) _JAVA_ITD="0" ;;
+    esac
+    if [ "$(printf '%s\n' "${_JAVA_ITD}" "${_JAVA_NEW}" | sort -V | head -n1)" != "${_JAVA_NEW}" ] \
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
+      _FORCE_JAVA_UPGRADE=YES
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: Installing Java ${_JAVA_NEW}..."
-        _FORCE_JAVA_UPGRADE=YES
-      fi
-    fi
-  elif [ "${_javaVer}" = "17" ]; then
-    _JAVA_NEW=17.0.21
-    _JAVA_ITD=$(java17 --version 2>&1 \
-      | tr -d "\n" \
-      | cut -d" " -f2 \
-      | awk '{ print $1}' 2>&1)
-    if [ "${_JAVA_ITD}" != "${_JAVA_NEW}" ] \
-      || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        _msg "INFO: Installing Java ${_JAVA_NEW}..."
-        _FORCE_JAVA_UPGRADE=YES
       fi
     fi
   fi
@@ -11872,6 +12196,18 @@ EOF
     rm -f "${_aptNoValidUntil}"
 
     _apt_clean_update
+
+    if [ -n "${_JAVA_NEW}" ]; then
+      _JAVA_ITD=$("${_javaHome}/bin/java" --version 2>/dev/null \
+        | awk '/^openjdk [0-9]/{print $2; exit}')
+      case "${_JAVA_ITD}" in
+        ''|*[!0-9.]*) _JAVA_ITD="" ;;
+      esac
+      if [ -z "${_JAVA_ITD}" ] \
+        || [ "$(printf '%s\n' "${_JAVA_ITD}" "${_JAVA_NEW}" | sort -V | head -n1)" != "${_JAVA_NEW}" ]; then
+        _msg "WARN: Java ${_javaVer} is ${_JAVA_ITD:-not answering} after the install from ${_systVer}, not ${_JAVA_NEW} or newer"
+      fi
+    fi
   fi
 }
 
@@ -13344,8 +13680,21 @@ _xdrago_install_upgrade() {
       fi
     fi
   fi
+  # The task dispatchers come back from the copy this pass set aside, each
+  # only when it is root's alone: runner.sh never runs any other, and one
+  # left behind is named in dispatcher.incident.log (the account's next
+  # Octopus pass writes a new one).
   if [ -d "/var/xdrago-pre-${_xSrl}-${_X_VERSION}-${_NOW}" ]; then
-    cp -af /var/xdrago-pre-${_xSrl}-${_X_VERSION}-${_NOW}/run-* /var/xdrago/ &> /dev/null
+    local _rxF
+    for _rxF in /var/xdrago-pre-${_xSrl}-${_X_VERSION}-${_NOW}/run-*; do
+      [ -e "${_rxF}" ] || [ -L "${_rxF}" ] || continue
+      if _dispatcher_trusted "${_rxF}"; then
+        cp -af "${_rxF}" /var/xdrago/ &> /dev/null
+      elif [ -d "/var/log/boa" ]; then
+        echo "$(date) not copied back: ${_rxF} ($(stat -c 'owner %U (uid %u), %h links, mode %a' -- "${_rxF}" 2> /dev/null)): not root's alone" \
+          >> /var/log/boa/dispatcher.incident.log
+      fi
+    done
   fi
   chmod -R 700 /var/xdrago/monitor/check &> /dev/null
   chmod 700 /var/xdrago/* &> /dev/null
@@ -13775,7 +14124,7 @@ _lshell_install_upgrade() {
         cp -af ${_bldPth}/aegir/tools/system/conf/lshell.conf \
           /var/xdrago/conf/lshell.conf
       fi
-      _mrun "bash /var/xdrago/manage_ltd_users.sh"
+      _mrun "_ACCT_RELOAD_HOLD=NO bash /var/xdrago/manage_ltd_users.sh"
       wait
     fi
     _fix_node_in_lshell_access
@@ -13841,7 +14190,8 @@ _if_install_ftpd() {
   if [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
     || [[ "${_XTRAS_LIST}" =~ "FTP" ]]; then
     if [ ! -e "/var/ftp" ]; then
-      _mrun "useradd -r -d /var/ftp -s /sbin/nologin -m ftp"
+      # _mrun's own bash -c would not have the helper
+      _mrun_here _sys_user_add high useradd -r -d /var/ftp -s /sbin/nologin -m ftp
     fi
     if [ ! -e "/etc/ssl/private/pure-ftpd.pem" ] \
       || [ ! -e "/usr/local/sbin/pure-ftpd" ] \
@@ -14479,6 +14829,33 @@ _master_queue_release() {
   fi
 }
 
+# The routine system tables upgrade on a live 5.7 server starts with DROP
+# DATABASE IF EXISTS performance_schema, which waits for every transaction
+# holding a lock on those tables: a client's mysqldump --single-transaction
+# reads its server variables inside its transaction and holds them for the
+# whole dump. While the DROP waits, every new reader of those tables waits
+# behind it (the minute checks, other dumps), and the pass holds every task
+# queue: an hour and more on a large database. So the upgrade starts only when
+# no transaction has been open for over a minute (a dump's consistent snapshot
+# shows in information_schema.innodb_trx even with performance_schema off),
+# after waiting up to 15 minutes; then it is left to the next pass with a NOTE
+# line, never an ALRT, which would make the launcher report the whole pass as
+# failed. Nothing of the client's is touched. A read that fails goes on as before.
+_sql_upgrade_clear_of_long_trx() {
+  local _rows _n=0
+  while :; do
+    _rows=$(timeout 10 mysql -u root -N -B -e "SELECT IFNULL(p.USER, '-'), TIMESTAMPDIFF(SECOND, t.trx_started, NOW()) FROM information_schema.innodb_trx t LEFT JOIN information_schema.processlist p ON p.ID = t.trx_mysql_thread_id WHERE t.trx_started < NOW() - INTERVAL 60 SECOND ORDER BY t.trx_started" 2> /dev/null) || return 0
+    [ -z "${_rows}" ] && return 0
+    if [ "${_n}" -ge 15 ]; then
+      _msg "NOTE: ${_DB_SERVER} system tables upgrade left to the next pass: $(printf '%s\n' "${_rows}" | head -n 1 | awk '{ print "a transaction of " $1 " open for " $2 " s" }') still holds"
+      return 1
+    fi
+    _msg "WAIT: ${_DB_SERVER} system tables upgrade waits for $(printf '%s\n' "${_rows}" | head -n 1 | awk '{ print "a transaction of " $1 " open for " $2 " s" }') to end, ${_n} of 15 minutes"
+    sleep 60
+    _n=$(( _n + 1 ))
+  done
+}
+
 _initd_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _initd_update"
@@ -14513,26 +14890,7 @@ _initd_update() {
     _fix_root_locked_shadow
     _mrun "service ssh restart"
     _tune_memory_limits
-    if [ -x "/etc/init.d/solr9" ] && [ -e "/etc/default/solr9.in.sh" ]; then
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        _msg "INFO: Restarting Solr 9"
-      fi
-      pkill -9 -f '^[^ ]*java[0-9]* .*solr9'
-      _mrun "service solr9 start"
-    fi
-    if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        _msg "INFO: Restarting Solr 7"
-      fi
-      pkill -9 -f '^[^ ]*java[0-9]* .*solr7'
-      _mrun "service solr7 start"
-    fi
-    if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        _msg "INFO: Restarting Jetty 9"
-      fi
-      _jetty9_restart
-    fi
+    _initd_solr_start
     # cron and nginx are boot-registered and started UNCONDITIONALLY: a
     # finalized proxy is still an internet-facing nginx relay whose cron
     # carries every watchdog, and skipping these left a rebooted proxy
@@ -14637,26 +14995,7 @@ _initd_update() {
     _mrun "service ssh restart"
     _fix_on_upgrade
     _tune_memory_limits
-    if [ -x "/etc/init.d/solr9" ] && [ -e "/etc/default/solr9.in.sh" ]; then
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        _msg "INFO: Restarting Solr 9"
-      fi
-      pkill -9 -f '^[^ ]*java[0-9]* .*solr9'
-      _mrun "service solr9 start"
-    fi
-    if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        _msg "INFO: Restarting Solr 7"
-      fi
-      pkill -9 -f '^[^ ]*java[0-9]* .*solr7'
-      _mrun "service solr7 start"
-    fi
-    if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        _msg "INFO: Restarting Jetty 9"
-      fi
-      _jetty9_restart
-    fi
+    _initd_solr_start
     # nginx restarts UNCONDITIONALLY on upgrade: a finalized proxy is
     # still an internet-facing relay whose upgraded config must activate.
     # The site-serving stack (cache backend, FPM) and the MySQL tuning
@@ -14672,6 +15011,7 @@ _initd_update() {
       _msg "NOTE: replication standby -- Nginx restart skipped (web tier held)"
     else
       _mrun "service nginx restart"
+      _nginx_restart_report
     fi
     if [ ! -e "/root/.proxy.cnf" ]; then
       # Valkey has no reload: the signal one sends only reaches its thread
@@ -14698,8 +15038,8 @@ _initd_update() {
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "INFO: Running ${_DB_SERVER} system tables (2) upgrade..."
         fi
-        rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
-        if [ -x "/usr/bin/mysql_upgrade" ]; then
+        if [ -x "/usr/bin/mysql_upgrade" ] && _sql_upgrade_clear_of_long_trx; then
+          rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
           _mrun "mysql_upgrade -u root --force"
           _mrun "mysql_upgrade -u root --force"
         fi
@@ -14981,6 +15321,19 @@ _rsyslog_config_update() {
         /var/backups/.etc.rsyslog.conf-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
     fi
     cp -af ${_locCnf}/var/rsyslog.conf /etc/rsyslog.conf
+    # The rules keep a line tagged mysqld from any sender but root and the
+    # server's own user out of the logs barracuda's SQL gate reads; with no
+    # mysql user yet only root's pass, as the server writes nothing then.
+    _rsyslogMyUid="$(id -u mysql 2>/dev/null)"
+    [[ "${_rsyslogMyUid}" =~ ^[0-9]+$ ]] || _rsyslogMyUid=0
+    sed -i "s/@MYSQL_UID@/${_rsyslogMyUid}/g" /etc/rsyslog.conf
+    # postfix's package adds a second socket in its chroot with the legacy
+    # $AddUnixListenSocket, which cannot carry the sender's uid; declared as
+    # an input it carries it as /dev/log does, so the rules apply there too.
+    if [ -e "/etc/rsyslog.d/postfix.conf" ]; then
+      sed -i -E 's@^\$AddUnixListenSocket[[:space:]]+(/var/spool/postfix/dev/log)[[:space:]]*$@input(type="imuxsock" Socket="\1" Annotate="on" ParseTrusted="on")@' \
+        /etc/rsyslog.d/postfix.conf
+    fi
     [ -s "${_locCnf}/var/mysql-notices.conf" ] \
       && cp -af ${_locCnf}/var/mysql-notices.conf /etc/rsyslog.d/mysql-notices.conf
     [ -s "${_locCnf}/var/logrotate.d.rsyslog.conf" ] \

@@ -83,7 +83,7 @@ _manage_single_lock() {
     # -------- legacy pgrep guard ---------
     # Exit if more than 2 instances of this script are running
     _SCRIPT=$(basename "$0")
-    _CNT=$(pgrep -fc "(^|(^| )[^ ]*bash )[^ ]*/${_SCRIPT//./\\.}( |$)")
+    _CNT=$(pgrep -u root -U root -fc "(^|(^| )[^ ]*bash )[^ ]*/${_SCRIPT//./\\.}( |$)")
     if (( _CNT > 2 )); then
       echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
       exit 0
@@ -208,6 +208,28 @@ _oom_expendable_victim() {
       '$3 ~ re && $2 + 0 >= floor + 0 { $3 = ""; print; exit }'
 }
 
+# The largest resident set that is safe to kill, as "pid rss args". A
+# process is spared for its name (_OOM_EXEMPT) only when it runs as root,
+# mysql, aegir or an account's backend user (home /data/disk/<name>): an
+# account's web, FTP or shell login can name its own process "drush" or
+# "mysqld", and sparing that killed the next largest, often a shared service.
+# When the users cannot be read (no root among them) the name alone spares a
+# process: over-sparing only leaves the box to the kernel.
+_oom_largest_victim() {
+  local _tu=""
+  _tu=$(getent passwd 2> /dev/null \
+    | awk -F: '$3 == 0 || $1 == "aegir" || $1 == "mysql" || $6 ~ /^\/data\/disk\/[^\/]+\/?$/ { printf " %s", $3 } END { printf " " }')
+  case "${_tu}" in *" 0 "*) ;; *) _tu="" ;; esac
+  ps -eo pid=,rss=,ruid=,euid=,args= --sort=-rss 2>/dev/null \
+    | awk -v ex="${_OOM_EXEMPT}" -v tu="${_tu}" '{
+        a = $0
+        sub(/^ *[0-9]+ +[0-9]+ +[0-9]+ +[0-9]+ /, "", a)
+        if (a ~ ex && (tu == "" || (index(tu, " " $3 " ") && index(tu, " " $4 " ")))) next
+        print $1, $2, a
+        exit
+      }'
+}
+
 _oom_kill_top_offender() {
   # A memory emergency is healed by freeing memory, not by taking the site
   # down. The previous response here killed seven services within one second
@@ -289,13 +311,12 @@ _oom_kill_top_offender() {
     echo "${_now}" >> /var/log/boa/oom.kill.ledger
   fi
   # A large expendable process first, else the single largest resident set
-  # that is safe to kill. The grep runs on a ps snapshot, so an over-match
+  # that is safe to kill. The match runs on a ps snapshot, so an over-match
   # only ever EXCLUDES a candidate; kernel threads carry no RSS and sort last
   # on their own.
   _victim=$(_oom_expendable_victim)
   if [ -z "${_victim}" ]; then
-    _victim=$(ps -eo pid=,rss=,args= --sort=-rss 2>/dev/null \
-      | grep -vE "${_OOM_EXEMPT}" | head -n 1)
+    _victim=$(_oom_largest_victim)
   fi
   _vpid=$(echo "${_victim}" | awk '{print $1}')
   _vpid=${_vpid//[^0-9]/}
@@ -378,79 +399,74 @@ _check_system_ram() {
 # and MemAvailable already counts reclaimable cache, so the kernel frees it on
 # demand without the stampede.)
 
+# The DHCP servers the root dhclient processes hold leases from, one per line:
+# each server's "option dhcp-server-identifier" in the lease file named on the
+# process's -lf argument (dhclient's default file without one), written by
+# dhclient itself as root.
+_dhcp_lease_servers() {
+  local _p _lf
+  local _oct="(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])"
+  for _p in $(pgrep -u root -x dhclient 2> /dev/null); do
+    _lf=$(tr '\0' '\n' 2> /dev/null < "/proc/${_p}/cmdline" \
+      | sed -n '/^-lf$/{n;p;q;}')
+    [ -n "${_lf}" ] || _lf="/var/lib/dhcp/dhclient.leases"
+    [ -f "${_lf}" ] && [ ! -L "${_lf}" ] || continue
+    [ "$(stat -c %u "${_lf}" 2> /dev/null)" = "0" ] || continue
+    sed -n -E 's/^[[:space:]]*option dhcp-server-identifier[[:space:]]+([0-9.]+);.*$/\1/p' "${_lf}"
+  done | grep -E "^(${_oct}\.){3}${_oct}$" | sort -u
+}
+
+# dhclient renews its lease by unicast to the server that granted it, and
+# csf's egress filter drops that unless csf.allow lets udp/67 out to it: the
+# renewals fail and the lease lives on broadcast rebinds alone. Each server a
+# lease names gets its allow line and the firewall is reloaded, at most once in
+# 5 minutes. Judged from the lease files, never from log text: any local
+# program can write a "dhclient ... Failed" line, and such a line rewrote
+# csf.allow and reloaded the whole firewall every 5 minutes.
 _if_fix_dhcp() {
-  # Determine the correct log file
-  if [ -e "/var/log/daemon.log" ]; then
-    _DHCP_LOG="/var/log/daemon.log"
-  else
-    _DHCP_LOG="/var/log/syslog"
-  fi
-
-  # Check if the log file exists
-  if [ -e "${_DHCP_LOG}" ]; then
-    # Count the number of DHCP failure entries in the last 3 lines
-    count=$(tail -n 3 "${_DHCP_LOG}" | grep -c "dhclient:.*Failed")
-
-    # Debugging: Log the count value
-    [ "$count" -gt 0 ] && echo "DHCP failure count: $count" >> ${_pthOml}
-
-    # Proceed only if there is at least one failure
-    if [ "$count" -gt 0 ]; then
-      # On an idle box one failure line can sit in the log tail for many
-      # minutes, and each pass used to rewrite csf.allow and reload the
-      # whole firewall again for it. One rewrite per five minutes is plenty
-      # for a lease that is genuinely flapping.
-      _cdDhcp="/run/dhcp-monitor.cooldown"
-      _nowDhcp=$(date +%s)
-      if [ -s "${_cdDhcp}" ]; then
-        _tsDhcp=$(tr -dc '0-9' 2>/dev/null < "${_cdDhcp}")
-        if [ -n "${_tsDhcp}" ] && [ $((_nowDhcp - _tsDhcp)) -ge 0 ] && [ $((_nowDhcp - _tsDhcp)) -lt 300 ]; then
-          return 0
-        fi
-      fi
-      date +%s > "${_cdDhcp}"
-      # Clear existing DHCP entries in csf.allow
-      sed -i "s/.*DHCP.*//g" /etc/csf/csf.allow
-      wait
-      # Remove any empty lines
-      sed -i "/^$/d" /etc/csf/csf.allow
-
-      # Extract unique IPs from DHCP requests and add them to csf.allow
-      grep DHCPREQUEST "${_DHCP_LOG}" | awk '{print $12}' | sort -u | while read -r _IP; do
-        if [[ ${_IP} =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
-          IFS='.' read -r oct1 oct2 oct3 oct4 <<< "${_IP}"
-          if (( oct1 <= 255 && oct2 <= 255 && oct3 <= 255 && oct4 <= 255 )); then
-            echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow
-          fi
-        fi
-      done
-
-      # Reload the firewall
-      if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
-        csf -ra &> /dev/null
-        synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
-      else
-        csf -r &> /dev/null
-      fi
-
-      # Log the error and send an email report
-      _thisErrLog="$(date) DHCP error detected, firewall updated"
-      echo "${_thisErrLog}" >> ${_pthOml}
-      _incident_email_report "DHCP error detected, firewall updated"
-      echo >> ${_pthOml}
+  local _srv _missing="" _cdDhcp _nowDhcp _tsDhcp
+  [ -e "/etc/csf/csf.allow" ] || return 0
+  for _srv in $(_dhcp_lease_servers); do
+    grep -qE "^udp\|out\|d=67\|d=${_srv//./\\.}([[:space:]#]|$)" /etc/csf/csf.allow \
+      || _missing="${_missing} ${_srv}"
+  done
+  [ -n "${_missing}" ] || return 0
+  _cdDhcp="/run/dhcp-monitor.cooldown"
+  _nowDhcp=$(date +%s)
+  if [ -s "${_cdDhcp}" ]; then
+    _tsDhcp=$(tr -dc '0-9' 2>/dev/null < "${_cdDhcp}")
+    if [ -n "${_tsDhcp}" ] && [ $((_nowDhcp - _tsDhcp)) -ge 0 ] && [ $((_nowDhcp - _tsDhcp)) -lt 300 ]; then
+      return 0
     fi
   fi
+  date +%s > "${_cdDhcp}"
+  for _srv in ${_missing}; do
+    echo "udp|out|d=67|d=${_srv} # Local DHCP out" >> /etc/csf/csf.allow
+  done
+
+  # Reload the firewall
+  if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
+    csf -ra &> /dev/null
+    synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
+  else
+    csf -r &> /dev/null
+  fi
+
+  _thisErrLog="$(date) DHCP server${_missing} allowed out, firewall updated"
+  echo "${_thisErrLog}" >> ${_pthOml}
+  _incident_email_report "DHCP server allow rule was missing, firewall updated"
+  echo >> ${_pthOml}
 }
 
 _cron_duplicate_instances_detection() {
   # Daemons only: a command line that IS /usr/sbin/cron (with or without
   # arguments), never one that mentions the path further along and never
   # cron's own job children, which carry the mixed-case /usr/sbin/CRON.
-  _CNT=$(pgrep -fc '^/usr/sbin/cron( |$)')
+  _CNT=$(pgrep -u root -U root -fc '^/usr/sbin/cron( |$)')
   if (( _CNT > 1 )); then
     # Double-check after a short grace to avoid flapping
     sleep 3
-    _CNT2=$(pgrep -fc '^/usr/sbin/cron( |$)')
+    _CNT2=$(pgrep -u root -U root -fc '^/usr/sbin/cron( |$)')
     if (( _CNT2 > 1 )); then
       _cd="/run/cron-monitor.cooldown"
       _now=$(date +%s)
@@ -465,10 +481,10 @@ _cron_duplicate_instances_detection() {
       # kill uses the pattern the count used, so a command line that merely
       # names the path is never collateral, and what was counted is logged
       # first so a trip is diagnosable.
-      echo "$(date) INFO: Cron masters counted: $(pgrep -a -f '^/usr/sbin/cron( |$)' 2> /dev/null | tr '\n' ';')" >> ${_pthOml}
-      pkill -TERM -f '^/usr/sbin/cron( |$)' &> /dev/null
+      echo "$(date) INFO: Cron masters counted: $(pgrep -u root -U root -a -f '^/usr/sbin/cron( |$)' 2> /dev/null | tr '\n' ';')" >> ${_pthOml}
+      pkill -TERM -u root -U root -f '^/usr/sbin/cron( |$)' &> /dev/null
       sleep 1
-      pkill -KILL -f '^/usr/sbin/cron( |$)' &> /dev/null
+      pkill -KILL -u root -U root -f '^/usr/sbin/cron( |$)' &> /dev/null
       service cron start &> /dev/null
       # Cooldown stamp
       date +%s > "${_cd}"
@@ -725,7 +741,7 @@ _postfix_health_check_fix() {
 
 _vnstat_health_check_fix() {
   if [ -x "/etc/init.d/vnstat" ] && [ ! -e "/run/vnstat.pid" ]; then
-    if ! _daemon_alive /run/vnstat/vnstat.pid vnstatd; then
+    if ! _daemon_alive /run/vnstat/vnstat.pid vnstatd vnstat; then
       service vnstat restart
       wait
       _thisErrLog="$(date) VNStat Monitor was down, restarted"
@@ -748,6 +764,8 @@ _lfd_alive() {
   _p=$(tr -dc '0-9' < /run/lfd.pid)
   [ -n "${_p}" ] || return 1
   kill -0 "${_p}" 2>/dev/null || return 1
+  # root's: a recycled pid held by an account's process titled "lfd" is not it
+  [ "$(awk '/^Uid:/ { print $2 " " $3; exit }' "/proc/${_p}/status" 2> /dev/null)" = "0 0" ] || return 1
   grep -aq "lfd" "/proc/${_p}/cmdline" 2>/dev/null
 }
 
@@ -757,14 +775,21 @@ _lfd_alive() {
 # editor, a grep, an ssh -c -- as the live daemon and skipped the start for
 # as long as the mention lived; a stale pidfile after a kill made that
 # permanent. The pidfile and the name are what each init script maintains.
-#   $1 = pidfile, $2 = process name
+# The daemon runs as root or as its own service user: a recycled pid held by
+# an account's process named like the daemon is not the daemon.
+#   $1 = pidfile, $2 = process name, $3 = its service user (optional)
 _daemon_alive() {
-  local _p
+  local _p _u _s
   [ -s "${1}" ] || return 1
   _p=$(tr -dc '0-9' < "${1}")
   [ -n "${_p}" ] || return 1
   kill -0 "${_p}" 2>/dev/null || return 1
-  [ "$(cat "/proc/${_p}/comm" 2>/dev/null)" = "${2}" ]
+  [ "$(cat "/proc/${_p}/comm" 2>/dev/null)" = "${2}" ] || return 1
+  _u=$(awk '/^Uid:/ { print $2 " " $3; exit }' "/proc/${_p}/status" 2> /dev/null)
+  [ "${_u}" = "0 0" ] && return 0
+  [ -n "${3}" ] || return 1
+  _s=$(id -u "${3}" 2> /dev/null) || return 1
+  [ "${_u}" = "${_s} ${_s}" ]
 }
 
 _lfd_health_check_fix() {
@@ -840,20 +865,68 @@ _lfd_health_check_fix() {
   fi
 }
 
+# Root's sshd listeners: processes running as root whose title is the
+# listener's, "sshd: /usr/sbin/sshd [listener] ..." (a plain "/usr/sbin/sshd"
+# on older releases; sessions are "sshd: user@pts" or sshd-session), each
+# holding a listening TCP socket. Prints their pids, sorted.
+_sshd_listener_pids() {
+  local _p _uid _cmd
+  for _p in $(ss -Hltnp 2> /dev/null | grep -o '"sshd",pid=[0-9]*' \
+    | grep -o '[0-9]*$' | sort -un); do
+    _uid=$(awk '/^Uid:/ { print $2; exit }' "/proc/${_p}/status" 2> /dev/null)
+    [ "${_uid}" = "0" ] || continue
+    _cmd=$(tr '\0' ' ' 2> /dev/null < "/proc/${_p}/cmdline")
+    [[ "${_cmd}" =~ ^(sshd:\ )?/usr/sbin/sshd(\ |$) ]] || continue
+    echo "${_p}"
+  done
+}
+
+# A start that cannot bind its port ("Bind to port 22 ... Address already in
+# use") leaves the pidfile naming a dead daemon while an older listener still
+# holds the port, and every later start fails the same way. That state is read
+# from the pidfile and the listeners' sockets, never from auth.log, where any
+# program can write the line: the daemon the init script tracks is not running
+# and a root sshd listener is. Seen twice 3 s apart, as a restart writes its
+# pidfile only after it binds, and acted on at most once in 5 minutes.
 _if_fix_locked_sshd() {
-  _SSH_LOG="/var/log/auth.log"
-  if [ `tail --lines=10 ${_SSH_LOG} \
-    | grep --count "error: Bind to port 22"` -gt 0 ]; then
-    # the listener only: its title starts "sshd: /usr/sbin/sshd" (a plain
-    # "/usr/sbin/sshd" on older releases); sessions are "sshd: user@pts"
-    pkill -9 -f '^(sshd: )?/usr/sbin/sshd' || true
-    service ssh start
-    wait
-    _thisErrLog="$(date) SSHD BIND PORT error, service will be restarted"
-    echo ${_thisErrLog} >> ${_pthOml}
-    _incident_email_report "SSHD BIND PORT error, service will be restarted"
-    echo >> ${_pthOml}
+  local _held _cd _now _ts
+  [ -x "/etc/init.d/ssh" ] || return 0
+  _daemon_alive /run/sshd.pid sshd && return 0
+  _held="$(_sshd_listener_pids | xargs)"
+  [ -n "${_held}" ] || return 0
+  sleep 3
+  _daemon_alive /run/sshd.pid sshd && return 0
+  [ "$(_sshd_listener_pids | xargs)" = "${_held}" ] || return 0
+  _cd="/run/sshd-locked.cooldown"
+  _now=$(date +%s)
+  if [ -s "${_cd}" ]; then
+    _ts=$(tr -dc '0-9' 2> /dev/null < "${_cd}")
+    if [ -n "${_ts}" ] && [ $((_now - _ts)) -ge 0 ] && [ $((_now - _ts)) -lt 300 ]; then
+      return 0
+    fi
   fi
+  date +%s > "${_cd}"
+  # A start must be able to replace what is killed: the init script refuses
+  # one while sshd_not_to_be_run exists, /dev/null is not a character device
+  # or sshd -t rejects the config, and the box would then be left with no
+  # listener at all. sshd -t wants the privilege separation dir the init
+  # script would make.
+  [ -d /run/sshd ] || mkdir -p -m 0755 /run/sshd
+  if [ -e /etc/ssh/sshd_not_to_be_run ] || [ ! -c /dev/null ] \
+    || ! ( [ -r /etc/default/ssh ] && . /etc/default/ssh; /usr/sbin/sshd ${SSHD_OPTS} -t ) > /dev/null 2>&1; then
+    _thisErrLog="$(date) SSHD listener ${_held} holds the port with the tracked daemon gone, left running: sshd could not start again (sshd -t fails, /dev/null is no device or sshd_not_to_be_run)"
+    echo ${_thisErrLog} >> ${_pthOml}
+    _incident_email_report "SSHD listener holds the port with the tracked daemon gone, left running: sshd could not start again" ALERT sshd-locked
+    echo >> ${_pthOml}
+    return 0
+  fi
+  kill -9 ${_held} 2> /dev/null
+  service ssh start
+  wait
+  _thisErrLog="$(date) SSHD listener ${_held} held the port with the tracked daemon gone, killed and started"
+  echo ${_thisErrLog} >> ${_pthOml}
+  _incident_email_report "SSHD listener held the port with the tracked daemon gone, service restarted"
+  echo >> ${_pthOml}
 }
 
 _sshd_health_check_fix() {
@@ -889,7 +962,7 @@ _clamav_health_check_fix() {
     && [ -e "${_clamd_service}" ] \
     && [ -e "${_freshclam_service}" ]; then
     if [ -x "/etc/init.d/clamav-daemon" ]; then
-      if ! _daemon_alive /run/clamav/clamd.pid clamd; then
+      if ! _daemon_alive /run/clamav/clamd.pid clamd clamav; then
         pkill -9 -x clamd || true
         service clamav-daemon start
         wait
@@ -901,7 +974,7 @@ _clamav_health_check_fix() {
       fi
     fi
     if [ -x "/etc/init.d/clamav-freshclam" ]; then
-      if ! _daemon_alive /run/clamav/freshclam.pid freshclam; then
+      if ! _daemon_alive /run/clamav/freshclam.pid freshclam clamav; then
         pkill -9 -x freshclam || true
         service clamav-freshclam start
         wait
@@ -945,9 +1018,9 @@ _rsyslog_health_check_fix() {
   # remedy is the init script, not a kill; a lone stale pidfile gets the
   # same graceful restart, which rewrites it.
   if [ -x "/etc/init.d/rsyslog" ]; then
-    if ! pgrep -x rsyslogd >/dev/null 2>&1; then
+    if ! pgrep -u root -U root -x rsyslogd >/dev/null 2>&1; then
       sleep 2
-      if ! pgrep -x rsyslogd >/dev/null 2>&1; then
+      if ! pgrep -u root -U root -x rsyslogd >/dev/null 2>&1; then
         _rsyslog_restart_verified "Rsyslog was down"
       fi
     elif [ ! -e "/run/rsyslogd.pid" ]; then
