@@ -16,6 +16,13 @@
       measured once after the move; the copy is kept until the user
       deletes it, as before.
 
+    * A platform task, Upgrade all sites, upgrades every Drupal 10+ site
+      of a platform onto a newer one, one at a time, each exactly as its
+      own Upgrade: the platform is locked first, a site that does not
+      upgrade stops the sites after it, and a last step verifies the
+      platform and says what each site did. Built and granted to no role
+      until it is armed.
+
     * From Drupal 12's first release on, staticbuild builds its Drupal 12
       lines and distributions with Drush 15, which has no drush.php and
       runs under Drupal's own dr: its development branch until it is
@@ -1439,6 +1446,13 @@
       by itself is built and stays switched off until it is armed. A
       way-back copy of a site named temp.<site> no longer stops the
       Upgrade of <site>.
+
+    * The Upgrade never removes a way-back copy whose settings name the
+      site's own database, or a database it cannot read. A copy cut off
+      before its own settings were written keeps the site's database
+      name in them, and removing it (the Upgrade's own clean-up does when
+      only its runner died) could drop the live site's database; such a
+      copy is now left for support.
 
     * From Drupal 8 on, the panel records a module that an install profile
       or sites/all holds beside the root modules directory at the root
