@@ -2570,8 +2570,10 @@ _cnf_tests() {
 # account's own myloader through an inherited descriptor. It is the
 # account's (so that reading works) inside root's private directory, which
 # no one else can enter, and goes with it. The plan's proof of a site's
-# recorded login is read from such a file too. 1, with no file left, when
-# the name or the password may not become its lines (_cnf_tests).
+# recorded login is read from such a file too. With $2 = root the file
+# stays root's: the purge's proof, read by root's own client, whose
+# account may have no Unix user left. 1, with no file left, when the name
+# or the password may not become its lines (_cnf_tests).
 _write_cnf() {
   local _e
   _CNF="${_TMPD}/client.cnf"
@@ -2584,7 +2586,9 @@ _write_cnf() {
   printf '[client]\nuser=%s\npassword="%s"\n' "${1}" "${_e}" > "${_CNF}" \
     || _die 7 "credentials-file-failed"
   _e=""
-  chown -- "${_ACCT}" "${_CNF}" 2> /dev/null || _die 7 "credentials-file-failed"
+  if [[ "${2:-}" != "root" ]]; then
+    chown -- "${_ACCT}" "${_CNF}" 2> /dev/null || _die 7 "credentials-file-failed"
+  fi
   chmod 0600 "${_CNF}" 2> /dev/null
   return 0
 }
@@ -3157,10 +3161,7 @@ SELECT COUNT(*) FROM ${_REG_TBL} WHERE account = ${_a} AND state <> 'purged';" \
 #   G3 each site record: a plain alias in the account's own .drush, its
 #      site inside the home and not the panel, on the context that alias
 #      gives, its database and user one plain name, which is none of the
-#      server's own nor the account's instance or panel user, and the login
-#      it records opens that database, as a switch proves a site's before
-#      it registers it (an account can write its own records, so a name
-#      alone proves nothing).
+#      server's own nor the account's instance or panel user.
 #   G4 no other record claims the name (with the account's cnf parked a
 #      claim is always another's), no other account has it, and the
 #      registry gives its database to no other account.
@@ -3170,6 +3171,14 @@ SELECT COUNT(*) FROM ${_REG_TBL} WHERE account = ${_a} AND state <> 'purged';" \
 #      own database (in either spelling) or on a name with no schema, no
 #      stored object it defines (a read of them that is not whole keeps
 #      every user).
+#   G6 the login each record of the user holds opens that record's
+#      database, as a switch proves a site's before it registers it (an
+#      account can write its own records, so a name alone proves nothing).
+#      Tried last, so that no login is tried on a user another owns or
+#      whose rows stay anyway, and never on a user a row of which carries a
+#      failed-login limit (a refusal would count against a row that may be
+#      someone's). A row the user gains after its login was tried changes
+#      what was judged, which the read under the lock sees.
 # Then, under the baseline lock, each user's rows, pins, global privileges
 # and grant rows read again and as they were: its CREATE USER lines and
 # grants saved into root's own file, a save that fails dropping nothing of
@@ -3185,7 +3194,7 @@ _ps_sites() {
   _PS_DROP=0
   _PS_KEPT=0
   _PS_BAD=0
-  _PS_NOROW=$'\n'
+  _PS_RECS=""
   if ! _ps_running; then
     printf 'site users of %s not read: %s\n' "${_ACCT}" "${_PS_WHY}"
     return 0
@@ -3214,8 +3223,7 @@ _ps_sites() {
       continue
     fi
     [[ "${_ko}" != *$'\n'"${_du}"$'\n'* ]] || continue
-    if [[ -n "${_why}" ]] || ! _ps_record "${_ds}" "${_dn}" "${_du}" "${_pu}" \
-      || ! _ps_proof "${_sp}" "${_dn}" "${_du}"; then
+    if [[ -n "${_why}" ]] || ! _ps_record "${_ds}" "${_dn}" "${_du}" "${_pu}"; then
       [[ -n "${_why}" ]] && _PS_WHY="${_why}"
       _ok="${_ok/$'\n'"${_du}"$'\n'/$'\n'}"
       _ko="${_ko}${_du}"$'\n'
@@ -3223,6 +3231,8 @@ _ps_sites() {
       continue
     fi
     [[ "${_ok}" == *$'\n'"${_du}"$'\n'* ]] || _ok="${_ok}${_du}"$'\n'
+    # each record's login is tried once its user has passed G4 and G5
+    _PS_RECS="${_PS_RECS}${_du}|${_sp}|${_dn}"$'\n'
   done <<< "$(_rec_sites "${_ACCT}")"
   while IFS= read -r _u; do
     [[ -n "${_u}" ]] && _cand+=("${_u}")
@@ -3245,18 +3255,19 @@ _ps_sites() {
     fi
     _ps_rows "${_u}"
     case "$?" in
-      0)
-        # rows it gained since its record's login was tried were never proven
-        if [[ "${_PS_NOROW}" == *$'\n'"${_u}"$'\n'* ]]; then
-          _ps_kept "${_u}" "it changed while this ran"
-        else
-          _go+=("${_u}")
-          _sig+=("${_PS_SIG}")
-        fi
+      0) ;;
+      2) continue ;;
+      *)
+        _ps_kept "${_u}" "${_PS_WHY}"
+        continue
         ;;
-      2) ;;
-      *) _ps_kept "${_u}" "${_PS_WHY}" ;;
     esac
+    if ! _ps_proof "${_u}"; then
+      _ps_kept "${_u}" "${_PS_WHY}"
+      continue
+    fi
+    _go+=("${_u}")
+    _sig+=("${_PS_SIG}")
   done
   [[ "${#_go[@]}" -gt 0 ]] || return 0
   if ! _ps_base_lock; then
@@ -3408,30 +3419,35 @@ _ps_record() {
   [[ -z "${_PS_WHY}" ]]
 }
 
-# G3's last test, for the record of site $1 naming database $2 and user $3:
-# the password it records opens that database as that user, proven as a
-# switch proves a site's login (_scope_sites). A user with no row has
-# nothing to prove or drop: noted in _PS_NOROW, so a row it gains before
-# the drop keeps it. Into _PS_WHY when it fails.
+# G6 for user $1: every record of it (_PS_RECS) proven, the password each
+# records opening that record's database as that user, as a switch proves a
+# site's login (_scope_sites); one that is not keeps the user. No login is
+# tried while a row of the user carries a failed-login limit. The client
+# file stays root's: root's own client reads it, and the account's Unix
+# user may be gone already. Into _PS_WHY when it fails.
 _ps_proof() {
+  local _ru _sp _dn
   _PS_WHY=""
-  _user_hosts_hex "${3}"
-  if [[ -z "${_HOSTS_HEX}" ]]; then
-    _PS_NOROW="${_PS_NOROW}${3}"$'\n'
-    return 0
+  if _settle_flim "$(_hex "${1}")"; then
+    _PS_WHY="a row of it carries a failed-login limit, so no login is tried"
+    return 1
   fi
-  if ! _site_pw "${1}"; then
-    _PS_WHY="its site records no password for it"
-  elif ! _write_cnf "${3}"; then
-    # no client file is written with it, and no login tried
-    _PS_WHY="${_CNF_WHY}"
-  else
+  while IFS='|' read -r _ru _sp _dn; do
+    [[ -n "${_ru}" && "${_ru}" == "${1}" ]] || continue
+    if ! _site_pw "${_sp}"; then
+      _PS_WHY="its site records no password for it"
+    elif ! _write_cnf "${1}" root; then
+      # no client file is written with it, and no login tried
+      _PS_WHY="${_CNF_WHY}"
+    else
+      _PW=""
+      _prove "${1}" "${_dn}" || _PS_WHY="the login its site records was not proven on its database"
+      rm -f -- "${_CNF}"
+    fi
     _PW=""
-    _prove "${3}" "${2}" || _PS_WHY="the login its site records does not open its database"
-    rm -f -- "${_CNF}"
-  fi
-  _PW=""
-  [[ -z "${_PS_WHY}" ]]
+    [[ -z "${_PS_WHY}" ]] || return 1
+  done <<< "${_PS_RECS}"
+  return 0
 }
 
 # G4, and of G5 what the box-wide read holds (the logins that hold the user

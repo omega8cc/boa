@@ -1320,8 +1320,12 @@
       account's own records was enough before, and an account can write
       its records: it could have the purge drop a login no record of its
       own was ever given. A record with no password, one whose password
-      cannot be written to a client file, or a login that does not open
-      the database now keeps the user, named with why.
+      cannot be written to a client file, or a login not proven on the
+      database now keeps the user, named with why. The login is tried
+      last, once no other account claims the user and its rows would go,
+      and never while a row of it carries a failed-login limit, so a
+      record naming another account's login locks none of its rows; it
+      needs no Unix user of the account.
 
     * The account purge no longer ends its site users' step with nothing
       named when another run holds the baseline lock past the wait. That
@@ -1331,8 +1335,8 @@
 
     * The purge's alert after an incomplete broker call says what running
       boa-dbctl purge again does: it marks the account's registry entries,
-      and once the purge has removed the home it reads no site user, so a
-      site user the lines above name as kept or not dropped stays, to be
+      and once the purge has removed the home it reads no site user, so
+      every site user it did not say it dropped stays, named or not, to be
       dropped by hand once checked. It read as though the second run would
       finish them.
 

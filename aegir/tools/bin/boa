@@ -4038,9 +4038,11 @@ _purge_db_users_drop() {
 # switched or not: only those its records name exactly, each saved first,
 # which only this call reads, while those records are in place and nothing
 # of the account runs. Every line the broker answers is printed: what it
-# dropped, and each user it kept with why. A call run again later marks the
-# registry entries only: once the purge has removed the home it reads no
-# site user, so one this call kept or could not drop stays for an operator.
+# dropped, and each user it kept with why. A call that ends with an error
+# may have named none of them (it can stop before it reads them), so every
+# site user it did not say it dropped stays. A call run again later marks
+# the registry entries only: once the purge has removed the home it reads no
+# site user, so such a user stays for an operator.
 _purge_dbctl_mark() {
   local _out _rc
   if [ ! -x /usr/local/bin/boa-dbctl ]; then
@@ -4055,7 +4057,7 @@ _purge_dbctl_mark() {
   _rc=$?
   [ -n "${_out}" ] && printf '%s\n' "${_out}"
   [ "${_rc}" = "0" ] && return 0
-  echo "ALRT: the database broker's purge of ${1} did not finish: its registry entries may not be marked purged, and a site user the lines above name as kept or not dropped stays"
+  echo "ALRT: the database broker's purge of ${1} did not finish: its registry entries may not be marked purged, and its site users not said dropped above stay"
   echo "ALRT: run: boa-dbctl purge --account ${1} (it marks the registry entries; it reads no site user once the home is gone: drop such a user by hand once checked)"
   return 1
 }
