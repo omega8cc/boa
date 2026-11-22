@@ -4,6 +4,13 @@
 
 @=> New Features
 
+    * A site's /llms-full.txt, the full-text companion of llms.txt, is
+      served as /llms.txt is: a file of that name (or <host>.llms-full.txt)
+      in the site's files directory first, else the site itself, so a
+      module that generates it answers. It had no location of its own and
+      got Nginx's 404. Subdirectory sites the same; an instance's include
+      carries it once its server is verified on the new backend.
+
     * The site page of an upgraded Drupal 10+ site says how old its
       way-back copy is and what it uses on disk (files and database),
       measured once after the move; the copy is kept until the user
