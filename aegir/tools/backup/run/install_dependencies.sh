@@ -239,10 +239,16 @@ _pipx_install_pinned() {
 # schedule on a hosted box. And the backend deletes by name: it looks
 # each file's id up first, a download-class request B2 caps per day, so
 # a retention pass or cleanup on a capped account fails file by file and
-# leaves old chains holding storage. The pinned venv copy gets the
-# backend's _error_code hook and a _delete_list that deletes by version
-# id from one listing appended: marker-guarded (a copy that carries only
-# the first hook has it replaced), exact-pin gated, and the candidate is
+# leaves old chains holding storage. And the SDK sends any file over the
+# storage side's recommended part size (100 MB) as a large file in
+# parallel parts, so every 300 MiB volume is a start call, four parts and
+# a finish call, and one part the storage side refuses fails the whole
+# volume: runs gave up on 503 answers where a whole upload passes, and a
+# first full copy of a large store stopped completing. The pinned venv
+# copy gets the backend's _error_code hook, a _delete_list that deletes
+# by version id from one listing and a _put that sends each volume in one
+# request appended: marker-guarded (a copy that carries earlier blocks
+# alone has them replaced), exact-pin gated, and the candidate is
 # compile-checked before an atomic same-directory swap, so a failed
 # patch leaves the file as it was. Re-check the need at the next
 # duplicity pin bump.
@@ -253,15 +259,17 @@ _patch_duplicity_b2backend() {
   # path must cost a file read, not a duplicity --version subprocess
   _b2fLive="${_PIPX_VNV}/duplicity/lib/python${_PTN_MNR}/site-packages/duplicity/backends/b2backend.py"
   [ -f "${_b2fLive}" ] || return 0
-  if grep -q "BOA-b2-delete-list" "${_b2fLive}"; then
+  # the newest block's own marker line, never the word alone: a line of
+  # the stock part that happens to hold it must not read as patched
+  if grep -q "^# BOA-b2-one-request:" "${_b2fLive}"; then
     return 0
   fi
   _dcyLive=$(/usr/local/bin/duplicity --version 2>&1)
   [[ "${_dcyLive}" =~ "duplicity ${_DCY_VRN} " ]] || return 0
   _b2fTemp="${_b2fLive%.py}_boapatch$$.py"
   cp -af "${_b2fLive}" "${_b2fTemp}" || return 0
-  # a copy patched before carries the first hook alone, appended at its
-  # end: that block goes, the whole block below replaces it
+  # a copy patched before carries the earlier blocks alone, appended at
+  # its end: they go, the whole block below replaces them
   if grep -q "^# BOA-b2-error-code:" "${_b2fTemp}"; then
     sed -i '/^# BOA-b2-error-code:/,$d' "${_b2fTemp}" || { rm -f "${_b2fTemp}"; return 0; }
   fi
@@ -319,12 +327,39 @@ def _boa_b2_delete_list(self, filename_list):
 
 
 B2Backend._delete_list = _boa_b2_delete_list
+
+
+# BOA-b2-one-request: each volume goes up in one upload request. Left to
+# itself the SDK sends any file over the storage side's recommended part
+# size (100 MB) as a large file in parallel parts: a start call, the parts
+# and a finish call per 300 MiB volume, and one part the storage side
+# refuses fails the whole volume. A minimum part size above the volume
+# makes the SDK send it whole; a larger file (the signatures of a big
+# full) still goes in parts, of that size.
+_BOA_B2_ONE_REQUEST = 536870912
+
+
+def _boa_b2_put(self, source_path, remote_filename):
+    log.Log(
+        f"Put: {os.fsdecode(source_path.name)} -> {self.path + os.fsdecode(remote_filename)}",
+        log.INFO,
+    )
+    self.bucket.upload_local_file(
+        os.fsdecode(source_path.name),
+        quote_plus(self.path + os.fsdecode(remote_filename), "/"),
+        content_type="application/pgp-encrypted",
+        progress_listener=B2ProgressListener(),
+        min_part_size=_BOA_B2_ONE_REQUEST,
+    )
+
+
+B2Backend._put = _boa_b2_put
 B2NOTFOUND
   if "${_PIPX_VNV}/duplicity/bin/python" -m py_compile "${_b2fTemp}" 2>/dev/null; then
     chmod 644 "${_b2fTemp}"
     mv -f "${_b2fTemp}" "${_b2fLive}"
     find "${_b2fLive%/*}/__pycache__" -name "b2backend*" -delete 2>/dev/null
-    echo "Patched duplicity b2backend: deletions by version id, missing files no longer burn spaced retries"
+    echo "Patched duplicity b2backend: one request a volume, deletions by version id, missing files no longer burn spaced retries"
   else
     rm -f "${_b2fTemp}"
     echo "NOTE: duplicity b2backend patch did not compile; stock file left in place"
