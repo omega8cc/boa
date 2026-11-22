@@ -152,7 +152,7 @@ s/(( -u ?|--user[= ])[^: ]+:)[^ ]+/\1***/g
 \%(^|[ /])(mydumper|myloader|sshpass)(\.bin)?( |$)% s/( -p) [^ -][^ ]*/\1 ***/
 \%(^|[ /])redis-cli( |$)% s/( -a) [^ ]+/\1 ***/g
 \%(^|[ /])pt-[a-z-]+( |$)% s/([ ,]p=)[^, ]+/\1***/g
-\%(^|[ /])(drush[0-9]*|drush\.php|vdrush)( |$)% s/( (user:password|user-password|upwd)( +-[^ ]+)* +[^ -][^ ]*( +-[^ ]+)* +)[^ -][^ ]*/\1***/
+\%(^|[ /])(drush[0-9]*|drush\.php|vdrush|dr)( |$)% s/( (user:password|user-password|upwd)( +-[^ ]+)* +[^ -][^ ]*( +-[^ ]+)* +)[^ -][^ ]*/\1***/
 s/(IDENTIFIED( |\\[ntr])+(WITH [^ ]+( |\\[ntr])+)?(BY|AS)( |\\[ntr])+(PASSWORD( |\\[ntr])+)?|PASSWORD *(FOR [^=]+)?=( |\\[ntr])*|PASSWORD *\( *|PASSWORD +|REPLACE )'([^'\\]|''|\\\\.|\\.)*('|$)/\1'***'/Ig
 s/(IDENTIFIED( |\\[ntr])+(WITH [^ ]+( |\\[ntr])+)?(BY|AS)( |\\[ntr])+(PASSWORD( |\\[ntr])+)?|PASSWORD *(FOR [^=]+)?=( |\\[ntr])*|PASSWORD *\( *|PASSWORD +|REPLACE )"([^"\\]|""|\\\\.|\\.)*("|$)/\1"***"/Ig
 EOF

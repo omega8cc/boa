@@ -4,6 +4,18 @@
 
 @=> New Features
 
+    * Site owners run core's dr, the command line of Drupal 11.5 and newer
+      with Drush 15's commands, in their shell: dr --url=<site> <command>
+      from the codebase's root or its docroot while the platform is
+      unlocked, as vdrush runs an older site-local Drush. websh starts
+      Composer's vendor/bin/dr on the command-line PHP the account chose,
+      and names the site folder of --url for it, which dr needs and does
+      not take from --url alone; a --url the codebase has no folder for
+      says so and starts dr with no site. dr's commands that run code, its
+      installer and its server are refused as Drush's are. The platform
+      developer logins get dr in their Drush window too, and checkmyperms
+      names it for a Drush 15 platform.
+
     * Every server of a move now guards its disk against its binary log
       and the night database dump: the source and its standby while the
       move or mirror stands, the old source after its cutover (whose log
@@ -338,6 +350,16 @@
       _USE_CONTAINER_GUARD=NO turns it off.
 
 @=> Security
+
+    * websh refuses a Drush command word given abbreviated or in another
+      case, which Drush 9 and newer resolve as the full name, on every
+      Drush but BOA's Drush 8, which takes a word only as named.
+
+    * websh drops a PHP_INI_SCAN_DIR its caller exported, as it drops
+      PHPRC: no php it starts reads a folder of inis the caller chose.
+
+    * The incident snapshot masks a password given to dr's user:password,
+      as it does for Drush's.
 
     * No PHP-FPM pool captures its workers' output any more, on any PHP
       version. With catch_workers_output on, the master's cleanup of the

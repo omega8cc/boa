@@ -204,6 +204,15 @@ _grp_set_is() {
 # Aegir backend, root and the instance users are not tenants and keep
 # everything.
 _DRUSH_REFUSED_CMDS="archive-restore arr core-config conf config core-execute exec execute core-quick-drupal qd ev eval php-eval php php-cli core-cli php-script scr rs runserver sha shell-alias si site-install sql-create ssh site-ssh sup site-upgrade xstatus redis-flush pm-updatecode upc"
+# The same commands as Symfony console names them (Drush 9 and newer, with
+# their aliases there), and core's dr's own installer and server, for dr
+# alone: under Drush 9 to 13 install and in are pm:install's aliases. A
+# Symfony console runs a command word it is given abbreviated, part by part,
+# and in any case (php:ev and PHP:EVAL run php:eval): a word that can name
+# one of these that way, or one of the list above, is refused (E), whatever
+# else it could also name (_drush_word_abbrev).
+_DRUSH_REFUSED_SYMFONY="archive:restore core:config core:execute core:quick-drupal php:eval php:cli core:cli php:script runserver serve site:install sin sql:create site:ssh site:upgrade pm:updatecode"
+_DRUSH_REFUSED_DR="install quick-start server"
 _DR_WHY=""
 # what dash reads as a boundary between simple commands (a pipe, the list
 # separators, subshell parentheses, a backtick, a newline) and the three
@@ -368,6 +377,101 @@ _drush_launcher() {
   _LA_RM="${_LA_PATH//\//\\/}"
   return 0
 }
+# Core's dr (Drupal 11.5 and newer, with Drush 15's commands): a line that
+# leads with Composer's vendor/bin/dr (the dr alias of the shell policy), read
+# like a launcher line: an optional "set -m;", a leading "cd DIR &&" (kept in
+# _DRL_CD), leading NAME=value words (kept in _DRL_PRE; for a tenant every one
+# but lshell's noexec prefix and the site folder is refused at the exec site,
+# F), an exec, then the path and the arguments as typed. core/scripts/dr run
+# directly looks for vendor/ beside the docroot and dies where the build keeps
+# vendor/ above it, so only Composer's proxy is launched. A php named in front
+# is not read here: an interpreter by name is a [grp:ltd-shell-more] line.
+_DRL_PATH=""; _DRL_REST=""; _DRL_PRE=""; _DRL_CD=""
+_RE_LADR="('?([^[:space:]']*vendor/bin/dr)'?)([[:space:]]+(.*))?\$"
+_dr_launcher() {
+  [[ $'\xc3\xa9' == ? ]] && local LC_ALL=C
+  local _s="$1"
+  _DRL_PATH=""; _DRL_REST=""; _DRL_PRE=""; _DRL_CD=""
+  if [[ "${_s}" =~ ${_RE_SETM} ]]; then
+    _s="${_s#"${BASH_REMATCH[0]}"}"
+  fi
+  if [[ "${_s}" =~ ${_RE_CD} ]]; then
+    _DRL_CD="${BASH_REMATCH[0]}"
+    _s="${_s#"${_DRL_CD}"}"
+  fi
+  while [[ "${_s}" =~ ${_RE_ASSIGN} ]]; do
+    _DRL_PRE+="${BASH_REMATCH[0]}"
+    _s="${_s#"${BASH_REMATCH[0]}"}"
+  done
+  if [[ "${_s}" =~ ^[[:space:]]*exec[[:space:]]+ ]]; then
+    _s="${_s#"${BASH_REMATCH[0]}"}"
+  fi
+  _s="${_s#"${_s%%[![:space:]]*}"}"
+  if [[ "${_s}" =~ ^${_RE_LADR} ]] && _quotes_balance "${BASH_REMATCH[1]}"; then
+    _DRL_PATH="${BASH_REMATCH[2]}"
+    _DRL_REST="${BASH_REMATCH[4]}"
+    return 0
+  fi
+  _DRL_PRE=""; _DRL_CD=""
+  return 1
+}
+# The site core's dr boots. It takes it from DRUPAL_DEV_SITE_PATH alone: its
+# --url names the host for links, and with --url alone it reads
+# sites/default, where a BOA site never is, and answers 'Command ... is not
+# defined'. So the host of --url (a scheme, a path, a port dropped) becomes
+# sites/<host> when the codebase has that folder: _DRL_SITE, set on the exec
+# line for dr alone. A --url naming no such folder leaves it unset, with a
+# note (_DRL_NOTE). The codebase is the app root holding vendor/bin/dr, found
+# from the working directory a "cd DIR &&" moves; the docroot is its web/,
+# docroot/ or html/, or the app root itself, whichever holds core.
+_DRL_SITE=""; _DRL_NOTE=""
+_dr_site() {
+  [[ $'\xc3\xa9' == ? ]] && local LC_ALL=C
+  local _ws _w _next=NO _u="" _h _app _base _doc="" _d
+  _DRL_SITE=""; _DRL_NOTE=""
+  # the last --url before a --, as the console reads a repeated option
+  read -r -a _ws <<< "${_DRL_REST}"
+  for _w in "${_ws[@]}"; do
+    if [ "${_next}" = "YES" ]; then
+      _u="${_w}"
+      _next=NO
+      continue
+    fi
+    case "${_w}" in
+      --url=*) _u="${_w#--url=}" ;;
+      --url) _next=YES ;;
+      --) break ;;
+    esac
+  done
+  [ -n "${_u}" ] || return 0
+  _h="${_u#*://}"
+  _h="${_h%%/*}"
+  _h="${_h%%:*}"
+  _h="${_h,,}"
+  if ! [[ "${_h}" =~ ^[a-z0-9][a-z0-9.-]*$ ]] || [[ "${_h}" == *..* ]]; then
+    _DRL_NOTE="--url names no site folder; dr starts with no site"
+    return 0
+  fi
+  _base=$(pwd -P 2> /dev/null)
+  if _cd_dir_of "${_DRL_CD}"; then
+    _base=$(cd -- "${_CDD/#\~/${HOME}}" 2> /dev/null && pwd -P) || _base=$(pwd -P 2> /dev/null)
+  fi
+  _app="${_DRL_PATH%vendor/bin/dr}"
+  _app="${_app%/}"
+  [ -n "${_app}" ] || _app="."
+  [[ "${_app}" == /* ]] || _app="${_base}/${_app}"
+  for _d in "${_app}/web" "${_app}/docroot" "${_app}/html" "${_app}"; do
+    if [ -f "${_d}/core/lib/Drupal.php" ]; then
+      _doc="${_d}"
+      break
+    fi
+  done
+  if [ -n "${_doc}" ] && [ -d "${_doc}/sites/${_h}" ]; then
+    _DRL_SITE="sites/${_h}"
+  else
+    _DRL_NOTE="this codebase has no site folder sites/${_h}; dr starts with no site"
+  fi
+}
 # The composer line, the same way: the leading word after an optional
 # "set -m;", a leading "cd DIR &&" and NAME=value words, the arguments as
 # typed. The branch this replaces stripped "composer " everywhere with sed
@@ -491,6 +595,24 @@ _drush_cmd_word() {
     esac
   done
   return 1
+}
+# True when Symfony console would resolve the typed command word $1 to the
+# command name $2 (Application::find's abbreviation rule): each colon part
+# of $1 starts the part of $2 at the same place, in any case, and $2 may
+# have more parts. Compared as literal strings, never as a pattern built
+# from the typed word.
+_drush_word_abbrev() {
+  local _t="${1,,}" _n="${2,,}" _tp _np
+  [ -n "${_t}" ] || return 1
+  while :; do
+    _tp="${_t%%:*}"
+    _np="${_n%%:*}"
+    [[ "${_np}" == "${_tp}"* ]] || return 1
+    [[ "${_t}" == *:* ]] || return 0
+    [[ "${_n}" == *:* ]] || return 1
+    _t="${_t#*:}"
+    _n="${_n#*:}"
+  done
 }
 # Drush 8 on a Drupal 8+ codebase (G): it bootstraps a LOCKED platform for
 # read-only work -- the control panel's own login links on Drupal 8+ come
@@ -630,7 +752,7 @@ _drush_refused() {
 }
 _drush_refused_read() {
   [[ $'\xc3\xa9' == ? ]] && local LC_ALL=C
-  local _seg _w1 _w2 _rest _cw _f _n _env _again _pini _d8 _cd _wn _wp _dur _o _ov _orest
+  local _seg _w1 _w2 _rest _cw _f _n _env _again _pini _d8 _cd _wn _wp _dur _o _ov _orest _isdr _fl
   _DR_WHY=""
   _GD_DOC=""
   _GD_CWD=$(pwd -P 2> /dev/null)
@@ -649,6 +771,12 @@ _drush_refused_read() {
         _n="${_n#"${_n%%[![:space:]]*}"}"
         case "${_n%%=*}" in
           LD_PRELOAD) case "${_n#*=}" in *sudo_noexec.so*) ;; *) _env=YES ;; esac ;;
+          # the one site folder core's dr reads (websh sets it from --url,
+          # _dr_site): a sites/<name> folder of the codebase, nothing else
+          DRUPAL_DEV_SITE_PATH)
+            [[ "${_n#*=}" =~ ^sites/[A-Za-z0-9][A-Za-z0-9._-]*[[:space:]]*$ ]] \
+              && [[ "${_n#*=}" != *..* ]] || _env=YES
+            ;;
           *) _env=YES ;;
         esac
         _again=YES
@@ -708,8 +836,12 @@ _drush_refused_read() {
     fi
     _d8=NO
     _d8_launcher "${_w1}" && _d8=YES
+    _isdr=NO
+    [ "${_w1##*/}" = "dr" ] && _isdr=YES
     case "${_w1##*/}" in
-      drush|drush8|drush10|drush11|vdrush|drush.php)
+      # dr: core's console with Drush 15's commands (vendor/bin/dr,
+      # core/scripts/dr), the same rules as a site-local Drush
+      drush|drush8|drush10|drush11|vdrush|drush.php|dr)
         _rest="${_w2} ${_rest}"
         ;;
       php|php[0-9][0-9])
@@ -732,8 +864,9 @@ _drush_refused_read() {
         else
           _d8_launcher "./${_w2}" && _d8=YES
         fi
+        [ "${_w2##*/}" = "dr" ] && _isdr=YES
         case "${_w2##*/}" in
-          drush|drush8|drush10|drush11|drush.php)
+          drush|drush8|drush10|drush11|drush.php|dr)
             if [ "${_pini}" = "YES" ] && ! _in_composer_run; then _DR_WHY=F; return 0; fi
             ;;
           *)
@@ -757,8 +890,23 @@ _drush_refused_read() {
       return 0
     fi
     _cw=$(_drush_cmd_word "${_rest}")
-    _cw="${_cw//:/-}"
     [ -n "${_cw}" ] || continue
+    # abbreviated or in another case, as a Symfony console resolves it:
+    # Drush 9 and newer (a codebase's own, by any name: vendor/bin/drush is
+    # one) and core's dr. Drush 8 takes a command word only as it is named
+    # (its own short words, up among them, are commands), so BOA's Drush 8,
+    # told by where it lives (_d8_launcher), keeps the exact rule below.
+    if [ "${_d8}" = "NO" ]; then
+      _fl="${_DRUSH_REFUSED_CMDS} ${_DRUSH_REFUSED_SYMFONY}"
+      [ "${_isdr}" = "YES" ] && _fl+=" ${_DRUSH_REFUSED_DR}"
+      for _f in ${_fl}; do
+        if _drush_word_abbrev "${_cw}" "${_f}"; then
+          _DR_WHY=E
+          return 0
+        fi
+      done
+    fi
+    _cw="${_cw//:/-}"
     for _f in ${_DRUSH_REFUSED_CMDS}; do
       if [ "${_cw}" = "${_f}" ]; then
         _DR_WHY=E
@@ -820,7 +968,22 @@ _drush_refused_say() {
       && [[ "${_LTD_UID}" != *.ftp ]]; then
       _vnd=""
     fi
-    if [ -n "${_vnd}" ]; then
+    # Drush 15 has no drush.php and runs under core's dr. The lock keeps its
+    # vendor/drush open (Composer loads a file from it) and closes a Drush
+    # below 15 to its owner, so an open vendor/drush with no drush.php and a
+    # vendor/bin/dr is a Drush 15 codebase.
+    if [ -n "${_vnd}" ] && [ -x "${_vnd}/vendor/drush" ] \
+      && [ ! -e "${_vnd}/vendor/drush/drush/drush.php" ] && [ -f "${_vnd}/vendor/bin/dr" ]; then
+      echo " Anything that changes the site runs through core's dr (Drush 15),"
+      echo " from ${_vnd} while the platform is unlocked:"
+      echo "   dr --url=<site> <command>"
+      if [ -d "${_app}/vendor/drush" ]; then
+        echo " Unlock: the platform's Unlock Local Drush task in the control panel, or"
+        echo " on a developer login: touch ~/.tmp/drush-window.request"
+      else
+        echo " Unlock: the platform's Unlock Local Drush task in the control panel."
+      fi
+    elif [ -n "${_vnd}" ]; then
       echo " Anything that changes the site runs through the platform's own Drush,"
       echo " from ${_vnd} while the platform is unlocked:"
       echo "   vdrush @alias <command>"
@@ -874,9 +1037,9 @@ _runs_drush() {
     done
     read -r _w1 _w2 _rest <<< "${_seg}"
     case "${_w1##*/}" in
-      drush|drush8|drush10|drush11|vdrush|drush.php) return 0 ;;
+      drush|drush8|drush10|drush11|vdrush|drush.php|dr) return 0 ;;
     esac
-    _php_word "${_w1}" && [[ "${_w2##*/}" == "drush.php" ]] && return 0
+    _php_word "${_w1}" && [[ "${_w2##*/}" == "drush.php" || "${_w2##*/}" == "dr" ]] && return 0
   done < <(_drush_segments "$1"; [[ "$1" == *$'\n'* ]] && _drush_segments "$1" "" join)
   return 1
 }
@@ -1316,10 +1479,13 @@ fi
 ### echo "_ARGS is ${_ARGS}"
 
 # Every php loads the ini its binary was built for, /opt/phpNN/lib/php.ini,
-# unless PHPRC names another. websh sets none, and one inherited from the
-# caller is dropped here, ahead of every route below (the fast lane
-# included): a php started for a line never loads another version's ini.
+# unless PHPRC names another, and the extra inis of the folder it was built
+# to scan, unless PHP_INI_SCAN_DIR names another. websh sets neither, and one
+# inherited from the caller is dropped here, ahead of every route below (the
+# fast lane included): a php started for a line never loads another
+# version's ini, nor a folder of inis its caller chose.
 unset PHPRC
+unset PHP_INI_SCAN_DIR
 
 # The account the Drush rules resolve an @alias for (_d8plus_target), read
 # ahead of the fast lane below, which applies them too.
@@ -1486,6 +1652,16 @@ fi
 _C_ARR=
 if _composer_lead "${_ARGS}"; then
   _C_ARR=("${_CO_REST}")
+fi
+
+# Core's dr for a tenant (_dr_launcher): launched below on the PHP websh
+# selects for the codebase, as vdrush is, with the site folder of its --url.
+# The backend and root lines are left as they are: provision runs dr itself,
+# with its own interpreter, ini and site folder (exec '<php>' -c '<ini>'
+# '<app root>/vendor/bin/dr' ...).
+_DRL_GO=""
+if _is_tenant && [ -z "${_ARR}" ] && [ -z "${_C_ARR}" ] && _dr_launcher "${_ARGS}"; then
+  _DRL_GO=YES
 fi
 
 # The alias listing is filtered for every identity that reaches drush here
@@ -2905,7 +3081,11 @@ if _grp_set_is "users www-data" \
       echo
       exit 1
     fi
+    # a tenant's dr line (_DRL_GO) is launched below like a drush line: a
+    # developer login, whose name does not end in .ftp, would otherwise meet
+    # the path gate with a relative vendor/bin/dr and end with nothing run
     if [[ ${_LTD_UID} == *.ftp ]] \
+      || [ "${_DRL_GO}" = "YES" ] \
       || [[ "${2}" =~ "drush" ]] \
       || [[ "${2}" =~ "mysql " ]]; then
       _IN_PATH=YES
@@ -3441,6 +3621,24 @@ if _grp_set_is "users www-data" \
       || [ "$0" = "/opt/local/bin/websh" ] \
       || [ "$0" = "/bin/websh" ]; then
       if [ -x "/bin/dash" ]; then
+        if [ "${_DRL_GO}" = "YES" ]; then
+          # core's dr (_dr_launcher above): the codebase's PHP and its floor
+          # as for vdrush (_cpp_before_exec), the site folder of --url on the
+          # exec line alone, and the tenant rules on the final line
+          # (_exec_dash_c). An inherited site folder never reaches it.
+          unset DRUPAL_DEV_SITE_PATH
+          _dr_site
+          [ -n "${_DRL_NOTE}" ] && echo "NOTE: ${_DRL_NOTE}" >&2
+          _DRL_ENV=""
+          if [ -n "${_DRL_SITE}" ] && [[ "${_DRL_PRE}" != *DRUPAL_DEV_SITE_PATH=* ]]; then
+            _DRL_ENV="DRUPAL_DEV_SITE_PATH=${_DRL_SITE} "
+          fi
+          _ARR="${_DRL_REST}"
+          _LA_CD="${_DRL_CD}"
+          _cpp_before_exec drush
+          _exec_dash_c "${_DRL_CD}${_DRL_PRE}${_DRL_ENV}${DRUSH_PHP} ${_DRL_PATH} ${_DRL_REST}"
+          exit 0
+        fi
         if [ ! -z "${_ARR}" ] && [ -z "${_OCTO_SYS_ARR}" ]; then
           _DEST_DRUSH=${_DEST_DRUSH//\\/}
           ### echo EXD 1 DRUSH_PHP is ${DRUSH_PHP}

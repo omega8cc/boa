@@ -3186,7 +3186,7 @@ _disable_chattr() {
 # to the main login with them.
 _LTD_PLATFORM_SUFFIX="-dev"
 _LTD_PLATFORM_WINDOW_MIN=60
-_LTD_PLATFORM_TOOLS="'composer', 'drush', 'drush10', 'drush11', 'drush8', 'vdrush', 'vendor/drush/drush/drush.php'"
+_LTD_PLATFORM_TOOLS="'composer', 'dr', 'drush', 'drush10', 'drush11', 'drush8', 'vdrush', 'vendor/bin/dr', 'vendor/drush/drush/drush.php'"
 # The self-check the account keeps with or without a granted platform: a
 # developer whose every platform was refused is the one who needs it most.
 # On `allowed` only: it runs builtins alone, so lshell's noexec layer stays on.
@@ -3406,6 +3406,11 @@ _ltd_platform_locked() {
   fi
   return 0
 }
+# Drush 15 ships no drush.php: core's dr, through Composer's vendor/bin/dr
+# proxy, runs a site's commands, the site named by --url. $1 = app root.
+_ltd_platform_dr() {
+  [ ! -e "${1}/vendor/drush/drush/drush.php" ] && [ -f "${1}/vendor/bin/dr" ]
+}
 _ltd_platform_task() {
   local _verb="${1}"
   local _alias="${2}"
@@ -3547,10 +3552,16 @@ then, within three minutes:
   cd ~/platforms/<name>
   vdrush @<alias> <command>
 
-(drush11 aliases lists the alias names). Touch it again to extend. While a
-platform is unlocked Drush 8 cannot run on it, control-panel tasks on its
-sites can fail, and a site Verify re-locks it (reopened within three
-minutes); at expiry every platform is locked again.
+(drush11 aliases lists the alias names). Drush 15 has no vdrush: on such a
+platform, in the same window, name the site by its address:
+
+  cd ~/platforms/<name>
+  dr --url=<site> <command>
+
+Touch the request file again to extend. While a platform is unlocked Drush 8
+cannot run on it, control-panel tasks on its sites can fail, and a site
+Verify re-locks it (reopened within three minutes); at expiry every platform
+is locked again.
 https://docs.boa.io/using/connecting/extra-accounts
 EOF
 )" )
@@ -4020,10 +4031,10 @@ _ltd_platform_report() {
   if [ -s "${_state}" ] \
     && [ -n "$(find "${_state}" -maxdepth 0 -mmin -${_LTD_PLATFORM_WINDOW_MIN} 2>/dev/null)" ]; then
     echo "Drush window: OPEN until $(date -d "@$(( $(stat -c %Y "${_state}") + _LTD_PLATFORM_WINDOW_MIN * 60 ))" '+%H:%M %Z')."
-    echo "  Drupal 8+ platforms are unlocked: vdrush works, Drush 8 does not."
+    echo "  Drupal 8+ platforms are unlocked: vdrush (dr on Drush 15) works, Drush 8 does not."
   else
     echo "Drush window: closed. Drupal 8+ platforms are locked: Drush 8 answers"
-    echo "  read-only commands (uli, status). To unlock them for vdrush for"
+    echo "  read-only commands (uli, status). To unlock them for vdrush or dr for"
     echo "  ${_LTD_PLATFORM_WINDOW_MIN} minutes: touch ~/.tmp/drush-window.request (applied within three minutes)."
   fi
   echo
@@ -4045,7 +4056,10 @@ _ltd_platform_report() {
     echo "  $(_ltd_status_safe "$(basename "$(dirname "${_root}")")-$(basename "${_root}")"): ${_lbl}${_lock}"
     _sites=$(_ltd_platform_sites "${_root}" "${_cdir}")
     for _s in ${_sites}; do
-      if [ -f "${_doc}/core/lib/Drupal.php" ] && [ -d "${_root}/vendor/drush" ]; then
+      if [ -f "${_doc}/core/lib/Drupal.php" ] && [ -d "${_root}/vendor/drush" ] \
+        && _ltd_platform_dr "${_root}"; then
+        echo "    $(_ltd_status_safe "${_s}")  (dr --url=$(_ltd_status_safe "${_s}"))"
+      elif [ -f "${_doc}/core/lib/Drupal.php" ] && [ -d "${_root}/vendor/drush" ]; then
         echo "    $(_ltd_status_safe "${_s}")  (vdrush @$(_ltd_status_safe "$(_ltd_modern_alias "${_s}")"))"
       else
         echo "    $(_ltd_status_safe "${_s}")"
@@ -4096,6 +4110,8 @@ _ltd_platform_report() {
   echo "                         read-only commands only)"
   echo "  Drupal 8+, any change: open the window, then"
   echo "                         cd ~/platforms/<name> && vdrush @<alias> <command>"
+  echo "  Drupal 8+ on Drush 15: open the window, then"
+  echo "                         cd ~/platforms/<name> && dr --url=<site> <command>"
   for _root in ${_granted}; do
     echo "#grant ${_root}"
   done
@@ -8651,9 +8667,9 @@ _ltd_moved_intro() {
 # over SSH kept dumping that copy, without an error, after its account moved.
 # Refused now, it fails at once. The home and its file tools stay.
 _ltd_moved_tools() {
-  echo "allowed : - ['bee', 'bower', 'bzr', 'checkmyperms', 'composer', 'cvs', 'drush', 'drush8', 'drush10', 'drush11', 'grav', 'grunt', 'guard', 'gulp', 'mybackup', 'mydumper', 'myloader', 'mysql', 'mysqldump', 'node', 'npm', 'npx', 'openssl', 's4cmd', 'sqlmagic', 'ssh', 'svn', 'vdrush', 'vendor/drush/drush/drush.php']"
-  echo "allowed_shell_escape : - ['bee', 'bower', 'composer', 'drush', 'drush8', 'drush10', 'drush11', 'grav', 'grunt', 'guard', 'gulp', 'mybackup', 'mysql', 'mysqldump', 'node', 'npm', 'npx', 'scp', 'sqlmagic', 'ssh', 'vdrush', 'vendor/drush/drush/drush.php']"
-  echo "overssh : - ['bee', 'composer', 'drush', 'drush8', 'drush10', 'drush11', 'grav', 'mydumper', 'myloader', 'mysql', 'mysqldump', 'vdrush', 'vendor/drush/drush/drush.php']"
+  echo "allowed : - ['bee', 'bower', 'bzr', 'checkmyperms', 'composer', 'cvs', 'dr', 'drush', 'drush8', 'drush10', 'drush11', 'grav', 'grunt', 'guard', 'gulp', 'mybackup', 'mydumper', 'myloader', 'mysql', 'mysqldump', 'node', 'npm', 'npx', 'openssl', 's4cmd', 'sqlmagic', 'ssh', 'svn', 'vdrush', 'vendor/bin/dr', 'vendor/drush/drush/drush.php']"
+  echo "allowed_shell_escape : - ['bee', 'bower', 'composer', 'dr', 'drush', 'drush8', 'drush10', 'drush11', 'grav', 'grunt', 'guard', 'gulp', 'mybackup', 'mysql', 'mysqldump', 'node', 'npm', 'npx', 'scp', 'sqlmagic', 'ssh', 'vdrush', 'vendor/bin/dr', 'vendor/drush/drush/drush.php']"
+  echo "overssh : - ['bee', 'composer', 'dr', 'drush', 'drush8', 'drush10', 'drush11', 'grav', 'mydumper', 'myloader', 'mysql', 'mysqldump', 'vdrush', 'vendor/bin/dr', 'vendor/drush/drush/drush.php']"
 }
 
 # A moved account's logins on the server it moved from. Once a migration has
