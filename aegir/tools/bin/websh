@@ -211,7 +211,7 @@ _DRUSH_REFUSED_CMDS="archive-restore arr core-config conf config core-execute ex
 # and in any case (php:ev and PHP:EVAL run php:eval): a word that can name
 # one of these that way, or one of the list above, is refused (E), whatever
 # else it could also name (_drush_word_abbrev).
-_DRUSH_REFUSED_SYMFONY="archive:restore core:config core:execute core:quick-drupal php:eval php:cli core:cli php:script runserver serve site:install sin sql:create site:ssh site:upgrade pm:updatecode"
+_DRUSH_REFUSED_SYMFONY="archive:restore core:edit core-edit core:execute core:quick-drupal php:eval php:cli core:cli php:script runserver serve site:install sin sql:create site:ssh site:upgrade pm:updatecode"
 _DRUSH_REFUSED_DR="install quick-start server"
 _DR_WHY=""
 # what dash reads as a boundary between simple commands (a pipe, the list
@@ -427,21 +427,31 @@ _dr_launcher() {
 _DRL_SITE=""; _DRL_NOTE=""; _DRL_HINT=""
 _dr_site() {
   [[ $'\xc3\xa9' == ? ]] && local LC_ALL=C
-  local _ws _w _next=NO _u="" _h _app _base _doc="" _d
+  local _ws _w _next=NO _u="" _h _app _base _doc="" _d _last
   _DRL_SITE=""; _DRL_NOTE=""; _DRL_HINT=""
-  # the last --url before a --, as the console reads a repeated option
+  # the last --url before a --, as the console reads a repeated option,
+  # among dr's own words: a shell operator ends them (a later command's
+  # --url is not dr's), and a word's quotes come off as the shell takes them
   read -r -a _ws <<< "${_DRL_REST}"
   for _w in "${_ws[@]}"; do
-    if [ "${_next}" = "YES" ]; then
-      _u="${_w}"
-      _next=NO
-      continue
+    _last=NO
+    if [[ "${_w}" == *[\;\&\|]* ]]; then
+      _w="${_w%%[;&|]*}"
+      _last=YES
     fi
-    case "${_w}" in
-      --url=*) _u="${_w#--url=}" ;;
-      --url) _next=YES ;;
-      --) break ;;
-    esac
+    _w="${_w//\'/}"
+    _w="${_w//\"/}"
+    if [ "${_next}" = "YES" ]; then
+      [ -n "${_w}" ] && _u="${_w}"
+      _next=NO
+    else
+      case "${_w}" in
+        --url=*) _u="${_w#--url=}" ;;
+        --url) _next=YES ;;
+        --) break ;;
+      esac
+    fi
+    [ "${_last}" = "YES" ] && break
   done
   [ -n "${_u}" ] || return 0
   _h="${_u#*://}"
@@ -583,22 +593,72 @@ _drush_cmd_word() {
   # 8's -c -i -l -r -u; the long forms drush 10/11 accept with a space) or
   # a redirection (a bare operator takes the next word with it). read -a
   # splits on whitespace without expanding anything.
-  local _ws _w _skip=NO
+  # With $2 (d8: BOA's Drush 8, sym: Drush 9 to 13, dr: core's dr) every
+  # word the runner could take as its command, in order, up to the first
+  # that can be nothing else. A Symfony console skips an option's next word
+  # only when it is that option's last value (a repeated option gives an
+  # earlier value up as the command), and run leniently (Drush's
+  # --strict=0) skips none; so each value word is printed. A Drush reads
+  # its first word as the site when it has a site's form (a /path#uri,
+  # user@host/path or #uri spec; Drush 8 a comma list too), so such a word
+  # is printed with the next. A Symfony console's own value
+  # options count as well: dr's --url, -e and --env, Drush's --strict and
+  # --drush-coverage, and a short option cluster that ends in one (dr -ne,
+  # Drush -yl and -yr).
+  local _ws _w _skip=NO _out="" _site=NO
   read -r -a _ws <<< "$1"
   for _w in "${_ws[@]}"; do
-    if [ "${_skip}" = "YES" ]; then
+    if [ "${_skip}" = "RED" ]; then
       _skip=NO
       continue
     fi
+    if [ "${_skip}" = "VAL" ]; then
+      _skip=NO
+      case "${2:-}" in
+        sym|dr)
+          # a console takes no option word as a value: it is read as one
+          if [[ "${_w}" != -* ]]; then
+            _out+="${_w} "
+            continue
+          fi
+          ;;
+        *) continue ;;
+      esac
+    fi
     case "${_w}" in
-      @*|'{'|'}') ;;
-      -c|-i|-l|-r|-u|--uri|--root|--user|--php|--php-options|--config|--include|--early|--alias-path|--define) _skip=YES ;;
+      @*) _site=YES ;;
+      '{'|'}') ;;
+      -c|-i|-l|-r|-u|--uri|--root|--user|--php|--php-options|--config|--include|--early|--alias-path|--define) _skip=VAL ;;
+      --url|-e|--env) [ "${2:-}" = "dr" ] && _skip=VAL ;;
+      --strict|--drush-coverage) [ "${2:-}" = "sym" ] && _skip=VAL ;;
+      -[A-Za-z]*)
+        if [[ "${_w}" =~ ^-[A-Za-z]+$ ]]; then
+          case "${2:-}:${_w: -1}" in
+            dr:e|sym:l|sym:r) _skip=VAL ;;
+          esac
+        fi
+        ;;
       -*) ;;
-      '>'|'>>'|'<'|'<>'|'>&'|'<&'|[0-9]'>'|[0-9]'>>'|[0-9]'<'|[0-9]'<>'|[0-9]'>&'|[0-9]'<&') _skip=YES ;;
+      '>'|'>>'|'<'|'<>'|'>&'|'<&'|[0-9]'>'|[0-9]'>>'|[0-9]'<'|[0-9]'<>'|[0-9]'>&'|[0-9]'<&') _skip=RED ;;
       '>'*|'<'*|[0-9]'>'*|[0-9]'<'*) ;;
-      *) printf '%s' "${_w}"; return 0 ;;
+      *)
+        if [ "${_site}" = "NO" ]; then
+          _site=YES
+          if { [ "${2:-}" = "d8" ] || [ "${2:-}" = "sym" ]; } \
+            && { [[ "${_w}" == *[,#]* ]] || { [[ "${_w}" == *@* ]] && [[ "${_w}" == */* ]]; }; }; then
+            _out+="${_w} "
+            continue
+          fi
+        fi
+        printf '%s' "${_out}${_w}"
+        return 0
+        ;;
     esac
   done
+  if [ -n "${_out}" ]; then
+    printf '%s' "${_out% }"
+    return 0
+  fi
   return 1
 }
 # True when Symfony console would resolve the typed command word $1 to the
@@ -757,7 +817,7 @@ _drush_refused() {
 }
 _drush_refused_read() {
   [[ $'\xc3\xa9' == ? ]] && local LC_ALL=C
-  local _seg _w1 _w2 _rest _cw _f _n _env _again _pini _d8 _cd _wn _wp _dur _o _ov _orest _isdr _fl
+  local _seg _w1 _w2 _rest _cw _cws _cwa _f _n _env _again _pini _d8 _cd _wn _wp _dur _o _ov _orest _isdr _fl
   _DR_WHY=""
   _GD_DOC=""
   _GD_CWD=$(pwd -P 2> /dev/null)
@@ -894,30 +954,44 @@ _drush_refused_read() {
       _DR_WHY=D
       return 0
     fi
-    _cw=$(_drush_cmd_word "${_rest}")
-    [ -n "${_cw}" ] || continue
-    # abbreviated or in another case, as a Symfony console resolves it:
-    # Drush 9 and newer (a codebase's own, by any name: vendor/bin/drush is
-    # one) and core's dr. Drush 8 takes a command word only as it is named
-    # (its own short words, up among them, are commands), so BOA's Drush 8,
-    # told by where it lives (_d8_launcher), keeps the exact rule below.
-    if [ "${_d8}" = "NO" ]; then
-      _fl="${_DRUSH_REFUSED_CMDS} ${_DRUSH_REFUSED_SYMFONY}"
-      [ "${_isdr}" = "YES" ] && _fl+=" ${_DRUSH_REFUSED_DR}"
-      for _f in ${_fl}; do
-        if _drush_word_abbrev "${_cw}" "${_f}"; then
+    # every word the runner could take as its command (_drush_cmd_word)
+    if [ "${_isdr}" = "YES" ]; then
+      _cws=$(_drush_cmd_word "${_rest}" dr)
+    elif [ "${_d8}" = "NO" ]; then
+      _cws=$(_drush_cmd_word "${_rest}" sym)
+    else
+      _cws=$(_drush_cmd_word "${_rest}" d8)
+    fi
+    [ -n "${_cws}" ] || continue
+    read -r -a _cwa <<< "${_cws}"
+    for _cw in "${_cwa[@]}"; do
+      # abbreviated or in another case, as a Symfony console resolves it:
+      # Drush 9 and newer (a codebase's own, by any name: vendor/bin/drush
+      # is one) and core's dr. Drush 8 takes a command word only as it is
+      # named (its own short words, up among them, are commands), so BOA's
+      # Drush 8, told by where it lives (_d8_launcher), keeps the exact
+      # rule below.
+      if [ "${_d8}" = "NO" ]; then
+        _fl="${_DRUSH_REFUSED_CMDS} ${_DRUSH_REFUSED_SYMFONY}"
+        [ "${_isdr}" = "YES" ] && _fl+=" ${_DRUSH_REFUSED_DR}"
+        for _f in ${_fl}; do
+          if _drush_word_abbrev "${_cw}" "${_f}"; then
+            _DR_WHY=E
+            return 0
+          fi
+        done
+      fi
+      _cw="${_cw//:/-}"
+      for _f in ${_DRUSH_REFUSED_CMDS}; do
+        if [ "${_cw}" = "${_f}" ]; then
           _DR_WHY=E
           return 0
         fi
       done
-    fi
-    _cw="${_cw//:/-}"
-    for _f in ${_DRUSH_REFUSED_CMDS}; do
-      if [ "${_cw}" = "${_f}" ]; then
-        _DR_WHY=E
-        return 0
-      fi
     done
+    # G judges the line's first command word, as it always has; the word
+    # after a first word Drush 8 reads as the site is E's alone
+    _cw="${_cwa[0]//:/-}"
     if [ "${_d8}" = "YES" ] && [[ " ${_D8_READONLY_CMDS} " != *" ${_cw} "* ]] \
       && _d8plus_target "${_rest}"; then
       _DR_WHY=G
@@ -1578,6 +1652,8 @@ if [ "${1}" = "-c" ] \
   # which is the server default: the dispatch below launches it
   case "${_SF_LEAD}" in
     */vendor/drush/drush/drush.php) _SF_SKIP=YES ;;
+    # core's dr by its path: the dr launch below, with the site folder
+    */vendor/bin/dr) _is_tenant && _SF_SKIP=YES ;;
   esac
   _SF_GO=NO
   if [[ "${_SF_LEAD}" == /* ]] && [ "${_SF_SKIP}" = "NO" ]; then

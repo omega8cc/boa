@@ -6,14 +6,15 @@
 
     * Site owners run core's dr, the command line of Drupal 11.5 and newer
       with Drush 15's commands, in their shell: dr --url=https://<site>
-      <command> from the codebase's root or its docroot while the platform
-      is unlocked, as vdrush runs an older site-local Drush. websh starts
-      Composer's vendor/bin/dr on the command-line PHP the account chose,
-      and names the site folder of --url for it, which dr needs and does
-      not take from --url alone; a --url the codebase has no folder for
-      says so and starts dr with no site, and one without its scheme gets
-      a note, since dr builds its links from it. dr's commands that run
-      code, its installer and its server are refused as Drush's are.
+      <command> from the codebase's root, the folder with vendor/, while
+      the platform is unlocked, as vdrush runs an older site-local Drush.
+      websh starts Composer's vendor/bin/dr on the command-line PHP the
+      account chose, and names the site folder of --url for it, which dr
+      needs and does not take from --url alone; a --url the codebase has
+      no folder for says so and starts dr with no site, and one without
+      its scheme gets a note, since dr builds its links from it. dr's
+      commands that run code, its installer and its server are refused as
+      Drush's are.
 
     * Unlock Local Drush and the platform permission pass keep Composer's
       vendor/bin/dr executable, as they keep drush.php: the shell runs it
@@ -359,11 +360,20 @@
       case, which Drush 9 and newer resolve as the full name, on every
       Drush but BOA's Drush 8, which takes a word only as named.
 
+    * websh tests every word a Drush or dr line's runner could take as
+      its command against the refused ones: the value of an option given
+      with a space, by a short option cluster, given twice (a console then
+      takes the earlier value as the command) or under Drush's --strict=0,
+      which takes no value from the next word, and the word after a first
+      word Drush reads as the site (a /path#uri or user@host/path spec).
+      Drush 9 to 13's core:edit is refused as Drush 8's core-config is.
+
     * websh drops a PHP_INI_SCAN_DIR its caller exported, as it drops
       PHPRC: no php it starts reads a folder of inis the caller chose.
 
     * The incident snapshot masks a password given to dr's user:password,
-      as it does for Drush's.
+      as it does for Drush's, and to the command given abbreviated or in
+      another case.
 
     * No PHP-FPM pool captures its workers' output any more, on any PHP
       version. With catch_workers_output on, the master's cleanup of the

@@ -123,8 +123,11 @@ _here() {
         echo "    drush @${_site} uli"
         if [ -d "${_root}/vendor/drush" ]; then
           echo "  Any change, in a Drush window:"
-          # Drush 15 ships no drush.php: core's dr names the site by --url
-          if [ ! -e "${_root}/vendor/drush/drush/drush.php" ] && [ -f "${_root}/vendor/bin/dr" ]; then
+          # Drush 15 ships no drush.php: core's dr names the site by --url. A
+          # lock closes a Drush below 15 to every login (vendor/drush at 0400,
+          # drush.php then unseen) and leaves Drush 15's open, as websh reads it
+          if [ -x "${_root}/vendor/drush" ] && [ ! -e "${_root}/vendor/drush/drush/drush.php" ] \
+            && [ -f "${_root}/vendor/bin/dr" ]; then
             echo "    cd ~/platforms/${_farm} && dr --url=https://${_site} <command>"
           else
             echo "    cd ~/platforms/${_farm} && vdrush @$(_modern_alias "${_site}") <command>"

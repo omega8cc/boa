@@ -1020,15 +1020,25 @@ elif [ -e "${drupal_root}/../vendor/drush/drush/drush.php" ]; then
     _chmod_any_own_here 0775 drush.php
 fi
 
-### Composer's proxy for core's dr (Drupal 11.5 and newer, Drush 15) keeps the
-### execute bit drush.php keeps: the shell's dr runs it by its path, and the
-### shell runs only a file that may be executed.
+### Composer's proxy for core's dr (Drupal 11.5 and newer, Drush 15) keeps an
+### execute bit: the shell's dr runs it by its path, and the shell runs only a
+### file that may be executed. The platform's own file mode plus the bit:
+### group write only where a tenant codebase's files take it (~/static),
+### never on a built-in or master platform, whose code the backend runs and no
+### shell login writes. The vendor/ above the docroot counts only where the
+### docroot is a web, docroot or html folder of the codebase.
+if [ "${_MODE_FILE}" = "0664" ]; then
+  _DR_MODE=0775
+else
+  _DR_MODE=0755
+fi
 if [ -e "${drupal_root}/vendor/bin/dr" ]; then
   _left_add _in_scoped_dir "${drupal_root}/vendor/bin" \
-    _chmod_any_own_here 0775 dr
-elif [ -e "${drupal_root}/../vendor/bin/dr" ]; then
+    _chmod_any_own_here "${_DR_MODE}" dr
+elif [[ "${drupal_root##*/}" =~ ^(web|docroot|html)$ ]] \
+  && [ -e "${drupal_root}/../vendor/bin/dr" ]; then
   _left_add _in_scoped_dir "${drupal_root%/*}/vendor/bin" \
-    _chmod_any_own_here 0775 dr
+    _chmod_any_own_here "${_DR_MODE}" dr
 fi
 
 _left_add _chmod_own_in "${drupal_root}" d "${_MODE_DIR}" .
