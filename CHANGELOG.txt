@@ -1411,6 +1411,16 @@
       dropped by hand once checked. It read as though the second run would
       finish them.
 
+    * boa-dbctl leftovers drop keeps a purged account's leftover login
+      that defines a stored routine, view, trigger or event, as the
+      account purge and the baseline settle already keep it. The drop
+      removed it, so the object failed when it ran and stopped every
+      unforced switch on the box. leftovers list now shows such a login in
+      section B with the object it defines, and section C lists every
+      object it defines; once those are dropped or given another definer,
+      the login is in section A again and the drop takes it. While the
+      read of the stored objects is not whole, every row stays.
+
     * The database broker writes each saved copy of a login's grants in
       one write and syncs the file to disk before it drops or changes
       anything; a write or a sync that fails changes nothing. Before, a

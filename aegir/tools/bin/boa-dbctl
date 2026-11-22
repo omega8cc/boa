@@ -4761,7 +4761,8 @@ SELECT /*q:alroles*/ CONCAT_WS('|', IF(@@GLOBAL.mandatory_roles = '', 0, 1), (SE
 # no schema, which MySQL keeps after a drop), judged as the box-wide check
 # judges a grant row. It is then that account's user (PURGED): its grant
 # rows and objects there belong to it, the login itself waits for a ruling,
-# and leftovers lists it in section A. Never by the shape of a name.
+# and leftovers lists it in section A (in B while it defines a stored
+# object). Never by the shape of a name.
 _al_psites() {
   local _ux _hx _u _h _g _lk _sec _a _st _rest _seen=$'\n' _save _ok _n
   local _t _gu _gh _up _hp _d _dp _f _go
@@ -6193,14 +6194,9 @@ _settle_row_tests() {
     _ST_WHY="the password of a row of this user was set after the purge of ${3}: something made since uses the name"
     return 1
   fi
-  if [[ "${_ST_DEFS_OK}" != "YES" ]]; then
-    _ST_WHY="${_ST_DEFS_WHY}: nothing is dropped on a guess"
-    return 1
-  fi
-  if _settle_defines "${1}" "${2}"; then
-    _ST_WHY="it defines ${_ST_OBJ}: a drop would leave that without its definer"
-    return 1
-  fi
+  # A row that defines a stored object, and every row while the read of
+  # the objects is not whole, is never asked here: _leftovers_build keeps
+  # it in section B, from the one read this run makes.
   return 0
 }
 
@@ -6379,9 +6375,9 @@ _v_baseline_settle() {
   # reads its list: the login proofs (those of the rows 3 may drop too),
   # the standby's answer and the parked homes. A root tool that records
   # its own row again waits for this lock for a minute at most. What a
-  # write depends on is read again under it.
+  # write depends on is read again under it. The stored objects are read
+  # once, by _leftovers_build (_settle_defs_read), for its rows and these.
   _leftovers_build
-  _settle_defs_read
   _settle_proofs
   _pins=$'\n'"${_AL_PINS}"
   _base_lock
@@ -7355,10 +7351,14 @@ _v_scope() {
 #      home names it, and its site users as its registry entries name
 #      their databases (_al_psites)
 #   B  never dropped here: a name that only has the shape of a purged
-#      account's panel user, and a purged account the pair's standby still
-#      carries
-#   C  stored objects in kept databases that a user of A defines: a drop
-#      leaves them without a definer
+#      account's panel user, a purged account the pair's standby still
+#      carries, a user that defines a stored object (the object runs as its
+#      definer: without it the object fails, and so does every unforced
+#      switch on the box), and every such row while the read of the stored
+#      objects is not whole (_settle_defs_read), as the purge and the
+#      settle keep them
+#   C  the stored objects each user B keeps for its definer defines; once
+#      they are dropped or given another definer, the user is in A again
 # Their databases are never touched.
 _zombie_panel() {
   local _p="${1}" _tb="${_ZOMBIE}/${1}/home/${1}.tar.gz" _t _sp _dr _du _dn
@@ -7419,11 +7419,15 @@ _zombie_inst() {
 }
 
 _leftovers_build() {
-  local _k _o _ux _hx _u _h _g _lk _sec _p _carried="" _out _peerok="YES" _ty _sx _nx _def _zp=$'\n'
+  local _k _o _ux _hx _u _h _g _lk _sec _p _carried="" _out _peerok="YES" _ty _sx _nx _dx _x _zp=$'\n'
+  local _kd=$'\n'
   _al_judge ""
   _LO_A=""
   _LO_B=""
   _LO_C=""
+  # the definers as the purge and the settle read them: a read that is
+  # not whole keeps every row it would judge
+  _settle_defs_read
   # the pair's standby may still carry an account purged here
   if [[ -n "${_PAIR_IP}" ]]; then
     _out=$(_peer "for _a in ${_AL_PURGED}; do { [ -e /data/disk/\${_a} ] || [ -e /root/.\${_a}.octopus.cnf ]; } && echo \"PA-HAS \${_a}\"; done; echo PA-READ")
@@ -7476,15 +7480,22 @@ _leftovers_build() {
       _LO_B="${_LO_B}B ${_u}@${_h} account=${_o} global=${_g} the standby ${_PAIR_IP} could not be read"$'\n'
     elif [[ "${_carried}" == *$'\n'"PA-HAS ${_o}"$'\n'* ]]; then
       _LO_B="${_LO_B}B ${_u}@${_h} account=${_o} global=${_g} the standby ${_PAIR_IP} still carries the account"$'\n'
+    elif [[ "${_ST_DEFS_OK}" != "YES" ]]; then
+      _LO_B="${_LO_B}B ${_u}@${_h} account=${_o} global=${_g} ${_ST_DEFS_WHY}: nothing is dropped on a guess"$'\n'
+    elif _settle_defines "${_u}" "${_h}"; then
+      _LO_B="${_LO_B}B ${_u}@${_h} account=${_o} global=${_g} it defines ${_ST_OBJ}: a drop would leave that without its definer"$'\n'
+      _kd="${_kd}$(_hex "$(printf '%s@%s' "${_u}" "${_h}" | tr '[:upper:]' '[:lower:]')") ${_u}@${_h}"$'\n'
     else
       _LO_A="${_LO_A}A ${_u}@${_h} account=${_o} ${_k} global=${_g}"$'\n'
     fi
   done <<< "${_AL_PAIRS}"
-  while IFS='|' read -r _ty _sx _nx _def; do
-    [[ -n "${_ty}" && "${_def}" != "?" ]] || continue
-    [[ "${_LO_A}" == *"A ${_def} "* ]] || continue
-    _LO_C="${_LO_C}C ${_ty} $(_log_safe "$(_unhex "${_sx}")").$(_log_safe "$(_unhex "${_nx}")") definer=${_def}"$'\n'
-  done <<< "${_AL_DEF}"
+  # every object of each user kept for its definer, named as its row is
+  while IFS='|' read -r _ty _sx _nx _dx; do
+    [[ -n "${_ty}" && -n "${_dx}" && "${_kd}" == *$'\n'"${_dx} "* ]] || continue
+    _x="${_kd#*$'\n'"${_dx} "}"
+    _x="${_x%%$'\n'*}"
+    _LO_C="${_LO_C}C ${_ty} $(_log_safe "$(_unhex "${_sx}")").$(_log_safe "$(_unhex "${_nx}")") definer=${_x}"$'\n'
+  done <<< "${_ST_DEFS}"
   _LO_SHA=$(printf '%s' "${_LO_A}" | sha256sum | cut -c1-64)
   [[ "${_LO_SHA}" =~ ^[0-9a-f]{64}$ ]] || _die 7 "sha-failed"
 }
@@ -7531,9 +7542,6 @@ _v_leftovers() {
         fi
       done <<< "${_LO_A}"
       flock -u 7 2> /dev/null
-      while IFS= read -r _l; do
-        [[ -n "${_l}" ]] && _alrt "left without its definer: ${_l#C }"
-      done <<< "${_LO_C}"
       [[ "${_bad}" -eq 0 ]] || _die 7 "sql-failed leftovers-drop ${_bad}"
       _info "leftovers drop ${_n}"
       ;;
