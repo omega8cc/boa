@@ -427,6 +427,13 @@
       a script by its shebang is refused as php-script is. Drush 9 to 13's
       core:edit is refused as Drush 8's core-config is.
 
+    * websh reads a Drush or dr line's words up to the command word after
+      the shell's expansions: a variable from the environment by its
+      value, a leading ~ as the home folder. A word it cannot know there
+      (a positional parameter, a variable the line sets, a pattern, a
+      substitution) is refused, and so is such a line holding a command
+      substitution, or a here-document beside one of those characters.
+
     * websh drops a PHP_INI_SCAN_DIR its caller exported, as it drops
       PHPRC: no php it starts reads a folder of inis the caller chose.
 
