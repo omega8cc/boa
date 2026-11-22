@@ -302,6 +302,10 @@ _drush_segments() {
         # >& and <& are a redirection, not a list separator
         case "${_out}" in *[\<\>]) _out+='&' ;; *) _out+=$'\n' ;; esac
         ;;
+      '|')
+        # >| is the clobbering redirection, not a pipe
+        case "${_out}" in *'>') _out+='|' ;; *) _out+=$'\n' ;; esac
+        ;;
       *)
         _out+=$'\n'
         ;;
@@ -424,25 +428,64 @@ _dr_launcher() {
 # note (_DRL_NOTE). The codebase is the app root holding vendor/bin/dr, found
 # from the working directory a "cd DIR &&" moves; the docroot is its web/,
 # docroot/ or html/, or the app root itself, whichever holds core.
+# $1 cut at its first shell operator outside quotes (;, |, & but the & of
+# a >& or <&) into _DRW; true when one was found
+_DRW=""
+_dr_word_cut() {
+  local _s="$1" _i _c _q=""
+  _DRW=""
+  for (( _i = 0; _i < ${#_s}; _i++ )); do
+    _c="${_s:_i:1}"
+    if [ -n "${_q}" ]; then
+      [ "${_c}" = "${_q}" ] && _q=""
+    else
+      case "${_c}" in
+        "'"|'"') _q="${_c}" ;;
+        '\')
+          _DRW+="${_s:_i:2}"
+          _i=$(( _i + 1 ))
+          continue
+          ;;
+        ';'|'|') return 0 ;;
+        '&') case "${_DRW}" in *[\<\>]) ;; *) return 0 ;; esac ;;
+      esac
+    fi
+    _DRW+="${_c}"
+  done
+  return 1
+}
 _DRL_SITE=""; _DRL_NOTE=""; _DRL_HINT=""
 _dr_site() {
   [[ $'\xc3\xa9' == ? ]] && local LC_ALL=C
-  local _ws _w _next=NO _u="" _h _app _base _doc="" _d _last
+  local _ws _w _next=NO _u="" _h _app _base _doc="" _d _last _rn=NO
   _DRL_SITE=""; _DRL_NOTE=""; _DRL_HINT=""
   # the last --url before a --, as the console reads a repeated option,
-  # among dr's own words: a shell operator ends them (a later command's
-  # --url is not dr's), and a word's quotes come off as the shell takes them
+  # among dr's own words: a shell operator outside quotes ends them (a later
+  # command's --url is not dr's), a redirection is the shell's (2>&1 is no
+  # list separator), and a word's quotes come off as the shell takes them
   read -r -a _ws <<< "${_DRL_REST}"
   for _w in "${_ws[@]}"; do
     _last=NO
-    if [[ "${_w}" == *[\;\&\|]* ]]; then
-      _w="${_w%%[;&|]*}"
+    if [ "${_rn}" = "YES" ]; then
+      _rn=NO
+      continue
+    fi
+    case "${_w}" in
+      '>'|'>>'|'<'|'<>'|'>&'|'<&'|'>|'|'<<'|'<<-'|[0-9]'>'|[0-9]'>>'|[0-9]'<'|[0-9]'<>'|[0-9]'>&'|[0-9]'<&'|[0-9]'>|'|[0-9]'<<'|[0-9]'<<-')
+        # a bare operator takes its target with it
+        _rn=YES
+        continue
+        ;;
+      [0-9]'>'*|[0-9]'<'*|'>'*|'<'*) continue ;;
+    esac
+    if _dr_word_cut "${_w}"; then
       _last=YES
     fi
+    _w="${_DRW}"
     _w="${_w//\'/}"
     _w="${_w//\"/}"
     if [ "${_next}" = "YES" ]; then
-      [ -n "${_w}" ] && _u="${_w}"
+      _u="${_w}"
       _next=NO
     else
       case "${_w}" in
@@ -604,15 +647,35 @@ _drush_cmd_word() {
   # is printed with the next. A Symfony console's own value
   # options count as well: dr's --url, -e and --env, Drush's --strict and
   # --drush-coverage, and a short option cluster that ends in one (dr -ne,
-  # Drush -yl and -yr).
-  local _ws _w _skip=NO _out="" _site=NO
+  # Drush -yl and -yr). A redirection is the shell's and comes out of the
+  # runner's words wherever it sits, an option's value still after it. BOA's
+  # Drush 8 takes a value from the next word after -c -i -l -r -u alone (a
+  # long option without = is a flag there); Drush 9 to 13's preflight takes
+  # an @alias or a site spec before any argument as the site even where a
+  # Symfony option's value would come, and the value of its own options
+  # (_VP: -l -r -c --uri --root --config --alias-path --include --strict
+  # --drush-coverage) before that.
+  local _ws _w _skip=NO _red=NO _out="" _site=NO
   read -r -a _ws <<< "$1"
   for _w in "${_ws[@]}"; do
-    if [ "${_skip}" = "RED" ]; then
-      _skip=NO
+    if [ "${_red}" = "YES" ]; then
+      _red=NO
       continue
     fi
-    if [ "${_skip}" = "VAL" ]; then
+    case "${_w}" in
+      '>'|'>>'|'<'|'<>'|'>&'|'<&'|'>|'|'<<'|'<<-'|[0-9]'>'|[0-9]'>>'|[0-9]'<'|[0-9]'<>'|[0-9]'>&'|[0-9]'<&'|[0-9]'>|'|[0-9]'<<'|[0-9]'<<-')
+        _red=YES
+        continue
+        ;;
+      '>'*|'<'*|[0-9]'>'*|[0-9]'<'*) continue ;;
+    esac
+    if [ "${2:-}" = "sym" ] && [ "${_site}" = "NO" ] && [ "${_skip}" != "VP" ] \
+      && _drush_site_word "${_w}"; then
+      _site=YES
+      _out+="${_w} "
+      continue
+    fi
+    if [ "${_skip}" = "VAL" ] || [ "${_skip}" = "VP" ]; then
       _skip=NO
       case "${2:-}" in
         sym|dr)
@@ -628,9 +691,16 @@ _drush_cmd_word() {
     case "${_w}" in
       @*) _site=YES ;;
       '{'|'}') ;;
-      -c|-i|-l|-r|-u|--uri|--root|--user|--php|--php-options|--config|--include|--early|--alias-path|--define) _skip=VAL ;;
+      -c|-l|-r) _skip=VP ;;
+      -i|-u) _skip=VAL ;;
+      --uri|--root|--config|--alias-path|--include)
+        [ "${2:-}" = "d8" ] || _skip=VP
+        ;;
+      --user|--php|--php-options|--early|--define)
+        [ "${2:-}" = "d8" ] || _skip=VAL
+        ;;
       --url|-e|--env) [ "${2:-}" = "dr" ] && _skip=VAL ;;
-      --strict|--drush-coverage) [ "${2:-}" = "sym" ] && _skip=VAL ;;
+      --strict|--drush-coverage) [ "${2:-}" = "sym" ] && _skip=VP ;;
       -[A-Za-z]*)
         if [[ "${_w}" =~ ^-[A-Za-z]+$ ]]; then
           case "${2:-}:${_w: -1}" in
@@ -639,13 +709,10 @@ _drush_cmd_word() {
         fi
         ;;
       -*) ;;
-      '>'|'>>'|'<'|'<>'|'>&'|'<&'|[0-9]'>'|[0-9]'>>'|[0-9]'<'|[0-9]'<>'|[0-9]'>&'|[0-9]'<&') _skip=RED ;;
-      '>'*|'<'*|[0-9]'>'*|[0-9]'<'*) ;;
       *)
         if [ "${_site}" = "NO" ]; then
           _site=YES
-          if { [ "${2:-}" = "d8" ] || [ "${2:-}" = "sym" ]; } \
-            && { [[ "${_w}" == *[,#]* ]] || { [[ "${_w}" == *@* ]] && [[ "${_w}" == */* ]]; }; }; then
+          if [ "${2:-}" = "d8" ] && _drush_site_word "${_w}"; then
             _out+="${_w} "
             continue
           fi
@@ -660,6 +727,52 @@ _drush_cmd_word() {
     return 0
   fi
   return 1
+}
+# True when a Drush reads $1, in its first word's place, as the site and not
+# the command: an @alias, a #uri, a comma list (Drush 8), or a path with a
+# # or an @ (/path#uri, user@host/path, user@host#uri; Drush 9 and newer take
+# a backslash path too). A superset of both Drushes' forms: a word it takes
+# as a site is still tested as a command word too (_drush_cmd_word).
+_drush_site_word() {
+  case "$1" in
+    @*|*[,#]*) return 0 ;;
+    *@*) [[ "$1" == *[/\\]* ]] ;;
+    *) return 1 ;;
+  esac
+}
+# BOA's Drush 8 runs a file named as its first argument (after the --php
+# words its launcher puts in front) as php-script when the file's first line
+# is a shebang naming drush, and the file in the second place too when the
+# first argument holds a blank or does not start with a letter or digit
+# (drush_adjust_args_if_shebang_script, before it reads any option). $1 is
+# the argument string; a relative file is read from the line's working
+# directory (_GD_CWD). A first line longer than the read counts as one.
+_d8_shebang() {
+  local _ws _i=0 _a _b
+  read -r -a _ws <<< "$1"
+  while [ "${_i}" -lt "${#_ws[@]}" ] && [[ "${_ws[_i]}" == --php* ]]; do
+    _i=$(( _i + 1 ))
+  done
+  _a="${_ws[_i]:-}"
+  _b="${_ws[_i + 1]:-}"
+  [ -n "${_a}" ] || return 1
+  _d8_shebang_file "${_a}" && return 0
+  if [[ "${_a}" == *[[:blank:]$'\001']* ]] || [[ "${_a:0:1}" != [[:alnum:]] ]]; then
+    [ -n "${_b}" ] && _d8_shebang_file "${_b}" && return 0
+  fi
+  return 1
+}
+_d8_shebang_file() {
+  local _f="${1//$'\001'/ }" _l=""
+  case "${_f}" in
+    '~') _f="${HOME}" ;;
+    '~/'*) _f="${HOME}/${_f#\~/}" ;;
+  esac
+  [[ "${_f}" == /* ]] || _f="${_GD_CWD:-.}/${_f}"
+  [ -f "${_f}" ] && [ -r "${_f}" ] || return 1
+  IFS= read -r -n 65536 _l 2> /dev/null < "${_f}"
+  [[ "${_l}" == '#!'* ]] || return 1
+  [[ "${_l}" == *drush* ]] || [ "${#_l}" -ge 65536 ]
 }
 # True when Symfony console would resolve the typed command word $1 to the
 # command name $2 (Application::find's abbreviation rule): each colon part
@@ -809,11 +922,16 @@ _in_composer_run() {
 }
 _drush_refused() {
   [[ $'\xc3\xa9' == ? ]] && local LC_ALL=C
-  # both reads of the line (_drush_segments): refused when either refuses;
-  # without a newline in the line the two reads are the same
+  # every read of the line (_drush_segments): split at each newline and
+  # joined as dash joins lines, each with a quoted blank splitting its word
+  # and kept in it as dash keeps it (a quote the reader takes where dash
+  # sees none, in a comment, must not glue the words after it into one);
+  # refused when any read refuses
   _drush_refused_read "$1" && return 0
+  _drush_refused_read "$1" "" keep && return 0
   [[ "$1" == *$'\n'* ]] || return 1
-  _drush_refused_read "$1" join
+  _drush_refused_read "$1" join && return 0
+  _drush_refused_read "$1" join keep
 }
 _drush_refused_read() {
   [[ $'\xc3\xa9' == ? ]] && local LC_ALL=C
@@ -954,6 +1072,10 @@ _drush_refused_read() {
       _DR_WHY=D
       return 0
     fi
+    if [ "${_d8}" = "YES" ] && _d8_shebang "${_rest}"; then
+      _DR_WHY=E
+      return 0
+    fi
     # every word the runner could take as its command (_drush_cmd_word)
     if [ "${_isdr}" = "YES" ]; then
       _cws=$(_drush_cmd_word "${_rest}" dr)
@@ -997,7 +1119,7 @@ _drush_refused_read() {
       _DR_WHY=G
       return 0
     fi
-  done < <(_drush_segments "$1" "" "$2")
+  done < <(_drush_segments "$1" "${3:-}" "${2:-}")
   return 1
 }
 # what a refusal tells the tenant: G has its own way forward

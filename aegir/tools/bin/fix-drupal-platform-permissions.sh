@@ -381,6 +381,15 @@ _chmod_any_own_here() {
   _chmod_own_here d "${_mode}" "$@"
   _chmod_own_here f "${_mode}" "$@"
 }
+# core's dr in the current directory (a vendor/bin entered by _in_scoped_dir):
+# executable, and group-writable only where the tree it really sits in is a
+# tenant codebase's (~/static), never a built-in platform's a link leads to
+_chmod_dr_here() {
+  case "$(/bin/pwd -P)/" in
+    */static/*) _chmod_any_own_here 0775 dr ;;
+    *) _chmod_any_own_here 0755 dr ;;
+  esac
+}
 # _chmod_any_own_here inside the directory $1 (resolved once above), entered
 # for real.
 _chmod_any_own_in() {
@@ -1022,23 +1031,18 @@ fi
 
 ### Composer's proxy for core's dr (Drupal 11.5 and newer, Drush 15) keeps an
 ### execute bit: the shell's dr runs it by its path, and the shell runs only a
-### file that may be executed. The platform's own file mode plus the bit:
-### group write only where a tenant codebase's files take it (~/static),
-### never on a built-in or master platform, whose code the backend runs and no
-### shell login writes. The vendor/ above the docroot counts only where the
-### docroot is a web, docroot or html folder of the codebase.
-if [ "${_MODE_FILE}" = "0664" ]; then
-  _DR_MODE=0775
-else
-  _DR_MODE=0755
-fi
-if [ -e "${drupal_root}/vendor/bin/dr" ]; then
-  _left_add _in_scoped_dir "${drupal_root}/vendor/bin" \
-    _chmod_any_own_here "${_DR_MODE}" dr
-elif [[ "${drupal_root##*/}" =~ ^(web|docroot|html)$ ]] \
-  && [ -e "${drupal_root}/../vendor/bin/dr" ]; then
-  _left_add _in_scoped_dir "${drupal_root%/*}/vendor/bin" \
-    _chmod_any_own_here "${_DR_MODE}" dr
+### file that may be executed. It is the vendor/ the walk above takes (the
+### docroot's own, else the one above it), and its mode is the one of the
+### tree its folder really sits in, a vendor/ link followed (_in_scoped_dir):
+### group write only where that is a tenant codebase (~/static), never on a
+### built-in or master platform, whose code the backend runs and no shell
+### login writes (_chmod_dr_here).
+if [ -e "${drupal_root}/vendor" ]; then
+  if [ -e "${drupal_root}/vendor/bin/dr" ]; then
+    _left_add _in_scoped_dir "${drupal_root}/vendor/bin" _chmod_dr_here
+  fi
+elif [ -e "${drupal_root}/../vendor/bin/dr" ]; then
+  _left_add _in_scoped_dir "${drupal_root%/*}/vendor/bin" _chmod_dr_here
 fi
 
 _left_add _chmod_own_in "${drupal_root}" d "${_MODE_DIR}" .

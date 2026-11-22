@@ -18,8 +18,11 @@
 
     * Unlock Local Drush and the platform permission pass keep Composer's
       vendor/bin/dr executable, as they keep drush.php: the shell runs it
-      by its path. The platform developer logins get dr in their Drush
-      window too, and checkmyperms names it for a Drush 15 platform.
+      by its path. It takes group write only where the tree it really
+      sits in is a tenant codebase (~/static), never on a built-in
+      platform, a vendor/ link into one included. The platform developer
+      logins get dr in their Drush window too, and checkmyperms names it
+      for a Drush 15 platform.
 
     * Every server of a move now guards its disk against its binary log
       and the night database dump: the source and its standby while the
@@ -365,15 +368,21 @@
       with a space, by a short option cluster, given twice (a console then
       takes the earlier value as the command) or under Drush's --strict=0,
       which takes no value from the next word, and the word after a first
-      word Drush reads as the site (a /path#uri or user@host/path spec).
-      Drush 9 to 13's core:edit is refused as Drush 8's core-config is.
+      word Drush reads as the site (a /path#uri or user@host/path spec, an
+      @alias in an option's place included). It reads the words as dash
+      passes them: a redirection (>|, a here-document) out of them wherever
+      it sits, a quoted blank inside its word, and BOA's Drush 8 taking a
+      value after -c -i -l -r -u alone. A file BOA's Drush 8 would run as
+      a script by its shebang is refused as php-script is. Drush 9 to 13's
+      core:edit is refused as Drush 8's core-config is.
 
     * websh drops a PHP_INI_SCAN_DIR its caller exported, as it drops
       PHPRC: no php it starts reads a folder of inis the caller chose.
 
     * The incident snapshot masks a password given to dr's user:password,
-      as it does for Drush's, and to the command given abbreviated or in
-      another case.
+      as it does for Drush's, to the command given abbreviated (an empty
+      namespace too) or in another case, and with an option's value or a
+      -- before it.
 
     * No PHP-FPM pool captures its workers' output any more, on any PHP
       version. With catch_workers_output on, the master's cleanup of the
