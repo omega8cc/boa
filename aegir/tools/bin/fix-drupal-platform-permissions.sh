@@ -1020,6 +1020,17 @@ elif [ -e "${drupal_root}/../vendor/drush/drush/drush.php" ]; then
     _chmod_any_own_here 0775 drush.php
 fi
 
+### Composer's proxy for core's dr (Drupal 11.5 and newer, Drush 15) keeps the
+### execute bit drush.php keeps: the shell's dr runs it by its path, and the
+### shell runs only a file that may be executed.
+if [ -e "${drupal_root}/vendor/bin/dr" ]; then
+  _left_add _in_scoped_dir "${drupal_root}/vendor/bin" \
+    _chmod_any_own_here 0775 dr
+elif [ -e "${drupal_root}/../vendor/bin/dr" ]; then
+  _left_add _in_scoped_dir "${drupal_root%/*}/vendor/bin" \
+    _chmod_any_own_here 0775 dr
+fi
+
 _left_add _chmod_own_in "${drupal_root}" d "${_MODE_DIR}" .
 
 if [ -d "${drupal_root}/web" ]; then
