@@ -1212,6 +1212,17 @@
       reinstall needed. A file over 512 MiB (the signatures of a very
       large full) still goes in parts, of that size.
 
+    * A cloned or re-addressed box gets its cron access lines at its next
+      upgrade again. The barracuda and octopus upgrades open the cron and
+      FPM status routes to the box's own address only when
+      /root/.local.IP.list holds it, and they made that list once and
+      never added to it: until the daily firewall run did, an upgrade left
+      every account's routes open to 127.0.0.1 alone and the panel's cron
+      module naming 127.0.0.1, without a word. Both upgrades now add the
+      box's current addresses to the list first, count an address as
+      listed only as a whole entry, and say so when they leave the step
+      out because the resolved address is not the box's.
+
     * A Clone, Restore or Migrate whose database load stops first on a
       deadlock or a lock wait timeout loads the dump again instead of
       refusing it. Another session, MySQL's own background threads among
