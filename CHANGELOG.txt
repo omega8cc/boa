@@ -1332,6 +1332,15 @@
 
 @=> Important Fixes
 
+    * A Drupal 8 or newer site's temporary directory is written to
+      settings.php as an absolute path, as Drupal's own settings file asks
+      for it: the site's private/temp under the codebase's root, read when
+      the file runs. The relative value was right only while the working
+      directory was the Drupal root, so a code check started from elsewhere
+      (Upgrade Status's analysis) failed for every project. A site gets the
+      new line at its next Verify; Drupal 6, Drupal 7 and Backdrop sites
+      are unchanged.
+
     * The nightly permission pass keeps core's dr executable, and in a
       tenant codebase (~/static) the site-local drush.php as well: it set
       every vendor file to 0644, or 0664 under ~/static, so on a platform
