@@ -294,7 +294,7 @@ if ! declare -F _heal_foreign_cms_ctrl_ini > /dev/null 2>&1; then
     esac
     (
       cd -P -- "${_rmd}" 2>/dev/null || exit 0
-      [ "$(pwd -P)" = "${_rmd}" ] || exit 0
+      [ "$(/bin/pwd -P)" = "${_rmd}" ] || exit 0
       if [ -n "${_n}" ]; then
         for _f in "default.${_n}" "${_n}"; do
           if [ -L "./${_f}" ] || [ -f "./${_f}" ]; then
@@ -304,7 +304,7 @@ if ! declare -F _heal_foreign_cms_ctrl_ini > /dev/null 2>&1; then
         done
       fi
       cd -P .. 2>/dev/null || exit 0
-      [ "$(pwd -P)" = "${_rmd%/*}" ] || exit 0
+      [ "$(/bin/pwd -P)" = "${_rmd%/*}" ] || exit 0
       rmdir -- "${_rmd##*/}" 2>/dev/null \
         && echo "Foreign-CMS empty dir removed: ${_rmd}"
     )
@@ -324,6 +324,101 @@ fi
 if ! declare -F _provision_running > /dev/null 2>&1; then
   _provision_running() {
     pgrep -f provision > /dev/null 2>&1
+  }
+fi
+
+### The control/ gate, the night.inc.sh bodies carried for the same skew,
+### defined only when the library lacks them.
+if [ -z "${_ACCT_CTRL_OWN_PL:-}" ]; then
+# The whole of an account's control/, judged once before a run acts on it:
+# run inside the account's real static/, it prints OK when control/ and
+# everything in it, never followed through a link, and static/ and every
+# directory above it up to /, are root's or one of the account's identities'
+# (the uids given first, _acct_walk_uids, with the account's recorded
+# removed identities), ABSENT when there is no control/, and otherwise why
+# not, on one line.
+# Every other account's .ftp login is in the box-wide group, which an account
+# not yet on its own group still has on static/: such a login could put a
+# control/ of its own there, or a file of its own in a group-writable
+# directory below it, for root to act on as the account's.
+_ACCT_CTRL_OWN_PL='use Fcntl;
+my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, shift @ARGV // "");
+sub own { my $u = shift; return exists $own{$u} ? 1 : 0; }
+sub isd { ($_[0] & 0170000) == 0040000 }
+sub nm { (my $v = shift) =~ s/[^\x20-\x7e]/?/g; return substr($v, 0, 200); }
+sub refuse { print "$_[0]\n"; exit 0; }
+my ($p, $top, @d, @x) = (".", 0);
+for (1 .. 256) {
+  @x = stat($p) or refuse("static/ cannot be read");
+  own($x[4]) or refuse("a directory above control/ is owned by uid $x[4]");
+  if (@d && $x[0] == $d[0] && $x[1] == $d[1]) { $top = 1; last; }
+  @d = @x;
+  $p .= "/..";
+}
+$top or refuse("static/ is too deep");
+my @s = lstat("./control");
+unless (@s) { print(($!{ENOENT} ? "ABSENT" : "control/ cannot be read") . "\n"); exit 0; }
+isd($s[2]) or refuse("control is not a directory");
+my ($n, @q) = (0, ["control", @s]);
+while (my $e = shift @q) {
+  my ($f, @t) = @$e;
+  own($t[4]) or refuse(nm($f) . " is owned by uid $t[4]" . (defined(getpwuid($t[4])) ? "" : ", which no user has and root never recorded for this account: if the file is its own, give it to its .ftp login"));
+  next unless isd($t[2]);
+  opendir(my $h, "./$f") or refuse(nm($f) . " cannot be read");
+  for my $b (readdir($h)) {
+    next if $b eq "." || $b eq "..";
+    ++$n > 100000 and refuse("control/ holds more than 100000 entries");
+    my @u = lstat("./$f/$b") or next;
+    push @q, ["$f/$b", @u];
+  }
+  closedir($h);
+}
+print "OK\n";
+exit 0;'
+fi
+# 0 when the account $1's control/ is its own as _ACCT_CTRL_OWN_PL judges it
+# (or it has none); otherwise why not on stdout, status 1. A run that acts
+# on what control/ says leaves the account as it is when it is not.
+if ! declare -F _acct_ctrl_own > /dev/null 2>&1; then
+  _acct_ctrl_own() {
+    local _a="${1}" _o _r _want
+    # an account not in passwd (not made yet, or removed) has nothing to
+    # judge it by: read as before
+    _o=$(_acct_walk_uids "${_a}" 2> /dev/null) || return 0
+    [ -e "/data/disk/${_a}/static" ] || [ -L "/data/disk/${_a}/static" ] || return 0
+    _want="$(cd -P -- /data/disk 2> /dev/null && /bin/pwd -P)/${_a}/static"
+    _r=$(cd -P -- "/data/disk/${_a}/static" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] \
+      && perl -e "${_ACCT_CTRL_OWN_PL}" -- "${_o}" 2> /dev/null)
+    case "${_r}" in
+      OK|ABSENT) return 0 ;;
+    esac
+    echo "${_r:-static/ is not a real directory}"
+    return 1
+  }
+fi
+# The account's control/ judged once a run and account (_acct_ctrl_own):
+# _ctrl_has is 0 when the name $1 is in it and it is the account's own,
+# _ctrl_foreign is 0 when it is not the account's own. A marker in a
+# control/ another account put there reads as not there.
+if ! declare -F _ctrl_judge > /dev/null 2>&1; then
+  _ctrl_judge() {
+    [ "${_CTRL_JUDGED_FOR:-}" = "${_usEr}" ] && return 0
+    _CTRL_JUDGED_FOR="${_usEr}"
+    _CTRL_OWN=YES
+    _CTRL_WHY=$(_acct_ctrl_own "${_usEr##*/}") || _CTRL_OWN=NO
+    return 0
+  }
+fi
+if ! declare -F _ctrl_has > /dev/null 2>&1; then
+  _ctrl_has() {
+    _ctrl_judge
+    [ "${_CTRL_OWN}" = "YES" ] && [ -e "${_usEr}/static/control/${1}" ]
+  }
+fi
+if ! declare -F _ctrl_foreign > /dev/null 2>&1; then
+  _ctrl_foreign() {
+    _ctrl_judge
+    [ "${_CTRL_OWN}" = "NO" ]
   }
 fi
 
@@ -347,11 +442,11 @@ if ! declare -F _acct_in_real_dir > /dev/null 2>&1; then
       /data/disk/?*) _a=/data/disk ;;
     esac
     if [ -n "${_a}" ]; then
-      _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+      _want="$(cd -P -- "${_a}" 2> /dev/null && /bin/pwd -P)${_d#"${_a}"}"
     else
-      _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+      _want="$(cd -P -- "${_d%/*}" 2> /dev/null && /bin/pwd -P)/${_d##*/}"
     fi
-    ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+    ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] && "$@" )
   }
 fi
 if ! declare -F _acct_read_here > /dev/null 2>&1; then
@@ -393,10 +488,10 @@ if ! declare -F _ctrl_in_stage_dir > /dev/null 2>&1; then
   }
   _ctrl_stage_here() {
     local _h _st
-    _h="$(pwd -P)/.boa-ctrl"
+    _h="$(/bin/pwd -P)/.boa-ctrl"
     [ -L ./.boa-ctrl ] && rm -f -- ./.boa-ctrl
     [ -d ./.boa-ctrl ] || mkdir ./.boa-ctrl 2> /dev/null
-    cd -P -- ./.boa-ctrl 2> /dev/null && [ "$(pwd -P)" = "${_h}" ] || return 1
+    cd -P -- ./.boa-ctrl 2> /dev/null && [ "$(/bin/pwd -P)" = "${_h}" ] || return 1
     chown root:root . 2> /dev/null && chmod 0700 . 2> /dev/null || return 1
     # root's, and nobody else's to enter or write
     _st=$(stat -c '%u %a' . 2> /dev/null)
@@ -424,6 +519,41 @@ _ghost_seen_enough_acct() {
 _ghost_seen_reset_acct() {
   _acct_in_real_dir "${_usEr}/log/ctrl" rm -f -- "./${1}" 2> /dev/null
   return 0
+}
+
+### A build of the control panel's Add platform form writes
+### .<folder>.unfinished-build beside the folder it builds into and removes
+### it once the build ends. While that marker stands beside the folder an
+### alias builds into, and the alias root lies in that folder, the folder is
+### the platform's leftover: the platform's Delete removes the two only
+### through its alias, so the alias stays. $1 is the alias text, $2 its root;
+### prints the folder. One text wherever it is defined.
+_ghost_unfinished_build() {
+  local _gk _gp _gm
+  for _gk in composer_project_path composer_git_path git_repository_path; do
+    _gp=$(printf '%s\n' "$1" \
+      | sed -n "s/^[[:space:]]*'${_gk}' => '\([^']*\)',[[:space:]]*\$/\1/p" \
+      | head -n 1)
+    _gp="${_gp%/}"
+    case "${_gp}" in
+      /*/*) ;;
+      *) continue ;;
+    esac
+    case "${_gp}/" in
+      */../*|*/./*) continue ;;
+    esac
+    case "${2%/}/" in
+      "${_gp}"/*) ;;
+      *) continue ;;
+    esac
+    _gm="${_gp%/*}/.${_gp##*/}.unfinished-build"
+    if [ -d "${_gp}" ] && [ ! -L "${_gp}" ] \
+      && [ -f "${_gm}" ] && [ ! -L "${_gm}" ]; then
+      printf '%s\n' "${_gp}"
+      return 0
+    fi
+  done
+  return 1
 }
 
 # aegir2boa's own root state for the account $1 says its db-import, or the
@@ -572,7 +702,11 @@ _reown_tree_here() {
 ### .ftp login, its client sub-accounts and their -dev logins, its PHP-FPM
 ### users oN.web and oN.<ver>.web); status 1, and nothing, unless the
 ### account itself is in passwd. A uid no passwd entry names counts as the
-### account's own in the walkers below.
+### account's own in the walkers below, whether root recorded it as one of
+### the account's removed identities (/data/conf/acct-uids/<oN>.gone) or not:
+### they hand over and set site files, not the control files root reads as
+### the account's settings, whose hand-overs (the ltd worker, the Octopus
+### upgrade) take only recorded ones.
 _acct_walk_uids() {
   local _a="${1}" _n _p _u _r _x="0" _self=NO
   case "${_a}" in
@@ -585,6 +719,13 @@ _acct_walk_uids() {
     [ "${_n}" = "${_a}" ] && _self=YES
   done < <(getent passwd 2> /dev/null)
   [ "${_self}" = "YES" ] || return 1
+  # the account's removed identities, their numbers recorded by root before
+  # deluser freed them; a number a user has again is not taken
+  while IFS= read -r _u; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    getent passwd "${_u}" > /dev/null 2>&1 && continue
+    _x="${_x},${_u}"
+  done 2> /dev/null < "/data/conf/acct-uids/${_a}.gone"
   echo "${_x}"
 }
 ### As _NIGHT_FCHMOD_PL, given first the uids it acts for (_acct_walk_uids):
@@ -629,12 +770,15 @@ exit 0;'
 ### As _ACCT_REOWN_PL, the same way: the uids, then the uid and gid to hand
 ### each name to. A gid given with a + first keeps the group write of what
 ### is handed over, as the ownership fixers' -W does; no caller here gives one.
+### A list with '=' first takes a uid no passwd entry names only when it is
+### listed (the control folder's hand-overs); no caller here gives one.
 _SAT_REOWN_OWN_PL='use Fcntl;
 my ($o, $u, $g) = (shift @ARGV, shift @ARGV, shift @ARGV);
 my $deny = $o =~ s/^-// ? 1 : 0;
+my $strict = $o =~ s/^=// ? 1 : 0;
 my $gw = $g =~ s/^\+// ? 1 : 0;
 my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, $o);
-sub own { my $u = shift; return (exists $own{$u} ? 0 : 1) if $deny; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
+sub own { my $u = shift; return (exists $own{$u} ? 0 : 1) if $deny; return (exists $own{$u} ? 1 : 0) if $strict; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
 my ($p, $ok, @d, @x) = (".", 0);
 for (1 .. 256) {
   @x = stat($p) or last;
@@ -865,7 +1009,7 @@ _night_handover_own_here() {
   _perm_left_add "${_x}"
   _n=$(tr -cd '\0' < "${_tmp}" | wc -c)
   if [[ "${_n}" =~ ^[0-9]+$ ]] && [ "${_n}" -gt 0 ]; then
-    _here="$(pwd -P)"
+    _here="$(/bin/pwd -P)"
     _first=$(head -z -n 1 -- "${_tmp}" | tr -d '\0')
     _first="${_here}/${_first#./}"
     echo "SKIP: ${_n} file(s) with more than one link not handed to ${_w} in ${_here}, first: ${_first//[[:cntrl:]]/?}"
@@ -988,7 +1132,7 @@ _in_resolved_dir() {
     /data/all/?*|/data/disk/all/?*) [ "${_k}" = "site" ] || return 1 ;;
     *) return 1 ;;
   esac
-  ( cd -P -- "${_rd}" 2> /dev/null && [ "$(pwd -P)" = "${_rd}" ] && "$@" )
+  ( cd -P -- "${_rd}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_rd}" ] && "$@" )
 }
 
 # ./$1 in the current (pinned) directory replaced by the exact bytes $2, only
@@ -1103,7 +1247,7 @@ _acct_mark_here() {
 ### directory or through a link found at the new name. Reads _usEr.
 _acct_undo_here() {
   local _u
-  _u="$(cd -P /data/disk 2> /dev/null && pwd -P)${_usEr#/data/disk}/undo"
+  _u="$(cd -P /data/disk 2> /dev/null && /bin/pwd -P)${_usEr#/data/disk}/undo"
   _acct_in_real_dir "${_usEr}" mkdir -p ./undo 2> /dev/null
   exec 9< "${_u}/." || return 1
   [ "$(readlink /proc/self/fd/9)" = "${_u}" ] || return 1
@@ -1388,8 +1532,9 @@ _sync_user_register_protection_ini_vars() {
   ### The old names renamed to the new ones inside the real static/control
   ### (the tenant's): mv -T never moves a file into a directory or through a
   ### link put at either name.
-  ( _ctl="$(cd -P /data/disk 2> /dev/null && pwd -P)${_usEr#/data/disk}/static/control"
-    cd -P -- "${_usEr}/static/control" 2> /dev/null && [ "$(pwd -P)" = "${_ctl}" ] || exit 0
+  ( _ctl="$(cd -P /data/disk 2> /dev/null && /bin/pwd -P)${_usEr#/data/disk}/static/control"
+    _ctrl_foreign && exit 0
+    cd -P -- "${_usEr}/static/control" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_ctl}" ] || exit 0
     if [ -f ./enable_user_register_protection.info ] \
       && [ ! -L ./enable_user_register_protection.info ]; then
       mv -f -T ./enable_user_register_protection.info \
@@ -1401,7 +1546,7 @@ _sync_user_register_protection_ini_vars() {
         ./ignore_user_register_protection.info
     fi )
   if [ "${_ENABLE_STRICT_USER_REGISTER_PROTECTION}" = "NO" ] \
-    && [ -e "${_usEr}/static/control/enable_strict_user_register_protection.info" ]; then
+    && _ctrl_has enable_strict_user_register_protection.info; then
     _desymlink_planted "${_PLR_CTRL_F}"
     _ctrl_ini_sed "${_PLR_CTRL_F}" \
       "s/.*enable.*user_register_protection.*/enable_strict_user_register_protection = TRUE/g" \
@@ -1409,7 +1554,7 @@ _sync_user_register_protection_ini_vars() {
     _ENABLE_STRICT_USER_REGISTER_PROTECTION=YES
   fi
   if [ "${_ENABLE_STRICT_USER_REGISTER_PROTECTION}" = "YES" ] \
-    && [ -e "${_usEr}/static/control/ignore_user_register_protection.info" ]; then
+    && _ctrl_has ignore_user_register_protection.info; then
     _desymlink_planted "${_PLR_CTRL_F}"
     _ctrl_ini_sed "${_PLR_CTRL_F}" \
       "s/.*enable.*user_register_protection.*/enable_strict_user_register_protection = FALSE/g" \
@@ -1430,7 +1575,8 @@ _sync_user_register_protection_ini_vars() {
       _IGNORE_USER_REGISTER_PROTECTION=YES
     fi
   fi
-  if [ -e "${_usEr}/static/control/ignore_user_register_protection.info" ]; then
+  # a control/ that is not the account's own: nothing enforced from it
+  if _ctrl_has ignore_user_register_protection.info || _ctrl_foreign; then
     _IGNORE_USER_REGISTER_PROTECTION=YES
   fi
 }
@@ -1581,15 +1727,15 @@ _store_web_group() {
 _in_pinned_dir() {
   local _d="${1}"
   shift
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_d}" ] && "$@" )
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_d}" ] && "$@" )
 }
 ### Run "$@" inside ./$1 of the current (pinned) directory, entered for
 ### real: no name on the way may be a link.
 _in_real_sub() {
   local _h _s="${1}"
   shift
-  _h="$(pwd -P)"
-  ( cd -P -- "./${_s}" 2> /dev/null && [ "$(pwd -P)" = "${_h}/${_s}" ] && "$@" )
+  _h="$(/bin/pwd -P)"
+  ( cd -P -- "./${_s}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_h}/${_s}" ] && "$@" )
 }
 ### ./$1 removed unless it is a link; a link at the name is left alone.
 _rm_nolink_here() {
@@ -1731,7 +1877,7 @@ _store_fetch_here() {
   local _t _rc=1
   _t=$(_stage_fetch_here "${3}") || return 1
   ( exec 8< . || exit 1
-    cd -P -- "${2}" 2> /dev/null && [ "$(pwd -P)" = "${2}" ] || exit 1
+    cd -P -- "${2}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${2}" ] || exit 1
     _store_put_copy_here "${1}" "/proc/self/fd/8/${_t#./}" ) && _rc=0
   rm -f -- "${_t}"
   return "${_rc}"
@@ -2856,7 +3002,13 @@ _static_perm_here() {
     ! \( -path "*/vendor/drush" -o -path "*/vendor/symfony/console/Input" \
     -o -path "*/vendor/symfony/console/Style" \)
   _night_mode_own_here "${_o}" f 0664 . "${_pr[@]}" -regextype posix-extended \
-    ! -regex '\./([^/]+/)?sites/[^/]+/(settings|local\.settings|civicrm\.settings|solr|drushrc)\.php'
+    ! -regex '\./([^/]+/)?sites/[^/]+/(settings|local\.settings|civicrm\.settings|solr|drushrc)\.php' \
+    ! -regex '\./([^/]+/)?vendor/(bin/dr|drush/drush/drush\.php)'
+  ### The shell runs core's dr and the site-local drush.php by their paths, and
+  ### only a file that may be executed: both keep the 0775 the platform fixer
+  ### and Unlock Local Drush give them in a tenant codebase.
+  _night_mode_own_here "${_o}" f 0775 . -mindepth 3 -maxdepth 5 \
+    -regextype posix-extended -regex '\./([^/]+/)?vendor/(bin/dr|drush/drush/drush\.php)'
   return 0
 }
 ### The credential files of every site dir of the platform (the current,
@@ -2995,7 +3147,7 @@ _fix_static_permissions() {
       && [ -e "${_Plr}/../vendor/autoload.php" ] \
       && _in_pinned_dir "${_rPlr%/*}" _acct_read_plain_here composer.json \
         | grep -qE '"drupal/core(-recommended)?"' 2>/dev/null; then
-      _use_Plr="$(cd -P -- "${_rPlr}/.." 2> /dev/null && pwd -P)"
+      _use_Plr="$(cd -P -- "${_rPlr}/.." 2> /dev/null && /bin/pwd -P)"
       ### One level UP: a tenant who seeds ~/static/composer.json and
       ### ~/static/vendor/autoload.php beside a docroot placed directly
       ### under ~/static would aim the whole-tree chown at ~/static itself
@@ -3012,13 +3164,13 @@ _fix_static_permissions() {
     ### own handle, never on a hard-linked file (one left alone is logged)
     ### and never on what another user owns, with everything below it
     ### (_night_handover_own_here).
-    if [ ! -e "${_usEr}/static/control/unlock.info" ] \
+    if ! _ctrl_foreign && ! _ctrl_has unlock.info \
       && [ ! -e "${_use_Plr}/skip.info" ]; then
       if [ ! -e "${_usEr}/log/ctrl/plr.${_PlrID}.ctm-lock-${_NOW}.info" ]; then
         _in_pinned_dir "${_use_Plr}" _night_handover_own_here "${_o}" "${_HM_U}" .
         _log_ctrl_mark "plr.${_PlrID}.ctm-lock-${_NOW}.info"
       fi
-    elif [ -e "${_usEr}/static/control/unlock.info" ] \
+    elif _ctrl_has unlock.info \
       && [ ! -e "${_use_Plr}/skip.info" ]; then
       if [ ! -e "${_usEr}/log/ctrl/plr.${_PlrID}.ctm-unlock-${_NOW}.info" ]; then
         _in_pinned_dir "${_use_Plr}" \
@@ -3117,7 +3269,7 @@ _plr_perm_here() {
     ### every entry there is a tenant-plantable name, the walk never follows
     ### a link into the shared distro tree, and neither a hard-linked file
     ### nor what another user owns is ever handed over.
-    if [ ! -e "${_usEr}/static/control/unlock.info" ] \
+    if ! _ctrl_foreign && ! _ctrl_has unlock.info \
       && [ ! -e ./skip.info ]; then
       if [ ! -e "${_usEr}/log/ctrl/plr.${_PlrID}.lock-${_NOW}.info" ]; then
         for _d in modules themes libraries; do
@@ -3126,7 +3278,7 @@ _plr_perm_here() {
         done
         _log_ctrl_mark "plr.${_PlrID}.lock-${_NOW}.info"
       fi
-    elif [ -e "${_usEr}/static/control/unlock.info" ] \
+    elif _ctrl_has unlock.info \
       && [ ! -e ./skip.info ]; then
       if [ ! -e "${_usEr}/log/ctrl/plr.${_PlrID}.unlock-${_NOW}.info" ]; then
         ### here the planted target would be handed straight to the
@@ -3159,7 +3311,9 @@ _plr_perm_here() {
     -mindepth 1 -maxdepth 1
   _in_real_sub sites _night_mode_own_here "${_o}" f 0644 . \
     -mindepth 1 -maxdepth 1 \( -name "*.php" -o -name "*.txt" -o -name "*.yml" \)
-  _night_chmod_own_here "${_o}" f 0664 ./autoload.php
+  ### Core's composer scaffold rewrites both in place, never through an
+  ### unlink (the second from Drupal 11.4 on), so each stays group-writable.
+  _night_chmod_own_here "${_o}" f 0664 ./autoload.php ./autoload_runtime.php
   _in_real_sub sites/all _night_chmod_own_here "${_o}" d 0755 ./drush
   ### Tenant composer codebases: the two directories core's composer
   ### scaffold writes into stay group-writable for the shell user
@@ -3188,8 +3342,8 @@ _plr_perm_here() {
   if [[ ! "${_Plr}" =~ /static/ ]] && [ "${_FOREIGN_CMS}" != "YES" ]; then
     _night_chmod_own_here "${_o}" d 0755 .
     ### The three Drush-lock dirs keep whatever mode the lock state gave
-    ### them (0400 locked, 0775 after Unlock Local Drush): prune, never
-    ### widen or narrow them here.
+    ### them (0400 locked, 0755 after Unlock Local Drush on a built-in
+    ### platform): prune, never widen or narrow them here.
     _night_mode_own_here "${_o}" d 0755 \
       ./modules ./themes ./libraries ./includes ./misc ./profiles ./core \
       ./vendor ../vendor \
@@ -3199,7 +3353,16 @@ _plr_perm_here() {
       ./modules ./themes ./libraries ./includes ./misc ./profiles ./core \
       ./vendor ../vendor \
       \( -path "*/vendor/drush" -o -path "*/vendor/symfony/console/Input" \
-      -o -path "*/vendor/symfony/console/Style" \) -prune -o
+      -o -path "*/vendor/symfony/console/Style" \) -prune -o ! -path "*/vendor/bin/dr"
+    ### Composer's proxy for core's dr keeps the 0755 the platform fixer gives
+    ### it, in the vendor/ the fixer takes (the docroot's own, else the one
+    ### above it): the shell runs it by its path, and only a file that may be
+    ### executed.
+    if [ -e ./vendor ]; then
+      _night_mode_own_here "${_o}" f 0755 ./vendor -mindepth 2 -maxdepth 2 -path ./vendor/bin/dr
+    else
+      _night_mode_own_here "${_o}" f 0755 ../vendor -mindepth 2 -maxdepth 2 -path ../vendor/bin/dr
+    fi
   fi
   _in_real_sub sites/all _night_mode_own_here "${_o}" d "${_pDm}" \
     ./modules ./themes ./libraries
@@ -3271,12 +3434,12 @@ _site_perm_here() {
       _in_real_sub "${_d}" _archive_sweep_here "${_o}"
     done
     _in_real_sub modules _rm_own_here "${_o}" ./local-allow.info
-    if [ ! -e "${_usEr}/static/control/unlock.info" ] \
+    if ! _ctrl_foreign && ! _ctrl_has unlock.info \
       && [ ! -e "${_Plr}/skip.info" ]; then
       for _d in modules themes libraries; do
         _in_real_sub "${_d}" _night_chown_own_all_here "${_o}" "${_HM_U}:${_grp}"
       done
-    elif [ -e "${_usEr}/static/control/unlock.info" ] \
+    elif _ctrl_has unlock.info \
       && [ ! -e "${_Plr}/skip.info" ]; then
       for _d in modules themes libraries; do
         _in_real_sub "${_d}" _night_chown_own_all_here "${_o}" "${_HM_U}.ftp:${_grp}"
@@ -3323,7 +3486,7 @@ _files_store_perm_here() {
   _night_mode_own_here "${_o}" f 0664 . -mindepth 1 "${_pr[@]}"
   if [[ "${_wg}" == wg-* ]]; then
     _in_real_sub private _private_modes_here "${_wg}"
-    while IFS= read -r -d '' _dn; do
+    while LC_ALL=C IFS= read -r -d '' _dn; do
       _in_real_sub "${_dn#./}" _private_modes_here "${_wg}"
     done < <(find . -mindepth 1 -regextype posix-extended -path ./private -prune \
       -o -type d -iregex "${_NIGHT_DENIED_RE}" -prune -print0 2> /dev/null)
@@ -3565,7 +3728,7 @@ _fix_permissions() {
 
 _convert_controls_orig() {
   if [ -e "${_CTRL_DIR}/$1.info" ] \
-    || [ -e "${_usEr}/static/control/$1.info" ]; then
+    || _ctrl_has "$1.info"; then
     if [ ! -e "${_CTRL_F}" ] && [ -e "${_CTRL_F_TPL}" ]; then
       _reseed_ctrl_ini "${_CTRL_F_TPL}" "${_CTRL_F}"
     fi
@@ -3586,7 +3749,7 @@ _convert_controls_orig_no_global() {
 
 _convert_controls_value() {
   if [ -e "${_CTRL_DIR}/$1.info" ] \
-    || [ -e "${_usEr}/static/control/$1.info" ]; then
+    || _ctrl_has "$1.info"; then
     if [ ! -e "${_CTRL_F}" ] && [ -e "${_CTRL_F_TPL}" ]; then
       _reseed_ctrl_ini "${_CTRL_F_TPL}" "${_CTRL_F}"
     fi
@@ -3658,10 +3821,14 @@ _fix_site_system_control_settings() {
 ### (_ctrl_ini_sed): -e expressions run in sequence on every line, and a line
 ### the fourth deletes never reaches the fifth, as with separate passes.
 _cleanup_ini() {
+  ### A line that starts with a blank is dropped, except one whose key is
+  ### drupal_upgrade_modes: the panel reads such a line as a list it cannot
+  ### trust and refuses every upgrade of the site or platform, and with the
+  ### line gone the next day it would accept them all.
   if [ -e "${_CTRL_F}" ]; then
     _ctrl_ini_sed "${_CTRL_F}" \
       -e "s/^;;.*//g" \
-      -e "s/^ .*//g" \
+      -e '/^[[:space:]]*drupal_upgrade_modes[[:space:]]*\(=\|$\)/I!s/^ .*//g' \
       -e "s/^#.*//g" \
       -e "/^$/d" \
       -e "s/^\[/\n\[/g" &> /dev/null
@@ -4121,7 +4288,7 @@ _cleanup_ghost_drushrc() {
   ### read, the arming marker kept, and every move into undo/ made only
   ### inside the real directories (_acct_in_real_dir, _acct_undo_here); a
   ### platform or site tree moves from inside its resolved parent.
-  local _drD="${_usEr}/.drush" _alTxt
+  local _drD="${_usEr}/.drush" _alTxt _ghUb
   # Sites-reap enablement is resolved once per account, and every OFF->ON flip
   # only ARMS on its first enabled run (nothing moved): the consecutive-night
   # ghost counters keep counting during dry-run, so a flip would otherwise
@@ -4151,16 +4318,21 @@ _cleanup_ghost_drushrc() {
       _IS_SITE=NO
     elif [[ "${_aliasName}" =~ (^)"platform_" ]]; then
       _Plm=$(printf '%s\n' "${_alTxt}" \
-        | grep "root'" \
-        | cut -d: -f2 \
-        | awk '{ print $3}' \
-        | sed "s/[\,']//g" 2>&1)
+        | sed -n "s/^[[:space:]]*'root'[[:space:]]*=>[[:space:]]*'\([^']*\)'.*/\1/p" \
+        | head -n 1 2>&1)
       _gh_pmark="ghost-drushrc-platform-${_aliasName}.seen"
+      _ghUb=$(_ghost_unfinished_build "${_alTxt}" "${_Plm}")
       # _Plm is parsed from a Drush alias exactly like _Dir/_Plr in the per-site
       # loop, but reaches an unconditional root "mv -f" -- so it needs the same
       # anchor those get: a real dir, not a symlink, resolving under THIS
       # account root. Refuse the platform rather than move an unknown path.
-      if [ -d "${_Plm}" ] && ! _validate_loop_dir "${_Plm}"; then
+      if [ -n "${_ghUb}" ]; then
+        # the marker says a build into that folder never finished, whatever
+        # the alias root holds: the platform's Delete removes the folder and
+        # the marker only through this alias, so neither move below runs
+        _ghost_seen_reset_acct "${_gh_pmark}"
+        echo "GHOST platform alias ${_thisAlias} kept: the build into ${_ghUb} never finished; delete the platform in the control panel to remove both"
+      elif [ -d "${_Plm}" ] && ! _validate_loop_dir "${_Plm}"; then
         echo "SKIP: platform root symlinked or outside ${_usEr}: ${_Plm}"
       elif [ -d "${_Plm}" ]; then
         # Version-agnostic: a real docroot or a vendor/ tree = live platform.
@@ -4216,10 +4388,8 @@ _cleanup_ghost_drushrc() {
         fi
       else
         _T_SITE_FDIR=$(printf '%s\n' "${_alTxt}" \
-          | grep "site_path'" \
-          | cut -d: -f2 \
-          | awk '{ print $3}' \
-          | sed "s/[\,']//g" 2>&1)
+          | sed -n "s/^[[:space:]]*'site_path'[[:space:]]*=>[[:space:]]*'\([^']*\)'.*/\1/p" \
+          | head -n 1 2>&1)
         # Fail closed: a degraded/mid-rewrite alias parses to an empty or
         # non-/data/disk site_path -> KEEP, never reap on a bad parse. The
         # prefix test is TEXTUAL, so ".." components pass it and still reach
@@ -4276,10 +4446,8 @@ _cleanup_ghost_drushrc() {
           _GH_CLASS=ghost
           _GH_FE=""
           _T_SITE_ROOT=$(printf '%s\n' "${_alTxt}" \
-            | grep "'root' =>" \
-            | cut -d: -f2 \
-            | awk '{ print $3}' \
-            | sed "s/[\,']//g" 2>&1)
+            | sed -n "s/^[[:space:]]*'root'[[:space:]]*=>[[:space:]]*'\([^']*\)'.*/\1/p" \
+            | head -n 1 2>&1)
           _T_SITE_URI=$(printf '%s\n' "${_alTxt}" \
             | sed -n "s/^[[:space:]]*'uri' => '\([^']*\)'.*/\1/p" | head -n 1)
           [ -n "${_T_SITE_URI}" ] || _T_SITE_URI="${_T_SITE_NAME}"
@@ -4300,10 +4468,8 @@ _cleanup_ghost_drushrc() {
               for _GH_PALIAS in `_acct_in_real_dir "${_drD}" \
                 compgen -G './platform_*.alias.drushrc.php'`; do
                 _GH_PROOT=$(_acct_read_in "${_drD}" "${_GH_PALIAS#./}" \
-                  | grep "'root' =>" \
-                  | cut -d: -f2 \
-                  | awk '{ print $3}' \
-                  | sed "s/[\,']//g" 2>&1)
+                  | sed -n "s/^[[:space:]]*'root'[[:space:]]*=>[[:space:]]*'\([^']*\)'.*/\1/p" \
+                  | head -n 1 2>&1)
                 _GH_PDOC=$(_detect_real_docroot "${_GH_PROOT}") \
                   || _GH_PDOC="${_GH_PROOT}"
                 if [ -n "${_GH_PDOC}" ] \
@@ -4478,6 +4644,18 @@ _le_hook_root_here() {
 _le_hook_exec_here() {
   _le_hook_root_here "${1}" && _chmod_nofollow_here f 0755 "./${1}"
 }
+### The current certificate of the set in the current (pinned) directory,
+### which is oN's: dehydrated keeps cert.pem as a link to the cert-<time>.pem
+### beside it, so a link is read by that name only, and a plain cert.pem (a
+### proxy box writes one) as it is; the file itself never through a link.
+_le_cert_here() {
+  local _t=cert.pem
+  if [ -L ./cert.pem ]; then
+    _t=$(readlink -- ./cert.pem 2> /dev/null) || return 1
+    [[ "${_t}" =~ ^cert-[0-9]+\.pem$ ]] || return 1
+  fi
+  _acct_read_here "${_t}"
+}
 ### The Python hook made executable, and its requirements installed by root
 ### only from that root-owned clone. Python is externally managed (PEP 668)
 ### from Devuan 5 on, so pip3 refuses the system site: the requirements go
@@ -4487,7 +4665,7 @@ _le_hook_py_here() {
   local _here
   _le_hook_exec_here hook.py || return 1
   _le_hook_root_here requirements.txt || return 1
-  _here="$(pwd -P)"
+  _here="$(/bin/pwd -P)"
   python3 -m venv ./venv 2> /dev/null \
     && ./venv/bin/pip install -q -r ./requirements.txt 2> /dev/null \
     && sed -i "1s|^#!.*|#!${_here}/venv/bin/python3|" ./hook.py
@@ -4498,6 +4676,18 @@ _le_ssl_check_update() {
   ### here may rewrite it (a www strip once did, and every later leg of the
   ### iteration then addressed an alias that does not exist).
   local _Dom="${_Dom}" _vhTxt
+  ### The account's wildcard and DNS flags are read from its control/: one
+  ### that is not the account's own (_ctrl_foreign) says nothing of them, so
+  ### a site whose certificate covers a wildcard name keeps it as it is (no
+  ### per-name order replaces it meanwhile); every other site renews per name
+  ### as before.
+  ### Both orders are filed under the site's own name (--alias, or the
+  ### first --domain), the only set its vhost and Verify read (_le_cert_here).
+  if _ctrl_foreign \
+    && _acct_in_real_dir "${_usEr}/tools/le/certs/${_Dom}" _le_cert_here \
+      | openssl x509 -noout -text 2> /dev/null | grep -q 'DNS:\*\.'; then
+    return 0
+  fi
   _exeLe="${_usEr}/tools/le/dehydrated"
   _Vht="${_usEr}/config/server_master/nginx/vhost.d/${_Dom}"
   ### Not in demo mode, tools/le/config holding only the staging authority
@@ -4520,7 +4710,7 @@ _le_ssl_check_update() {
   fi
   ### hosting_le names the marker after the alias a site redirects to, and
   ### honours it there on Verify: either name stops this leg too.
-  local _alTxt _rdr
+  local _alTxt _rdr _svcRx _leMain
   if [ -e "${_usEr}/.drush/${_Dom}.alias.drushrc.php" ]; then
     _alTxt=$(_acct_read_in "${_usEr}/.drush" "${_Dom}.alias.drushrc.php")
     _rdr=$(printf '%s\n' "${_alTxt}" \
@@ -4552,9 +4742,9 @@ _le_ssl_check_update() {
         ### site. Verify decides the same way (hosting_le).
         _leWild=NO
         _thisHook=""
-        if [ -e "${_usEr}/static/control/wildcard-enable-${_Dom}.info" ]; then
-          if [ -e "${_usEr}/static/control/cloudflare-dns-ssl-py.info" ] \
-            || [ -e "${_usEr}/static/control/cloudflare-dns-ssl-sh.info" ]; then
+        if _ctrl_has "wildcard-enable-${_Dom}.info"; then
+          if _ctrl_has cloudflare-dns-ssl-py.info \
+            || _ctrl_has cloudflare-dns-ssl-sh.info; then
             ### static/control is owned by the tenant SHELL user and sits in a
             ### group-writable static/, so both the flag file and the control
             ### dir are names a tenant can swap for a symlink. chattr has no -h
@@ -4601,9 +4791,9 @@ _le_ssl_check_update() {
               _acct_in_real_dir "${_usEr}/tools/le/hooks/cloudflare-py" \
                 _le_hook_py_here
             fi
-            if [ -e "${_usEr}/static/control/cloudflare-dns-ssl-py.info" ]; then
+            if _ctrl_has cloudflare-dns-ssl-py.info; then
               _thisHook="${_usEr}/tools/le/hooks/cloudflare-py/hook.py"
-            elif [ -e "${_usEr}/static/control/cloudflare-dns-ssl-sh.info" ]; then
+            elif _ctrl_has cloudflare-dns-ssl-sh.info; then
               _thisHook="${_usEr}/tools/le/hooks/cloudflare-sh/cf-hook.sh"
             fi
             if [ -e "${_thisHook}" ] && [ -e "${_usEr}/tools/le/config" ]; then
@@ -4627,7 +4817,41 @@ _le_ssl_check_update() {
           | tr -d "\n" \
           | sed "s/  / /g; s/  / /g; s/  / /g" \
           | sort | uniq`
+        ### A name under one of the hosting service's own domains is left
+        ### out, as Verify leaves it out (hosting_le): only a site's real
+        ### names are ordered. Ordered here alone it made the two name lists
+        ### differ, so each order forced a renewal after the other's, and a
+        ### name of that kind which no longer resolves (one under a server
+        ### name the box once had) failed the whole order every night.
+        _svcRx='\.(host8|boa|aegir|o8)\.(biz|io|cc)$'
+        ### The no-SAN switch, read as Verify reads it: under the alias the
+        ### site redirects to when it redirects to one, else under its own
+        ### name. With it only the site's own name is ordered, and beside it
+        ### the redirect target, the two names its certificate must cover;
+        ### a wildcard order takes no other name. Not read here, the order
+        ### asked for every alias again, was told the names had changed and
+        ### failed each night on the alias the switch was set for.
+        _leMain="${_Dom}"
+        if [[ "${_rdr}" =~ ^[A-Za-z0-9.-]+$ ]] && [ "${_rdr}" != "0" ]; then
+          _leMain="${_rdr}"
+        fi
+        if _ctrl_has "ssl-no-san-${_leMain}.info"; then
+          echo "LE no-SAN order for ${_Dom}: ssl-no-san-${_leMain}.info in static/control, its other names are left out"
+          ### The redirect target is one of the site's aliases: a service
+          ### name or a .nodns. name is no more ordered here than below.
+          if [ "${_leWild}" != "YES" ] && [ "${_leMain}" != "${_Dom}" ] \
+            && [[ ! "${_leMain}" =~ ${_svcRx} ]] \
+            && [[ ! "${_leMain}" =~ ".nodns." ]]; then
+            _usEaliases="--domain ${_leMain}"
+            echo "--domain ${_leMain}"
+          fi
+          _siTealiases=""
+        fi
         for _aliAs in `echo "${_siTealiases}"`; do
+          if [[ "${_aliAs}" =~ ${_svcRx} ]]; then
+            echo "ignored alias ${_aliAs} (a hosting service name, as on Verify)"
+            continue
+          fi
           if [ "${_leWild}" = "YES" ]; then
             if [ -z "${_usEaliases}" ] \
               && [ ! -z "${_aliAs}" ] \
@@ -4678,7 +4902,7 @@ _le_ssl_check_update() {
             return 0
           fi
         fi
-        if [ "${_DOM}" = "${_RDM}" ] || [ -e "${_usEr}/static/control/force-ssl-certs-rebuild.info" ]; then
+        if [ "${_DOM}" = "${_RDM}" ] || _ctrl_has force-ssl-certs-rebuild.info; then
           if [ ! -e "${_usEr}/log/ctrl/site.${_Dom}.cert-x1-rebuilt.info" ]; then
             _leParams="--cron --ipv4${_leChain:+ ${_leChain}}${_leCfg} --force"
             _log_ctrl_mark "site.${_Dom}.cert-x1-rebuilt.info"
@@ -4766,16 +4990,12 @@ _daily_process() {
       echo "Dom is ${_Dom}"
       _alTxt=$(_acct_read_in "${_usEr}/.drush" "${_Dan}.alias.drushrc.php")
       _Dir=$(printf '%s\n' "${_alTxt}" \
-        | grep "site_path'" \
-        | cut -d: -f2 \
-        | awk '{ print $3}' \
-        | sed "s/[\,']//g" 2>&1)
+        | sed -n "s/^[[:space:]]*'site_path'[[:space:]]*=>[[:space:]]*'\([^']*\)'.*/\1/p" \
+        | head -n 1 2>&1)
       _DIR_CTRL_F="${_Dir}/modules/boa_site_control.ini"
       _Plr=$(printf '%s\n' "${_alTxt}" \
-        | grep "root'" \
-        | cut -d: -f2 \
-        | awk '{ print $3}' \
-        | sed "s/[\,']//g" 2>&1)
+        | sed -n "s/^[[:space:]]*'root'[[:space:]]*=>[[:space:]]*'\([^']*\)'.*/\1/p" \
+        | head -n 1 2>&1)
       _PLR_CTRL_F="${_Plr}/sites/all/modules/boa_platform_control.ini"
       # Skip the iteration if the alias-derived paths do not resolve under
       # an allowed BOA root. Guards against a compromised aegir-context user
@@ -4919,13 +5139,14 @@ _daily_process() {
                 _fix_llms_txt
               fi
               _le_ssl_check_update
-              if [ "${_ENABLE_GOACCESS}" = "YES" ] && [ -e "${_usEr}/static/control/goaccess/${_Dom}.info" ]; then
+              if [ "${_ENABLE_GOACCESS}" = "YES" ] && _ctrl_has "goaccess/${_Dom}.info"; then
                 _noPrefixDom="${_Dom#www.}"
-                _if_gen_goaccess "${_noPrefixDom}"
+                # each name only as one the site's own vhost serves
+                _if_gen_goaccess "${_noPrefixDom}" "${_vhTxt}"
                 # A name without www. is the same report: built twice, it
                 # parsed every access log twice a night
                 if [ "${_noPrefixDom}" != "${_Dom}" ]; then
-                  _if_gen_goaccess "${_Dom}"
+                  _if_gen_goaccess "${_Dom}" "${_vhTxt}"
                 fi
               fi
               ;;

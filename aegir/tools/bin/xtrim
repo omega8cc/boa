@@ -28,6 +28,15 @@ SHELL=/bin/bash
 ###                                   account is shrunk
 ###   xtrim restore <oN>              undo stage A from quarantine (refused
 ###                                   once stage B has started)
+###   xtrim names [<oN>|all]          read-only: where DNS points every name
+###                                   the relay answers for (this box, the
+###                                   target, elsewhere, nowhere), and how
+###                                   many requests the target logged as
+###                                   relayed from this box for it, the
+###                                   target's own requests among them apart
+###   xtrim space                     read-only: what the root filesystem
+###                                   holds, largest trees first, for the
+###                                   read before a smaller plan
 ###
 ### DRY/--live token is PER VERB: a clean DRY of one verb never arms a live
 ### run of another (the historical xoct/xmass defect is not inherited).
@@ -54,8 +63,16 @@ _check_root() {
 }
 
 ### Single instance, house pattern (lock.inc when present, legacy fallback).
+### The fallback counts what the lock covers: root's runs of an xtrim path
+### with a verb that takes the lock (the verbs below that call this
+### function), in the form the other tools use. A command line that only
+### names the tool (an editor, a tail of a run log, a grep) never counts,
+### and neither does a run of names or space, which take no lock so they
+### can run beside a shrink. A run that keeps a run log is two such
+### processes, the wrapper and its run. A refusal is said as lock.inc says
+### it.
 _manage_single_lock() {
-  local _L
+  local _L _CNT
   _SELF_NAME="xtrim"
   for _L in "/opt/local/bin/lock.inc" "/opt/local/lib/lock.inc"; do
     [ -r "${_L}" ] && . "${_L}" && break
@@ -64,8 +81,10 @@ _manage_single_lock() {
     && command -v _single_instance_lock >/dev/null 2>&1; then
     _single_instance_lock
   else
-    if [ "$(pgrep -fc '[x]trim')" -gt 2 ]; then
-      echo "$(date 2>/dev/null) too many xtrim already running" \
+    _CNT=$(pgrep -u root -U root -fc "(^|(^| )[^ ]*bash )[^ ]*/${_SELF_NAME}( --[^ ]*)* (status|plan|quiesce|shrink|finalize|restore)( |$)")
+    if [ "${_CNT:-0}" -gt 2 ]; then
+      echo "${_SELF_NAME}: another instance is running; exiting."
+      echo "$(date 2>/dev/null) too many xtrim already running (count=${_CNT})" \
         >> /var/log/boa/too.many.log
       exit 0
     fi
@@ -97,14 +116,14 @@ _in_real_dir() {
     /data/disk/?*) _a=/data/disk ;;
   esac
   if [ -n "${_a}" ]; then
-    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+    _want="$(cd -P -- "${_a}" 2> /dev/null && /bin/pwd -P)${_d#"${_a}"}"
   else
     ### The parent of a top-level directory (/root) is "/", never the empty
     ### name: cd "" fails on one bash and follows CDPATH on another.
-    _want="$(cd -P -- "${_d%/*}/" 2> /dev/null && pwd -P)"
+    _want="$(cd -P -- "${_d%/*}/" 2> /dev/null && /bin/pwd -P)"
     _want="${_want%/}/${_d##*/}"
   fi
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] && "$@" )
 }
 
 ### ./$1 in the current (pinned) directory: never through a link, never
@@ -117,6 +136,108 @@ _read_here() {
 ### The file $1, read as _read_here reads it inside its real directory.
 _read_file() {
   _in_real_dir "${1%/*}" _read_here "${1##*/}"
+}
+
+### The account's own control folder, judged as the ltd worker and the backup
+### tools judge it (the same three helpers, one text wherever they are
+### defined): a control/ another account's login made says nothing of
+### this account's PHP.
+# The uids root's walks over the account $1's trees act on, comma-separated:
+# root's own (0, what root wrote there for the account) and those of every
+# identity of the account as passwd names them: oN and oN.<name>, that is its
+# .ftp login, its client sub-accounts oN.<client> and oN.<client>-dev and its
+# PHP-FPM users oN.web and oN.<ver>.web. An account name holds no dot, so the
+# match is exact: o1 never takes o10's. Status 1, and nothing, unless the
+# account itself is in passwd. The numbers of the account's removed
+# identities that root recorded in /data/conf/acct-uids/<oN>.gone (the ltd
+# worker, before deluser frees one) are listed too while no user has them.
+# Root's check of the control folder, its reads of the control files and its
+# hand-overs into that folder take a uid no passwd entry names only when it
+# is listed: another account's removed login leaves files under such a number
+# too. Its other hand-overs, mode walks and removal walks still take any.
+_acct_walk_uids() {
+  local _a="${1}" _n _p _u _r _x="0" _self=NO
+  case "${_a}" in
+    ""|*[!a-z0-9-]*) return 1 ;;
+  esac
+  while IFS=: read -r _n _p _u _r; do
+    [[ "${_n}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]] || continue
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    _x="${_x},${_u}"
+    [ "${_n}" = "${_a}" ] && _self=YES
+  done < <(getent passwd 2> /dev/null)
+  [ "${_self}" = "YES" ] || return 1
+  # the account's removed identities, their numbers recorded by root before
+  # deluser freed them; a number a user has again is not taken
+  while IFS= read -r _u; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    getent passwd "${_u}" > /dev/null 2>&1 && continue
+    _x="${_x},${_u}"
+  done 2> /dev/null < "/data/conf/acct-uids/${_a}.gone"
+  echo "${_x}"
+}
+# The whole of an account's control/, judged once before a run acts on it:
+# run inside the account's real static/, it prints OK when control/ and
+# everything in it, never followed through a link, and static/ and every
+# directory above it up to /, are root's or one of the account's identities'
+# (the uids given first, _acct_walk_uids, with the account's recorded
+# removed identities), ABSENT when there is no control/, and otherwise why
+# not, on one line.
+# Every other account's .ftp login is in the box-wide group, which an account
+# not yet on its own group still has on static/: such a login could put a
+# control/ of its own there, or a file of its own in a group-writable
+# directory below it, for root to act on as the account's.
+_ACCT_CTRL_OWN_PL='use Fcntl;
+my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, shift @ARGV // "");
+sub own { my $u = shift; return exists $own{$u} ? 1 : 0; }
+sub isd { ($_[0] & 0170000) == 0040000 }
+sub nm { (my $v = shift) =~ s/[^\x20-\x7e]/?/g; return substr($v, 0, 200); }
+sub refuse { print "$_[0]\n"; exit 0; }
+my ($p, $top, @d, @x) = (".", 0);
+for (1 .. 256) {
+  @x = stat($p) or refuse("static/ cannot be read");
+  own($x[4]) or refuse("a directory above control/ is owned by uid $x[4]");
+  if (@d && $x[0] == $d[0] && $x[1] == $d[1]) { $top = 1; last; }
+  @d = @x;
+  $p .= "/..";
+}
+$top or refuse("static/ is too deep");
+my @s = lstat("./control");
+unless (@s) { print(($!{ENOENT} ? "ABSENT" : "control/ cannot be read") . "\n"); exit 0; }
+isd($s[2]) or refuse("control is not a directory");
+my ($n, @q) = (0, ["control", @s]);
+while (my $e = shift @q) {
+  my ($f, @t) = @$e;
+  own($t[4]) or refuse(nm($f) . " is owned by uid $t[4]" . (defined(getpwuid($t[4])) ? "" : ", which no user has and root never recorded for this account: if the file is its own, give it to its .ftp login"));
+  next unless isd($t[2]);
+  opendir(my $h, "./$f") or refuse(nm($f) . " cannot be read");
+  for my $b (readdir($h)) {
+    next if $b eq "." || $b eq "..";
+    ++$n > 100000 and refuse("control/ holds more than 100000 entries");
+    my @u = lstat("./$f/$b") or next;
+    push @q, ["$f/$b", @u];
+  }
+  closedir($h);
+}
+print "OK\n";
+exit 0;'
+# 0 when the account $1's control/ is its own as _ACCT_CTRL_OWN_PL judges it
+# (or it has none); otherwise why not on stdout, status 1. A run that acts
+# on what control/ says leaves the account as it is when it is not.
+_acct_ctrl_own() {
+  local _a="${1}" _o _r _want
+  # an account not in passwd (not made yet, or removed) has nothing to
+  # judge it by: read as before
+  _o=$(_acct_walk_uids "${_a}" 2> /dev/null) || return 0
+  [ -e "/data/disk/${_a}/static" ] || [ -L "/data/disk/${_a}/static" ] || return 0
+  _want="$(cd -P -- /data/disk 2> /dev/null && /bin/pwd -P)/${_a}/static"
+  _r=$(cd -P -- "/data/disk/${_a}/static" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] \
+    && perl -e "${_ACCT_CTRL_OWN_PL}" -- "${_o}" 2> /dev/null)
+  case "${_r}" in
+    OK|ABSENT) return 0 ;;
+  esac
+  echo "${_r:-static/ is not a real directory}"
+  return 1
 }
 
 _web_group_state() {
@@ -978,13 +1099,27 @@ _probe_catchall_baseline() {
   _BASE_RELAY=$(curl -s -A iCab --max-time 30 \
     -H "Host: ${_bogus}" "http://127.0.0.1/" 2>/dev/null \
     | md5sum | cut -d' ' -f1)
+  ### The status of the same answers: a target whose default page is missing
+  ### or refused answers an error for any unknown name, with one body.
+  _BASE_DIRECT_CODE=$(curl -s -o /dev/null -w '%{http_code}' -A iCab --max-time 30 \
+    --resolve "${_bogus}:80:${_t}" "http://${_bogus}/" 2>/dev/null)
+  _BASE_RELAY_CODE=$(curl -s -o /dev/null -w '%{http_code}' -A iCab --max-time 30 \
+    -H "Host: ${_bogus}" "http://127.0.0.1/" 2>/dev/null)
 }
 
 _is_catchall_body() {
-  ### $1 body file, $2 status, $3 baseline hash. Only meaningful for a 200:
-  ### a legitimate 301/302 body is an nginx stub and carries no site content
-  ### either way, and those are accepted by status for SSL-required sites.
-  [ "$2" = "200" ] || return 1
+  ### $1 body file, $2 status, $3 baseline hash, $4 the baseline's own
+  ### status. Meaningful for a 200: a legitimate 301/302 body is an nginx stub
+  ### and carries no site content either way, and those are accepted by
+  ### status for SSL-required sites. And for the one error the baseline
+  ### itself answers (a 4xx or 5xx with the same body): then the default
+  ### server gives that error for any name it does not hold, and a name
+  ### answering it is not a site refusing.
+  case "$2" in
+    200) ;;
+    4??|5??) [ -n "$4" ] && [ "$2" = "$4" ] || return 1 ;;
+    *) return 1 ;;
+  esac
   [ -n "$3" ] || return 1
   [ "$(md5sum < "$1" | cut -d' ' -f1)" = "$3" ]
 }
@@ -1016,14 +1151,14 @@ _probe_dom() {
   ### "the target answers" and "the target serves THIS site", and the caller
   ### is about to drop databases on the strength of it.
   local _catch=""
-  if _is_catchall_body "${_b1}" "${_c1}" "${_BASE_DIRECT}"; then
+  if _is_catchall_body "${_b1}" "${_c1}" "${_BASE_DIRECT}" "${_BASE_DIRECT_CODE}"; then
     _catch=" direct=CATCH-ALL"
     _c1="catchall"
   fi
   ### The relay carries the target's answer, so the target's catch-all is one
   ### too: the two boxes' pages differ after a pass on one of them alone.
-  if _is_catchall_body "${_br}" "${_cr}" "${_BASE_RELAY}" \
-    || _is_catchall_body "${_br}" "${_cr}" "${_BASE_DIRECT}"; then
+  if _is_catchall_body "${_br}" "${_cr}" "${_BASE_RELAY}" "${_BASE_RELAY_CODE}" \
+    || _is_catchall_body "${_br}" "${_cr}" "${_BASE_DIRECT}" "${_BASE_DIRECT_CODE}"; then
     _catch="${_catch} relay=CATCH-ALL"
     _cr="catchall"
   fi
@@ -1071,7 +1206,7 @@ _probe_dom_direct() {
   local _b1="/tmp/.xtrim-probe-n.$$"
   _c1=$(curl -s -o "${_b1}" -w '%{http_code}' -A iCab --max-time 30 \
     --resolve "${_d}:80:${_t}" "http://${_d}/" 2>/dev/null)
-  if _is_catchall_body "${_b1}" "${_c1}" "${_BASE_DIRECT}"; then
+  if _is_catchall_body "${_b1}" "${_c1}" "${_BASE_DIRECT}" "${_BASE_DIRECT_CODE}"; then
     _c1="catchall"
   fi
   rm -f "${_b1}"
@@ -1090,13 +1225,13 @@ _target_vhost_disabled() {
   ### vhost file on this box, so it is checked before it reaches the remote shell.
   printf '%s' "$1" | grep -qE '^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$' || return 1
   [ "$(ssh -o BatchMode=yes -o ConnectTimeout=15 "root@${_MAP_TGT}" "
-    _n=0; _ok=0; _b=\$(cd -P -- /data/disk 2>/dev/null && pwd -P)
+    _n=0; _ok=0; _b=\$(cd -P -- /data/disk 2>/dev/null && /bin/pwd -P)
     for _a in /data/disk/*; do
       _v=\"\${_a}/config/server_master/nginx/vhost.d\"
       [ -e \"\${_v}/$1\" ] || [ -L \"\${_v}/$1\" ] || continue
       [ -e \"\${_a}/log/CANCELLED\" ] && continue
       _n=\$((_n + 1))
-      [ \"\$(cd -P -- \"\${_v}\" 2>/dev/null && pwd -P)\" = \"\${_b}/\${_a##*/}/config/server_master/nginx/vhost.d\" ] || continue
+      [ \"\$(cd -P -- \"\${_v}\" 2>/dev/null && /bin/pwd -P)\" = \"\${_b}/\${_a##*/}/config/server_master/nginx/vhost.d\" ] || continue
       timeout 10 dd if=\"\${_v}/$1\" iflag=nofollow,nonblock,fullblock bs=1048576 count=1 status=none 2>/dev/null \
         | grep -qE 'Do not reveal Aegir front-end URL|root[[:space:]]+/var/www/nginx-default' || continue
       timeout 10 dd if=\"\${_a}/.drush/$1.alias.drushrc.php\" iflag=nofollow,nonblock,fullblock bs=1048576 count=1 status=none 2>/dev/null \
@@ -1107,8 +1242,53 @@ _target_vhost_disabled() {
   " 2>/dev/null)" = "disabled" ]
 }
 
+### The operator's list of names that do not serve on the target and are
+### accepted as they are: /root/.<oN>.xtrim.accept.cnf, one name a line, a
+### line starting with # a comment. Root's file alone (a regular file of
+### root's that no one else can write, read through one handle); a name that
+### is no host name is dropped. Prints the names, one a line.
+_accept_file() {
+  _mig_valid_acct "${1}" && [ "${1#.}" = "${1}" ] || return 1
+  printf '%s\n' "${_MIG_REC_DIR}/.${1}.xtrim.accept.cnf"
+}
+_accept_names() {
+  local _f _t
+  _f="$(_accept_file "${1}")" || return 0
+  _t="$(_mig_hread "${_MIG_REC_DIR}" "${_f##*/}" root)" || return 0
+  printf '%s\n' "${_t}" | sed 1d | tr -d '\r' | sed 's/[[:space:]]*$//; s/^[[:space:]]*//' \
+    | grep -E '^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$'
+}
+### True when the name $2 is on the list of the account $1.
+_accepted_down() {
+  [ -n "${2}" ] || return 1
+  _accept_names "${1}" | grep -qxF -- "${2}"
+}
+### True when the probe line $1 is the same refusal on both routes: one HTTP
+### status of the 4xx or 5xx class from the target itself and through the
+### relay. Then the relay hands on what the target answers, and the answer is
+### the site's own there (its maintenance mode, a site broken before the
+### move). No answer at all (000), a catch-all page and two different
+### answers are never that.
+_same_refusal() {
+  [[ "${1}" =~ ^direct=([45][0-9]{2})\ relay=([45][0-9]{2})$ ]] \
+    && [ "${BASH_REMATCH[1]}" = "${BASH_REMATCH[2]}" ]
+}
+
 _probe_all_doms() {
-  local _oN="$1" _d _r _rc=0 _nd _nr
+  local _oN="$1" _d _r _rc=0 _nd _nr _af
+  _MAP_ACCEPTED=""
+  _af="$(_accept_file "${_oN}")"
+  ### A list that is there and is not read says so: a link, a file of
+  ### another owner or one others can write is never taken, and the hint
+  ### below would otherwise send the operator to a list that already names
+  ### the site.
+  if [ -n "${_af}" ]; then
+    _mig_hread "${_MIG_REC_DIR}" "${_af##*/}" root > /dev/null 2>&1
+    case "$?" in
+      0|3) ;;
+      *) _alrt "${_oN}: ${_af} is there and is NOT read: the list must be root's own regular file that no other user can write (chown root:root, chmod 600)" ;;
+    esac
+  fi
   _probe_catchall_baseline "${_MAP_TGT}"
   _probe_rename_map
   for _d in ${_MAP_DOMS}; do
@@ -1131,6 +1311,22 @@ _probe_all_doms() {
           sleep 6
           continue
         fi
+        ### A renamed site that answers a refusal of its own under its new
+        ### name is judged as any other below: only a name the operator
+        ### listed, and only on a status the target itself gives.
+        if [[ "${_nr}" =~ ^[45][0-9]{2}$ ]]; then
+          if _accepted_down "${_oN}" "${_d}"; then
+            _info "${_oN}: ${_d} retired by the rename; ${_nd} does not serve on the target (direct=${_nr}): accepted, named in ${_af}"
+            _MAP_ACCEPTED="${_MAP_ACCEPTED} ${_d}:${_nr}"
+            sleep 6
+            continue
+          fi
+          _alrt "${_oN}: ${_d} probe FAILED (${_r}) and its renamed form ${_nd} does not serve either (direct=${_nr})"
+          _alrt "${_oN}:   when that answer is the site's own state on the target (its maintenance mode, a site broken before the move), name ${_d} in ${_af}, one name a line, and run this again"
+          _rc=1
+          sleep 6
+          continue
+        fi
         _alrt "${_oN}: ${_d} probe FAILED (${_r}) and its renamed form ${_nd} does not serve either (direct=${_nr})"
         _rc=1
         sleep 6
@@ -1150,6 +1346,28 @@ _probe_all_doms() {
           fi
           ;;
       esac
+      ### A site in its own maintenance mode, or one that was broken before
+      ### the move, answers the same refusal from the target and through the
+      ### relay for as long as its owner leaves it so, and would hold the
+      ### account's shrink, and with it the box's finalize, for good. Nothing
+      ### here can tell that state from a move that broke the site, so only
+      ### the operator can: a name root listed is accepted on such an answer,
+      ### said in the plan and kept in the manifest. The target-side proofs
+      ### of its database still follow.
+      if _same_refusal "${_r}"; then
+        if _accepted_down "${_oN}" "${_d}"; then
+          _info "${_oN}: ${_d} does not serve on the target (${_r}): accepted, named in ${_af}"
+          _nr="${_r#direct=}"
+          _MAP_ACCEPTED="${_MAP_ACCEPTED} ${_d}:${_nr%% *}"
+          sleep 6
+          continue
+        fi
+        _alrt "${_oN}: ${_d} probe FAILED (${_r})"
+        _alrt "${_oN}:   the same answer on both routes: when it is the site's own state on the target (its maintenance mode, a site broken before the move), name ${_d} in ${_af}, one name a line, and run this again"
+        _rc=1
+        sleep 6
+        continue
+      fi
       _alrt "${_oN}: ${_d} probe FAILED (${_r})"
       _rc=1
     else
@@ -1184,10 +1402,52 @@ _target_proof_vhosts() {
     2>/dev/null | grep -q "vhost.d"
 }
 
+### True when the target holds no newer certificate than the one this box
+### serves for the name $2 of the account $1 ($3 its end here, in epoch
+### seconds): the paired account's own store there (the account the root
+### policy record names, this account's name when it names none) holds no
+### set for the name, or one that ends no later. Then the daily mirror has
+### nothing to pull and nothing on this box can renew the set, since the
+### target is the only issuer. Read strictly, inside the set's own real
+### directory (the store is the account's there: a link at the set's name,
+### or a fullchain.pem that leads out of it, is never followed; the dated
+### file dehydrated links it to in the same directory is): a store or a set
+### that is no real directory, a set whose end cannot be read, a newer set
+### (the mirror is behind) and a target that does not answer are all "no".
+_target_cert_not_newer() {
+  local _oN="$1" _dom="$2" _lend="$3" _po _out
+  printf '%s' "${_dom}" | grep -qE '^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$' || return 1
+  case "${_lend}" in ''|*[!0-9]*) return 1 ;; esac
+  _po="$(_mig_rec_get "${_oN}" _MIG_PEER_OCT)"
+  [ -n "${_po}" ] || _po="${_oN}"
+  _mig_valid_acct "${_po}" && [ "${_po#.}" = "${_po}" ] || return 1
+  _out="$(ssh -o BatchMode=yes -o ConnectTimeout=15 "root@${_MAP_TGT}" "
+    _b=\$(cd -P -- /data/disk 2>/dev/null && /bin/pwd -P)
+    _s=/data/disk/${_po}/tools/le/certs
+    [ -n \"\${_b}\" ] && [ \"\$(cd -P -- \"\${_s}\" 2>/dev/null && /bin/pwd -P)\" = \"\${_b}/${_po}/tools/le/certs\" ] || exit 4
+    [ -e \"\${_s}/${_dom}\" ] || [ -L \"\${_s}/${_dom}\" ] || { echo none; exit 0; }
+    cd -P -- \"\${_s}/${_dom}\" 2>/dev/null && [ \"\$(/bin/pwd -P)\" = \"\${_b}/${_po}/tools/le/certs/${_dom}\" ] || exit 4
+    _f=fullchain.pem
+    if [ -L \"\${_f}\" ]; then
+      _f=\$(readlink -- \"\${_f}\")
+      case \"\${_f}\" in ''|*/*) exit 5 ;; esac
+    fi
+    _e=\$(timeout 10 dd if=\"./\${_f}\" iflag=nofollow,nonblock,fullblock bs=1048576 count=1 status=none 2>/dev/null \
+      | openssl x509 -noout -enddate 2>/dev/null | cut -d= -f2)
+    [ -n \"\${_e}\" ] || exit 5
+    date -ud \"\${_e}\" +%s
+  " 2>/dev/null)" || return 1
+  [ "${_out}" = "none" ] && return 0
+  case "${_out}" in ''|*[!0-9]*) return 1 ;; esac
+  [ "${_out}" -le "${_lend}" ]
+}
+
 _cert_horizon() {
   ### $1 acct: earliest notAfter behind retained https vhosts; refuses on
   ### an already-expired cert. Prints "<days> <domain>" for the earliest
-  ### ("-" when none), then the names it left out as disabled on the target.
+  ### ("-" when none), then the names it left out: as it stands a name whose
+  ### site is disabled on the target, as nr:<name> one the target holds
+  ### nothing newer for.
   ### The vhosts are read inside the real vhost.d, the certificate each
   ### names as _cert_text reads it.
   local _oN="$1" _v _crt _end _now _days _min=999999 _mind="" _dis=""
@@ -1206,6 +1466,9 @@ _cert_horizon() {
     _end=$(date -d "${_end}" +%s 2>/dev/null)
     [ -z "${_end}" ] && continue
     _days=$(( (_end - _now) / 86400 ))
+    ### A set that ended within the last day divides to 0 days: it has
+    ### expired all the same, and reads as a day past its end.
+    [ "${_end}" -le "${_now}" ] && [ "${_days}" -ge 0 ] && _days=-1
     ### An expired set of a site disabled in the panel on the target is that
     ### site's state, not a mirror to fix: the target's nightly renews no
     ### disabled site, so it would hold the account's shrink for good. Only
@@ -1214,6 +1477,16 @@ _cert_horizon() {
     if [ "${_days}" -lt 0 ] && [ -n "${_MAP_TGT}" ] \
       && _target_vhost_disabled "${_v#https.}"; then
       _dis="${_dis} ${_v#https.}"
+      continue
+    fi
+    ### So is the expired set of a live site that the target holds nothing
+    ### newer for: its renewal fails there (the name's DNS left, the client
+    ### let it lapse) or was never asked for, the mirror has nothing to pull,
+    ### and it too would hold the shrink for good. A newer set on the target
+    ### means the mirror is behind, and that still refuses.
+    if [ -n "${_MAP_TGT}" ] && [ "${_days}" -lt 0 ] \
+      && _target_cert_not_newer "${_oN}" "${_v#https.}" "${_end}"; then
+      _dis="${_dis} nr:${_v#https.}"
       continue
     fi
     if [ "${_days}" -lt "${_min}" ]; then
@@ -1348,10 +1621,19 @@ _preflight() {
   ### Cert horizon: refuse on an expired cert behind a retained vhost.
   read -r _hz _hzd _hzx <<< "$(_cert_horizon "${_oN}")"
   if [ "${_hz}" != "999999" ] && [ "${_hz}" -lt "0" ]; then
-    _die "${_oN}: certificate for ${_hzd} already EXPIRED -- fix the mirror first"
+    _die "${_oN}: certificate for ${_hzd} already EXPIRED -- fix the mirror first (the target holds a newer set, or its store could not be read)"
   fi
-  [ -n "${_hzx}" ] \
-    && _info "${_oN}: expired certificate left out, its site disabled in the panel on the target (not renewed while disabled): ${_hzx}"
+  local _hzw _hzdis="" _hznr=""
+  for _hzw in ${_hzx}; do
+    case "${_hzw}" in
+      nr:*) _hznr="${_hznr} ${_hzw#nr:}" ;;
+      *) _hzdis="${_hzdis} ${_hzw}" ;;
+    esac
+  done
+  [ -n "${_hzdis}" ] \
+    && _info "${_oN}: expired certificate left out, its site disabled in the panel on the target (not renewed while disabled):${_hzdis}"
+  [ -n "${_hznr}" ] \
+    && _alrt "${_oN}: expired certificate left out, the target holds nothing newer for it (nothing for the mirror to pull; HTTPS through this relay meets the browser's warning until the target renews it) -- reported, not refused:${_hznr}"
   ### A retired (renamed) name is outside that horizon: the target no longer
   ### issues for it and the daily certificate mirror skips a vhost with no
   ### proxy_pass, so nothing on either box can renew it and a refusal here
@@ -1366,6 +1648,7 @@ _preflight() {
     _rend=$(date -d "${_rend}" +%s 2>/dev/null)
     [ -n "${_rend}" ] || continue
     _rdays=$(( (_rend - $(date +%s)) / 86400 ))
+    [ "${_rend}" -le "$(date +%s)" ] && [ "${_rdays}" -ge 0 ] && _rdays=-1
     if [ "${_rdays}" -lt "14" ]; then
       _alrt "${_oN}: retired name ${_rd} still answers HTTPS here on a certificate nothing renews ($( [ "${_rdays}" -lt "0" ] && echo "EXPIRED ${_rdays#-}d ago" || echo "${_rdays}d left")) -- reported, not refused"
     fi
@@ -1434,6 +1717,7 @@ _write_manifest() {
     echo "panel_db=${_MAP_HM_DB}"
     echo "platform_roots=${_MAP_PLATS# }"
     echo "min_days=${_MIN_DAYS}"
+    echo "accepted_not_serving=${_MAP_ACCEPTED# }"
     echo "## dns snapshot"
     for _d in ${_MAP_DOMS}; do
       echo "dns ${_d} $(dig +short A "${_d}" 2>/dev/null | tr '\n' ' ')"
@@ -1543,7 +1827,12 @@ _stage_a() {
     # a local panel also keeps the pool of its own (oN.hm), on any version
     [ "${_MAP_PANEL_LOCAL}" = "YES" ] && [ "$(basename "${_p}")" = "${_oN}.hm.conf" ] && continue
     _m=$(echo "${_p}" | sed "s|/opt/php\([0-9]*\)/.*|\1|")
-    mv -f "${_p}" "${_q}/pools/" && _AFFECTED_MASTERS="${_AFFECTED_MASTERS} ${_m}"
+    ### root's record of the tree each pool came from: the restore puts a
+    ### pool back there, never where a file of the account's names
+    if mv -f "${_p}" "${_q}/pools/"; then
+      _AFFECTED_MASTERS="${_AFFECTED_MASTERS} ${_m}"
+      printf '%s %s\n' "$(basename "${_p}")" "${_m}" >> "${_q}/pools.tree"
+    fi
   done
   for _m in $(echo "${_AFFECTED_MASTERS}" | tr ' ' '\n' | sort -u); do
     [ -x "/etc/init.d/php${_m}-fpm" ] && service "php${_m}-fpm" reload &> /dev/null
@@ -1586,6 +1875,81 @@ _stage_a() {
   _info "${_oN}: stage A complete (proxy re-probed clean)"
 }
 
+# A task dispatcher (run-<account>) root may run or hand back: a regular file
+# with one link, owned by root, that no group or other user can write. Any
+# other copy was made or kept where another user could write it (a parked
+# copy outlives its account, whose number is given out again; a second link
+# stays writable through the other name), so root never runs or returns it.
+_dispatcher_trusted() {
+  local _s
+  [ -f "${1}" ] && [ ! -L "${1}" ] || return 1
+  _s=$(stat -c '%u %h %a' -- "${1}" 2> /dev/null) || return 1
+  case "${_s}" in
+    "0 1 "[0-7][0-7][0-7] | "0 1 "[0-7][0-7][0-7][0-7]) ;;
+    *) return 1 ;;
+  esac
+  (( (8#${_s##* } & 8#022) == 0 ))
+}
+
+# A parked copy that is not root's alone is set aside under a dot name beside
+# it, never handed back, and named in dispatcher.incident.log.
+_dispatcher_set_aside() {
+  local _s
+  _s=$(stat -c 'owner %U (uid %u), %h links, mode %a' -- "${1}" 2> /dev/null)
+  mv -f -- "${1}" "${1%/*}/.untrusted-${1##*/}.$(date +%s)" 2> /dev/null || return 1
+  [ -d /var/log/boa ] && echo "$(date) set aside, not handed back: ${1} (${_s:-unreadable}): not root's alone" \
+    >> /var/log/boa/dispatcher.incident.log
+  return 0
+}
+
+# A new dispatcher of root's for the account $1 at /var/xdrago/run-$1. BOA
+# writes every dispatcher from one template that differs only in its _H_USER
+# line: it is made from the build tree's template when that is root's alone,
+# else from another account's dispatcher that is root's alone, live, then
+# parked (a demoted box keeps them all parked). The file it replaces is never
+# read or run. With replace as $2 the old file must still be there and is
+# claimed (renamed away) first, so one a parker took meanwhile is never put
+# back. 1 when there is no such source or the new file cannot be made.
+_dispatcher_write() {
+  local _a="${1}" _f _src="" _t _o=""
+  [ -n "${_a}" ] && [ "${_a}" = "${_a##*/}" ] || return 1
+  for _f in /opt/tmp/boa/aegir/scripts/run-xdrago /var/xdrago/run-* /var/backups/off-run/run-*; do
+    [ "${_f##*/}" != "run-${_a}" ] || continue
+    _dispatcher_trusted "${_f}" || continue
+    [ "$(grep -c '^_H_USER=' -- "${_f}" 2> /dev/null)" = "1" ] || continue
+    if [ "${_f}" = "/opt/tmp/boa/aegir/scripts/run-xdrago" ]; then
+      grep -qx '_H_USER=EDIT_USER' "${_f}" 2> /dev/null || continue
+    else
+      grep -qxF -- "_H_USER=${_f##*/run-}" "${_f}" 2> /dev/null || continue
+    fi
+    _src="${_f}"
+    break
+  done
+  [ -n "${_src}" ] || return 1
+  # mktemp's names hold no "run-", which runner.sh would dispatch
+  _t=$(mktemp /var/xdrago/.xdwrite.XXXXXX 2> /dev/null) || return 1
+  if awk -v u="${_a}" '/^_H_USER=/ { print "_H_USER=" u; next } { print }' "${_src}" > "${_t}" \
+    && chown root:root "${_t}" && chmod 700 "${_t}" && _dispatcher_trusted "${_t}" \
+    && [ "$(grep -c '^_H_USER=' -- "${_t}")" = "1" ] \
+    && grep -qxF -- "_H_USER=${_a}" "${_t}" \
+    && bash -n "${_t}" 2> /dev/null; then
+    if [ "${2:-}" = "replace" ]; then
+      if ! _o=$(mktemp /var/xdrago/.xdold.XXXXXX 2> /dev/null) \
+        || ! mv -f -T -- "/var/xdrago/run-${_a}" "${_o}" 2> /dev/null; then
+        rm -f -- "${_t}" ${_o:+"${_o}"}
+        return 1
+      fi
+    fi
+    if mv -f -T -- "${_t}" "/var/xdrago/run-${_a}"; then
+      [ -n "${_o}" ] && rm -f -- "${_o}"
+      return 0
+    fi
+    [ -n "${_o}" ] && rm -f -- "${_o}"
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+
 _restore_stage_a() {
   local _oN="$1"
   local _q="${_XTRIM_BASE}/${_oN}/quarantine" _p _m _c
@@ -1603,7 +1967,7 @@ _restore_stage_a() {
       _die "${_oN}: stage B already ran (or crashed mid-run) -- restore is a migration back, not an unpark (see the manifest + archived aliases)"
     ;;
   esac
-  local _nn _left=0
+  local _nn _why _left=0
   for _p in "${_q}"/pools/*; do
     [ -e "${_p}" ] || continue
     ### The panel pool (oN.hm.conf) is rebuilt by the ltd worker on its next
@@ -1618,9 +1982,20 @@ _restore_stage_a() {
     ### the box-level _PHP_FPM_VERSION is a different knob and lands the
     ### pool in a tree whose master never serves this account.
     _nn=$(basename "${_p}" | sed -n "s/^${_oN}\.\([0-9]*\)\.conf$/\1/p")
-    ### static/control is the tenant's: read inside the real directory,
-    ### never through a link or into a FIFO put at either name
+    ### the tree stage A recorded for the pool (root's own record) first
+    if [ -z "${_nn}" ] && [ -f "${_q}/pools.tree" ]; then
+      _nn=$(awk -v n="$(basename "${_p}")" '$1 == n { v = $2 } END { print v }' \
+        "${_q}/pools.tree" | head -c 64 | tr -d -c 0-9)
+    fi
+    ### a quarantine parked before that record: the account's fpm.info, read
+    ### inside the real directory (never through a link or into a FIFO put
+    ### at either name), and only from a control folder that is its own
     if [ -z "${_nn}" ]; then
+      if ! _why=$(_acct_ctrl_own "${_oN}"); then
+        _alrt "${_oN}: static/control is not ${_oN}'s own (${_why}): pool $(basename "${_p}") left in quarantine; put it in the tree the account runs on by hand"
+        _left=1
+        continue
+      fi
       _nn=$(_in_real_dir "${_USR}/static/control" _read_here fpm.info \
         | head -c 64 | tr -d -c 0-9)
     fi
@@ -1704,9 +2079,14 @@ _restore_stage_a() {
       mkdir -p /var/backups/off-run
       mv -f "${_q}/held-run-${_oN}" "/var/backups/off-run/run-${_oN}" 2>/dev/null \
         && _info "${_oN}: dispatcher kept parked (account is proxied); moved to /var/backups/off-run"
-    else
+    elif _dispatcher_trusted "${_q}/held-run-${_oN}"; then
       mv -f "${_q}/held-run-${_oN}" "/var/xdrago/run-${_oN}"
       chmod 700 "/var/xdrago/run-${_oN}" 2>/dev/null
+    elif _dispatcher_write "${_oN}"; then
+      _dispatcher_set_aside "${_q}/held-run-${_oN}"
+      _alrt "${_oN}: its held dispatcher is not root's alone: a new one written, the old set aside"
+    else
+      _alrt "${_oN}: its held dispatcher is not root's alone and no new one could be written: it stays held in ${_q} and its tasks wait for the account's next Octopus pass"
     fi
   fi
   if _nginx_reload_locked; then
@@ -1748,6 +2128,83 @@ _mysqldump_gtid_opts() {
   return 0
 }
 
+### A routine's utf8mb4 parameters and return value take the loading
+### session's default_collation_for_utf8mb4, which no dump names, so a load
+### on MySQL 8 gave a routine made under utf8mb4_general_ci the server's
+### default. mysqldump writes each routine after its DROP line, between a
+### line setting the routine's sql_mode and one putting the saved sql_mode
+### back: a routine whose parameters (and return value) share one of the two
+### defaults that setting takes gets it after the first and the session's
+### own value back after the second, as the MyQuick dumps and the panel's
+### classic dump write them, each a statement prepared from one naming
+### MySQL 8 (a 5.x or MariaDB server, which has no such setting, runs DO 0
+### in its place). Reads the dump on stdin and writes it on stdout, one line
+### at a time; _MYSQLDUMP_ROUTINES holds each routine's type, hex name and
+### default, tab-separated, one per line. Exits 1 when a write fails.
+_MYSQLDUMP_ROUTINES_PL='use strict;
+binmode(STDIN); binmode(STDOUT);
+my (%c, $p, $r);
+for (split /\n/, (defined $ENV{_MYSQLDUMP_ROUTINES} ? $ENV{_MYSQLDUMP_ROUTINES} : "")) {
+  my ($t, $h, $k) = split /\t/, $_, 3;
+  next unless defined $k && $t =~ /^(?:FUNCTION|PROCEDURE)$/ && $h =~ /^[0-9A-Fa-f]+$/
+    && $k =~ /^utf8mb4_(?:general_ci|0900_ai_ci)$/;
+  $c{$t . " " . lc($h)} = $k;
+}
+while (defined(my $x = <STDIN>)) {
+  print $x or exit 1;
+  next unless %c && substr($x, 0, 9) eq "/*!50003 ";
+  if ($x =~ /^\/\*!50003 DROP (FUNCTION|PROCEDURE) IF EXISTS `((?:[^`]|``)+)` \*\/;\n\z/) {
+    my ($t, $n) = ($1, $2); $n =~ s/``/`/g;
+    $p = $c{$t . " " . unpack("H*", $n)};
+  }
+  elsif (defined $p && $x =~ /^\/\*!50003 SET sql_mode +=[ ]+\x27[A-Z0-9_,]*\x27 \*\/ ;\n\z/) {
+    print "SET \@BOA_UTF8MB4_SQL = IF(VERSION() LIKE \x278.%\x27, \x27SET \@BOA_PREV_UTF8MB4 = \@\@SESSION.default_collation_for_utf8mb4,"
+      . " SESSION default_collation_for_utf8mb4 = \x27\x27$p\x27\x27\x27, \x27DO 0\x27);\n",
+      "PREPARE boa_utf8mb4 FROM \@BOA_UTF8MB4_SQL;\n", "EXECUTE boa_utf8mb4;\n" or exit 1;
+    undef $p; $r = 1;
+  }
+  elsif ($r && $x =~ /^\/\*!50003 SET sql_mode +=[ ]+\@saved_sql_mode \*\/ ;\n\z/) {
+    print "SET \@BOA_UTF8MB4_SQL = IF(VERSION() LIKE \x278.%\x27, \x27SET SESSION default_collation_for_utf8mb4 = \@BOA_PREV_UTF8MB4\x27, \x27DO 0\x27);\n",
+      "PREPARE boa_utf8mb4 FROM \@BOA_UTF8MB4_SQL;\n", "EXECUTE boa_utf8mb4;\n", "DEALLOCATE PREPARE boa_utf8mb4;\n" or exit 1;
+    $r = 0;
+  }
+}
+close(STDOUT) or exit 1;
+exit 0;'
+
+### Sets _MYSQLDUMP_ROUTINES for _MYSQLDUMP_ROUTINES_PL: each stored routine
+### of database $1 with the utf8mb4 default its parameters and return value
+### share (empty when they share none), read with the client command that
+### follows on any server (a 5.x or MariaDB one names utf8mb4_general_ci,
+### which a load on MySQL 8 then keeps). A refused read is said on stderr
+### and leaves it empty, so the dump is written as it always was.
+_mysqldump_routine_colls() {
+  local _db="$1" _q _r
+  shift
+  _MYSQLDUMP_ROUTINES=""
+  [[ "${_db}" =~ ^[A-Za-z0-9_]+$ ]] || return 1
+  _q="SELECT r.ROUTINE_TYPE, HEX(r.ROUTINE_NAME), IFNULL((SELECT IF(COUNT(DISTINCT p.COLLATION_NAME) = 1, MIN(p.COLLATION_NAME), '') FROM information_schema.PARAMETERS p"
+  _q="${_q} WHERE p.SPECIFIC_SCHEMA = r.ROUTINE_SCHEMA AND p.SPECIFIC_NAME = r.ROUTINE_NAME AND p.ROUTINE_TYPE = r.ROUTINE_TYPE"
+  _q="${_q} AND p.COLLATION_NAME IN ('utf8mb4_general_ci', 'utf8mb4_0900_ai_ci')), '') FROM information_schema.ROUTINES r WHERE r.ROUTINE_SCHEMA = '${_db}'"
+  if ! _r=$("$@" -N -B -e "${_q}" 2> /dev/null); then
+    echo "WARN: the stored routines' utf8mb4 defaults of ${_db} could not be read: its routines load with the loading server's default" >&2
+    return 1
+  fi
+  _MYSQLDUMP_ROUTINES="${_r}"
+  return 0
+}
+
+### A dump's routines take their own utf8mb4 default along, written as the
+### dump goes (_MYSQLDUMP_ROUTINES_PL), so no second copy of it is made; a
+### database with none passes as it is.
+_mysqldump_routine_lines() {
+  if [[ "${_MYSQLDUMP_ROUTINES}" == *$'\t'utf8mb4_* ]]; then
+    _MYSQLDUMP_ROUTINES="${_MYSQLDUMP_ROUTINES}" perl -e "${_MYSQLDUMP_ROUTINES_PL}"
+  else
+    cat
+  fi
+}
+
 _stage_b() {
   local _oN="$1"
   local _db _f _r _dumps="${_XTRIM_BASE}/${_oN}/dbdumps"
@@ -1770,9 +2227,11 @@ _stage_b() {
     ### The safety dump is the only copy this box keeps once the database
     ### is dropped, so it carries the stored routines and events as well
     ### (mysqldump writes neither unless asked; triggers it always writes).
+    _mysqldump_routine_colls "${_db}" mysql
     if ( set -o pipefail
          mysqldump "${_MYSQLDUMP_GTID[@]}" --single-transaction --quick --no-autocommit \
            --skip-add-locks --no-tablespaces --hex-blob --routines --events "${_db}" 2>/dev/null \
+           | _mysqldump_routine_lines \
            | gzip > "${_dumps}/${_db}.sql.gz" ); then
       ### Two different faults, two different tests: gzip -t catches a
       ### corrupt archive, the trailer catches a well-formed archive of an
@@ -1869,7 +2328,119 @@ _stage_b() {
   _info "${_oN}: stage B complete; dumps retained under ${_dumps}"
 }
 
+### --drop-datadir removes MySQL's data. /var/lib/mysql is a real folder, or a
+### symbolic link onto a folder of the attached mount: rm -rf of a link takes
+### the link and leaves the data where it is, so there the folder the link
+### names is what goes, then the link. Never a mount's own root (every store
+### of the volume lives under it), nor a folder that holds no MySQL data:
+### such a link is named and left for a removal by hand.
+_xtrim_drop_datadir() {
+  local _dd _mpA _mpB
+  if [ ! -L /var/lib/mysql ]; then
+    rm -rf /var/lib/mysql && _info "finalize: /var/lib/mysql DROPPED (--drop-datadir)"
+    return 0
+  fi
+  _dd="$(readlink -f /var/lib/mysql 2> /dev/null)"
+  _mpA="$(df -P "${_dd}" 2> /dev/null | awk 'NR==2 { print $NF }')"
+  _mpB="$(df -P "${_dd%/*}/" 2> /dev/null | awk 'NR==2 { print $NF }')"
+  if [[ "${_dd}" =~ ^(/[A-Za-z0-9._-]+)+$ ]] && [ -d "${_dd}" ] \
+    && [ -n "${_mpA}" ] && [ "${_mpA}" = "${_mpB}" ] \
+    && { [ -e "${_dd}/ibdata1" ] || [ -d "${_dd}/mysql" ]; }; then
+    rm -rf "${_dd}" && rm -f /var/lib/mysql \
+      && _info "finalize: ${_dd} DROPPED, with the link at /var/lib/mysql (--drop-datadir)"
+  else
+    _alrt "finalize: /var/lib/mysql is a link onto ${_dd:-nowhere}, which this run does not drop (a mount's own root, a folder without MySQL data, or a volume that is away): left as it is -- remove it by hand"
+  fi
+}
+
 ### ------------------------------------------------------------ stage C ---
+
+### The buffer pool a finalized proxy's MySQL starts with. mysqld touches
+### about a tenth of its configured pool as it starts, whatever data it
+### holds, and this box's pool was written from its RAM for the hosting it
+### used to do: on the small plan that follows a trim the kernel kills it
+### for memory before it answers. The kept MySQL serves local control panels
+### alone, so my.cnf takes the floor the system tuning keeps on a proxy from
+### here on. The file alone, written as the tuning writes it: the running
+### server keeps its pool until its next start.
+_XTRIM_PROXY_POOL_MB=256
+_XTRIM_MYCNF="/etc/mysql/my.cnf"
+### The pool my.cnf names, in MB: every such line is read and the largest
+### counts, since mysqld takes the last one and the write below sets them
+### all. Status 1 when there is no line, or one is no plain M or G figure.
+_proxy_sql_pool_read() {
+  local _v _m _max=""
+  while IFS= read -r _v; do
+    if [[ "${_v}" =~ ^([0-9]{1,9})[Mm]$ ]]; then
+      _m="$(( 10#${BASH_REMATCH[1]} ))"
+    elif [[ "${_v}" =~ ^([0-9]{1,6})[Gg]$ ]]; then
+      _m="$(( 10#${BASH_REMATCH[1]} * 1024 ))"
+    else
+      return 1
+    fi
+    [ -n "${_max}" ] && [ "${_max}" -ge "${_m}" ] || _max="${_m}"
+  done < <(grep -E '^innodb_buffer_pool_size[[:space:]]*=' "${_XTRIM_MYCNF}" 2>/dev/null \
+    | sed 's/^[^=]*=//' | tr -d ' \t\r')
+  [ -n "${_max}" ] || return 1
+  echo "${_max}"
+}
+_proxy_sql_pool() {
+  local _mode="$1" _cur _keep="${_XTRIM_BASE}/finalize/my.cnf.before-proxy-pool"
+  if ! _cur="$(_proxy_sql_pool_read)"; then
+    _alrt "finalize: no plain innodb_buffer_pool_size line in ${_XTRIM_MYCNF} -- MySQL's buffer pool is left as it is; read it before a smaller plan"
+    return 0
+  fi
+  if [ "${_cur}" -le "${_XTRIM_PROXY_POOL_MB}" ]; then
+    _info "finalize: MySQL's buffer pool in ${_XTRIM_MYCNF} is ${_cur}M -- left as it is"
+    return 0
+  fi
+  if [ "${_mode}" != "LIVE" ]; then
+    _info "[DRY-PLAN] would lower MySQL's buffer pool in ${_XTRIM_MYCNF} from ${_cur}M to ${_XTRIM_PROXY_POOL_MB}M, taken at its next start (the kept MySQL serves local control panels alone, and mysqld touches about a tenth of its pool as it starts)"
+    return 0
+  fi
+  mkdir -p "${_XTRIM_BASE}/finalize"
+  ### The copy takes its name only when it is whole: a copy cut short would
+  ### pass for the file as it was on the next run.
+  if [ ! -s "${_keep}" ]; then
+    if ! cp -p "${_XTRIM_MYCNF}" "${_keep}.new" || ! mv -f "${_keep}.new" "${_keep}"; then
+      rm -f "${_keep}.new"
+      _alrt "finalize: could not keep a copy of ${_XTRIM_MYCNF} -- MySQL's buffer pool is left at ${_cur}M; lower it before a smaller plan"
+      return 0
+    fi
+  fi
+  sed -i "s/^innodb_buffer_pool_size.*/innodb_buffer_pool_size = ${_XTRIM_PROXY_POOL_MB}M/g" "${_XTRIM_MYCNF}"
+  if [ "$(_proxy_sql_pool_read)" = "${_XTRIM_PROXY_POOL_MB}" ]; then
+    _info "finalize: MySQL's buffer pool in ${_XTRIM_MYCNF} lowered from ${_cur}M to ${_XTRIM_PROXY_POOL_MB}M, taken at its next start (the file as it was: ${_keep})"
+  else
+    _alrt "finalize: could not lower MySQL's buffer pool in ${_XTRIM_MYCNF} -- lower it before a smaller plan"
+  fi
+}
+### True when MySQL is set to start at boot: finalize disables the service
+### where no local control panel keeps it.
+_proxy_sql_enabled() {
+  ls /etc/rc[2-5].d/S[0-9][0-9]mysql > /dev/null 2>&1
+}
+### One line for status on a finalized proxy that keeps MySQL: the pool its
+### next start takes, what a larger one means for a smaller plan, and that
+### mysqld is down when it is (a pool too large for the plan is one way
+### there: the kernel kills mysqld as it starts).
+_proxy_sql_pool_status() {
+  local _cur _is="kept for the local control panel(s)"
+  [ -e "/root/.proxy.cnf" ] || return 0
+  if ! pgrep -x mysqld > /dev/null 2>&1; then
+    _proxy_sql_enabled || return 0
+    _is="kept for the local control panel(s) and NOT RUNNING"
+  fi
+  _cur="$(_proxy_sql_pool_read)" || {
+    echo "box: MySQL ${_is}; no plain innodb_buffer_pool_size line in ${_XTRIM_MYCNF} -- read it before a smaller plan"
+    return 0
+  }
+  if [ "${_cur}" -le "${_XTRIM_PROXY_POOL_MB}" ]; then
+    echo "box: MySQL ${_is}, buffer pool in ${_XTRIM_MYCNF} ${_cur}M"
+  else
+    echo "box: MySQL ${_is}, buffer pool in ${_XTRIM_MYCNF} ${_cur}M -- mysqld touches about a tenth of it as it starts and may not start on a smaller plan: run xtrim finalize, then xtrim finalize --live (it lowers it to ${_XTRIM_PROXY_POOL_MB}M)"
+  fi
+}
 
 _finalize() {
   local _mode="$1" _drop_datadir="$2" _n _nn _panel _p
@@ -1918,6 +2489,7 @@ _finalize() {
     _info "[DRY-PLAN] would remove shared codebases /data/all"
     if [ -n "${_keep_sql}" ]; then
       _info "[DRY-PLAN] would KEEP mysql running for the local control panel database(s):${_keep_sql}"
+      _proxy_sql_pool DRY
     else
       _info "[DRY-PLAN] would stop + disable mysql (datadir kept$( [ "${_drop_datadir}" = "YES" ] && echo ", then DROPPED"))"
     fi
@@ -1953,12 +2525,13 @@ _finalize() {
   ### control panel still needs its database here.
   if [ -n "${_keep_sql}" ]; then
     _info "finalize: mysql KEPT running for the local control panel database(s):${_keep_sql}"
+    _proxy_sql_pool LIVE
   else
     service mysql stop &> /dev/null
     update-rc.d mysql disable &> /dev/null
     _info "finalize: mysql stopped + disabled"
     if [ "${_drop_datadir}" = "YES" ]; then
-      rm -rf /var/lib/mysql && _info "finalize: /var/lib/mysql DROPPED (--drop-datadir)"
+      _xtrim_drop_datadir
     fi
   fi
   ### FPM: keep only the panel-front master + its www pool; a master with
@@ -1995,15 +2568,17 @@ _finalize() {
     _alrt "finalize: /root/.proxy.cnf already existed -- left as found"
   fi
   _info "finalize: COMPLETE. To retire the proxy itself later, use the boa cleanup sequence -- xtrim never does that."
+  _info "finalize: before a smaller plan at the provider, read 'xtrim space' (what the root disk holds) and 'xtrim names all' (the names that still resolve here go dark while this box is off)"
 }
 
 ### ------------------------------------------------------------- verbs ----
 
 _cmd_status() {
-  local _n _hz _hzd _hzx _sz _ph _tg
+  local _n _hz _hzd _hzx _sz _ph _tg _hzw _hzdis _hznr
   _load_cnf_defaults
   echo "xtrim status -- $(hostname -f 2>/dev/null) $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
   [ -e "/root/.proxy.cnf" ] && echo "box: /root/.proxy.cnf PRESENT (finalized proxy node)"
+  _proxy_sql_pool_status
   for _n in $(_list_accounts); do
     _USR="/data/disk/${_n}"
     _VHD="${_USR}/config/server_master/nginx/vhost.d"
@@ -2024,13 +2599,440 @@ _cmd_status() {
     fi
     _map_account "${_n}"
     read -r _hz _hzd _hzx <<< "$(_cert_horizon "${_n}")"
-    [ -n "${_hzx}" ] && _hzx=" [disabled on the target, expired: ${_hzx}]"
+    _hzdis=""; _hznr=""
+    for _hzw in ${_hzx}; do
+      case "${_hzw}" in
+        nr:*) _hznr="${_hznr} ${_hzw#nr:}" ;;
+        *) _hzdis="${_hzdis} ${_hzw}" ;;
+      esac
+    done
+    _hzx=""
+    [ -n "${_hzdis}" ] && _hzx=" [disabled on the target, expired:${_hzdis}]"
+    [ -n "${_hznr}" ] && _hzx="${_hzx} [nothing newer on the target, expired:${_hznr}]"
     _sz=$(du -sk "${_USR}/backups" "${_USR}/src" "${_USR}/distro" \
       ${_MAP_PLATS} "${_USR}/static" 2>/dev/null | awk '{ s+=$1 } END { printf "%.1fG", s/1048576 }')
     _tg="${_MAP_TGT:-?}"
     [ -n "${_MAP_VHOST_TGT}" ] && _tg="? (its vhost target is not the root policy record's)"
     echo "${_n}: proxied -> ${_tg} | phase=${_ph:-none} | cert-horizon=$( [ "${_hz}" = "999999" ] && echo n/a || echo "${_hz}d (${_hzd})" )${_hzx} | reclaimable~${_sz}"
   done
+}
+
+### ------------------------------------------------------------- names ----
+
+### Every name the live vhost $1 of the mapped account answers for, one a
+### line: the words of its server_name lines, read inside the real vhost.d.
+_vhost_names() {
+  _read_file "${_VHD}/${1}" \
+    | sed -n 's/^[[:space:]]*server_name[[:space:]]\{1,\}\([^;]*\);.*$/\1/p' \
+    | tr -s '[:space:]' '\n' | sed '/^$/d' | LC_ALL=C sort -u
+}
+### A plain host name, one DNS can be asked about: no wildcard, no regex
+### name, not the catch-all.
+_name_plain() {
+  printf '%s' "$1" | grep -qE '^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$'
+}
+### The addresses DNS gives for the name $1, on one line: the A and AAAA
+### records at the end of whatever chain this box's resolver follows (a
+### CNAME's own line is no address). A lookup that fails (no reply, or an
+### answer that is neither "no error" nor "no such name") is asked once
+### more, and then printed as "?": a name that could not be asked about is
+### never read as a name with no address.
+_name_addrs() {
+  local _o _t _i _ok _out=""
+  for _t in A AAAA; do
+    _ok=NO
+    for _i in 1 2; do
+      if _o="$(dig +noall +comments +answer +time=3 +tries=2 "$1" "${_t}" 2> /dev/null)" \
+        && printf '%s\n' "${_o}" | grep -qE 'status: (NOERROR|NXDOMAIN)'; then
+        _out="${_out}$(printf '%s\n' "${_o}" | awk -v t="${_t}" '$3 == "IN" && $4 == t { print $5 }')"$'\n'
+        _ok=YES
+        break
+      fi
+      sleep 2
+    done
+    if [ "${_ok}" != "YES" ]; then
+      printf '?'
+      return 0
+    fi
+  done
+  printf '%s' "${_out}" | sed '/^$/d' | LC_ALL=C sort -u | tr '\n' ' ' | sed 's/ $//'
+}
+### Where the addresses $1 lead: HERE when one of them is this box's (the name
+### still arrives here, wholly or in part), otherwise ELSEWHERE when one is
+### neither this box's nor the target's, otherwise TARGET, and NONE without
+### any; UNKNOWN for a lookup that failed. _NAMES_TGT_ADDRS holds the
+### target's addresses.
+_name_where() {
+  local _a _h=NO _t=NO _o=NO
+  if [ "$1" = "?" ]; then
+    echo UNKNOWN
+    return 0
+  fi
+  for _a in $1; do
+    if _mig_own_addr "${_a}"; then
+      _h=YES
+    elif [[ " ${_NAMES_TGT_ADDRS} " == *" ${_a} "* ]]; then
+      _t=YES
+    else
+      _o=YES
+    fi
+  done
+  if [ "${_h}" = "YES" ]; then
+    echo HERE
+  elif [ "${_o}" = "YES" ]; then
+    echo ELSEWHERE
+  elif [ "${_t}" = "YES" ]; then
+    echo TARGET
+  else
+    echo NONE
+  fi
+}
+
+### One name of the report: $1 the name, $2 a note for its line. Prints the
+### line and sets _NAMES_W to its verdict.
+_names_one() {
+  local _ad
+  if ! _name_plain "$1"; then
+    printf '  %-10s %s\n' PATTERN "$1 (no single name to ask DNS about)"
+    _NAMES_W=PATTERN
+    return 0
+  fi
+  _ad="$(_name_addrs "$1")"
+  _NAMES_W="$(_name_where "${_ad}")"
+  printf '  %-10s %s %s%s\n' "${_NAMES_W}" "$1" "${_ad:--}" "$2"
+}
+
+### The requests the target logged as relayed from this box, a name a line
+### ("<count> <the target's own> <name>") in _NAMES_CNT. The target's access
+### log carries the address that opened each connection in its peer field;
+### for a request this box relayed that is one of this box's own addresses,
+### whatever front the request passed here or there, and a visitor who
+### reaches the target directly never carries it. So the count also shows a
+### name behind a CDN whose origin is still this box, which DNS cannot. A
+### request this box makes itself (a tool's own probe of a site, on the
+### target or through the relay) is no visitor's: its first field is this box
+### too, and it is left out. A request the target makes itself for a name
+### that still leads here comes back through this box as well: the nightly
+### site pass asks for each site's robots.txt and llms.txt by name, the
+### control panel's hourly web cron calls each site by its name once the
+### account's nightly pass set it to run by web request (unless the account
+### keeps log/hosting_cron_use_backend.txt; never with its
+### static/control/cron-proxy.info), and a site there may call a name of its
+### own. Its first field is one of the target's own addresses, those
+### it lists itself and the one this box relays to. It is no visitor's
+### either, and is kept apart, the second figure, never in the count. A
+### request of the target's that reaches this box through another front (a
+### CDN this box does not resolve) carries that front's address and reads as
+### a visitor's. Both hold only
+### where the target resolves the visitor behind this box (a set_real_ip_from
+### line for it in the migration trust include, or a line in the log that
+### shows it did: a visitor's or the target's own). Where it does not, every
+### relayed request reads as this box's own, so all are counted, the second
+### figure is 0 and _NAMES_CNT_OWN=in says this box's own and the target's
+### own are among them. The day's log and the
+### one before are read (one to two days), from the first line that carries
+### the field: _NAMES_CNT_SINCE, in the target's own time. _NAMES_CNT_STATE is
+### ok, nofield (the target's log has no peer field yet: its next system
+### upgrade and server Verify add it) or noread (no answer, no log there, a
+### read that failed on the target, or an answer cut short: none of them is
+### ever read as a count; the closing mark is printed only when the search
+### ended with status 0, or 1 for no line found, and the count with 0).
+_names_counts() {
+  local _t="$1" _a _pat="" _own=" " _tru="" _out _tr _tq=""
+  _NAMES_CNT=""; _NAMES_CNT_STATE=noread; _NAMES_CNT_SINCE=""; _NAMES_CNT_OWN=out
+  ### The address this box relays to is the target's own whatever the target
+  ### lists (an address held in front of it); only a value made of address
+  ### characters is passed on, so nothing in it can change the remote text.
+  case "${_t}" in
+    *[!0-9a-fA-F:.]*) ;;
+    *) _tq="${_t}" ;;
+  esac
+  for _a in $(hostname -I 2>/dev/null); do
+    case "${_a}" in
+      *[!0-9a-fA-F:.]*) continue ;;
+    esac
+    _pat="${_pat} -e ' peer=\"${_a}\"'"
+    _own="${_own}${_a} "
+    _tru="${_tru} -e 'set_real_ip_from ${_a};'"
+  done
+  [ -n "${_pat}" ] || return 0
+  _out="$(ssh -o BatchMode=yes -o ConnectTimeout=15 "root@${_t}" "
+    _f=
+    for _x in /var/log/nginx/access.log.1 /var/log/nginx/access.log; do
+      [ -s \"\${_x}\" ] && _f=\"\${_f} \${_x}\"
+    done
+    [ -n \"\${_f}\" ] || exit 4
+    _s=\$(LC_ALL=C grep -a -h -m1 ' peer=\"' \${_f} | sed -n '1s/^\"[^\"]*\" [^ ]* \\[\\([^]]*\\)\\].*/\\1/p')
+    [ -n \"\${_s}\" ] || { echo XT-NOFIELD; exit 0; }
+    echo \"XT-SINCE \${_s}\"
+    if grep -q -x -F${_tru} /data/conf/nginx_cloudflare_real_ip.cmig 2>/dev/null; then echo 'XT-TRUST yes'; else echo 'XT-TRUST no'; fi
+    _ta=\$(hostname -I 2>/dev/null | tr -s '[:space:]' ' ')
+    LC_ALL=C nice -n 19 grep -a -h -F${_pat} \${_f} \
+      | awk -v own=\"${_own}\" -v tgt=\"\${_ta} ${_tq}\" 'BEGIN { n = split(tgt, T, \" \"); for (i = 1; i <= n; i++) g[T[i]] = 1 }
+          { a = \$1; gsub(/\"/, \"\", a); h = tolower(\$2); s[h] = 1
+          if (index(own, \" \" a \" \")) o[h]++; else if (a in g) t[h]++; else v[h]++ }
+          END { for (h in s) printf \"%.0f %.0f %.0f %s\\n\", v[h], o[h], t[h], h }'
+    case \"\${PIPESTATUS[*]}\" in '0 0'|'1 0') echo XT-END ;; esac
+  " 2>/dev/null)"
+  if [ "${_out}" = "XT-NOFIELD" ]; then
+    _NAMES_CNT_STATE=nofield
+    return 0
+  fi
+  [ "$(printf '%s\n' "${_out}" | tail -n 1)" = "XT-END" ] || return 0
+  _NAMES_CNT_SINCE="$(printf '%s\n' "${_out}" | sed -n '1s/^XT-SINCE //p')"
+  [ -n "${_NAMES_CNT_SINCE}" ] || return 0
+  ### Each line: visitors' requests, this box's own, the target's own, the
+  ### name. The target resolves the visitor behind this box when its trust
+  ### include says so or a line shows a visitor or the target itself;
+  ### otherwise none of the three can be told apart.
+  _out="$(printf '%s\n' "${_out}" | LC_ALL=C grep -E '^(XT-TRUST (yes|no)|[0-9]+ [0-9]+ [0-9]+ [!-~]+)$')"
+  _tr="$(printf '%s\n' "${_out}" | awk '$1 == "XT-TRUST" { t = $2 } $1 != "XT-TRUST" && ($1 > 0 || $3 > 0) { t = "yes" } END { print (t == "yes") ? "yes" : "no" }')"
+  [ "${_tr}" = "yes" ] || _NAMES_CNT_OWN=in
+  _NAMES_CNT="$(printf '%s\n' "${_out}" | awk -v t="${_tr}" '$1 != "XT-TRUST" { n = (t == "yes") ? $1 : $1 + $2; if (n > 0 || $3 > 0) printf "%.0f %.0f %s\n", n, $3, $4 }')"
+  _NAMES_CNT_STATE=ok
+}
+
+### The two figures of one name in _NAMES_CNT, "<count> <the target's own>";
+### "0 0" when it has no line there.
+_names_count_of() {
+  local _c
+  _c="$(printf '%s\n' "${_NAMES_CNT}" | awk -v n="$1" '$3 == n { print $1, $2; exit }')"
+  echo "${_c:-0 0}"
+}
+
+### xtrim names [<oN>|all]: for every name a proxied account's vhosts answer
+### for, where its DNS points today. It reads, asks DNS and the target for
+### its own addresses, and changes nothing. A name that resolves to this box
+### is reached through the relay and goes dark with it; one that resolves to
+### the target is done; one that resolves elsewhere sits behind a CDN or
+### another front, whose origin DNS cannot show.
+_cmd_names() {
+  local _sel="${1:-all}" _n _d _nm _c _box=0 _accts="" _seen _unk=0
+  local _nh _nt _ne _nn _nw _nb _nu _pn _rn _bn _bx
+  local _ci _cfound _cs _cq _co _ar _ao _call="" _cseen="" _cbad=0 _csince="" _ct _cto _cm _cx
+  local -a _tk=() _tst=() _tsi=() _tow=() _tcn=()
+  command -v dig > /dev/null 2>&1 || _die "names needs dig on this box (the dnsutils package)"
+  _load_cnf_defaults
+  _bx="$(hostname -f 2>/dev/null | tr 'A-Z' 'a-z' | tr -d '\n')"
+  ### Only a full host name marks a name as this box's own: a bare label
+  ### would match inside a client's domain.
+  case "${_bx}" in
+    *.*) ;;
+    *) _bx="" ;;
+  esac
+  echo "xtrim names -- $(hostname -f 2>/dev/null) $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+  echo "this box's addresses: $(hostname -I 2>/dev/null | tr -s ' ' | sed 's/ $//')"
+  for _n in $(_list_accounts); do
+    [ "${_sel}" = "all" ] || [ "${_sel}" = "${_n}" ] || continue
+    if ! _mig_is_proxied "${_n}"; then
+      [ "${_sel}" = "all" ] || _die "${_n}: not a proxied account (no root proxied marker)"
+      continue
+    fi
+    _seen=YES
+    if _panel_only "${_n}"; then
+      echo "${_n}: panel-only (its control panel is local, no proxied domain)"
+      continue
+    fi
+    _map_account "${_n}"
+    if [ -z "${_MAP_TGT}" ]; then
+      echo "${_n}: no target named by a root policy record -- names not judged (see xtrim status)"
+      continue
+    fi
+    ### The target's own addresses, IPv6 with them: the record names one
+    ### IPv4 only, and an AAAA at the target would otherwise read as elsewhere.
+    _NAMES_TGT_ADDRS="$(ssh -o BatchMode=yes -o ConnectTimeout=10 "root@${_MAP_TGT}" 'hostname -I' 2>/dev/null | tr -s '[:space:]' ' ')"
+    case " ${_NAMES_TGT_ADDRS} " in
+      *" ${_MAP_TGT} "*) ;;
+      *)
+        [ -z "${_NAMES_TGT_ADDRS// /}" ] \
+          && echo "${_n}: the target ${_MAP_TGT} did not give its addresses over ssh -- judged by that address alone (an AAAA at the target reads ELSEWHERE)"
+        _NAMES_TGT_ADDRS="${_MAP_TGT} ${_NAMES_TGT_ADDRS}"
+      ;;
+    esac
+    _c="$(_read_file "${_USR}/log/email.txt" | tr -s '[:space:]' ' ' | cut -c1-200)"
+    _c="${_c# }"
+    _c="${_c% }"
+    echo "${_n}: relay to ${_MAP_TGT} | contact: ${_c:-none in log/email.txt}"
+    ### A target's log is read once, wherever its accounts stand in the
+    ### list: a second read would add its requests to the total again.
+    _ci=0; _cfound=""
+    while [ "${_ci}" -lt "${#_tk[@]}" ]; do
+      if [ "${_tk[${_ci}]}" = "${_MAP_TGT}" ]; then
+        _cfound=YES
+        break
+      fi
+      _ci=$(( _ci + 1 ))
+    done
+    if [ -n "${_cfound}" ]; then
+      _NAMES_CNT_STATE="${_tst[${_ci}]}"; _NAMES_CNT_SINCE="${_tsi[${_ci}]}"
+      _NAMES_CNT_OWN="${_tow[${_ci}]}"; _NAMES_CNT="${_tcn[${_ci}]}"
+    else
+      _names_counts "${_MAP_TGT}"
+      _tk[${_ci}]="${_MAP_TGT}"; _tst[${_ci}]="${_NAMES_CNT_STATE}"; _tsi[${_ci}]="${_NAMES_CNT_SINCE}"
+      _tow[${_ci}]="${_NAMES_CNT_OWN}"; _tcn[${_ci}]="${_NAMES_CNT}"
+      if [ "${_NAMES_CNT_STATE}" = "ok" ]; then
+        _call="${_call}${_NAMES_CNT}"$'\n'
+        _csince="${_csince:+${_csince}, }${_NAMES_CNT_SINCE} at ${_MAP_TGT}"
+      fi
+    fi
+    case "${_NAMES_CNT_STATE}" in
+      ok)
+        ### A request the target made itself is on a name's line as
+        ### "(+N the target's own)", after the count and never in it.
+        if [ "${_NAMES_CNT_OWN}" = "in" ]; then
+          echo "${_n}: relayed = the requests the target logged as coming through this box, since ${_NAMES_CNT_SINCE} (the target's time)"
+          echo "${_n}: the target does not resolve the visitor behind this box (no set_real_ip_from for it there), so this box's own requests, a tool's probes among them, and the target's own are counted too: none can be told apart"
+        else
+          echo "${_n}: relayed = the requests the target logged as coming through this box, since ${_NAMES_CNT_SINCE} (the target's time); the target's own among them are no visitor's and are shown apart, as (+N the target's own)"
+        fi
+      ;;
+      nofield)
+        echo "${_n}: no request counts -- the target's access log does not name the connecting address yet (its next system upgrade and server Verify add the field)"
+        _cbad=$(( _cbad + 1 ))
+      ;;
+      *)
+        echo "${_n}: no request counts -- the target's access log was not read over ssh"
+        _cbad=$(( _cbad + 1 ))
+      ;;
+    esac
+    _ar=0
+    _ao=0
+    _nh=0; _nt=0; _ne=0; _nn=0; _nw=0; _nb=0; _nu=0
+    ### Every name once an account, in lower case, whatever its spelling and
+    ### however many vhosts carry it. A site named under this box's own name
+    ### was renamed on the target by the move, and its old vhost answers here
+    ### with a 301 for ALL its names: the site's own (BOX-NAMED, this box's
+    ### by its name) and every other name it carried, a client's own domain
+    ### among them, which is judged like any relayed name.
+    _pn=""; _rn=""; _bn=""
+    for _d in ${_MAP_DOMS}; do
+      case " ${_MAP_REDIR} " in
+        *" ${_d} "*)
+          _bn="${_bn}${_d,,}"$'\n'
+          _rn="${_rn}${_d,,}"$'\n'"$(_vhost_names "${_d}" | tr 'A-Z' 'a-z')"$'\n'
+        ;;
+        *)
+          _pn="${_pn}$(_vhost_names "${_d}" | tr 'A-Z' 'a-z')"$'\n'
+        ;;
+      esac
+    done
+    _pn="$(printf '%s' "${_pn}" | sed '/^$/d' | LC_ALL=C sort -u)"
+    _rn="$(printf '%s' "${_rn}" | sed '/^$/d' | LC_ALL=C sort -u)"
+    while IFS= read -r _nm; do
+      [ -n "${_nm}" ] || continue
+      ### This box's own by its name, and in no DNS count: a renamed site's
+      ### own name, and any other name that carries this box's hostname (the
+      ### rule the move renames by). It resolves here by this box's own
+      ### records and is never a client's to move.
+      if printf '%s' "${_bn}" | grep -qxF -- "${_nm}"; then
+        printf '  %-10s %s\n' BOX-NAMED "${_nm} (answered here with a 301 to its new name)"
+        _nb=$(( _nb + 1 ))
+        continue
+      fi
+      if [ -n "${_bx}" ] && [ "${_nm}" != "${_nm//"${_bx}"/}" ]; then
+        printf '  %-10s %s\n' BOX-NAMED "${_nm} (carries this box's own name)"
+        _nb=$(( _nb + 1 ))
+        continue
+      fi
+      ### Every single name carries its count where the target's log was
+      ### read; one answered here with a 301 is not relayed and reads 0.
+      ### The target's own requests for the name follow the count only
+      ### where there are any, so a line ends with the count or with them.
+      _cs=""
+      if [ "${_NAMES_CNT_STATE}" = "ok" ] && _name_plain "${_nm}"; then
+        read -r _cq _co <<< "$(_names_count_of "${_nm}")"
+        _cs=" | relayed: ${_cq}"
+        if [ "${_co}" -gt 0 ]; then
+          _cs="${_cs} (+${_co} the target's own)"
+        fi
+        _ar=$(( _ar + _cq ))
+        _ao=$(( _ao + _co ))
+        _cseen="${_cseen}${_nm}"$'\n'
+      fi
+      if printf '%s\n' "${_rn}" | grep -qxF -- "${_nm}" && ! printf '%s\n' "${_pn}" | grep -qxF -- "${_nm}"; then
+        _names_one "${_nm}" " (a renamed site's name: answered here with a 301)${_cs}"
+      else
+        _names_one "${_nm}" "${_cs}"
+      fi
+      case "${_NAMES_W}" in
+        HERE) _nh=$(( _nh + 1 )) ;;
+        TARGET) _nt=$(( _nt + 1 )) ;;
+        ELSEWHERE) _ne=$(( _ne + 1 )) ;;
+        PATTERN) _nw=$(( _nw + 1 )) ;;
+        UNKNOWN) _nu=$(( _nu + 1 )) ;;
+        *) _nn=$(( _nn + 1 )) ;;
+      esac
+    done <<< "$(printf '%s\n%s\n' "${_pn}" "${_rn}" | sed '/^$/d' | LC_ALL=C sort -u)"
+    echo "${_n}: ${_nh} here, ${_nt} on the target, ${_ne} elsewhere, ${_nn} with no address, ${_nw} patterns, ${_nb} box-named, ${_nu} lookups failed$( [ "${_NAMES_CNT_STATE}" = "ok" ] && echo "; ${_ar} requests relayed to its names$( [ "${_ao}" -gt 0 ] && echo " (+${_ao} the target's own)" )" )"
+    _unk=$(( _unk + _nu ))
+    if [ "${_nh}" -gt 0 ]; then
+      _box=$(( _box + _nh ))
+      _accts="${_accts} ${_n}"
+    fi
+  done
+  [ -n "${_seen}" ] || [ "${_sel}" = "all" ] || _die "${_sel}: no such account"
+  echo "box: ${_box} names still resolve to this box$( [ -n "${_accts}" ] && echo ", in:${_accts}" )"
+  [ "${_unk}" -gt 0 ] \
+    && echo "box: ${_unk} lookups FAILED (UNKNOWN above): those names are in no count -- run this again before relying on it"
+  ### What the targets logged as relayed from this box, whole: a request to
+  ### a name no line above carries (a wildcard's name, a name of an account
+  ### left out of this run) is counted here and named, most requests first.
+  ### The targets' own requests have a sum and a line of their own, and a
+  ### name on no line above is listed with them too: a site on the target
+  ### that calls a name still leading here depends on this box as well.
+  if [ -n "${_csince}" ]; then
+    _call="$(printf '%s' "${_call}" | sed '/^$/d')"
+    _ct="$(printf '%s\n' "${_call}" | awk '{ t += $1 } END { printf "%.0f", t }')"
+    _cto="$(printf '%s\n' "${_call}" | awk '{ t += $2 } END { printf "%.0f", t }')"
+    ### (the first list is never empty, so the second is never read as it)
+    _cx="$(printf '%s\n' "${_call}" | awk 'NR == FNR { s[$0] = 1; next } NF == 3 && !($3 in s) { print }' \
+      <(printf 'xt-listed-names\n%s' "${_cseen}") - | LC_ALL=C sort -k1,1nr -k3,3)"
+    _cm="$(printf '%s\n' "${_cx}" | sed '/^$/d' | wc -l | tr -d ' ')"
+    echo "box: ${_ct} requests reached a target through this box (since ${_csince})"
+    if [ "${_cto}" -gt 0 ]; then
+      echo "box: ${_cto} more came through this box as a target's own requests, made there for a name that still leads here (the control panel's hourly web cron and the nightly robots.txt and llms.txt refresh call each site by its name, and a site there may call a name itself): no visitor's, in no count above"
+    fi
+    if [ "${_cm}" -gt 0 ]; then
+      echo "box: ${_cm} more names got relayed requests and are on no line above (a wildcard's name, or an account left out of this run), most requests first:"
+      printf '%s\n' "${_cx}" | head -n 20 | awk -v w="the target's own" '{ printf "  %-10s %s%s\n", $1, $3, ($2 > 0) ? " (+" $2 " " w ")" : "" }'
+      [ "${_cm}" -gt 20 ] && echo "  ... and $(( _cm - 20 )) more"
+    fi
+  fi
+  [ "${_cbad}" -gt 0 ] \
+    && echo "box: ${_cbad} account(s) with no request counts (said above): a name with no count is not a name with no requests"
+  echo "note: HERE names go dark whenever this box is down; ELSEWHERE names sit behind a CDN or another front, or on another server, and DNS cannot say whether that front still sends them here: a relayed count above 0 says it does."
+}
+
+### xtrim space: what the root filesystem holds, for the read before a
+### smaller plan: a provider shrinks a disk no further than the space in use.
+### One pass over the root filesystem alone (other mounts are named, not
+### walked), the largest trees two levels deep first. Read-only.
+_cmd_space() {
+  local _m
+  echo "xtrim space -- $(hostname -f 2>/dev/null) $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+  [ -e "/root/.proxy.cnf" ] && echo "box: /root/.proxy.cnf PRESENT (finalized proxy node)"
+  LC_ALL=C df -Pk / 2>/dev/null \
+    | awk 'NR == 2 { printf "root filesystem: %.1fG used of %.1fG (%s), %.1fG free\n", $3/1048576, $2/1048576, $5, $4/1048576 }'
+  LC_ALL=C df -Pi / 2>/dev/null \
+    | awk 'NR == 2 { printf "root filesystem inodes: %s used\n", $5 }'
+  echo "largest trees on the root filesystem (two levels, other mounts not walked):"
+  LC_ALL=C du -xk --max-depth=2 / 2>/dev/null | sort -rn \
+    | awk 'NR > 1 && NR <= 26 { k = $1; sub(/^[0-9]+[ \t]+/, ""); printf "  %8.1fG %s\n", k/1048576, $0 }'
+  echo "what a trim leaves and never removes, where present:"
+  for _m in "${_XTRIM_BASE}" /var/lib/mysql /var/solr9 /var/solr7 /opt/solr4 /opt/jetty9 /data/disk/arch; do
+    [ -e "${_m}" ] || continue
+    LC_ALL=C du -sk "$(readlink -f "${_m}")" 2>/dev/null \
+      | awk -v p="${_m}" '{ printf "  %8.1fG %s\n", $1/1048576, p }'
+  done
+  echo "other mounts (not part of a root disk shrink):"
+  ### Every mounted filesystem that holds data, by its type: a memory or
+  ### kernel filesystem is none, and a mount point may hold a blank.
+  LC_ALL=C df -PTk 2>/dev/null \
+    | awk 'NR > 1 && $2 !~ /^(tmpfs|devtmpfs|ramfs|overlay|squashfs|proc|sysfs|cgroup|cgroup2|efivarfs|devpts|securityfs|debugfs|tracefs|pstore|bpf|autofs|mqueue|hugetlbfs|fusectl|configfs)$/ {
+        m = $7; for (i = 8; i <= NF; i++) m = m " " $i
+        if (m == "/") next
+        printf "  %s (%s) %.1fG used of %.1fG\n", m, $2, $4/1048576, $3/1048576; n++
+      } END { if (!n) print "  none" }'
 }
 
 _run_one() {
@@ -2094,6 +3096,8 @@ _run_one() {
     _info "${_oN}: PLAN (DRY): stage A would park run-${_oN}, quarantine FPM pools + post.d includes, unload+quarantine solr cores"
     _info "${_oN}: PLAN (DRY): stage B would dump+verify then DROP: ${_MAP_ALL_DBS}"
     _info "${_oN}: PLAN (DRY): stage B would remove backups/, src/, undo/, distro/, platforms, static trees (store resolved first)"
+    [ -n "${_MAP_ACCEPTED// /}" ] \
+      && _alrt "${_oN}: PLAN (DRY): accepted as not serving on the target, by the operator's list (name:answer):${_MAP_ACCEPTED} -- their data goes with the rest"
     _state_write plan "${_oN}" DRY CLEAN
     _info "${_oN}: plan CLEAN"
     return 0
@@ -2163,6 +3167,8 @@ _mig_runlog_start() {
   [ -n "${_verb}" ] || return 0
   case "${_tool}:${_verb}" in
     xmass:status) return 0 ;;
+    # run by minute.sh, which keeps its output in /var/log/boa/xmass.cred.log
+    xmass:carry-credentials) return 0 ;;
     xmass:autosync)
       case " $* " in
         *" --run "*|*" --status "*) return 0 ;;
@@ -2320,6 +3326,13 @@ case "$1" in
     _manage_single_lock
     _cmd_status
   ;;
+  names)
+    ### Read-only, and no lock: it must run beside a long shrink too.
+    _cmd_names "$2"
+  ;;
+  space)
+    _cmd_space
+  ;;
   plan|quiesce|shrink)
     _verb="$1"
     _acct="$2"
@@ -2420,6 +3433,8 @@ case "$1" in
     echo "       xtrim restore  <oN>                undo a quiesce from quarantine"
     echo "       xtrim shrink   <oN|all> [--live]   stage A (if needed) + stage B -- ONE-WAY"
     echo "       xtrim finalize [--live] [--drop-datadir]   box-wide, all accounts shrunk"
+    echo "       xtrim names    [<oN>|all]          where DNS points each relayed name -- read-only"
+    echo "       xtrim space                        what the root filesystem holds -- read-only"
     exit 1
   ;;
 esac

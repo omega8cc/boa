@@ -316,7 +316,9 @@ _satellite_run_child_b
 ###
 ### Not for an account whose aegir2boa db-import is unfinished, on a box armed
 ### for the web group: its dispatcher is held, and one left live must not run.
+### Nor for a dispatcher that is not root's alone, which runner.sh never runs.
 if [ -e "/var/xdrago/run-${_USER}" ] \
+  && _dispatcher_trusted "/var/xdrago/run-${_USER}" \
   && { [ ! -s /etc/boa/control/instgrp-web-arm.ready.txt ] \
     || ! _a2b_import_unfinished "${_USER}"; }; then
   _msg "${_STATUS} A: Ægir accelerated task queue will run for 60 seconds..."

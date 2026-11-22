@@ -114,35 +114,84 @@ _find_fast_mirror_early() {
   else
     _USE_MIR="files.boa.io"
   fi
+  # A mirror box (it holds a published tree's stamp) takes its files from
+  # files.aegir.cc, the one mirror name with no cache in front of it, when
+  # that name is not this box itself and serves that stamp; any other box,
+  # or a mirror box where it does not, keeps the pick above.
+  _mirStp=""
+  for _mirStp in /var/www/static/versions/*/boa/.update.txt; do
+    [[ -s "${_mirStp}" ]] && break
+    _mirStp=""
+  done
+  if [[ -n "${_mirStp}" ]]; then
+    _mirIp="$(getent ahostsv4 files.aegir.cc 2> /dev/null | awk '{ print $1; exit }')"
+    if [[ -n "${_mirIp}" ]] \
+      && ! ip -o addr show 2> /dev/null | grep -qF " ${_mirIp}/" \
+      && curl -s --fail --max-time 10 -A iCab \
+        "https://files.aegir.cc/${_mirStp#/var/www/static/}" 2> /dev/null \
+        | head -c 64 | grep -q '^[^<]'; then
+      _USE_MIR="files.aegir.cc"
+    fi
+  fi
   _urlDev="https://${_USE_MIR}/dev"
   _urlHmr="https://${_USE_MIR}/versions/${_tRee}/boa/aegir"
 }
 
+# GoAccess's location and ASN panels read DB-IP's IP to City Lite and ASN Lite
+# (CC BY 4.0, https://db-ip.com), which the nightly graceful.sh refreshes once
+# a month. This fetches them on a box that has them not yet: this month's, or
+# the month before while DB-IP has not published it. A file is used only when
+# its metadata, at its end where a cut-short download loses it, names its
+# kind, and then takes its place by a rename.
 _fetch_geoip() {
+  local _m _f _kind _tmp _bad _new _ok
   mkdir -p /usr/share/GeoIP
   chmod 755 /usr/share/GeoIP
-  mkdir -p /opt/tmp
-  cd /opt/tmp
-  rm -f /opt/tmp/Geo*
+  _tmp=$(mktemp -d /var/backups/.boa-geoip.XXXXXX 2> /dev/null) || return 0
+  for _m in "$(date -u +%Y-%m)" "$(date -u -d "$(date -u +%Y-%m-01) -1 day" +%Y-%m)"; do
+    _bad=""
+    for _f in city asn; do
+      _kind="DBIP-City-Lite"
+      [ "${_f}" = "asn" ] && _kind="DBIP-ASN-Lite"
+      if ! curl -fsS --max-time 900 -o "${_tmp}/${_f}.mmdb.gz" \
+        "https://download.db-ip.com/free/dbip-${_f}-lite-${_m}.mmdb.gz" &> /dev/null \
+        || ! gunzip -c "${_tmp}/${_f}.mmdb.gz" > "${_tmp}/${_f}.mmdb" 2> /dev/null \
+        || ! tail -c 131072 "${_tmp}/${_f}.mmdb" | LC_ALL=C grep -a -q -F "MaxMind.com" \
+        || ! tail -c 131072 "${_tmp}/${_f}.mmdb" | LC_ALL=C grep -a -q -F "${_kind}"; then
+        _bad="${_f}"
+        break
+      fi
+    done
+    if [ -z "${_bad}" ]; then
+      _ok=0
+      for _f in city asn; do
+        _new=$(mktemp "/usr/share/GeoIP/.dbip-${_f}-lite.mmdb.XXXXXX" 2> /dev/null) || continue
+        cp -f "${_tmp}/${_f}.mmdb" "${_new}" && chmod 644 "${_new}" \
+          && mv -f "${_new}" "/usr/share/GeoIP/dbip-${_f}-lite.mmdb" \
+          && _ok=$(( _ok + 1 ))
+        rm -f "${_new}"
+      done
+      ### The month only for a pair both in place: the nightly fetches again
+      ### a file a stamp says is current.
+      [ "${_ok}" = 2 ] && echo "${_m}" > /usr/share/GeoIP/dbip-lite-mmdb.month
+      break
+    fi
+  done
+  rm -rf "${_tmp}"
+}
 
-  # For GeoIP2 ASN database:
-  wget -q -U iCab ${_urlDev}/src/GeoLite2-ASN.mmdb.gz
-  gunzip GeoLite2-ASN.mmdb.gz &> /dev/null
-  cp -af GeoLite2-ASN.mmdb /usr/share/GeoIP/
-
-  # For GeoIP2 City database:
-  wget -q -U iCab ${_urlDev}/src/GeoLite2-City.mmdb.gz
-  gunzip GeoLite2-City.mmdb.gz &> /dev/null
-  cp -af GeoLite2-City.mmdb /usr/share/GeoIP/
-
-  # For GeoIP2 Country database:
-  wget -q -U iCab ${_urlDev}/src/GeoLite2-Country.mmdb.gz
-  gunzip GeoLite2-Country.mmdb.gz &> /dev/null
-  cp -af GeoLite2-Country.mmdb /usr/share/GeoIP/
-
-  chmod 644 /usr/share/GeoIP/*
-  rm -f /opt/tmp/Geo*
-  cd
+# DB-IP's licence (CC BY 4.0) asks each page that shows its data to link to
+# DB-IP, so a report made with a config naming DB-IP's City file gets that
+# link above its closing body tag. GoAccess writes the tag once and escapes the
+# angle brackets and slashes in the data it inlines, so no logged request can
+# hold one.
+_credit_dbip() {
+  local _html="$1"
+  shift
+  [ -s "${_html}" ] || return 0
+  grep -qs "dbip-city-lite.mmdb" "$@" || return 0
+  grep -q "IP Geolocation by DB-IP" "${_html}" && return 0
+  sed -i 's#</body>#<p style="text-align:center"><a href="https://db-ip.com">IP Geolocation by DB-IP</a></p></body>#' "${_html}"
 }
 
 _install_goaccess() {
@@ -192,7 +241,12 @@ _if_install() {
     fi
   fi
   if [ -e "/usr/etc/goaccess/goaccess.conf" ]; then
-    if [ ! -e "/root/.goaccessrc" ] || [ ! -e "/var/log/boa/.goaccessrc.fix.021.pid" ]; then
+    ### Written again when DB-IP's files are there and the config does not name
+    ### them, so a config written while they were missing does not keep the
+    ### GeoLite2 files for good.
+    if [ ! -e "/root/.goaccessrc" ] || [ ! -e "/var/log/boa/.goaccessrc.fix.022.pid" ] \
+      || { [ -s "/usr/share/GeoIP/dbip-city-lite.mmdb" ] \
+      && ! grep -q "dbip-city-lite.mmdb" /root/.goaccessrc 2> /dev/null; }; then
       echo 'date-format %d/%b/%Y' > /root/.goaccessrc
       echo 'time-format %H:%M:%S' >> /root/.goaccessrc
       echo 'log-format "~h{, }" %v [%d:%t %^] "%r" %s %^ %^ %b "%R" "%u" %T "%^"' >> /root/.goaccessrc
@@ -259,21 +313,32 @@ _if_install() {
       echo 'sort-panel REFERRERS,BY_VISITORS,DESC' >> /root/.goaccessrc
       echo 'sort-panel REFERRING_SITES,BY_VISITORS,DESC' >> /root/.goaccessrc
       echo 'sort-panel REQUESTS,BY_VISITORS,DESC' >> /root/.goaccessrc
-      if [ ! -e "/usr/share/GeoIP/GeoLite2-City.mmdb" ]; then
+      if [ ! -s "/usr/share/GeoIP/dbip-city-lite.mmdb" ] \
+        || [ ! -s "/usr/share/GeoIP/dbip-asn-lite.mmdb" ]; then
         _fetch_geoip
       fi
-      if [ -e "/usr/share/GeoIP/GeoLite2-ASN.mmdb" ]; then
-        echo 'geoip-database /usr/share/GeoIP/GeoLite2-ASN.mmdb' >> /root/.goaccessrc
-      fi
-      if [ -e "/usr/share/GeoIP/GeoLite2-City.mmdb" ]; then
-        echo 'geoip-database /usr/share/GeoIP/GeoLite2-City.mmdb' >> /root/.goaccessrc
-      fi
-      if [ -e "/usr/share/GeoIP/GeoLite2-Country.mmdb" ]; then
-        echo 'geoip-database /usr/share/GeoIP/GeoLite2-Country.mmdb' >> /root/.goaccessrc
+      ### GoAccess answers country, continent and city from a City file
+      ### whatever else it is given, so DB-IP's pair stands alone; the
+      ### GeoLite2 files an earlier pass fetched serve only a box that could
+      ### not get DB-IP's.
+      if [ -s "/usr/share/GeoIP/dbip-city-lite.mmdb" ] \
+        && [ -s "/usr/share/GeoIP/dbip-asn-lite.mmdb" ]; then
+        echo 'geoip-database /usr/share/GeoIP/dbip-asn-lite.mmdb' >> /root/.goaccessrc
+        echo 'geoip-database /usr/share/GeoIP/dbip-city-lite.mmdb' >> /root/.goaccessrc
+      else
+        if [ -e "/usr/share/GeoIP/GeoLite2-ASN.mmdb" ]; then
+          echo 'geoip-database /usr/share/GeoIP/GeoLite2-ASN.mmdb' >> /root/.goaccessrc
+        fi
+        if [ -e "/usr/share/GeoIP/GeoLite2-City.mmdb" ]; then
+          echo 'geoip-database /usr/share/GeoIP/GeoLite2-City.mmdb' >> /root/.goaccessrc
+        fi
+        if [ -e "/usr/share/GeoIP/GeoLite2-Country.mmdb" ]; then
+          echo 'geoip-database /usr/share/GeoIP/GeoLite2-Country.mmdb' >> /root/.goaccessrc
+        fi
       fi
       echo 'html-prefs {"theme":"darkBlue","perPage":10,"visitors":{"plot":{"chartType":"bar"}},"visit_time":{"plot":{"chartType":"bar"}}}' >> /root/.goaccessrc
       rm -f /var/log/boa/.goaccessrc.fix*
-      touch /var/log/boa/.goaccessrc.fix.021.pid
+      touch /var/log/boa/.goaccessrc.fix.022.pid
       sleep 1
     fi
   else
@@ -360,7 +425,7 @@ _ai_report() {
       # served classes are paced, so an agent two maps claim is counted
       # where it was refused.
       nchk = split("training evasive user search utility", chk, " ")
-      all = (index(site, "ALL") > 0)
+      all = (site == "ALL")
       site = tolower(site)
       aisrc = "[.](chatgpt[.]com|chat[.]openai[.]com|perplexity[.]ai|claude[.]ai|copilot[.]microsoft[.]com|gemini[.]google[.]com|chat[.]mistral[.]ai)$"
       aiutm = "^(chatgpt([.]com)?|openai|perplexity([.]ai)?|claude([.]ai)?|copilot([.]microsoft[.]com)?|gemini([.]google[.]com)?|mistral([.]ai)?)$"
@@ -518,7 +583,7 @@ _ai_report() {
       lab["training"] = "Training"
       lab["utility"] = "Utility"
       split("Search / index,Assistant,Evasive assistant,Training,Utility", pl, ",")
-      all = (index(site, "ALL") > 0)
+      all = (site == "ALL")
     }
     $1 == "0hdr" {
       hdr = 1
@@ -730,16 +795,20 @@ if [ -e "${_TARGET}/mrgd_nginx.log" ]; then
   rm -rf ${_TARGET}/mrgd_nginx.log
 fi
 
-if [[ "${_SITE}" =~ "ALL" ]]; then
-  _SITE_REGEX=" /"
-else
-  _SITE_REGEX=" ${_SITE} "
-fi
-
-### -a is load-bearing: one NUL byte anywhere in the concatenated corpus flips
-### grep into binary mode, which silently truncates the merged log and produces
-### an empty report.
-find ${_ARCHLOGS}/unzip -name "access*" -exec cat {} \; | grep -a "${_SITE_REGEX}" >> ${_TARGET}/mrgd_nginx.log
+### The box-wide report is asked for by the name ALL exactly; any other name
+### is one site's. Its lines are those whose host field (after the quoted
+### client, before " [") is that name, compared as a string: a name is never
+### a pattern, whose dots would take another site's lines and whose ALL took
+### every line on the box. awk reads every byte (a NUL would flip grep into
+### binary mode and truncate the merged log).
+_wxAll=0
+[ "${_SITE}" = "ALL" ] && _wxAll=1
+find ${_ARCHLOGS}/unzip -name "access*" -exec cat {} \; \
+  | LC_ALL=C awk -v s="${_SITE}" -v all="${_wxAll}" '
+    BEGIN { s = tolower(s) " ["; n = length(s) }
+    all { if (index($0, " /")) print; next }
+    { i = index($0, "\" "); if (i && substr($0, i + 2, n) == s) print }' \
+  >> ${_TARGET}/mrgd_nginx.log
 
 echo "[+] EXPORTING GOACCESS REPORT HTML"
 _GOVER=$(goaccess -V | awk 'NR == 1 { print substr ($3,0,1)}')
@@ -761,6 +830,7 @@ if [[ ${_GOVER} = 1 ]]; then
 else
   goaccess -p /root/.goaccessrc --no-global-config --persist --no-query-string -f "${_TARGET}/mrgd_nginx.log" "${conf[@]}" "${_xIps[@]}" > "${_TARGET}/index.html"
 fi
+_credit_dbip "${_TARGET}/index.html" /root/.goaccessrc ${_GACONF:+"${_GACONF}"}
 
 ### Written whole or not at all, and withdrawn when switched off, so the
 ### night never copies a stale or half-written report into the account.

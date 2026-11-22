@@ -160,7 +160,7 @@ _sql_dd_size() {
 # True when a file under the datadir, or the error log, was written in the
 # last five minutes: the activity test behind the stall ceiling of the waits.
 _sql_datadir_active() {
-  [ -n "$(find /var/lib/mysql -maxdepth 2 -type f -mmin -5 -print -quit 2> /dev/null)" ] && return 0
+  [ -n "$(find -H /var/lib/mysql -maxdepth 2 -type f -mmin -5 -print -quit 2> /dev/null)" ] && return 0
   [ -n "$(find /var/log/mysql/error.log -mmin -5 2> /dev/null)" ] && return 0
   return 1
 }
@@ -174,15 +174,15 @@ _sql_startup_progress() {
   local _secs="$1" _prev="$2" _stg _tbl _now _mb _dmb _last _ibd _wrt
   _stg=$(_sql_dd_upgrade_stage)
   if [ -n "${_stg}" ]; then
-    _tbl=$(find /var/lib/mysql -maxdepth 2 -name '*.frm' 2> /dev/null | wc -l)
+    _tbl=$(find -H /var/lib/mysql -maxdepth 2 -name '*.frm' 2> /dev/null | wc -l)
     _now=$(_sql_dd_size)
     _mb=$(( _now / 1048576 ))
     _dmb=$(( (_now - _prev) / 1048576 ))
     if [ "${_stg}" = "5" ]; then
       # the dictionary stops growing here: the metadata goes into every
       # InnoDB tablespace, each written once, newer than the stage file
-      _ibd=$(find /var/lib/mysql -mindepth 2 -maxdepth 2 -name '*.ibd' 2> /dev/null | wc -l)
-      _wrt=$(find /var/lib/mysql -mindepth 2 -maxdepth 2 -name '*.ibd' -newer /var/lib/mysql/mysql_dd_upgrade_info 2> /dev/null | wc -l)
+      _ibd=$(find -H /var/lib/mysql -mindepth 2 -maxdepth 2 -name '*.ibd' 2> /dev/null | wc -l)
+      _wrt=$(find -H /var/lib/mysql -mindepth 2 -maxdepth 2 -name '*.ibd' -newer /var/lib/mysql/mysql_dd_upgrade_info 2> /dev/null | wc -l)
       _msg "WAIT: database down: Data dictionary upgrade, stage $(_sql_dd_upgrade_stage_name "${_stg}"): ${_tbl} tables, tablespaces written ${_wrt} of ${_ibd}, $(( _secs / 60 )) min so far."
     else
       _msg "WAIT: database down: Data dictionary upgrade, stage $(_sql_dd_upgrade_stage_name "${_stg}"): ${_tbl} tables, dictionary ${_mb} MB (+${_dmb} MB), $(( _secs / 60 )) min so far."
@@ -218,9 +218,9 @@ _sql_table_walk() {
   local _what="$1"
   shift
   local _cmd="$*" _pid _n=0 _tbl _ndb _cur _k _dbs
-  _tbl=$(find /var/lib/mysql -mindepth 2 -maxdepth 2 -name '*.frm' 2> /dev/null | wc -l)
+  _tbl=$(find -H /var/lib/mysql -mindepth 2 -maxdepth 2 -name '*.frm' 2> /dev/null | wc -l)
   if [ "${_tbl}" -eq 0 ]; then
-    _tbl=$(find /var/lib/mysql -mindepth 2 -maxdepth 2 \( -name '*.ibd' -o -name '*.MYD' \) 2> /dev/null | wc -l)
+    _tbl=$(find -H /var/lib/mysql -mindepth 2 -maxdepth 2 \( -name '*.ibd' -o -name '*.MYD' \) 2> /dev/null | wc -l)
   fi
   _dbs=$(mysql -u root -N -e "SHOW DATABASES" 2> /dev/null | sort)
   _ndb=$(printf '%s\n' "${_dbs}" | grep -c .)
@@ -523,15 +523,15 @@ _if_sql_keyring_apt_update() {
       if [ ! -s "/etc/apt/keyrings/percona.gpg" ]; then
         _sql_fetch_apt_key percona-key.gpg /etc/apt/keyrings/percona.gpg
       fi
-      _CNT=$(pgrep -fc '^[^ ]*dirmngr( |$)')
+      _CNT=$(pgrep -u root -U root -fc '^[^ ]*dirmngr( |$)')
       if (( _CNT > 5 )); then
-        pkill -9 -f '^[^ ]*dirmngr( |$)'
+        pkill -9 -u root -U root -f '^[^ ]*dirmngr( |$)'
         echo "$(date) Too many dirmngr processes killed (count=${_CNT})" >> \
           /var/log/boa/dirmngr-count.kill.log
       fi
-      _CNT=$(pgrep -fc '^[^ ]*gpg-agent( |$)')
+      _CNT=$(pgrep -u root -U root -fc '^[^ ]*gpg-agent( |$)')
       if (( _CNT > 5 )); then
-        pkill -9 -f '^[^ ]*gpg-agent( |$)'
+        pkill -9 -u root -U root -f '^[^ ]*gpg-agent( |$)'
         echo "$(date) Too many gpg-agent processes killed (count=${_CNT})" >> \
           /var/log/boa/gpg-agent-count.kill.log
       fi
@@ -565,15 +565,15 @@ _if_sql_keyring_apt_update() {
       if [ ! -s "/etc/apt/keyrings/mysql.gpg" ]; then
         _sql_fetch_apt_key mysql-key.gpg /etc/apt/keyrings/mysql.gpg
       fi
-      _CNT=$(pgrep -fc '^[^ ]*dirmngr( |$)')
+      _CNT=$(pgrep -u root -U root -fc '^[^ ]*dirmngr( |$)')
       if (( _CNT > 5 )); then
-        pkill -9 -f '^[^ ]*dirmngr( |$)'
+        pkill -9 -u root -U root -f '^[^ ]*dirmngr( |$)'
         echo "$(date) Too many dirmngr processes killed (count=${_CNT})" >> \
           /var/log/boa/dirmngr-count.kill.log
       fi
-      _CNT=$(pgrep -fc '^[^ ]*gpg-agent( |$)')
+      _CNT=$(pgrep -u root -U root -fc '^[^ ]*gpg-agent( |$)')
       if (( _CNT > 5 )); then
-        pkill -9 -f '^[^ ]*gpg-agent( |$)'
+        pkill -9 -u root -U root -f '^[^ ]*gpg-agent( |$)'
         echo "$(date) Too many gpg-agent processes killed (count=${_CNT})" >> \
           /var/log/boa/gpg-agent-count.kill.log
       fi
@@ -1625,9 +1625,10 @@ _prep_for_install_db_sql() {
     groupadd mysql
   fi
 
-  # Create the mysql user if it doesn't exist
+  # Create the mysql user if it doesn't exist, never under a number a removed
+  # account identity freed
   if ! id -u mysql > /dev/null 2>&1; then
-    useradd -r -g mysql -d /var/lib/mysql -s /bin/false mysql
+    _sys_user_add high useradd -r -g mysql -d /var/lib/mysql -s /bin/false mysql
   fi
 
   # Create the directory if it doesn't exist
@@ -2645,6 +2646,27 @@ EOF
   fi
 }
 
+### xmass holds root's password rotation on a move's source from init to the
+### cutover's end: a rotation there replicates to the standby, whose own pair
+### stays, and every root client there is refused until the pair travels. The
+### hold counts only while the move's state still stands; one left by a state
+### file removed by hand, or by a move that has ended, is cleared.
+_sql_root_rotation_move_held() {
+  local _h="/root/.xmass.rotation.hold.cnf" _p
+  [ -e "${_h}" ] || return 1
+  _p=$(grep -m1 '^_XMASS_PHASE=' /data/conf/xmass_state.cnf 2> /dev/null \
+    | cut -d= -f2- | tr -cd 'a-z-')
+  case "${_p}" in
+    init|syncing|cutover|rename-failed)
+      _msg "INFO: MySQL root password kept as it is: this box is a move's source (${_h})"
+      return 0
+    ;;
+  esac
+  rm -f "${_h}"
+  _msg "INFO: Stale ${_h} removed (no move stands here)"
+  return 1
+}
+
 _sql_root_credentials_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _sql_root_credentials_update"
@@ -2790,7 +2812,9 @@ _sql_root_credentials_update() {
         ### root-credentialed tool on the mirror, xmass included, then fails
         ### to authenticate. The active owns the password; replication carries
         ### it; promotion resumes normal rotation.
-        if [ -e "/root/.mysql.yes.new.password.cnf" ] \
+        if _sql_root_rotation_move_held; then
+          :
+        elif [ -e "/root/.mysql.yes.new.password.cnf" ] \
           || [ -e "/root/.my.cluster_root_pwd.txt" ]; then
           _forced_mysql_root_password_update
         fi
