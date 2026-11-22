@@ -1446,6 +1446,17 @@
       so a platform's own site counts no false downgrade for it, nor is a
       real one hidden; the deploy check reads the same copy.
 
+    * A platform Verify no longer records a test module or theme (one in a
+      tests folder), a file that names no type or a name Drupal cannot
+      load, as Drupal's own discovery does not, so a test copy named like
+      a real module no longer takes its place (the panel recorded a test
+      copy of canvas_translate on Drupal CMS). From Drupal 11.2 on the
+      type is read from the parsed .info.yml, as Drupal 11.2 reads it.
+
+    * On Backdrop the panel records a module or theme that an install
+      profile and the root folder both hold at the root folder's copy,
+      which Backdrop runs, no longer at the profile's.
+
     * The database broker (boa-dbctl) and the account purge read the
       database login of an account installed on 127.0.0.1, whose server
       alias Aegir names after that host (server_127.0.0.1). The broker
