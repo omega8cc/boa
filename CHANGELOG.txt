@@ -387,6 +387,13 @@
 
 @=> Security
 
+    * The nightly pass gives a built-in platform's autoload.php and
+      autoload_runtime.php no group write: 0664 only in a tenant codebase
+      under ~/static, where core's composer scaffold rewrites them in
+      place, 0644 elsewhere, as a platform Verify sets them. Every request
+      loads both, and a built-in platform's group holds the account's SFTP
+      and client logins.
+
     * Unlock Local Drush, the platform permission helper and the
       lock-local-drush-permissions.sh unlock give a built-in platform's
       Drush folders, drush.php and core's dr no group write: 0775 only

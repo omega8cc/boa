@@ -3312,8 +3312,15 @@ _plr_perm_here() {
   _in_real_sub sites _night_mode_own_here "${_o}" f 0644 . \
     -mindepth 1 -maxdepth 1 \( -name "*.php" -o -name "*.txt" -o -name "*.yml" \)
   ### Core's composer scaffold rewrites both in place, never through an
-  ### unlink (the second from Drupal 11.4 on), so each stays group-writable.
-  _night_chmod_own_here "${_o}" f 0664 ./autoload.php ./autoload_runtime.php
+  ### unlink (the second from Drupal 11.4 on), so each keeps the tree's file
+  ### mode, as the platform script gives it: group write in a tenant codebase
+  ### (~/static) alone. Every request loads them, and a built-in platform's
+  ### group holds the account's SFTP and client logins.
+  if [[ "${_Plr}" =~ /static/ ]] && [[ ! "${_Plr}" =~ /aegir/distro/ ]]; then
+    _night_chmod_own_here "${_o}" f 0664 ./autoload.php ./autoload_runtime.php
+  else
+    _night_chmod_own_here "${_o}" f 0644 ./autoload.php ./autoload_runtime.php
+  fi
   _in_real_sub sites/all _night_chmod_own_here "${_o}" d 0755 ./drush
   ### Tenant composer codebases: the two directories core's composer
   ### scaffold writes into stay group-writable for the shell user
