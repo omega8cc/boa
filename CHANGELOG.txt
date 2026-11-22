@@ -392,7 +392,8 @@
       rebuilds its backup Python the next time backboa install,
       duobackboa install or dcysetup install runs, and new installs get
       it directly; backboa and duobackboa no longer skip a box on an
-      older 3.14 release. The Duplicity pin is unchanged.
+      older 3.14 release, and all three decide a rebuild by the full
+      version. The Duplicity pin is unchanged.
 
     * websh refuses a Drush command word given abbreviated or in another
       case, which Drush 9 and newer resolve as the full name, on every

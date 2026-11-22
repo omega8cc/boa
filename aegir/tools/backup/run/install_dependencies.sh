@@ -203,6 +203,14 @@ _duplicity_venv_on_pin() {
     && [ -d "${_PIPX_VNV}/duplicity/lib/python${_PTN_MNR}/site-packages/duplicity" ]
 }
 
+# The source-built interpreter to the patch level, the one test every
+# rebuild decision uses: a version that only begins with the pin (3.14.10
+# against a 3.14.1 pin) is not the pin.
+_python_on_pin() {
+  [ -x "${_DCY_PTN}" ] \
+    && [ "$(${_DCY_PTN} --version 2>&1)" = "Python ${_PTN_VRN}" ]
+}
+
 # pipx install --force reuses an existing venv AND its interpreter -- it
 # ignores --python on that path by design -- so a venv created under an
 # older python must be removed first to be recreated on the pin.
@@ -615,9 +623,7 @@ _python_install_src() {
     tzdata \
     uuid-dev
 
-  _PTN_TEST=$(python3 --version 2>&1)
-  if [[ ! "${_PTN_TEST}" =~ "Python ${_PTN_VRN}" ]] \
-    || [ ! -x "${_DCY_PTN}" ]; then
+  if ! _python_on_pin; then
     _python_stage_src || exit 1
     cd "${_PTN_DIR}/Python-${_PTN_VRN}" || { echo "Cannot enter the Python source tree"; exit 1; }
     if ! bash ./configure --with-openssl=/usr/local/ssl3; then
@@ -635,7 +641,7 @@ _python_install_src() {
     cd
   fi
   _PTN_TEST=$(${_DCY_PTN} --version 2>&1)
-  if [[ "${_PTN_TEST}" =~ "Python ${_PTN_VRN}" ]]; then
+  if _python_on_pin; then
     echo "Python ${_PTN_VRN} installed"
     export PYTHONPATH="/usr/local/lib/python${_PTN_MNR}/site-packages"
   else
@@ -658,8 +664,7 @@ _python_install_src() {
 _if_python_install_src() {
   _PYTHON_INSTALL=NO
   [ -e "/root/.gnupg" ] && chmod 700 /root/.gnupg
-  _PYTHON_TEST=$(python3 --version 2>&1)
-  if [[ ! "${_PYTHON_TEST}" =~ "Python ${_PTN_VRN}" ]]; then
+  if ! _python_on_pin; then
     echo "Python ${_PTN_VRN} installation is required to support Duplicity ${_DCY_VRN}"
     _python_install_src
   else

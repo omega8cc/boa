@@ -252,9 +252,11 @@ _duplicity_venv_on_pin() {
     && [ -d "${_PIPX_VNV}/duplicity/lib/python${_PTN_MNR}/site-packages/duplicity" ]
 }
 
-# The source-built interpreter to the patch level. The venv check reads
-# only the minor version, so without this a box on an older release of
-# the same minor would keep it through every install run.
+# The source-built interpreter to the patch level, the one test every
+# rebuild decision uses. The venv check reads only the minor version, so
+# without this a box on an older release of the same minor would keep it
+# through every install run; and a version that only begins with the pin
+# (3.14.10 against a 3.14.1 pin) is not the pin.
 _python_on_pin() {
   [ -x "${_DCY_PTN}" ] \
     && [ "$(${_DCY_PTN} --version 2>&1)" = "Python ${_PTN_VRN}" ]
@@ -828,9 +830,7 @@ _install() {
     # source-built /usr/local python, which nothing between here and
     # the build touches.
     _PTN_BUILD=NO
-    _PTN_TEST=$(${_DCY_PTN} --version 2>&1)
-    if [[ ! "${_PTN_TEST}" =~ "Python ${_PTN_VRN}" ]] \
-      || [ ! -x "${_DCY_PTN}" ]; then
+    if ! _python_on_pin; then
       _PTN_BUILD=YES
       if ! _python_stage_src; then
         echo "Aborting before any change to the installed backup tooling"
@@ -879,7 +879,7 @@ _install() {
       cd
     fi
     _PTN_TEST=$(${_DCY_PTN} --version 2>&1)
-    if [[ "${_PTN_TEST}" =~ "Python ${_PTN_VRN}" ]]; then
+    if _python_on_pin; then
       python3 -m pip install pipx --break-system-packages --root-user-action ignore
       pip3 install --upgrade pip --root-user-action ignore
       export PIPX_BIN_DIR=/usr/local/bin
