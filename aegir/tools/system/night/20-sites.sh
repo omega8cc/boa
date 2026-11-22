@@ -3002,7 +3002,13 @@ _static_perm_here() {
     ! \( -path "*/vendor/drush" -o -path "*/vendor/symfony/console/Input" \
     -o -path "*/vendor/symfony/console/Style" \)
   _night_mode_own_here "${_o}" f 0664 . "${_pr[@]}" -regextype posix-extended \
-    ! -regex '\./([^/]+/)?sites/[^/]+/(settings|local\.settings|civicrm\.settings|solr|drushrc)\.php'
+    ! -regex '\./([^/]+/)?sites/[^/]+/(settings|local\.settings|civicrm\.settings|solr|drushrc)\.php' \
+    ! -regex '\./([^/]+/)?vendor/(bin/dr|drush/drush/drush\.php)'
+  ### The shell runs core's dr and the site-local drush.php by their paths, and
+  ### only a file that may be executed: both keep the 0775 the platform fixer
+  ### and Unlock Local Drush give them in a tenant codebase.
+  _night_mode_own_here "${_o}" f 0775 . -mindepth 3 -maxdepth 5 \
+    -regextype posix-extended -regex '\./([^/]+/)?vendor/(bin/dr|drush/drush/drush\.php)'
   return 0
 }
 ### The credential files of every site dir of the platform (the current,
@@ -3347,7 +3353,16 @@ _plr_perm_here() {
       ./modules ./themes ./libraries ./includes ./misc ./profiles ./core \
       ./vendor ../vendor \
       \( -path "*/vendor/drush" -o -path "*/vendor/symfony/console/Input" \
-      -o -path "*/vendor/symfony/console/Style" \) -prune -o
+      -o -path "*/vendor/symfony/console/Style" \) -prune -o ! -path "*/vendor/bin/dr"
+    ### Composer's proxy for core's dr keeps the 0755 the platform fixer gives
+    ### it, in the vendor/ the fixer takes (the docroot's own, else the one
+    ### above it): the shell runs it by its path, and only a file that may be
+    ### executed.
+    if [ -e ./vendor ]; then
+      _night_mode_own_here "${_o}" f 0755 ./vendor -mindepth 2 -maxdepth 2 -path ./vendor/bin/dr
+    else
+      _night_mode_own_here "${_o}" f 0755 ../vendor -mindepth 2 -maxdepth 2 -path ../vendor/bin/dr
+    fi
   fi
   _in_real_sub sites/all _night_mode_own_here "${_o}" d "${_pDm}" \
     ./modules ./themes ./libraries

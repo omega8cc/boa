@@ -1268,6 +1268,14 @@
 
 @=> Important Fixes
 
+    * The nightly permission pass keeps core's dr executable, and in a
+      tenant codebase (~/static) the site-local drush.php as well: it set
+      every vendor file to 0644, or 0664 under ~/static, so on a platform
+      left unlocked both lost their execute bit each night until the next
+      Unlock Local Drush, and the shell runs only a file that may be
+      executed (dr answered "command not found"). Both now keep the mode
+      the platform fixer gives them, dr in the vendor/ the fixer takes.
+
     * A backup to Backblaze B2 sends each volume in one upload request.
       The storage library sends any file over 100 MB as a large file in
       parallel parts, so every 300 MiB volume was a start call, four parts
