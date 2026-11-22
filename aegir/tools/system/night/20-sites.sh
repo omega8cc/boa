@@ -3342,8 +3342,8 @@ _plr_perm_here() {
   if [[ ! "${_Plr}" =~ /static/ ]] && [ "${_FOREIGN_CMS}" != "YES" ]; then
     _night_chmod_own_here "${_o}" d 0755 .
     ### The three Drush-lock dirs keep whatever mode the lock state gave
-    ### them (0400 locked, 0775 after Unlock Local Drush): prune, never
-    ### widen or narrow them here.
+    ### them (0400 locked, 0755 after Unlock Local Drush on a built-in
+    ### platform): prune, never widen or narrow them here.
     _night_mode_own_here "${_o}" d 0755 \
       ./modules ./themes ./libraries ./includes ./misc ./profiles ./core \
       ./vendor ../vendor \

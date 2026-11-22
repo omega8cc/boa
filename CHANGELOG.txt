@@ -387,6 +387,14 @@
 
 @=> Security
 
+    * Unlock Local Drush, the platform permission helper and the
+      lock-local-drush-permissions.sh unlock give a built-in platform's
+      Drush folders, drush.php and core's dr no group write: 0775 only
+      where the folder really sits in a tenant codebase under ~/static,
+      0755 everywhere else. A built-in platform's group holds the
+      account's SFTP and client logins, and its Drush is code the backend
+      user runs. The lock state reads the unlocked folders the same way.
+
     * The backup tools build Python 3.14.10 (was 3.14.6), which carries
       the tarfile, zipfile and TLS security fixes of Python 3.14.8. A box
       rebuilds its backup Python the next time backboa install,

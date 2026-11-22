@@ -143,10 +143,14 @@ _chmod_nolink_here() {
   perl -e "${_FCHMOD_PL}" a "${1}" "./${2}"
 }
 
+# $1 is a mode, or "open": the unlock's, group write only where the target
+# really sits in a tenant codebase (~/static), never on a built-in platform,
+# whose group holds the account's SFTP and client logins and whose code the
+# backend user runs.
 _chmod_safe() {
   local _mode=$1
   shift
-  local _p _r
+  local _p _r _m
   for _p in "$@"; do
     [ -L "${_p}" ] && continue
     [ -e "${_p}" ] || continue
@@ -162,14 +166,21 @@ _chmod_safe() {
         continue
         ;;
     esac
+    _m="${_mode}"
+    if [ "${_mode}" = "open" ]; then
+      case "${_r}/" in
+        */static/*) _m=0775 ;;
+        *) _m=0755 ;;
+      esac
+    fi
     # The checked target, never the path walked again: a directory takes the
     # mode on '.' once entered for real, anything else on its own name inside
     # its directory entered for real, so a name swapped for a link after the
     # check above is never followed.
     if [ -d "${_r}" ]; then
-      _in_pinned_dir "${_r}" chmod "${_mode}" .
+      _in_pinned_dir "${_r}" chmod "${_m}" .
     else
-      _in_pinned_dir "${_r%/*}" _chmod_nolink_here "${_mode}" "${_r##*/}"
+      _in_pinned_dir "${_r%/*}" _chmod_nolink_here "${_m}" "${_r##*/}"
     fi
   done
 }
@@ -222,9 +233,9 @@ if [ -e "${drupal_root}/core" ]; then
   if [ -e "${drupal_root}/vendor" ]; then
     if [ "$mode" = "unlock" ]; then
       printf "Unlocking Drush and Symfony Console Input in "${drupal_root}/vendor"...\n"
-      _chmod_safe 0775 "${drupal_root}/vendor/drush"
-      _chmod_safe 0775 "${drupal_root}/vendor/symfony/console/Input"
-      _chmod_safe 0775 "${drupal_root}/vendor/symfony/console/Style"
+      _chmod_safe open "${drupal_root}/vendor/drush"
+      _chmod_safe open "${drupal_root}/vendor/symfony/console/Input"
+      _chmod_safe open "${drupal_root}/vendor/symfony/console/Style"
     else
       printf "Locking Drush and Symfony Console Input in %s...\n" "${drupal_root}/vendor"
       _chmod_safe 0400 "${drupal_root}/vendor/drush"
@@ -234,9 +245,9 @@ if [ -e "${drupal_root}/core" ]; then
   elif [ -e "${drupal_root}/../vendor" ]; then
     if [ "$mode" = "unlock" ]; then
       printf "Unlocking Drush and Symfony Console Input in "${drupal_root}/../vendor"...\n"
-      _chmod_safe 0775 "${drupal_root}/../vendor/drush"
-      _chmod_safe 0775 "${drupal_root}/../vendor/symfony/console/Input"
-      _chmod_safe 0775 "${drupal_root}/../vendor/symfony/console/Style"
+      _chmod_safe open "${drupal_root}/../vendor/drush"
+      _chmod_safe open "${drupal_root}/../vendor/symfony/console/Input"
+      _chmod_safe open "${drupal_root}/../vendor/symfony/console/Style"
     else
       printf "Locking Drush and Symfony Console Input in "${drupal_root}/../vendor"...\n"
       _chmod_safe 0400 "${drupal_root}/../vendor/drush"

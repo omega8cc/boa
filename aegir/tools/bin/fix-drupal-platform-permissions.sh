@@ -381,14 +381,20 @@ _chmod_any_own_here() {
   _chmod_own_here d "${_mode}" "$@"
   _chmod_own_here f "${_mode}" "$@"
 }
-# core's dr in the current directory (a vendor/bin entered by _in_scoped_dir):
-# executable, and group-writable only where the tree it really sits in is a
-# tenant codebase's (~/static), never a built-in platform's a link leads to
-_chmod_dr_here() {
+# An executable a shell runs by its path, in the current directory (entered
+# by _in_scoped_dir): core's dr in vendor/bin, Drush's drush.php. It keeps its
+# execute bits, and group write only where the tree it really sits in is a
+# tenant codebase's (~/static), never a built-in platform's a link leads to:
+# there the group holds the account's SFTP and client logins, and the backend
+# user runs the code.
+_chmod_exec_here() {
   case "$(/bin/pwd -P)/" in
-    */static/*) _chmod_any_own_here 0775 dr ;;
-    *) _chmod_any_own_here 0755 dr ;;
+    */static/*) _chmod_any_own_here 0775 "${1}" ;;
+    *) _chmod_any_own_here 0755 "${1}" ;;
   esac
+}
+_chmod_dr_here() {
+  _chmod_exec_here dr
 }
 # _chmod_any_own_here inside the directory $1 (resolved once above), entered
 # for real.
@@ -982,8 +988,8 @@ _left_add _in_pinned_dir "${drupal_root}" _walk_here f "${_MODE_FILE}" \
 ### in the nightly pass. Widening them here and closing them again at the
 ### end opened the lock for the length of the walk in every platform Verify,
 ### and a run on a platform its owner had unlocked closed the modes over a
-### tree whose patches were off. An open one (0775 after Unlock Local Drush,
-### or never locked) takes the walk's mode like any vendor directory, which
+### tree whose patches were off. An open one (after Unlock Local Drush, or
+### never locked) takes the walk's mode like any vendor directory, which
 ### leaves it open. What is in them is walked either way.
 _LOCK_DIRS_KEPT=( ! \( \( -path ./vendor/drush -o -path ./vendor/symfony/console/Input \
   -o -path ./vendor/symfony/console/Style \) ! -perm -0200 \) )
@@ -1021,12 +1027,14 @@ elif [ -e "${drupal_root}/../vendor/drush/drush/drush" ]; then
     _in_own_here _off_drush_here
 fi
 
+### Drush's drush.php keeps its execute bits (vdrush runs it by its path),
+### with group write in a tenant codebase alone (_chmod_exec_here).
 if [ -e "${drupal_root}/vendor/drush/drush/drush.php" ]; then
   _left_add _in_scoped_dir "${drupal_root}/vendor/drush/drush" \
-    _chmod_any_own_here 0775 drush.php
+    _chmod_exec_here drush.php
 elif [ -e "${drupal_root}/../vendor/drush/drush/drush.php" ]; then
   _left_add _in_scoped_dir "${drupal_root%/*}/vendor/drush/drush" \
-    _chmod_any_own_here 0775 drush.php
+    _chmod_exec_here drush.php
 fi
 
 ### Composer's proxy for core's dr (Drupal 11.5 and newer, Drush 15) keeps an
