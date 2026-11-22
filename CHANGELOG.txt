@@ -1293,8 +1293,10 @@
       platform and as none on the site. A module with no update function
       now records no schema number, which every check reads as unknown,
       so a site that kept the number of hooks its module later dropped is
-      no false downgrade; versions follow what Drupal and Composer record,
-      and a downgrade below the old floor is seen.
+      no false downgrade, and one whose code still carries a Drupal 7
+      number (an update function or last-removed number below 8000)
+      records 8000, as Drupal installs it; versions follow what Drupal
+      and Composer record, and a downgrade below the old floor is seen.
 
     * A platform Verify records a module that core still ships beside its
       contrib successor (forum, action, telephone) at the contrib copy a
