@@ -48,7 +48,7 @@ _manage_single_lock() {
     # -------- legacy pgrep guard ---------
     # Exit if more than 2 instances of this script are running
     _SCRIPT=$(basename "$0")
-    _CNT=$(pgrep -fc "(^|(^| )[^ ]*bash )[^ ]*/${_SCRIPT//./\\.}( |$)")
+    _CNT=$(pgrep -u root -U root -fc "(^|(^| )[^ ]*bash )[^ ]*/${_SCRIPT//./\\.}( |$)")
     if (( _CNT > 2 )); then
       echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
       exit 0
@@ -105,6 +105,17 @@ _nginx_health_check_fix() {
   if [ -x "/etc/init.d/nginx" ]; then
     if ! pgrep -f '^nginx: master process' \
       || [ ! -e "/run/nginx.pid" ]; then
+      # With a configuration nginx -t rejects the start below fails, so
+      # nothing that still serves is killed for it and no start is tried.
+      # Tested the way a start loads it (configtest syncs the store's copies).
+      local _out _why
+      if ! _out=$(service nginx configtest 2>&1); then
+        _why=$(printf '%s\n' "${_out}" | grep -m1 -E '\[(emerg|alert|crit)\]' | cut -c1-300)
+        echo "NOTE: Nginx not restarted, nginx -t fails (${_why:-no reason given})"
+        mkdir -p /var/log/boa
+        echo "$(date) NGX webserver up: not restarted, nginx -t fails (${_why:-no reason given})" >> /var/log/boa/nginx.incident.log
+        return 0
+      fi
       pkill -9 -f '^nginx: ' || true
       service nginx restart
       wait

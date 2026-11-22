@@ -345,7 +345,7 @@ _site_web_group() {
 _in_pinned_dir() {
   local _d="${1}"
   shift
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_d}" ] && "$@" )
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_d}" ] && "$@" )
 }
 
 # A mode set on paths below the current directory, never through a link:
@@ -415,6 +415,13 @@ _acct_walk_uids() {
     [ "${_n}" = "${_a}" ] && _self=YES
   done < <(getent passwd 2> /dev/null)
   [ "${_self}" = "YES" ] || return 1
+  # the account's removed identities, their numbers recorded by root before
+  # deluser freed them; a number a user has again is not taken
+  while IFS= read -r _u; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    getent passwd "${_u}" > /dev/null 2>&1 && continue
+    _x="${_x},${_u}"
+  done 2> /dev/null < "/data/conf/acct-uids/${_a}.gone"
   echo "${_x}"
 }
 # The uids the walks below act for, from the site path as resolved, never
@@ -572,12 +579,12 @@ _place_own_here() {
 _links_left_note() {
   local _f _n=0 _first="" _here
   [ /dev/fd/3 -ef /dev/null ] && return 0
-  while IFS= read -r -d '' _f; do
+  while LC_ALL=C IFS= read -r -d '' _f; do
     [ -n "${_first}" ] || _first="${_f}"
     _n=$(( _n + 1 ))
   done < <(find "$@" -type f -links +1 -print0 2> /dev/null)
   [ "${_n}" -gt 0 ] || return 0
-  _here="$(pwd -P)"
+  _here="$(/bin/pwd -P)"
   _first="${_here}/${_first#./}"
   printf "Notice: %s file(s) with more than one link left unchanged under %s, first: %s\n" \
     "${_n}" "${_here//[[:cntrl:]]/?}" "${_first//[[:cntrl:]]/?}" >&3
@@ -674,7 +681,7 @@ _mark_here() {
 _grav_site_perm_here() {
   local _wd _sd _here _ov
   local -a _keep=()
-  _here="$(pwd -P)"
+  _here="$(/bin/pwd -P)"
   _place_own_here || return 0
   # The host overlay in Grav's older shape, user/<site name>/ where there is
   # no user/env/, holds config overrides as user/config does. The site name
@@ -750,7 +757,7 @@ _grav_site_perm_here() {
 # The Textpattern model, run inside the real site directory.
 _txp_site_perm_here() {
   local _wd _here
-  _here="$(pwd -P)"
+  _here="$(/bin/pwd -P)"
   _place_own_here || return 0
   # Credential store first, and no later walk touches it: private/ is
   # group-traversable (FPM reads config.php through the web group) and

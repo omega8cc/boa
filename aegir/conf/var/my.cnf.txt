@@ -1,7 +1,9 @@
 [client]
 port                    = 3306
 socket                  = /run/mysqld/mysqld.sock
-default-character-set   = utf8mb4
+# loose-: every client reads [client], and mysqlbinlog, which has no such
+# option, stopped at once; the clients that know it still apply it.
+loose-default-character-set = utf8mb4
 
 [mysqld]
 user                    = mysql

@@ -38,6 +38,17 @@ _vSet="variable-set --always-set"
 
 ###-------------HELPERS-----------------###
 
+# The real uids of BOA's own work: root, aegir and each account's backend
+# user (home /data/disk/<name>), as whom root runs the account's tasks and
+# queued restores; never a web, FTP or shell login, which can give its own
+# process any command line.
+_boa_run_uids() {
+  local _l=""
+  _l=$(getent passwd 2> /dev/null \
+    | awk -F: '$3 == 0 || $1 == "aegir" || $6 ~ /^\/data\/disk\/[^\/]+\/?$/ { printf "%s%s", s, $3; s = "," }')
+  echo "${_l:-0}"
+}
+
 _acct_group() {
   # Group that owns an account's tree. Derived, never a literal: an account
   # converted to a private primary group named after itself gets that group,
@@ -242,11 +253,11 @@ _acct_in_real_dir() {
     /data/disk/?*) _a=/data/disk ;;
   esac
   if [ -n "${_a}" ]; then
-    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+    _want="$(cd -P -- "${_a}" 2> /dev/null && /bin/pwd -P)${_d#"${_a}"}"
   else
-    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && /bin/pwd -P)/${_d##*/}"
   fi
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] && "$@" )
 }
 # ./$1 in the current (pinned) directory: never through a link, never blocked
 # on a FIFO, at most 1 MiB. Empty for anything else.
@@ -337,10 +348,10 @@ _ctrl_in_stage_dir() {
 }
 _ctrl_stage_here() {
   local _h _st
-  _h="$(pwd -P)/.boa-ctrl"
+  _h="$(/bin/pwd -P)/.boa-ctrl"
   [ -L ./.boa-ctrl ] && rm -f -- ./.boa-ctrl
   [ -d ./.boa-ctrl ] || mkdir ./.boa-ctrl 2> /dev/null
-  cd -P -- ./.boa-ctrl 2> /dev/null && [ "$(pwd -P)" = "${_h}" ] || return 1
+  cd -P -- ./.boa-ctrl 2> /dev/null && [ "$(/bin/pwd -P)" = "${_h}" ] || return 1
   chown root:root . 2> /dev/null && chmod 0700 . 2> /dev/null || return 1
   # root's, and nobody else's to enter or write
   _st=$(stat -c '%u %a' . 2> /dev/null)
@@ -416,7 +427,7 @@ _reseed_ctrl_ini() {
   esac
   _rsd=$(realpath -e -- "${_src%/*}" 2>/dev/null) || return 1
   (
-    cd -P -- "${_rpn}" 2>/dev/null && [ "$(pwd -P)" = "${_rpn}" ] || exit 1
+    cd -P -- "${_rpn}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${_rpn}" ] || exit 1
     exec 9< . || exit 1
     _ctrl_in_stage_dir _reseed_ctrl_ini_here "${_rsd}" "${_src##*/}" "${_dst##*/}"
   )
@@ -427,7 +438,7 @@ _reseed_ctrl_ini() {
 _reseed_ctrl_ini_here() {
   local _new
   _new=$(mktemp ./ctrl.XXXXXX 2>/dev/null) || return 1
-  if ! ( cd -P -- "${1}" 2>/dev/null && [ "$(pwd -P)" = "${1}" ] \
+  if ! ( cd -P -- "${1}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${1}" ] \
     && _acct_read_plain_here "${2}" ) > "${_new}"; then
     rm -f -- "${_new}"
     return 1
@@ -500,7 +511,7 @@ _heal_foreign_cms_ctrl_ini() {
   esac
   (
     cd -P -- "${_rmd}" 2>/dev/null || exit 0
-    [ "$(pwd -P)" = "${_rmd}" ] || exit 0
+    [ "$(/bin/pwd -P)" = "${_rmd}" ] || exit 0
     if [ -n "${_n}" ]; then
       for _f in "default.${_n}" "${_n}"; do
         if [ -L "./${_f}" ] || [ -f "./${_f}" ]; then
@@ -510,7 +521,7 @@ _heal_foreign_cms_ctrl_ini() {
       done
     fi
     cd -P .. 2>/dev/null || exit 0
-    [ "$(pwd -P)" = "${_rmd%/*}" ] || exit 0
+    [ "$(/bin/pwd -P)" = "${_rmd%/*}" ] || exit 0
     rmdir -- "${_rmd##*/}" 2>/dev/null \
       && echo "Foreign-CMS empty dir removed: ${_rmd}"
   )
@@ -599,14 +610,16 @@ _provision_running() {
   # The second pattern is the old one plus an execution-shape constraint, so the
   # only processes this stops matching are the non-executions; the first keeps
   # the inner `bash -c "... provision-<task>"` link of the su chain covered.
-  pgrep -f '(^| )provision-[a-z0-9-]+( |$)' > /dev/null 2>&1 && return 0
+  local _bU=""
+  _bU="$(_boa_run_uids)"
+  pgrep -u "${_bU}" -U "${_bU}" -f '(^| )provision-[a-z0-9-]+( |$)' > /dev/null 2>&1 && return 0
   # The front-end dispatch phase of a task carries no provision-* token: the
   # backend child is spawned only after bootstrap, and the post-hooks run after
   # it exits, so those windows were invisible. ( |$) is LOAD-BEARING -- without
   # it this also matches hosting-tasks and hosting-dispatch, the per-minute
   # pollers, which would pin the gate ON and disable every nightly cleanup.
-  pgrep -f "hosting-task( |$)" > /dev/null 2>&1 && return 0
-  pgrep -f "^([^ ]*/)?(php[0-9.]*|su|env|drush[0-9]*)( |$).*provision" > /dev/null 2>&1 && return 0
+  pgrep -u "${_bU}" -U "${_bU}" -f "hosting-task( |$)" > /dev/null 2>&1 && return 0
+  pgrep -u "${_bU}" -U "${_bU}" -f "^([^ ]*/)?(php[0-9.]*|su|env|drush[0-9]*)( |$).*provision" > /dev/null 2>&1 && return 0
   return 1
 }
 
@@ -624,10 +637,10 @@ _night_boa_pass_active() {
   [ -e "/run/boa_run.pid" ] && return 0
   [ -e "/run/boa_wait.pid" ] && return 0
   [ -e "/run/octopus_install_run.pid" ] && return 0
-  pgrep -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1 && return 0
-  pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/(barracuda|octopus)( |$)" > /dev/null 2>&1 && return 0
-  pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-" > /dev/null 2>&1 && return 0
-  pgrep -f "^(/[^ ]*/)?(bash|sh|su) .*/aegir/scripts/AegirSetup[ABC]\.sh\.txt" > /dev/null 2>&1 && return 0
+  pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1 && return 0
+  pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/(barracuda|octopus)( |$)" > /dev/null 2>&1 && return 0
+  pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-" > /dev/null 2>&1 && return 0
+  pgrep -u root -U root -f "^(/[^ ]*/)?(bash|sh|su) .*/aegir/scripts/AegirSetup[ABC]\.sh\.txt" > /dev/null 2>&1 && return 0
   return 1
 }
 
@@ -803,8 +816,8 @@ _ACCT_CHATTR_PL='use Fcntl; my ($op, @f) = @ARGV; my $rc = 0; for my $f (@f) { s
 # hard link, and a name swapped for anything else is never entered.
 _night_chattr_sub_here() {
   local _h
-  _h="$(pwd -P)"
-  ( cd -P -- "./${2}" 2> /dev/null && [ "$(pwd -P)" = "${_h}/${2}" ] \
+  _h="$(/bin/pwd -P)"
+  ( cd -P -- "./${2}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_h}/${2}" ] \
     && chattr "${1}i" . ) &> /dev/null
   return 0
 }
@@ -945,6 +958,88 @@ _night_older_nn() {
   esac
   [ "${1}" -lt "${2}" ] && [ -x "/opt/php${1}/bin/php" ]
 }
+# The whole of an account's control/, judged once before a run acts on it:
+# run inside the account's real static/, it prints OK when control/ and
+# everything in it, never followed through a link, and static/ and every
+# directory above it up to /, are root's or one of the account's identities'
+# (the uids given first, _acct_walk_uids, with the account's recorded
+# removed identities), ABSENT when there is no control/, and otherwise why
+# not, on one line.
+# Every other account's .ftp login is in the box-wide group, which an account
+# not yet on its own group still has on static/: such a login could put a
+# control/ of its own there, or a file of its own in a group-writable
+# directory below it, for root to act on as the account's.
+_ACCT_CTRL_OWN_PL='use Fcntl;
+my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, shift @ARGV // "");
+sub own { my $u = shift; return exists $own{$u} ? 1 : 0; }
+sub isd { ($_[0] & 0170000) == 0040000 }
+sub nm { (my $v = shift) =~ s/[^\x20-\x7e]/?/g; return substr($v, 0, 200); }
+sub refuse { print "$_[0]\n"; exit 0; }
+my ($p, $top, @d, @x) = (".", 0);
+for (1 .. 256) {
+  @x = stat($p) or refuse("static/ cannot be read");
+  own($x[4]) or refuse("a directory above control/ is owned by uid $x[4]");
+  if (@d && $x[0] == $d[0] && $x[1] == $d[1]) { $top = 1; last; }
+  @d = @x;
+  $p .= "/..";
+}
+$top or refuse("static/ is too deep");
+my @s = lstat("./control");
+unless (@s) { print(($!{ENOENT} ? "ABSENT" : "control/ cannot be read") . "\n"); exit 0; }
+isd($s[2]) or refuse("control is not a directory");
+my ($n, @q) = (0, ["control", @s]);
+while (my $e = shift @q) {
+  my ($f, @t) = @$e;
+  own($t[4]) or refuse(nm($f) . " is owned by uid $t[4]" . (defined(getpwuid($t[4])) ? "" : ", which no user has and root never recorded for this account: if the file is its own, give it to its .ftp login"));
+  next unless isd($t[2]);
+  opendir(my $h, "./$f") or refuse(nm($f) . " cannot be read");
+  for my $b (readdir($h)) {
+    next if $b eq "." || $b eq "..";
+    ++$n > 100000 and refuse("control/ holds more than 100000 entries");
+    my @u = lstat("./$f/$b") or next;
+    push @q, ["$f/$b", @u];
+  }
+  closedir($h);
+}
+print "OK\n";
+exit 0;'
+# 0 when the account $1's control/ is its own as _ACCT_CTRL_OWN_PL judges it
+# (or it has none); otherwise why not on stdout, status 1. A run that acts
+# on what control/ says leaves the account as it is when it is not.
+_acct_ctrl_own() {
+  local _a="${1}" _o _r _want
+  # an account not in passwd (not made yet, or removed) has nothing to
+  # judge it by: read as before
+  _o=$(_acct_walk_uids "${_a}" 2> /dev/null) || return 0
+  [ -e "/data/disk/${_a}/static" ] || [ -L "/data/disk/${_a}/static" ] || return 0
+  _want="$(cd -P -- /data/disk 2> /dev/null && /bin/pwd -P)/${_a}/static"
+  _r=$(cd -P -- "/data/disk/${_a}/static" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] \
+    && perl -e "${_ACCT_CTRL_OWN_PL}" -- "${_o}" 2> /dev/null)
+  case "${_r}" in
+    OK|ABSENT) return 0 ;;
+  esac
+  echo "${_r:-static/ is not a real directory}"
+  return 1
+}
+# The account's control/ judged once a run and account (_acct_ctrl_own):
+# _ctrl_has is 0 when the name $1 is in it and it is the account's own,
+# _ctrl_foreign is 0 when it is not the account's own. A marker in a
+# control/ another account put there reads as not there.
+_ctrl_judge() {
+  [ "${_CTRL_JUDGED_FOR:-}" = "${_usEr}" ] && return 0
+  _CTRL_JUDGED_FOR="${_usEr}"
+  _CTRL_OWN=YES
+  _CTRL_WHY=$(_acct_ctrl_own "${_usEr##*/}") || _CTRL_OWN=NO
+  return 0
+}
+_ctrl_has() {
+  _ctrl_judge
+  [ "${_CTRL_OWN}" = "YES" ] && [ -e "${_usEr}/static/control/${1}" ]
+}
+_ctrl_foreign() {
+  _ctrl_judge
+  [ "${_CTRL_OWN}" = "NO" ]
+}
 # In the account's real static/control: a phpNN.info marker, cli.info or a
 # cli-per-platform.info line names a PHP older than $1, read as websh reads
 # them: of the platform file only the first 64 KiB and 200 lines, as
@@ -996,7 +1091,8 @@ _night_websh_older() {
   if [ "${_NIGHT_CLI_KEY}" != "${_k}" ]; then
     _NIGHT_CLI_NN=""
     _night_sh_is_websh || return 1
-    if _acct_in_real_dir "${_usEr}/static/control" _night_older_cli_here "${1}"; then
+    if ! _ctrl_foreign \
+      && _acct_in_real_dir "${_usEr}/static/control" _night_older_cli_here "${1}"; then
       _NIGHT_CLI_NN=$(_night_websh_nn)
     fi
     _NIGHT_CLI_KEY="${_k}"
@@ -1176,8 +1272,51 @@ _goaccess_copy_here() {
   [ -O . ] && cp -af -- "${1}" ./
 }
 
+# Whether the name $1 is in a server_name of the nginx text on stdin ($3 = -),
+# or of a vhost on this server outside the account $2 ($3 = box): the
+# Master's and every other account's vhost.d, each entered first and read
+# only when the folder the process then stands in is the real one (every name
+# on the way a real directory), and of it only regular files, by name inside
+# it, never through a link (a link at an account's folder could lead root into
+# /dev or /proc); root's sites-enabled (every file) and conf.d (*.conf), as
+# nginx includes them, whose links are followed. Names starting with a dot are
+# left out, as nginx's wildcards leave them. Each file read without blocking,
+# at most 1 MiB; comments dropped, the text cut at each ";" so no directive
+# can make the match slow, names compared without case, token by token, as
+# nginx matches exact names. The folders are walked here, so no count of files
+# can make the call itself fail. A folder past 20000 entries or 256 MiB read
+# is "cannot tell", and is named on stderr. Exit 0: found, 1: not found, 2 or
+# any other: cannot tell.
+_GOACCESS_NAMES_PL='use Fcntl; use Cwd qw(abs_path getcwd); my ($n, $own, $mode) = (lc shift, shift, shift); sub hit { my $d = shift; $d =~ s/#[^\n]*//g; my @p = split /;/, $d, -1; pop @p; for my $x (@p) { next unless $x =~ /(?:\A|[\s{}])server_name\s+(.*)\z/s; for my $t (split /\s+/, lc $1) { return 1 if $t eq $n } } return 0 } if ($mode eq "-") { local $/; my $d = <STDIN>; exit((defined $d && hit($d)) ? 0 : 1) } sub scan { my ($dir, $want, $follow, $only) = @_; chdir($dir) or return; if (defined $want) { my $here = getcwd(); return unless defined $here && $here eq $want } opendir(my $dh, ".") or return; my ($c, $bytes) = (0, 0); while (defined(my $e = readdir $dh)) { if (++$c > 20000 || $bytes > 268435456) { print STDERR "$dir\n"; exit 2 } next if substr($e, 0, 1) eq "."; next if defined $only && $e !~ $only; my @l = $follow ? stat("./$e") : lstat("./$e"); next unless @l && -f _ && $l[7] <= 1048576; sysopen(my $h, "./$e", O_RDONLY | O_NONBLOCK | ($follow ? 0 : O_NOFOLLOW)) or next; my @s = stat($h); unless (@s && -f _ && $s[0] == $l[0] && $s[1] == $l[1]) { close($h); next } my ($d, $b) = (""); while (sysread($h, $b, 65536)) { $d .= $b; last if length($d) > 1048576 } close($h); $bytes += length($d); exit 0 if hit($d) } closedir($dh) } my $v = "config/server_master/nginx/vhost.d"; my $ra = abs_path("/var/aegir"); scan("/var/aegir/$v", "$ra/$v", 0, undef) if defined $ra && -d "/var/aegir/$v"; my $rd = abs_path("/data/disk"); defined $rd or exit 2; opendir(my $dd, "/data/disk") or exit 2; my @acc = grep { $_ ne "." && $_ ne ".." && $_ ne $own } readdir $dd; closedir($dd); for my $u (sort @acc) { scan("/data/disk/$u/$v", "$rd/$u/$v", 0, undef) } scan("/etc/nginx/sites-enabled", undef, 1, undef); scan("/etc/nginx/conf.d", undef, 1, qr/\.conf\z/); exit 1'
+# A site's report copies the box's access lines for its name into the
+# account, so the name must be this account's: served by its own vhost text
+# $2 and by no other vhost on the box (another account's site or alias, the
+# Master's, a standalone one). Aegir keeps names unique per instance only.
+# Status 0: the account's own; 1: not its own; 2: cannot tell, no report
+# built and the last one left as it is.
+_goaccess_name_own() {
+  local _rc _gaWhy
+  if ! printf '%s\n' "${2}" | perl -e "${_GOACCESS_NAMES_PL}" "${1}" "${_HM_U}" -; then
+    echo "NOTE: ${_HM_U}: no GoAccess report for ${1}: its vhost does not serve that name"
+    return 1
+  fi
+  _gaWhy="$(perl -e "${_GOACCESS_NAMES_PL}" "${1}" "${_HM_U}" box 2>&1 > /dev/null)"
+  _rc=$?
+  [ "${_rc}" -eq 1 ] && return 0
+  if [ "${_rc}" -eq 0 ]; then
+    echo "NOTE: ${_HM_U}: no GoAccess report for ${1}: another vhost on this server also serves that name"
+    return 1
+  fi
+  _gaWhy="$(printf '%s' "${_gaWhy}" | head -n 1 | tr -cd '[:alnum:]/._-')"
+  echo "NOTE: ${_HM_U}: no new GoAccess report for ${1}: the vhosts on this server could not all be read (status ${_rc}${_gaWhy:+, ${_gaWhy:0:200}})"
+  return 2
+}
+
+# One GoAccess report into the account's static/goaccess: ALL (the account
+# pass's own call, one argument: the box-wide report the operator enables
+# with _GOACCESS_ALL), or one site's, $1 = its name, $2 = its vhost text.
 _if_gen_goaccess() {
-  local _gaD
+  local _gaD _gaAll=NO
   _PrTestPower=$(grep "POWER" /root/.${_HM_U}.octopus.cnf 2>&1)
   _PrTestPhantom=$(grep "PHANTOM" /root/.${_HM_U}.octopus.cnf 2>&1)
   _PrTestUltra=$(grep "ULTRA" /root/.${_HM_U}.octopus.cnf 2>&1)
@@ -1189,14 +1328,38 @@ _if_gen_goaccess() {
     || [[ "${_PrTestMonster}" =~ "MONSTER" ]] \
     || [[ "${_PrTestCluster}" =~ "CLUSTER" ]]; then
     _isWblgx="$(which weblogx)"
-    # The name comes from a vhost file name the account controls: a host
-    # name (or ALL) only, never a path, a glob or an option.
-    [[ "${1}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || return 0
+    # A site's name comes from a vhost file name the account controls: a
+    # lower-case host name (Aegir's own names) only, never ALL, a path, a
+    # glob or an option.
+    if [ "$#" -eq 1 ] && [ "${1}" = "ALL" ]; then
+      _gaAll=YES
+    elif [ "$#" -lt 2 ]; then
+      # a site's name with no vhost text: a 20-sites.sh older than this
+      # file, fetched apart from it; its report is left as it is
+      return 0
+    elif [[ ! "${1}" =~ ^[a-z0-9][a-z0-9._-]*$ ]]; then
+      return 0
+    fi
     # owl.sh stages the night's log corpus once and plants .global.pid; a
     # night it refused to (out of inodes) has none, and every report would
     # then stage the whole corpus again on its own
     [ -e "/var/www/adminer/access/archive/unzip/.global.pid" ] || return 0
     if [ -x "${_isWblgx}" ]; then
+      # a report built before for a name that is not the account's own is
+      # withdrawn; when the server cannot be read whole, none is built and
+      # the last one stays
+      if [ "${_gaAll}" = "NO" ]; then
+        _goaccess_name_own "${1}" "${2}"
+        case $? in
+          0) ;;
+          1)
+            rm -rf -- "/var/www/adminer/access/${_HM_U}/${1}"
+            _acct_in_real_dir "/data/disk/${_HM_U}/static/goaccess" rm -rf -- "./${1}"
+            return 0
+            ;;
+          *) return 0 ;;
+        esac
+      fi
       ${_isWblgx} --site="${1}" --env="${_HM_U}"
       wait
       # static/ is tenant-writable (02775, no sticky), so goaccess can be a

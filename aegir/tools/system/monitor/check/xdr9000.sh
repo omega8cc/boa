@@ -112,7 +112,7 @@ _manage_single_lock() {
     _single_instance_lock
   else
     _SCRIPT=$(basename "$0")
-    _CNT=$(pgrep -fc "(^|(^| )[^ ]*bash )[^ ]*/${_SCRIPT//./\\.}( |$)")
+    _CNT=$(pgrep -u root -U root -fc "(^|(^| )[^ ]*bash )[^ ]*/${_SCRIPT//./\\.}( |$)")
     if (( _CNT > 2 )); then
       echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
       exit 0
@@ -140,17 +140,40 @@ _SAMPLES="${_day_dir}/samples-${_day_tag}.jsonl"
 ### from its start. Reads are bounded per source per pass; the remainder is
 ### picked up on subsequent passes via the carried offset.
 ###
+# Inode and size of every source a pass reads, from one stat call per pass
+# (_stat_fill) instead of one per file: a pass looks at some seventy files and
+# runs several times a minute. It only says which files are unchanged since
+# their recorded offset (see _read_new_lines); any other file is stat'ed alone.
+declare -A _STAT_C=()
+_stat_fill() {
+  local _l _r
+  _STAT_C=()
+  (( $# )) || return 0
+  while IFS= read -r _l; do
+    _r="${_l#* }"
+    _STAT_C["${_r#* }"]="${_l%% *} ${_r%% *}"
+  done < <(stat -c '%i %s %n' -- "$@" 2>/dev/null)
+}
+
 _read_new_lines() {
   local _src="$1" _key="$2"
   local _pos_f="${_pthSta}/${_key}.pos"
   local _tmp_f="${_pthSta}/.chunk.$$"
   [ -f "${_src}" ] || return 1
   local _ino _size
-  read -r _ino _size < <(stat -c '%i %s' "${_src}" 2>/dev/null)
-  [ -z "${_ino}" ] && return 1
   local _p_ino=0 _p_off=0
   [ -f "${_pos_f}" ] && read -r _p_ino _p_off < "${_pos_f}"
   [[ "${_p_off}" =~ ^[0-9]+$ ]] || _p_off=0
+  # The pass's one stat settles only a file still at its recorded offset (the
+  # same inode and size), whose pass ends here as it always did. Any other
+  # file is stat'ed alone right before it is read, as before: a file rotated
+  # since the pass's stat is then read as the new file it is.
+  if [[ -n "${_STAT_C[${_src}]+x}" && "${_STAT_C[${_src}]}" == "${_p_ino} ${_p_off}" ]]; then
+    echo "${_p_ino} ${_p_off}" > "${_pos_f}"
+    return 1
+  fi
+  read -r _ino _size < <(stat -c '%i %s' "${_src}" 2>/dev/null)
+  [ -z "${_ino}" ] && return 1
   [ "${_ino}" != "${_p_ino}" ] && _p_off=0
   (( _size < _p_off )) && _p_off=0
   if (( _size <= _p_off )); then
@@ -218,13 +241,24 @@ _harvest_raw() {
 
 _harvest_pass() {
   local _mon="/var/xdrago/monitor/log"
+  local _b="/var/log/boa"
+  local _i _f _stem
+  local -a _all=( "${_mon}/scan_nginx.archive.log" "${_mon}/hackcheck.archive.log"
+    "${_mon}/hackftp.archive.log" "${_mon}/i18n_flood.log"
+    "${_mon}/segfault_alert.archive.log" "${_b}/oom.incident.old.log"
+    "${_b}/sql_watch.log" "${_b}/convert.kill.log" )
+  for _i in high.load oom nginx mysql mysql.backup php valkey unbound java system batch_guard task_guard cron_guard; do
+    _all+=( "${_b}/${_i}.incident.log" )
+  done
+  for _f in "${_b}"/*.archive.log; do
+    [ -e "${_f}" ] && _all+=( "${_f}" )
+  done
+  _stat_fill "${_all[@]}"
   _harvest_attack "${_mon}/scan_nginx.archive.log" "atk_web" "web"
   _harvest_attack "${_mon}/hackcheck.archive.log"  "atk_ssh" "ssh"
   _harvest_attack "${_mon}/hackftp.archive.log"    "atk_ftp" "ftp"
   _harvest_raw "${_mon}/i18n_flood.log" "atk_i18n" "atk" "i18n"
   _harvest_raw "${_mon}/segfault_alert.archive.log" "inc_segv" "inc" "segv"
-  local _b="/var/log/boa"
-  local _i
   for _i in high.load oom nginx mysql mysql.backup php valkey unbound java system batch_guard task_guard cron_guard; do
     _harvest_raw "${_b}/${_i}.incident.log" "inc_${_i//./_}" "inc" "${_i}"
   done
@@ -233,15 +267,16 @@ _harvest_pass() {
   _harvest_raw "${_b}/convert.kill.log" "inc_convertkill" "inc" "convertkill"
   # Backup outcome archives (append-only, but wiped by the major-OS-upgrade
   # `rm -f /var/log/boa/*.log` — harvesting preserves them past that).
-  local _f _stem
   for _f in "${_b}"/*.archive.log; do
     [ -e "${_f}" ] || continue
-    _stem=$(basename "${_f}" .archive.log)
+    _stem="${_f##*/}"
+    _stem="${_stem%.archive.log}"
     # autosymlink.verbose is a banner-heavy debug archive, not an outcome
     # record -- and it is already permanent in place; skip the noise.
     [ "${_stem}" = "autosymlink.verbose" ] && continue
     _harvest_raw "${_f}" "bkp_${_stem//[^a-zA-Z0-9_-]/_}" "bkp" "${_stem}"
   done
+  _STAT_C=()
 }
 
 # Verbatim stream copy: the metric corpora are already JSONL, so their lines
@@ -263,31 +298,39 @@ _harvest_verbatim() {
 ###
 _metrics_pass() {
   local _f _tag _dir
+  # The tag is the file's name less .jsonl, and a month's directory is made
+  # once: the loops below visit every day each corpus keeps, on every pass.
+  _stat_fill /var/log/boa/fpm-tune/[0-9]*.jsonl /var/log/boa/sqlprobe/[0-9]*.jsonl \
+    /var/log/boa/load-profile/[0-9]*-[0-9]*-[0-9]*.jsonl
   for _f in /var/log/boa/fpm-tune/[0-9]*.jsonl; do
     [ -e "${_f}" ] || continue
-    _tag=$(basename "${_f}" .jsonl)
+    _tag="${_f##*/}"
+    _tag="${_tag%.jsonl}"
     [[ "${_tag}" =~ ^[0-9]{8}$ ]] || continue
     _dir="${_pthArc}/${_tag:0:4}/${_tag:4:2}"
-    mkdir -p "${_dir}"
+    [ -d "${_dir}" ] || mkdir -p "${_dir}"
     _harvest_verbatim "${_f}" "met_fpm_${_tag}" "${_dir}/fpm-${_tag}.jsonl"
   done
   for _f in /var/log/boa/sqlprobe/[0-9]*.jsonl; do
     [ -e "${_f}" ] || continue
-    _tag=$(basename "${_f}" .jsonl)
+    _tag="${_f##*/}"
+    _tag="${_tag%.jsonl}"
     [[ "${_tag}" =~ ^[0-9]{8}$ ]] || continue
     _dir="${_pthArc}/${_tag:0:4}/${_tag:4:2}"
-    mkdir -p "${_dir}"
+    [ -d "${_dir}" ] || mkdir -p "${_dir}"
     _harvest_verbatim "${_f}" "met_sql_${_tag}" "${_dir}/sql-${_tag}.jsonl"
   done
   for _f in /var/log/boa/load-profile/[0-9]*-[0-9]*-[0-9]*.jsonl; do
     [ -e "${_f}" ] || continue
-    _tag=$(basename "${_f}" .jsonl)
+    _tag="${_f##*/}"
+    _tag="${_tag%.jsonl}"
     _tag="${_tag//-/}"
     [[ "${_tag}" =~ ^[0-9]{8}$ ]] || continue
     _dir="${_pthArc}/${_tag:0:4}/${_tag:4:2}"
-    mkdir -p "${_dir}"
+    [ -d "${_dir}" ] || mkdir -p "${_dir}"
     _harvest_verbatim "${_f}" "met_load_${_tag}" "${_dir}/load-${_tag}.jsonl"
   done
+  _STAT_C=()
   # A consumed source file keeps its .pos mtime fresh every pass; once the
   # corpus prunes the file, the .pos stops being touched and ages out here.
   find "${_pthSta}" -name 'met_*.pos' -mtime +7 -delete 2>/dev/null
@@ -298,15 +341,20 @@ _metrics_pass() {
 ###
 _counter_delta() {
   # args: key current-value -> prints delta since the previous sample.
-  # No previous baseline (first run) and counter resets both floor to 0.
+  # No previous baseline (first run) and counter resets both floor to 0. A
+  # current value that is no whole number reads 0 and leaves the baseline as
+  # it was: written as 0, the next good sample would count the whole counter.
   local _key="$1" _cur="$2" _prev=0 _had=0
   local _prev_f="${_pthSta}/.prev_${_key}"
+  if ! [[ "${_cur}" =~ ^[0-9]+$ ]]; then
+    echo 0
+    return 0
+  fi
   if [ -f "${_prev_f}" ]; then
     _had=1
     read -r _prev < "${_prev_f}"
   fi
-  [[ "${_prev}" =~ ^[0-9]+$ ]] || _prev=0
-  [[ "${_cur}"  =~ ^[0-9]+$ ]] || _cur=0
+  [[ "${_prev}" =~ ^[0-9]+$ ]] || _had=0
   echo "${_cur}" > "${_prev_f}"
   if (( _had == 0 )); then
     echo 0
@@ -337,18 +385,22 @@ _sample_pass() {
   [ -e "/run/spider_load.pid" ]   && _tier="spider"
   [ -e "/run/max_load.pid" ]      && _tier="max"
   [ -e "/run/critical_load.pid" ] && _tier="critical"
-  local _ifc _rx=0 _tx=0
+  local _ifc _rx="" _tx=""
   _ifc=$(ip -o route show default 2>/dev/null | awk '{print $5; exit}')
   if [ -n "${_ifc}" ]; then
     read -r _rx _tx < <(awk -v I="${_ifc}:" '$1 == I {print $2, $10}' /proc/net/dev)
   fi
   local _rx_d _tx_d
-  _rx_d=$(_counter_delta "net_rx" "${_rx:-0}")
-  _tx_d=$(_counter_delta "net_tx" "${_tx:-0}")
+  # a read that failed passes no number, which keeps each baseline
+  _rx_d=$(_counter_delta "net_rx" "${_rx:-}")
+  _tx_d=$(_counter_delta "net_tx" "${_tx:-}")
   local _syn=0 _syn_d=0
   if iptables -nvxL SYNPROXY_EARLY &> /dev/null; then
-    _syn=$(iptables -nvxL SYNPROXY_EARLY 2>/dev/null | awk 'NR>2 {s+=$1} END {print s+0}')
-    _syn_d=$(_counter_delta "synproxy" "${_syn}")
+    # whole, never as awk prints a sum: past 2^31 packets mawk prints 3e+09.
+    # Its baseline under a key of its own: the one before kept 0 for a sum
+    # printed that way, and would count a whole counter as one sample's.
+    _syn=$(iptables -nvxL SYNPROXY_EARLY 2>/dev/null | awk 'NR>2 {s+=$1} END {if (NR >= 2) printf "%.0f\n", s}')
+    _syn_d=$(_counter_delta "synproxy_whole" "${_syn}")
   fi
   local _deny=0 _tban=0
   [ -f "/etc/csf/csf.deny" ] \
@@ -358,7 +410,7 @@ _sample_pass() {
   printf '{"t":%s,"c":"smp","l1":%s,"l5":%s,"l15":%s,"mem":%s,"swp":%s,"dr":%s,"dd":%s,"tier":"%s","rx":%s,"tx":%s,"rxd":%s,"txd":%s,"syn":%s,"synd":%s,"deny":%s,"tban":%s}\n' \
     "${_now}" "${_l1:-0}" "${_l5:-0}" "${_l15:-0}" "${_mem_kb:-0}" "${_swp_used}" \
     "${_dsk_root:-0}" "${_dsk_data:-0}" "${_tier}" "${_rx:-0}" "${_tx:-0}" \
-    "${_rx_d}" "${_tx_d}" "${_syn}" "${_syn_d}" "${_deny:-0}" "${_tban:-0}" \
+    "${_rx_d}" "${_tx_d}" "${_syn:-0}" "${_syn_d}" "${_deny:-0}" "${_tban:-0}" \
     >> "${_SAMPLES}"
 }
 

@@ -72,7 +72,7 @@ _manage_single_lock() {
     _single_instance_lock
   else
     _SCRIPT=$(basename "$0")
-    _CNT=$(pgrep -fc "(^|(^| )[^ ]*bash )[^ ]*/${_SCRIPT//./\\.}( |$)")
+    _CNT=$(pgrep -u root -U root -fc "(^|(^| )[^ ]*bash )[^ ]*/${_SCRIPT//./\\.}( |$)")
     if (( _CNT > 2 )); then
       echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
       exit 0
@@ -109,6 +109,30 @@ _normalize_incident_report
 
 _STATUS="CLEAN"
 _TIMEDATE=$(date +%y%m%d-%H%M)
+
+# One full pass an hour at most. Its trigger is a line in the system log,
+# which any local process can write, and the pass runs ANALYZE over every
+# table of every database. A trigger inside the hour leaves a pending mark,
+# and sqlcheck.sh runs the pass once the hour is over, so a genuine crash
+# reported meanwhile is checked then, not lost.
+_FULL_STAMP="/var/log/boa/checksql-full-pass.stamp"
+_FULL_PENDING="/var/log/boa/checksql-full-pass.pending"
+_full_pass_due() {
+  # The hour counts from the end of the last pass (the stamp is touched again
+  # there). A stamp dated ahead of the clock, left by a clock stepped back,
+  # is stale: it must not hold every pass off until the clock catches up.
+  local _now _ts
+  _now=$(date +%s)
+  _ts=$(stat -c %Y "${_FULL_STAMP}" 2> /dev/null)
+  if [[ "${_ts}" =~ ^[0-9]+$ ]] && (( _now - _ts >= 0 && _now - _ts < 3600 )); then
+    touch "${_FULL_PENDING}"
+    return 1
+  fi
+  touch "${_FULL_STAMP}"
+  rm -f "${_FULL_PENDING}"
+  return 0
+}
+_full_pass_due || exit 0
 
 rm -f "${_FIX_FILE}"
 sleep 90
@@ -237,4 +261,6 @@ if [ -f "${_FIX_WORK}" ]; then
 fi
 
 rm -f "${_LOG_FILE}"
+# the next full pass counts its hour from here
+touch "${_FULL_STAMP}"
 exit 0

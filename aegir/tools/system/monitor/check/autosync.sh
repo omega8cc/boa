@@ -296,7 +296,7 @@ _manage_single_lock() {
     # -------- legacy pgrep guard ---------
     # Exit if more than 2 instances of this script are running
     _SCRIPT=$(basename "$0")
-    _CNT=$(pgrep -fc "(^|(^| )[^ ]*bash )[^ ]*/${_SCRIPT//./\\.}( |$)")
+    _CNT=$(pgrep -u root -U root -fc "(^|(^| )[^ ]*bash )[^ ]*/${_SCRIPT//./\\.}( |$)")
     if (( _CNT > 2 )); then
       echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
       exit 0
@@ -334,6 +334,8 @@ fi
 # ionice/nice keep the local tree walk polite on a serving production box;
 # the remote receiver is unaffected.
 echo "---------------------------- $(date '+%Y-%m-%d %H:%M:%S') autosync tick" >> "${_pthSyncLog}"
+# where this pass's own output starts, for the failure mail below
+_AS_LOGOFF=$(stat -c %s "${_pthSyncLog}" 2>/dev/null || echo 0)
 _rc=0
 _AS_T0=$(date +%s)
 ionice -c2 -n7 nice -n10 timeout -k 60 "${_XMASS_AUTOSYNC_TIMEOUT}" \
@@ -351,8 +353,20 @@ if [ "${_rc}" != "0" ]; then
   if [ "${_rc}" = "124" ]; then
     echo "$(date) ALRT: autosync pass killed at the ${_XMASS_AUTOSYNC_TIMEOUT}s ceiling — a hung transfer or a first pass far larger than expected; the next tick resumes the delta" >> ${_pthOml}
   fi
+  # A refused leg says why in its DENY lines, and the pass ends on an ERROR
+  # line; a leg early in the pass (arch, the shared stores) prints them well
+  # above the last 40 lines, so the mail quotes this pass's own first. Read
+  # as text whatever the bytes: a link name a DENY line carries may hold
+  # bytes that are not UTF-8, which would stop grep's matches there.
+  _AS_DENY="$(tail -c +"$(( _AS_LOGOFF + 1 ))" "${_pthSyncLog}" 2>/dev/null \
+    | LC_ALL=C grep -aE 'DENY:|ERROR:' | head -n 30)"
   {
-    echo "$(date) ALRT: xmass autosync pass failed (rc=${_rc}); last pass output:"
+    echo "$(date) ALRT: xmass autosync pass failed (rc=${_rc})"
+    if [ -n "${_AS_DENY}" ]; then
+      echo "what it refused or stopped on:"
+      printf '%s\n' "${_AS_DENY}"
+    fi
+    echo "last pass output:"
     tail -n 40 "${_pthSyncLog}" 2>/dev/null
     echo
   } >> ${_pthOml}

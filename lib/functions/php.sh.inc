@@ -787,7 +787,8 @@ _php_conf_update() {
   _T_MWRB=$(_master_web_group_rb)
   for e in ${_PHP_V}; do
     if [ ! -e "/var/www/www${e}" ]; then
-      adduser --system --group --home /var/www/www${e} www${e} &> /dev/null
+      # never under a number a removed account identity freed
+      _sys_user_add low adduser --system --group --home /var/www/www${e} www${e} &> /dev/null
       # a master whose pools have left www-data keeps a new one out of it
       [ "${_T_MWGS%% *}" = "phaseb" ] || usermod -aG www-data www${e}
     fi
