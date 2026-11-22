@@ -1226,8 +1226,11 @@
       1000 (10000 on Drupal 10), above the 8000 Drupal installs it at;
       and a custom module with no version key (from Drupal 7 on), or such
       a theme (from Drupal 8 on), read as Drupal's release on the
-      platform and as none on the site. Both now read what Drupal and
-      Composer record, and a downgrade below the old floor is seen.
+      platform and as none on the site. A module with no update function
+      now records no schema number, which every check reads as unknown,
+      so a site that kept the number of hooks its module later dropped is
+      no false downgrade; versions follow what Drupal and Composer record,
+      and a downgrade below the old floor is seen.
 
     * A platform Verify records a module that core still ships beside its
       contrib successor (forum, action, telephone) at the contrib copy a
