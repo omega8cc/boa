@@ -441,6 +441,13 @@
       substitution) is refused, and so is such a line holding a command
       substitution, or a here-document beside one of those characters.
 
+    * websh reads a quoted or escaped < or > before a & or | as dash does:
+      the & or | separates two commands there, so the command after it is
+      judged by the Drush rules too.
+
+    * websh follows chdir, dash's other name for cd, to the codebase a
+      later Drush 8 boots, as it follows cd.
+
     * websh drops a PHP_INI_SCAN_DIR its caller exported, as it drops
       PHPRC: no php it starts reads a folder of inis the caller chose.
 
