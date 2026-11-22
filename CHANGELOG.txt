@@ -1341,6 +1341,16 @@
       new line at its next Verify; Drupal 6, Drupal 7 and Backdrop sites
       are unchanged.
 
+    * A new account has the fast dumps on from its install. BOA writes
+      MyQuick.info into every account once per release, so an account
+      made after its server took the release had none until the next
+      one, and its Delete and Migrate safety copies took the classic
+      dump meanwhile. The Octopus install now writes it, and
+      ClassicTrack.info, by the same rules. xoct, xmass and xcopy carry
+      the account's MyQuick.info both ways, so an account that left the
+      fast dumps (MyClassic.info) stays off them after a move, where the
+      target's install would have put it back on.
+
     * The nightly permission pass keeps core's dr executable, and in a
       tenant codebase (~/static) the site-local drush.php as well: it set
       every vendor file to 0644, or 0664 under ~/static, so on a platform

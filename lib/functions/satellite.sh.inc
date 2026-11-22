@@ -8655,7 +8655,8 @@ _satellite_ctrl_dir_here() {
 }
 # The control directory on install and upgrade (run inside it): fpm.info
 # and cli.info where missing (cli.info from a regular fpm.info), the README
-# and this serial's stamp on its first pass, the tree handed to the main
+# and this serial's stamp on its first pass, at install the release pass's
+# defaults where the owner has none, the tree handed to the main
 # login as _satellite_reown_own_here hands it (never a link, nor a file the
 # login hard-linked there, nor what another user owns: the login can rename
 # into it what another account left group-writable).
@@ -8683,6 +8684,19 @@ _satellite_ctrl_make_here() {
   # the account's owner puts here.
   if [ "${_STATUS}" = "INIT" ] && [ ! -e ./.disFastTrack.pid ]; then
     _acct_put_here .disFastTrack.pid OK
+  fi
+  # The release pass's two defaults, by its rules (BOA.sh.txt _ctrl_seed_here):
+  # it seeds each account once per release, so an account made after it would
+  # wait for the next one, its Delete and Migrate safety copies taking the
+  # classic dump meanwhile (only MyQuick.info sends them to the fast dumps).
+  # At install only: what an existing account holds is the owner's choice.
+  if [ "${_STATUS}" = "INIT" ]; then
+    if [ ! -e ./MyQuick.info ] && [ ! -e ./MyClassic.info ]; then
+      _acct_put_here MyQuick.info ON
+    fi
+    if [ ! -e ./FastTrack.info ] && [ ! -e ./ClassicTrack.info ]; then
+      _acct_put_here ClassicTrack.info ON
+    fi
   fi
   # an account still on the box-wide group gets group root here, as the ltd
   # worker gives it (_ltd_ctrl_shut): what the login makes in this

@@ -9952,12 +9952,15 @@ _xoct_transfer_static_symlink_safe() {
   # The per-platform lines and the phpNN.info switches choose a PHP too, and
   # the -u copy only ever adds: a line changed on the source could lose to the
   # target's copy, and a file deleted there stayed here and applied after the
-  # cutover. They follow the source both ways, when its control directory can be
+  # cutover. MyQuick.info, which the target's install writes, sends the
+  # account's Delete and Migrate safety copies to the fast dumps: an account
+  # that left them (MyClassic.info) held both after the move and was on them
+  # again. They follow the source both ways, when its control directory can be
   # read at all, by exact name; a link the tenant keeps at the name is no
   # deletion, and the copy above carries it.
   if _xoct_in_real_dir "${_X_SRC_USR}/static/control" test -f ./fpm.info; then
     local _gone=""
-    for _pin in cli-per-platform.info fpm-per-platform.info \
+    for _pin in cli-per-platform.info fpm-per-platform.info MyQuick.info \
       php56.info php70.info php71.info php72.info php73.info php74.info php80.info \
       php81.info php82.info php83.info php84.info php85.info php86.info; do
       if _xoct_in_real_dir "${_X_SRC_USR}/static/control" test -f "./${_pin}" -a ! -L "./${_pin}"; then

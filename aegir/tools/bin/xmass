@@ -12560,13 +12560,16 @@ _xmass_sync_static_symlink_safe() {
   # Pass 1c: the per-platform lines and the phpNN.info switches choose a PHP
   # too, and control/ only ever adds: a line changed on the source could lose
   # to the target's copy, and a file deleted here stayed there and applied after
-  # the cutover. They follow the source both ways, when its control directory
-  # can be read at all, by exact name, the only names control/ ever deletes; a
-  # link the tenant keeps at the name is no deletion, and pass 1a carries it.
+  # the cutover. MyQuick.info, which the target's install writes, sends the
+  # account's Delete and Migrate safety copies to the fast dumps: an account
+  # that left them (MyClassic.info) held both there and was on them again. They
+  # follow the source both ways, when its control directory can be read at
+  # all, by exact name, the only names control/ ever deletes; a link the
+  # tenant keeps at the name is no deletion, and pass 1a carries it.
   if [ "${_ctl_link}" != "YES" ] \
     && _xmass_in_real_dir "${_src_static}/control" test -f ./fpm.info; then
     local _gone=""
-    for _ctl in cli-per-platform.info fpm-per-platform.info \
+    for _ctl in cli-per-platform.info fpm-per-platform.info MyQuick.info \
       php56.info php70.info php71.info php72.info php73.info php74.info php80.info \
       php81.info php82.info php83.info php84.info php85.info php86.info; do
       if _xmass_in_real_dir "${_src_static}/control" \
