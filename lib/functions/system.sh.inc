@@ -2759,7 +2759,7 @@ _php_vrn_dotted() {
 }
 
 #
-# Whether an account asks for PHP 8.6, a release candidate that a box gets
+# Whether an account asks for PHP 8.6, the newest version, which a box gets
 # only on request: fpm.info or cli.info whose whole value is 8.6 (86 too, as
 # the ltd worker reads them), or a multi-fpm.info row that pins a site to it
 # (its second field; a '#' row is a comment), the worker's own
@@ -3333,7 +3333,7 @@ _php_if_versions_cleanup_cnf() {
         _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_eight_five}"
       fi
 
-      ### Add PHP 8.6 only if an account asks for it: a release candidate is
+      ### Add PHP 8.6 only if an account asks for it: the newest version is
       ### never added for 8.6 inside a comment, a domain or a longer value
       _is_PHP_eight_six=
       if _php_eight_six_asked; then

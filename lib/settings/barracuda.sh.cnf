@@ -63,7 +63,7 @@ _EASY_HOSTNAME="wildcard-enabled-hostname"
 ### 7.4, 7.3, 7.2, 7.1, 7.0
 ### 5.6
 ###
-### 8.6 is a release candidate: built only
+### 8.6 is the newest version: built only
 ### when listed here (or as _PHP_SINGLE_INSTALL)
 ### and not in the default list below, except
 ### on hosted and managed systems (.aegir.cc
