@@ -247,8 +247,8 @@ _pipx_install_pinned() {
 # first full copy of a large store stopped completing. The pinned venv
 # copy gets the backend's _error_code hook, a _delete_list that deletes
 # by version id from one listing and a _put that sends each volume in one
-# request appended: marker-guarded (a copy that carries earlier blocks
-# alone has them replaced), exact-pin gated, and the candidate is
+# request appended: marker-guarded (a copy that carries only some of the
+# blocks has them replaced), exact-pin gated, and the candidate is
 # compile-checked before an atomic same-directory swap, so a failed
 # patch leaves the file as it was. Re-check the need at the next
 # duplicity pin bump.
@@ -259,17 +259,21 @@ _patch_duplicity_b2backend() {
   # path must cost a file read, not a duplicity --version subprocess
   _b2fLive="${_PIPX_VNV}/duplicity/lib/python${_PTN_MNR}/site-packages/duplicity/backends/b2backend.py"
   [ -f "${_b2fLive}" ] || return 0
-  # the newest block's own marker line, never the word alone: a line of
-  # the stock part that happens to hold it must not read as patched
-  if grep -q "^# BOA-b2-one-request:" "${_b2fLive}"; then
+  # every block's own marker line, never one alone and never the words
+  # alone: a copy that carries some of the blocks, or a line of the stock
+  # part that happens to hold a marker's words, must not read as patched
+  if grep -q "^# BOA-b2-error-code:" "${_b2fLive}" \
+    && grep -q "^# BOA-b2-delete-list:" "${_b2fLive}" \
+    && grep -q "^# BOA-b2-one-request:" "${_b2fLive}"; then
     return 0
   fi
   _dcyLive=$(/usr/local/bin/duplicity --version 2>&1)
   [[ "${_dcyLive}" =~ "duplicity ${_DCY_VRN} " ]] || return 0
   _b2fTemp="${_b2fLive%.py}_boapatch$$.py"
   cp -af "${_b2fLive}" "${_b2fTemp}" || return 0
-  # a copy patched before carries the earlier blocks alone, appended at
-  # its end: they go, the whole block below replaces them
+  # a copy patched before carries some of the blocks, appended at its
+  # end from the first one's marker on: they go, the whole set below
+  # replaces them
   if grep -q "^# BOA-b2-error-code:" "${_b2fTemp}"; then
     sed -i '/^# BOA-b2-error-code:/,$d' "${_b2fTemp}" || { rm -f "${_b2fTemp}"; return 0; }
   fi
