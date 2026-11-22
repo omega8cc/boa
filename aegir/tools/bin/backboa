@@ -252,6 +252,14 @@ _duplicity_venv_on_pin() {
     && [ -d "${_PIPX_VNV}/duplicity/lib/python${_PTN_MNR}/site-packages/duplicity" ]
 }
 
+# The source-built interpreter to the patch level. The venv check reads
+# only the minor version, so without this a box on an older release of
+# the same minor would keep it through every install run.
+_python_on_pin() {
+  [ -x "${_DCY_PTN}" ] \
+    && [ "$(${_DCY_PTN} --version 2>&1)" = "Python ${_PTN_VRN}" ]
+}
+
 # pipx install --force reuses an existing venv AND its interpreter -- it
 # ignores --python on that path by design -- so a venv created under an
 # older python must be removed first to be recreated on the pin.
@@ -800,6 +808,7 @@ _install() {
     && [ -L "/usr/local/bin/duplicity" ] \
     && [ -L "/usr/local/bin/aws" ] \
     && _duplicity_venv_on_pin \
+    && _python_on_pin \
     && [ ! -e "/root/.force.duplicity.reinstall.cnf" ]; then
     echo "Latest duplicity version ${_DCY_VRN} already installed"
   else
