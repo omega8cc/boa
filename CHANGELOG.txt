@@ -1181,6 +1181,18 @@
 
 @=> Important Fixes
 
+    * A backup to Backblaze B2 sends each volume in one upload request.
+      The storage library sends any file over 100 MB as a large file in
+      parallel parts, so every 300 MiB volume was a start call, four parts
+      and a finish call, and one part the storage side refused with a 503
+      failed the whole volume. On an observed hosted box whole runs gave up
+      that way, a monthly full of a large store among them, while volumes
+      sent whole went up without a failed attempt. BOA's patch of the
+      engine's B2 backend now makes it send a volume whole; a configured
+      box takes the new part with its next backup setup update, no
+      reinstall needed. A file over 512 MiB (the signatures of a very
+      large full) still goes in parts, of that size.
+
     * A Clone, Restore or Migrate whose database load stops first on a
       deadlock or a lock wait timeout loads the dump again instead of
       refusing it. Another session, MySQL's own background threads among
