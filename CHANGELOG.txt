@@ -1314,6 +1314,34 @@
       stopped every other account's switch on the box; a purge left that
       user, every right included, on the server.
 
+    * The account purge drops a site's database user only once the login
+      its site records opens that site's database, as a switch proves a
+      site's login before it registers the database. A name in the
+      account's own records was enough before, and an account can write
+      its records: it could have the purge drop a login no record of its
+      own was ever given. A record with no password, one whose password
+      cannot be written to a client file, or a login that does not open
+      the database now keeps the user, named with why.
+
+    * The account purge no longer ends its site users' step with nothing
+      named when another run holds the baseline lock past the wait. That
+      call is the only one that ever reads those users: each one it judged
+      is now kept and named, and the call ends incomplete (ERR 7), so the
+      purge's alert says so.
+
+    * The purge's alert after an incomplete broker call says what running
+      boa-dbctl purge again does: it marks the account's registry entries,
+      and once the purge has removed the home it reads no site user, so a
+      site user the lines above name as kept or not dropped stays, to be
+      dropped by hand once checked. It read as though the second run would
+      finish them.
+
+    * The database broker writes each saved copy of a login's grants in
+      one write and syncs the file to disk before it drops or changes
+      anything; a write or a sync that fails changes nothing. Before, a
+      part of the entry could fail to write unseen when a later part was
+      written, and a crash right after a drop could leave the copy short.
+
     * The database broker (boa-dbctl) carries the reference for Percona
       8.4.11-12, which a barracuda upgrade now installs: without it the
       census read reference=none there and no account could be switched

@@ -20,9 +20,9 @@
 # for the databases a root tool makes for it, rekey when a pass rotates its
 # instance password (the user made again on its rows in use only), purge
 # when the account is purged (its databases stay, so their names stay held;
-# the site users its records still name exactly go with the account, on any
-# box, switched or not), and witness, the nightly check of what a switched
-# account holds.
+# the site users its records still name exactly, each one's recorded login
+# opening its database, go with the account, on any box, switched or not),
+# and witness, the nightly check of what a switched account holds.
 #
 # Root's box-wide verbs switch an account and judge the whole server: scope
 # (an account switched on, off, planned and shown), baseline (the record of
@@ -3096,8 +3096,8 @@ CREATE USER \`${_ACCT}\`@\`${_r}\` IDENTIFIED BY ${_pw};"; then
 # gone (no root cnf). Then the site users its records still name exactly
 # go, saved first (_ps_sites), on a box with no registry too: the purge's
 # own call, made while those records are in place, is the only one that
-# reads them. A drop or a save that fails ends the call ERR 7, the rest
-# done.
+# reads them. A drop or a save that fails, or a baseline lock another run
+# holds past the wait, ends the call ERR 7, the rest done.
 _v_purge() {
   [[ "${_ROOT_RUN}" == "YES" ]] || _die 2 "root-only"
   [[ "${#_ARGS[@]}" -eq 0 ]] || _die 2 "usage purge --account <oN>"
@@ -3157,7 +3157,10 @@ SELECT COUNT(*) FROM ${_REG_TBL} WHERE account = ${_a} AND state <> 'purged';" \
 #   G3 each site record: a plain alias in the account's own .drush, its
 #      site inside the home and not the panel, on the context that alias
 #      gives, its database and user one plain name, which is none of the
-#      server's own nor the account's instance or panel user.
+#      server's own nor the account's instance or panel user, and the login
+#      it records opens that database, as a switch proves a site's before
+#      it registers it (an account can write its own records, so a name
+#      alone proves nothing).
 #   G4 no other record claims the name (with the account's cnf parked a
 #      claim is always another's), no other account has it, and the
 #      registry gives its database to no other account.
@@ -3167,18 +3170,22 @@ SELECT COUNT(*) FROM ${_REG_TBL} WHERE account = ${_a} AND state <> 'purged';" \
 #      own database (in either spelling) or on a name with no schema, no
 #      stored object it defines (a read of them that is not whole keeps
 #      every user).
-# Then, under the baseline lock, each user read again and as it was: its
-# CREATE USER lines and grants saved into root's own file, a save that
-# fails dropping nothing of it, then each row dropped, its baseline row
-# with it. On a pair the drop is binlogged as every other: the standby
-# loses the same rows. Sets _PS_DROP and _PS_KEPT (users, and records that
-# name no plain user) and _PS_BAD (a save or a drop that failed).
+# Then, under the baseline lock, each user's rows, pins, global privileges
+# and grant rows read again and as they were: its CREATE USER lines and
+# grants saved into root's own file, a save that fails dropping nothing of
+# it, then each row dropped, its baseline row with it. A lock another run
+# holds past the wait keeps every user judged, each said and counted as not
+# done: no later call reads them. On a pair the drop is binlogged as every
+# other: the standby loses the same rows. Sets _PS_DROP and _PS_KEPT
+# (users, and records that name no plain user) and _PS_BAD (a save or a
+# drop that failed, a user the lock kept).
 _ps_sites() {
   local _why="" _sp _ds _dn _du _pp _pu _u _i _ok=$'\n' _ko=$'\n' _t _gu _gh _up _hp _d _rest
   local -a _cand=() _go=() _sig=()
   _PS_DROP=0
   _PS_KEPT=0
   _PS_BAD=0
+  _PS_NOROW=$'\n'
   if ! _ps_running; then
     printf 'site users of %s not read: %s\n' "${_ACCT}" "${_PS_WHY}"
     return 0
@@ -3207,7 +3214,8 @@ _ps_sites() {
       continue
     fi
     [[ "${_ko}" != *$'\n'"${_du}"$'\n'* ]] || continue
-    if [[ -n "${_why}" ]] || ! _ps_record "${_ds}" "${_dn}" "${_du}" "${_pu}"; then
+    if [[ -n "${_why}" ]] || ! _ps_record "${_ds}" "${_dn}" "${_du}" "${_pu}" \
+      || ! _ps_proof "${_sp}" "${_dn}" "${_du}"; then
       [[ -n "${_why}" ]] && _PS_WHY="${_why}"
       _ok="${_ok/$'\n'"${_du}"$'\n'/$'\n'}"
       _ko="${_ko}${_du}"$'\n'
@@ -3238,15 +3246,26 @@ _ps_sites() {
     _ps_rows "${_u}"
     case "$?" in
       0)
-        _go+=("${_u}")
-        _sig+=("${_PS_SIG}")
+        # rows it gained since its record's login was tried were never proven
+        if [[ "${_PS_NOROW}" == *$'\n'"${_u}"$'\n'* ]]; then
+          _ps_kept "${_u}" "it changed while this ran"
+        else
+          _go+=("${_u}")
+          _sig+=("${_PS_SIG}")
+        fi
         ;;
       2) ;;
       *) _ps_kept "${_u}" "${_PS_WHY}" ;;
     esac
   done
   [[ "${#_go[@]}" -gt 0 ]] || return 0
-  _base_lock
+  if ! _ps_base_lock; then
+    for _u in "${_go[@]}"; do
+      _ps_kept "${_u}" "another run holds the baseline lock, so nothing of it is dropped"
+    done
+    _PS_BAD=$(( _PS_BAD + ${#_go[@]} ))
+    return 0
+  fi
   # what began while the box was read ends the step here, nothing dropped
   if ! _ps_box; then
     for _u in "${_go[@]}"; do
@@ -3268,6 +3287,14 @@ _ps_sites() {
 _ps_kept() {
   _PS_KEPT=$(( _PS_KEPT + 1 ))
   printf 'kept %s: %s\n' "${1}" "${2}"
+}
+
+# The baseline lock, as _base_lock takes it, for the site step's drops: 1
+# while another run holds it past the wait, where every other caller ends
+# ERR 9. Only this call ever reads the users it judged, so it names them.
+_ps_base_lock() {
+  exec 7>> "${_RUNP}.baseline.lock" || _die 7 "lock-failed"
+  flock -w "${_REG_WAIT}" 7
 }
 
 # G0, into _PS_WHY when it fails.
@@ -3378,6 +3405,32 @@ _ps_record() {
         ;;
     esac
   fi
+  [[ -z "${_PS_WHY}" ]]
+}
+
+# G3's last test, for the record of site $1 naming database $2 and user $3:
+# the password it records opens that database as that user, proven as a
+# switch proves a site's login (_scope_sites). A user with no row has
+# nothing to prove or drop: noted in _PS_NOROW, so a row it gains before
+# the drop keeps it. Into _PS_WHY when it fails.
+_ps_proof() {
+  _PS_WHY=""
+  _user_hosts_hex "${3}"
+  if [[ -z "${_HOSTS_HEX}" ]]; then
+    _PS_NOROW="${_PS_NOROW}${3}"$'\n'
+    return 0
+  fi
+  if ! _site_pw "${1}"; then
+    _PS_WHY="its site records no password for it"
+  elif ! _write_cnf "${3}"; then
+    # no client file is written with it, and no login tried
+    _PS_WHY="${_CNF_WHY}"
+  else
+    _PW=""
+    _prove "${3}" "${2}" || _PS_WHY="the login its site records does not open its database"
+    rm -f -- "${_CNF}"
+  fi
+  _PW=""
   [[ -z "${_PS_WHY}" ]]
 }
 
@@ -5582,25 +5635,29 @@ _revoke_global() {
 # root's own directory before they change, in the file named in _SAVEF.
 # With $3 = replay (settle) the entry can be run again as it is written:
 # the login's CREATE USER line $4 first, when one is given, then its
-# grants, every statement ended.
+# grants, every statement ended. The entry is written whole by one write,
+# whose status decides, and synced to disk before the caller changes
+# anything: 1 when either fails.
 _save_grants() {
-  local _l
+  local _l _e
   _show_grants "${1}" "${2}" || return 1
   if [[ ! -d "${_SAVED}" ]]; then
     mkdir -p -- "${_SAVED}" 2> /dev/null || return 1
   fi
   [[ -d "${_SAVED}" && ! -L "${_SAVED}" ]] || return 1
   chmod 0700 "${_SAVED}" 2> /dev/null
-  { printf -- '-- %s %s@%s\n' "$(_now)" "$(_log_safe "$(_unhex "${1}")")" "$(_log_safe "$(_unhex "${2}")")"
-    if [[ "${3:-}" == "replay" ]]; then
-      [[ -z "${4:-}" ]] || printf '%s;\n' "${4}"
-      while IFS= read -r _l; do
-        [[ -n "${_l}" ]] && printf '%s;\n' "${_l}"
-      done <<< "${_SG}"
-    else
-      printf '%s\n' "${_SG}"
-    fi; } >> "${_SAVEF}" 2> /dev/null || return 1
+  printf -v _e -- '-- %s %s@%s\n' "$(_now)" "$(_log_safe "$(_unhex "${1}")")" "$(_log_safe "$(_unhex "${2}")")"
+  if [[ "${3:-}" == "replay" ]]; then
+    [[ -z "${4:-}" ]] || _e="${_e}${4};"$'\n'
+    while IFS= read -r _l; do
+      [[ -n "${_l}" ]] && _e="${_e}${_l};"$'\n'
+    done <<< "${_SG}"
+  else
+    _e="${_e}${_SG}"$'\n'
+  fi
+  printf '%s' "${_e}" >> "${_SAVEF}" 2> /dev/null || return 1
   chmod 0600 "${_SAVEF}" 2> /dev/null
+  sync -- "${_SAVEF}" 2> /dev/null || return 1
   return 0
 }
 
