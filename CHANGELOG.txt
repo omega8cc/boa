@@ -1242,6 +1242,14 @@
       answers 404 to install.php, and settings.php is out of the web
       server's reach. Existing platforms keep their sites.
 
+    * Nginx refuses the Drupal and Backdrop installer before it chooses a
+      location, so a PHP location an operator adds in a local include file
+      (nginx_force_include*, nginx_vhost_include*) cannot reach install.php
+      or core/install.php. The 404 came from the shared include's last
+      location, and those files are read before it. An instance's include
+      carries the test once its server is verified on the new backend; a
+      subdirectory site's locations were never open to such a file.
+
     * Grav sites get the API plugin 1.1.21 from BOA's Grav 2.2.31
       bundle, which closes GHSA-fqv4-9pm4-v2q2: up to 1.1.20 the
       plugin's password reset could mail a link that leads away from
