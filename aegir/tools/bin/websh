@@ -263,7 +263,7 @@ _drush_segments() {
   # a comment (a backslash before the newline continues nothing, measured);
   # an empty quoted string ('' or "") is \016, so a word that starts with one
   # still holds a part, and a # or ~ after it starts no word.
-  local _s="$1" _out="" _c _k="" _j="" _mk="" _n0
+  local _s="$1" _out="" _c _k="" _j="" _mk="" _n0 _rq="" _rp
   [ "$2" = "keep" ] && _k=$'\001'
   [ "$3" = "join" ] && _j=YES
   [ "$4" = "mark" ] && _mk=YES
@@ -274,10 +274,17 @@ _drush_segments() {
       _c="${_s%%[${_DR_SP}\\]*}"
     fi
     _out+="${_c}"
+    # a < or > just written by the unquoted text (a quoted or escaped one is
+    # a word's character): what makes a following & or | a redirection's
+    if [ -n "${_c}" ]; then
+      case "${_c}" in *[\<\>]) _rq=YES ;; *) _rq="" ;; esac
+    fi
     _s="${_s:${#_c}}"
     [ -n "${_s}" ] || break
     _c="${_s:0:1}"
     _s="${_s:1}"
+    _rp="${_rq}"
+    _rq=""
     case "${_c}" in
       "'")
         _c="${_s%%\'*}"
@@ -328,6 +335,8 @@ _drush_segments() {
         ;;
       '\')
         _c="${_s:0:1}"
+        # a line joined over a backslash-newline goes on as if it were not there
+        [ -n "${_j}" ] && [ "${_c}" = $'\n' ] && _rq="${_rp}"
         [ -n "${_j}" ] && [ "${_c}" = $'\n' ] && _c=""
         [ -n "${_k}" ] && _c="${_c//[[:blank:]]/${_k}}"
         _out+="${_c}"
@@ -335,11 +344,11 @@ _drush_segments() {
         ;;
       '&')
         # >& and <& are a redirection, not a list separator
-        case "${_out}" in *[\<\>]) _out+='&' ;; *) _out+=$'\n' ;; esac
+        case "${_rp}:${_out: -1}" in YES:[\<\>]) _out+='&' ;; *) _out+=$'\n' ;; esac
         ;;
       '|')
         # >| is the clobbering redirection, not a pipe
-        case "${_out}" in *'>') _out+='|' ;; *) _out+=$'\n' ;; esac
+        case "${_rp}:${_out: -1}" in YES:'>') _out+='|' ;; *) _out+=$'\n' ;; esac
         ;;
       '$')
         case "${_s:0:1}" in
@@ -375,7 +384,42 @@ _drush_segments() {
         ;;
     esac
   done
-  printf '%s\n' "${_out}"
+  # an empty quoted string's mark stays only on a word with nothing else
+  # but expansions in it, where it keeps the word when they come out empty;
+  # in any other word (an option, an assignment, a runner) it says nothing
+  if [ -n "${_mk}" ] && [[ "${_out}" == *$'\016'* ]]; then
+    _drush_xp_qe "${_out}"
+  else
+    printf '%s\n' "${_out}"
+  fi
+}
+# _drush_segments' mark mode: $1 its marked output, each word that holds an
+# empty quoted string's mark (\016) and a character no expansion makes
+# printed without it; the words of a segment are joined by one blank
+_drush_xp_qe() {
+  [[ $'\xc3\xa9' == ? ]] && local LC_ALL=C
+  local _ln _o _w _r
+  local -a _ws
+  while IFS= read -r _ln; do
+    if [[ "${_ln}" != *$'\016'* ]]; then
+      printf '%s\n' "${_ln}"
+      continue
+    fi
+    read -r -a _ws <<< "${_ln}"
+    _o=""
+    for _w in "${_ws[@]}"; do
+      if [[ "${_w}" == *$'\016'* ]]; then
+        _r="${_w//$'\016'/}"
+        while [[ "${_r}" =~ ^(.*)[$'\002'$'\003'](\{[^}]*\}|[A-Za-z_][A-Za-z0-9_]*|[-0-9@*#?\$\!]?)(.*)$ ]]; do
+          _r="${BASH_REMATCH[1]}${BASH_REMATCH[3]}"
+        done
+        _r="${_r//[$'\004'$'\005'$'\006']/}"
+        [ -n "${_r}" ] && _w="${_w//$'\016'/}"
+      fi
+      _o+="${_w} "
+    done
+    printf '%s\n' "${_o% }"
+  done <<< "${1}"
 }
 # A launcher line: an optionally quoted php (php, phpNN, /opt/phpNN/bin/php,
 # /usr/bin/php) followed by a drush.php under /opt/tools, /data/disk,
@@ -814,41 +858,112 @@ _drush_site_word() {
 # judged after the expansions dash applies to them, as far as websh can know
 # the result. _drush_xp_scan reads, once a line, what in it can change a
 # name's value: every name the line assigns (NAME=, ${NAME=, ${NAME:=, kept
-# in _DXP_SET_NAMES), IFS among them (a bare value's split), a word that sets
-# names (read, for, getopts, unset, eval, ., source, local) in a command's
-# place (the line's start, after ; & | ( ) { } ! a backtick or a newline, or
-# a reserved word, past NAME=value words and command), and a cd (PWD).
-# Matched as bytes on the whole line, quotes or not: a quoted one only
-# refuses more.
+# in _DXP_SET_NAMES), IFS among them (a bare value's split), a command that
+# sets names (read, for, getopts, unset, eval, ., source, local) and a cd
+# (PWD). A command is the first word of a simple command as the mark read
+# gives it (quotes removed as dash removes them), past redirections,
+# NAME=value words, command and its options, and reserved words; one that is
+# itself an expansion counts as the word it gives (an empty one hands its place
+# to the next word), as any of them when websh cannot know it, and a pattern
+# as any whose name it can match. The names are matched as bytes
+# on the whole line, quotes or not: a quoted one only refuses more.
 _DXP_LINE=""; _DXP_BIND=NO; _DXP_CD=NO; _DXP_IFS=NO; _DXP_VAL=""; _DXP_SET=""
 _DXP_SET_NAMES=" "
 _DR_XP=""
-_DXP_CP="(^|[;&|(){}\`!]|"$'\n'"|(^|[[:space:];&|(){}\`!])(then|do|else|elif|if|while|until))[[:space:]]*(([A-Za-z_][A-Za-z0-9_]*=[^[:space:];&|]*|command)[[:space:]]+)*"
-_RE_DXP_BIND="${_DXP_CP}(read|for|getopts|unset|eval|source|local|\\.)([[:space:];&|()]|\$)"
-_RE_DXP_CD="${_DXP_CP}cd([[:space:];&|()]|\$)"
 _DXP_B="[:space:];&|()\`'\"{}!"
 _RE_DXP_RUNNER="(^|[${_DXP_B}/=])(drush|drush8|drush10|drush11|vdrush|drush\\.php|dr)([${_DXP_B}]|\$)"
+_RE_DXP_REDIR='^[0-9]*(<>|>>|>&|<&|>\||<<-|<<|<|>)(.*)$'
 _drush_xp_scan() {
   [[ $'\xc3\xa9' == ? ]] && local LC_ALL=C
-  local _l _t _p
+  local _l _t _p _k _e _sg _w0 _i _nw _n _r
+  local -a _ps _ws
   _DXP_LINE="$1"
   _DXP_BIND=NO; _DXP_CD=NO; _DXP_IFS=NO
   _DXP_SET_NAMES=" "
-  [[ "$1" =~ ${_RE_DXP_BIND} ]] && _DXP_BIND=YES
-  [[ "$1" =~ ${_RE_DXP_CD} ]] && _DXP_CD=YES
-  # the names before each = (a : before it dropped), once: the line held
+  # the names before each = (a : before it dropped), once: the line holds
   # only name characters, = and : here, so the words split on blanks alone
   _l="${1//[^A-Za-z0-9_=:]/ }"
   for _t in ${_l}; do
-    while [[ "${_t}" == *=* ]]; do
-      _p="${_t%%=*}"
-      _t="${_t#*=}"
-      _p="${_p%:}"
+    [[ "${_t}" == *=* ]] || continue
+    _e="${_t//[^=]/}"
+    IFS='=' read -r -a _ps <<< "${_t}"
+    for (( _k = 0; _k < ${#_e} && _k < ${#_ps[@]}; _k++ )); do
+      _p="${_ps[_k]%:}"
       _p="${_p##*:}"
       [[ "${_p}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] && _DXP_SET_NAMES+="${_p} "
     done
   done
   [[ "${_DXP_SET_NAMES}" == *" IFS "* ]] && _DXP_IFS=YES
+  # each simple command's first word
+  while IFS= read -r _sg; do
+    read -r -a _ws <<< "${_sg//$'\016'/}"
+    _nw=${#_ws[@]}
+    _i=0
+    _w0=""
+    while [ "${_i}" -lt "${_nw}" ]; do
+      _w0="${_ws[_i]}"
+      case "${_w0}" in
+        '!'|'{'|'}'|if|then|else|elif|while|until|do|done|fi|esac)
+          _i=$(( _i + 1 ))
+          continue
+          ;;
+        command)
+          _i=$(( _i + 1 ))
+          while [[ "${_ws[_i]:-}" == -* ]]; do _i=$(( _i + 1 )); done
+          continue
+          ;;
+      esac
+      if [[ "${_w0}" =~ ${_RE_DXP_REDIR} ]]; then
+        # a bare operator takes the next word for its target
+        if [ -z "${BASH_REMATCH[2]}" ]; then
+          _i=$(( _i + 2 ))
+        else
+          _i=$(( _i + 1 ))
+        fi
+        continue
+      fi
+      if [[ "${_w0}" =~ ^[A-Za-z_][A-Za-z0-9_]*= ]]; then
+        _i=$(( _i + 1 ))
+        continue
+      fi
+      _w0="${_ws[_i]:-}"
+      if [[ "${_w0}" == *[$'\002'-$'\006']* ]]; then
+        if [[ "${_w0}" != *[$'\002'$'\003'$'\005'$'\006']* ]]; then
+          # a pattern alone: each of them whose name it can match
+          _p="${_w0//$'\004'/}"
+          _w0="-"
+          for _n in read for getopts unset eval source local . cd chdir command; do
+            # shellcheck disable=SC2053 # the word is a pattern
+            [[ "${_n}" == ${_p} ]] || continue
+            case "${_n}" in
+              cd|chdir) _DXP_CD=YES ;;
+              command) _DXP_BIND=YES; _DXP_CD=YES ;;
+              *) _DXP_BIND=YES ;;
+            esac
+          done
+        else
+          _r=$(_drush_xp "${_w0}")
+          if [[ "${_r}" == *$'\007'* ]]; then
+            _w0=read
+            _DXP_CD=YES
+          else
+            read -r _w0 _p <<< "${_r}"
+            if [ -z "${_w0}" ]; then
+              _i=$(( _i + 1 ))
+              continue
+            fi
+          fi
+        fi
+      fi
+      break
+    done
+    case "${_w0:-}" in
+      read|for|getopts|unset|eval|source|local|.) _DXP_BIND=YES ;;
+      cd|chdir) _DXP_CD=YES ;;
+      # what an expansion gave (a literal command is read past above)
+      command) _DXP_BIND=YES; _DXP_CD=YES ;;
+    esac
+  done < <(_drush_segments "$1" keep join mark)
   return 0
 }
 # True when the reader cannot follow dash's quoting through the line: a
@@ -1211,17 +1326,20 @@ _drush_refused() {
   # the words a runner reads up to its command word are judged as dash
   # expands them (_drush_xp), read once more with the marks of what it
   # expands (kept blanks, joined lines: the read that quotes as dash does).
-  # Only a line holding a character dash expands; one whose quoting the
+  # Only a line holding a character dash expands, or an empty quoted string
+  # (a word dash keeps and the other reads drop); one whose quoting the
   # reader cannot follow (_drush_xp_blunt) is refused whole.
   case "$1" in
-    *[\$\`*?[~]*) ;;
+    *[\$\`*?[~]*)
+      if _drush_xp_blunt "$1"; then
+        _DR_WHY=E
+        _DR_XP=YES
+        return 0
+      fi
+      ;;
+    *"''"*|*'""'*) ;;
     *) return 1 ;;
   esac
-  if _drush_xp_blunt "$1"; then
-    _DR_WHY=E
-    _DR_XP=YES
-    return 0
-  fi
   _drush_xp_scan "$1"
   _drush_refused_read "$1" join keep mark
 }
@@ -1257,7 +1375,6 @@ _drush_refused_read() {
         _again=YES
       done
       read -r _w1 _w2 _rest <<< "${_seg}"
-      [ "${4:-}" = "mark" ] && _w1="${_w1//$'\016'/}"
       # a wrapper program named by its path (/usr/bin/env) is the same
       # wrapper; a reserved word, a brace or a builtin (command, exec) is
       # one only as written
@@ -1301,9 +1418,8 @@ _drush_refused_read() {
       esac
     done
     read -r _w1 _w2 _rest <<< "${_seg}"
-    [ "${4:-}" = "mark" ] && _w1="${_w1//$'\016'/}"
     # a cd earlier in the line moves the codebase a later Drush 8 boots
-    if [ "${_w1}" = "cd" ] && [ "${_wp}" = "NO" ]; then
+    if { [ "${_w1}" = "cd" ] || [ "${_w1}" = "chdir" ]; } && [ "${_wp}" = "NO" ]; then
       _cd="${_w2}"
       # the mark read: the word back as typed, as the other reads see it
       if [ "${4:-}" = "mark" ]; then
@@ -1342,7 +1458,6 @@ _drush_refused_read() {
           _rest="${_rest#"${BASH_REMATCH[0]}"}"
         done
         read -r _w2 _rest <<< "${_rest}"
-        [ "${4:-}" = "mark" ] && _w2="${_w2//$'\016'/}"
         # php opens its script operand against the cwd, never through PATH
         if [[ "${_w2}" == */* ]]; then
           _d8_launcher "${_w2}" && _d8=YES
