@@ -57,6 +57,36 @@ _check_running() {
   fi
 }
 
+# AppArmor judges the path a link resolves to: with /var/lib/mysql a link onto
+# a folder of the attached mount, the MySQL profiles allow that folder through
+# their local include. Each local file is always there (a profile names it):
+# BOA's lines sit between its markers, anything else in it is left as it is,
+# and a real folder at the path leaves no BOA lines. Prints CHANGED when a
+# file changed.
+_apparmor_mysql_local() {
+  local _r="" _p _f _old _new _blk=""
+  [ -d /etc/apparmor.d ] || return 0
+  mkdir -p /etc/apparmor.d/local 2> /dev/null || return 0
+  if [ -L /var/lib/mysql ]; then
+    _r="$(readlink -f /var/lib/mysql 2> /dev/null)"
+    { [[ "${_r}" =~ ^(/[A-Za-z0-9._-]+)+$ ]] && [ "${_r}" != "/var/lib/mysql" ] && [ -d "${_r}" ]; } || _r=""
+  fi
+  [ -z "${_r}" ] || _blk="# BOA: the database folder BEGIN"$'\n'"  ${_r}/ rwk,"$'\n'"  ${_r}/** rwk,"$'\n'"# BOA: the database folder END"
+  for _p in usr.sbin.mysqld usr.bin.mysqld_safe usr.bin.mysql; do
+    _f="/etc/apparmor.d/local/${_p}"
+    _old=""
+    [ ! -f "${_f}" ] || _old="$(cat "${_f}" 2> /dev/null)"
+    _new="$(printf '%s\n' "${_old}" | sed '/^# BOA: the database folder BEGIN$/,/^# BOA: the database folder END$/d')"
+    if [ -n "${_blk}" ]; then
+      [ -z "${_new}" ] && _new="${_blk}" || _new="${_new}"$'\n'"${_blk}"
+    fi
+    if [ ! -f "${_f}" ] || [ "${_new}" != "${_old}" ]; then
+      printf '%s\n' "${_new}" > "${_f}.boa.$$" && mv -f "${_f}.boa.$$" "${_f}" && echo CHANGED
+    fi
+  done
+  return 0
+}
+
 _start_sql() {
   # In a chain the stop phase already checked and still HOLDS the locks --
   # re-checking here would read our own lock as a foreign run and abort;
@@ -87,6 +117,18 @@ _start_sql() {
     || [ -e "/run/mysqld/mysqlx.sock" ]; then
     rm -f /run/mysqld/mysql*
   fi
+  # a folder linked since the profiles were last loaded is allowed before the
+  # start: each profile the kernel holds now is loaded again, and none other
+  # (a box BOA keeps AppArmor off on, or one a pass took the profiles off for
+  # its run, stays as BOA left it)
+  if [ -n "$(_apparmor_mysql_local)" ] && [ -r /sys/kernel/security/apparmor/profiles ] \
+    && command -v apparmor_parser > /dev/null 2>&1; then
+    for _aap in usr.sbin.mysqld usr.bin.mysqld_safe usr.bin.mysql; do
+      [ -f "/etc/apparmor.d/${_aap}" ] || continue
+      grep -q "^/${_aap//.//} (" /sys/kernel/security/apparmor/profiles 2> /dev/null || continue
+      apparmor_parser -r "/etc/apparmor.d/${_aap}" &> /dev/null
+    done
+  fi
   service mysql start &> /dev/null
   _mysqld_wait=0
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
@@ -113,24 +155,72 @@ _start_sql() {
   [ "$1" != "chain" ] && exit 0
 }
 
+# An nginx kept for a configuration nginx -t rejects takes no new one and
+# could not start again, so it is mailed at every report level but OFF, with
+# the nginx monitor's own throttle and grace period where lock.inc has them.
+_ngx_kept_mail() {
+  local _L _lvl _sfx="" _hName
+  _lvl="${_INCIDENT_REPORT:-MINI}"
+  _lvl="${_lvl^^}"
+  case "${_lvl}" in
+    NO|OFF) return 0 ;;
+  esac
+  [ -n "${_MY_EMAIL}" ] || return 0
+  command -v s-nail > /dev/null 2>&1 || return 0
+  for _L in "/opt/local/bin/lock.inc" "/opt/local/lib/lock.inc"; do
+    [ -r "${_L}" ] && . "${_L}" && break
+  done
+  if command -v _check_uptime_grace_period > /dev/null 2>&1; then
+    _check_uptime_grace_period > /dev/null || return 0
+  fi
+  if command -v _incident_email_ratelimit > /dev/null 2>&1; then
+    _incident_email_ratelimit "nginx-conf" || return 0
+    if [ "${_INCIDENT_SUPPRESSED:-0}" -gt 0 ]; then
+      _sfx=" (+${_INCIDENT_SUPPRESSED} more since the last alert)"
+    fi
+  fi
+  _hName="$(cat /etc/hostname 2> /dev/null | tr -d '\n')"
+  s-nail -s "Incident Report: NGX move_sql.sh: nginx -t fails, Nginx kept running${_sfx} on ${_hName} at $(date)" "${_MY_EMAIL}" < <(tail -n 200 /var/log/boa/nginx.incident.log)
+}
+
 _stop_sql() {
   _check_running
+
+  # Nginx is stopped with the database's clients, and comes back at the next
+  # `webserver up` or watchdog pass. With a configuration nginx -t rejects it
+  # could not start again and every site would stay down, so the running
+  # nginx is kept instead (nothing starts one early). Tested the way a start
+  # loads it: configtest syncs the store's copies first. Said before the
+  # locks: the alert mail is held while they exist.
+  local _ngx_keep="" _ngx_out
+  if [ -n "$(pgrep -x nginx)" ] && ! _ngx_out=$(service nginx configtest 2>&1); then
+    _ngx_keep=$(printf '%s\n' "${_ngx_out}" | grep -m1 -E '\[(emerg|alert|crit)\]' | cut -c1-300)
+    _ngx_keep="${_ngx_keep:-no reason given}"
+    mkdir -p /var/log/boa
+    echo "$(date) NGX move_sql.sh: Nginx not stopped for the database restart, nginx -t fails (${_ngx_keep}); it keeps serving with the configuration it loaded" >> /var/log/boa/nginx.incident.log
+    _ngx_kept_mail
+  fi
+
   _create_locks
 
-  echo "Stopping Nginx now..."
-  service nginx stop &> /dev/null
-  # Seeded and bounded: the variable used to start empty, so this "wait"
-  # never waited at all and the kill below landed on a tier mid-shutdown.
-  _IS_NGINX_RUNNING=$(pgrep -x nginx)
-  _ngx_stop_wait=0
-  until [ -z "${_IS_NGINX_RUNNING}" ] || [ "${_ngx_stop_wait}" -ge 30 ]; do
-    echo "Waiting for Nginx graceful shutdown..."
-    sleep 1
-    _ngx_stop_wait=$(( _ngx_stop_wait + 1 ))
+  if [ -n "${_ngx_keep}" ]; then
+    echo "Nginx kept running: nginx -t fails (${_ngx_keep})"
+  else
+    echo "Stopping Nginx now..."
+    service nginx stop &> /dev/null
+    # Seeded and bounded: the variable used to start empty, so this "wait"
+    # never waited at all and the kill below landed on a tier mid-shutdown.
     _IS_NGINX_RUNNING=$(pgrep -x nginx)
-  done
-  killall nginx &> /dev/null
-  echo "Nginx stopped"
+    _ngx_stop_wait=0
+    until [ -z "${_IS_NGINX_RUNNING}" ] || [ "${_ngx_stop_wait}" -ge 30 ]; do
+      echo "Waiting for Nginx graceful shutdown..."
+      sleep 1
+      _ngx_stop_wait=$(( _ngx_stop_wait + 1 ))
+      _IS_NGINX_RUNNING=$(pgrep -x nginx)
+    done
+    killall nginx &> /dev/null
+    echo "Nginx stopped"
+  fi
 
   echo "Stopping all PHP-FPM instances now..."
   _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56 55 54 53"

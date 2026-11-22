@@ -629,7 +629,7 @@ _tb_capture() {
     # lock leaves it (core/drupal-10.1.8: vendor/symfony/console/Input), the
     # instance user cannot enter it, so _tb_record could never count it
     _TB_BYTES="$(tar -tvzf "${2}" 2> /dev/null \
-      | awk '!/\/vendor\/(drush|symfony\/console\/(Input|Style))\// { s += $3 } END { print s + 0 }')"
+      | awk '!/\/vendor\/(drush|symfony\/console\/(Input|Style))\// { s += $3 } END { printf "%.0f\n", s }')"
   fi
 }
 
@@ -660,7 +660,7 @@ _tb_record() {
     # the nightly permission walk): left out on both sides of the compare
     _have="$(find "${1}" \( -path "*/vendor/drush" -o -path "*/vendor/symfony/console/Input" \
       -o -path "*/vendor/symfony/console/Style" \) -prune -o -type f -printf '%s\n' 2> /dev/null \
-      | awk '{ s += $1 } END { print s + 0 }')"
+      | awk '{ s += $1 } END { printf "%.0f\n", s }')"
     if [[ "${_TB_BYTES}" =~ ^[0-9]+$ ]] && [ "${_have}" -lt "${_TB_BYTES}" ]; then
       # No record at all (an older one could describe an earlier tree), so
       # the next pass refreshes it
@@ -1955,18 +1955,18 @@ declare -A _distros_names=(
 
 # Define distros versions for configuration
 declare -A _distros_versions=(
-  ["CMS"]="2.2.8"
+  ["CMS"]="2.2.9"
   ["CK1"]="2.77"
   ["CK2"]="2.41"
   ["CK3"]="5.1.0"
   ["EZC"]="2.2.15"
-  ["FOS"]="4.0.9"
+  ["FOS"]="4.0.11"
   ["LGV"]="4.0.5"
-  ["OCS"]="3.1.6"
-  ["OFD"]="13.6.9"
+  ["OCS"]="3.1.9"
+  ["OFD"]="13.6.11"
   ["OPG"]="3.2.7"
   ["SOC"]="13.1.0"
-  ["THR"]="8.4.6"
+  ["THR"]="8.4.7"
   ["UC6"]="2.15"
   ["UC7"]="3.13"
   ["VBX"]="11.0.0"
@@ -2000,7 +2000,7 @@ declare -A _distros_drupal_cores=(
   ["CK2"]="${_SMALLCORE10_1_V}"
   ["CK3"]="${_SMALLCORE11_4_V}"
   ["EZC"]="10.3.6"
-  ["FOS"]="11.3.19"
+  ["FOS"]="11.3.22"
   ["LGV"]="${_SMALLCORE11_4_V}"
   ["OCS"]="${_SMALLCORE11_4_V}"
   ["OFD"]="${_SMALLCORE10_6_V}"
@@ -2009,7 +2009,7 @@ declare -A _distros_drupal_cores=(
   ["THR"]="${_SMALLCORE11_4_V}"
   ["UC6"]="${_SMALLCORE6_V}"
   ["UC7"]="${_SMALLCORE7_V}"
-  ["VBX"]="11.4.11"
+  ["VBX"]="11.4.13"
   ["DL6"]="${_SMALLCORE6_V}"
   ["DL7"]="${_SMALLCORE7_V}"
   ["DL9"]="${_SMALLCORE9_V}"
@@ -2875,6 +2875,13 @@ _d_dist_loop() {
     # list names it, never through ALL: it is for testing, not for sites.
     if [[ "${_dist}" =~ ^D[LXET][0-9]$ ]] && [[ "${_d_vers}" == *-* ]] \
       && [[ ! "${_PLATFORMS_LIST}" =~ ${_dist} ]]; then
+      continue
+    fi
+    # Drupal 12 stays out of ALL after its release as well: no Drush that runs
+    # on it has a release yet (Drush 14 never will, Drush 15 is not tagged),
+    # and a development Drush has no security support. Built where the list
+    # names it, until its build takes a released Drush 15.
+    if [[ "${_dist}" =~ ^DT[0-9]$ ]] && [[ ! "${_PLATFORMS_LIST}" =~ ${_dist} ]]; then
       continue
     fi
     # The CiviCRM platforms are built only where the list names them, never

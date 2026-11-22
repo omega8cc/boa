@@ -7,7 +7,8 @@
 #   • If existing config looks sane, only ensure init wiring (networking start at boot),
 #     install a boot-time route guard, and ALWAYS enforce /etc/resolv.conf (forced DNS).
 #   • Otherwise perform full remediation: optionally disable cloud-init networking,
-#     write /etc/network/interfaces from live values (handles /32 off-link GW via onlink),
+#     write /etc/network/interfaces from live values (handles a /32 or a gateway
+#     outside the subnet, as on routed blocks, via onlink),
 #     sanitize stray/bogus stanzas (bonding etc.), enforce /etc/resolv.conf, and test now.
 #   • DigitalOcean-aware: uses metadata for GW/netmask if missing; prefers public NIC.
 #   • Legacy DO layout auto-switch: if the file uses alias syntax (eth0:1 etc.), install
@@ -420,6 +421,24 @@ for o in $a $b $c $d; do case "$o" in 255) n=$((n+8));; 254) n=$((n+7));; 252) n
 
 _calc_base_plus_one() { ip="$1"; pfx="$2"; mask="$(_prefix_to_mask "$pfx")"; ipi="$(_ip_to_int "$ip")"; mi="$(_ip_to_int "$mask")"; base=$(( ipi & mi )); _int_to_ip $(( base + 1 )); }
 
+# True when the gateway sits on the address's own subnet, so a plain default
+# route (and a plain "gateway" stanza) works. On a /32, or on a routed block
+# whose gateway is outside the subnet, the kernel refuses a plain default route
+# ("Nexthop has invalid gateway") and the gateway must be reached on-link.
+# Decided from the address alone: the live route table cannot tell, since an
+# on-link route to the gateway makes it look reachable on the interface.
+_gw_on_subnet() {
+  local _cidr="$1" _gw="$2" _pfx _mi _ii _gi
+  _pfx="$(_cidr_prefix "${_cidr}")"
+  case "${_pfx}" in ''|*[!0-9]*) return 1 ;; esac
+  [ "${_pfx}" -ge 1 ] && [ "${_pfx}" -le 31 ] || return 1
+  case "${_gw}" in ''|*[!0-9.]*) return 1 ;; esac
+  _mi="$(_ip_to_int "$(_prefix_to_mask "${_pfx}")")"
+  _ii="$(_ip_to_int "${_cidr%/*}")"
+  _gi="$(_ip_to_int "${_gw}")"
+  [ "$(( _ii & _mi ))" -eq "$(( _gi & _mi ))" ]
+}
+
 # ----------------------------- Metadata (DigitalOcean) -------------------------
 
 _do_meta_get() {
@@ -728,11 +747,10 @@ _write_interfaces_all() {
           echo "  address ${_PRIMARY}"
 
           if [ "${_IF}" = "${_DEF}" ] && [ -n "${_GW}" ]; then
-            _PFX="$(_cidr_prefix "${_PRIMARY}")"
-            if ip route get "${_GW}" 2>/dev/null | grep -q "dev ${_IF}" && [ "${_PFX}" != "32" ]; then
+            if _gw_on_subnet "${_PRIMARY}" "${_GW}"; then
               echo "  gateway ${_GW}"
             else
-              # /32 or off-link default GW: add explicit onlink route on up
+              # /32 or a gateway outside the subnet: add explicit onlink route on up
               echo "  post-up ip route add ${_GW} dev ${_IF} || true"
               echo "  post-up ip route replace default via ${_GW} dev ${_IF} onlink || true"
               echo "  pre-down ip route del default via ${_GW} dev ${_IF} || true"
@@ -804,12 +822,13 @@ _ephemeral_static_up() {
   ip addr flush dev "${_IF}" || true
   ip link set "${_IF}" up || true
   ip addr add "${_CIDR}" dev "${_IF}" || true
-  _PFX="$(_cidr_prefix "${_CIDR}")"
-  if [ "${_PFX}" = "32" ]; then
+  if _gw_on_subnet "${_CIDR}" "${_GW}"; then
+    ip route replace default via "${_GW}" dev "${_IF}" || true
+  else
+    # /32 or a gateway outside the subnet (routed blocks): the flush above took
+    # every route with it, and a plain default via such a gateway is refused.
     ip route add "${_GW}" dev "${_IF}" 2>/dev/null || true
     ip route replace default via "${_GW}" dev "${_IF}" onlink || true
-  else
-    ip route replace default via "${_GW}" dev "${_IF}" || true
   fi
 }
 

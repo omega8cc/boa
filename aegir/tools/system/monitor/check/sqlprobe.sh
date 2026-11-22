@@ -78,6 +78,60 @@ for _arg in "$@"; do
   esac
 done
 
+# The real uids of BOA's own work: root, aegir and each account's backend
+# user (home /data/disk/<name>), as whom root runs the account's tasks and
+# queued restores; never a web, FTP or shell login, which can give its own
+# process any command line.
+_boa_run_uids() {
+  local _l=""
+  _l=$(getent passwd 2> /dev/null \
+    | awk -F: '$3 == 0 || $1 == "aegir" || $6 ~ /^\/data\/disk\/[^\/]+\/?$/ { printf "%s%s", s, $3; s = "," }')
+  echo "${_l:-0}"
+}
+
+# Duplicity runs in flight, counted from root's processes alone: root's own
+# duplicity, and root's mybackup pass, which runs an account's queued restore
+# as the account through su. An account's own process is never counted: the
+# account's site code runs as its backend user in tasks and can give a
+# process any command line.
+_dcy_live_count() {
+  local _a _b _c
+  _a=$(pgrep -u root -U root -fc '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)' 2> /dev/null)
+  _b=$(pgrep -u root -U root -fc '^[^ ]*duplicity( |$)' 2> /dev/null)
+  _c=$(pgrep -u root -U root -fc '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*mybackup( |$)' 2> /dev/null)
+  echo $(( ${_a:-0} + ${_b:-0} + ${_c:-0} ))
+}
+
+# A dump or load in flight: root's own mydumper or myloader, or one an
+# account's backend user runs (provision dumps and loads a site's database as
+# the account) when the file it runs is one root installed under the name:
+# the one on the PATH, the build beside the installed mydumper (the myloader
+# wrapper on the PATH is a script that execs it) or the wrapper's fallbacks.
+# Compared by device and inode: a path read through /proc can name a file of
+# another mount namespace, and a copy or a link only carries the name.
+_dump_tool_live() {
+  local _p="" _x="" _e="" _md="" _ok=" " _bU=""
+  pgrep -u root -U root -x "${1}" > /dev/null 2>&1 && return 0
+  _md=$(readlink -f /usr/local/bin/mydumper 2> /dev/null)
+  [ -n "${_md}" ] && [ -x "${_md}" ] \
+    || _md=$(readlink -f "$(command -v mydumper 2> /dev/null)" 2> /dev/null)
+  for _x in "$(command -v "${1}" 2> /dev/null)" "${_md:+${_md%/*}/${1}}" \
+    "/usr/local/bin/${1}.bin" "/usr/bin/${1}"; do
+    case "${_x}" in /*) ;; *) continue ;; esac
+    [ -x "${_x}" ] || continue
+    _e=$(stat -L -c '%d:%i' "${_x}" 2> /dev/null)
+    [ -n "${_e}" ] && _ok="${_ok}${_e} "
+  done
+  [ "${_ok}" != " " ] || return 1
+  _bU="$(_boa_run_uids)"
+  for _p in $(pgrep -u "${_bU}" -U "${_bU}" -x "${1}" 2> /dev/null); do
+    _e=$(stat -L -c '%d:%i' "/proc/${_p}/exe" 2> /dev/null)
+    [ -n "${_e}" ] || continue
+    case "${_ok}" in *" ${_e} "*) return 0 ;; esac
+  done
+  return 1
+}
+
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
     # shellcheck disable=SC1091
@@ -139,7 +193,7 @@ _manage_single_lock() {
     _single_instance_lock
   else
     _SCRIPT=$(basename "$0")
-    _CNT=$(pgrep -fc "(^|(^| )[^ ]*bash )[^ ]*/${_SCRIPT//./\\.}( |$)")
+    _CNT=$(pgrep -u root -U root -fc "(^|(^| )[^ ]*bash )[^ ]*/${_SCRIPT//./\\.}( |$)")
     if (( _CNT > 2 )); then
       echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
       exit 0
@@ -158,11 +212,11 @@ fi
 touch "${_STAMP}"
 
 # Backup exclusion: skip while any backup walker is alive and for 20 min after
-# the last sighting (a dump's reads and truncations skew the miss rates).
-if pgrep -f '(^|(^| )[^ ]*bash )/var/xdrago/mysql_backup\.sh( |$)' >/dev/null 2>&1 \
-  || pgrep -f '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)' >/dev/null 2>&1 \
-  || pgrep -f '^[^ ]*duplicity( |$)' >/dev/null 2>&1 \
-  || pgrep -f '^[^ ]*mydumper( |$)' >/dev/null 2>&1; then
+# the last sighting (a dump's reads and truncations skew the miss rates). A
+# site's own dump in a backup, clone or migrate runs as its backend user.
+if pgrep -u root -U root -f '(^|(^| )[^ ]*bash )/var/xdrago/mysql_backup\.sh( |$)' >/dev/null 2>&1 \
+  || [ "$(_dcy_live_count)" -gt 0 ] \
+  || _dump_tool_live mydumper; then
   touch "${_BKP_STAMP}"
   exit 0
 fi

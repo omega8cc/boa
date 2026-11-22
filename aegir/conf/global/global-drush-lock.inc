@@ -24,20 +24,27 @@ if (!defined('DRUSH_VERSION')
   && !class_exists('Drush\Commands\DrushCommands', FALSE)) {
   $_boa_dl_root = isset($app_root) ? $app_root : getcwd();
   $_boa_dl_locked = FALSE;
+  $_boa_dl_why = 'site-local Drush is locked on this platform';
   foreach (array($_boa_dl_root . '/vendor/drush', $_boa_dl_root . '/../vendor/drush') as $_boa_dl_dir) {
     if (is_dir($_boa_dl_dir)) {
       $_boa_dl_locked = !is_readable($_boa_dl_dir . '/drush/src/Commands/DrushCommands.php');
+      // Drush 15 has no such class at all, and the lock leaves its folder
+      // open: its composer.json reads, so the stand-in comes for that reason.
+      if ($_boa_dl_locked && is_readable($_boa_dl_dir . '/drush/composer.json')) {
+        $_boa_dl_why = 'this platform\'s Drush has no Drush\Commands\DrushCommands (Drush 15 or newer)';
+      }
       break;
     }
   }
   if ($_boa_dl_locked) {
+    $GLOBALS['_boa_drush_lock_why'] = $_boa_dl_why;
     function _boa_drush_lock_stand_in($class) {
       if ($class === 'Drush\Commands\DrushCommands') {
-        error_log('BOA: site-local Drush is locked on this platform, so an empty Drush\Commands\DrushCommands stands in for the container build');
+        error_log('BOA: ' . $GLOBALS['_boa_drush_lock_why'] . ', so an empty Drush\Commands\DrushCommands stands in for the container build');
         eval('namespace Drush\Commands; abstract class DrushCommands {}');
       }
     }
     spl_autoload_register('_boa_drush_lock_stand_in', TRUE, FALSE);
   }
-  unset($_boa_dl_root, $_boa_dl_locked, $_boa_dl_dir);
+  unset($_boa_dl_root, $_boa_dl_locked, $_boa_dl_dir, $_boa_dl_why);
 }

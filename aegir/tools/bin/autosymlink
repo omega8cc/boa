@@ -404,13 +404,13 @@ _read_account_file() {
   _RAF_DIR="${1%/*}"
   case "${_RAF_DIR}" in
     /data/disk/?*)
-      _RAF_WANT="$(cd -P -- /data/disk 2>/dev/null && pwd -P)${_RAF_DIR#/data/disk}"
+      _RAF_WANT="$(cd -P -- /data/disk 2>/dev/null && /bin/pwd -P)${_RAF_DIR#/data/disk}"
       ;;
     *)
-      _RAF_WANT="$(cd -P -- "${_RAF_DIR%/*}" 2>/dev/null && pwd -P)/${_RAF_DIR##*/}"
+      _RAF_WANT="$(cd -P -- "${_RAF_DIR%/*}" 2>/dev/null && /bin/pwd -P)/${_RAF_DIR##*/}"
       ;;
   esac
-  ( cd -P -- "${_RAF_DIR}" 2>/dev/null && [ "$(pwd -P)" = "${_RAF_WANT}" ] \
+  ( cd -P -- "${_RAF_DIR}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${_RAF_WANT}" ] \
     && timeout 10 dd if="./${1##*/}" iflag=nofollow,nonblock,fullblock \
       bs=1048576 count=1 status=none 2>/dev/null )
 }
@@ -1359,7 +1359,7 @@ _store_in_pinned() {
   # there, so a ./name stays in it whatever is swapped meanwhile.
   local _d="${1}"
   shift
-  ( cd -P -- "${_d}" 2>/dev/null && [ "$(pwd -P)" = "${_d}" ] && "$@" )
+  ( cd -P -- "${_d}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${_d}" ] && "$@" )
 }
 
 _store_up() {
@@ -1405,7 +1405,7 @@ _store_in_bound() {
   # in the directory it checked.
   local _h="${1}" _d="${2}"
   shift 2
-  ( cd -P -- "${_d}" 2>/dev/null && [ "$(pwd -P)" = "${_d}" ] \
+  ( cd -P -- "${_d}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${_d}" ] \
     && _store_bound_here "${_h}" "${_d}" && "$@" )
 }
 
@@ -1413,8 +1413,8 @@ _store_real_sub() {
   # Echo the resolved path of ./$1 in the current (pinned) dir, only when
   # entering it for real lands there; nothing otherwise.
   local _h
-  _h="$(pwd -P)"
-  ( cd -P -- "./${1}" 2>/dev/null && [ "$(pwd -P)" = "${_h}/${1}" ] && pwd -P )
+  _h="$(/bin/pwd -P)"
+  ( cd -P -- "./${1}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${_h}/${1}" ] && /bin/pwd -P )
 }
 
 _make_unique_target_here() {
@@ -1555,7 +1555,7 @@ _store_arch_dir_here() {
   # one mkdir in a directory checked to lie in the store. Internal mkdir logs
   # go to stderr so only the path is captured by the caller.
   local _p
-  _store_mkdir_here ".archived" "$(pwd -P)" >&2 || return 1
+  _store_mkdir_here ".archived" "$(/bin/pwd -P)" >&2 || return 1
   _p=$(_store_real_sub ".archived") || return 1
   _store_in_bound "${1}" "${_p}" _store_mkdir_here "${2}" "${_p}" >&2 || return 1
   _p=$(_store_in_bound "${1}" "${_p}" _store_real_sub "${2}") || return 1
@@ -1577,7 +1577,7 @@ _store_arch_stamp_here() {
   # mkdir in a directory checked to lie in the store. Internal mkdir logs go to
   # stderr so only the path is captured by the caller.
   local _p
-  _store_mkdir_here ".archived" "$(pwd -P)" >&2 || return 1
+  _store_mkdir_here ".archived" "$(/bin/pwd -P)" >&2 || return 1
   _p=$(_store_real_sub ".archived") || return 1
   _store_in_bound "${1}" "${_p}" _store_mkdir_here "${2}" "${_p}" >&2 || return 1
   _store_in_bound "${1}" "${_p}" _store_real_sub "${2}"
@@ -1713,6 +1713,109 @@ _archive_existing_store_target() {
   return 0
 }
 
+# The uids root's walks over the account $1's trees act on, comma-separated:
+# root's own (0) and those of every identity of the account as passwd names
+# them: oN and oN.<name> (its .ftp login, its client sub-accounts oN.<client>
+# and oN.<client>-dev) and its PHP-FPM users oN.web and oN.<ver>.web. An
+# account name holds no dot, so the match is exact: o1 never takes o10's.
+# Status 1, and nothing, unless the account itself is in passwd.
+_acct_walk_uids() {
+  local _a="${1}" _n _p _u _r _x="0" _self=NO
+  case "${_a}" in
+    ""|*[!a-z0-9-]*) return 1 ;;
+  esac
+  while IFS=: read -r _n _p _u _r; do
+    [[ "${_n}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]] || continue
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    _x="${_x},${_u}"
+    [ "${_n}" = "${_a}" ] && _self=YES
+  done < <(getent passwd 2> /dev/null)
+  [ "${_self}" = "YES" ] || return 1
+  # the account's removed identities, their numbers recorded by root before
+  # deluser freed them; a number a user has again is not taken
+  while IFS= read -r _u; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    getent passwd "${_u}" > /dev/null 2>&1 && continue
+    _x="${_x},${_u}"
+  done 2> /dev/null < "/data/conf/acct-uids/${_a}.gone"
+  echo "${_x}"
+}
+# The whole of an account's control/, judged once before a run acts on it:
+# run inside the account's real static/, it prints OK when control/ and
+# everything in it, never followed through a link, and static/ and every
+# directory above it up to /, are root's or one of the account's identities'
+# (the uids given first, _acct_walk_uids, with the account's recorded
+# removed identities), ABSENT when there is no control/, and otherwise why
+# not, on one line.
+# Every other account's .ftp login is in the box-wide group, which an account
+# not yet on its own group still has on static/: such a login could put a
+# control/ of its own there, or a file of its own in a group-writable
+# directory below it, for root to act on as the account's.
+_ACCT_CTRL_OWN_PL='use Fcntl;
+my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, shift @ARGV // "");
+sub own { my $u = shift; return exists $own{$u} ? 1 : 0; }
+sub isd { ($_[0] & 0170000) == 0040000 }
+sub nm { (my $v = shift) =~ s/[^\x20-\x7e]/?/g; return substr($v, 0, 200); }
+sub refuse { print "$_[0]\n"; exit 0; }
+my ($p, $top, @d, @x) = (".", 0);
+for (1 .. 256) {
+  @x = stat($p) or refuse("static/ cannot be read");
+  own($x[4]) or refuse("a directory above control/ is owned by uid $x[4]");
+  if (@d && $x[0] == $d[0] && $x[1] == $d[1]) { $top = 1; last; }
+  @d = @x;
+  $p .= "/..";
+}
+$top or refuse("static/ is too deep");
+my @s = lstat("./control");
+unless (@s) { print(($!{ENOENT} ? "ABSENT" : "control/ cannot be read") . "\n"); exit 0; }
+isd($s[2]) or refuse("control is not a directory");
+my ($n, @q) = (0, ["control", @s]);
+while (my $e = shift @q) {
+  my ($f, @t) = @$e;
+  own($t[4]) or refuse(nm($f) . " is owned by uid $t[4]" . (defined(getpwuid($t[4])) ? "" : ", which no user has and root never recorded for this account: if the file is its own, give it to its .ftp login"));
+  next unless isd($t[2]);
+  opendir(my $h, "./$f") or refuse(nm($f) . " cannot be read");
+  for my $b (readdir($h)) {
+    next if $b eq "." || $b eq "..";
+    ++$n > 100000 and refuse("control/ holds more than 100000 entries");
+    my @u = lstat("./$f/$b") or next;
+    push @q, ["$f/$b", @u];
+  }
+  closedir($h);
+}
+print "OK\n";
+exit 0;'
+# 0 when the account $1's control/ is its own as _ACCT_CTRL_OWN_PL judges it
+# (or it has none); otherwise why not on stdout, status 1. A run that acts
+# on what control/ says leaves the account as it is when it is not.
+_acct_ctrl_own() {
+  local _a="${1}" _o _r _want
+  # an account not in passwd (not made yet, or removed) has nothing to
+  # judge it by: read as before
+  _o=$(_acct_walk_uids "${_a}" 2> /dev/null) || return 0
+  [ -e "/data/disk/${_a}/static" ] || [ -L "/data/disk/${_a}/static" ] || return 0
+  _want="$(cd -P -- /data/disk 2> /dev/null && /bin/pwd -P)/${_a}/static"
+  _r=$(cd -P -- "/data/disk/${_a}/static" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] \
+    && perl -e "${_ACCT_CTRL_OWN_PL}" -- "${_o}" 2> /dev/null)
+  case "${_r}" in
+    OK|ABSENT) return 0 ;;
+  esac
+  echo "${_r:-static/ is not a real directory}"
+  return 1
+}
+# 0 when one of the share files after the account directory $1 is there,
+# or when the account's control/ is not its own (_acct_ctrl_own): what it
+# says, or does not say, is never the account's, so every link and store
+# stays as it is.
+_share_marked() {
+  local _a="${1}" _f
+  shift
+  _acct_ctrl_own "${_a##*/}" > /dev/null || return 0
+  for _f in "$@"; do
+    [ -f "${_f}" ] && return 0
+  done
+  return 1
+}
 _site_share_file() {
   # The share control file naming THIS site: share.<kind>.<site>.info with a
   # kind that carries no dot. The bare glob share.*.<site>.info also took a
@@ -1720,6 +1823,12 @@ _site_share_file() {
   # example.com), so a parent domain's store was held by another site's
   # share. Prints the first such file; nothing, status 1, when there is none.
   local _SSF_F _SSF_KIND
+  # a control/ that is not the account's own (_acct_ctrl_own) holds every
+  # store: its name stands in for the share file
+  if ! _acct_ctrl_own "${1##*/}" > /dev/null; then
+    printf '%s\n' "${1}/static/control (not the account's own)"
+    return 0
+  fi
   for _SSF_F in "${1}"/static/control/share.*."${2}".info; do
     [ -e "${_SSF_F}" ] || continue
     _SSF_KIND="${_SSF_F##*/share.}"
@@ -1883,7 +1992,7 @@ _store_live_readers() {
   _SLR_REAL_STORE=""
   [ -L "${_SLR_STORE}" ] || _SLR_REAL_STORE=$(readlink -f "${_SLR_STORE}" 2>/dev/null)
   _store_link_index
-  while IFS="$(printf '\t')" read -r _SLR_LINK _SLR_TGT; do
+  while LC_ALL=C IFS="$(printf '\t')" read -r _SLR_LINK _SLR_TGT; do
     [ -n "${_SLR_LINK}" ] || continue
     case "${_SLR_LINK}" in "${_SLR_ACCT}"/*/sites/"${_SLR_SITE}"/*) continue ;; esac
     _SLR_HIT="NO"
@@ -2346,7 +2455,7 @@ _check_symlink_sharing() {
     _SHARE_TARGET="${_CONTROL_DIR}/share.files.${_TARGET_SITE_NAME}.info"
 
     _INTENT="ACCIDENTAL"
-    if [ -f "${_SHARE_THIS}" ] || [ -f "${_SHARE_TARGET}" ]; then
+    if _share_marked "${_ACCOUNT_DIR}" "${_SHARE_THIS}" "${_SHARE_TARGET}"; then
       _INTENT="INTENTIONAL"
       _SITE_HAS_INTENTIONAL_SHARED_SYMLINK="YES"
     else
@@ -2374,7 +2483,7 @@ _check_symlink_sharing() {
     if [ -f "${_SHARE_THIS}" ] || [ -f "${_SHARE_TARGET}" ]; then
       _log "[INFO] ${_TYPE} symlink for site ${_SITE_NAME} points to $(_log_name "${_TARGET_SITE_NAME}") with a share control file present, but --force-unshare is set – breaking sharing for this site"
     fi
-  elif [ -f "${_SHARE_THIS}" ] || [ -f "${_SHARE_TARGET}" ]; then
+  elif _share_marked "${_ACCOUNT_DIR}" "${_SHARE_THIS}" "${_SHARE_TARGET}"; then
     _SITE_HAS_INTENTIONAL_SHARED_SYMLINK="YES"
     _log "[INFO] ${_TYPE} symlink for site ${_SITE_NAME} intentionally shares with $(_log_name "${_TARGET_SITE_NAME}") (control file present) – leaving as is"
     return
@@ -2740,7 +2849,7 @@ _unshare_closed_ex() {
     _log "[ERROR] Un-share copy: the ${4} store $(_log_name "${3%/}") is closed to ${_who} as a whole; nothing copied"
     return 1
   fi
-  while IFS= read -r -d '' _p; do
+  while LC_ALL=C IFS= read -r -d '' _p; do
     _r="${_p#"${3%/}"/}"
     [ "${_r}" != "${_p}" ] && [ -n "${_r}" ] || return 1
     # the day stamps the copy leaves out anyway (_UNSHARE_RSYNC_ARGS): a
@@ -2861,7 +2970,7 @@ _unshare_copy() {
     # directory two levels below static/, so a base whose site name starts
     # with "module" can be one): any name there, a staging name included,
     # could be another identity's.
-    cd -P -- "${_real}" 2>/dev/null && [ "$(pwd -P)" = "${_real}" ] || exit 2
+    cd -P -- "${_real}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${_real}" ] || exit 2
     _store_bound_here "${_h}" "${_real}" || exit 2
     _st=$(stat -c '%u %a' . 2>/dev/null)
     [ "${_st%% *}" = "0" ] && [[ "${_st##* }" =~ ^[0-7]+$ ]] \
@@ -2874,7 +2983,7 @@ _unshare_copy() {
     # all the account-side work runs inside the pinned staging dir, so the
     # final rename's .. is this base and no name in it is looked up again
     if (
-      cd -P -- "./${_w}" 2>/dev/null && [ "$(pwd -P)" = "${_real}/${_w}" ] \
+      cd -P -- "./${_w}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${_real}/${_w}" ] \
         && [ -n "${_wid}" ] && [ "$(stat -c '%d:%i' . 2>/dev/null)" = "${_wid}" ] || exit 1
       # root's marker, in a directory only root can write, holding the
       # staging dir's own inode: a later run tells a staging dir this tool
@@ -2888,7 +2997,7 @@ _unshare_copy() {
         # the caller's directory, entered for real and still the one it
         # recorded; the copy's target is this staging dir held open on fd 9
         { exec 9< .; } 2>/dev/null || exit 1
-        ( cd -P -- "${_src}" 2>/dev/null && [ "$(pwd -P)" = "${_src}" ] \
+        ( cd -P -- "${_src}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${_src}" ] \
           && [ "$(stat -c '%d:%i' . 2>/dev/null)" = "${_sid}" ] \
           && setpriv --reuid="${_uid}" --regid="${_gid}" --init-groups \
             rsync "${_UNSHARE_RSYNC_ARGS[@]}" -- ./ "/proc/self/fd/9/${_type}/" >&2 ) || exit 1
@@ -2936,7 +3045,7 @@ _unshare_staging_rm_here() {
   # marker and the staging dir, each by a name checked in the staging dir
   # entered for real. rc 1 when something is left in it.
   local _n="${1}" _t="${2}" _uid="${3}" _gid="${4}" _id="${5}" _p _u _m _di _ty
-  _p="$(pwd -P)"
+  _p="$(/bin/pwd -P)"
   read -r _u _m _di _ty < <(stat -c '%u %a %d:%i %F' -- "./${_n}" 2>/dev/null)
   [ "${_ty}" = "directory" ] && [ "${_u}" = "0" ] && [[ "${_m}" =~ ^[0-7]+$ ]] \
     && (( (8#${_m} & 8#022) == 0 )) || return 2
@@ -2944,7 +3053,7 @@ _unshare_staging_rm_here() {
     [ "${_di}" = "${_id}" ] || return 2
   fi
   (
-    cd -P -- "./${_n}" 2>/dev/null && [ "$(pwd -P)" = "${_p}/${_n}" ] \
+    cd -P -- "./${_n}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${_p}/${_n}" ] \
       && [ "$(stat -c '%d:%i' . 2>/dev/null)" = "${_di}" ] || exit 2
     if [ -z "${_id}" ]; then
       read -r _u _m _ty < <(stat -c '%u:%h %a %F' -- ./.autosymlink-staging 2>/dev/null)
@@ -2958,7 +3067,7 @@ _unshare_staging_rm_here() {
       if [ "${_u}" = "${_uid}" ]; then
         # emptied from inside, entered for real (only root can rename in the
         # staging dir, so the name still holds the copy's directory)
-        ( cd -P -- "./${_t}" 2>/dev/null && [ "$(pwd -P)" = "${_p}/${_n}/${_t}" ] \
+        ( cd -P -- "./${_t}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${_p}/${_n}/${_t}" ] \
           && _rm_tree_as_here "${_uid}" "${_gid}" )
       elif [ "${_u}" != "0" ]; then
         exit 1
@@ -2990,11 +3099,11 @@ _unshare_stale_here() {
     _unshare_staging_rm_here "${_st#./}" "${1}" "${2}" "${3}" ""
     _rc=$?
     if [ "${_rc}" = "0" ]; then
-      _log "[INFO] Removed the staging dir of an un-share copy whose run is gone: $(pwd -P)/$(printf '%q' "${_st#./}")"
+      _log "[INFO] Removed the staging dir of an un-share copy whose run is gone: $(/bin/pwd -P)/$(printf '%q' "${_st#./}")"
     elif [ "${_rc}" = "2" ]; then
-      _log "[WARN] Left $(pwd -P)/$(printf '%q' "${_st#./}"): not a staging dir this tool can prove it made; remove it by hand after a check"
+      _log "[WARN] Left $(/bin/pwd -P)/$(printf '%q' "${_st#./}"): not a staging dir this tool can prove it made; remove it by hand after a check"
     else
-      _log "[WARN] Left the staging dir $(pwd -P)/$(printf '%q' "${_st#./}") of an un-share copy whose run is gone: it holds an entry the account cannot remove; remove it by hand after a check"
+      _log "[WARN] Left the staging dir $(/bin/pwd -P)/$(printf '%q' "${_st#./}") of an un-share copy whose run is gone: it holds an entry the account cannot remove; remove it by hand after a check"
     fi
   done
   return 0
@@ -3097,8 +3206,8 @@ _sub_id_here() {
   # cwd = a pinned dir. Echo the dev:ino of ./$1 entered for real (cd -P, and
   # pwd -P lands there); nothing (status 1) otherwise.
   local _p
-  _p="$(pwd -P)"
-  ( cd -P -- "./${1}" 2>/dev/null && [ "$(pwd -P)" = "${_p}/${1}" ] \
+  _p="$(/bin/pwd -P)"
+  ( cd -P -- "./${1}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${_p}/${1}" ] \
     && stat -c '%d:%i' . 2>/dev/null )
 }
 
@@ -3107,9 +3216,9 @@ _in_sub_id_here() {
   # only while it is the directory of dev:ino $2. rc 1 when it is not.
   local _p _n="${1}" _id="${2}"
   shift 2
-  _p="$(pwd -P)"
+  _p="$(/bin/pwd -P)"
   [ -n "${_id}" ] || return 1
-  ( cd -P -- "./${_n}" 2>/dev/null && [ "$(pwd -P)" = "${_p}/${_n}" ] \
+  ( cd -P -- "./${_n}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${_p}/${_n}" ] \
     && [ "$(stat -c '%d:%i' . 2>/dev/null)" = "${_id}" ] || exit 1
     "$@" )
 }
@@ -3133,10 +3242,10 @@ _aside_rm_here() {
   # name while the name still holds it. rc 1 when it is not removed (not that
   # directory, no account identity, or an entry the account cannot remove).
   local _p
-  _p="$(pwd -P)"
+  _p="$(/bin/pwd -P)"
   [[ "${3}" =~ ^[1-9][0-9]*$ && "${4}" =~ ^[0-9]+$ ]] || return 1
   [ -n "${2}" ] && [ "$(stat -c '%d:%i' -- "./${1}" 2>/dev/null)" = "${2}" ] || return 1
-  ( cd -P -- "./${1}" 2>/dev/null && [ "$(pwd -P)" = "${_p}/${1}" ] \
+  ( cd -P -- "./${1}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${_p}/${1}" ] \
     && [ "$(stat -c '%d:%i' . 2>/dev/null)" = "${2}" ] \
     && _rm_tree_as_here "${3}" "${4}" ) || return 1
   [ "$(stat -c '%d:%i' -- "./${1}" 2>/dev/null)" = "${2}" ] || return 1
@@ -3158,10 +3267,10 @@ _aside_catch_up_here() {
   # aside: a dry pass without it follows (_aside_same_here), and any regular
   # file it lists, or its failure, keeps the aside too (rc 3).
   local _p _uid="${6}" _gid="${7}"
-  _p="$(pwd -P)"
+  _p="$(/bin/pwd -P)"
   [[ "${_uid}" =~ ^[1-9][0-9]*$ && "${_gid}" =~ ^[0-9]+$ ]] || return 1
   [ -n "${2}" ] || return 1
-  ( cd -P -- "./${1}" 2>/dev/null && [ "$(pwd -P)" = "${_p}/${1}" ] \
+  ( cd -P -- "./${1}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${_p}/${1}" ] \
       && [ "$(stat -c '%d:%i' . 2>/dev/null)" = "${2}" ] || exit 1
     _store_hold_here "${3}" "${5}" || exit 1
     [ -d "/proc/self/fd/9/${4}" ] && [ ! -L "/proc/self/fd/9/${4}" ] \

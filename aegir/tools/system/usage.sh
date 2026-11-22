@@ -35,7 +35,7 @@ _manage_single_lock() {
     # -------- legacy pgrep guard ---------
     # Exit if more than 2 instances of this script are running
     _SCRIPT=$(basename "$0")
-    _CNT=$(pgrep -fc "(^|(^| )[^ ]*bash )[^ ]*/${_SCRIPT//./\\.}( |$)")
+    _CNT=$(pgrep -u root -U root -fc "(^|(^| )[^ ]*bash )[^ ]*/${_SCRIPT//./\\.}( |$)")
     if (( _CNT > 2 )); then
       echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
       exit 0
@@ -113,6 +113,96 @@ _usage_hm() {
   wait
 }
 
+# The uids root's walks over the account $1's trees act on, comma-separated:
+# root's own (0) and those of every identity of the account as passwd names
+# them: oN and oN.<name> (its .ftp login, its client sub-accounts oN.<client>
+# and oN.<client>-dev) and its PHP-FPM users oN.web and oN.<ver>.web. An
+# account name holds no dot, so the match is exact: o1 never takes o10's.
+# Status 1, and nothing, unless the account itself is in passwd.
+_acct_walk_uids() {
+  local _a="${1}" _n _p _u _r _x="0" _self=NO
+  case "${_a}" in
+    ""|*[!a-z0-9-]*) return 1 ;;
+  esac
+  while IFS=: read -r _n _p _u _r; do
+    [[ "${_n}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]] || continue
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    _x="${_x},${_u}"
+    [ "${_n}" = "${_a}" ] && _self=YES
+  done < <(getent passwd 2> /dev/null)
+  [ "${_self}" = "YES" ] || return 1
+  # the account's removed identities, their numbers recorded by root before
+  # deluser freed them; a number a user has again is not taken
+  while IFS= read -r _u; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    getent passwd "${_u}" > /dev/null 2>&1 && continue
+    _x="${_x},${_u}"
+  done 2> /dev/null < "/data/conf/acct-uids/${_a}.gone"
+  echo "${_x}"
+}
+# The whole of an account's control/, judged once before a run acts on it:
+# run inside the account's real static/, it prints OK when control/ and
+# everything in it, never followed through a link, and static/ and every
+# directory above it up to /, are root's or one of the account's identities'
+# (the uids given first, _acct_walk_uids, with the account's recorded
+# removed identities), ABSENT when there is no control/, and otherwise why
+# not, on one line.
+# Every other account's .ftp login is in the box-wide group, which an account
+# not yet on its own group still has on static/: such a login could put a
+# control/ of its own there, or a file of its own in a group-writable
+# directory below it, for root to act on as the account's.
+_ACCT_CTRL_OWN_PL='use Fcntl;
+my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, shift @ARGV // "");
+sub own { my $u = shift; return exists $own{$u} ? 1 : 0; }
+sub isd { ($_[0] & 0170000) == 0040000 }
+sub nm { (my $v = shift) =~ s/[^\x20-\x7e]/?/g; return substr($v, 0, 200); }
+sub refuse { print "$_[0]\n"; exit 0; }
+my ($p, $top, @d, @x) = (".", 0);
+for (1 .. 256) {
+  @x = stat($p) or refuse("static/ cannot be read");
+  own($x[4]) or refuse("a directory above control/ is owned by uid $x[4]");
+  if (@d && $x[0] == $d[0] && $x[1] == $d[1]) { $top = 1; last; }
+  @d = @x;
+  $p .= "/..";
+}
+$top or refuse("static/ is too deep");
+my @s = lstat("./control");
+unless (@s) { print(($!{ENOENT} ? "ABSENT" : "control/ cannot be read") . "\n"); exit 0; }
+isd($s[2]) or refuse("control is not a directory");
+my ($n, @q) = (0, ["control", @s]);
+while (my $e = shift @q) {
+  my ($f, @t) = @$e;
+  own($t[4]) or refuse(nm($f) . " is owned by uid $t[4]" . (defined(getpwuid($t[4])) ? "" : ", which no user has and root never recorded for this account: if the file is its own, give it to its .ftp login"));
+  next unless isd($t[2]);
+  opendir(my $h, "./$f") or refuse(nm($f) . " cannot be read");
+  for my $b (readdir($h)) {
+    next if $b eq "." || $b eq "..";
+    ++$n > 100000 and refuse("control/ holds more than 100000 entries");
+    my @u = lstat("./$f/$b") or next;
+    push @q, ["$f/$b", @u];
+  }
+  closedir($h);
+}
+print "OK\n";
+exit 0;'
+# 0 when the account $1's control/ is its own as _ACCT_CTRL_OWN_PL judges it
+# (or it has none); otherwise why not on stdout, status 1. A run that acts
+# on what control/ says leaves the account as it is when it is not.
+_acct_ctrl_own() {
+  local _a="${1}" _o _r _want
+  # an account not in passwd (not made yet, or removed) has nothing to
+  # judge it by: read as before
+  _o=$(_acct_walk_uids "${_a}" 2> /dev/null) || return 0
+  [ -e "/data/disk/${_a}/static" ] || [ -L "/data/disk/${_a}/static" ] || return 0
+  _want="$(cd -P -- /data/disk 2> /dev/null && /bin/pwd -P)/${_a}/static"
+  _r=$(cd -P -- "/data/disk/${_a}/static" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] \
+    && perl -e "${_ACCT_CTRL_OWN_PL}" -- "${_o}" 2> /dev/null)
+  case "${_r}" in
+    OK|ABSENT) return 0 ;;
+  esac
+  echo "${_r:-static/ is not a real directory}"
+  return 1
+}
 # An account's main login owns static/control and can write static/, and oN
 # owns the rest of /data/disk/oN (log/, .drush/, config/, the site dirs):
 # either can put a link or a FIFO at any name there, or swap a directory for
@@ -122,8 +212,8 @@ _usage_hm() {
 _usage_in_real_dir() {
   local _d="${1}" _want
   shift
-  _want="$(cd -P -- /data/disk 2> /dev/null && pwd -P)${_d#/data/disk}"
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+  _want="$(cd -P -- /data/disk 2> /dev/null && /bin/pwd -P)${_d#/data/disk}"
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] && "$@" )
 }
 # ./$1 in the current (pinned) directory: never through a link, never
 # blocked on a FIFO, at most 1 MiB; empty for anything else.
@@ -246,7 +336,7 @@ _usage_in_site_dir() {
     "${_ra}"/?*) ;;
     *) return 1 ;;
   esac
-  ( cd -P -- "${_rd}" 2> /dev/null && [ "$(pwd -P)" = "${_rd}" ] && "$@" )
+  ( cd -P -- "${_rd}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_rd}" ] && "$@" )
 }
 # The file $2 put as ./$1 in the current (pinned) directory (0644): a fresh
 # name created exclusively, then renamed over the name, so a link or a FIFO
@@ -557,76 +647,12 @@ _read_account_data() {
   # kept to a version's characters (the first 64 bytes): these go into the
   # panel footer through a shell command line; reset above, so an account
   # without them never shows the previous account's
-  _CLIENT_CLI=$(_usage_read_in "${_ct}" cli.info | head -c 64 | tr -cd '0-9.')
-  _CLIENT_FPM=$(_usage_read_in "${_ct}" fpm.info | head -c 64 | tr -cd '0-9.')
-}
-
-_send_notice_php() {
-  if [ "${_hostedSys}" != "YES" ]; then
-    return 1  # Exit the function but continue the script
-  fi
-  _BCC_EMAIL="inbox@boa.io"
-  _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
-  _client_mail_hold "${_CLIENT_EMAIL}" || return 1
-  _MAILX_TEST=$(s-nail -V 2>&1)
-  if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
-  cat <<EOF | s-nail -b ${_BCC_EMAIL} \
-    -s "URGENT: Please switch your Ægir instance to PHP 8.1 [${_THIS_U}]${_MAIL_HOLD_SFX}" ${_MAIL_HOLD_RCPT}
-Hello,
-
-Our monitoring detected that you are still using deprecated
-and no longer supported PHP version: $1
-
-We have provided a few years of extended support for
-this PHP version, but now we can't extend it any further,
-because your system has to be upgraded to newest Debian version,
-which doesn't support many deprecated PHP versions.
-
-The upgrade will happen in the first week of May, 2023,
-and there are no exceptions possible to avoid it.
-
-This means that all Ægir instances still running PHP $1
-will stop working if not switched to one of currently
-supported versions: 8.1, 8.2, 8.3, 8.4, 8.5, 8.6
-
-To switch PHP-FPM version on command line, please type:
-
-  echo 8.1 > ~/static/control/fpm.info
-
-You can find more details at: https://docs.boa.io/using/tuning/php-version
-
-We are working hard to provide secure and fast hosting
-for your Drupal sites, and we appreciate your efforts
-to meet the requirements, which are an integral part
-of the quality you can expect from Omega8.cc
-
---
-This email has been sent by your Ægir system monitor
-
-EOF
-  fi
-  echo "INFO: PHP notice sent to ${_MAIL_HOLD_RCPT}${_MAIL_HOLD_SFX} [${_THIS_U}]: OK"
-}
-
-_detect_deprecated_php() {
-  _PHP_FPM_VERSION=
-  if [ -e "${_usEr}/static/control/fpm.info" ] \
-    && [ -z "${_uHeld:-}" ]; then
-    # read inside the real control directory, never through a link or
-    # blocked on a FIFO the tenant put there, and kept to a version's
-    # characters
-    _PHP_FPM_VERSION=$(_usage_read_in "${_usEr}/static/control" fpm.info \
-      | head -c 64 | tr -cd '0-9.')
-    if [ "${_PHP_FPM_VERSION}" = "5.5" ] \
-      || [ "${_PHP_FPM_VERSION}" = "5.4" ] \
-      || [ "${_PHP_FPM_VERSION}" = "5.3" ] \
-      || [ "${_PHP_FPM_VERSION}" = "5.2" ]; then
-      echo Deprecated PHP-FPM ${_PHP_FPM_VERSION} detected in ${_THIS_U}
-      _read_account_data
-      if [ "${_THIS_MODE}" = "verbose" ]; then
-        _send_notice_php ${_PHP_FPM_VERSION}
-      fi
-    fi
+  # only from the account's own control/ (_acct_ctrl_own)
+  _CLIENT_CLI=
+  _CLIENT_FPM=
+  if _acct_ctrl_own "${_THIS_U}" > /dev/null; then
+    _CLIENT_CLI=$(_usage_read_in "${_ct}" cli.info | head -c 64 | tr -cd '0-9.')
+    _CLIENT_FPM=$(_usage_read_in "${_ct}" fpm.info | head -c 64 | tr -cd '0-9.')
   fi
 }
 
@@ -643,24 +669,16 @@ _send_notice_core() {
     -s "URGENT: Please migrate ${_Dom} site to Pressflow (LTS)${_MAIL_HOLD_SFX}" ${_MAIL_HOLD_RCPT}
 Hello,
 
-Our system detected that you are using vanilla Drupal core
-for site ${_Dom}.
+Our system detected that you are using vanilla Drupal core for site ${_Dom}.
 
 The platform root directory for this site is:
 ${_Plr}
 
-Using non-Pressflow 5.x or 6.x core is not allowed
-on our servers, unless it is a temporary result of your site
-import, but every imported site should be migrated to Pressflow
-based platform as soon as possible.
+Using non-Pressflow 5.x or 6.x core is not allowed on our servers, unless it is a temporary result of your site import, but every imported site should be migrated to Pressflow based platform as soon as possible.
 
-If the site is not migrated to Pressflow based platform
-in seven (7) days, it may cause service interruption.
+If the site is not migrated to Pressflow based platform in seven (7) days, it may cause service interruption.
 
-We are working hard to deliver top performance hosting
-for your Drupal sites and we appreciate your efforts
-to meet the requirements, which are an integral part
-of the quality you can expect from Omega8.cc.
+We are working hard to deliver top performance hosting for your Drupal sites and we appreciate your efforts to meet the requirements, which are an integral part of the quality you can expect from Omega8.cc.
 
 --
 This email has been sent by your Ægir platform core monitor.
@@ -756,16 +774,14 @@ _usage_count() {
     if [ -e "${_usEr}/.drush/${_Dom}.alias.drushrc.php" ]; then
       #echo "${_THIS_U},${_Dom},drushrc-exists"
       _Ali=$(_usage_read_in "${_usEr}/.drush" "${_Dom}.alias.drushrc.php")
+      # Each value read whole by its own key: a platform path may hold a
+      # colon or a blank, and another value may end in root or site_path.
       _Dir=$(printf '%s\n' "${_Ali}" \
-        | grep "site_path'" \
-        | cut -d: -f2 \
-        | awk '{ print $3}' \
-        | sed "s/[\,']//g" 2>&1)
+        | sed -n "s/^[[:space:]]*'site_path'[[:space:]]*=>[[:space:]]*'\([^']*\)'.*/\1/p" \
+        | head -n 1 2>&1)
       _Plr=$(printf '%s\n' "${_Ali}" \
-        | grep "root'" \
-        | cut -d: -f2 \
-        | awk '{ print $3}' \
-        | sed "s/[\,']//g" 2>&1)
+        | sed -n "s/^[[:space:]]*'root'[[:space:]]*=>[[:space:]]*'\([^']*\)'.*/\1/p" \
+        | head -n 1 2>&1)
       _detect_vanilla_core
       _fix_clear_cache
       #echo Dir is ${_Dir}
@@ -859,13 +875,9 @@ _sql_top_section() {
     _body+="${_db}:"$'\n'"${_rows}"$'\n\n'
   done < <(printf '%s\n' "${_LIVE_DBS[@]}" | sort -t: -k1,1nr | awk -F: '!seen[$2]++' | head -n 10)
   [ -n "${_body}" ] || return 0
-  printf '%s' "The largest tables of your live databases (the database server's
-estimates; \"free\" is room inside a table's file that removed rows
-left behind):
+  printf '%s' "The largest tables of your live databases (the database server's estimates; \"free\" is room inside a table's file that removed rows left behind):
 
-${_body}Rows you delete inside a site give their space back only after the
-table is rebuilt with OPTIMIZE TABLE. How to find what to remove, and how
-to rebuild a table:
+${_body}Rows you delete inside a site give their space back only after the table is rebuilt with OPTIMIZE TABLE. How to find what to remove, and how to rebuild a table:
 
   https://docs.boa.io/using/backups/database-space"
 }
@@ -894,22 +906,17 @@ _send_notice_sql() {
     -s "NOTICE: Your ${_MODE} DB Usage on [${_THIS_U}] is too high: ${_SQL_NOW} MB${_MAIL_HOLD_SFX}" ${_MAIL_HOLD_RCPT}
 Hello,
 
-You are using more resources than allocated in your subscription.
-You have currently ${_CLIENT_CORES} Ægir ${_CLIENT_OPTION} ${_ENGINE_NR}.
+You are using more resources than allocated in your subscription. You have currently ${_CLIENT_CORES} Ægir ${_CLIENT_OPTION} ${_ENGINE_NR}.
 
-Your allowed databases space for ${_MODE} sites is ${_SQL_LIM} MB,
-but you are currently using ${_SQL_NOW} MB of databases space.
+Your allowed databases space for ${_MODE} sites is ${_SQL_LIM} MB, but you are currently using ${_SQL_NOW} MB of databases space.
 
-Please reduce your usage by deleting no longer used sites, or purchase
-enough Ægir Engines to cover your current usage.
+Please reduce your usage by deleting no longer used sites, or purchase enough Ægir Engines to cover your current usage.
 
 ${_TOP_SECTION}You can purchase more Ægir Engines easily online:
 
   https://omega8.cc/pricing
 
-To qualify as DEV/TEST with separate usage limits as specified
-in your subscription, the site should have in its main name
-a special keyword with ==two dots== on ==both sides== like this:
+To qualify as DEV/TEST with separate usage limits as specified in your subscription, the site should have in its main name a special keyword with ==two dots== on ==both sides== like this:
 
   .dev.
   .devel.
@@ -921,12 +928,9 @@ a special keyword with ==two dots== on ==both sides== like this:
   .stage.
   .staging.
 
-For example, a site with main name: abc.test.foo.com is by default
-excluded from your allocated databases limits for LIVE sites.
+For example, a site with main name: abc.test.foo.com is by default excluded from your allocated databases limits for LIVE sites.
 
-However, if we discover that anyone is using this method to hide real
-usage via listed keywords in the main site name and adding live domain(s)
-as aliases, such account will be suspended without any warning.
+However, if we discover that anyone is using this method to hide real usage via listed keywords in the main site name and adding live domain(s) as aliases, such account will be suspended without any warning.
 
 --
 This email has been sent by your Ægir resources usage daily monitor.
@@ -950,28 +954,19 @@ _send_notice_disk() {
     -s "NOTICE: Your Disk Usage on [${_THIS_U}] is too high${_MAIL_HOLD_SFX}" ${_MAIL_HOLD_RCPT}
 Hello,
 
-You are using more resources than allocated in your subscription.
-You have currently ${_CLIENT_CORES} Ægir ${_CLIENT_OPTION} ${_ENGINE_NR}.
+You are using more resources than allocated in your subscription. You have currently ${_CLIENT_CORES} Ægir ${_CLIENT_OPTION} ${_ENGINE_NR}.
 
-Your allowed disk space is ${_DSK_MIN_LIMIT} MB.
-You are currently using ${_TotSizH} MB of disk space.
+Your allowed disk space is ${_DSK_MIN_LIMIT} MB. You are currently using ${_TotSizH} MB of disk space.
 
-Please reduce your usage by deleting old backups, files,
-and no longer used sites, or purchase enough Ægir Engines
-to cover your current usage.
+Please reduce your usage by deleting old backups, files, and no longer used sites, or purchase enough Ægir Engines to cover your current usage.
 
 You can purchase more Ægir Engines easily online:
 
   https://omega8.cc/buy
 
-Note that unlike with database space limits, for files related disk space
-we count all your sites, including also all DEV/TEST sites, if they exist,
-even if they are marked as disabled in your Ægir control panel.
+Note that unlike with database space limits, for files related disk space we count all your sites, including also all DEV/TEST sites, if they exist, even if they are marked as disabled in your Ægir control panel.
 
-The files of a deleted site are kept aside for safety in your account,
-under static/files/.archived, and they keep counting here until that
-archive is pruned. Ask our support team to prune it once you no longer
-need those copies.
+The files of a deleted site are kept aside for safety in your account, under static/files/.archived, and they keep counting here until that archive is pruned. Ask our support team to prune it once you no longer need those copies.
 
 --
 This email has been sent by your Ægir resources usage daily monitor.
@@ -1314,11 +1309,6 @@ even if they are marked as disabled in your Ægir control panel.
   The optional =skip= at the end of line identifies DEV/TEST site
 
 EOF
-        fi
-        _DOW=$(date +%u)
-        _DOW=${_DOW//[^1-7]/}
-        if [ "${_DOW}" = "2" ]; then
-          _detect_deprecated_php
         fi
         _usage_count
         if [ -d "/home/${_THIS_U}.ftp" ]; then
