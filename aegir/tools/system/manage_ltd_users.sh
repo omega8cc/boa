@@ -16,6 +16,9 @@ _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n')"
 _TMP="/var/tmp"
 
 _usrGroup=users
+# the group the account's static/control files are handed to, set per
+# account below with _usrGroup: root for an account with no group of its own
+_ctlGroup=root
 _WEBG=www-data
 
 _acct_group() {
@@ -363,7 +366,7 @@ _ltd_d9_files_here() {
     _rp=$(realpath -e -- "${_rs}/private" 2> /dev/null)
     if [ -n "${_rf}" ] && [ -d "${_rf}" ] && [ "${_rf##*/}" = "files" ] \
       && [ "${_rf}" != "${_rp}" ] && _ltd_d9_own_store "${_a}" "${_rs}" "${_rf}" "${_s%% *}"; then
-      ( cd -P -- "${_rf}" 2> /dev/null && [ "$(pwd -P)" = "${_rf}" ] \
+      ( cd -P -- "${_rf}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_rf}" ] \
         && _ltd_d9_walk_here "${_ref}" "${_uids}" store )
       [ "$?" = "124" ] && _ok=NO
     fi
@@ -375,7 +378,7 @@ _ltd_d9_files_here() {
         *"|${_pp}|"*) continue ;;
       esac
       _done="${_done}${_pp}|"
-      ( cd -P -- "${_pp}" 2> /dev/null && [ "$(pwd -P)" = "${_pp}" ] \
+      ( cd -P -- "${_pp}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_pp}" ] \
         && _ltd_d9_walk_here "${_ref}" "${_uids}" public )
       [ "$?" = "124" ] && _ok=NO
     done < <(_ltd_d9_public "${_rs}" "${_a}")
@@ -840,11 +843,11 @@ _ltd_in_real_dir() {
     /data/disk/?*) _a=/data/disk ;;
   esac
   if [ -n "${_a}" ]; then
-    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+    _want="$(cd -P -- "${_a}" 2> /dev/null && /bin/pwd -P)${_d#"${_a}"}"
   else
-    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && /bin/pwd -P)/${_d##*/}"
   fi
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] && "$@" )
 }
 # A root stamp in the current (pinned) directory: the name is removed and
 # created exclusively, so a link put there in between is never followed.
@@ -961,7 +964,7 @@ _ltd_drush_strip() {
   fi
   _l=$(printf '%s\n' "${_l}" | grep -E '^[0-9]+:[0-9]+$' | sort -u | grep -c .)
   if [ "${_l}" -gt 0 ]; then
-    echo "NOTE: ${3}: the ~/.drush reset left ${_l} entries owned by another user in place in $(pwd -P)"
+    echo "NOTE: ${3}: the ~/.drush reset left ${_l} entries owned by another user in place in $(/bin/pwd -P)"
   fi
   mkdir -p ./usr
 }
@@ -1081,13 +1084,16 @@ _ACCT_REOWN_PL='use Fcntl; my ($u, $g, @f) = @ARGV; for my $f (@f) { sysopen(my 
 # left and printed (dev:ino), and nothing is changed unless the current
 # directory and every directory above it, up to /, are owned by those uids.
 # A gid given with a + first keeps the group write of what is handed over,
-# as the ownership fixers' -W does; no caller here gives one.
+# as the ownership fixers' -W does; no caller here gives one. A list with '='
+# first takes a uid no passwd entry names only when it is listed: the
+# control folder's hand-overs give one (_ltd_ctrl_init, _ltd_ctrl_info_owner).
 _SAT_REOWN_OWN_PL='use Fcntl;
 my ($o, $u, $g) = (shift @ARGV, shift @ARGV, shift @ARGV);
 my $deny = $o =~ s/^-// ? 1 : 0;
+my $strict = $o =~ s/^=// ? 1 : 0;
 my $gw = $g =~ s/^\+// ? 1 : 0;
 my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, $o);
-sub own { my $u = shift; return (exists $own{$u} ? 0 : 1) if $deny; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
+sub own { my $u = shift; return (exists $own{$u} ? 0 : 1) if $deny; return (exists $own{$u} ? 1 : 0) if $strict; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
 my ($p, $ok, @d, @x) = (".", 0);
 for (1 .. 256) {
   @x = stat($p) or last;
@@ -1308,7 +1314,7 @@ _ltd_left_note() {
   local _n
   _n=$(printf '%s\n' "${1}" | grep -E '^[0-9]+:[0-9]+$' | sort -u | grep -c .)
   [ "${_n}" -gt 0 ] 2> /dev/null || return 0
-  echo "NOTE: ${2} left ${_n} entries owned by another user ${3} in $(pwd -P)"
+  echo "NOTE: ${2} left ${_n} entries owned by another user ${3} in $(/bin/pwd -P)"
 }
 # owner:group names as uid:gid numbers, or status 1
 _ltd_num_ids() {
@@ -1685,7 +1691,7 @@ _ltd_ctrl_read() {
 }
 _ltd_ctrl_put_here() {
   printf '%s\n' "${2}" \
-    | _ltd_put_own_here "${1}" "${_USER}.ftp:${_usrGroup}" 0644
+    | _ltd_put_own_here "${1}" "${_USER}.ftp:${_ctlGroup}" 0644
 }
 _ltd_ctrl_put() {
   # $1 = name, $2 = content: a file of the main login's
@@ -1707,10 +1713,10 @@ _ltd_ctrl_info_owner() {
   # account's file the login renamed in keeps its owner, counted
   local _o _ids
   _o=$(_acct_walk_uids "${_USER}") || return 0
-  _ids=$(_ltd_num_ids "${_USER}.ftp:${_usrGroup}") || return 0
+  _ids=$(_ltd_num_ids "${_USER}.ftp:${_ctlGroup}") || return 0
   _ltd_left_note "$(env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 \
     -maxdepth 1 -name '*.info' -type f -links 1 -execdir perl \
-    -e "${_SAT_REOWN_OWN_PL}" -- "${_o}" "${_ids%%:*}" "${_ids#*:}" {} + \
+    -e "${_SAT_REOWN_OWN_PL}" -- "=${_o}" "${_ids%%:*}" "${_ids#*:}" {} + \
     2> /dev/null)" "the control files hand-over" "in place"
 }
 # The control directory on the first pass of a serial, inside the real
@@ -1734,24 +1740,591 @@ _ltd_ctrl_init() (
       cp -T --no-preserve=mode --remove-destination \
         /var/xdrago/conf/control-readme.txt ./README.txt ) &> /dev/null
   fi
-  _ltd_tree_own_here "${_o}" "${_USER}.ftp:${_usrGroup}" \
+  _ltd_tree_own_here "=${_o}" "${_USER}.ftp:${_ctlGroup}" \
     "the control directory hand-over" || exit 0
   _ltd_left_note "$(perl -e "${_ACCT_RM_OWN_PL}" -- h "${_o}" - ./.ctrl.* 2> /dev/null)" \
     "the removal of old control stamps" "in place"
   _ltd_stamp_put ".ctrl.${_tRee}.${_xSrl}.pid" "OK"
 )
+# The gid of the account $1's own group, or -1 when it is still on the
+# box-wide group (whose members are every other account's .ftp login too).
+_ltd_own_gid() {
+  local _g
+  # Only when the account and its main login both have it as their primary
+  # group, and no revert of it is waiting on a busy identity: the login is
+  # what makes files in control/, and a revert re-groups its set-group-ID
+  # folders to the box-wide group, which new files there then take.
+  [ -s "/var/log/boa/instgrp.revert-pending.${1}" ] && { echo -1; return 0; }
+  if [ "$(id -gn -- "${1}" 2> /dev/null)" = "${1}" ] \
+    && [ "$(id -gn -- "${1}.ftp" 2> /dev/null)" = "${1}" ]; then
+    _g=$(getent group "${1}" 2> /dev/null | cut -d: -f3)
+    [[ "${_g}" =~ ^[0-9]+$ ]] && { echo "${_g}"; return 0; }
+  fi
+  echo -1
+}
+# The group the account $1's static/control files are handed to: root while
+# it has no group of its own (_ltd_own_gid), so a file the login made there
+# during a pass is never handed to the shared group with its group write
+# still on; else the pass's group $2. The Octopus pass and BOA.sh hand an
+# unconverted account's control tree to root too; they judge by the main
+# user's group alone, so while a revert waits or the login is back on users
+# they give it the account's group, and the next pass here takes it back.
+_ltd_ctl_group() {
+  if [ "$(_ltd_own_gid "${1}")" = "-1" ]; then
+    echo root
+  else
+    echo "${2}"
+  fi
+}
+# What root or the account's identities own (the uids given second, with the
+# account's recorded removed identities) in the current (pinned) directory, never through
+# a link nor on a hard-linked file, and nothing unless this directory and
+# every one above it up to / are theirs: with t, a directory writable by
+# others or by a group that is not the account's own (the gid given third,
+# -1 for none) gets the sticky bit, so no one outside the account can rename
+# or remove what is not theirs in it; with w, such write is taken off (a
+# directory group root holds is not another account's; a file keeps group
+# write only for the account's own group), a file losing it loses any
+# set-ID bit too, and, for an account with no group of its own, a directory
+# is handed to group root and made set-group-ID, so what the account makes
+# in it later takes group root, never the shared group (a folder can come
+# without that bit, as one did on an account moved back to the shared
+# group).
+_LTD_SHUT_OWN_PL='use Fcntl;
+my ($op, $o, $g) = (shift @ARGV, shift @ARGV, shift @ARGV);
+$g = -1 unless defined $g && $g =~ /^[0-9]+$/;
+my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, $o);
+sub own { my $u = shift; return exists $own{$u} ? 1 : 0; }
+my ($p, $ok, @d, @x) = (".", 0);
+for (1 .. 256) {
+  @x = stat($p) or last;
+  last unless own($x[4]);
+  if (@d && $x[0] == $d[0] && $x[1] == $d[1]) { $ok = 1; last; }
+  @d = @x;
+  $p .= "/..";
+}
+exit 1 unless $ok;
+for my $f (@ARGV) {
+  sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
+  my @s = stat($h);
+  if (@s && own($s[4]) && (-d _ || (-f _ && $s[3] == 1))) {
+    my ($m, $x) = ($s[2] & 07777, 02 | (($s[5] == $g || (-d _ && $s[5] == 0)) ? 0 : 020));
+    if ($op eq "t") {
+      chmod($m | 01000, $h) if -d _ && ($m & $x) && !($m & 01000);
+    } elsif ($op eq "w" && -d _) {
+      my $n = ($m & ~$x) | ($g < 0 ? 02000 : 0);
+      chown(-1, 0, $h) if $g < 0 && $s[5] != 0;
+      chmod($n, $h) if $n != $m || ($g < 0 && $s[5] != 0);
+    } elsif ($op eq "w") {
+      chmod($m & ~$x & ~06000, $h) if $m & $x;
+    }
+  }
+  close($h);
+}
+exit 0;'
+# An account still on the box-wide group shares it with every other
+# account's .ftp login, and what its own login makes in control/ is group
+# writable (sessions and uploads run with umask 002): its real static/ gets
+# the sticky bit, so no other account can rename or replace control/ or
+# anything else the account's identities and root put there, nothing in its
+# real control/ stays writable by others or by a group that is not the
+# account's own, and control/ with every folder in it is handed to group
+# root: a file or folder the login makes there later takes that group from
+# its set-group-ID parent, so no other account can write it in the minutes
+# before the next pass. On an account with a group of its own (_ltd_own_gid)
+# only write for others, or for a group that is not the account's, goes.
+# $1 = the account.
+_ltd_ctrl_shut() {
+  local _o _g
+  _o=$(_acct_walk_uids "${1}") || return 0
+  _g=$(_ltd_own_gid "${1}")
+  _ltd_in_real_dir "/data/disk/${1}/static" \
+    perl -e "${_LTD_SHUT_OWN_PL}" -- t "${_o}" "${_g}" . 2> /dev/null
+  _ltd_in_real_dir "/data/disk/${1}/static/control" \
+    perl -e "${_LTD_SHUT_OWN_PL}" -- w "${_o}" "${_g}" . 2> /dev/null
+  if [ "${_g}" = "-1" ]; then
+    _ltd_in_real_dir "/data/disk/${1}/static/control" \
+      env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 \
+      \( \( -type d \( -perm -0002 -o -perm -0020 -o ! -gid 0 -o ! -perm -2000 \) \) \
+      -o \( -type f \( -perm -0002 -o -perm -0020 \) \) \) \
+      -execdir perl -e "${_LTD_SHUT_OWN_PL}" -- w "${_o}" "${_g}" {} + 2> /dev/null
+  else
+    _ltd_in_real_dir "/data/disk/${1}/static/control" \
+      env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 \
+      \( -type d -o -type f \) \( -perm -0002 -o -perm -0020 \) \
+      -execdir perl -e "${_LTD_SHUT_OWN_PL}" -- w "${_o}" "${_g}" {} + 2> /dev/null
+  fi
+  return 0
+}
+# The uids of the account $1's identities (_acct_walk_uids) for its sites'
+# PHP, which cannot read passwd: global-mode.inc honours a 503 gate in
+# static/control only in a folder root or one of them owns and no one else
+# can write, so a control/ another account's login made or moved into
+# static/ holds none of the account's sites. Root's alone, in
+# /data/conf/acct-uids/<oN> (the folder 0711, the file 0644), rewritten
+# only when it differs; nothing for an account not in passwd.
+_ltd_acct_uids_put() {
+  local _o _d=/data/conf/acct-uids _f
+  _o=$(_acct_walk_uids "${1}") || return 0
+  _f="${_d}/${1}"
+  [ "$(cat -- "${_f}" 2> /dev/null)" = "${_o}" ] && return 0
+  mkdir -p "${_d}" && chown root:root "${_d}" && chmod 0711 "${_d}" || return 1
+  rm -f -- "${_f}.tmp"
+  if ( umask 022; printf '%s\n' "${_o}" > "${_f}.tmp" ) \
+    && chown root:root "${_f}.tmp" && chmod 0644 "${_f}.tmp" \
+    && mv -f -T -- "${_f}.tmp" "${_f}"; then
+    return 0
+  fi
+  rm -f -- "${_f}.tmp"
+  return 1
+}
+# The numbers of the account's removed identities, root's alone, one a line
+# in /data/conf/acct-uids/<oN>.gone (0600). Root's readers take a file whose
+# owner no user has as the account's own only when its number is listed here
+# (_acct_walk_uids): a removed login of another account leaves files under
+# such a number too. The ltd worker and the Octopus upgrade write a number
+# before deluser frees it, and take it off every other account's list, since
+# this account holds it now.
+_acct_gone_write() {
+  local _f="${1}" _t="${1}.tmp.$$" _rc
+  rm -f -- "${_t}"
+  # grep says 1 for no line (an empty list), 2 for a failed read or write
+  ( umask 077; printf '%s\n' "${2}" | grep -E '^[1-9][0-9]*( [0-9]+)?$' > "${_t}" )
+  _rc=$?
+  if [ "${_rc}" -le 1 ] && [ -f "${_t}" ] && [ ! -L "${_t}" ]; then
+    chown root:root "${_t}" && chmod 0600 "${_t}" && mv -f -T -- "${_t}" "${_f}" && return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+_acct_gone_add() {
+  local _a="${1}" _u="${2}" _d=/data/conf/acct-uids _f _r=0
+  [[ "${_a}" =~ ^[a-z0-9-]+$ && "${_u}" =~ ^[1-9][0-9]*$ ]] || return 1
+  mkdir -p "${_d}" && chown root:root "${_d}" && chmod 0711 "${_d}" || return 1
+  for _f in "${_d}"/*.gone; do
+    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
+    [ "${_f}" = "${_d}/${_a}.gone" ] && continue
+    grep -qx -- "${_u}" "${_f}" || continue
+    _acct_gone_write "${_f}" "$(grep -vx -- "${_u}" "${_f}")"
+  done
+  _f="${_d}/${_a}.gone"
+  if ! grep -qsx -- "${_u}" "${_f}"; then
+    _acct_gone_write "${_f}" "$( { cat -- "${_f}" 2> /dev/null; echo "${_u}"; } | sort -un)" || _r=1
+  fi
+  # held back from every other account's next identity (_acct_pick_uid)
+  _acct_unswept_add "${_u}" || _r=1
+  return "${_r}"
+}
+# A number freed for an account identity is listed in
+# /data/conf/acct-uids/.unswept (root's, 0600) until the nightly sweep has
+# handed over what it still owns on the server's own filesystems (a file
+# left in another account's open folder, in /tmp). The list, when first
+# made, takes every recorded number no user has: those were freed before it
+# existed and nothing has swept them. The sweep only tidies: a walk of
+# folders other users can rename into never proves a number owns nothing,
+# so no number goes to another account because the sweep found nothing
+# (_acct_pick_uid).
+_acct_unswept_seed() {
+  local _f _u
+  for _f in /data/conf/acct-uids/*.gone; do
+    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
+    while IFS= read -r _u; do
+      [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+      getent passwd "${_u}" > /dev/null 2>&1 || echo "${_u}"
+    done < "${_f}"
+  done
+  return 0
+}
+# The list is read and written under its lock. Every add also names the
+# number in .unswept.again, which the nightly sweep empties as it starts: a
+# number freed again while the sweep walks stays listed.
+_acct_unswept_add() {
+  local _u="${1}" _d=/data/conf/acct-uids _f _c
+  [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || return 1
+  mkdir -p "${_d}" && chown root:root "${_d}" && chmod 0711 "${_d}" || return 1
+  _f="${_d}/.unswept"
+  (
+    flock -w 60 9 || exit 1
+    _c=$(cat -- "${_d}/.unswept.again" 2> /dev/null)
+    _acct_gone_write "${_d}/.unswept.again" "$(printf '%s\n%s\n' "${_c}" "${_u}" | sort -un)" || exit 1
+    if [ -f "${_f}" ] && [ ! -L "${_f}" ]; then
+      grep -qx -- "${_u}" "${_f}" && exit 0
+      _c=$(cat -- "${_f}") || exit 1
+    else
+      _c=$(_acct_unswept_seed)
+    fi
+    _acct_gone_write "${_f}" "$(printf '%s\n%s\n' "${_c}" "${_u}" | sort -un)"
+  ) 9> "${_d}/.unswept.lock"
+}
+# The numbers of an account that is gone (boa cleanup purge, or one removed
+# some other way, which the ltd worker's prune finds by its records) are
+# listed in /data/conf/acct-uids/.purged, each with the time it joined, and
+# in .unswept: no account takes one, except as the last resort when no other
+# number is free and the nightly sweep has walked it, the oldest first
+# (_acct_pick_uid).
+_acct_purged_add() {
+  local _d=/data/conf/acct-uids _u _c _n="" _now _r=0
+  _now=$(date +%s)
+  for _u in "$@"; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    grep -qx -- "${_u}" <<< "${_n}" || _n="${_n}${_u}"$'\n'
+  done
+  [ -n "${_n}" ] || return 0
+  mkdir -p "${_d}" && chown root:root "${_d}" && chmod 0711 "${_d}" || return 1
+  (
+    flock -w 60 9 || exit 1
+    _c=$(cat -- "${_d}/.purged" 2> /dev/null)
+    # a number added again was freed again: it takes the current time
+    _acct_gone_write "${_d}/.purged" "$(while read -r _u _t; do
+        [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+        grep -qx -- "${_u}" <<< "${_n}" || echo "${_u} ${_t}"
+      done <<< "${_c}"
+      while IFS= read -r _u; do
+        [ -n "${_u}" ] && echo "${_u} ${_now}"
+      done <<< "${_n}")"
+  ) 9> "${_d}/.unswept.lock" || _r=1
+  while IFS= read -r _u; do
+    [ -n "${_u}" ] || continue
+    _acct_unswept_add "${_u}" || _r=1
+  done <<< "${_n}"
+  return "${_r}"
+}
+# The number a new identity of account $2 is made under, the highest of
+# those that fit first ($1 high, as useradd -r picks one) or the lowest ($1
+# low, as adduser --system does), among the system uids no user has and no
+# process or thread runs as (real, effective, saved or file system uid): a
+# number the account itself freed (<oN>.gone) before any other, then one no
+# account holds (in no other account's record, not waiting for the sweep in
+# .unswept, not a gone account's in .purged); only when none is left, the
+# number of a gone account the sweep has walked and no account has recorded
+# since, the oldest first, with status 2. A number freed from a live account is never given to another:
+# what it left outside the account's trees would be that account's, and no
+# walk proves it left nothing. Status 1, and nothing, when the range, the
+# users or the processes cannot be read or no number is free. A name that
+# cannot be an account's takes no number back.
+_acct_pick_uid() {
+  local IFS=$' \t\n'
+  local _w="${1}" _a="${2}" _lo="" _hi="" _um="" _k _v _u _f _t _old="" _oldt=""
+  local _d=/data/conf/acct-uids _uns=""
+  local _pso=NO
+  local -A _h=() _l=() _own=() _g=()
+  [[ "${_a}" =~ ^[a-z0-9-]+$ ]] || _a=""
+  case "${_w}" in
+    high)
+      while read -r _k _v _; do
+        _v="${_v%%#*}"
+        case "${_k}" in
+          SYS_UID_MIN) _lo="${_v}" ;;
+          SYS_UID_MAX) _hi="${_v}" ;;
+          UID_MIN) _um="${_v}" ;;
+        esac
+      done < <(grep -E '^[[:space:]]*(SYS_)?UID_M(IN|AX)[[:space:]]' /etc/login.defs 2> /dev/null)
+      [ -n "${_lo}" ] || _lo=101
+      if [ -z "${_hi}" ]; then
+        [[ "${_um}" =~ ^[1-9][0-9]*$ ]] && _hi=$(( _um - 1 )) || _hi=999
+      fi
+      ;;
+    low)
+      while IFS='=' read -r _k _v; do
+        _k="${_k//[[:space:]]/}"
+        _v="${_v%%#*}"
+        _v="${_v//[[:space:]\"\']/}"
+        case "${_k}" in
+          FIRST_SYSTEM_UID) _lo="${_v}" ;;
+          LAST_SYSTEM_UID) _hi="${_v}" ;;
+        esac
+      done < <(grep -E '^[[:space:]]*(FIRST|LAST)_SYSTEM_UID[[:space:]]*=' /etc/adduser.conf 2> /dev/null)
+      [ -n "${_lo}" ] || _lo=100
+      [ -n "${_hi}" ] || _hi=999
+      ;;
+    *) return 1 ;;
+  esac
+  [[ "${_lo}" =~ ^[1-9][0-9]*$ && "${_hi}" =~ ^[1-9][0-9]*$ ]] || return 1
+  [ "${_lo}" -le "${_hi}" ] || return 1
+  while IFS=: read -r _k _v _u _; do
+    [[ "${_u}" =~ ^[0-9]+$ ]] && _h[${_u}]=1
+  done < <(getent passwd 2> /dev/null)
+  # no passwd read, no pick: every number would look free
+  [ -n "${_h[0]:-}" ] || return 1
+  for _u in $(ps -eL -o ruid= -o euid= -o suid= -o fsuid= 2> /dev/null); do
+    [[ "${_u}" =~ ^[0-9]+$ ]] || continue
+    _h[${_u}]=1
+    [ "${_u}" = "0" ] && _pso=YES
+  done
+  # no process list read, no pick: a number something runs as would look free
+  [ "${_pso}" = "YES" ] || return 1
+  for _f in "${_d}"/*.gone; do
+    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
+    while IFS= read -r _u; do
+      [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+      _g[${_u}]=1
+      if [ -n "${_a}" ] && [ "${_f}" = "${_d}/${_a}.gone" ]; then
+        _own[${_u}]=1
+      else
+        _l[${_u}]=1
+      fi
+    done < "${_f}"
+  done
+  # (no list yet: every number it would take is in a record above)
+  if [ -f "${_d}/.unswept" ] && [ ! -L "${_d}/.unswept" ]; then
+    _uns=$(cat -- "${_d}/.unswept") || return 1
+  fi
+  while IFS= read -r _u; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    [ -n "${_own[${_u}]:-}" ] || _l[${_u}]=1
+  done <<< "${_uns}"
+  while read -r _u _t; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] && _l[${_u}]=1
+  done 2> /dev/null < "${_d}/.purged"
+  if [ "${_w}" = "high" ]; then
+    for (( _u = _hi; _u >= _lo; _u-- )); do
+      [ -n "${_own[${_u}]:-}" ] && [ -z "${_h[${_u}]:-}" ] && { echo "${_u}"; return 0; }
+    done
+    for (( _u = _hi; _u >= _lo; _u-- )); do
+      [ -n "${_h[${_u}]:-}${_l[${_u}]:-}${_own[${_u}]:-}" ] || { echo "${_u}"; return 0; }
+    done
+  else
+    for (( _u = _lo; _u <= _hi; _u++ )); do
+      [ -n "${_own[${_u}]:-}" ] && [ -z "${_h[${_u}]:-}" ] && { echo "${_u}"; return 0; }
+    done
+    for (( _u = _lo; _u <= _hi; _u++ )); do
+      [ -n "${_h[${_u}]:-}${_l[${_u}]:-}${_own[${_u}]:-}" ] || { echo "${_u}"; return 0; }
+    done
+  fi
+  # the last resort: a gone account's number the sweep has walked, never one
+  # an account has recorded since; without the list nothing counts as walked
+  [ -f "${_d}/.unswept" ] && [ ! -L "${_d}/.unswept" ] || return 1
+  while read -r _u _t; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ && "${_t}" =~ ^[0-9]+$ ]] || continue
+    [ "${_u}" -ge "${_lo}" ] && [ "${_u}" -le "${_hi}" ] || continue
+    [ -z "${_h[${_u}]:-}${_g[${_u}]:-}" ] || continue
+    grep -qx -- "${_u}" <<< "${_uns}" && continue
+    if [ -z "${_oldt}" ] || [ "${_t}" -lt "${_oldt}" ]; then
+      _old="${_u}"
+      _oldt="${_t}"
+    fi
+  done 2> /dev/null < "${_d}/.purged"
+  [ -n "${_old}" ] || return 1
+  echo "${_old}"
+  return 2
+}
+# Make an identity of account $2 under the number _acct_pick_uid gives ($1
+# high, then the rest is a useradd -r command, or low, an adduser --system
+# one), the name last. A number taken meanwhile is picked again. A gone
+# account's number given as the last resort is said in the incident log.
+# With no number to pick nothing is made, since the tool alone could take a
+# number another account freed: the incident log says so (and the ltd
+# worker mails it once a day), and the next pass tries again.
+_acct_new_identity() {
+  local _w="${1}" _a="${2}" _o _n _i _r _m _p
+  shift 2
+  case "${_w}" in
+    high) _o="-u" ;;
+    low) _o="--uid" ;;
+    *) return 1 ;;
+  esac
+  [ "$#" -ge 2 ] || return 1
+  for _i in 1 2 3; do
+    _n=$(_acct_pick_uid "${_w}" "${_a}")
+    _p=$?
+    [ "${_p}" -eq 0 ] || [ "${_p}" -eq 2 ] || break
+    "${@:1:$#-1}" "${_o}" "${_n}" "${@: -1}"
+    _r=$?
+    if [ "${_r}" -eq 0 ]; then
+      if [ "${_p}" -eq 2 ]; then
+        _m="${_a}: ${*: -1} made under ${_n}, a number of an account that is gone: no other was free"
+        mkdir -p /var/log/boa
+        echo "$(date) ${_m}" >> /var/log/boa/manage_ltd.incident.log
+      fi
+      return 0
+    fi
+    # failed for another reason than its number (refused, or made and then
+    # failed): as the tool alone would
+    _m=$(getent passwd "${_n}" 2> /dev/null) || return "${_r}"
+    [ "${_m%%:*}" = "${*: -1}" ] && return "${_r}"
+  done
+  _m="${_a}: no uid free of other accounts' removed identities for ${*: -1}, not made"
+  if declare -F _ltd_notice > /dev/null 2>&1; then
+    _ltd_notice "uid-hold-${_a}" "${_m}" "" > /dev/null
+  else
+    mkdir -p /var/log/boa
+    echo "$(date) ${_m}" >> /var/log/boa/manage_ltd.incident.log
+  fi
+  return 1
+}
+# Every number a user has again leaves the lists (its files are that user's
+# now), and so does the list of an account no longer in passwd.
+_ltd_acct_gone_prune_all() {
+  local _f _a _u _keep _gone _c _x _d=/data/conf/acct-uids
+  local -A _seen=()
+  # an account counts as gone only while passwd answers for root
+  getent passwd root > /dev/null 2>&1 || return 0
+  for _f in "${_d}"/*; do
+    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
+    _a="${_f##*/}"
+    _a="${_a%.gone}"
+    [[ "${_a}" =~ ^[a-z0-9-]+$ ]] || continue
+    [ -n "${_seen[${_a}]:-}" ] && continue
+    _seen[${_a}]=1
+    if ! id -u -- "${_a}" > /dev/null 2>&1; then
+      # the account is gone (removed other than by boa cleanup purge): the
+      # numbers it recorded and those its identities held (its uid list) no
+      # user has stay held, for no account; nothing goes unless both read
+      _c=""
+      if [ -f "${_d}/${_a}.gone" ] && [ ! -L "${_d}/${_a}.gone" ]; then
+        _c=$(cat -- "${_d}/${_a}.gone") || continue
+      fi
+      if [ -f "${_d}/${_a}" ] && [ ! -L "${_d}/${_a}" ]; then
+        _x=$(tr ',' '\n' < "${_d}/${_a}") || continue
+        _c="${_c}"$'\n'"${_x}"
+      fi
+      _gone=""
+      while IFS= read -r _u; do
+        [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+        getent passwd "${_u}" > /dev/null 2>&1 && continue
+        _gone="${_gone} ${_u}"
+      done <<< "${_c}"
+      # shellcheck disable=SC2086
+      _acct_purged_add ${_gone} && rm -f -- "${_d}/${_a}.gone" "${_d}/${_a}"
+      continue
+    fi
+    _f="${_d}/${_a}.gone"
+    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
+    _keep=""
+    while IFS= read -r _u; do
+      [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+      getent passwd "${_u}" > /dev/null 2>&1 && continue
+      _keep="${_keep}${_u}"$'\n'
+    done < "${_f}"
+    [ "$(grep -E '^[1-9][0-9]*$' "${_f}")" = "${_keep%$'\n'}" ] && continue
+    _acct_gone_write "${_f}" "${_keep%$'\n'}"
+  done
+  return 0
+}
+# Run inside the real static/: when control/ is a folder whose own owner no
+# passwd entry names, the gate files in it go and each name removed is
+# printed, the folder first closed to group and other writers (another
+# login of the account that made it could put a gate back before root hands
+# it over). A removed login's folder is under such a number; root's walks
+# take it as the account's own, and hand the folder over, only when the
+# number was one of the account's identities (_acct_walk_uids), and a gate
+# left in it would then hold the account's sites. The worker is parked
+# through a move, so no gate of a move is lost here.
+_ACCT_GONE_GATE_PL='my @s = lstat("./control") or exit 0;
+exit 0 unless ($s[2] & 0170000) == 0040000;
+{
+  local $! = 0;
+  exit 0 if defined(getpwuid($s[4]));
+  exit 0 unless $! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM};
+}
+chdir("./control") or exit 0;
+my @d = stat(".");
+exit 0 unless @d && $d[0] == $s[0] && $d[1] == $s[1];
+chmod(($d[2] & 07777) & ~022, ".") if $d[2] & 022;
+for my $n ("http-off.pid", "http-off-host.pid") {
+  print "$n\n" if lstat($n) && unlink($n);
+}
+exit 0;'
+# The account $1's uid list for its sites (_ltd_acct_uids_put) and the gate
+# files out of a control/ a gone login left (_ACCT_GONE_GATE_PL), before any
+# walk of this pass hands that folder to the account.
+_ltd_ctrl_gate_guard() {
+  local _r
+  id -u -- "${1}" > /dev/null 2>&1 || return 0
+  [ -d "/data/disk/${1}/static" ] || return 0
+  _ltd_acct_uids_put "${1}" \
+    || echo "ALERT: could not write /data/conf/acct-uids/${1}"
+  _r=$(_ltd_in_real_dir "/data/disk/${1}/static" perl -e "${_ACCT_GONE_GATE_PL}" 2> /dev/null)
+  if [ -n "${_r}" ]; then
+    echo "ALERT: /data/disk/${1}/static/control is owned by a number no user has: its 503 gate files are removed ($(printf '%s' "${_r}" | tr '\n' ' '))"
+  fi
+  return 0
+}
+_ltd_ctrl_gate_guard_all() {
+  local _p
+  for _p in /data/disk/*; do
+    [ -d "${_p}" ] && [ ! -L "${_p}" ] || continue
+    _ltd_ctrl_gate_guard "${_p##*/}"
+  done
+  return 0
+}
+# The whole of an account's control/, judged once before a run acts on it:
+# run inside the account's real static/, it prints OK when control/ and
+# everything in it, never followed through a link, and static/ and every
+# directory above it up to /, are root's or one of the account's identities'
+# (the uids given first, _acct_walk_uids, with the account's recorded
+# removed identities), ABSENT when there is no control/, and otherwise why
+# not, on one line.
+# Every other account's .ftp login is in the box-wide group, which an account
+# not yet on its own group still has on static/: such a login could put a
+# control/ of its own there, or a file of its own in a group-writable
+# directory below it, for root to act on as the account's.
+_ACCT_CTRL_OWN_PL='use Fcntl;
+my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, shift @ARGV // "");
+sub own { my $u = shift; return exists $own{$u} ? 1 : 0; }
+sub isd { ($_[0] & 0170000) == 0040000 }
+sub nm { (my $v = shift) =~ s/[^\x20-\x7e]/?/g; return substr($v, 0, 200); }
+sub refuse { print "$_[0]\n"; exit 0; }
+my ($p, $top, @d, @x) = (".", 0);
+for (1 .. 256) {
+  @x = stat($p) or refuse("static/ cannot be read");
+  own($x[4]) or refuse("a directory above control/ is owned by uid $x[4]");
+  if (@d && $x[0] == $d[0] && $x[1] == $d[1]) { $top = 1; last; }
+  @d = @x;
+  $p .= "/..";
+}
+$top or refuse("static/ is too deep");
+my @s = lstat("./control");
+unless (@s) { print(($!{ENOENT} ? "ABSENT" : "control/ cannot be read") . "\n"); exit 0; }
+isd($s[2]) or refuse("control is not a directory");
+my ($n, @q) = (0, ["control", @s]);
+while (my $e = shift @q) {
+  my ($f, @t) = @$e;
+  own($t[4]) or refuse(nm($f) . " is owned by uid $t[4]" . (defined(getpwuid($t[4])) ? "" : ", which no user has and root never recorded for this account: if the file is its own, give it to its .ftp login"));
+  next unless isd($t[2]);
+  opendir(my $h, "./$f") or refuse(nm($f) . " cannot be read");
+  for my $b (readdir($h)) {
+    next if $b eq "." || $b eq "..";
+    ++$n > 100000 and refuse("control/ holds more than 100000 entries");
+    my @u = lstat("./$f/$b") or next;
+    push @q, ["$f/$b", @u];
+  }
+  closedir($h);
+}
+print "OK\n";
+exit 0;'
+# 0 when the account $1's control/ is its own as _ACCT_CTRL_OWN_PL judges it
+# (or it has none); otherwise why not on stdout, status 1. A run that acts
+# on what control/ says leaves the account as it is when it is not.
+_acct_ctrl_own() {
+  local _a="${1}" _o _r _want
+  # an account not in passwd (not made yet, or removed) has nothing to
+  # judge it by: read as before
+  _o=$(_acct_walk_uids "${_a}" 2> /dev/null) || return 0
+  [ -e "/data/disk/${_a}/static" ] || [ -L "/data/disk/${_a}/static" ] || return 0
+  _want="$(cd -P -- /data/disk 2> /dev/null && /bin/pwd -P)/${_a}/static"
+  _r=$(cd -P -- "/data/disk/${_a}/static" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] \
+    && perl -e "${_ACCT_CTRL_OWN_PL}" -- "${_o}" 2> /dev/null)
+  case "${_r}" in
+    OK|ABSENT) return 0 ;;
+  esac
+  echo "${_r:-static/ is not a real directory}"
+  return 1
+}
 # The uids root's walks over the account $1's trees act on, comma-separated:
 # root's own (0, what root wrote there for the account) and those of every
 # identity of the account as passwd names them: oN and oN.<name>, that is
 # its .ftp login, its client sub-accounts oN.<client> and oN.<client>-dev
 # and its PHP-FPM users oN.web and oN.<ver>.web. An account name holds no
 # dot, so the match is exact: o1 never takes o10's. Status 1, and nothing,
-# unless the account itself is in passwd. The walks also take a uid no
-# passwd entry names as the account's own: a login removed before the
-# limited-shell worker handed its files to the account at removal left
-# those. Nothing records which account a freed number served, so such an
-# entry is taken wherever it came from. A lookup that fails, rather than
-# finding no such user, leaves the entry another user's.
+# unless the account itself is in passwd. The numbers of the account's
+# removed identities that root recorded in /data/conf/acct-uids/<oN>.gone
+# (the ltd worker, before deluser frees one) are listed too while no user
+# has them. Root's check of the control folder, its reads of the control
+# files and its hand-overs into that folder take a uid no passwd entry names
+# only when it is listed: another account's removed login leaves files under
+# such a number too. Its other hand-overs, mode walks and removal walks
+# still take any.
 _acct_walk_uids() {
   local _a="${1}" _n _p _u _r _x="0" _self=NO
   case "${_a}" in
@@ -1764,6 +2337,13 @@ _acct_walk_uids() {
     [ "${_n}" = "${_a}" ] && _self=YES
   done < <(getent passwd 2> /dev/null)
   [ "${_self}" = "YES" ] || return 1
+  # the account's removed identities, their numbers recorded by root before
+  # deluser freed them; a number a user has again is not taken
+  while IFS= read -r _u; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    getent passwd "${_u}" > /dev/null 2>&1 && continue
+    _x="${_x},${_u}"
+  done 2> /dev/null < "/data/conf/acct-uids/${_a}.gone"
   echo "${_x}"
 }
 # Root's removals in an account's trees, run inside the directory they act
@@ -1934,8 +2514,8 @@ _ACCT_CHATTR_PL='use Fcntl; my ($op, @f) = @ARGV; my $rc = 0; for my $f (@f) { s
 # hard link, and a name swapped for anything else is never entered.
 _ltd_chattr_sub_here() {
   local _h
-  _h="$(pwd -P)"
-  ( cd -P -- "./${2}" 2> /dev/null && [ "$(pwd -P)" = "${_h}/${2}" ] \
+  _h="$(/bin/pwd -P)"
+  ( cd -P -- "./${2}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_h}/${2}" ] \
     && chattr "${1}i" . ) &> /dev/null
   return 0
 }
@@ -2162,6 +2742,25 @@ _find_fast_mirror_early() {
     fi
   else
     _USE_MIR="files.boa.io"
+  fi
+  # A mirror box (it holds a published tree's stamp) takes its files from
+  # files.aegir.cc, the one mirror name with no cache in front of it, when
+  # that name is not this box itself and serves that stamp; any other box,
+  # or a mirror box where it does not, keeps the pick above.
+  _mirStp=""
+  for _mirStp in /var/www/static/versions/*/boa/.update.txt; do
+    [[ -s "${_mirStp}" ]] && break
+    _mirStp=""
+  done
+  if [[ -n "${_mirStp}" ]]; then
+    _mirIp="$(getent ahostsv4 files.aegir.cc 2> /dev/null | awk '{ print $1; exit }')"
+    if [[ -n "${_mirIp}" ]] \
+      && ! ip -o addr show 2> /dev/null | grep -qF " ${_mirIp}/" \
+      && curl -s --fail --max-time 10 -A iCab \
+        "https://files.aegir.cc/${_mirStp#/var/www/static/}" 2> /dev/null \
+        | head -c 64 | grep -q '^[^<]'; then
+      _USE_MIR="files.aegir.cc"
+    fi
   fi
   _urlDev="https://${_USE_MIR}/dev"
   _urlHmr="https://${_USE_MIR}/versions/${_tRee}/boa/aegir"
@@ -2394,7 +2993,10 @@ _enable_chattr() {
     ###
     ### Check if Ruby Gems and NPM access should be added or removed
     ###
-    if [ -f "${_dscUsr}/static/control/compass.info" ]; then
+    if [ "${_ltdCtrlOwn}" = "NO" ]; then
+      # the logins' gems and npm stay as they are (_acct_ctrl_own)
+      :
+    elif [ -f "${_dscUsr}/static/control/compass.info" ]; then
       ###
       ### Check if Ruby Gems access needs an update
       ###
@@ -2584,7 +3186,7 @@ _disable_chattr() {
 # to the main login with them.
 _LTD_PLATFORM_SUFFIX="-dev"
 _LTD_PLATFORM_WINDOW_MIN=60
-_LTD_PLATFORM_TOOLS="'composer', 'drush', 'drush10', 'drush11', 'drush8', 'vdrush', 'vendor/drush/drush/drush.php'"
+_LTD_PLATFORM_TOOLS="'composer', 'dr', 'drush', 'drush10', 'drush11', 'drush8', 'vdrush', 'vendor/bin/dr', 'vendor/drush/drush/drush.php'"
 # The self-check the account keeps with or without a granted platform: a
 # developer whose every platform was refused is the one who needs it most.
 # On `allowed` only: it runs builtins alone, so lshell's noexec layer stays on.
@@ -2804,6 +3406,11 @@ _ltd_platform_locked() {
   fi
   return 0
 }
+# Drush 15 ships no drush.php: core's dr, through Composer's vendor/bin/dr
+# proxy, runs a site's commands, the site named by --url. $1 = app root.
+_ltd_platform_dr() {
+  [ ! -e "${1}/vendor/drush/drush/drush.php" ] && [ -f "${1}/vendor/bin/dr" ]
+}
 _ltd_platform_task() {
   local _verb="${1}"
   local _alias="${2}"
@@ -2945,10 +3552,16 @@ then, within three minutes:
   cd ~/platforms/<name>
   vdrush @<alias> <command>
 
-(drush11 aliases lists the alias names). Touch it again to extend. While a
-platform is unlocked Drush 8 cannot run on it, control-panel tasks on its
-sites can fail, and a site Verify re-locks it (reopened within three
-minutes); at expiry every platform is locked again.
+(drush11 aliases lists the alias names). Drush 15 has no vdrush: on such a
+platform, in the same window, name the site by its address:
+
+  cd ~/platforms/<name>
+  dr --url=https://<site> <command>
+
+Touch the request file again to extend. While a platform is unlocked Drush 8
+cannot run on it, control-panel tasks on its sites can fail, and a site
+Verify re-locks it (reopened within three minutes); at expiry every platform
+is locked again.
 https://docs.boa.io/using/connecting/extra-accounts
 EOF
 )" )
@@ -2963,13 +3576,16 @@ EOF
 # never to /dev/null.
 #
 # A login's files in its account's trees go to the account before deluser
-# frees its number: useradd -r gives out the highest free system uid, so the
-# next login made, of any account, would own them. Each directory and
-# single-link file the login owns there is handed over through a handle that
-# re-checks the owner and never follows a link; the group stays. A
-# hard-linked file goes to root instead: another name of it may sit outside
-# these trees. $1 = the login, $2 = the account.
-_LTD_REOWN_FROM_PL='use Fcntl; my ($f, $u, @n) = @ARGV; for my $n (@n) { sysopen(my $h, $n, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); chown((-d _ || $s[3] == 1) ? $u : 0, -1, $h) if @s && $s[4] == $f && (-d _ || -f _); close($h); } exit 0'
+# frees its number, which the account's own next identity may take back at
+# once (_acct_pick_uid), and no other account's ever: that identity would
+# own them. Each directory and
+# file the login owns there is handed over through a handle that re-checks
+# the owner and never follows a link; the group stays. A hard-linked file
+# goes to the account too: another name of it may sit outside these trees,
+# where the account is another account's user (and the login could write
+# that file already), while root is trusted everywhere. $1 = the login,
+# $2 = the account.
+_LTD_REOWN_FROM_PL='use Fcntl; my ($f, $u, @n) = @ARGV; for my $n (@n) { sysopen(my $h, $n, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); chown($u, -1, $h) if @s && $s[4] == $f && (-d _ || -f _); close($h); } exit 0'
 _ltd_reap_hand_over() {
   local _gu _ou _d
   _gu=$(id -u -- "${1}" 2> /dev/null)
@@ -2981,6 +3597,86 @@ _ltd_reap_hand_over() {
       find -P . -xdev -uid "${_gu}" \( -type d -o -type f \) \
       -execdir perl -e "${_LTD_REOWN_FROM_PL}" "${_gu}" "${_ou}" {} + &> /dev/null
   done < <(_ltd_account_trees "${2}")
+  return 0
+}
+#
+# What a login made in another account's control/ goes before deluser frees
+# its number. Every login keeps the box-wide group, so it can make control/
+# in the static/ of an account still on that group, or put files in a folder
+# of it left open to that group. Run inside that account's real static/ with
+# the uids given, comma-separated: what they own anywhere in control/ is
+# removed by name from inside each directory, entered only as lstat saw it,
+# on control/'s own filesystem, and left through a handle; a directory of
+# theirs is first closed to group and other writers, so no other login can
+# swap what is in it meanwhile. What another user owns stays, and control/
+# stays while it holds any. Prints what was removed, nothing when nothing
+# was. Root's readers never take a file whose owner no user has as the
+# account's own unless that number was one of the account's identities
+# (_acct_walk_uids), so this is the clean-up, not the guard.
+_ACCT_FOREIGN_CTRL_PL='use Fcntl;
+my %g = map { $_ => 1 } grep { /^[1-9][0-9]*$/ } split(/,/, shift @ARGV // "");
+exit 0 unless %g;
+my @s = lstat("./control") or exit 0;
+exit 0 unless ($s[2] & 0170000) == 0040000;
+my ($mine, $rm, $left_n) = ($g{$s[4]}, 0, 0);
+sub isd { ($_[0] & 0170000) == 0040000 }
+sub sweep {
+  opendir(my $h, ".") or return 1;
+  my @e = grep { $_ ne "." && $_ ne ".." } readdir($h);
+  my $left = 0;
+  for my $b (@e) {
+    my @t = lstat($b) or next;
+    my $ours = $g{$t[4]};
+    if (isd($t[2])) {
+      my $l = 1;
+      if ($t[0] == $s[0] && chdir($b)) {
+        my @c = stat(".");
+        if (@c && $c[0] == $t[0] && $c[1] == $t[1]) {
+          chmod(($c[2] & 07777) & ~022, ".") if $ours && ($c[2] & 022);
+          $l = sweep();
+        }
+        chdir($h) or exit 1;
+      }
+      if ($ours && !$l && rmdir($b)) { $rm++; } else { $left++; $left_n++; }
+    } elsif ($ours && unlink($b)) {
+      $rm++;
+    } else {
+      $left++;
+      $left_n++;
+    }
+  }
+  closedir($h);
+  return $left;
+}
+opendir(my $top, ".") or exit 1;
+chdir("./control") or exit 1;
+my @d = stat(".");
+exit 1 unless @d && $d[0] == $s[0] && $d[1] == $s[1];
+chmod(($d[2] & 07777) & ~022, ".") if $mine && ($d[2] & 022);
+my $left = sweep();
+chdir($top) or exit 1;
+if ($mine && !$left && rmdir("./control")) {
+  print "removed control/, which they made, with the $rm entries in it\n";
+} elsif ($mine) {
+  print "removed $rm entries of theirs from control/, which they made; $left_n entries left in it\n";
+} elsif ($rm) {
+  print "removed $rm entries of theirs from control/\n";
+}
+exit 0;'
+# The login $1's entries in the control/ of every account but its own, $2,
+# while its number still names it (its processes ended, its shell locked).
+_ltd_reap_foreign_ctrl() {
+  local _gu _p _r
+  _gu=$(id -u -- "${1}" 2> /dev/null)
+  [[ "${_gu}" =~ ^[1-9][0-9]*$ ]] || return 0
+  for _p in /data/disk/*; do
+    [ -d "${_p}/static" ] && [ ! -L "${_p}" ] || continue
+    [ "${_p##*/}" = "${2}" ] && continue
+    _r=$(_ltd_in_real_dir "${_p}/static" perl -e "${_ACCT_FOREIGN_CTRL_PL}" -- "${_gu}" 2> /dev/null)
+    [ -n "${_r}" ] || continue
+    echo "${1}: ${_r} (${_p}/static)"
+    echo "$(date) LTD account ${1}: ${_r} (${_p}/static)" >> /var/log/boa/manage_ltd.incident.log
+  done
   return 0
 }
 #
@@ -3005,46 +3701,52 @@ _ltd_account_trees() {
   return 0
 }
 #
-# A login removed before the worker handed its files over at removal left
-# them under a number no passwd entry names, and useradd -r gives that number
-# to the next login made on the server, of any account: the files would then
-# be that login's, and the nightly purge and boa's archived prune would keep
-# them as another user's. Once per account and release, before the pass makes
-# any login, each directory and single-link file there whose owner no longer
-# exists goes to the account, a hard-linked one to root, the group kept; a
-# link keeps its number. The owner is read through the handle and looked up as
-# the walks' own() does: a lookup that fails for another reason hands nothing
-# over.
-_LTD_REOWN_GONE_PL='use Fcntl; my ($t, @n) = @ARGV; my %g; for my $n (@n) { sysopen(my $h, $n, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); if (@s && (-d _ || -f _)) { my $d = -d _; my $u = $s[4]; unless (exists $g{$u}) { local $! = 0; $g{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } chown(($d || $s[3] == 1) ? $t : 0, -1, $h) if $g{$u}; } close($h); } exit 0'
+# A login of the account removed before the worker handed its files over at
+# removal left them under a number no passwd entry names, and useradd -r gives
+# that number to the next login made on the server unless it is held back
+# (_acct_pick_uid): the files would then be that login's, and the nightly
+# purge and boa's archived prune would keep them as another user's. Once per
+# account and release, before the pass makes any login, each directory and
+# single-link file there whose owner
+# is one of the account's removed identities root recorded
+# (/data/conf/acct-uids/<oN>.gone) and still names nobody goes to the account,
+# a hard-linked one too (as at the reap), the group kept; a link keeps its
+# number. Any other number no user has stays as it is: another account's
+# removed login leaves files under such a number too, and handing them over
+# would make them the account's. The owner is read through the handle and looked up as the walks'
+# own() does: a lookup that fails for another reason hands nothing over.
+_LTD_REOWN_GONE_PL='use Fcntl; my ($t, $ok, @n) = @ARGV; my %ok = map { $_ => 1 } grep { /^[1-9][0-9]*$/ } split(/,/, $ok); my %g; for my $n (@n) { sysopen(my $h, $n, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); if (@s && (-d _ || -f _)) { my $d = -d _; my $u = $s[4]; unless (exists $g{$u}) { local $! = 0; $g{$u} = !$ok{$u} ? 0 : defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } chown($t, -1, $h) if $g{$u}; } close($h); } exit 0'
 _ltd_gone_hand_over() {
-  local _ou _d _u
+  local _ou _d _u _ok=""
   local -a _k=()
   local _mk="/var/backups/ltd/.gone-handed.${1}.${_xSrl}"
   [ -e "${_mk}" ] && return 0
   _ou=$(id -u -- "${1}" 2> /dev/null)
   [[ "${_ou}" =~ ^[1-9][0-9]*$ ]] || return 0
-  # The numbers passwd names, read once: find compares each entry's owner
-  # with them (find -nouser parses passwd once per entry), the account's own
-  # first, as it owns most entries. Root missing from them: the read failed,
-  # and nothing is walked this pass.
-  _k=( -o -uid "${_ou}" )
+  # the account's recorded numbers that no user has now: find takes only
+  # entries they own, and the program checks each again through its handle
   while IFS= read -r _u; do
-    [[ "${_u}" =~ ^[0-9]+$ ]] && _k+=( -o -uid "${_u}" )
-  done < <(getent passwd 2> /dev/null | cut -d: -f3)
-  [[ " ${_k[*]} " == *" -uid 0 "* ]] || return 0
-  while IFS= read -r _d; do
-    _ltd_in_real_dir "${_d}" env PATH=/usr/local/bin:/usr/bin:/bin \
-      find -P . -xdev ! \( -false "${_k[@]}" \) \( -type d -o -type f \) \
-      -execdir perl -e "${_LTD_REOWN_GONE_PL}" "${_ou}" {} + &> /dev/null
-  done < <(_ltd_account_trees "${1}")
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    getent passwd "${_u}" > /dev/null 2>&1 && continue
+    _ok="${_ok},${_u}"
+    _k+=( -o -uid "${_u}" )
+  done 2> /dev/null < "/data/conf/acct-uids/${1}.gone"
+  if [ "${#_k[@]}" -gt 0 ]; then
+    while IFS= read -r _d; do
+      _ltd_in_real_dir "${_d}" env PATH=/usr/local/bin:/usr/bin:/bin \
+        find -P . -xdev \( -false "${_k[@]}" \) \( -type d -o -type f \) \
+        -execdir perl -e "${_LTD_REOWN_GONE_PL}" "${_ou}" "${_ok#,}" {} + &> /dev/null
+    done < <(_ltd_account_trees "${1}")
+  fi
   touch "${_mk}"
   return 0
 }
 # Every account, the nightly's per-account pass holding it or not, before
 # _manage_user makes any login: a held account left for a later pass let
 # another account's new login take its freed numbers first. The walk hands
-# over only entries no passwd entry names, which the nightly's walks take as
-# the account's own already, so the two passes do not contend.
+# over only entries of the account's recorded removed identities, which the
+# nightly's walks take as the account's own already, so the two passes do
+# not contend.
 _ltd_gone_hand_over_all() {
   local _p
   for _p in /data/disk/*; do
@@ -3066,13 +3768,18 @@ _ltd_reap_account() {
   if id -u "${_acct}" &> /dev/null; then
     usermod -L "${_acct}" &> /dev/null
     usermod -s /usr/sbin/nologin "${_acct}" &> /dev/null
-    while _user_in_use "${_acct}" && [ "${_w}" -lt 10 ]; do
+    # every process of the login goes, whatever root it runs under: userdel
+    # does not count one in another root (a chroot, a user namespace), which
+    # would go on writing as the freed number
+    pkill -KILL -u "${_acct}" &> /dev/null
+    pkill -KILL -U "${_acct}" &> /dev/null
+    while { _user_in_use "${_acct}" || _ltd_login_procs "${_acct}"; } && [ "${_w}" -lt 10 ]; do
       pkill -KILL -u "${_acct}" &> /dev/null
       pkill -KILL -U "${_acct}" &> /dev/null
       sleep 1
       _w=$(( _w + 1 ))
     done
-    if _user_in_use "${_acct}"; then
+    if _user_in_use "${_acct}" || _ltd_login_procs "${_acct}"; then
       echo "$(date) LTD account ${_acct}: still in use, its removal left for the next pass" >> /var/log/boa/manage_ltd.incident.log
       return 0
     fi
@@ -3082,7 +3789,17 @@ _ltd_reap_account() {
   # this pass removes has its own number still)
   _ltd_in_real_dir "/home/${_acct}" _ltd_rm_glob_own_here \
     "$(_acct_walk_uids "${_acct%%.*}" || echo 0),$(id -u -- "${_acct}" 2> /dev/null || echo 0)" .gnupg
+  # its names in other accounts' control folders go first: the hand-over
+  # below changes the owner of a file it linked there from its own tree
+  _ltd_reap_foreign_ctrl "${_acct}" "${_parent}"
   _ltd_reap_hand_over "${_acct}" "${_parent}"
+  # its number stays the account's once freed (_acct_gone_add); one that
+  # could not be recorded and held back is not freed
+  if ! _acct_gone_add "${_parent}" "$(id -u -- "${_acct}" 2> /dev/null)"; then
+    _ltd_notice "reap-record-${_acct}" \
+      "LTD account ${_acct}: its number could not be recorded for ${_parent}, its removal left for the next pass" "" > /dev/null
+    return 0
+  fi
   # its gem and npm trees carry its number too; a login made again gets
   # fresh copies of its own
   # only what root, the login or its account's identities own: any account
@@ -3098,6 +3815,9 @@ _ltd_reap_account() {
     echo "$(date) LTD account ${_acct}: deluser refused it, its removal left for the next pass" >> /var/log/boa/manage_ltd.incident.log
     return 0
   fi
+  # its freed number leaves the account's list before a later identity of
+  # this pass can be given it (one of the account's own may be at once)
+  _ltd_acct_uids_put "${_parent}" > /dev/null 2>&1
   # users/ is the main login's and can be a link by now: the store goes only
   # from the real directory
   _ltd_in_real_dir "/home/${_parent}.ftp/users" rm -f -- "./${_acct}"
@@ -3311,10 +4031,10 @@ _ltd_platform_report() {
   if [ -s "${_state}" ] \
     && [ -n "$(find "${_state}" -maxdepth 0 -mmin -${_LTD_PLATFORM_WINDOW_MIN} 2>/dev/null)" ]; then
     echo "Drush window: OPEN until $(date -d "@$(( $(stat -c %Y "${_state}") + _LTD_PLATFORM_WINDOW_MIN * 60 ))" '+%H:%M %Z')."
-    echo "  Drupal 8+ platforms are unlocked: vdrush works, Drush 8 does not."
+    echo "  Drupal 8+ platforms are unlocked: vdrush (dr on Drush 15) works, Drush 8 does not."
   else
     echo "Drush window: closed. Drupal 8+ platforms are locked: Drush 8 answers"
-    echo "  read-only commands (uli, status). To unlock them for vdrush for"
+    echo "  read-only commands (uli, status). To unlock them for vdrush or dr for"
     echo "  ${_LTD_PLATFORM_WINDOW_MIN} minutes: touch ~/.tmp/drush-window.request (applied within three minutes)."
   fi
   echo
@@ -3336,7 +4056,10 @@ _ltd_platform_report() {
     echo "  $(_ltd_status_safe "$(basename "$(dirname "${_root}")")-$(basename "${_root}")"): ${_lbl}${_lock}"
     _sites=$(_ltd_platform_sites "${_root}" "${_cdir}")
     for _s in ${_sites}; do
-      if [ -f "${_doc}/core/lib/Drupal.php" ] && [ -d "${_root}/vendor/drush" ]; then
+      if [ -f "${_doc}/core/lib/Drupal.php" ] && [ -d "${_root}/vendor/drush" ] \
+        && _ltd_platform_dr "${_root}"; then
+        echo "    $(_ltd_status_safe "${_s}")  (dr --url=https://$(_ltd_status_safe "${_s}"))"
+      elif [ -f "${_doc}/core/lib/Drupal.php" ] && [ -d "${_root}/vendor/drush" ]; then
         echo "    $(_ltd_status_safe "${_s}")  (vdrush @$(_ltd_status_safe "$(_ltd_modern_alias "${_s}")"))"
       else
         echo "    $(_ltd_status_safe "${_s}")"
@@ -3387,6 +4110,8 @@ _ltd_platform_report() {
   echo "                         read-only commands only)"
   echo "  Drupal 8+, any change: open the window, then"
   echo "                         cd ~/platforms/<name> && vdrush @<alias> <command>"
+  echo "  Drupal 8+ on Drush 15: open the window, then"
+  echo "                         cd ~/platforms/<name> && dr --url=https://<site> <command>"
   for _root in ${_granted}; do
     echo "#grant ${_root}"
   done
@@ -3470,7 +4195,9 @@ _ltd_cli_drop() {
 _ltd_cli_src() {
   local _sp=""
   local -a _rc=()
-  _sp=$(cd -P -- "${_dscUsr}/static" 2> /dev/null && pwd -P)
+  # a control/ that is not the account's own tells nothing (_acct_ctrl_own)
+  [ "${_ltdCtrlOwn}" = "NO" ] && return 1
+  _sp=$(cd -P -- "${_dscUsr}/static" 2> /dev/null && /bin/pwd -P)
   [ -n "${_sp}" ] || return 3
   timeout 10 setpriv --reuid="${_USER}.ftp" --regid="$(id -g "${_USER}.ftp")" \
     --init-groups /bin/bash -c '
@@ -4119,17 +4846,22 @@ _ok_create_user() {
         # it so promotion restores it like every other held tenant. The
         # CREATE flag, not the sweep's: an unreadable role is not a reason
         # to hand out a shell, and this branch is the reversible one.
-        useradd -d ${_usrLtdRoot} -s /usr/sbin/nologin -m -N -r \
+        # Each login is made under a number no other account's removed
+        # identity left files under (_acct_new_identity).
+        _acct_new_identity high "${_usrLtd%%.*}" \
+          useradd -d ${_usrLtdRoot} -s /usr/sbin/nologin -m -N -r \
           -g ${_usrGroup:-users} ${_usrLtd}
         mkdir -p /var/log/boa 2>/dev/null
         grep -qxF "${_usrLtd}" /var/log/boa/standby-held-shells.txt 2>/dev/null \
           || echo "${_usrLtd}" >> /var/log/boa/standby-held-shells.txt
       elif [ -e "/usr/bin/mysecureshell" ] && [ -e "/etc/ssh/sftp_config" ]; then
-        useradd -d ${_usrLtdRoot} -s /usr/bin/mysecureshell -m -N -r \
+        _acct_new_identity high "${_usrLtd%%.*}" \
+          useradd -d ${_usrLtdRoot} -s /usr/bin/mysecureshell -m -N -r \
           -g ${_usrGroup:-users} ${_usrLtd}
         echo "_usrLtdRoot is == ${_usrLtdRoot} == at _ok_create_user"
       else
-        useradd -d ${_usrLtdRoot} -s /usr/bin/lshell -m -N -r \
+        _acct_new_identity high "${_usrLtd%%.*}" \
+          useradd -d ${_usrLtdRoot} -s /usr/bin/lshell -m -N -r \
           -g ${_usrGroup:-users} ${_usrLtd}
       fi
       # The primary group is the account's own (-g above, users until the
@@ -4157,10 +4889,10 @@ _ok_create_user() {
       # pinned by its real path (a users/ swapped for a link elsewhere is
       # refused), with one open that never follows a link, never blocks on a
       # FIFO and reads no more than a password's length.
-      _lupHome=$(cd -P -- "/home/${_ADMIN}" 2> /dev/null && pwd -P)
+      _lupHome=$(cd -P -- "/home/${_ADMIN}" 2> /dev/null && /bin/pwd -P)
       if [ -n "${_lupHome}" ]; then
         _ESC_LUPASS=$(cd -P -- "${_lupHome}/users" 2> /dev/null \
-          && [ "$(pwd -P)" = "${_lupHome}/users" ] \
+          && [ "$(/bin/pwd -P)" = "${_lupHome}/users" ] \
           && [ -f "./${_usrLtd}" ] && [ ! -L "./${_usrLtd}" ] \
           && timeout 10 dd if="./${_usrLtd}" iflag=nofollow,nonblock bs=256 count=1 \
             status=none 2> /dev/null | tr -d "\n")
@@ -4241,11 +4973,11 @@ _ok_create_user() {
       _lupStore="/home/${_ADMIN}/users/${_usrLtd}"
       # /home is root's, so /home/<admin> cannot be swapped: resolve it, and
       # write only inside a users/ whose real path is exactly that one
-      _lupHome=$(cd -P -- "/home/${_ADMIN}" 2> /dev/null && pwd -P)
+      _lupHome=$(cd -P -- "/home/${_ADMIN}" 2> /dev/null && /bin/pwd -P)
       ( umask 077
         [ -n "${_lupHome}" ] \
           && cd -P -- "${_lupHome}/users" 2> /dev/null \
-          && [ "$(pwd -P)" = "${_lupHome}/users" ] \
+          && [ "$(/bin/pwd -P)" = "${_lupHome}/users" ] \
           && rm -f -- "./${_usrLtd}" \
           && printf '%s\n' "${_ESC_LUPASS}" \
             | dd of="./${_usrLtd}" conv=excl status=none 2> /dev/null ) \
@@ -4350,6 +5082,32 @@ _acct_of_identity() {
 # already rewritten). The home field points at an empty root-owned staging
 # dir for that one call and is put back at once; the group on the files is
 # the alias-copy leg's business.
+# 0 while a live process (not a zombie) runs as the login $1, by its real,
+# effective or saved uid, in any root: _user_in_use counts this root's only.
+_ltd_login_procs() {
+  local _uid _p _pids=""
+  _uid=$(id -u -- "${1}" 2> /dev/null) || return 1
+  for _p in /proc/[0-9]*; do
+    _pids="${_pids} ${_p#/proc/}"
+  done
+  awk -v uid="${_uid}" -v pids="${_pids}" 'BEGIN {
+    m = split(pids, p, " ")
+    for (i = 1; i <= m; i++) {
+      f = "/proc/" p[i] "/status"
+      st = ""
+      while ((getline l < f) > 0) {
+        if (l ~ /^State:/) { split(l, s, /[ \t]+/); st = s[2] }
+        if (l ~ /^Uid:/) {
+          split(l, u, /[ \t]+/)
+          if (st != "Z" && (u[2] == uid || u[3] == uid || u[4] == uid)) { close(f); exit 0 }
+          break
+        }
+      }
+      close(f)
+    }
+    exit 1
+  }'
+}
 _user_in_use() {
   # shadow's user_busy, the check usermod -d runs: a process in this root (a
   # chrooted pure-ftpd session is not) whose real, effective or saved uid is
@@ -5130,11 +5888,11 @@ _newrelic_pool_off() {
   if [ -e "${_THIS_POOL_TPL}" ] \
     && grep -q "^php_admin_value\[newrelic\." ${_THIS_POOL_TPL}; then
     echo "New Relic lines removed for $2: php$1 does not load New Relic"
+    # a live pool file: its master owes a reload until one has read it
+    [ "$3" = "1" ] && _ltd_fpm_owe "$1"
     sed -i "/^php_admin_value\[newrelic\./d" ${_THIS_POOL_TPL}
     wait
-    if [ "$3" = "1" ] && [ -e "/etc/init.d/php$1-fpm" ]; then
-      service php$1-fpm reload &> /dev/null
-    fi
+    [ "$3" = "1" ] && _ltd_fpm_reload "$1"
   fi
 }
 #
@@ -5147,23 +5905,27 @@ _disable_newrelic() {
     _CHECK_NEW_RELIC_KEY=$(grep "newrelic.enabled.*true" ${_THIS_POOL_TPL} 2>&1)
     if [[ "${_CHECK_NEW_RELIC_KEY}" =~ "newrelic.enabled" ]]; then
       echo "New Relic for $2 will be disabled because newrelic.info does not exist"
+      [ "$3" = "1" ] && _ltd_fpm_owe "$1"
       sed -i "s/^php_admin_value\[newrelic.license\].*/php_admin_value\[newrelic.license\] = \"\"/g" ${_THIS_POOL_TPL}
       wait
       sed -i "s/^php_admin_value\[newrelic.enabled\].*/php_admin_value\[newrelic.enabled\] = \"false\"/g" ${_THIS_POOL_TPL}
       wait
-      if [ "$3" = "1" ] && [ -e "/etc/init.d/php$1-fpm" ]; then
-        service php$1-fpm reload &> /dev/null
+      if [ "$3" = "1" ]; then
+        [ -e "/etc/init.d/php$1-fpm" ] && [ "${_ltdNrOwn:-}" = "YES" ] && _ltdOwnFpm=YES
+        _ltd_fpm_reload "$1"
       fi
     elif ! grep -q "^php_admin_value\[newrelic.enabled\]" ${_THIS_POOL_TPL}; then
       # a pool left without the lines while its PHP did not load New Relic
       # keeps it off now that it does: the ini enables it for every pool
       echo "New Relic for $2 disabled in php$1"
+      [ "$3" = "1" ] && _ltd_fpm_owe "$1"
       sed -i "/^php_admin_value\[newrelic\./d" ${_THIS_POOL_TPL}
       wait
       echo "php_admin_value[newrelic.license] = \"\"" >> ${_THIS_POOL_TPL}
       echo "php_admin_value[newrelic.enabled] = \"false\"" >> ${_THIS_POOL_TPL}
-      if [ "$3" = "1" ] && [ -e "/etc/init.d/php$1-fpm" ]; then
-        service php$1-fpm reload &> /dev/null
+      if [ "$3" = "1" ]; then
+        [ -e "/etc/init.d/php$1-fpm" ] && [ "${_ltdNrOwn:-}" = "YES" ] && _ltdOwnFpm=YES
+        _ltd_fpm_reload "$1"
       fi
     fi
   fi
@@ -5171,9 +5933,16 @@ _disable_newrelic() {
 #
 # Enable New Relic per Octopus instance.
 _enable_newrelic() {
-  _LOC_NEW_RELIC_KEY=$(_ltd_ctrl_read newrelic.info)
-  _LOC_NEW_RELIC_KEY=${_LOC_NEW_RELIC_KEY//[^0-9a-zA-Z]/}
-  _LOC_NEW_RELIC_KEY=$(echo -n ${_LOC_NEW_RELIC_KEY} | tr -d "\n" 2>&1)
+  if [ "${_ltdNrSet:-}" = "YES" ]; then
+    _LOC_NEW_RELIC_KEY="${_ltdNrUse}"
+  else
+    _LOC_NEW_RELIC_KEY=$(_ltd_ctrl_read newrelic.info)
+    _LOC_NEW_RELIC_KEY=${_LOC_NEW_RELIC_KEY//[^0-9a-zA-Z]/}
+    # a key is 40 characters: anything far longer is no key (one over 128 KiB
+    # fails grep and sed as an argument, and the pool was reloaded every pass)
+    [[ "${_LOC_NEW_RELIC_KEY}" =~ ^[0-9a-zA-Z]{1,64}$ ]] || _LOC_NEW_RELIC_KEY=""
+    _LOC_NEW_RELIC_KEY=$(echo -n ${_LOC_NEW_RELIC_KEY} | tr -d "\n" 2>&1)
+  fi
   if [ -z "${_LOC_NEW_RELIC_KEY}" ]; then
     _disable_newrelic $1 $2 $3 "$4"
   else
@@ -5184,6 +5953,7 @@ _enable_newrelic() {
       if [[ "${_CHECK_NEW_RELIC_KEY}" =~ "${_LOC_NEW_RELIC_KEY}" ]]; then
         echo "New Relic integration is already active for $2"
       else
+        [ "$3" = "1" ] && _ltd_fpm_owe "$1"
         if [[ "${_CHECK_NEW_RELIC_TPL}" =~ "newrelic.license" ]]; then
           echo "New Relic for $2 update with key ${_LOC_NEW_RELIC_KEY} in php$1"
           sed -i "s/^php_admin_value\[newrelic.license\].*/php_admin_value\[newrelic.license\] = \"${_LOC_NEW_RELIC_KEY}\"/g" ${_THIS_POOL_TPL}
@@ -5195,8 +5965,9 @@ _enable_newrelic() {
           echo "php_admin_value[newrelic.license] = \"${_LOC_NEW_RELIC_KEY}\"" >> ${_THIS_POOL_TPL}
           echo "php_admin_value[newrelic.enabled] = \"true\"" >> ${_THIS_POOL_TPL}
         fi
-        if [ "$3" = "1" ] && [ -e "/etc/init.d/php$1-fpm" ]; then
-          service php$1-fpm reload &> /dev/null
+        if [ "$3" = "1" ]; then
+          [ -e "/etc/init.d/php$1-fpm" ] && [ "${_ltdNrOwn:-}" = "YES" ] && _ltdOwnFpm=YES
+          _ltd_fpm_reload "$1"
         fi
       fi
     fi
@@ -5215,7 +5986,8 @@ _switch_newrelic() {
   if [ ! -z "${_isPhp}" ] && [ ! -z "${_isUsr}" ] && [ ! -z "${_isRld}" ]; then
     if ! _newrelic_in_ini "${_isPhp}"; then
       _newrelic_pool_off $1 $2 $3 "$4"
-    elif [ -e "${_dscUsr}/static/control/newrelic.info" ]; then
+    elif { [ "${_ltdNrSet:-}" = "YES" ] && [ -n "${_ltdNrUse}" ]; } \
+      || { [ "${_ltdNrSet:-}" != "YES" ] && [ -e "${_dscUsr}/static/control/newrelic.info" ]; }; then
       _enable_newrelic $1 $2 $3 "$4"
     else
       _disable_newrelic $1 $2 $3 "$4"
@@ -5341,13 +6113,25 @@ _satellite_remove_web_user() {
       # only this user's agent (none for a user that never existed): -f
       # matched every gpg-agent on the box
       id -u "${_WEB}" &> /dev/null && pkill -9 -u "${_WEB}" gpg-agent &> /dev/null
+      # its number stays the account's once freed (_acct_gone_add); one that
+      # could not be recorded is not freed
+      if id -u "${_WEB}" &> /dev/null \
+        && ! _acct_gone_add "${_WEB%%.*}" "$(id -u -- "${_WEB}")"; then
+        _ltd_notice "web-record-${_WEB}" \
+          "${_WEB}: its number could not be recorded, its removal left for the next pass" "" > /dev/null
+        return 0
+      fi
       deluser \
         --remove-home \
         --backup-to /var/backups/zombie/deleted ${_WEB} &> /dev/null
+      # its freed number leaves the account's list before a later identity of
+      # this pass can be given it (one of the account's own may be at once)
+      getent passwd "${_WEB}" > /dev/null 2>&1 \
+        || _ltd_acct_uids_put "${_WEB%%.*}" > /dev/null 2>&1
       # what deluser left: a removed user's own entries (its number no
       # longer resolves) and the account's go, another account's stays
       if [ -d "/home/${_WEB}/" ]; then
-        ( cd -P -- /home && [ "$(pwd -P)" = "/home" ] && _ltd_rm_glob_own_here \
+        ( cd -P -- /home && [ "$(/bin/pwd -P)" = "/home" ] && _ltd_rm_glob_own_here \
           "$(_acct_walk_uids "${_WEB%%.*}" || echo 0)" "${_WEB}" )
       fi
     fi
@@ -5366,7 +6150,8 @@ _satellite_create_web_user() {
       _satellite_web_user_update "$1"
     else
       _satellite_remove_web_user "clean"
-      adduser --force-badname --system --ingroup www-data --home /home/${_WEB} ${_WEB} &> /dev/null
+      _acct_new_identity low "${_WEB%%.*}" \
+        adduser --force-badname --system --ingroup www-data --home /home/${_WEB} ${_WEB} &> /dev/null
       _satellite_web_user_update "$1"
     fi
     # A pool user made anew drops every group listing: once the account holds
@@ -5497,8 +6282,9 @@ _ltd_pool_deny_heal() {
       fi
       chown --reference="${_pf}" "${_new}" 2> /dev/null
       chmod --reference="${_pf}" "${_new}" 2> /dev/null
+      # the master owes a reload until one has read the new file
       if [ -f "${_pf}" ] && [ ! -L "${_pf}" ] && cp -a -- "${_pf}" "${_old}" \
-        && mv -f -- "${_new}" "${_pf}"; then
+        && _ltd_fpm_owe "${_v}" && mv -f -- "${_new}" "${_pf}"; then
         _done="${_done}${_pf} "
       else
         rm -f -- "${_new}" "${_old}"
@@ -5510,7 +6296,7 @@ _ltd_pool_deny_heal() {
         rm -f -- "${_pf%/*}/.${_pf##*/}.deny.old"
         echo "Pool ${_pf} of ${_USER} disabled other functions than its template, set back"
       done
-      [ -e "/etc/init.d/php${_v}-fpm" ] && service "php${_v}-fpm" reload &> /dev/null 9>&-
+      _ltd_fpm_reload "${_v}"
     else
       for _pf in ${_done}; do
         mv -f -- "${_pf%/*}/.${_pf##*/}.deny.old" "${_pf}"
@@ -5536,9 +6322,101 @@ _ltd_pool_deny_heal_skipped() {
   return 0
 }
 #
+# A reload of PHP version $1 (its digits) the account's pool files are owed,
+# recorded before a pool file is put in place or removed: a pass cut off
+# between that and its reload leaves a file the running master never read,
+# and the next pass, which finds the file as it would write it, has nothing
+# else to tell it by while the pool's socket is up. Cleared by the reload
+# (_ltd_fpm_reload); one a cut-off pass left is made by the next
+# (_ltd_fpm_owed_reload).
+_ltd_fpm_owe() {
+  mkdir -p /var/backups/ltd/fpmcore && chmod 700 /var/backups/ltd/fpmcore
+  : > "/var/backups/ltd/fpmcore/${_USER}.fpm-owed.${1}"
+}
+# PHP version $1 reloaded for the account's pool files: the init script sends
+# the reload whenever the master's pid file is there, and a master that is not
+# running reads every pool file when it starts, so the owed record goes. A
+# lock the caller holds on fd 9 is never handed to the master.
+_ltd_fpm_reload() {
+  [ -e "/etc/init.d/php${1}-fpm" ] && service "php${1}-fpm" reload &> /dev/null 9>&-
+  rm -f -- "/var/backups/ltd/fpmcore/${_USER}.fpm-owed.${1}"
+}
+# The PHP version (its digits) whose PHP-FPM master serves the unix socket
+# $1, read from the listening process's binary; nothing when none does.
+_ltd_fpm_sock_ver() {
+  local _pid _exe
+  for _pid in $(ss -xlpn 2> /dev/null | awk -v s="${1}" '$5 == s' \
+    | grep -o 'pid=[0-9]*' | cut -d= -f2 | sort -u); do
+    _exe=$(readlink "/proc/${_pid}/exe" 2> /dev/null)
+    case "${_exe}" in
+      /opt/php[0-9][0-9]/sbin/php-fpm)
+        _exe="${_exe#/opt/php}"
+        echo "${_exe%%/*}"
+        return 0
+        ;;
+    esac
+  done
+  return 0
+}
+# The reloads a cut-off pass owed the account's pool files, made now. The
+# account's single pool and its panel pool listen on one socket whatever
+# their version, and a master refuses a socket another one still serves,
+# failing every pool it has: as the setup does, the version that still
+# serves such a socket for a pool it no longer has is reloaded first, and
+# the one that took the pool over only once that socket is free (otherwise
+# its reload stays owed to the next pass).
+_ltd_fpm_owed_reload() {
+  local _f _v _p _w _wt _owed="" _first=""
+  for _f in /var/backups/ltd/fpmcore/"${_USER}".fpm-owed.*; do
+    [ -f "${_f}" ] || continue
+    _v="${_f##*.}"
+    if [[ "${_v}" =~ ^[0-9]{2}$ ]]; then
+      _owed="${_owed}${_v} "
+    else
+      rm -f -- "${_f}"
+    fi
+  done
+  [ -n "${_owed}" ] || return 0
+  for _v in ${_owed}; do
+    for _p in "${_USER}" "${_USER}.hm"; do
+      [ -e "/opt/php${_v}/etc/pool.d/${_p}.conf" ] || continue
+      _w=$(_ltd_fpm_sock_ver "/run/${_p}.fpm.socket")
+      [ -n "${_w}" ] && [ "${_w}" != "${_v}" ] || continue
+      [ -e "/opt/php${_w}/etc/pool.d/${_p}.conf" ] && continue
+      case " ${_first} " in
+        *" ${_w} "*) ;;
+        *) _first="${_first}${_w} " ;;
+      esac
+    done
+  done
+  for _w in ${_first}; do
+    _ltd_fpm_reload "${_w}"
+  done
+  for _v in ${_owed}; do
+    case " ${_first} " in *" ${_v} "*) continue ;; esac
+    for _p in "${_USER}" "${_USER}.hm"; do
+      [ -e "/opt/php${_v}/etc/pool.d/${_p}.conf" ] || continue
+      _wt=0
+      while _w=$(_ltd_fpm_sock_ver "/run/${_p}.fpm.socket"); \
+        [ -n "${_w}" ] && [ "${_w}" != "${_v}" ] && [ "${_wt}" -lt 20 ]; do
+        sleep 0.5
+        _wt=$(( _wt + 1 ))
+      done
+      if [ -n "${_w}" ] && [ "${_w}" != "${_v}" ]; then
+        echo "NOTE: ${_USER}: the PHP ${_v} reload a cut-off pass owed waits: PHP ${_w} still serves /run/${_p}.fpm.socket"
+        continue 2
+      fi
+      # a socket file nothing serves is removed, as the panel pool's move does
+      [ -z "${_w}" ] && rm -f -- "/run/${_p}.fpm.socket"
+    done
+    _ltd_fpm_reload "${_v}"
+  done
+}
+#
 # A PHP version (its digits) whose FPM _switch_php reloads once, after every
-# pool file of the account is final.
+# pool file of the account is final; the reload is owed from now on.
 _ltd_fpm_reload_mark() {
+  _ltd_fpm_owe "${1}"
   case "${_FPM_RLD}" in
     *" ${1} "*) ;;
     *) _FPM_RLD="${_FPM_RLD}${1} " ;;
@@ -5546,15 +6424,15 @@ _ltd_fpm_reload_mark() {
 }
 #
 # One of the account's pool files (/opt/phpNN/etc/pool.d/...) removed, its
-# version marked for the reload; $2 = a version whose file is left, as it is
-# replaced in place.
+# version marked for the reload first; $2 = a version whose file is left, as
+# it is replaced in place.
 _ltd_pool_drop() {
   local _v="${1#/opt/php}"
   _v="${_v%%/*}"
   [ -e "${1}" ] || [ -L "${1}" ] || return 0
   [ -n "${2}" ] && [ "${_v}" = "${2}" ] && return 0
-  rm -f -- "${1}"
   _ltd_fpm_reload_mark "${_v}"
+  rm -f -- "${1}"
 }
 #
 # Every per-site include whose name is not in $1 (each between spaces) removed
@@ -5604,6 +6482,12 @@ _site_socket_inc_gen() {
   done
 
   _ltd_in_real_dir "${_dscUsr}/static/control" _desymlink_planted ./multi-fpm.info
+  # a folder at the name (never a link: rm does not follow one) goes, so the
+  # file is written back below and its pins drop like a deleted file's; left,
+  # it froze the account's includes with no file to read
+  if [ -d "${_mltFpm}" ] && [ ! -L "${_mltFpm}" ]; then
+    _ltd_in_real_dir "${_dscUsr}/static/control" rm -rf -- ./multi-fpm.info
+  fi
   # multi-fpm.info is the main login's: read without following a link or
   # blocking on a FIFO, edited here and put back as a fresh file (sed -i and
   # >> would write through a link put at the name, and sed -i would put a
@@ -5692,6 +6576,8 @@ _site_socket_inc_gen() {
       _sV=${_sV//[^0-9]/}
       [ -n "${_sN}" ] && [ -n "${_sV}" ] || continue
       [ "${_sN}" = "place.holder.dont.remove" ] && continue
+      # no include name over 255 bytes can exist (fpm_include_site_ + .inc)
+      [ "$(( ${#_sN} + 21 ))" -gt 255 ] && continue
       [ -e "${_fpmPth}/fpm_include_site_${_sN}.inc" ] && continue
       if [ -x "/opt/php${_sV}/bin/php" ] \
         && [ -e "${_dscUsr}/.drush/${_sN}.alias.drushrc.php" ] \
@@ -5726,62 +6612,69 @@ _site_socket_inc_gen() {
       _mltFpmUpdate=HOLD
     elif [ ! -f "${_mltNgx}" ] \
       || [ "${_mltFpmUpdate}" = "YES" ] \
-      || [ "${_mltFpmUpdateForce}" = "YES" ]; then
+      || [ "${_mltFpmUpdateForce}" = "YES" ] \
+      || [ "${1:-}" = "sys" ]; then
       # local: a bare IFS= here stayed a newline for the rest of the pass,
       # and every later "for x in ${list}" saw one word
       local IFS=$'\12'
-      _mltFpmSkip=""
-      _mltFpmKeep=" "
-      for p in ${_mltFpmBody};do
-        # split into words as the check above and every other reader of
-        # the file split it (spaces and tabs): a cut at the first space
-        # gave a row with two spaces or a tab no version, so it was never
-        # applied while the check above forced a rebuild on every pass
-        IFS=$' \t' read -r _SITE_NAME _SITE_SOCKET _sR <<< "${p}"
-        # a comment row (see above): no include, and not listed as skipped
-        [[ "${_SITE_NAME}" == \#* ]] && continue
-        _SITE_NAME=${_SITE_NAME//[^a-zA-Z0-9-.]/}
-        _SITE_NAME=$(echo -n ${_SITE_NAME} | tr A-Z a-z 2>&1)
-        _SITE_NAME=$(echo -n ${_SITE_NAME} | tr -d "\n" 2>&1)
-        _SITE_SOCKET=${_SITE_SOCKET//[^0-9]/}
-        _SITE_SOCKET=$(echo -n ${_SITE_SOCKET} | tr -d "\n" 2>&1)
-        _SOCKET_L_NAME="${_USER}.${_SITE_SOCKET}"
-        if [ ! -z "${_SITE_NAME}" ] \
-          && [ ! -z "${_SITE_SOCKET}" ] \
-          && [ -x "/opt/php${_SITE_SOCKET}/bin/php" ] \
-          && [ -e "${_dscUsr}/.drush/${_SITE_NAME}.alias.drushrc.php" ] \
-          && [ -e "/run/${_SOCKET_L_NAME}.fpm.socket" ]; then
-          _ltd_swap_in "${_fpmPth}" "fpm_include_site_${_SITE_NAME}.inc" \
-            "if ( \$main_site_name = ${_SITE_NAME} ) {"$'\n'"  set \$user_socket \"${_SOCKET_L_NAME}\";"$'\n'"}"
-          _mltFpmKeep="${_mltFpmKeep}fpm_include_site_${_SITE_NAME}.inc "
-        elif [ -n "${_SITE_NAME}" ] && [ -n "${_SITE_SOCKET}" ] \
-          && [ "${_SITE_NAME}" != "place.holder.dont.remove" ]; then
-          _mltFpmSkip="${_mltFpmSkip}${_SITE_NAME} ${_SITE_SOCKET}"$'\n'
+      local _mltAct=APPLY _mltApp _n
+      # The includes the file gives, compared with post.d before anything is
+      # written: a rebuild that changes nothing nginx reads (a row that does
+      # not apply yet, a marker of root's the login removed or edited) sends
+      # no reload. A change the text root last applied does not explain is
+      # the login's own and waits whole inside its window; one it does (a
+      # pool socket up, a site gone, a PHP version installed) is the box's.
+      _ltd_fpm_site_want "${_mltFpmBody}"
+      if _ltd_fpm_site_same; then
+        _mltAct=SAME
+      elif [ "${1:-}" != "sys" ] && _mltApp=$(_ltd_applied_get mfpm); then
+        _ltd_fpm_site_want "${_mltApp}"
+        if _ltd_fpm_site_same; then
+          if _ltd_rld_held nginx; then
+            _mltAct=HOLD
+          else
+            _ltdOwnNgx=YES
+          fi
         fi
-      done
-      # only now the includes no row names: removed first, a reload in between
-      # ran every pinned site on the default pool
-      _ltd_in_real_dir "${_fpmPth}" _ltd_fpm_site_prune_here "${_mltFpmKeep}"
-      # the skipped lines, for the tenant to see; the check above retries them
-      if [ -n "${_mltFpmSkip}" ]; then
-        _ltd_ctrl_put .multi-fpm-skipped.info "${_mltFpmSkip}"
-      else
-        _ltd_ctrl_rm .multi-fpm-skipped.info
+        _ltd_fpm_site_want "${_mltFpmBody}"
       fi
-      _ltd_ctrl_stamp .multi-nginx-fpm.pid "comments-skipped"
-      _ltd_in_real_dir "${_dscUsr}/static/control" rm -rf -- ./.prev-multi-fpm.info
-      _ltd_ctrl_put .prev-multi-fpm.info "${_mltFpmBody}"
-      ### reload nginx -- only a config that passes its own test: a failed
-      ### reload keeps the running config, but an invalid one left on disk
-      ### turns the next unrelated restart into a box-wide outage
-      if nginx -t &> /dev/null; then
-        service nginx reload &> /dev/null
-        _ltdNgxReloaded=YES
+      if [ "${_mltAct}" = "HOLD" ]; then
+        _ltd_rld_note nginx "the multi-fpm.info change"
       else
-        _ltd_notice "nginx-configtest-${_USER}" \
-          "nginx -t FAILED after the per-site FPM includes of ${_USER} were rebuilt -- NOT reloaded" \
-          "$(nginx -t 2>&1 | tail -3 | tr '\n' ' ')"
+        _mltFpmKeep=" "
+        if [ "${_mltAct}" = "APPLY" ]; then
+          # an include written and not read yet is owed a reload until one
+          # has read it (a pass cut off before the one below)
+          _ltd_ngx_owe
+          for _n in "${!_LTD_SITE_WANT[@]}"; do
+            _ltd_swap_in "${_fpmPth}" "${_n}" "${_LTD_SITE_WANT[${_n}]}"
+            _mltFpmKeep="${_mltFpmKeep}${_n} "
+          done
+          # only now the includes no row names: removed first, a reload in
+          # between ran every pinned site on the default pool
+          _ltd_in_real_dir "${_fpmPth}" _ltd_fpm_site_prune_here "${_mltFpmKeep}"
+        fi
+        # the skipped lines, for the tenant to see; the check above retries them
+        if [ -n "${_LTD_SITE_SKIP}" ]; then
+          _ltd_ctrl_put .multi-fpm-skipped.info "${_LTD_SITE_SKIP}"
+        else
+          _ltd_ctrl_rm .multi-fpm-skipped.info
+        fi
+        _ltd_ctrl_stamp .multi-nginx-fpm.pid "comments-skipped"
+        _ltd_in_real_dir "${_dscUsr}/static/control" rm -rf -- ./.prev-multi-fpm.info
+        _ltd_ctrl_put .prev-multi-fpm.info "${_mltFpmBody}"
+        _ltd_applied_put mfpm "${_mltFpmBody}"
+        # nginx reads them with the pass's one reload (_ltd_ngx_pass_reload),
+        # which tests the config first; the stamp above owes it
+        [ "${_mltAct}" = "APPLY" ] && _ltdNgxReloaded=
       fi
+    elif ! _ltd_applied_get mfpm > /dev/null 2>&1; then
+      # No record yet (the file unchanged since this release, so no rebuild
+      # wrote one): the text is recorded when it gives exactly the includes
+      # in force, so the account's first change of its own opens its window
+      # like any later one. A text they do not come from is never recorded.
+      _ltd_fpm_site_want "${_mltFpmBody}"
+      _ltd_fpm_site_same && _ltd_applied_put mfpm "${_mltFpmBody}"
     fi
   else
     if [ -f "${_mltNgx}" ]; then
@@ -5838,12 +6731,275 @@ _ltd_fpm_plat_flush() {
   _body+="  set \$user_socket \"${_USER}.${_gv}\";"$'\n'"}"$'\n'
   _g=""
 }
+# An account's own control files (written by its logins) move its nginx
+# includes, and its PHP-FPM pools, at most once in _LTD_RELOAD_SECS each: a
+# change of that kind inside the window is not applied at all -- nothing
+# written, its markers untouched -- and the first pass after the window judges
+# it afresh and applies it whole. A change the box made (a PHP version
+# installed or removed, a pool socket up, a release, root's settings, the page
+# check's moves) is never held, and carries a waiting change of the account's
+# with it. The window starts when a pass applied a change of the account's own
+# of that kind; the stamp is root's, on tmpfs, beside its restart requests'.
+# Root's own run that must apply at once (xoct, xcopy, xmass, barracuda) sets
+# _ACCT_RELOAD_HOLD=NO in its environment.
+_LTD_RELOAD_SECS=900
+_LTD_REQ_DIR="/run/boa_acct_requests"
+declare -A _LTD_SITE_WANT=()
+# Status 0 while the account's change of kind $1 (nginx or fpm) waits.
+_ltd_rld_held() {
+  local _st="${_LTD_REQ_DIR}/ltd_${1}.${_USER}" _ts _now
+  [[ "${_ACCT_RELOAD_HOLD:-}" == "NO" ]] && return 1
+  _now=$(date +%s)
+  _ts=$(tr -dc '0-9' 2> /dev/null < "${_st}")
+  [[ "${_ts}" =~ ^[1-9][0-9]{0,11}$ ]] || return 1
+  (( _now - _ts >= 0 && _now - _ts < _LTD_RELOAD_SECS ))
+}
+# A held change of kind $1, said once per window; $2 = what waits.
+_ltd_rld_note() {
+  local _st="${_LTD_REQ_DIR}/ltd_${1}.${_USER}"
+  [ -e "${_st}.noted" ] && return 0
+  : > "${_st}.noted" 2> /dev/null
+  echo "NOTE: ${_USER}: ${2} waits: a change of its own reloaded ${1} under $(( _LTD_RELOAD_SECS / 60 )) minutes ago"
+}
+# The kinds ($@) of the account's own changes this pass applied.
+_ltd_rld_stamp() {
+  local _k
+  mkdir -p -m 0700 "${_LTD_REQ_DIR}" 2> /dev/null
+  for _k in "$@"; do
+    date +%s > "${_LTD_REQ_DIR}/ltd_${_k}.${_USER}"
+    rm -f "${_LTD_REQ_DIR}/ltd_${_k}.${_USER}.noted"
+  done
+}
+# Root's record of what the account's control file $1 (mfpm, fpp, nr) said
+# when its state in force was last made from it: the account's own change is
+# one the recorded text does not explain. No record, no hold.
+_ltd_applied_get() {
+  local _f="/var/backups/ltd/fpmcore/${_USER}.${1}.applied"
+  [ -f "${_f}" ] && [ ! -L "${_f}" ] || return 1
+  cat -- "${_f}" 2> /dev/null
+}
+_ltd_applied_put() {
+  local _f="/var/backups/ltd/fpmcore/${_USER}.${1}.applied"
+  mkdir -p /var/backups/ltd/fpmcore && chmod 700 /var/backups/ltd/fpmcore
+  [ -f "${_f}" ] && [ "$(cat -- "${_f}" 2> /dev/null)" = "${2}" ] && return 0
+  printf '%s\n' "${2}" > "${_f}.$$" && mv -f -- "${_f}.$$" "${_f}"
+}
+# Multi-FPM mode by the account's files: tools/le and multi-fpm.info. A
+# multi-fpm.info the login deleted from an account whose pools are multi-FPM
+# ones (root's /opt/php*/etc/pool.d/<acct>.<NN>.conf) is written back by the
+# ltd worker while PHP 7.4 or newer is installed, so it does not take the
+# account out of the mode: one pass left it and the next entered it again,
+# every pool and nginx reloaded twice, for a file the login cannot keep away.
+# $1 = the account's home, $2 = its name.
+_fpm_multi_files() {
+  local _e _p
+  [ -d "${1}/tools/le" ] || return 1
+  [ -f "${1}/static/control/multi-fpm.info" ] && return 0
+  [ -d "${1}/static/control" ] || return 1
+  for _p in /opt/php*/etc/pool.d/"${2}".[0-9]*.conf; do
+    [ -f "${_p}" ] || continue
+    for _e in 86 85 84 83 82 81 74; do
+      [ -x "/opt/php${_e}/bin/php" ] && return 0
+    done
+    return 1
+  done
+  return 1
+}
+# The PHP-FPM mode (multi or single) the ltd worker last made for account $1,
+# root's record; nothing without one, and nothing when root's pool files of
+# the account do not bear it out (a record an earlier account of the name
+# left, or one its removal outlived): multi needs a per-version pool of the
+# account, single the account's own pool file.
+_fpm_mode_rec() {
+  local _f="/var/backups/ltd/fpmcore/${1}.mode.applied" _r="" _p
+  [ -f "${_f}" ] && [ ! -L "${_f}" ] || return 0
+  { IFS= read -r _r < "${_f}"; } 2> /dev/null
+  case "${_r}" in
+    multi)
+      for _p in /opt/php*/etc/pool.d/"${1}".[0-9]*.conf; do
+        [ -f "${_p}" ] && { echo multi; return 0; }
+      done
+      ;;
+    single)
+      for _p in /opt/php*/etc/pool.d/"${1}".conf; do
+        [ -f "${_p}" ] && { echo single; return 0; }
+      done
+      ;;
+  esac
+  return 0
+}
+# The account's FPM mode this pass (_ltdFpmMulti), by its files. A switch of
+# the mode reloads every PHP-FPM master of the box and nginx, and both files
+# are the account's (its backend user can remove tools/le and make it again,
+# its login writes multi-fpm.info), so a switch is the account's own change
+# of PHP-FPM kind: inside the account's window it is not made at all, the
+# pass runs whole in the mode root last made, and the first pass after the
+# window makes it. No record (an account that never had tools/le, such as a
+# young one), no hold: its first entry into multi-FPM mode is at once, and so
+# is a switch in root's own run (_ACCT_RELOAD_HOLD=NO). _ltdModeRec = the mode
+# to record once _switch_php makes it; _ltdModeOwn = the switch is the
+# account's own.
+_ltd_fpm_multi_mode() {
+  local _now=single _rec
+  _ltdFpmMulti=NO
+  _ltdModeRec=""
+  _ltdModeOwn=""
+  if _fpm_multi_files "${_dscUsr}" "${_USER}"; then
+    _ltdFpmMulti=YES
+    _now=multi
+  fi
+  _rec="$(_fpm_mode_rec "${_USER}")"
+  if [ -z "${_rec}" ]; then
+    # a first record once the account has tools/le and a multi-fpm.info,
+    # which BOA writes on every account after the account's first pass, or
+    # per-version pools: a young account's first entry into multi-FPM mode
+    # is that write of root's, never a switch of the account's own
+    if [ -d "${_dscUsr}/tools/le" ] && { [ -e "${_dscUsr}/static/control/multi-fpm.info" ] \
+      || ls /opt/php*/etc/pool.d/"${_USER}".[0-9]*.conf > /dev/null 2>&1; }; then
+      _ltdModeRec="${_now}"
+    fi
+    return 0
+  fi
+  [ "${_rec}" = "${_now}" ] && return 0
+  if _ltd_rld_held fpm; then
+    _ltd_rld_note fpm "the switch to ${_now}-FPM mode"
+    _ltdFpmMulti=NO
+    [ "${_rec}" = "multi" ] && _ltdFpmMulti=YES
+    return 0
+  fi
+  _ltdModeRec="${_now}"
+  _ltdModeOwn=YES
+}
+# The mode _ltd_fpm_multi_mode chose, recorded once _switch_php makes it; an
+# account's own switch opens its PHP-FPM window.
+_ltd_fpm_mode_made() {
+  [ -n "${_ltdModeRec:-}" ] || return 0
+  _ltd_applied_put mode "${_ltdModeRec}" 2> /dev/null
+  [ "${_ltdModeOwn:-}" = "YES" ] && _ltdOwnFpm=YES
+  _ltdModeRec=""
+}
+# The per-site includes the rows of multi-fpm.info text $1 give, as the
+# rebuild writes them: _LTD_SITE_WANT[<include>] = its body; the rows that do
+# not apply yet in _LTD_SITE_SKIP. Writes nothing.
+_ltd_fpm_site_want() {
+  local IFS=$'\12' p _SITE_NAME _SITE_SOCKET _sR _SOCKET_L_NAME
+  declare -gA _LTD_SITE_WANT
+  _LTD_SITE_WANT=()
+  _LTD_SITE_SKIP=""
+  for p in ${1}; do
+    IFS=$' \t' read -r _SITE_NAME _SITE_SOCKET _sR <<< "${p}"
+    [[ "${_SITE_NAME}" == \#* ]] && continue
+    _SITE_NAME=${_SITE_NAME//[^a-zA-Z0-9-.]/}
+    _SITE_NAME=$(echo -n ${_SITE_NAME} | tr A-Z a-z 2>&1)
+    _SITE_NAME=$(echo -n ${_SITE_NAME} | tr -d "\n" 2>&1)
+    _SITE_SOCKET=${_SITE_SOCKET//[^0-9]/}
+    _SITE_SOCKET=$(echo -n ${_SITE_SOCKET} | tr -d "\n" 2>&1)
+    _SOCKET_L_NAME="${_USER}.${_SITE_SOCKET}"
+    if [ ! -z "${_SITE_NAME}" ] \
+      && [ ! -z "${_SITE_SOCKET}" ] \
+      && [ "$(( ${#_SITE_NAME} + 21 ))" -le 255 ] \
+      && [ -x "/opt/php${_SITE_SOCKET}/bin/php" ] \
+      && [ -e "${_dscUsr}/.drush/${_SITE_NAME}.alias.drushrc.php" ] \
+      && [ -e "/run/${_SOCKET_L_NAME}.fpm.socket" ]; then
+      _LTD_SITE_WANT["fpm_include_site_${_SITE_NAME}.inc"]="if ( \$main_site_name = ${_SITE_NAME} ) {"$'\n'"  set \$user_socket \"${_SOCKET_L_NAME}\";"$'\n'"}"
+    elif [ -n "${_SITE_NAME}" ] && [ -n "${_SITE_SOCKET}" ] \
+      && [ "${_SITE_NAME}" != "place.holder.dont.remove" ]; then
+      _LTD_SITE_SKIP="${_LTD_SITE_SKIP}${_SITE_NAME} ${_SITE_SOCKET}"$'\n'
+    fi
+  done
+}
+# The per-site include names in the current (pinned) directory, as the
+# prune below sees them.
+_ltd_fpm_site_names_here() {
+  local _f
+  for _f in ./fpm_include_site_*; do
+    [ -e "${_f}" ] || [ -L "${_f}" ] || continue
+    printf '%s\n' "${_f#./}"
+  done
+}
+# Status 0 when post.d holds exactly the per-site includes _LTD_SITE_WANT
+# names, each with its body (read as the account's: never through a link or
+# from a FIFO).
+_ltd_fpm_site_same() {
+  local _d="${_dscUsr}/config/server_master/nginx/post.d" _n
+  [ "$(_ltd_in_real_dir "${_d}" _ltd_fpm_site_names_here 2> /dev/null | LC_ALL=C sort)" \
+    = "$(printf '%s\n' "${!_LTD_SITE_WANT[@]}" | grep . | LC_ALL=C sort)" ] || return 1
+  for _n in "${!_LTD_SITE_WANT[@]}"; do
+    [ "$(_ltd_read_in "${_d}" "${_n}")" = "${_LTD_SITE_WANT[${_n}]}" ] || return 1
+  done
+  return 0
+}
+# The New Relic key the account's pools get this pass (_ltdNrUse), every pool
+# write included -- the live pools and the ones a setup makes aside: the
+# key newrelic.info names, or, while a change of it waits inside the
+# account's PHP-FPM window, the key root last applied. A setup forced by a
+# stamp the login deleted then writes the key in force, never the waiting
+# one. No record, no hold.
+_ltd_nr_decide() {
+  local _k="" _app
+  _ltdNrSet=YES
+  _ltdNrHeld=NO
+  if [ -e "${_dscUsr}/static/control/newrelic.info" ]; then
+    _k=$(_ltd_ctrl_read newrelic.info)
+    _k=${_k//[^0-9a-zA-Z]/}
+    [[ "${_k}" =~ ^[0-9a-zA-Z]{1,64}$ ]] || _k=""
+  fi
+  _ltdNrUse="${_k}"
+  _app=$(_ltd_applied_get nr) || return 0
+  [ "${_app}" = "${_k}" ] && return 0
+  if _ltd_rld_held fpm; then
+    _ltdNrUse="${_app}"
+    _ltdNrHeld=YES
+    _ltd_rld_note fpm "the newrelic.info change"
+    return 0
+  fi
+  # the account's own change: it opens the PHP-FPM window once a pool takes it
+  # (a reload sent), not on a box whose PHP loads no New Relic
+  _ltdNrOwn=YES
+}
+# The box's state the account's platform include is built against, root's
+# only: the pass's FPM mode and, per PHP version, its binary, the account's
+# pool file and its socket. A change of the include while this stays as
+# recorded is the account's own (its file, its folders, its markers).
+_ltd_fpm_sys_key() {
+  local _e _k="m:${_ltdFpmMulti:-?}"
+  for _e in 86 85 84 83 82 81 80 74 73 72 71 70 56; do
+    _k+=" ${_e}:"
+    [ -x "/opt/php${_e}/bin/php" ] && _k+=x
+    [ -f "/opt/php${_e}/etc/pool.d/${_USER}.${_e}.conf" ] && _k+=p
+    [ -S "/run/${_USER}.${_e}.fpm.socket" ] && _k+=s
+  done
+  # the generator itself (an upgrade changing what it builds) and BOA's shared
+  # trees a line can name: the box's too
+  _k+=" g:$(declare -f _ltd_fpm_plat_gen _ltd_fpm_plat_row _ltd_fpm_plat_flush 2> /dev/null \
+    | md5sum | cut -c1-12)"
+  _k+=" a:$(find /data/all -mindepth 1 -maxdepth 1 -type d 2> /dev/null | LC_ALL=C sort \
+    | md5sum | cut -c1-12)"
+  printf '%s' "${_k}"
+}
+# Status 0 when the platform include's change is the account's own and
+# waits (the box's state is as recorded and its nginx window is open).
+_ltd_fpm_plat_held() {
+  if _ltd_rld_held nginx; then
+    _LTD_FPM_PLAT_SKIP+="the whole file: waits, a change of this account reloaded nginx under $(( _LTD_RELOAD_SECS / 60 )) minutes ago; the first pass after that applies it"$'\n'
+    _ltd_rld_note nginx "the fpm-per-platform.info change"
+    return 0
+  fi
+  return 1
+}
 # An FPM include nginx has not read yet outlives the pass that wrote it: a pass
 # killed before its reload, or nginx refusing the box at that moment, leaves the
 # next pass nothing to compare. The stamp stands until a reload has read it.
 _ltd_ngx_owe() {
   mkdir -p /var/backups/ltd/fpmcore && chmod 700 /var/backups/ltd/fpmcore
   : > "/var/backups/ltd/fpmcore/${_USER}.reload-owed"
+}
+# nginx has just reloaded on a config its test passed, so it read every
+# include of the account: a later reload in the same pass is owed only for
+# what changes after this.
+_ltd_ngx_read() {
+  rm -f "/var/backups/ltd/fpmcore/${_USER}.reload-owed"
+  _ltdNgxFpBefore="$(_ltd_ngx_fpm_fp)"
 }
 # Reload nginx once per pass, and only when the account's FPM includes changed
 # or a reload is owed: nginx reads them on reload alone, and a reload on every
@@ -5855,11 +7011,16 @@ _ltd_ngx_pass_reload() {
     return 0
   fi
   [ -e "${_own}" ] || [ "$(_ltd_ngx_fpm_fp)" != "${_ltdNgxFpBefore}" ] || return 0
+  # nginx refused these includes once this pass: asked again only when they
+  # changed since
+  [ -n "${_ltdNgxTestFail:-}" ] && [ "$(_ltd_ngx_fpm_fp)" = "${_ltdNgxTestFail}" ] && return 0
   if nginx -t &> /dev/null; then
     service nginx reload &> /dev/null
-    rm -f "${_own}"
+    # a later call in the same pass reloads only for what changed since
+    _ltd_ngx_read
   else
     _ltd_ngx_owe
+    _ltdNgxTestFail="$(_ltd_ngx_fpm_fp)"
     _ltd_notice "nginx-configtest-${_USER}" \
       "nginx -t FAILED after the FPM includes of ${_USER} changed -- NOT reloaded" \
       "$(nginx -t 2>&1 | tail -3 | tr '\n' ' ')"
@@ -5897,18 +7058,26 @@ _ltd_fpm_plat_gen() {
     return 0
   fi
   _ltd_in_real_dir "${_dscUsr}/static/control" _desymlink_planted ./fpm-per-platform.info
-  [ -f "${_dscUsr}/static/control/multi-fpm.info" ] && [ -d "${_dscUsr}/tools/le" ] && _multi=YES
+  if [ "${_ltdFpmMulti:-}" = "YES" ] || { [ -z "${_ltdFpmMulti:-}" ] \
+    && [ -f "${_dscUsr}/static/control/multi-fpm.info" ] && [ -d "${_dscUsr}/tools/le" ]; }; then
+    _multi=YES
+  fi
+  # the box's state the include was last judged against: unchanged, a
+  # change of the include is the account's own (no record: the box's)
+  local _pKey _pSys=YES
+  _pKey="$(_ltd_fpm_sys_key 2> /dev/null)"
+  [ -n "${_pKey}" ] && [ "$(_ltd_applied_get fppkey 2> /dev/null)" = "${_pKey}" ] && _pSys=NO
   # the window websh reads (_cpp_fpm_plat_load): NUL bytes do not count
   _txt=$(_ltd_ctrl_read fpm-per-platform.info | tr -d '\000' | head -c 65537)
   if [ "${#_txt}" -gt 65536 ]; then
     _txt="${_txt:0:65536}"
     _sk+="past 64 KiB: not read, this file takes 64 KiB"$'\n'
   fi
-  _hop=$(cd -P -- "${_dscUsr}" 2> /dev/null && pwd -P)
-  _hmp=$(cd -P -- "${_dscUsr}/aegir" 2> /dev/null && pwd -P)
-  _alp=$(cd -P -- /data/all 2> /dev/null && pwd -P)
+  _hop=$(cd -P -- "${_dscUsr}" 2> /dev/null && /bin/pwd -P)
+  _hmp=$(cd -P -- "${_dscUsr}/aegir" 2> /dev/null && /bin/pwd -P)
+  _alp=$(cd -P -- /data/all 2> /dev/null && /bin/pwd -P)
   # a static tree the box mounts elsewhere is still the account's
-  _stp=$(cd -P -- "${_dscUsr}/static" 2> /dev/null && pwd -P)
+  _stp=$(cd -P -- "${_dscUsr}/static" 2> /dev/null && /bin/pwd -P)
   [[ "${_stp}" == /mnt/?* ]] || _stp=""
   # every platform registered, for a folder that holds one through a link:
   # $document_root is the text the platform was registered with
@@ -5919,7 +7088,7 @@ _ltd_fpm_plat_gen() {
       _r="${BASH_REMATCH[1]%/}"
       [ "${#_r}" -le 1000 ] && [[ "${_r}" =~ ^/[A-Za-z0-9._/-]+$ ]] && [[ "/${_r}/" != */../* ]] \
         && [[ "/${_r}/" != */./* ]] && [[ "${_r}" != *//* ]] || continue
-      _rp=$(cd -P -- "${_r}" 2> /dev/null && pwd -P) || continue
+      _rp=$(cd -P -- "${_r}" 2> /dev/null && /bin/pwd -P) || continue
       [ -n "${_hmp}" ] && case "${_rp}/" in "${_hmp}/"*) continue ;; esac
       _ar+=("${_r}")
       _ap+=("${_rp}")
@@ -6044,10 +7213,13 @@ _ltd_fpm_plat_gen() {
   if [ -z "${_list}" ]; then
     rm -f "${_rf}"
     if [ -e "${_inc}/${_nm}" ] || [ -L "${_inc}/${_nm}" ]; then
+      [ "${_pSys}" = "NO" ] && _ltd_fpm_plat_held && return 0
       _ltd_rm_in "${_inc}" "${_nm}"
       _ltd_ngx_owe
       _ltdNgxReloaded=
+      [ "${_pSys}" = "NO" ] && _ltdOwnNgx=YES
     fi
+    [ -n "${_pKey}" ] && _ltd_applied_put fppkey "${_pKey}"
     return 0
   fi
   while read -r _dp _lnr _v _t; do
@@ -6066,6 +7238,7 @@ _ltd_fpm_plat_gen() {
   _old=$(_ltd_read_in "${_inc}" "${_nm}")
   if [ "${_old}" = "${_body}" ]; then
     rm -f "${_rf}"
+    [ -n "${_pKey}" ] && _ltd_applied_put fppkey "${_pKey}"
     return 0
   fi
   # a body nginx refused waits an hour: tried on every pass it would go live for
@@ -6075,6 +7248,8 @@ _ltd_fpm_plat_gen() {
     _LTD_FPM_PLAT_SKIP+="the whole file: nginx refused the rules built from it, so they are not in force"$'\n'
     return 0
   fi
+  [ -n "${_pKey}" ] && _ltd_applied_put fppkey "${_pKey}"
+  [ "${_pSys}" = "NO" ] && _ltd_fpm_plat_held && return 0
   _fp0="$(_ltd_ngx_fpm_fp)"
   if ! _ltd_swap_in "${_inc}" "${_nm}" "${_body}"; then
     _LTD_FPM_PLAT_SKIP+="the whole file: not applied yet, tried again on every pass"$'\n'
@@ -6088,6 +7263,8 @@ _ltd_fpm_plat_gen() {
     # the pass's own reload must still run
     _ltd_ngx_owe
     _ltdNgxReloaded=
+    # the account's own change opens its window once nginx can take it
+    [ "${_pSys}" = "NO" ] && _ltdOwnNgx=YES
     return 0
   fi
   _err="$(printf '%s\n' "${_err}" | tail -3 | tr '\n' ' ')"
@@ -6230,6 +7407,9 @@ _ltd_hm_pool_apply() {
     _ngxW=""
     [ "$1" = "wait" ] && [ -n "${_ngx}" ] && _ngxW=$(pgrep -P "${_ngx}" 2> /dev/null | tr '\n' ' ')
     service nginx reload &> /dev/null
+    # the panel include is one of the account's includes nginx has now read:
+    # the pass's own reload is not owed for it again
+    _ltd_ngx_read
     while [ -n "${_ngxW}" ] && [ "${_wt}" -lt 30 ]; do
       _live=""
       for _w in ${_ngxW}; do
@@ -6296,8 +7476,9 @@ _ltd_hm_pool() {
     for _pFile in ${_old}; do
       _e="${_pFile#/opt/php}"
       _e="${_e%%/*}"
+      _ltd_fpm_owe "${_e}"
       rm -f -- "${_pFile}"
-      [ -e "/etc/init.d/php${_e}-fpm" ] && service "php${_e}-fpm" reload &> /dev/null
+      _ltd_fpm_reload "${_e}"
     done
     [ -d "/var/www/phpcache/${_USER}/${_pool}" ] && rm -rf "/var/www/phpcache/${_USER}/${_pool}"
     return 0
@@ -6318,7 +7499,8 @@ _ltd_hm_pool() {
     done
   fi
   [ -n "${_hv}" ] || return 0
-  if [ -f "${_dscUsr}/static/control/multi-fpm.info" ] && [ -d "${_dscUsr}/tools/le" ]; then
+  if [ "${_ltdFpmMulti:-}" = "YES" ] || { [ -z "${_ltdFpmMulti:-}" ] \
+    && [ -f "${_dscUsr}/static/control/multi-fpm.info" ] && [ -d "${_dscUsr}/tools/le" ]; }; then
     _web="${_USER}.${_hv}.web"
     _pTpl=/var/xdrago/conf/fpm-pool-foo-multi.conf
   else
@@ -6392,19 +7574,21 @@ _ltd_hm_pool() {
     _ltd_hm_pool_apply wait || { rm -f -- "${_pNew}"; return 0; }
   fi
   for _e in ${_rldOld}; do
+    _ltd_fpm_owe "${_e}"
     rm -f -- "/opt/php${_e}/etc/pool.d/${_pool}.conf"
     _chg=YES
   done
   if [ -f "${_pFile}" ] && [ ! -L "${_pFile}" ] && cmp -s -- "${_pNew}" "${_pFile}"; then
     rm -f -- "${_pNew}"
   else
+    _ltd_fpm_owe "${_hv}"
     mv -f -- "${_pNew}" "${_pFile}"
     _rld="${_rld}${_hv} "
     _chg=YES
   fi
   if [ "${_rldOld}" != " " ]; then
     for _e in $(printf '%s\n' ${_rldOld} | sort -u); do
-      [ -e "/etc/init.d/php${_e}-fpm" ] && service "php${_e}-fpm" reload &> /dev/null
+      _ltd_fpm_reload "${_e}"
     done
     _pWt=0
     while _ltd_hm_sock_ok "${_pool}" "${_hv}" && [ "${_pWt}" -lt 20 ]; do
@@ -6420,7 +7604,7 @@ _ltd_hm_pool() {
   [ -n "${_T_WG}" ] && chgrp "${_T_WG}" "/var/www/phpcache/${_USER}/${_pool}"
   chmod 770 "/var/www/phpcache/${_USER}/${_pool}"
   for _e in $(printf '%s\n' ${_rld} | sort -u); do
-    [ -e "/etc/init.d/php${_e}-fpm" ] && service "php${_e}-fpm" reload &> /dev/null
+    _ltd_fpm_reload "${_e}"
   done
   _pWt=0
   while ! _ltd_hm_sock_ok "${_pool}" "${_hv}" && [ "${_pWt}" -lt 30 ]; do
@@ -6588,7 +7772,8 @@ _switch_php() {
     # --- FPM portion ---
     if [ -e "${_dscUsr}/static/control/fpm.info" ] && [ -e "/var/xdrago/conf/fpm-pool-foo-multi.conf" ]; then
       _PHP_FPM_MULTI=NO
-      if [ -f "${_dscUsr}/static/control/multi-fpm.info" ] && [ -d "${_dscUsr}/tools/le" ]; then
+      if [ "${_ltdFpmMulti:-}" = "YES" ] || { [ -z "${_ltdFpmMulti:-}" ] \
+        && [ -f "${_dscUsr}/static/control/multi-fpm.info" ] && [ -d "${_dscUsr}/tools/le" ]; }; then
         _PHP_FPM_MULTI=YES
         if [ ! -e "${_dscUsr}/static/control/.multi-fpm.${_xSrl}.pid" ]; then
           _ltd_ctrl_rm '.multi-fpm*.pid'
@@ -6606,6 +7791,9 @@ _switch_php() {
           _FORCE_FPM_SETUP=YES
         fi
       fi
+      # the rest of the pass runs in this mode alone (the tests below do not
+      # read tools/le again, which can go mid-pass)
+      _ltd_fpm_mode_made
 
       # Read and sanitize the FPM version
       _T_FPM_VRN=$(_ltd_ctrl_read fpm.info | tr -d '\n' | tr -cd '0-9.')
@@ -6656,6 +7844,38 @@ _switch_php() {
         done
       fi
 
+      # A version move the account's own file asks for waits whole inside its
+      # window -- nginx's in multi-FPM mode, where only the default include
+      # moves; PHP-FPM's in single-FPM mode, where the pool moves: the pass
+      # runs on the version root set up last and the file is left as the
+      # login wrote it. A version the box lost (the file asks for the one in
+      # use, and it resolves elsewhere now) is never held.
+      _ltdVrnHeld=NO
+      # the account's own move is a change of the file's text since root last
+      # judged it: in multi-FPM mode the file keeps a version the box has not
+      # installed, and its install moves the account with no change of the
+      # account's (no record: no hold)
+      _fpvApp=""
+      _fpvApp=$(_ltd_applied_get fpv 2> /dev/null) || _fpvApp="${_T_FPM_ASKED}"
+      if [ -n "${_T_FPM_VRN}" ] && [ "${_T_FPM_VRN}" != "${_PHP_FPM_VERSION}" ] \
+        && [ "${_T_FPM_ASKED}" != "${_PHP_FPM_VERSION}" ] \
+        && [ "${_fpvApp}" != "${_T_FPM_ASKED}" ] \
+        && _ltd_php_vrn_ok "${_PHP_FPM_VERSION}" \
+        && [ -x "/opt/php${_PHP_FPM_VERSION//./}/bin/php" ]; then
+        _ltdVrnKind=fpm
+        [ "${_PHP_FPM_MULTI}" = "YES" ] && _ltdVrnKind=nginx
+        if _ltd_rld_held "${_ltdVrnKind}"; then
+          _ltd_rld_note "${_ltdVrnKind}" "the fpm.info move to ${_T_FPM_VRN}"
+          _T_FPM_VRN="${_PHP_FPM_VERSION}"
+          _ltdVrnHeld=YES
+        elif [ "${_ltdVrnKind}" = "fpm" ]; then
+          _ltdOwnFpm=YES
+        else
+          _ltdOwnNgx=YES
+        fi
+      fi
+      [ "${_ltdVrnHeld}" = "YES" ] || _ltd_applied_put fpv "${_T_FPM_ASKED}" 2> /dev/null
+
       if [ "${_T_FPM_VRN}" != "${_PHP_FPM_VERSION}" ] || [ "${_FORCE_FPM_SETUP}" = "YES" ]; then
         if [ -n "${_T_FPM_VRN}" ]; then
           _NEW_FPM_SETUP=YES
@@ -6670,6 +7890,7 @@ _switch_php() {
       if [ -n "${_T_FPM_ASKED}" ] && [ -n "${_T_FPM_VRN}" ] \
         && [ "${_T_FPM_ASKED}" != "${_T_FPM_VRN}" ] \
         && [ "${_NEW_FPM_SETUP}" != "YES" ] \
+        && [ "${_ltdVrnHeld}" != "YES" ] \
         && [ "${_PHP_FPM_MULTI}" = "NO" ] \
         && [ -x "/opt/php${_T_FPM_VRN//./}/bin/php" ]; then
         # websh reads it as the account (_cpp_fpm_guard)
@@ -6691,7 +7912,7 @@ _switch_php() {
       fi
       _FMP_D_INC="${_dscUsr}/config/server_master/nginx/post.d/fpm_include_default.inc"
 
-      if [ "${_PHP_FPM_MULTI}" = "YES" ] && [ -d "${_dscUsr}/tools/le" ]; then
+      if [ "${_PHP_FPM_MULTI}" = "YES" ]; then
         _PHP_M_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
         _D_POOL="${_USER}.${_PHP_SV}"
         if [ ! -e "${_FMP_D_INC}" ]; then
@@ -6719,19 +7940,20 @@ _switch_php() {
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_T_FPM_VRN}/g" /root/.${_USER}.octopus.cnf &> /dev/null
         ( umask 022; _ltd_put_in "${_dscUsr}/log" fpm.txt "${_T_FPM_VRN}" )
         if [ "${_PHP_FPM_MULTI}" = "NO" ]; then
-          _ltd_ctrl_put fpm.info "${_T_FPM_VRN}"
+          # a held move keeps the file as the login wrote it
+          [ "${_ltdVrnHeld}" = "YES" ] || _ltd_ctrl_put fpm.info "${_T_FPM_VRN}"
         else
           # the main login's own file, handed over through a handle: never
           # a hard link it put at the name
           _ltd_in_real_dir "${_dscUsr}/static/control" \
-            _ltd_reown_here "${_USER}.ftp:${_usrGroup}" ./fpm.info
+            _ltd_reown_here "${_USER}.ftp:${_ctlGroup}" ./fpm.info
         fi
 
         _PHP_SV=${_T_FPM_VRN//[^0-9]/}
         [ -z "${_PHP_SV}" ] && _PHP_SV=84
 
         # Update or create special system user if needed
-        if [ "${_PHP_FPM_MULTI}" = "YES" ] && [ -d "${_dscUsr}/tools/le" ]; then
+        if [ "${_PHP_FPM_MULTI}" = "YES" ]; then
           _PHP_M_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
           _D_POOL="${_USER}.${_PHP_SV}"
           if [ ! -e "${_FMP_D_INC}" ] && [ -e "/run/${_D_POOL}.fpm.socket" ] && [ -x "/opt/php${_PHP_SV}/bin/php" ]; then
@@ -6758,7 +7980,7 @@ _switch_php() {
         # Update/create web users
         for m in ${_PHP_M_V}; do
           if [ -x "/opt/php${m}/bin/php" ]; then
-            if [ "${_PHP_FPM_MULTI}" = "YES" ] && [ -d "${_dscUsr}/tools/le" ]; then
+            if [ "${_PHP_FPM_MULTI}" = "YES" ]; then
               _WEB="${_USER}.${m}.web"
               _POOL="${_USER}.${m}"
             else
@@ -6794,7 +8016,7 @@ _switch_php() {
         # The other mode's pools (_pOld) are dropped after the loop, once
         # nginx is sent to the pools set up here (_pUp: the default one).
         _pOld=""
-        if [ "${_PHP_FPM_MULTI}" = "YES" ] && [ -d "${_dscUsr}/tools/le" ]; then
+        if [ "${_PHP_FPM_MULTI}" = "YES" ]; then
           _PHP_M_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
           _pUp="/run/${_USER}.${_PHP_SV}.fpm.socket"
           for _pf in /opt/php*/etc/pool.d/"${_USER}".conf; do
@@ -6822,9 +8044,10 @@ _switch_php() {
           done
         fi
 
+        _ltdNrIn=" "
         for m in ${_PHP_M_V}; do
           if [ -x "/opt/php${m}/bin/php" ]; then
-            if [ "${_PHP_FPM_MULTI}" = "YES" ] && [ -d "${_dscUsr}/tools/le" ]; then
+            if [ "${_PHP_FPM_MULTI}" = "YES" ]; then
               _WEB="${_USER}.${m}.web"
               _POOL="${_USER}.${m}"
               _pTpl=/var/xdrago/conf/fpm-pool-foo-multi.conf
@@ -6896,12 +8119,18 @@ _switch_php() {
               && cmp -s -- "${_pNew}" "${_pFile}"; then
               rm -f -- "${_pNew}"
             else
-              mv -f -- "${_pNew}" "${_pFile}"
               _ltd_fpm_reload_mark "${m}"
+              mv -f -- "${_pNew}" "${_pFile}"
+              # a pool file put in place takes the key when its PHP loads New Relic
+              _newrelic_in_ini "${m}" && _ltdNrIn="${_ltdNrIn}${m} "
             fi
             # a pool file in place that its master never took up (a pass cut
             # off before its reload)
-            [ -S "/run/${_POOL}.fpm.socket" ] || _ltd_fpm_reload_mark "${m}"
+            if [ ! -S "/run/${_POOL}.fpm.socket" ]; then
+              _ltd_fpm_reload_mark "${m}"
+              # its master takes the pool, and the key in it, on this reload
+              _newrelic_in_ini "${m}" && _ltdNrIn="${_ltdNrIn}${m} "
+            fi
 
             mkdir -p /var/www/phpcache/${_USER}/${_POOL}
             _T_WG=$(_web_group "${_USER}")
@@ -6911,7 +8140,10 @@ _switch_php() {
         done
         _perhost_anon_cap_write "${_USER}"
         for m in ${_FPM_RLD}; do
-          [ -e "/etc/init.d/php${m}-fpm" ] && service php${m}-fpm reload &> /dev/null
+          _ltd_fpm_reload "${m}"
+          # a pool built with the account's own new New Relic key went in (a
+          # version reloaded only for a pool dropped from it took no key)
+          [ "${_ltdNrOwn:-}" = "YES" ] && [[ "${_ltdNrIn:-}" == *" ${m} "* ]] && _ltdOwnFpm=YES
         done
         # After a switch between single- and multi-FPM mode: nginx sends the
         # account's sites to the other mode's pools until it reloads, so they
@@ -6932,7 +8164,7 @@ _switch_php() {
             _pNgxW=""
             [ -n "${_pNgx}" ] && _pNgxW=$(pgrep -P "${_pNgx}" 2> /dev/null | tr '\n' ' ')
             service nginx reload &> /dev/null
-            _ltdNgxFpBefore="$(_ltd_ngx_fpm_fp)"
+            _ltd_ngx_read
             _pWt=0
             while [ "${_pWt}" -lt 30 ]; do
               _pLive=""
@@ -6947,7 +8179,7 @@ _switch_php() {
               _ltd_pool_drop "${_pf}"
             done
             for m in ${_FPM_RLD}; do
-              [ -e "/etc/init.d/php${m}-fpm" ] && service "php${m}-fpm" reload &> /dev/null
+              _ltd_fpm_reload "${m}"
             done
           else
             _ltd_notice "nginx-configtest-${_USER}" \
@@ -6958,6 +8190,8 @@ _switch_php() {
       fi
     fi
   fi
+  # a reload a cut-off pass owed the account's pool files
+  _ltd_fpm_owed_reload
   # the control panel's own pool, after the account's pools are final
   _ltd_hm_pool
 }
@@ -7047,11 +8281,10 @@ _manage_site_drush_alias_mirror() {
             rm -f -- "./${_SiteName}.alias.drushrc.php"
         fi
       else
+        # Read whole by its key: a platform path may hold a blank or a colon.
         _SiteDir=$(_ltd_read_in "${_pthParentUsr}/.drush" "${_Alias##*/}" \
-          | grep "site_path'" \
-          | cut -d: -f2 \
-          | awk '{ print $3}' \
-          | sed "s/[\,']//g" 2>&1)
+          | sed -n "s/^[[:space:]]*'site_path'[[:space:]]*=>[[:space:]]*'\([^']*\)'.*/\1/p" \
+          | head -n 1 2>&1)
         # Fail closed: a degraded/mid-rewrite alias parses to an empty or
         # non-/data/disk site_path -> KEEP, never reap on a bad parse.
         if [ -z "${_SiteDir}" ] \
@@ -7434,9 +8667,9 @@ _ltd_moved_intro() {
 # over SSH kept dumping that copy, without an error, after its account moved.
 # Refused now, it fails at once. The home and its file tools stay.
 _ltd_moved_tools() {
-  echo "allowed : - ['bee', 'bower', 'bzr', 'checkmyperms', 'composer', 'cvs', 'drush', 'drush8', 'drush10', 'drush11', 'grav', 'grunt', 'guard', 'gulp', 'mybackup', 'mydumper', 'myloader', 'mysql', 'mysqldump', 'node', 'npm', 'npx', 'openssl', 's4cmd', 'sqlmagic', 'ssh', 'svn', 'vdrush', 'vendor/drush/drush/drush.php']"
-  echo "allowed_shell_escape : - ['bee', 'bower', 'composer', 'drush', 'drush8', 'drush10', 'drush11', 'grav', 'grunt', 'guard', 'gulp', 'mybackup', 'mysql', 'mysqldump', 'node', 'npm', 'npx', 'scp', 'sqlmagic', 'ssh', 'vdrush', 'vendor/drush/drush/drush.php']"
-  echo "overssh : - ['bee', 'composer', 'drush', 'drush8', 'drush10', 'drush11', 'grav', 'mydumper', 'myloader', 'mysql', 'mysqldump', 'vdrush', 'vendor/drush/drush/drush.php']"
+  echo "allowed : - ['bee', 'bower', 'bzr', 'checkmyperms', 'composer', 'cvs', 'dr', 'drush', 'drush8', 'drush10', 'drush11', 'grav', 'grunt', 'guard', 'gulp', 'mybackup', 'mydumper', 'myloader', 'mysql', 'mysqldump', 'node', 'npm', 'npx', 'openssl', 's4cmd', 'sqlmagic', 'ssh', 'svn', 'vdrush', 'vendor/bin/dr', 'vendor/drush/drush/drush.php']"
+  echo "allowed_shell_escape : - ['bee', 'bower', 'composer', 'dr', 'drush', 'drush8', 'drush10', 'drush11', 'grav', 'grunt', 'guard', 'gulp', 'mybackup', 'mysql', 'mysqldump', 'node', 'npm', 'npx', 'scp', 'sqlmagic', 'ssh', 'vdrush', 'vendor/bin/dr', 'vendor/drush/drush/drush.php']"
+  echo "overssh : - ['bee', 'composer', 'dr', 'drush', 'drush8', 'drush10', 'drush11', 'grav', 'mydumper', 'myloader', 'mysql', 'mysqldump', 'vdrush', 'vendor/bin/dr', 'vendor/drush/drush/drush.php']"
 }
 
 # A moved account's logins on the server it moved from. Once a migration has
@@ -7656,6 +8889,7 @@ _manage_user() {
       else
         _usrGroup=$(_acct_group "${_USER}")
       fi
+      _ctlGroup=$(_ltd_ctl_group "${_USER}" "${_usrGroup}")
       # An account that holds its own web group, or is converted onto one an
       # identity outside it holds too (_web_group_conv): its backend user
       # (provision's membership test reads the group database), its SFTP user
@@ -7737,8 +8971,9 @@ _manage_user() {
       # .tmp is oN's to swap too: a link there always takes this block, which
       # strips it (a stamp read through the link could skip it), and every
       # remove, mode and stamp happens inside the real directory
+      # Only root's own stamp counts: a fresh .tmp is group-writable.
       if [ -L "${_dscUsr}/.tmp" ] \
-        || [ ! -e "${_dscUsr}/.tmp/.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+        || [ "$(stat -c %u -- "${_dscUsr}/.tmp/.ctrl.${_tRee}.${_xSrl}.pid" 2> /dev/null)" != "0" ]; then
         _ltd_in_real_dir "${_dscUsr}/.drush" _ltd_drush_cache_drop "${_USER}"
         _desymlink_planted "${_dscUsr}/.tmp"
         mkdir -p ${_dscUsr}/.tmp
@@ -7751,19 +8986,35 @@ _manage_user() {
         fi
       fi
       _prune_psr_log_stash "${_dscUsr}"
-      # ~/static is 02775 group `users` with no sticky bit, so any co-tenant on
-      # the box can replace the `control` name. Strip a plant unconditionally:
+      # On an account still on the box-wide group ~/static is group `users`,
+      # which every co-tenant's .ftp login is in: it gets the sticky bit and
+      # control/ loses any write but the account's own (_ltd_ctrl_shut),
+      # before anything below reads it. Strip a plant unconditionally:
       # gating this on a stamp INSIDE the link lets a target that already
       # carries a matching stamp skip the guard for the whole pass. oN can
       # swap static/ itself, so the strip and the mkdir act only inside the
       # real static/.
+      _ltd_ctrl_gate_guard "${_USER}"
+      _ltd_ctrl_shut "${_USER}"
       _ltd_in_real_dir "${_dscUsr}/static" _desymlink_planted ./control
       if [ ! -e "${_dscUsr}/static/control/.ctrl.${_tRee}.${_xSrl}.pid" ] \
         && [ -e "/home/${_USER}.ftp/clients" ]; then
         _ltd_in_real_dir "${_dscUsr}/static" mkdir -p ./control
         _ltd_in_real_dir "${_dscUsr}/static/control" _ltd_ctrl_init
+        # the hand-over gives the tree the control group: closed again
+        _ltd_ctrl_shut "${_USER}"
       fi
-      if [ -e "${_dscUsr}/static/control/ssl-live-mode.info" ]; then
+      # Nothing below acts on a control/ that is not the account's own
+      # (_acct_ctrl_own): the account's PHP, pools, per-site and per-platform
+      # pins, New Relic and its logins' tools stay as they are, never set as
+      # if its files were gone.
+      _ltdCtrlOwn=YES
+      if ! _ltdCtrlWhy=$(_acct_ctrl_own "${_USER}"); then
+        _ltdCtrlOwn=NO
+        echo "ALERT: ${_dscUsr}/static/control is not ${_USER}'s own (${_ltdCtrlWhy}); its control files are not read this pass"
+      fi
+      if [ "${_ltdCtrlOwn}" = "YES" ] \
+        && [ -e "${_dscUsr}/static/control/ssl-live-mode.info" ]; then
         if [ -e "${_dscUsr}/tools/le/.ctrl/ssl-demo-mode.pid" ]; then
           # tools/ is oN's: removed only inside the real directory
           _ltd_rm_in "${_dscUsr}/tools/le/.ctrl" ssl-demo-mode.pid
@@ -7812,7 +9063,7 @@ _manage_user() {
       fi
       if [ -e "${_THIS_HM_PLR}/modules/path_alias_cache" ] \
         && [ -x "/opt/tools/drush/8/drush/drush.php" ]; then
-        if [ -x "/opt/php56/bin/php" ]; then
+        if [ -x "/opt/php56/bin/php" ] && [ "${_ltdCtrlOwn}" = "YES" ]; then
         _ltd_ctrl_put cli.info 5.6
         fi
       fi
@@ -7820,9 +9071,21 @@ _manage_user() {
       _ltd_hm_core_heal "${_THIS_HM_PLR}"
       _nrCheck=
       _ltdNgxReloaded=
+      # per account: what the pass decided and applied for the previous
+      # account never carries over
+      _PHP_SV=
+      _ltdVrnHeld=NO
+      _ltdNrHeld=NO
+      _ltdOwnNgx=
+      _ltdOwnFpm=
+      _ltd_fpm_multi_mode
+      _ltdNrSet=
+      _ltdNrOwn=
+      _ltdNgxTestFail=
+      [ "${_ltdCtrlOwn}" = "YES" ] && _ltd_nr_decide
       _ltdNgxFpBefore="$(_ltd_ngx_fpm_fp)"
-      _switch_php
-      if [ -z ${_nrCheck} ]; then
+      [ "${_ltdCtrlOwn}" = "YES" ] && _switch_php
+      if [ "${_ltdCtrlOwn}" = "YES" ] && [ -z ${_nrCheck} ]; then
         if [ -z ${_PHP_SV} ]; then
           _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
           if [ -z "${_PHP_SV}" ]; then
@@ -7831,8 +9094,8 @@ _manage_user() {
         fi
         # the pools' own mode test: without tools/le the account runs its
         # single pool, multi-fpm.info or not
-        if [ -f "${_dscUsr}/static/control/multi-fpm.info" ] \
-          && [ -d "${_dscUsr}/tools/le" ]; then
+        if [ "${_ltdFpmMulti:-}" = "YES" ] || { [ -z "${_ltdFpmMulti:-}" ] \
+          && [ -f "${_dscUsr}/static/control/multi-fpm.info" ] && [ -d "${_dscUsr}/tools/le" ]; }; then
           _PHP_M_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
           for m in ${_PHP_M_V}; do
             if [ -x "/opt/php${m}/bin/php" ] \
@@ -7846,13 +9109,26 @@ _manage_user() {
             _switch_newrelic ${_PHP_SV} ${_USER} 1
           fi
         fi
+        # the key in force now, unless a change of it waits
+        [ "${_ltdNrHeld}" = "YES" ] || _ltd_applied_put nr "${_ltdNrUse}"
       fi
-      _site_socket_inc_gen
-      _ltd_fpm_plat_gen
-      _ltd_fpm_core_check
-      _ltd_fpm_plat_skip_put
-      _ltd_fpm_cut_notice
+      if [ "${_ltdCtrlOwn}" = "YES" ]; then
+        _site_socket_inc_gen
+        _ltd_fpm_plat_gen
+        # one reload for this pass's include changes, before the page check
+        _ltd_ngx_pass_reload
+        _ltd_fpm_core_check
+        _ltd_fpm_plat_skip_put
+        _ltd_fpm_cut_notice
+      fi
+      # what the login made in control/ during this pass, and anything the
+      # hand-overs above left writable by others or by a group that is not
+      # the account's own, is closed again
+      _ltd_ctrl_shut "${_USER}"
       _ltd_ngx_pass_reload
+      # the window of each kind starts with a change of the account's own
+      [ "${_ltdOwnNgx}" = "YES" ] && _ltd_rld_stamp nginx
+      [ "${_ltdOwnFpm}" = "YES" ] && _ltd_rld_stamp fpm
       if [ -e "${_pthParentUsr}/clients" ] && [ ! -z ${_USER} ]; then
         echo Managing Users for ${_pthParentUsr} Instance
         # clients/ is oN's: a client name there can be a link to anywhere,
@@ -8826,11 +10102,15 @@ _ltd_fpm_judge_as() {
 # The PHP versions installed, as NN in BOA's order; with $1 = fpm only those
 # a site of the account can be moved to: the account's pool for it up, and
 # only in multi-FPM mode, where a site can have a version of its own (the
-# pools' own mode test: multi-fpm.info and tools/le).
+# mode this pass runs in, _ltd_fpm_multi_mode).
 _ltd_fpm_usable() {
   local _e _out=""
   if [ "${1}" = "fpm" ]; then
-    [ -f "${_dscUsr}/static/control/multi-fpm.info" ] && [ -d "${_dscUsr}/tools/le" ] || return 0
+    if [ -n "${_ltdFpmMulti:-}" ]; then
+      [ "${_ltdFpmMulti}" = "YES" ] || return 0
+    else
+      [ -f "${_dscUsr}/static/control/multi-fpm.info" ] && [ -d "${_dscUsr}/tools/le" ] || return 0
+    fi
   fi
   for _e in 56 70 71 72 73 74 80 81 82 83 84 85 86; do
     [ -x "/opt/php${_e}/bin/php" ] || continue
@@ -8945,24 +10225,43 @@ _ltd_fpm_move_fpm() {
   done <<< "${2}"
   _body=$(_ltd_ctrl_read multi-fpm.info)
   # each site's last row
-  while IFS= read -r _line; do
+  while LC_ALL=C IFS= read -r _line; do
     _ltd_fpm_mrow "${_line}"
     [ -n "${_LTD_MR_S}" ] && [ -n "${_to[${_LTD_MR_S}]+x}" ] || continue
     _cur["${_LTD_MR_S}"]="${_LTD_MR_V}"
   done <<< "${_body}"
+  local _named=""
   for _s in "${!_to[@]}"; do
+    # no include name over 255 bytes can exist (fpm_include_site_ + .inc): a
+    # row for the site would never take effect
+    [ "$(( ${#_s} + 21 ))" -le 255 ] || continue
     _v="${_cur[${_s}]:-}"
     case "${_v}" in
       56|70|71|72|73|74|80|81|82|83|84|85|86)
-        [ "${_v}" = "${_was[${_s}]//./}" ] || continue
+        if [ "${_v}" != "${_was[${_s}]//./}" ]; then
+          # its last row already names the version the judge moves it to
+          # (an account's row that waits out its window): the move is that
+          # row, put in force by this pass with nothing written, when it
+          # can give an include as the rebuild builds them
+          [ "${_v}" = "${_to[${_s}]}" ] \
+            && [ -x "/opt/php${_v}/bin/php" ] \
+            && [ -e "${_dscUsr}/.drush/${_s}.alias.drushrc.php" ] \
+            && [ -e "/run/${_USER}.${_v}.fpm.socket" ] \
+            && _named+="${_s}"$'\n'
+          continue
+        fi
         ;;
     esac
     _done+="${_s}"$'\n'
   done
   _done=$(printf '%s' "${_done}" | LC_ALL=C sort)
+  while read -r _s; do
+    [ -n "${_s}" ] || continue
+    printf '%s\n' "${_s} ${_was[${_s}]:-?} ${_to[${_s}]:0:1}.${_to[${_s}]:1:1} ${_why[${_s}]:-}"
+  done <<< "${_named}"
   [ -n "${_done}" ] || return 0
   if [ -n "${_body}" ]; then
-    while IFS= read -r _line; do
+    while LC_ALL=C IFS= read -r _line; do
       _ltd_fpm_mrow "${_line}"
       [ -n "${_LTD_MR_S}" ] && [[ $'\n'"${_done}"$'\n' == *$'\n'"${_LTD_MR_S}"$'\n'* ]] && _line="#${_line}"
       _new+="${_line}"$'\n'
@@ -9120,6 +10419,7 @@ _ltd_fpm_core_check() {
   local IFS=$' \t\n'
   local _st="/var/backups/ltd/fpmcore" _sig _old _age _out _rc _d _n _ro _rn
   local _ft _ci _fl _mv="" _mc="" _ok="" _nok="" _dt="" _s _v _t _w _sub _pf=""
+  local _mk _mvOwn=NO _mvHeld=NO
   mkdir -p "${_st}" && chmod 700 "${_st}"
   _d=$(_ltd_read_in "${_dscUsr}/log" fpm.txt | tr -cd '0-9')
   [[ "${_d}" =~ ^[5-9][0-9]$ ]] || _d=84
@@ -9130,12 +10430,23 @@ _ltd_fpm_core_check() {
   _age=$(stat -c %Y "${_st}/${_USER}.sig" 2> /dev/null)
   if [ "${_sig}" = "${_old}" ] && [[ "${_age}" =~ ^[0-9]+$ ]] \
     && [ "$(( $(date +%s) - _age ))" -lt 86400 ]; then
-    return 0
+    # a move that waited out the account's window is judged once after it
+    if [ ! -e "${_st}/${_USER}.mvheld" ] || _ltd_rld_held nginx; then
+      return 0
+    fi
   fi
+  # the box's state as the judge starts: its PHP versions, the account's
+  # pools and sockets, the mode, and the judge and the moves themselves
+  _mk="$(_ltd_fpm_sys_key 2> /dev/null) j:$(declare -f _ltd_fpm_head _ltd_fpm_why \
+    _ltd_fpm_nearest _ltd_fpm_judge _ltd_fpm_judge_as _ltd_fpm_served _ltd_fpm_usable \
+    _ltd_fpm_move_fpm 2> /dev/null | md5sum | cut -c1-12)"
   _out=$(_ltd_fpm_judge_as "${_d}" "${_ft}" "${_ci}")
   _rc="$?"
   if [ "${_rc}" -ge 124 ]; then
     echo "${_sig}" > "${_st}/${_USER}.sig"
+    # a held move's run cut off after the window waits for a change or a day,
+    # like any other; one cut off inside it is due on the first pass after it
+    _ltd_rld_held nginx || rm -f "${_st}/${_USER}.mvheld"
     echo "ALRT: the page check of ${_USER} did not finish; ${_dscUsr}/static/control/.fpm-core.info is left as it was"
     _ltd_notice_daily "fpm-core-timeout-${_USER}" \
       "the page check of ${_USER} did not finish" \
@@ -9161,7 +10472,20 @@ _ltd_fpm_core_check() {
     while read -r _s; do
       [ -n "${_s}" ] && echo "INFO: cli-per-platform.info line of ${_USER} for ${_s}, a folder that is gone, removed"
     done <<< "$(_ltd_fpm_prune cli)"
-    _mv=$(_ltd_fpm_move_fpm "$(printf '%s\n' "${_out}" | grep -E '^> ' | head -n 500)" "${_fl}")
+    # A move the box's state did not drive (its PHP versions, the account's
+    # pools and sockets, the mode and the judge itself as when the check last
+    # ran) comes from the account's own code: it counts as the account's
+    # change in its nginx window, waiting inside it and opening it otherwise,
+    # or a login switching its own core files would move a site, and reload
+    # nginx, on every pass. A move the box's state drove is made at once.
+    [ "$(_ltd_applied_get mvkey 2> /dev/null)" = "${_mk}" ] && _mvOwn=YES
+    if [ "${_mvOwn}" = "YES" ] && grep -q '^> ' <<< "${_out}" && _ltd_rld_held nginx; then
+      _mvHeld=YES
+      _ltd_rld_note nginx "the page check's move of a site its own code changed"
+    else
+      _mv=$(_ltd_fpm_move_fpm "$(printf '%s\n' "${_out}" | grep -E '^> ' | head -n 500)" "${_fl}")
+    fi
+    _ltd_applied_put mvkey "${_mk}" 2> /dev/null
     _mc=$(_ltd_fpm_move_cli "$(printf '%s\n' "${_out}" | grep -E '^~ ' | head -n 200)")
   fi
   if [ -n "${_mv}" ]; then
@@ -9170,7 +10494,21 @@ _ltd_fpm_core_check() {
       <(printf '%s\n' "${_mv}") -)
   fi
   # the includes, and the list of rows that wait, follow multi-fpm.info now
-  [ -n "${_mv}${_pf}" ] && _site_socket_inc_gen
+  # a move is the box's correction and is never held; a prune alone changes
+  # no include (its site is gone) and is judged as the account's file
+  if [ -n "${_mv}" ]; then
+    _site_socket_inc_gen sys
+    [ "${_mvOwn}" = "YES" ] && _ltdOwnNgx=YES
+  elif [ -n "${_pf}" ]; then
+    _site_socket_inc_gen
+  fi
+  # a held move is judged again on the first pass after the window, not on
+  # every pass inside it (the judge runs as the account, up to two minutes)
+  if [ "${_mvHeld}" = "YES" ]; then
+    : > "${_st}/${_USER}.mvheld"
+  else
+    rm -f "${_st}/${_USER}.mvheld"
+  fi
   _ok=$(printf '%s\n' "${_mc}" | grep -v -e '^! ' -e '^$')
   _nok=$(printf '%s\n' "${_mc}" | grep '^! ')
   if [ -n "${_mv}${_ok}" ]; then
@@ -9196,6 +10534,8 @@ _ltd_fpm_core_check() {
       _sub="not moved on a standby box"
     elif [ -z "${_ft}" ]; then
       _sub="not moved: one PHP-FPM pool serves every site of the account"
+    elif [ "${_mvHeld}" = "YES" ]; then
+      _sub="not moved yet: a change of the account's own reloaded nginx under $(( _LTD_RELOAD_SECS / 60 )) minutes ago, and the first pass after that moves them"
     else
       _sub="not moved: no PHP installed with a pool of the account can run them, or the line moving them waits in .multi-fpm-skipped.info"
     fi
@@ -9644,6 +10984,10 @@ else
   _add_ltd_group_if_not_exists
   _add_allow_snail_if_not_exists
   _kill_zombies >/var/backups/ltd/log/zombies-${_NOW}.log 2>&1
+  _ltd_acct_gone_prune_all >>/var/backups/ltd/log/zombies-${_NOW}.log 2>&1
+  # after the reaps and before any walk hands a gone login's files over or
+  # a new login takes a freed number
+  _ltd_ctrl_gate_guard_all >>/var/backups/ltd/log/zombies-${_NOW}.log 2>&1
   _ltd_gone_hand_over_all >>/var/backups/ltd/log/zombies-${_NOW}.log 2>&1
   # before the account loop, which skips a frozen account: one the route
   # clears rejoins this very pass
@@ -9651,6 +10995,9 @@ else
   # before the account loop, which switches the pools' PHP
   _ltd_store_core_heal >>/var/backups/ltd/log/zombies-${_NOW}.log 2>&1
   _manage_user >/var/backups/ltd/log/users-${_NOW}.log 2>&1
+  # a login the account loop retired (a platform's or a web user's) after an
+  # earlier account's turn: before another run can hand its folders over
+  _ltd_ctrl_gate_guard_all >>/var/backups/ltd/log/zombies-${_NOW}.log 2>&1
   if [ -e "${_THIS_LTD_CONF}" ]; then
     _dedup_ltd_conf_sections "${_THIS_LTD_CONF}"
     _DUP_SEC=$(_ltd_conf_dup_sections "${_THIS_LTD_CONF}")
@@ -9744,7 +11091,7 @@ else
     -exec rm -rf {} + 2>/dev/null
   if ! grep -qiE '^[[:space:]]*logfilename[[:space:]]*[:=]' /etc/lshell.conf 2>/dev/null; then
     find /var/log/lsh -mindepth 1 -maxdepth 1 -type f -name '*.log' -printf '%u\0%f\0' 2>/dev/null \
-      | while IFS= read -r -d '' _lshOwner && IFS= read -r -d '' _lshName; do
+      | while LC_ALL=C IFS= read -r -d '' _lshOwner && LC_ALL=C IFS= read -r -d '' _lshName; do
         [ -n "${_lshOwner}" ] && [ -n "${_lshName}" ] || continue
         case "${_lshOwner}" in
           *[!0-9]*) [ "${_lshName%.log}" = "${_lshOwner}" ] || rm -f "/var/log/lsh/${_lshName}" ;;

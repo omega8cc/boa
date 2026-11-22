@@ -241,6 +241,96 @@ _wg_free_unreadable() {
 # Run "$@" inside the real directory $1: below /data/disk and /home every name
 # on the path must be a real directory; once entered, ./name stays there
 # whatever is swapped. A copy of the helper in lib/functions/helper.sh.inc.
+# The uids root's walks over the account $1's trees act on, comma-separated:
+# root's own (0) and those of every identity of the account as passwd names
+# them: oN and oN.<name> (its .ftp login, its client sub-accounts oN.<client>
+# and oN.<client>-dev) and its PHP-FPM users oN.web and oN.<ver>.web. An
+# account name holds no dot, so the match is exact: o1 never takes o10's.
+# Status 1, and nothing, unless the account itself is in passwd.
+_acct_walk_uids() {
+  local _a="${1}" _n _p _u _r _x="0" _self=NO
+  case "${_a}" in
+    ""|*[!a-z0-9-]*) return 1 ;;
+  esac
+  while IFS=: read -r _n _p _u _r; do
+    [[ "${_n}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]] || continue
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    _x="${_x},${_u}"
+    [ "${_n}" = "${_a}" ] && _self=YES
+  done < <(getent passwd 2> /dev/null)
+  [ "${_self}" = "YES" ] || return 1
+  # the account's removed identities, their numbers recorded by root before
+  # deluser freed them; a number a user has again is not taken
+  while IFS= read -r _u; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    getent passwd "${_u}" > /dev/null 2>&1 && continue
+    _x="${_x},${_u}"
+  done 2> /dev/null < "/data/conf/acct-uids/${_a}.gone"
+  echo "${_x}"
+}
+# The whole of an account's control/, judged once before a run acts on it:
+# run inside the account's real static/, it prints OK when control/ and
+# everything in it, never followed through a link, and static/ and every
+# directory above it up to /, are root's or one of the account's identities'
+# (the uids given first, _acct_walk_uids, with the account's recorded
+# removed identities), ABSENT when there is no control/, and otherwise why
+# not, on one line.
+# Every other account's .ftp login is in the box-wide group, which an account
+# not yet on its own group still has on static/: such a login could put a
+# control/ of its own there, or a file of its own in a group-writable
+# directory below it, for root to act on as the account's.
+_ACCT_CTRL_OWN_PL='use Fcntl;
+my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, shift @ARGV // "");
+sub own { my $u = shift; return exists $own{$u} ? 1 : 0; }
+sub isd { ($_[0] & 0170000) == 0040000 }
+sub nm { (my $v = shift) =~ s/[^\x20-\x7e]/?/g; return substr($v, 0, 200); }
+sub refuse { print "$_[0]\n"; exit 0; }
+my ($p, $top, @d, @x) = (".", 0);
+for (1 .. 256) {
+  @x = stat($p) or refuse("static/ cannot be read");
+  own($x[4]) or refuse("a directory above control/ is owned by uid $x[4]");
+  if (@d && $x[0] == $d[0] && $x[1] == $d[1]) { $top = 1; last; }
+  @d = @x;
+  $p .= "/..";
+}
+$top or refuse("static/ is too deep");
+my @s = lstat("./control");
+unless (@s) { print(($!{ENOENT} ? "ABSENT" : "control/ cannot be read") . "\n"); exit 0; }
+isd($s[2]) or refuse("control is not a directory");
+my ($n, @q) = (0, ["control", @s]);
+while (my $e = shift @q) {
+  my ($f, @t) = @$e;
+  own($t[4]) or refuse(nm($f) . " is owned by uid $t[4]" . (defined(getpwuid($t[4])) ? "" : ", which no user has and root never recorded for this account: if the file is its own, give it to its .ftp login"));
+  next unless isd($t[2]);
+  opendir(my $h, "./$f") or refuse(nm($f) . " cannot be read");
+  for my $b (readdir($h)) {
+    next if $b eq "." || $b eq "..";
+    ++$n > 100000 and refuse("control/ holds more than 100000 entries");
+    my @u = lstat("./$f/$b") or next;
+    push @q, ["$f/$b", @u];
+  }
+  closedir($h);
+}
+print "OK\n";
+exit 0;'
+# 0 when the account $1's control/ is its own as _ACCT_CTRL_OWN_PL judges it
+# (or it has none); otherwise why not on stdout, status 1. A run that acts
+# on what control/ says leaves the account as it is when it is not.
+_acct_ctrl_own() {
+  local _a="${1}" _o _r _want
+  # an account not in passwd (not made yet, or removed) has nothing to
+  # judge it by: read as before
+  _o=$(_acct_walk_uids "${_a}" 2> /dev/null) || return 0
+  [ -e "/data/disk/${_a}/static" ] || [ -L "/data/disk/${_a}/static" ] || return 0
+  _want="$(cd -P -- /data/disk 2> /dev/null && /bin/pwd -P)/${_a}/static"
+  _r=$(cd -P -- "/data/disk/${_a}/static" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] \
+    && perl -e "${_ACCT_CTRL_OWN_PL}" -- "${_o}" 2> /dev/null)
+  case "${_r}" in
+    OK|ABSENT) return 0 ;;
+  esac
+  echo "${_r:-static/ is not a real directory}"
+  return 1
+}
 _acct_in_real_dir() {
   local _d="${1}" _a="" _want
   shift
@@ -249,11 +339,11 @@ _acct_in_real_dir() {
     /data/disk/?*) _a=/data/disk ;;
   esac
   if [ -n "${_a}" ]; then
-    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+    _want="$(cd -P -- "${_a}" 2> /dev/null && /bin/pwd -P)${_d#"${_a}"}"
   else
-    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && /bin/pwd -P)/${_d##*/}"
   fi
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] && "$@" )
 }
 # The queued command ./$1 in the current (pinned) directory: never through a
 # link, never blocked on a FIFO, at most 4 KiB.
@@ -885,7 +975,7 @@ _acct_reclaim_restored() {
   # link, a link or a FIFO put in it is left alone, and no file outside it is
   # regrouped (nothing checks a link's own group).
   if [[ "${_gid}" =~ ^[0-9]+$ ]]; then
-    ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_d}" ] \
+    ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_d}" ] \
       && env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_w[@]}" \
         ! -group "${_g}" ! -group www-data ! -group root "${_x[@]}" \
         \( -type d -o -type f \) \
@@ -1303,11 +1393,46 @@ _rst_links() {
   return 0
 }
 
+# A restore target is free when it is missing, or an empty folder that is no
+# link: duplicity refuses one that exists and is not empty.
+_rst_target_free() {
+  if [ ! -e "${1}" ] && [ ! -L "${1}" ]; then
+    return 0
+  fi
+  [ -d "${1}" ] && [ ! -L "${1}" ] && [ -z "$(ls -A -- "${1}" 2> /dev/null)" ]
+}
+
+# The folder a restore lands in: $1 while it is free, else a name beside it
+# with the restore's date and time. An earlier restore of the same folder
+# still lying in restores/ would otherwise make this one fail; it is the
+# account's to keep or move, never ours to replace. A whole-account restore
+# ($2 = whole, $1 the restores folder itself) goes into
+# restores/everything-<date>-<time> instead.
+_rst_free_target() {
+  local _t="${1%/}" _b _c _n=1
+  if _rst_target_free "${_t}"; then
+    echo "${_t}"
+    return 0
+  fi
+  if [ "${2}" = whole ]; then
+    _b="${_t}/everything-$(date +%Y%m%d-%H%M%S)"
+  else
+    _b="${_t}-$(date +%Y%m%d-%H%M%S)"
+  fi
+  _c="${_b}"
+  while ! _rst_target_free "${_c}" && [ "${_n}" -lt 100 ]; do
+    _n=$((_n + 1))
+    _c="${_b}-${_n}"
+  done
+  echo "${_c}"
+}
+
 # Function to restore backup
 _restore() {
   local _restore_path=$1
   local _restore_time=$2
   local _restore_target="/data/disk/${_user}/static/restores"
+  local _whole="" _made=NO
 
   # Ensure _restore_target exists
   if [ ! -d "${_restore_target}" ]; then
@@ -1325,8 +1450,15 @@ _restore() {
   # Combine _restore_target with the extracted basename.
   # Also, remove any trailing slash from _restore_target to avoid double slashes.
   _final_restore_target="${_restore_target%/}/${_last_part}"
+  [ -n "${_last_part}" ] || _whole=whole
+  _final_restore_target="$(_rst_free_target "${_final_restore_target}" "${_whole}")"
+  if [ ! -e "${_final_restore_target}" ] && [ ! -L "${_final_restore_target}" ]; then
+    _made=YES
+  fi
 
   echo "MyBackup Restore for [${_user}] on [$(date)]" >> ${_LOGFILE}
+  echo "Restoring into ${_final_restore_target}" >> ${_LOGFILE}
+  _RST_OK=NO
   if ! _rst_setup "${_DCY_MN_CMD} restore --no-restore-owner" \
     "${_DCY_MN_CMD} list-current-files" "${_restore_time}" acct "${_user}" \
     "${_LOGFILE}" "mybackup restore ${_SERVICE}"; then
@@ -1334,7 +1466,13 @@ _restore() {
   elif _rst_path "${_clean_restore_path}" "${_final_restore_target}"; then
     _RST_GIVEN="${_clean_restore_path}"
     _RST_DONE="${_RST_LAST}"
+    _RST_OK=YES
     _rst_links "${_final_restore_target}"
+  fi
+  # a failed restore leaves no empty folder of its own making behind
+  if [ "${_RST_OK}" != YES ] && [ "${_made}" = YES ] \
+    && [ -d "${_final_restore_target}" ] && [ ! -L "${_final_restore_target}" ]; then
+    rmdir -- "${_final_restore_target}" 2> /dev/null
   fi
   # --no-restore-owner lands the tree root-owned: hand it to the account,
   # owner and group, then the shared restore claim (every restored path,
@@ -1566,17 +1704,167 @@ _validate_restore_command() {
 # Check if run as root
 export _run_as_user=$(whoami)
 
+# Root's duplicity of the server's own, in both command forms: the duplicity
+# in flight less what an account's own backup entry runs (root's multiback
+# backup <service> <account>, the account not global, data or custom), from
+# one snapshot of root's processes alone, read by their own argument lists.
+# The same walk as the backup tools' _dcy_box_count, less its mybackup arm:
+# this pass is the mybackup run it would count. The same text in multiback.
+_dcy_srv_count() {
+  ps -e -ww -o pid= -o ppid= -o ruid= -o euid= -o args= 2> /dev/null | awk '
+    $3 == 0 && $4 == 0 {
+      a = $0; sub(/^ *[0-9]+ +[0-9]+ +[0-9]+ +[0-9]+ */, "", a)
+      n++; k[n] = $1; p[$1] = $2; c[$1] = a
+      if (a ~ /^([^ ]*\/)?bash \/(opt|usr)\/local\/bin\/multiback backup [^ ]+ [^ ]+$/ &&
+        a !~ / (global|data|custom)$/) e[$1] = 1
+    }
+    END {
+      for (i = 1; i <= n; i++) {
+        a = c[k[i]]
+        if (a !~ /^([^ ]*\/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)/ &&
+          a !~ /^[^ ]*duplicity( |$)/) continue
+        q = p[k[i]]; d = 0
+        while ((q in p) && !(q in e) && d < 64) { q = p[q]; d++ }
+        if (!(q in e)) m++
+      }
+      print m + 0
+    }'
+}
+# Root's runs of the backup tools, one "<tool> <verb> <service> <target>" a
+# line (backboa and duobackboa carry their verb alone), root's processes
+# alone, read by their own argument lists: the tool's path first, or right
+# after a shell running it. The same text in clear.sh.
+_bup_runs() {
+  ps -e -ww -o ruid= -o euid= -o args= 2> /dev/null | awk '
+    $1 == 0 && $2 == 0 {
+      for (i = 3; i <= NF && i <= 6; i++) {
+        if ($i ~ /^\/(opt|usr)\/local\/bin\/(backboa|duobackboa|multiback)$/ &&
+          (i == 3 || $(i - 1) ~ /^([^ ]*\/)?(ba|da)?sh$/)) {
+          t = $i; sub(/.*\//, "", t)
+          print t, $(i + 1), $(i + 2), $(i + 3)
+          break
+        }
+      }
+    }'
+}
+# An account's own backup entry runs or waits: a root run of its multiback
+# entry (any verb), or its mark made less than a day ago while the entry is on
+# the backup schedule. The same text in clear.sh.
+_acct_bup_first() {
+  local _a="${1}" _t="" _v="" _s="" _g="" _m="" _e=""
+  while read -r _t _v _s _g; do
+    [ "${_t}" = "multiback" ] && [ "${_g}" = "${_a}" ] && return 0
+  done <<< "$(_bup_runs)"
+  for _m in $(find /run -maxdepth 1 -name 'boa_backup_held.multiback.*' -type f -mmin -1440 2> /dev/null); do
+    _e="${_m##*/boa_backup_held.multiback.}"
+    [ "${_e#*.}" = "${_a}" ] || continue
+    grep -qxF "${_e%%.*} ${_e#*.}" /root/.remote_backups/schedule/backup_schedule.txt 2> /dev/null \
+      && return 0
+  done
+  return 1
+}
+# The installed wrapper caps the accounts' streams alone: an account's entry
+# then runs beside other accounts' entries and their restores, and this pass
+# beside accounts' entries. Under an older wrapper an account's entry waits for
+# any duplicity, a restore pass included, so the pass keeps the older rules.
+# The same text in multiback and clear.sh.
+_wrapper_caps_accounts() {
+  grep -q '^_live_account_streams()' /root/.remote_backups/run/sequential_backups.sh 2> /dev/null
+}
+# Under an older interval wrapper (an account's entry then waits for any
+# duplicity): true while root's backups go first: root's own duplicity, a run of backboa,
+# duobackboa or multiback, or a configured backup run one of them marked held
+# when a restore held it off. Each tool and multiback entry has its own mark,
+# made at the first hold and cleared when that one next gets through; a mark
+# holds for a day from that first hold, and an entry's only while the entry is
+# on the backup schedule.
+_backups_first_old() {
+  local _m="" _e=""
+  (( $(pgrep -u root -U root -fc '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)') \
+    + $(pgrep -u root -U root -fc '^[^ ]*duplicity( |$)') > 0 )) && return 0
+  pgrep -u root -U root -f '(^|(^| )[^ ]*bash )/(opt|usr)/local/bin/(backboa|duobackboa|multiback)( |$)' \
+    > /dev/null 2>&1 && return 0
+  for _m in $(find /run -maxdepth 1 -name 'boa_backup_held.*' -type f -mmin -1440 2> /dev/null); do
+    case "${_m##*/}" in
+      boa_backup_held.multiback.*)
+        _e="${_m##*/boa_backup_held.multiback.}"
+        grep -qxF "${_e%%.*} ${_e#*.}" /root/.remote_backups/schedule/backup_schedule.txt 2> /dev/null \
+          && return 0 ;;
+      *) return 0 ;;
+    esac
+  done
+  return 1
+}
+
+# Backups go first. With no account, the server's own backup holds the whole
+# pass: its duplicity, a root run of backboa or duobackboa, a root run of
+# multiback that is not an account's own backup entry, or a mark of backboa,
+# duobackboa or root's own entry. With an account, that account's own entry,
+# running or marked, holds its restore alone (_acct_bup_first): no restore
+# holds another account's entry, so another account's backup, running or
+# waiting, holds neither. With no account under an older wrapper, the older
+# rule (the pass asks it first, so the account form never holds beyond it).
+_backups_first() {
+  local _a="${1:-}" _m="" _e="" _t="" _v="" _s="" _g=""
+  if [ -n "${_a}" ]; then
+    _acct_bup_first "${_a}"
+    return
+  fi
+  _wrapper_caps_accounts || { _backups_first_old; return; }
+  (( $(_dcy_srv_count) > 0 )) && return 0
+  while read -r _t _v _s _g; do
+    case "${_t}" in
+      backboa|duobackboa) return 0 ;;
+      multiback)
+        case "${_g}" in global|data|custom|"") return 0 ;; esac
+        [ "${_v}" = "backup" ] || return 0
+        ;;
+    esac
+  done <<< "$(_bup_runs)"
+  for _m in $(find /run -maxdepth 1 -name 'boa_backup_held.*' -type f -mmin -1440 2> /dev/null); do
+    case "${_m##*/}" in
+      boa_backup_held.multiback.*)
+        _e="${_m##*/boa_backup_held.multiback.}"
+        case "${_e#*.}" in
+          global|data|custom) ;;
+          *) continue ;;
+        esac
+        grep -qxF "${_e%%.*} ${_e#*.}" /root/.remote_backups/schedule/backup_schedule.txt 2> /dev/null \
+          && return 0
+        ;;
+      *) return 0 ;;
+    esac
+  done
+  return 1
+}
+
 # Main script
 _main_script() {
   # One queue pass at a time (the launcher starts one every few minutes
-  # while no duplicity runs, which includes the pauses between accounts).
+  # while no duplicity runs, which includes the pauses between accounts, and
+  # under the wrapper that caps the accounts' streams also for a queued
+  # restore its account's own backup does not hold while only accounts' own
+  # entries run; the server's own holds may still end the pass at once).
   # The lock is fd 9, never handed to the restore run: su gets it closed.
   exec 9>> /run/mybackup_queue.lock || exit 1
   flock -n 9 || exit 0
   _win_close_stale
-  _CNT=$(( $(pgrep -fc '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)') + $(pgrep -fc '^[^ ]*duplicity( |$)') ))
+  # root's own duplicity alone: an account's process is never counted (its
+  # site code runs as its backend user), and this pass runs the restores.
+  # Under the wrapper that caps the accounts' streams the pass runs beside
+  # accounts' own entries (the server's own duplicity alone holds it);
+  # otherwise any of root's holds it
+  if _wrapper_caps_accounts; then
+    _CNT=$(_dcy_srv_count)
+  else
+    _CNT=$(( $(pgrep -u root -U root -fc '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)') + $(pgrep -u root -U root -fc '^[^ ]*duplicity( |$)') ))
+  fi
   if (( _CNT > 0 )); then
     echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
+    exit 1
+  fi
+  if _backups_first; then
+    echo "[$(date)] A backup runs or waits first, will try again later..." >> /var/log/mybackup_waiting_queue.log
     exit 1
   fi
   # Process queued commands for all users.
@@ -1586,12 +1874,36 @@ _main_script() {
   # restore into the synced tree as the tenant and mail them a duplicate
   # notice. Leave the file alone; the active consumes its own copy.
   [ -e "/root/.standby.cnf" ] && return 0
-  for _user_dir in "${_BASE_DIR}"/*; do
+  # Each pass starts after the account it served last, so one account's
+  # queue cannot keep another's waiting behind it.
+  local _q_last="" _q_after=() _q_upto=() _q_d
+  _q_last="$(cat /run/mybackup_queue_last 2> /dev/null)"
+  for _q_d in "${_BASE_DIR}"/*; do
+    if [ -n "${_q_last}" ] && [[ "${_q_d##*/}" > "${_q_last}" ]]; then
+      _q_after+=("${_q_d}")
+    else
+      _q_upto+=("${_q_d}")
+    fi
+  done
+  for _user_dir in "${_q_after[@]}" "${_q_upto[@]}"; do
     if [[ -d "${_user_dir}" ]]; then
       export _user=$(basename "${_user_dir}")
       export _user_run_dir="${_user_dir}/${_RUN_SUBDIR}"
       export _user_cmd_file="${_user_run_dir}/${_CMD_FILE}"
       if [[ -f "${_user_cmd_file}" ]]; then
+        # Backups go first between restores too: this pass ends, the queue
+        # stays, and the next pass starts after the account it served last.
+        if _backups_first; then
+          echo "[$(date)] A backup runs or waits first, ${_user}'s restore waits..." >> /var/log/mybackup_waiting_queue.log
+          break
+        fi
+        # The account's own backup, running or held, goes first for its own
+        # restore alone: this account's restore waits for a later pass, and
+        # the pass serves the next account.
+        if _backups_first "${_user}"; then
+          echo "[$(date)] ${_user}'s own backup runs or waits first, its restore waits..." >> /var/log/mybackup_waiting_queue.log
+          continue
+        fi
         # These paths hang off static/control, which the tenant owns, so every
         # component here is a name it can replace with a symlink. The leaf is
         # not enough: a planted INTERMEDIATE link (static/control itself,
@@ -1613,6 +1925,14 @@ _main_script() {
               >> /var/log/mybackup_invalid_queued.log
           fi
         done
+        # and none is taken from a static/control that is not the
+        # account's own (another account's login can put one there)
+        if [ "${_user_ctl_ok}" = "YES" ] \
+          && ! _user_ctl_why=$(_acct_ctrl_own "${_user}"); then
+          _user_ctl_ok=NO
+          echo "[$(date)] REFUSED for ${_user}: static/control is not the account's own (${_user_ctl_why})" \
+            >> /var/log/mybackup_invalid_queued.log
+        fi
         if [ "${_user_ctl_ok}" != "YES" ]; then
           continue
         fi
@@ -1664,13 +1984,44 @@ _main_script() {
         _acct_in_real_dir "${_ctl_rb_dir}" _unlink_link_here credentials
         _acct_in_real_dir "${_user_credentials_dir}" \
           _cred_window_open_here "${_user}" "${_cred_name}"
-        # Pass the validated args positionally via -- so each arg arrives at
-        # the inner mybackup as a separate $1/$2/$3/$4. No shell-interpolation
-        # of attacker-controlled bytes; metacharacters in any arg are inert.
-        su -s /bin/bash - "${_user}" -c 'exec mybackup "$@"' -- "${_queued_args[@]}" 9>&-
+        # The account's own entry may have started since the check above:
+        # with the window records in place an entry starting from here waits
+        # for this restore, and one that started in between keeps the queue
+        # for a later pass.
+        if _acct_bup_first "${_user}"; then
+          echo "[$(date)] ${_user}'s own backup started, its restore waits..." >> /var/log/mybackup_waiting_queue.log
+          _win_close "${_user}"
+          continue
+        fi
+        # Pass the validated args positionally after -- so each arg arrives at
+        # the inner mybackup as a separate $1/$2/$3/$4: su hands what follows
+        # -- to bash -c, which takes the first word as $0, so a word stands in
+        # that place. No shell-interpolation of attacker-controlled bytes;
+        # metacharacters in any arg are inert.
+        # The restore runs as the account, which can stall its own run while
+        # this pass holds the queue, the server's own backup gates and the
+        # account's own entry (every backup gate under an older wrapper): one
+        # restore gets at most 24 hours. su then ends only the account's shell, so what
+        # that shell started is ended with the session it led, by the pid it
+        # wrote, the account's own processes alone.
+        local _rs_t0="${SECONDS}" _rs_rc=0 _rs_sid=""
+        timeout -k 60 24h su -s /bin/bash - "${_user}" -c 'exec mybackup "$@"' -- mybackup "${_queued_args[@]}" 9>&-
+        _rs_rc=$?
         wait
         # Clean up the command file
         local _command_log="$(printf '%q ' "${_queued_args[@]}")"
+        if [ "${_rs_rc}" -eq 124 ] \
+          || { [ "${_rs_rc}" -eq 137 ] && (( SECONDS - _rs_t0 >= 86400 )); }; then
+          _command_log="${_command_log}(stopped after 24 hours)"
+          _rs_sid="$(_acct_in_real_dir "/data/disk/${_user}/log" _queue_read_here \
+            "mybackup_${_queued_args[1]}_${_user}.pid" | tr -dc '0-9')"
+          if [[ "${_rs_sid}" =~ ^[1-9][0-9]{0,9}$ ]] && [ "${_rs_sid}" -gt 1 ]; then
+            pkill -KILL -u "${_user}" -U "${_user}" -s "${_rs_sid}" 2> /dev/null
+          fi
+        elif [ "${_rs_rc}" -ne 0 ]; then
+          # refused, or its duplicity failed: nothing or not all came back
+          _command_log="${_command_log}(exit ${_rs_rc})"
+        fi
         echo "[$(date)] Command was run for user ${_user}: ${_command_log}" >> /var/log/mybackup_commands_history.log
         # log/ is the account's own: appended inside the real directory
         _acct_in_real_dir "/data/disk/${_user}/log" _acct_append_here \
@@ -1680,6 +2031,7 @@ _main_script() {
         # Close the window: ownership goes back to the recorded owners, and a
         # failure to do so is logged, never retried by path.
         _win_close "${_user}"
+        printf '%s\n' "${_user}" > /run/mybackup_queue_last
         sleep 10
       fi
     fi
@@ -1748,11 +2100,6 @@ export _PIDFILE="/data/disk/${_user}/log/mybackup_${_SERVICE}_${_user}.pid"
 export _LOGPTH="/data/disk/${_user}/log"
 export _LOGFILE="${_LOGPTH}/mybackup_${_SERVICE}_${_user}.log"
 
-export _DCY_MN_CMD="/usr/local/bin/duplicity \
-    --name=${_NAME} \
-    --allow-source-mismatch \
-    --concurrency 4"
-
 _create_pid_file "${_PIDFILE}"
 # Set only after the lock is ours -- an exit on a held lock must not
 # remove the owner's file; a signal death re-enters the EXIT trap.
@@ -1777,7 +2124,16 @@ _print_env "mybackup_main"
 case "${_ACTION}" in
   restore)
     _set_backup_target "${_SERVICE}" "${_user}"
+    # built once the target set the account's name: duplicity keeps the
+    # restore's cache in a folder of that name, never at its cache root
+    export _DCY_MN_CMD="/usr/local/bin/duplicity \
+    --name=${_NAME} \
+    --allow-source-mismatch \
+    --concurrency 4"
     _restore "${_RESTORE_PATH}" "${_RESTORE_TIME}"
+    # a restore that did not restore what was asked ends with a failing
+    # status, which the queue pass records
+    [ "${_RST_OK}" = "YES" ] || _MYB_RC=1
     ;;
   *)
     _usage
@@ -1808,4 +2164,4 @@ esac
   export _userEmail=
 
 _print_env "mybackup_exit"
-exit 0
+exit "${_MYB_RC:-0}"

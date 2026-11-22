@@ -269,6 +269,9 @@ if ($valkey_up && $use_valkey && !$custom_cache) {
       }
       $settings['cache_prefix']                  = $this_prefix;
       $settings['cache']['default']              = 'cache.backend.redis';
+      // A cluster node gets no backend named for these three bins. Drupal
+      // 8.2 and newer chain them all the same: a bin's own default in
+      // core.services.yml wins over the default set above.
       if (!is_readable('/data/conf/clstr.cnf')) {
         $settings['cache']['bins']['bootstrap']  = 'cache.backend.chainedfast';
         $settings['cache']['bins']['discovery']  = 'cache.backend.chainedfast';
@@ -534,6 +537,31 @@ if (empty($valkey_up) && (!empty($use_valkey) || !empty($valkey_noredis)) && emp
 }
 
 /**
+ * Drupal 8+ in a process without APCu, which is the command line on a BOA
+ * server. Core's chained backend factory then hands back the consistent
+ * backend alone, so a write never moves the bin's last-write stamp and the
+ * web workers go on trusting their APCu copies: a state or config change
+ * made with Drush, and a Drush cache rebuild, stayed invisible to the web
+ * until a web request happened to write to the same bin. The three bins core
+ * chains get core's own chained backend over a null fast tier there
+ * (global-chained-d8.services.yml), which moves the stamp on every write.
+ * The services file is listed for every request, so the web and the command
+ * line share one compiled container. A bin set to another backend (the
+ * redis_exclude_bins ini, a site's own settings) is left as it is.
+ */
+if ($drupal_core >= 8 && is_readable('/data/conf/global/global-chained-d8.services.yml')) {
+  $settings['container_yamls'][]                 = '/data/conf/global/global-chained-d8.services.yml';
+  if (!function_exists('apcu_fetch')) {
+    foreach (array('bootstrap', 'discovery', 'config') as $chained_bin) {
+      if (!isset($settings['cache']['bins'][$chained_bin])
+          || $settings['cache']['bins'][$chained_bin] === 'cache.backend.chainedfast') {
+        $settings['cache']['bins'][$chained_bin] = 'cache.backend.boa_chained';
+      }
+    }
+  }
+}
+
+/**
  * Always-on, non-sensitive backend observability (ini: redis_debug_header).
  *
  * Reports which backend actually served the structured-cache bins on THIS
@@ -549,7 +577,9 @@ if (isset($all_ini['redis_debug_header']) && $all_ini['redis_debug_header'] &&
     empty($is_backend) && !headers_sent()) {
   $vk_backend = 'db';
   if (!empty($cache_valkey)) {
-    if ($drupal_core >= 8 && !is_readable('/data/conf/clstr.cnf')) {
+    // On a cluster node too: core chains the three bins there by their
+    // own default (see where the bins are named above).
+    if ($drupal_core >= 8) {
       $vk_backend = 'chainedfast'; // APCu front + Valkey back for bootstrap/discovery/config
     }
     else {

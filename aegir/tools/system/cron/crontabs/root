@@ -30,6 +30,12 @@ PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 15 3 * * *  /usr/bin/nice -n5 /usr/bin/ionice -c2 -n7 bash /opt/local/bin/backboa backup                 >/dev/null 2>&1
 15 4 * * *  /usr/bin/nice -n5 /usr/bin/ionice -c2 -n7 bash /var/xdrago/owl.sh                            >/dev/null 2>&1
 15 5 * * *  /usr/bin/nice -n5 /usr/bin/ionice -c2 -n7 bash /opt/local/bin/duobackboa backup              >/dev/null 2>&1
+47 5 * * 3  /usr/bin/nice -n10 /usr/bin/ionice -c3 bash /var/xdrago/fstrim.sh                       >/dev/null 2>&1
+# Account nginx files: root's judged copies kept current each minute when the store is
+# armed (_NGINX_ACCT_STORE=YES, a no-op otherwise), and the nightly report of what the
+# store would leave out (/var/log/boa/ngxstore.report).
+* * * * *   /usr/bin/nice -n5 bash /opt/local/bin/ngxstore sync --quiet --reload-if-changed >/dev/null 2>&1
+05 6 * * *  /usr/bin/nice -n10 /usr/bin/ionice -c3 bash /opt/local/bin/ngxstore report     >/dev/null 2>&1
 # Nightly files-symlink auto-fix (folds the orphan report). Retried hourly at :47 through
 # the night, clear of the nightly backup/owl/upgrade cluster; no off-site backup cycle
 # starts in minutes 47-59 (heavyslots); self-skips a busy hour, a running backup

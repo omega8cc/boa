@@ -15,6 +15,17 @@ _pthLch="/run/boa_mysql_restart_latched.pid"
 _INSTANT_BUSY_MYSQL_ACTION=NO
 _MYSQLADMIN_MONITOR=NO
 
+# The real uids of BOA's own work: root, aegir and each account's backend
+# user (home /data/disk/<name>), as whom root runs the account's tasks and
+# queued restores; never a web, FTP or shell login, which can give its own
+# process any command line.
+_boa_run_uids() {
+  local _l=""
+  _l=$(getent passwd 2> /dev/null \
+    | awk -F: '$3 == 0 || $1 == "aegir" || $6 ~ /^\/data\/disk\/[^\/]+\/?$/ { printf "%s%s", s, $3; s = "," }')
+  echo "${_l:-0}"
+}
+
 _provision_running() {
   # Genuine task EXECUTIONS only. BOA spawns them as
   #   su -s /bin/bash - <user> -c "<php> /usr/bin/drush @<site> provision-<task>"
@@ -24,14 +35,16 @@ _provision_running() {
   # any command line that merely MENTIONED a provision path -- a checksum, an
   # editor, an operator's ssh probe, a monitoring loop. Mirrored from
   # night/night.inc.sh on purpose: this tool has no library to source.
-  pgrep -f '(^| )provision-[a-z0-9-]+( |$)' > /dev/null 2>&1 && return 0
+  local _bU=""
+  _bU="$(_boa_run_uids)"
+  pgrep -u "${_bU}" -U "${_bU}" -f '(^| )provision-[a-z0-9-]+( |$)' > /dev/null 2>&1 && return 0
   # The front-end dispatch phase of a task carries no provision-* token: the
   # backend child is spawned only after bootstrap, and the post-hooks run after
   # it exits, so those windows were invisible. ( |$) is LOAD-BEARING -- without
   # it this also matches hosting-tasks and hosting-dispatch, the per-minute
   # pollers, which would pin the gate ON and disable every nightly cleanup.
-  pgrep -f "hosting-task( |$)" > /dev/null 2>&1 && return 0
-  pgrep -f "^([^ ]*/)?(php[0-9.]*|su|env|drush[0-9]*)( |$).*provision" > /dev/null 2>&1 && return 0
+  pgrep -u "${_bU}" -U "${_bU}" -f "hosting-task( |$)" > /dev/null 2>&1 && return 0
+  pgrep -u "${_bU}" -U "${_bU}" -f "^([^ ]*/)?(php[0-9.]*|su|env|drush[0-9]*)( |$).*provision" > /dev/null 2>&1 && return 0
   return 1
 }
 
@@ -195,7 +208,7 @@ _manage_single_lock() {
     # -------- legacy pgrep guard ---------
     # Exit if more than 2 instances of this script are running
     _SCRIPT=$(basename "$0")
-    _CNT=$(pgrep -fc "(^|(^| )[^ ]*bash )[^ ]*/${_SCRIPT//./\\.}( |$)")
+    _CNT=$(pgrep -u root -U root -fc "(^|(^| )[^ ]*bash )[^ ]*/${_SCRIPT//./\\.}( |$)")
     if (( _CNT > 2 )); then
       echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
       exit 0
@@ -718,9 +731,14 @@ _if_mydumper_is_locked() {
   # Execution forms only: the su wrapper and its bash child both count (the
   # thresholds were set on that pair), an editor or a grep naming the script
   # never does -- the counts are the triggers of the kills below
-  _AR_C="$(pgrep -fc '(^|(^| )[^ ]*bash )/data/disk/[^/ ]+/aegir\.sh$')"
-  _DR_C="$(pgrep -fc '^"?[^ ]*php[0-9]*"? (.*[ /])?drush\.php( |$)')"
-  _MD_C="$(pgrep -fc '^[^ ]*mydumper( |$)')"
+  local _bU=""
+  _bU="$(_boa_run_uids)"
+  # aegir.sh runs counted by root's su of each, twice (the thresholds were set
+  # on the su and its bash child): an account's own process carries any title
+  _AR_C=$(pgrep -u root -U root -fc '(^|(^| )[^ ]*bash )/data/disk/[^/ ]+/aegir\.sh$' 2> /dev/null)
+  _AR_C=$(( 2 * ${_AR_C:-0} ))
+  _DR_C="$(pgrep -u "${_bU}" -U "${_bU}" -fc '^"?[^ ]*php[0-9]*"? (.*[ /])?drush\.php( |$)')"
+  _MD_C="$(pgrep -u root -U root -fc '^[^ ]*mydumper( |$)')"
   # SIGKILL, as autoupboa's reaper sends: on SIGTERM mydumper skips the jobs
   # left, still writes its metadata and exits 0 (or 1 after a retried
   # flush), so a dump cut short would read as whole to every caller; one
@@ -728,15 +746,15 @@ _if_mydumper_is_locked() {
   # took the global read lock, holding every write on the box.
   if [ "${_MD_C}" -gt 0 ]; then
     if [ "${_AR_C}" -gt "${_MULTI_MX}" ]; then
-      pkill -9 -f '^[^ ]*mydumper( |$)'
-      pkill -f '(^|(^| )[^ ]*bash )/data/disk/[^/ ]+/aegir\.sh$'
+      pkill -9 -u root -U root -f '^[^ ]*mydumper( |$)'
+      pkill -u "${_bU}" -U "${_bU}" -f '(^|(^| )[^ ]*bash )/data/disk/[^/ ]+/aegir\.sh$'
       echo "$(date) TOO MANY (${_AR_C}) aegir.sh required killing mydumper" >> ${_pthOml}
       echo >> ${_pthOml}
       _incident_email_report "TOO MANY (${_AR_C}) aegir.sh required killing mydumper" "mysql-mydumper"
     fi
     if [ "${_DR_C}" -gt "${_MULTI_MX}" ]; then
-      pkill -9 -f '^[^ ]*mydumper( |$)'
-      pkill -f '^"?[^ ]*php[0-9]*"? (.*[ /])?drush\.php( |$)'
+      pkill -9 -u root -U root -f '^[^ ]*mydumper( |$)'
+      pkill -u "${_bU}" -U "${_bU}" -f '^"?[^ ]*php[0-9]*"? (.*[ /])?drush\.php( |$)'
       echo "$(date) TOO MANY (${_DR_C}) drush.php required killing mydumper" >> ${_pthOml}
       echo >> ${_pthOml}
       _incident_email_report "TOO MANY (${_DR_C}) drush.php required killing mydumper" "mysql-mydumper"
@@ -1230,7 +1248,7 @@ if [ -x "/etc/init.d/mysql" ] \
   _mysql_high_load
   _sql_busy_detection
   _mysql_flush_hosts
-  if (( $(pgrep -fc '^[^ ]*mydumper( |$)') > 0 )) && (( $(pgrep -fc '(^|(^| )[^ ]*bash )/var/xdrago/mysql_backup\.sh( |$)') > 0 )); then
+  if (( $(pgrep -u root -U root -fc '^[^ ]*mydumper( |$)') > 0 )) && (( $(pgrep -u root -U root -fc '(^|(^| )[^ ]*bash )/var/xdrago/mysql_backup\.sh( |$)') > 0 )); then
     sleep 5
     _if_mydumper_is_locked
   fi

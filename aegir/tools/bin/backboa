@@ -26,6 +26,48 @@ if [ -e "/root/.standby.cnf" ]; then
   exit 0
 fi
 
+# Duplicity runs in flight, counted from root's processes alone: root's own
+# duplicity, and root's mybackup pass, which runs an account's queued restore
+# as the account through su. An account's own process is never counted: the
+# account's site code runs as its backend user in tasks and can give a
+# process any command line.
+_dcy_live_count() {
+  local _a _b _c
+  _a=$(pgrep -u root -U root -fc '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)' 2> /dev/null)
+  _b=$(pgrep -u root -U root -fc '^[^ ]*duplicity( |$)' 2> /dev/null)
+  _c=$(pgrep -u root -U root -fc '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*mybackup( |$)' 2> /dev/null)
+  echo $(( ${_a:-0} + ${_b:-0} + ${_c:-0} ))
+}
+
+# Duplicity runs in flight that hold the server's own backup: those
+# _dcy_live_count counts, less the ones an account's own entry runs (multiback
+# backup <service> <account>, which the schedule starts for an account whose
+# own off-site credentials are filled in). The account sets how long that
+# runs (its data, its bucket), so the server's own backup runs beside it
+# instead of waiting on it, and an account's entry does not start while the
+# server's own backup runs. One snapshot of root's processes alone, read by
+# their own argument lists: an account's process can take any title.
+_dcy_box_count() {
+  ps -e -ww -o pid= -o ppid= -o ruid= -o euid= -o args= 2> /dev/null | awk '
+    $3 == 0 && $4 == 0 {
+      a = $0; sub(/^ *[0-9]+ +[0-9]+ +[0-9]+ +[0-9]+ */, "", a)
+      n++; k[n] = $1; p[$1] = $2; c[$1] = a
+      if (a ~ /^([^ ]*\/)?bash \/(opt|usr)\/local\/bin\/multiback backup [^ ]+ [^ ]+$/ &&
+        a !~ / (global|data|custom)$/) e[$1] = 1
+    }
+    END {
+      for (i = 1; i <= n; i++) {
+        a = c[k[i]]
+        if (a !~ /^([^ ]*\/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*(duplicity|mybackup)( |$)/ &&
+          a !~ /^[^ ]*duplicity( |$)/) continue
+        q = p[k[i]]; d = 0
+        while ((q in p) && !(q in e) && d < 64) { q = p[q]; d++ }
+        if (!(q in e)) m++
+      }
+      print m + 0
+    }'
+}
+
 # The scheduled run discards what it prints (crontabs/root), so a backup
 # refused for disk room says so where the daily report goes: the same
 # address, the same _INCIDENT_REPORT gate, the same "Daily backup:" subject
@@ -106,7 +148,7 @@ if [ ! -x "/usr/local/ssl3/bin/openssl" ]; then
   exit 1
 fi
 
-_PTN_VRN=3.14.6
+_PTN_VRN=3.14.10
 _PTN_MNR="${_PTN_VRN%.*}"
 _DCY_VRN=3.2.0.2
 _LOGPTH="/var/log/boa"
@@ -210,6 +252,16 @@ _duplicity_venv_on_pin() {
     && [ -d "${_PIPX_VNV}/duplicity/lib/python${_PTN_MNR}/site-packages/duplicity" ]
 }
 
+# The source-built interpreter to the patch level, the one test every
+# rebuild decision uses. The venv check reads only the minor version, so
+# without this a box on an older release of the same minor would keep it
+# through every install run; and a version that only begins with the pin
+# (3.14.10 against a 3.14.1 pin) is not the pin.
+_python_on_pin() {
+  [ -x "${_DCY_PTN}" ] \
+    && [ "$(${_DCY_PTN} --version 2>&1)" = "Python ${_PTN_VRN}" ]
+}
+
 # pipx install --force reuses an existing venv AND its interpreter -- it
 # ignores --python on that path by design -- so a venv created under an
 # older python must be removed first to be recreated on the pin.
@@ -246,11 +298,22 @@ _pipx_install_pinned() {
 # cmdline means the process exited (or is a zombie) between the
 # checks: dead.
 _pid_is_live() {
-  local _pid=$1 _cmd
+  local _pid=$1 _tool="${2:-}" _cmd
   [[ "${_pid}" =~ ^[0-9]+$ ]] || return 1
   [ -d "/proc/${_pid}" ] || return 1
+  # The lock is root's: a recycled pid now held by another user's process
+  # titled like a backup is not its owner.
+  [ "$(awk '/^Uid:/ { print $2 " " $3; exit }' "/proc/${_pid}/status" 2> /dev/null)" = "0 0" ] || return 1
   _cmd=$(tr '\0' ' ' 2>/dev/null < "/proc/${_pid}/cmdline")
   [ -n "${_cmd}" ] || return 1
+  # A tool's own lock is owned by that tool's run alone: a pid recycled by
+  # a run of an account's own entry, which the backup gate leaves out, must
+  # not hold it.
+  if [ -n "${_tool}" ]; then
+    [[ "${_cmd}" =~ ^([^\ ]*/)?bash(\ [-+][^\ ]+|\ [-+][oO]\ [^\ ]+|\ --(rcfile|init-file)\ [^\ ]+)*\ ([^\ ]*/)?${_tool}( |$) ]] \
+      && return 0
+    return 1
+  fi
   case "${_cmd}" in
     *duplicity*|*multiback*|*mybackup*|*backboa*|*sequential_backups*) return 0 ;;
     *) return 1 ;;
@@ -267,7 +330,7 @@ _pid_is_live() {
 # starter whose fresh claim was swept by a slower healer detects the
 # loss and re-enters instead of running unlocked.
 _acquire_pid_file() {
-  local _pidfile=$1 _old_pid _now_pid _try=0
+  local _pidfile=$1 _tool="${2:-}" _old_pid _now_pid _try=0
   while [ "${_try}" -lt 3 ]; do
     _try=$((_try + 1))
     if ( set -o noclobber; echo $$ > "${_pidfile}" ) 2>/dev/null; then
@@ -278,7 +341,8 @@ _acquire_pid_file() {
       continue
     fi
     _old_pid=$(tr -dc '0-9' 2>/dev/null < "${_pidfile}")
-    if _pid_is_live "${_old_pid}"; then
+    # a lock left holding this run's own pid is stale: no run precedes itself
+    if [ "${_old_pid}" != "$$" ] && _pid_is_live "${_old_pid}" "${_tool}"; then
       echo "Live run holds ${_pidfile} (pid ${_old_pid})..."
       return 1
     fi
@@ -297,18 +361,22 @@ _acquire_pid_file() {
 # backend burns the full spaced retry budget per file instead of taking
 # the no-need-to-retry branch; over one historically damaged chain that
 # stalled a weekly retention for hours and starved the whole backup
-# schedule on a hosted box. And the SDK sends any file over the storage
-# side's recommended part size (100 MB) as a large file in parallel
-# parts, so every 300 MiB volume is a start call, four parts and a finish
-# call, and one part the storage side refuses fails the whole volume:
-# runs gave up on 503 answers where a whole upload passes, and a first
-# full copy of a large store stopped completing. The pinned venv copy
-# gets the backend's _error_code hook and a _put that sends each volume
-# in one request appended: marker-guarded (a copy that carries only some
-# of the blocks has them replaced), exact-pin gated, and the candidate is
-# compile-checked before an atomic same-directory swap, so a failed patch
-# leaves the file as it was. Re-check the need at the next duplicity pin
-# bump.
+# schedule on a hosted box. And the backend deletes by name: it looks
+# each file's id up first, a download-class request B2 caps per day, so
+# a retention pass or cleanup on a capped account fails file by file and
+# leaves old chains holding storage. And the SDK sends any file over the
+# storage side's recommended part size (100 MB) as a large file in
+# parallel parts, so every 300 MiB volume is a start call, four parts and
+# a finish call, and one part the storage side refuses fails the whole
+# volume: runs gave up on 503 answers where a whole upload passes, and a
+# first full copy of a large store stopped completing. The pinned venv
+# copy gets the backend's _error_code hook, a _delete_list that deletes
+# by version id from one listing and a _put that sends each volume in one
+# request appended: marker-guarded (a copy that carries only some of the
+# blocks has them replaced), exact-pin gated, and the candidate is
+# compile-checked before an atomic same-directory swap, so a failed
+# patch leaves the file as it was. Re-check the need at the next
+# duplicity pin bump.
 _patch_duplicity_b2backend() {
   local _b2fLive _b2fTemp _dcyLive
   # Cheapest guards first: this also runs from the nightly dcysetup
@@ -320,6 +388,7 @@ _patch_duplicity_b2backend() {
   # alone: a copy that carries some of the blocks, or a line of the stock
   # part that happens to hold a marker's words, must not read as patched
   if grep -q "^# BOA-b2-error-code:" "${_b2fLive}" \
+    && grep -q "^# BOA-b2-delete-list:" "${_b2fLive}" \
     && grep -q "^# BOA-b2-one-request:" "${_b2fLive}"; then
     return 0
   fi
@@ -362,6 +431,33 @@ def _boa_b2_error_code(self, operation, e):
 B2Backend._error_code = _boa_b2_error_code
 
 
+# BOA-b2-delete-list: delete by version id from one listing of the target,
+# never by name: a name lookup is a download-class request B2 caps per
+# day, so a retention pass or cleanup on a capped account failed file by
+# file. Every version of each named file goes (a re-sent volume leaves
+# two); a name no longer listed is gone already, so a retried batch
+# finishes the rest. Hide mode keeps the stock path.
+def _boa_b2_delete_list(self, filename_list):
+    if config.b2_hide_files:
+        for _boa_f in filename_list:
+            self._delete(_boa_f)
+        return
+    _boa_want = set(self.path + os.fsdecode(_boa_f) for _boa_f in filename_list)
+    _boa_seen = [
+        _boa_fv
+        for (_boa_fv, _boa_dir) in self.bucket.ls(self.path, latest_only=False)
+        if _boa_fv is not None and _boa_fv.file_name in _boa_want
+    ]
+    for _boa_fv in _boa_seen:
+        log.Log(f"Delete: {_boa_fv.file_name} (version {_boa_fv.id_})", log.INFO)
+        self.bucket.delete_file_version(_boa_fv.id_, _boa_fv.file_name)
+    for _boa_n in sorted(_boa_want - set(_boa_fv.file_name for _boa_fv in _boa_seen)):
+        log.Log(f"Delete: {_boa_n} not listed, gone already", log.INFO)
+
+
+B2Backend._delete_list = _boa_b2_delete_list
+
+
 # BOA-b2-one-request: each volume goes up in one upload request. Left to
 # itself the SDK sends any file over the storage side's recommended part
 # size (100 MB) as a large file in parallel parts: a start call, the parts
@@ -392,7 +488,7 @@ B2NOTFOUND
     chmod 644 "${_b2fTemp}"
     mv -f "${_b2fTemp}" "${_b2fLive}"
     find "${_b2fLive%/*}/__pycache__" -name "b2backend*" -delete 2>/dev/null
-    echo "Patched duplicity b2backend: one request a volume, missing files no longer burn spaced retries"
+    echo "Patched duplicity b2backend: one request a volume, deletions by version id, missing files no longer burn spaced retries"
   else
     rm -f "${_b2fTemp}"
     echo "NOTE: duplicity b2backend patch did not compile; stock file left in place"
@@ -585,6 +681,25 @@ _find_fast_mirror_early() {
   else
     _USE_MIR="files.boa.io"
   fi
+  # A mirror box (it holds a published tree's stamp) takes its files from
+  # files.aegir.cc, the one mirror name with no cache in front of it, when
+  # that name is not this box itself and serves that stamp; any other box,
+  # or a mirror box where it does not, keeps the pick above.
+  _mirStp=""
+  for _mirStp in /var/www/static/versions/*/boa/.update.txt; do
+    [[ -s "${_mirStp}" ]] && break
+    _mirStp=""
+  done
+  if [[ -n "${_mirStp}" ]]; then
+    _mirIp="$(getent ahostsv4 files.aegir.cc 2> /dev/null | awk '{ print $1; exit }')"
+    if [[ -n "${_mirIp}" ]] \
+      && ! ip -o addr show 2> /dev/null | grep -qF " ${_mirIp}/" \
+      && curl -s --fail --max-time 10 -A iCab \
+        "https://files.aegir.cc/${_mirStp#/var/www/static/}" 2> /dev/null \
+        | head -c 64 | grep -q '^[^<]'; then
+      _USE_MIR="files.aegir.cc"
+    fi
+  fi
   export _urlDev="https://${_USE_MIR}/dev"
   export _urlHmr="https://${_USE_MIR}/versions/${_tRee}/boa/aegir"
 }
@@ -695,6 +810,7 @@ _install() {
     && [ -L "/usr/local/bin/duplicity" ] \
     && [ -L "/usr/local/bin/aws" ] \
     && _duplicity_venv_on_pin \
+    && _python_on_pin \
     && [ ! -e "/root/.force.duplicity.reinstall.cnf" ]; then
     echo "Latest duplicity version ${_DCY_VRN} already installed"
   else
@@ -714,9 +830,7 @@ _install() {
     # source-built /usr/local python, which nothing between here and
     # the build touches.
     _PTN_BUILD=NO
-    _PTN_TEST=$(${_DCY_PTN} --version 2>&1)
-    if [[ ! "${_PTN_TEST}" =~ "Python ${_PTN_VRN}" ]] \
-      || [ ! -x "${_DCY_PTN}" ]; then
+    if ! _python_on_pin; then
       _PTN_BUILD=YES
       if ! _python_stage_src; then
         echo "Aborting before any change to the installed backup tooling"
@@ -725,7 +839,7 @@ _install() {
     fi
     # The startup busy gate has aged by a mirror probe and a fetch by
     # now; re-assert it on the brink of the irreversible steps
-    if (( $(( $(pgrep -fc '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)') + $(pgrep -fc '^[^ ]*duplicity( |$)') )) > 0 )); then
+    if (( $(_dcy_live_count) > 0 )); then
       echo "Active duplicity process detected, aborting before any change to the installed backup tooling"
       exit 1
     fi
@@ -765,7 +879,7 @@ _install() {
       cd
     fi
     _PTN_TEST=$(${_DCY_PTN} --version 2>&1)
-    if [[ "${_PTN_TEST}" =~ "Python ${_PTN_VRN}" ]]; then
+    if _python_on_pin; then
       python3 -m pip install pipx --break-system-packages --root-user-action ignore
       pip3 install --upgrade pip --root-user-action ignore
       export PIPX_BIN_DIR=/usr/local/bin
@@ -808,11 +922,19 @@ _check_aws() {
   fi
 }
 
-_CNT=$(( $(pgrep -fc '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)') + $(pgrep -fc '^[^ ]*duplicity( |$)') ))
+_CNT=$(_dcy_live_count)
+# a backup run goes beside an account's own entry (_dcy_box_count); every
+# other verb waits on any duplicity
+[ "${1}" = "backup" ] && _CNT=$(_dcy_box_count)
 if (( _CNT > 0 )); then
   echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
+  # a configured backup run waits: mybackup's queue starts no restore until
+  # this tool's next run gets through, for a day from the first hold
+  [ "${1}" = "backup" ] && [ -n "${_AWS_KEY}" ] && [ -n "${_AWS_SEC}" ] && [ -n "${_AWS_PWD}" ] \
+    && { [ -e /run/boa_backup_held.backboa ] || touch /run/boa_backup_held.backboa; }
   exit 1
 fi
+[ "${1}" = "backup" ] && rm -f /run/boa_backup_held.backboa
 
 if [ -z "${_AWS_KEY}" ] || [ -z "${_AWS_SEC}" ] || [ -z "${_AWS_PWD}" ]; then
   echo "
@@ -1576,7 +1698,7 @@ _rst_acct_named() {
 _rst_ground_of() {
   local _d="${1}" _a="" _b _m
   for _b in /data/disk /home; do
-    _m="$(cd -P -- "${_b}" 2> /dev/null && pwd -P)"
+    _m="$(cd -P -- "${_b}" 2> /dev/null && /bin/pwd -P)"
     [ -n "${_m}" ] && [ "${_d#"${_m}"/}" != "${_d}" ] || continue
     _a="${_d#"${_m}"/}"
     _a="${_a%%/*}"
@@ -1606,7 +1728,7 @@ _rst_ground_of() {
 _rst_in_pinned() {
   local _d="${1}"
   shift
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_d}" ] && "$@" )
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_d}" ] && "$@" )
 }
 
 # duplicity writes a restore by path, so a link an account puts in its own
@@ -1816,7 +1938,7 @@ _acct_reclaim_restored() {
   # link, a link or a FIFO put in it is left alone, and no file outside it is
   # regrouped (nothing checks a link's own group).
   if [[ "${_gid}" =~ ^[0-9]+$ ]]; then
-    ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_d}" ] \
+    ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_d}" ] \
       && env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_w[@]}" \
         ! -group "${_g}" ! -group www-data ! -group root "${_x[@]}" \
         \( -type d -o -type f \) \
@@ -1851,6 +1973,13 @@ _acct_walk_uids() {
     [ "${_n}" = "${_a}" ] && _self=YES
   done < <(getent passwd 2> /dev/null)
   [ "${_self}" = "YES" ] || return 1
+  # the account's removed identities, their numbers recorded by root before
+  # deluser freed them; a number a user has again is not taken
+  while IFS= read -r _u; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    getent passwd "${_u}" > /dev/null 2>&1 && continue
+    _x="${_x},${_u}"
+  done 2> /dev/null < "/data/conf/acct-uids/${_a}.gone"
   echo "${_x}"
 }
 
@@ -1977,7 +2106,7 @@ if [ "$1" = "backup" ]; then
   # _acquire_pid_file, whose liveness check also matches the recorded
   # pid's cmdline, so a recycled pid cannot hold the gate forever.
   _PID_FILE="/run/${_HST}_backboa.pid"
-  if ! _acquire_pid_file "${_PID_FILE}"; then
+  if ! _acquire_pid_file "${_PID_FILE}" backboa; then
     touch ${_LOGPTH}/wait_${_HST}_backup.log
     echo "The duplicity backup is running already?"
     exit 1

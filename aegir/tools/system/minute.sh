@@ -34,7 +34,7 @@ _manage_single_lock() {
     # -------- legacy pgrep guard ---------
     # Exit if more than 2 instances of this script are running
     _SCRIPT=$(basename "$0")
-    _CNT=$(pgrep -fc "(^|(^| )[^ ]*bash )[^ ]*/${_SCRIPT//./\\.}( |$)")
+    _CNT=$(pgrep -u root -U root -fc "(^|(^| )[^ ]*bash )[^ ]*/${_SCRIPT//./\\.}( |$)")
     if (( _CNT > 2 )); then
       echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
       exit 0
@@ -53,27 +53,27 @@ _second_flood_guard() {
   # Execution forms only (the cron wrapper and its child), never a command
   # line that merely names the script: the count is the trigger and the kill
   # follows it (a substring guard once -9'd an operator's shell mid-command).
-  _thisCountSec=$(pgrep -fc '^(/bin/)?bash (-c bash )?/var/xdrago/second\.sh( |$)')
+  _thisCountSec=$(pgrep -u root -U root -fc '^(/bin/)?bash (-c bash )?/var/xdrago/second\.sh( |$)')
   if [ "${_thisCountSec}" -gt 4 ]; then
     echo "$(date) Too many ${_thisCountSec} second.sh processes killed" >> \
       /var/log/boa/sec-count.kill.log
-    pkill -9 -f '^(/bin/)?bash (-c bash )?/var/xdrago/second\.sh( |$)'
+    pkill -9 -u root -U root -f '^(/bin/)?bash (-c bash )?/var/xdrago/second\.sh( |$)'
   fi
 }
 
 # Protect from high load due to csf loop/flood
 _csf_flood_guard() {
-  _thisCountCsf=$(pgrep -fc '^(/usr/bin/perl )?/usr/sbin/csf( |$)')
+  _thisCountCsf=$(pgrep -u root -U root -fc '^(/usr/bin/perl )?/usr/sbin/csf( |$)')
   if [ ! -e "/run/boa_run.pid" ] && [ "${_thisCountCsf}" -gt 4 ]; then
     echo "$(date) Too many ${_thisCountCsf} csf processes killed" >> \
       /var/log/boa/csf-count.kill.log
-    pkill -9 -f '^(/usr/bin/perl )?/usr/sbin/csf( |$)'
+    pkill -9 -u root -U root -f '^(/usr/bin/perl )?/usr/sbin/csf( |$)'
     csf -tf
     wait
     csf -df
     wait
   fi
-  _thisCountFire=$(pgrep -fc '^(/bin/)?bash (-c bash )?/var/xdrago/guest-fire\.sh( |$)')
+  _thisCountFire=$(pgrep -u root -U root -fc '^(/bin/)?bash (-c bash )?/var/xdrago/guest-fire\.sh( |$)')
   if [ ! -e "/run/boa_run.pid" ] && [ "${_thisCountFire}" -gt 9 ]; then
     echo "$(date) Too many ${_thisCountFire} fire.sh processes killed and rules purged" >> \
       /var/log/boa/fire-purge.kill.log
@@ -81,13 +81,13 @@ _csf_flood_guard() {
     wait
     csf -df
     wait
-    pkill -9 -f '^(/bin/)?bash (-c bash )?/var/xdrago/guest-fire\.sh( |$)'
+    pkill -9 -u root -U root -f '^(/bin/)?bash (-c bash )?/var/xdrago/guest-fire\.sh( |$)'
   elif [ ! -e "/run/boa_run.pid" ] && [ "${_thisCountFire}" -gt 7 ]; then
     echo "$(date) Too many ${_thisCountFire} fire.sh processes killed" >> \
       /var/log/boa/fire-count.kill.log
     csf -tf
     wait
-    pkill -9 -f '^(/bin/)?bash (-c bash )?/var/xdrago/guest-fire\.sh( |$)'
+    pkill -9 -u root -U root -f '^(/bin/)?bash (-c bash )?/var/xdrago/guest-fire\.sh( |$)'
   fi
   [ -e "/etc/csf/csfpost.d/synproxy.sh" ] && synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
 }
@@ -137,6 +137,9 @@ _launch_auto_healing() {
   if [ -e "/var/xdrago/monitor/check/cron_guard.sh" ]; then
     _launch_checker "bash /var/xdrago/monitor/check/cron_guard.sh"
   fi
+  if [ -e "/var/xdrago/monitor/check/container_guard.sh" ]; then
+    _launch_checker "bash /var/xdrago/monitor/check/container_guard.sh"
+  fi
   # Standing-mirror file cadence: launched ONLY while an operator has armed
   # 'xmass autosync' on this box (the marker is the switch), so the rest of
   # the fleet pays one file test per pass.
@@ -185,6 +188,70 @@ _monitor_box_class() {
 
 [ ! -e "/run/boa_run.pid" ] && _second_flood_guard
 [ -x "/usr/sbin/csf" ] && [ ! -e "/run/water.pid" ] && _csf_flood_guard
+
+# A pass rotates root's MySQL password on the box that owns it, and on the
+# source of a move or a standing mirror the standby keeps the old client pair
+# until it is carried there. Once the pair here no longer matches the one xmass
+# last confirmed on the standby, 'xmass carry-credentials' carries it, at most
+# every five minutes (this check stamps each try itself, whatever the verb
+# makes of it). The rest of the fleet pays one file test, a source one checksum
+# of two small files; nothing while the pair changed in the last minute (a pass
+# writes it line by line), and nothing with an xmass that lacks the verb.
+_xmass_cred_check() {
+  local _sum _rec _log="/var/log/boa/xmass.cred.log"
+  [ -e "/data/conf/xmass_state.cnf" ] || return 0
+  [ -e "/opt/local/bin/xmass" ] || return 0
+  [ -e "/root/.standby.cnf" ] && return 0
+  [ -s "/root/.my.cnf" ] && [ -s "/root/.my.pass.txt" ] || return 0
+  _sum="$(cat /root/.my.cnf /root/.my.pass.txt 2> /dev/null | md5sum | cut -c1-32)"
+  _rec="$(cut -c1-32 /var/log/boa/xmass.cred.carried 2> /dev/null)"
+  [ "${_sum}" = "${_rec}" ] && return 0
+  [ -n "$(find /var/log/boa/xmass.cred.tried -mmin -5 ! -newermt now 2> /dev/null)" ] && return 0
+  [ -n "$(find /root/.my.cnf /root/.my.pass.txt -mmin -1 ! -newermt now 2> /dev/null)" ] && return 0
+  grep -q '^  carry-credentials)' /opt/local/bin/xmass 2> /dev/null || return 0
+  touch /var/log/boa/xmass.cred.tried 2> /dev/null
+  # One generation kept past 1 MiB: a standby that never takes the pair is
+  # tried every five minutes for as long as the move stands.
+  if [ -n "$(find "${_log}" -size +1024k 2> /dev/null)" ]; then
+    mv -f "${_log}" "${_log}.1" 2> /dev/null
+  fi
+  _launch_checker "bash /opt/local/bin/xmass carry-credentials >> ${_log} 2>&1"
+}
+_xmass_cred_check
+
+# Every server of a move keeps the binary log xmass set up for days, and the
+# nightly database backup writes its dumps on the same disk: 'xmass
+# binlog-guard' projects both against the disk every five minutes and purges
+# the oldest log nothing still needs before it fills. That is the source and
+# its standby while the move or mirror stands, the old source after its
+# cutover (its log then rotates only with the few writes left, so MySQL's own
+# expiry stops purging it) and the new server after it. The rest of the fleet
+# pays a few file tests; nothing on a proxy unless it is a standby again (an
+# ha-switch failback target), or with an xmass that lacks the verb. Its line
+# a run goes to the log here, so the run keeps no run log of its own
+# (_MIG_RUNLOG=none, as a caller that keeps the output says), and a run is
+# ended after 15 minutes: one that hung would hold the guard's own lock.
+_xmass_binlog_check() {
+  local _log="/var/log/boa/xmass.binlog.guard.log" _c _move=NO
+  [ -e "/opt/local/bin/xmass" ] || return 0
+  [ -e "/root/.proxy.cnf" ] && [ ! -e "/root/.standby.cnf" ] && return 0
+  [ -e "/data/conf/xmass_state.cnf" ] && _move=YES
+  [ -e "/root/.standby.cnf" ] && _move=YES
+  for _c in /etc/mysql/xmass_gtid.cnf /etc/mysql/*/xmass_gtid.cnf; do
+    [ -e "${_c}" ] && _move=YES
+  done
+  [ "${_move}" = "YES" ] || return 0
+  [ -n "$(find /var/log/boa/xmass.binlog.tried -mmin -5 ! -newermt now 2> /dev/null)" ] && return 0
+  grep -q '^  binlog-guard)' /opt/local/bin/xmass 2> /dev/null || return 0
+  touch /var/log/boa/xmass.binlog.tried 2> /dev/null
+  # One generation kept past 1 MiB: a line every five minutes is about
+  # three weeks.
+  if [ -n "$(find "${_log}" -size +1024k 2> /dev/null)" ]; then
+    mv -f "${_log}" "${_log}.1" 2> /dev/null
+  fi
+  _launch_checker "env _MIG_RUNLOG=none timeout -k 30 900 bash /opt/local/bin/xmass binlog-guard >> ${_log} 2>&1"
+}
+_xmass_binlog_check
 
 # Decide the fan-out cadence for this box. NORMAL runs 9 passes 6 s apart;
 # SLOW/CI run far fewer, wider-spaced passes (auto-healing watchdogs do not need

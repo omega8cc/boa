@@ -66,12 +66,55 @@ _FPM_WORKER_LINE=' child [0-9]+ said into std(err|out): '
 # The last 500 lines each master wrote itself. Read from a wider tail, so a
 # burst of worker output cannot push a master message out of the window.
 _fpm_master_tail() {
-  local _f
+  local _f _rc=0
   for _f in /var/log/php/php*-fpm-error.log; do
     [ -f "${_f}" ] || continue
+    # 1 when the last tail could not write its lines (a full /run for the
+    # kept copy below): every log's, not only the last one's
     tail --lines=20000 "${_f}" 2>/dev/null \
-      | grep -v -E "${_FPM_WORKER_LINE}" | tail --lines=500
+      | grep -v -E "${_FPM_WORKER_LINE}" | tail --lines=500 || _rc=1
   done
+  return "${_rc}"
+}
+
+# _fpm_master_tail's output as a file, _FPM_TAIL_F, read again only when a
+# log changed. Two checks read it on every pass, several passes a minute,
+# three programs per version's log each time, nearly always to find what the
+# read before found. One stat of the logs (name, inode, size, change time)
+# keys the copy kept in /run: a log that moved, grew, shrank or was written
+# reads them all again. The checks grep the very bytes they grepped before.
+_fpm_master_tail_file() {
+  local _ck="/run/boa-php-fpm-tail.key" _key="" _old=""
+  local -a _fl=( /var/log/php/php*-fpm-error.log )
+  _FPM_TAIL_F="/run/boa-php-fpm-tail.txt"
+  _key="$(stat -c '%n %i %s %z' -- "${_fl[@]}" 2> /dev/null)"
+  if [ -n "${_key}" ] && [ -f "${_ck}" ] && [ ! -L "${_ck}" ] \
+    && [ -f "${_FPM_TAIL_F}" ] && [ ! -L "${_FPM_TAIL_F}" ]; then
+    LC_ALL=C IFS= read -r -d '' _old < "${_ck}"
+    [ "${_old}" = "${_key}" ] && return 0
+  fi
+  rm -f "${_ck}"
+  if ! { ( umask 077; _fpm_master_tail > "${_FPM_TAIL_F}.$$" ) \
+    && mv -f "${_FPM_TAIL_F}.$$" "${_FPM_TAIL_F}"; }; then
+    rm -f "${_FPM_TAIL_F}.$$" "${_FPM_TAIL_F}"
+    return 1
+  fi
+  if [ -n "${_key}" ]; then
+    ( umask 077; printf '%s' "${_key}" > "${_ck}.$$" ) \
+      && mv -f "${_ck}.$$" "${_ck}"
+    rm -f "${_ck}.$$"
+  fi
+  return 0
+}
+
+# The count of the master's lines holding $1, from the kept copy, or from a
+# fresh read when the copy could not be written.
+_fpm_master_hits() {
+  if _fpm_master_tail_file; then
+    grep -c "$1" "${_FPM_TAIL_F}"
+  else
+    _fpm_master_tail | grep -c "$1"
+  fi
 }
 
 : "${_FPM_COOLDOWN_SECS:=30}"
@@ -94,7 +137,7 @@ _manage_single_lock() {
     # -------- legacy pgrep guard ---------
     # Exit if more than 2 instances of this script are running
     _SCRIPT=$(basename "$0")
-    _CNT=$(pgrep -fc "(^|(^| )[^ ]*bash )[^ ]*/${_SCRIPT//./\\.}( |$)")
+    _CNT=$(pgrep -u root -U root -fc "(^|(^| )[^ ]*bash )[^ ]*/${_SCRIPT//./\\.}( |$)")
     if (( _CNT > 2 )); then
       echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
       exit 0
@@ -178,7 +221,7 @@ _fpm_master_pids() {
   # master's title until it names its pool, a window a stalled box stretches
   # to seconds: only a match whose parent is not itself a match is a master.
   local _all _pid _ppid
-  _all=" $(pgrep -f "${1}" 2> /dev/null | tr '\n' ' ') "
+  _all=" $(pgrep -u root -U root -f "${1}" 2> /dev/null | tr '\n' ' ') "
   for _pid in ${_all}; do
     _ppid=$(ps -o ppid= -p "${_pid}" 2> /dev/null | tr -d ' ')
     [ -n "${_ppid}" ] || continue
@@ -232,10 +275,10 @@ _fpm_giant_log_detection() {
 
 _fpm_listen_conflict_detection() {
   if [ -e "/var/log/php" ]; then
-    _hit=$(_fpm_master_tail | grep -c "already listen on")
+    _hit=$(_fpm_master_hits "already listen on")
     if [ "${_hit}" -gt 0 ]; then
       sleep 2
-      _hit2=$(_fpm_master_tail | grep -c "already listen on")
+      _hit2=$(_fpm_master_hits "already listen on")
       if [ "${_hit2}" -gt 0 ]; then
         _sql_mutation_began && return 0
         [ -d "/var/backups/php-logs/${_NOW}" ] || mkdir -p /var/backups/php-logs/${_NOW}/
@@ -278,11 +321,22 @@ _fpm_proc_max_detection() {
   : > "${_tmp}" 2>/dev/null || return 0
   _hits=0
   _hitf=""
+  # One stat for every log: a log still at its recorded offset (nearly every
+  # run) needs nothing more; one that changed is stat'ed alone right before
+  # it is read, as each log was on every run.
+  local -A _SZ=()
+  local _l
+  while IFS= read -r _l; do
+    _SZ["${_l#* }"]="${_l%% *}"
+  done < <(stat -c '%s %n' -- /var/log/php/php*-fpm-error.log 2>/dev/null)
   for _f in /var/log/php/php*-fpm-error.log; do
     [ -f "${_f}" ] || continue
-    _sz=$(stat -c %s "${_f}" 2>/dev/null)
-    [[ "${_sz}" =~ ^[0-9]+$ ]] || _sz=0
+    _sz="${_SZ["${_f}"]:-}"
     _off="${_POS["${_f}"]:-0}"
+    if [[ ! "${_sz}" =~ ^[0-9]+$ ]] || (( _sz != _off )); then
+      _sz=$(stat -c %s "${_f}" 2>/dev/null)
+    fi
+    [[ "${_sz}" =~ ^[0-9]+$ ]] || _sz=0
     # Log rotated/truncated since last run: re-baseline from the start.
     (( _sz < _off )) && _off=0
     if (( _sz > _off )); then
@@ -562,10 +616,10 @@ _fpm_timeout_detection() {
 }
 
 _fpm_sockets_healing() {
-  _hit=$(_fpm_master_tail | grep -c "Address already in use")
+  _hit=$(_fpm_master_hits "Address already in use")
   if [ "${_hit}" -gt 0 ]; then
     sleep 2
-    _hit2=$(_fpm_master_tail | grep -c "Address already in use")
+    _hit2=$(_fpm_master_hits "Address already in use")
     if [ "${_hit2}" -gt 0 ]; then
       _sql_mutation_began && return 0
       [ -d "/var/backups/php-logs/${_NOW}" ] || mkdir -p /var/backups/php-logs/${_NOW}/
@@ -596,8 +650,19 @@ _fpm_fastcgi_temp() {
 }
 
 _fpm_health_ok() {
-  # ${1} = version: its master, its www socket and its pid file are all there
-  pgrep -f "^php-fpm: master process.*/opt/php${1}/etc/php${1}-fpm.conf" >/dev/null 2>&1 || return 1
+  # ${1} = version: its master, its www socket and its pid file are all there.
+  # With _FPM_MASTERS_SET, the master is looked for, by the same pattern, in
+  # _FPM_MASTERS: one pgrep -a of every master the caller took for its round
+  # of versions, instead of one pgrep per version on every pass.
+  local _re="^php-fpm: master process.*/opt/php${1}/etc/php${1}-fpm.conf" _l _seen=NO
+  if [ "${_FPM_MASTERS_SET:-}" = "YES" ]; then
+    while IFS= read -r _l; do
+      [[ "${_l#* }" =~ ${_re} ]] && { _seen=YES; break; }
+    done <<< "${_FPM_MASTERS}"
+    [ "${_seen}" = "YES" ] || return 1
+  else
+    pgrep -u root -U root -f "${_re}" >/dev/null 2>&1 || return 1
+  fi
   [ -S "/run/www${1}.fpm.socket" ] || return 1
   [ -s "/run/php${1}-fpm.pid" ] || return 1
   return 0
@@ -623,11 +688,16 @@ _fpm_health_check_fix() {
   # One grace for reloads, shared by every version found down: a grace per
   # version makes each one wait for every version listed before it.
   _DOWN_V=""
+  # Every version is read from one list of the masters; a version that reads
+  # as down is asked again by its own pgrep after the grace below.
+  _FPM_MASTERS="$(pgrep -u root -U root -af '^php-fpm: master process' 2> /dev/null)"
+  _FPM_MASTERS_SET=YES
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ] && [ -x "/opt/php${e}/bin/php" ]; then
       _fpm_health_ok "${e}" || _DOWN_V="${_DOWN_V} ${e}"
     fi
   done
+  _FPM_MASTERS_SET=""
   [ -n "${_DOWN_V}" ] || return 0
   sleep 2
   for e in ${_DOWN_V}; do
@@ -635,7 +705,7 @@ _fpm_health_check_fix() {
       _pat="^php-fpm: master process.*/opt/php${e}/etc/php${e}-fpm.conf"
 
       _ok_master=false; _ok_socket=false; _ok_pid=false
-      pgrep -f "${_pat}" >/dev/null 2>&1 && _ok_master=true
+      pgrep -u root -U root -f "${_pat}" >/dev/null 2>&1 && _ok_master=true
       [ -S "/run/www${e}.fpm.socket" ] && _ok_socket=true
       [ -s "/run/php${e}-fpm.pid" ] && _ok_pid=true
 
@@ -672,7 +742,7 @@ _fpm_health_check_fix() {
         while [ "${_w}" -lt 10 ]; do
           sleep 1
           _ok_master=false; _ok_socket=false; _ok_pid=false
-          pgrep -f "${_pat}" >/dev/null 2>&1 && _ok_master=true
+          pgrep -u root -U root -f "${_pat}" >/dev/null 2>&1 && _ok_master=true
           [ -S "/run/www${e}.fpm.socket" ] && _ok_socket=true
           [ -s "/run/php${e}-fpm.pid" ] && _ok_pid=true
           if ${_ok_master} && ${_ok_socket} && ${_ok_pid}; then
@@ -751,6 +821,122 @@ _fpm_logs_empty() {
   done
 }
 
+# An account asks for a restart by leaving a file in its static/control.
+# The restart is box-wide, so each account is honoured at most once in
+# _ACCT_REQ_SECS for each service, and only for a regular file, not a link,
+# owned by one of its identities in its own real static/control. Any other
+# entry of a request's name is removed and never acted on.
+_ACCT_REQ_SECS=900
+_ACCT_REQ_DIR="/run/boa_acct_requests"
+# each account's uids, read once a pass (_acct_req_in_ctrl)
+declare -A _ACCT_REQ_U=()
+# The uids of root and of every identity of the account $1 as passwd names
+# them, comma-separated, as _acct_walk_uids gives them, with passwd cut to
+# the account's own lines first. Status 1, and nothing, unless the account
+# itself is in passwd.
+_acct_req_uids() {
+  local _a="${1}" _n _p _u _r _x="0" _self=NO
+  case "${_a}" in
+    ""|*[!a-z0-9_-]*) return 1 ;;
+  esac
+  while IFS=: read -r _n _p _u _r; do
+    [[ "${_n}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]] || continue
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    _x="${_x},${_u}"
+    [ "${_n}" = "${_a}" ] && _self=YES
+  done < <(getent passwd 2> /dev/null | grep -E "^${_a}[.:]")
+  [ "${_self}" = "YES" ] || return 1
+  echo "${_x}"
+}
+# Run "$@" with the account $1's uids last, inside its real static/control:
+# the directory the shell is in, as the kernel names it (never bash's own
+# pwd, which reads back the path cd was given), and root's or one of the
+# account's.
+_acct_req_in_ctrl() {
+  local _a="${1}" _u _want
+  shift
+  if [ -z "${_ACCT_REQ_U[${_a}]+x}" ]; then
+    _ACCT_REQ_U[${_a}]="$(_acct_req_uids "${_a}")"
+  fi
+  _u="${_ACCT_REQ_U[${_a}]}"
+  [ -n "${_u}" ] || return 1
+  _want="$(cd -P -- /data/disk 2> /dev/null && /bin/pwd -P)/${_a}/static/control"
+  ( cd -P -- "/data/disk/${_a}/static/control" 2> /dev/null \
+    && [ "$(/bin/pwd -P)" = "${_want}" ] \
+    && [[ ",${_u}," == *",$(stat -c %u . 2> /dev/null),"* ]] \
+    && "$@" "${_u}" )
+}
+# Inside the real static/control: remove ./$1, a directory only when empty.
+_acct_req_drop() {
+  if [ -d "./${1}" ] && [ ! -L "./${1}" ]; then
+    rmdir -- "./${1}" 2> /dev/null
+  else
+    rm -f -- "./${1}" 2> /dev/null
+  fi
+  return 0
+}
+# Inside the real static/control: status 0 when ./$1 is a request that
+# counts, a regular file and not a link, owned by one of the uids $2;
+# anything else of that name is removed.
+_acct_req_judge() {
+  local _o
+  if [ -f "./${1}" ] && [ ! -L "./${1}" ]; then
+    _o=$(stat -c %u -- "./${1}" 2> /dev/null)
+    [ -n "${_o}" ] && [[ ",${2}," == *",${_o},"* ]] && return 0
+  fi
+  _acct_req_drop "${1}"
+  return 1
+}
+# Fills _ACCT_REQ with the accounts whose request, under any of the names
+# $2..., counts for the service $1 this pass. A request made again inside
+# the account's allowance is removed and noted once, not acted on.
+_acct_req_scan() {
+  local _svc="${1}" _p _a _n _hit _st _ts _now
+  shift
+  _ACCT_REQ=()
+  _now=$(date +%s)
+  for _p in /data/disk/*/static/control; do
+    _a="${_p#/data/disk/}"
+    _a="${_a%%/*}"
+    [[ "${_a}" =~ ^[a-z0-9_-]+$ ]] || continue
+    _hit=NO
+    for _n in "$@"; do
+      [ -e "${_p}/${_n}" ] || [ -L "${_p}/${_n}" ] || continue
+      _acct_req_in_ctrl "${_a}" _acct_req_judge "${_n}" && _hit=YES
+    done
+    [ "${_hit}" = "YES" ] || continue
+    _st="${_ACCT_REQ_DIR}/${_svc}.${_a}"
+    _ts=$(tr -dc '0-9' 2> /dev/null < "${_st}")
+    if [[ "${_ts}" =~ ^[1-9][0-9]{0,11}$ ]] && [ $(( _now - _ts )) -ge 0 ] \
+      && [ $(( _now - _ts )) -lt "${_ACCT_REQ_SECS}" ]; then
+      for _n in "$@"; do
+        _acct_req_in_ctrl "${_a}" _acct_req_drop "${_n}"
+      done
+      if [ ! -e "${_st}.noted" ]; then
+        mkdir -p -m 0700 "${_ACCT_REQ_DIR}" 2> /dev/null
+        : > "${_st}.noted"
+        echo "$(date) INFO: ${_svc} restart asked again by ${_a} within $(( _ACCT_REQ_SECS / 60 )) minutes; request removed, not acted on" >> "${_pthOml}"
+      fi
+      continue
+    fi
+    _ACCT_REQ+=("${_a}")
+  done
+}
+# Removes the counted requests, under any of the names $2..., of every
+# account in _ACCT_REQ and starts each one's allowance for the service $1.
+_acct_req_take() {
+  local _svc="${1}" _a _n
+  shift
+  mkdir -p -m 0700 "${_ACCT_REQ_DIR}" 2> /dev/null
+  for _a in "${_ACCT_REQ[@]}"; do
+    for _n in "$@"; do
+      _acct_req_in_ctrl "${_a}" _acct_req_drop "${_n}"
+    done
+    date +%s > "${_ACCT_REQ_DIR}/${_svc}.${_a}"
+    rm -f "${_ACCT_REQ_DIR}/${_svc}.${_a}.noted"
+  done
+}
+
 _fpm_apcu_reload_sentinel() {
   # A passive mirror (replication standby): the sentinel is the ACTIVE box's
   # self-service request, delivered here only because static/control rides the
@@ -783,7 +969,8 @@ _fpm_apcu_reload_sentinel() {
   #   without dropping active connections.
   #
   # Cooldown: respects _FPM_COOLDOWN_SECS (default 30s) to prevent reload
-  # storms if the sentinel is created repeatedly.
+  # storms if the sentinel is created repeatedly, and each account is
+  # honoured at most once in _ACCT_REQ_SECS (_acct_req_scan).
 
   # Plan-level gate — same logic as _if_valkey_restart in valkey.sh
   local _PrTestPower _PrTestPhantom _PrTestCluster _PrTestUltra _PrTestMonster
@@ -805,9 +992,8 @@ _fpm_apcu_reload_sentinel() {
     return 0  # plan does not allow self-service FPM reload
   fi
 
-  local _FpmTest
-  _FpmTest=$(ls /data/disk/*/static/control/run-php-fpm-reload.pid 2>/dev/null | wc -l)
-  [ "${_FpmTest}" -lt 1 ] && return 0
+  _acct_req_scan php-fpm run-php-fpm-reload.pid
+  [ "${#_ACCT_REQ[@]}" -lt 1 ] && return 0
 
   # Cooldown check — reuse php84-fpm cooldown as shared gate since a reload
   # affects all FPM versions simultaneously
@@ -821,14 +1007,19 @@ _fpm_apcu_reload_sentinel() {
       _delta=$(( _now - _ts ))
       if [ "${_delta}" -lt "${_FPM_COOLDOWN_SECS}" ]; then
         echo "$(date) INFO: run-php-fpm-reload.pid found but in cooldown (${_delta}s < ${_FPM_COOLDOWN_SECS}s); skipping" >> ${_pthOml}
-        rm -f /data/disk/*/static/control/run-php-fpm-reload.pid
+        # removed with no reload, as before; the accounts' allowances
+        # start only with a reload that runs
+        local _a
+        for _a in "${_ACCT_REQ[@]}"; do
+          _acct_req_in_ctrl "${_a}" _acct_req_drop run-php-fpm-reload.pid
+        done
         return 0
       fi
     fi
   fi
 
-  echo "$(date) PHP-FPM reload requested via sentinel — reloading to clear APCu" >> ${_pthOml}
-  rm -f /data/disk/*/static/control/run-php-fpm-reload.pid
+  echo "$(date) PHP-FPM reload requested via sentinel by ${_ACCT_REQ[*]} — reloading to clear APCu" >> ${_pthOml}
+  _acct_req_take php-fpm run-php-fpm-reload.pid
   _fpm_reload "SENTINEL"
 
   # Update cooldown timestamp for all FPM versions
@@ -957,7 +1148,7 @@ if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ] \
   _fpm_health_check_fix
   if [ ! -e "/root/.high_traffic.cnf" ] \
     && [ ! -e "/root/.giant_traffic.cnf" ]; then
-    _spawn_detached 'perl /var/xdrago/monitor/check/segfault_alert.pl'
+    _spawn_detached 'bash /var/xdrago/monitor/check/segfault_alert.sh'
   fi
 fi
 

@@ -215,12 +215,33 @@ if (!$is_backend && !$is_install && isset($_SERVER['DOCUMENT_ROOT'])) {
  * control panel is named under the box hostname too and is exempt: it is
  * never relayed and must stay reachable for its admins. Default TTL,
  * never read from the file. A symlink is ignored: root writes the list.
+ * Either file counts only as a regular file, never a link, a folder or a
+ * FIFO at the name.
+ *
+ * Either file counts only in a control folder that is the account's own:
+ * a real directory (never a link) that root or one of the account's
+ * identities owns and no one else can write (no write for others, group
+ * write only for group root or the account's own group). An account still
+ * on the box-wide group shares static/ with every other account's .ftp
+ * login, which can make a control/ there where the account has none, or
+ * move a folder of its own in, and a gate in it would hold every site of
+ * the account. The pools cannot read passwd, so the identities come from
+ * the list root keeps for each account, /data/conf/acct-uids/<oct> (the
+ * ltd worker's): until root has written it, the gate counts as before.
+ * xoct and xmass close the account's own folder to other writers before
+ * they put a gate, make root's where there is none, and refuse a move on a
+ * folder the account does not own; the worker removes the gate files from
+ * a folder a removed login left before root hands it to the account. Grav
+ * and Textpattern sites run the same rule from global-http-off.php once
+ * verified with a provision that knows it (keep the two copies equal); an
+ * older vhost reads the gate in nginx, by path. The test runs only while a
+ * gate file is there.
  */
 if (!$is_backend && !$is_install && isset($_SERVER['DOCUMENT_ROOT'])) {
-  if (preg_match('#^(/data/disk/[^/]+)/#', $_SERVER['DOCUMENT_ROOT'], $_http_off_m)) {
+  if (preg_match('#^(/data/disk/([^/]+))/#', $_SERVER['DOCUMENT_ROOT'], $_http_off_m)) {
     $_http_off_ttl = 0;
     $_http_off_pid = $_http_off_m[1] . '/static/control/http-off.pid';
-    if (file_exists($_http_off_pid)) {
+    if (is_file($_http_off_pid) && !is_link($_http_off_pid)) {
       $_http_off_ttl = (int) @file_get_contents($_http_off_pid);
       if ($_http_off_ttl < 30 || $_http_off_ttl > 86400) {
         $_http_off_ttl = 300;
@@ -258,6 +279,32 @@ if (!$is_backend && !$is_install && isset($_SERVER['DOCUMENT_ROOT'])) {
               }
             }
           }
+        }
+      }
+    }
+    if ($_http_off_ttl > 0) {
+      $_http_off_ids = @file_get_contents('/data/conf/acct-uids/' . $_http_off_m[2]);
+      if (is_string($_http_off_ids)
+        && preg_match('/^[0-9]+(,[0-9]+)*$/', trim($_http_off_ids))) {
+        $_http_off_own = FALSE;
+        $_http_off_st = @lstat($_http_off_m[1] . '/static/control');
+        if (is_array($_http_off_st)
+          && ($_http_off_st['mode'] & 0170000) == 0040000
+          && in_array((string) $_http_off_st['uid'],
+            explode(',', '0,' . trim($_http_off_ids)), TRUE)
+          && !($_http_off_st['mode'] & 0002)) {
+          if (!($_http_off_st['mode'] & 0020) || $_http_off_st['gid'] == 0) {
+            $_http_off_own = TRUE;
+          }
+          elseif (function_exists('posix_getgrgid')) {
+            $_http_off_gr = @posix_getgrgid($_http_off_st['gid']);
+            $_http_off_own = is_array($_http_off_gr)
+              && isset($_http_off_gr['name'])
+              && $_http_off_gr['name'] === $_http_off_m[2];
+          }
+        }
+        if (!$_http_off_own) {
+          $_http_off_ttl = 0;
         }
       }
     }

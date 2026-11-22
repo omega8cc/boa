@@ -580,11 +580,11 @@ _acct_in_real_dir() {
     /data/disk/?*) _a=/data/disk ;;
   esac
   if [ -n "${_a}" ]; then
-    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+    _want="$(cd -P -- "${_a}" 2> /dev/null && /bin/pwd -P)${_d#"${_a}"}"
   else
-    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && /bin/pwd -P)/${_d##*/}"
   fi
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] && "$@" )
 }
 # ./$1 in the current (pinned) directory: never through a link, never blocked
 # on a FIFO, at most 1 MiB. Empty for anything else.
@@ -595,6 +595,205 @@ _acct_read_here() {
 # $2 in the real directory $1, read as _acct_read_here reads it.
 _acct_read_in() {
   _acct_in_real_dir "${1}" _acct_read_here "${2}"
+}
+#
+# The uids root's walks over the account $1's trees act on, comma-separated:
+# root's own (0, what root wrote there for the account) and those of every
+# identity of the account as passwd names them: oN and oN.<name>, that is its
+# .ftp login, its client sub-accounts oN.<client> and oN.<client>-dev and its
+# PHP-FPM users oN.web and oN.<ver>.web. An account name holds no dot, so the
+# match is exact: o1 never takes o10's. Status 1, and nothing, unless the
+# account itself is in passwd. The numbers of the account's removed
+# identities that root recorded in /data/conf/acct-uids/<oN>.gone (the ltd
+# worker, before deluser frees one) are listed too while no user has them.
+# Root's check of the control folder, its reads of the control files and its
+# hand-overs into that folder take a uid no passwd entry names only when it
+# is listed: another account's removed login leaves files under such a number
+# too. Its other hand-overs, mode walks and removal walks still take any.
+_acct_walk_uids() {
+  local _a="${1}" _n _p _u _r _x="0" _self=NO
+  case "${_a}" in
+    ""|*[!a-z0-9-]*) return 1 ;;
+  esac
+  while IFS=: read -r _n _p _u _r; do
+    [[ "${_n}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]] || continue
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    _x="${_x},${_u}"
+    [ "${_n}" = "${_a}" ] && _self=YES
+  done < <(getent passwd 2> /dev/null)
+  [ "${_self}" = "YES" ] || return 1
+  # the account's removed identities, their numbers recorded by root before
+  # deluser freed them; a number a user has again is not taken
+  while IFS= read -r _u; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    getent passwd "${_u}" > /dev/null 2>&1 && continue
+    _x="${_x},${_u}"
+  done 2> /dev/null < "/data/conf/acct-uids/${_a}.gone"
+  echo "${_x}"
+}
+# An account's static/control is taken only as its own. Every other
+# account's .ftp login is in the box-wide group, which an account not yet on
+# its own group still has on static/ and on what its login makes there, so
+# such a login could put a directory of its own at control/, or a file of
+# its own in a group-writable directory below it, for root to act on as the
+# account's. A name is taken only when it, the directory it is in and every
+# directory above that up to / are root's or one of the account's
+# identities' (the uids given second, _acct_walk_uids, with the account's
+# recorded removed identities); otherwise it reads as not there. Status 0 taken, 2 no
+# such name in a place of the account's, 1 refused.
+#   e  the name exists (lstat; a link of the account's only when it leads
+#      somewhere) and is the account's
+#   r  the name's bytes through one handle opened without following a
+#      link or blocking on a FIFO, only when it is a regular file of the
+#      account's no longer than the count given third
+_ACCT_OWN_READ_PL='use Fcntl;
+my ($op, $o, $c, $n) = @ARGV;
+exit 1 unless defined $n && $n =~ m{^[^/\0]+$};
+my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, $o);
+sub own { my $u = shift; return exists $own{$u} ? 1 : 0; }
+my ($p, $ok, @d, @x) = (".", 0);
+for (1 .. 256) {
+  @x = stat($p) or last;
+  last unless own($x[4]);
+  if (@d && $x[0] == $d[0] && $x[1] == $d[1]) { $ok = 1; last; }
+  @d = @x;
+  $p .= "/..";
+}
+exit 1 unless $ok;
+if ($op eq "e") { my @s = lstat("./$n") or exit($!{ENOENT} ? 2 : 1); exit 1 unless own($s[4]); exit(-e "./$n" ? 0 : 2); }
+exit 1 unless $op eq "r" && $c =~ /^[0-9]+$/;
+sysopen(my $h, "./$n", O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or exit($!{ENOENT} ? 2 : 1);
+my @s = stat($h);
+exit 1 unless @s && -f _ && own($s[4]);
+my ($d, $r) = ("");
+while ($r = sysread($h, my $b, 65536)) { $d .= $b; last if length($d) > $c; }
+exit 1 unless defined $r && length($d) <= $c;
+binmode(STDOUT);
+print $d;
+exit 0;'
+# The whole of an account's control/, judged once before a run acts on it:
+# run inside the account's real static/, it prints OK when control/ and
+# everything in it, never followed through a link, and static/ and every
+# directory above it up to /, are root's or one of the account's identities'
+# (the uids given first, _acct_walk_uids, with the account's recorded
+# removed identities), ABSENT when there is no control/, and otherwise why
+# not, on one line.
+# Every other account's .ftp login is in the box-wide group, which an account
+# not yet on its own group still has on static/: such a login could put a
+# control/ of its own there, or a file of its own in a group-writable
+# directory below it, for root to act on as the account's.
+_ACCT_CTRL_OWN_PL='use Fcntl;
+my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, shift @ARGV // "");
+sub own { my $u = shift; return exists $own{$u} ? 1 : 0; }
+sub isd { ($_[0] & 0170000) == 0040000 }
+sub nm { (my $v = shift) =~ s/[^\x20-\x7e]/?/g; return substr($v, 0, 200); }
+sub refuse { print "$_[0]\n"; exit 0; }
+my ($p, $top, @d, @x) = (".", 0);
+for (1 .. 256) {
+  @x = stat($p) or refuse("static/ cannot be read");
+  own($x[4]) or refuse("a directory above control/ is owned by uid $x[4]");
+  if (@d && $x[0] == $d[0] && $x[1] == $d[1]) { $top = 1; last; }
+  @d = @x;
+  $p .= "/..";
+}
+$top or refuse("static/ is too deep");
+my @s = lstat("./control");
+unless (@s) { print(($!{ENOENT} ? "ABSENT" : "control/ cannot be read") . "\n"); exit 0; }
+isd($s[2]) or refuse("control is not a directory");
+my ($n, @q) = (0, ["control", @s]);
+while (my $e = shift @q) {
+  my ($f, @t) = @$e;
+  own($t[4]) or refuse(nm($f) . " is owned by uid $t[4]" . (defined(getpwuid($t[4])) ? "" : ", which no user has and root never recorded for this account: if the file is its own, give it to its .ftp login"));
+  next unless isd($t[2]);
+  opendir(my $h, "./$f") or refuse(nm($f) . " cannot be read");
+  for my $b (readdir($h)) {
+    next if $b eq "." || $b eq "..";
+    ++$n > 100000 and refuse("control/ holds more than 100000 entries");
+    my @u = lstat("./$f/$b") or next;
+    push @q, ["$f/$b", @u];
+  }
+  closedir($h);
+}
+print "OK\n";
+exit 0;'
+# 0 when the account $1's control/ is its own as _ACCT_CTRL_OWN_PL judges it
+# (or it has none); otherwise why not on stdout, status 1. A run that acts
+# on what control/ says leaves the account as it is when it is not.
+_acct_ctrl_own() {
+  local _a="${1}" _o _r _want
+  # an account not in passwd (not made yet, or removed) has nothing to
+  # judge it by: read as before
+  _o=$(_acct_walk_uids "${_a}" 2> /dev/null) || return 0
+  [ -e "/data/disk/${_a}/static" ] || [ -L "/data/disk/${_a}/static" ] || return 0
+  _want="$(cd -P -- /data/disk 2> /dev/null && /bin/pwd -P)/${_a}/static"
+  _r=$(cd -P -- "/data/disk/${_a}/static" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] \
+    && perl -e "${_ACCT_CTRL_OWN_PL}" -- "${_o}" 2> /dev/null)
+  case "${_r}" in
+    OK|ABSENT) return 0 ;;
+  esac
+  echo "${_r:-static/ is not a real directory}"
+  return 1
+}
+# The account $1's control/ as _acct_ctrl_own judges it: 0 when it is the
+# account's own (or it has none). A run that judged every account first
+# (_acct_ctrl_judge_all) keeps the verdicts in variables a command
+# substitution inherits, so a box-wide read walks each folder once; an
+# account it did not judge is judged here, without a word.
+_acct_ctrl_own_seen() {
+  case " ${_ACCT_CTRL_JUDGED:-} " in
+    *" ${1} "*)
+      case " ${_ACCT_CTRL_NOT_OWN:-} " in
+        *" ${1} "*) return 1 ;;
+      esac
+      return 0
+      ;;
+  esac
+  _acct_ctrl_own "${1}" > /dev/null
+}
+# Every account's control/ judged once a run, in the run's own shell, before
+# the box-wide reads of the accounts' PHP choices: one that is not the
+# account's own is named once (ALRT), and those reads leave it out.
+_acct_ctrl_judge_all() {
+  local _u _a _why
+  [ "${_ACCT_CTRL_JUDGED_ALL:-}" = "YES" ] && return 0
+  _ACCT_CTRL_JUDGED=""
+  _ACCT_CTRL_NOT_OWN=""
+  for _u in /data/disk/*; do
+    _a="${_u##*/}"
+    case "${_a}" in
+      ""|*[!a-z0-9-]*) continue ;;
+    esac
+    [ -e "${_u}/static/control" ] || [ -L "${_u}/static/control" ] || continue
+    _ACCT_CTRL_JUDGED="${_ACCT_CTRL_JUDGED} ${_a}"
+    if ! _why=$(_acct_ctrl_own "${_a}"); then
+      _ACCT_CTRL_NOT_OWN="${_ACCT_CTRL_NOT_OWN} ${_a}"
+      _msg "ALRT: ${_u}/static/control is not ${_a}'s own (${_why}); the box's PHP choices leave its control files out"
+    fi
+  done
+  _ACCT_CTRL_JUDGED_ALL=YES
+}
+# ./$1 of the current (pinned) directory, read as _acct_read_here reads it
+# (at most 1 MiB), only as the account $2's own; empty otherwise. An account
+# no passwd entry names (not made yet, or removed) has nothing to judge it
+# by: read as before.
+_acct_own_read_here() {
+  local _o
+  _o=$(_acct_walk_uids "${2}" 2> /dev/null) || { _acct_read_here "${1}"; return; }
+  perl -e "${_ACCT_OWN_READ_PL}" r "${_o}" 1048576 "${1}" 2> /dev/null
+}
+# 0 when ./$1 of the current (pinned) directory is there as the account $2's
+# own (an account no passwd entry names: when it is there).
+_acct_own_has_here() {
+  local _o
+  _o=$(_acct_walk_uids "${2}" 2> /dev/null) || { [ -e "./${1}" ]; return; }
+  perl -e "${_ACCT_OWN_READ_PL}" e "${_o}" 0 "${1}" 2> /dev/null
+}
+# $2 in the real directory $1 of the account $3, as the two above take it.
+_acct_own_read_in() {
+  _acct_in_real_dir "${1}" _acct_own_read_here "${2}" "${3}"
+}
+_acct_own_has_in() {
+  _acct_in_real_dir "${1}" _acct_own_has_here "${2}" "${3}"
 }
 # ./$1 in the current (pinned) directory with the content $2 (0644): a
 # fresh file created exclusively, then renamed over the name, so a link or a
@@ -717,6 +916,10 @@ _acct_read_all() {
   local _u
   for _u in /data/disk/*; do
     [ -d "${_u}/${1}" ] || continue
+    # a control/ another account made says nothing of this one's choices
+    if [ "${1}" = "static/control" ] && ! _acct_ctrl_own_seen "${_u##*/}"; then
+      continue
+    fi
     _acct_read_in "${_u}/${1}" "${2}"
     echo
   done
@@ -731,6 +934,235 @@ _acct_read_whole_in() {
   _n=$(printf '%s' "${_s}" | wc -c)
   [ "${_n}" -gt 0 ] && [ "${_n}" -lt 1048576 ] || return 1
   printf '%s\n' "${_s}"
+}
+
+#
+# barracuda loads no satellite.sh.inc: its own copy of the picker, one text
+# with the Octopus one, for BOA's own service users (_sys_user_add).
+#
+# The number a new identity of account $2 is made under, the highest of
+# those that fit first ($1 high, as useradd -r picks one) or the lowest ($1
+# low, as adduser --system does), among the system uids no user has and no
+# process or thread runs as (real, effective, saved or file system uid): a
+# number the account itself freed (<oN>.gone) before any other, then one no
+# account holds (in no other account's record, not waiting for the sweep in
+# .unswept, not a gone account's in .purged); only when none is left, the
+# number of a gone account the sweep has walked and no account has recorded
+# since, the oldest first, with status 2. A number freed from a live account is never given to another:
+# what it left outside the account's trees would be that account's, and no
+# walk proves it left nothing. Status 1, and nothing, when the range, the
+# users or the processes cannot be read or no number is free. A name that
+# cannot be an account's takes no number back.
+_acct_pick_uid() {
+  local IFS=$' \t\n'
+  local _w="${1}" _a="${2}" _lo="" _hi="" _um="" _k _v _u _f _t _old="" _oldt=""
+  local _d=/data/conf/acct-uids _uns=""
+  local _pso=NO
+  local -A _h=() _l=() _own=() _g=()
+  [[ "${_a}" =~ ^[a-z0-9-]+$ ]] || _a=""
+  case "${_w}" in
+    high)
+      while read -r _k _v _; do
+        _v="${_v%%#*}"
+        case "${_k}" in
+          SYS_UID_MIN) _lo="${_v}" ;;
+          SYS_UID_MAX) _hi="${_v}" ;;
+          UID_MIN) _um="${_v}" ;;
+        esac
+      done < <(grep -E '^[[:space:]]*(SYS_)?UID_M(IN|AX)[[:space:]]' /etc/login.defs 2> /dev/null)
+      [ -n "${_lo}" ] || _lo=101
+      if [ -z "${_hi}" ]; then
+        [[ "${_um}" =~ ^[1-9][0-9]*$ ]] && _hi=$(( _um - 1 )) || _hi=999
+      fi
+      ;;
+    low)
+      while IFS='=' read -r _k _v; do
+        _k="${_k//[[:space:]]/}"
+        _v="${_v%%#*}"
+        _v="${_v//[[:space:]\"\']/}"
+        case "${_k}" in
+          FIRST_SYSTEM_UID) _lo="${_v}" ;;
+          LAST_SYSTEM_UID) _hi="${_v}" ;;
+        esac
+      done < <(grep -E '^[[:space:]]*(FIRST|LAST)_SYSTEM_UID[[:space:]]*=' /etc/adduser.conf 2> /dev/null)
+      [ -n "${_lo}" ] || _lo=100
+      [ -n "${_hi}" ] || _hi=999
+      ;;
+    *) return 1 ;;
+  esac
+  [[ "${_lo}" =~ ^[1-9][0-9]*$ && "${_hi}" =~ ^[1-9][0-9]*$ ]] || return 1
+  [ "${_lo}" -le "${_hi}" ] || return 1
+  while IFS=: read -r _k _v _u _; do
+    [[ "${_u}" =~ ^[0-9]+$ ]] && _h[${_u}]=1
+  done < <(getent passwd 2> /dev/null)
+  # no passwd read, no pick: every number would look free
+  [ -n "${_h[0]:-}" ] || return 1
+  for _u in $(ps -eL -o ruid= -o euid= -o suid= -o fsuid= 2> /dev/null); do
+    [[ "${_u}" =~ ^[0-9]+$ ]] || continue
+    _h[${_u}]=1
+    [ "${_u}" = "0" ] && _pso=YES
+  done
+  # no process list read, no pick: a number something runs as would look free
+  [ "${_pso}" = "YES" ] || return 1
+  for _f in "${_d}"/*.gone; do
+    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
+    while IFS= read -r _u; do
+      [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+      _g[${_u}]=1
+      if [ -n "${_a}" ] && [ "${_f}" = "${_d}/${_a}.gone" ]; then
+        _own[${_u}]=1
+      else
+        _l[${_u}]=1
+      fi
+    done < "${_f}"
+  done
+  # (no list yet: every number it would take is in a record above)
+  if [ -f "${_d}/.unswept" ] && [ ! -L "${_d}/.unswept" ]; then
+    _uns=$(cat -- "${_d}/.unswept") || return 1
+  fi
+  while IFS= read -r _u; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    [ -n "${_own[${_u}]:-}" ] || _l[${_u}]=1
+  done <<< "${_uns}"
+  while read -r _u _t; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] && _l[${_u}]=1
+  done 2> /dev/null < "${_d}/.purged"
+  if [ "${_w}" = "high" ]; then
+    for (( _u = _hi; _u >= _lo; _u-- )); do
+      [ -n "${_own[${_u}]:-}" ] && [ -z "${_h[${_u}]:-}" ] && { echo "${_u}"; return 0; }
+    done
+    for (( _u = _hi; _u >= _lo; _u-- )); do
+      [ -n "${_h[${_u}]:-}${_l[${_u}]:-}${_own[${_u}]:-}" ] || { echo "${_u}"; return 0; }
+    done
+  else
+    for (( _u = _lo; _u <= _hi; _u++ )); do
+      [ -n "${_own[${_u}]:-}" ] && [ -z "${_h[${_u}]:-}" ] && { echo "${_u}"; return 0; }
+    done
+    for (( _u = _lo; _u <= _hi; _u++ )); do
+      [ -n "${_h[${_u}]:-}${_l[${_u}]:-}${_own[${_u}]:-}" ] || { echo "${_u}"; return 0; }
+    done
+  fi
+  # the last resort: a gone account's number the sweep has walked, never one
+  # an account has recorded since; without the list nothing counts as walked
+  [ -f "${_d}/.unswept" ] && [ ! -L "${_d}/.unswept" ] || return 1
+  while read -r _u _t; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ && "${_t}" =~ ^[0-9]+$ ]] || continue
+    [ "${_u}" -ge "${_lo}" ] && [ "${_u}" -le "${_hi}" ] || continue
+    [ -z "${_h[${_u}]:-}${_g[${_u}]:-}" ] || continue
+    grep -qx -- "${_u}" <<< "${_uns}" && continue
+    if [ -z "${_oldt}" ] || [ "${_t}" -lt "${_oldt}" ]; then
+      _old="${_u}"
+      _oldt="${_t}"
+    fi
+  done 2> /dev/null < "${_d}/.purged"
+  [ -n "${_old}" ] || return 1
+  echo "${_old}"
+  return 2
+}
+#
+# Make one of BOA's own service users (a PHP version's pool user, Valkey,
+# Solr, MySQL, Aegir, sshd, ftp) under the number _acct_pick_uid gives for
+# no account, so it never takes a number a removed account identity freed:
+# what that number still owns would be the service's. $1 is high for a
+# useradd -r command (the tool takes the highest free system uid) or low
+# for an adduser --system one (the lowest), the rest the command with the
+# name last. adduser --system --group --uid N gives the group the number N
+# too and fails when another group holds it, so the group is made first as
+# adduser makes it (addgroup --system, the lowest free system gid) and the
+# user joins it (--ingroup); useradd's own user group takes N only when no
+# group holds it. With no number held the numbers are the tools' own. A
+# name that exists runs the command as it is. No number to pick, or three
+# picked numbers that made no user, leave the number to the tool, as
+# before, and the incident log says which; a group of the name, made here
+# or there before, is joined, never made again (a plain --group would give
+# the home the next free gid), and one made here goes when the user is not
+# made. A gone account's number given as the last resort is said in the
+# incident log too.
+_sys_user_add() {
+  local _w="${1}" _i _n _p _t _r _m="" _x _mg=""
+  local -a _c
+  shift
+  [ "$#" -ge 2 ] || return 1
+  _i="${*: -1}"
+  case "${_w}" in
+    low|high) ;;
+    *) "$@"; return ;;
+  esac
+  if getent passwd "${_i}" > /dev/null 2>&1; then
+    "$@"
+    return
+  fi
+  for _t in 1 2 3; do
+    _n=$(_acct_pick_uid "${_w}" "")
+    _p=$?
+    if [ "${_p}" -ne 0 ] && [ "${_p}" -ne 2 ]; then
+      _m="no uid free of removed account identities"
+      break
+    fi
+    _c=()
+    for _x in "${@:1:$#-1}"; do
+      if [ "${_w}" = "low" ] && [ "${_x}" = "--group" ]; then
+        if ! getent group "${_i}" > /dev/null 2>&1; then
+          addgroup --system "${_i}" > /dev/null 2>&1 && _mg="${_i}"
+        fi
+        _c+=(--ingroup "${_i}")
+      else
+        _c+=("${_x}")
+      fi
+    done
+    if [ "${_w}" = "low" ]; then
+      _c+=(--uid "${_n}")
+    else
+      _c+=(-u "${_n}")
+    fi
+    "${_c[@]}" "${_i}"
+    _r=$?
+    # made (a failure after that is the tool's own); not made, the number
+    # was taken meanwhile or the tool refused: pick again
+    if getent passwd "${_i}" > /dev/null 2>&1; then
+      if [ "${_p}" -eq 2 ]; then
+        _m="${_i}: made under ${_n}, a number of an account that is gone: no other was free"
+        mkdir -p /var/log/boa
+        echo "$(date) ${_m}" >> /var/log/boa/manage_ltd.incident.log
+      fi
+      return "${_r}"
+    fi
+  done
+  _m="${_i}: ${_m:-not made under three picked numbers}, the number left to ${1}"
+  mkdir -p /var/log/boa
+  echo "$(date) ${_m}" >> /var/log/boa/manage_ltd.incident.log
+  if [ "${_w}" = "low" ] && getent group "${_i}" > /dev/null 2>&1; then
+    _c=()
+    for _x in "${@:1:$#-1}"; do
+      if [ "${_x}" = "--group" ]; then
+        _c+=(--ingroup "${_i}")
+      else
+        _c+=("${_x}")
+      fi
+    done
+    "${_c[@]}" "${_i}"
+  else
+    "$@"
+  fi
+  _r=$?
+  if [ -n "${_mg}" ] && ! getent passwd "${_i}" > /dev/null 2>&1; then
+    groupdel "${_mg}" > /dev/null 2>&1
+  fi
+  return "${_r}"
+}
+# Run "$@" in this shell with its output where _mrun puts a command's (the
+# run's info and error logs, or nowhere): a function such as _sys_user_add
+# exists here, not in _mrun's own bash -c. Status 0, as _mrun's.
+_mrun_here() {
+  [ "$#" -ge 1 ] || return 0
+  if [ -n "${_LOG_INFO}" ] && [ -n "${_LOG_ERRR}" ]; then
+    "$@" \
+      > >(tee -a "${_LOG_INFO}" > /dev/null) \
+      2> >(tee -a "${_LOG_ERRR}" > /dev/null)
+  else
+    "$@" &> /dev/null
+  fi
+  return 0
 }
 
 _sanitize_string() {
@@ -2233,6 +2665,35 @@ _sudoers_safe_append() {
   _sudoers_commit "${_file}" "${_tmp}"
 }
 
+# Each user's nginx line in /etc/sudoers names the one verb provision and the
+# panel call, reload: the bare init script let the user run any verb of it as
+# root (stop, destroy). Validated by visudo before it goes live; a no-op once
+# no bare line is left.
+_sudoers_nginx_reload_only() {
+  local _file="/etc/sudoers"
+  local _re='^([a-z0-9][a-z0-9_.-]*) ALL=NOPASSWD: /etc/init\.d/nginx[[:space:]]*$'
+  local _tmp
+  grep -qE "${_re}" "${_file}" 2>/dev/null || return 0
+  _tmp=$(mktemp "$(dirname "${_file}")/.sudoers.boa.XXXXXX" 2>/dev/null)
+  if [ -z "${_tmp}" ] || [ ! -e "${_tmp}" ]; then
+    return 1
+  fi
+  sed -E "s#${_re}#\\1 ALL=NOPASSWD: /etc/init.d/nginx reload#" "${_file}" > "${_tmp}" \
+    || { rm -f "${_tmp}"; return 1; }
+  _sudoers_commit "${_file}" "${_tmp}"
+}
+
+# A file BOA just wrote that names a hosted account's own nginx files is
+# pointed at root's judged copies before any configtest reads it, when the
+# store is armed; not armed, ngxstore only puts account paths back that it
+# finds switched.
+_nginx_acct_store_sync() {
+  [ -x /opt/local/bin/ngxstore ] || return 0
+  env -i PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin \
+    timeout 300 /opt/local/bin/ngxstore sync --quiet > /dev/null 2>&1
+  return 0
+}
+
 # The database broker's (boa-dbctl) sudo line for account $1 in
 # /etc/sudoers.d/boa-dbctl, validated and matched as a whole line as
 # _sudoers_safe_append does. The line alone changes nothing: the broker
@@ -2637,4 +3098,20 @@ _switch_to_dash_in_octopus() {
       fi
     fi
   fi
+}
+
+# A task dispatcher (run-<account>) root may run or hand back: a regular file
+# with one link, owned by root, that no group or other user can write. Any
+# other copy was made or kept where another user could write it (a parked
+# copy outlives its account, whose number is given out again; a second link
+# stays writable through the other name), so root never runs or returns it.
+_dispatcher_trusted() {
+  local _s
+  [ -f "${1}" ] && [ ! -L "${1}" ] || return 1
+  _s=$(stat -c '%u %h %a' -- "${1}" 2> /dev/null) || return 1
+  case "${_s}" in
+    "0 1 "[0-7][0-7][0-7] | "0 1 "[0-7][0-7][0-7][0-7]) ;;
+    *) return 1 ;;
+  esac
+  (( (8#${_s##* } & 8#022) == 0 ))
 }
