@@ -5,16 +5,20 @@
 @=> New Features
 
     * Site owners run core's dr, the command line of Drupal 11.5 and newer
-      with Drush 15's commands, in their shell: dr --url=<site> <command>
-      from the codebase's root or its docroot while the platform is
-      unlocked, as vdrush runs an older site-local Drush. websh starts
+      with Drush 15's commands, in their shell: dr --url=https://<site>
+      <command> from the codebase's root or its docroot while the platform
+      is unlocked, as vdrush runs an older site-local Drush. websh starts
       Composer's vendor/bin/dr on the command-line PHP the account chose,
       and names the site folder of --url for it, which dr needs and does
       not take from --url alone; a --url the codebase has no folder for
-      says so and starts dr with no site. dr's commands that run code, its
-      installer and its server are refused as Drush's are. The platform
-      developer logins get dr in their Drush window too, and checkmyperms
-      names it for a Drush 15 platform.
+      says so and starts dr with no site, and one without its scheme gets
+      a note, since dr builds its links from it. dr's commands that run
+      code, its installer and its server are refused as Drush's are.
+
+    * Unlock Local Drush and the platform permission pass keep Composer's
+      vendor/bin/dr executable, as they keep drush.php: the shell runs it
+      by its path. The platform developer logins get dr in their Drush
+      window too, and checkmyperms names it for a Drush 15 platform.
 
     * Every server of a move now guards its disk against its binary log
       and the night database dump: the source and its standby while the

@@ -424,11 +424,11 @@ _dr_launcher() {
 # note (_DRL_NOTE). The codebase is the app root holding vendor/bin/dr, found
 # from the working directory a "cd DIR &&" moves; the docroot is its web/,
 # docroot/ or html/, or the app root itself, whichever holds core.
-_DRL_SITE=""; _DRL_NOTE=""
+_DRL_SITE=""; _DRL_NOTE=""; _DRL_HINT=""
 _dr_site() {
   [[ $'\xc3\xa9' == ? ]] && local LC_ALL=C
   local _ws _w _next=NO _u="" _h _app _base _doc="" _d
-  _DRL_SITE=""; _DRL_NOTE=""
+  _DRL_SITE=""; _DRL_NOTE=""; _DRL_HINT=""
   # the last --url before a --, as the console reads a repeated option
   read -r -a _ws <<< "${_DRL_REST}"
   for _w in "${_ws[@]}"; do
@@ -451,6 +451,11 @@ _dr_site() {
   if ! [[ "${_h}" =~ ^[a-z0-9][a-z0-9.-]*$ ]] || [[ "${_h}" == *..* ]]; then
     _DRL_NOTE="--url names no site folder; dr starts with no site"
     return 0
+  fi
+  # dr builds its links from --url as given: without a scheme they point at
+  # http://localhost/<host>/, a login link included
+  if [[ "${_u}" != *://* ]]; then
+    _DRL_HINT="dr builds its links from --url as given: name the site as --url=https://${_h}"
   fi
   _base=$(pwd -P 2> /dev/null)
   if _cd_dir_of "${_DRL_CD}"; then
@@ -976,7 +981,7 @@ _drush_refused_say() {
       && [ ! -e "${_vnd}/vendor/drush/drush/drush.php" ] && [ -f "${_vnd}/vendor/bin/dr" ]; then
       echo " Anything that changes the site runs through core's dr (Drush 15),"
       echo " from ${_vnd} while the platform is unlocked:"
-      echo "   dr --url=<site> <command>"
+      echo "   dr --url=https://<site> <command>"
       if [ -d "${_app}/vendor/drush" ]; then
         echo " Unlock: the platform's Unlock Local Drush task in the control panel, or"
         echo " on a developer login: touch ~/.tmp/drush-window.request"
@@ -3629,6 +3634,7 @@ if _grp_set_is "users www-data" \
           unset DRUPAL_DEV_SITE_PATH
           _dr_site
           [ -n "${_DRL_NOTE}" ] && echo "NOTE: ${_DRL_NOTE}" >&2
+          [ -n "${_DRL_HINT}" ] && echo "NOTE: ${_DRL_HINT}" >&2
           _DRL_ENV=""
           if [ -n "${_DRL_SITE}" ] && [[ "${_DRL_PRE}" != *DRUPAL_DEV_SITE_PATH=* ]]; then
             _DRL_ENV="DRUPAL_DEV_SITE_PATH=${_DRL_SITE} "

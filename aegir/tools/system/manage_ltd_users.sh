@@ -3556,7 +3556,7 @@ then, within three minutes:
 platform, in the same window, name the site by its address:
 
   cd ~/platforms/<name>
-  dr --url=<site> <command>
+  dr --url=https://<site> <command>
 
 Touch the request file again to extend. While a platform is unlocked Drush 8
 cannot run on it, control-panel tasks on its sites can fail, and a site
@@ -4058,7 +4058,7 @@ _ltd_platform_report() {
     for _s in ${_sites}; do
       if [ -f "${_doc}/core/lib/Drupal.php" ] && [ -d "${_root}/vendor/drush" ] \
         && _ltd_platform_dr "${_root}"; then
-        echo "    $(_ltd_status_safe "${_s}")  (dr --url=$(_ltd_status_safe "${_s}"))"
+        echo "    $(_ltd_status_safe "${_s}")  (dr --url=https://$(_ltd_status_safe "${_s}"))"
       elif [ -f "${_doc}/core/lib/Drupal.php" ] && [ -d "${_root}/vendor/drush" ]; then
         echo "    $(_ltd_status_safe "${_s}")  (vdrush @$(_ltd_status_safe "$(_ltd_modern_alias "${_s}")"))"
       else
@@ -4111,7 +4111,7 @@ _ltd_platform_report() {
   echo "  Drupal 8+, any change: open the window, then"
   echo "                         cd ~/platforms/<name> && vdrush @<alias> <command>"
   echo "  Drupal 8+ on Drush 15: open the window, then"
-  echo "                         cd ~/platforms/<name> && dr --url=<site> <command>"
+  echo "                         cd ~/platforms/<name> && dr --url=https://<site> <command>"
   for _root in ${_granted}; do
     echo "#grant ${_root}"
   done
