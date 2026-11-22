@@ -2877,6 +2877,13 @@ _d_dist_loop() {
       && [[ ! "${_PLATFORMS_LIST}" =~ ${_dist} ]]; then
       continue
     fi
+    # Drupal 12 stays out of ALL after its release as well: no Drush that runs
+    # on it has a release yet (Drush 14 never will, Drush 15 is not tagged),
+    # and a development Drush has no security support. Built where the list
+    # names it, until its build takes a released Drush 15.
+    if [[ "${_dist}" =~ ^DT[0-9]$ ]] && [[ ! "${_PLATFORMS_LIST}" =~ ${_dist} ]]; then
+      continue
+    fi
     # The CiviCRM platforms are built only where the list names them, never
     # through ALL: each is a whole Backdrop or Drupal codebase with CiviCRM's on
     # top, made again in every new distro revision of every account that lists

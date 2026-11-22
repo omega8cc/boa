@@ -14,6 +14,11 @@
       core a Drush without drush.php still fails. The 12.0.0-beta2 line
       keeps Drush 14.x-dev, as do the published trees that still pin it.
 
+    * Drupal 12 (DT0) stays out of ALL after its release as well: it is
+      built only where platforms.info names it until its build carries a
+      released Drush 15, since no Drush that runs on Drupal 12 has a
+      release yet and a development Drush has no security support.
+
     * Provision asks a Drupal 12 codebase that brings no Drush for a
       released Drush 15, never a development one: until Drush 15 and what
       it needs on Drupal 12 are tagged, Composer refuses it on stability,

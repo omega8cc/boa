@@ -56,10 +56,11 @@ _PHP_CLI_VERSION=8.4
 ### using the symbols listed below.
 ###
 
-### Drupal 12, a pre-release for testing: built only where the list names
-### it (never through ALL) and only in an instance at PHP 8.5 or newer
+### Drupal 12, for testing: built only where the list names it (never
+### through ALL, after its release too, until its build carries a released
+### Drush 15) and only in an instance at PHP 8.5 or newer
 #
-# DT0 — Drupal 12 pre-release prod/stage/dev
+# DT0 — Drupal 12 prod/stage/dev
 
 ### Drupal 11.5, a pre-release for testing: built only where the list
 ### names it (never through ALL) until its first stable release
