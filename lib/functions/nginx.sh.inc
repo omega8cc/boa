@@ -2526,24 +2526,31 @@ _nginx_config_update_fix() {
     if [ ! -e "/root/.local.IP.list" ]; then
       rm -f /root/.tmp.IP.list*
       rm -f /root/.local.IP.list*
-      for _IP in `hostname -I`;do echo ${_IP} >> /root/.tmp.IP.list;done
-      for _IP in `cat /root/.tmp.IP.list \
-        | sort \
-        | uniq`; do
+    fi
+    ### The list is made once, and only the daily firewall run added an
+    ### address to it later, so a pass on a cloned or re-addressed box found
+    ### its own address missing and skipped the call below. Every address
+    ### the box holds now is added here, as that run writes it, and an
+    ### address counts as listed only as a whole entry.
+    for _IP in $(hostname -I 2> /dev/null); do
+      [[ "${_IP}" =~ ^[0-9A-Fa-f.:]+$ ]] || continue
+      if ! sed -e 's/#.*//' -e 's/[[:space:]]//g' /root/.local.IP.list 2> /dev/null \
+        | grep -qxF -- "${_IP}"; then
         echo "${_IP} # local IP address" >> /root/.local.IP.list
-      done
-      rm -f /root/.tmp.IP.list*
-    fi
-    _IP_IF_PRESENT=$(grep "${_CRON_IP}" /root/.local.IP.list 2>&1)
-    if [[ "${_IP_IF_PRESENT}" =~ "${_CRON_IP}" ]]; then
-      _IP_PRESENT=YES
-    else
-      _IP_PRESENT=NO
-    fi
+      fi
+    done
+    _IP_PRESENT=NO
     if [ ! -z "${_CRON_IP}" ] \
-      && [ "${_IP_PRESENT}" = "YES" ] \
-      && [ -e "/root/.local.IP.list" ]; then
+      && sed -e 's/#.*//' -e 's/[[:space:]]//g' /root/.local.IP.list 2> /dev/null \
+        | grep -qxF -- "${_CRON_IP}"; then
+      _IP_PRESENT=YES
+    fi
+    if [ "${_IP_PRESENT}" = "YES" ]; then
       _master_fix_multi_ip_cron_access
+    elif [ -z "${_CRON_IP}" ]; then
+      _msg "NOTE: cron routes stay open to 127.0.0.1 only: no address is known for this box"
+    else
+      _msg "NOTE: cron routes stay open to 127.0.0.1 only: ${_CRON_IP} is not an address of this box"
     fi
     _mrun "service nginx reload"
     _nginx_proxy_stray_log_purge
