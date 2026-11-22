@@ -4,7 +4,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 
-_PTN_VRN=3.14.6
+_PTN_VRN=3.14.10
 _PTN_MNR="${_PTN_VRN%.*}"
 _DCY_VRN=3.2.0.2
 _DCY_CMD="/usr/local/bin/duplicity"

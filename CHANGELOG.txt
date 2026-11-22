@@ -382,6 +382,12 @@
 
 @=> Security
 
+    * The backup tools build Python 3.14.10 (was 3.14.6), which carries
+      the tarfile, zipfile and TLS security fixes of Python 3.14.8. A box
+      rebuilds its backup Python the next time backboa install,
+      duobackboa install or dcysetup install runs, and new installs get
+      it directly; the Duplicity pin is unchanged.
+
     * websh refuses a Drush command word given abbreviated or in another
       case, which Drush 9 and newer resolve as the full name, on every
       Drush but BOA's Drush 8, which takes a word only as named.
