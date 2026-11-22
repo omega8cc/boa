@@ -4,6 +4,24 @@
 
 @=> New Features
 
+    * From Drupal 12's first release on, staticbuild builds its Drupal 12
+      lines and distributions with Drush 15, which has no drush.php and
+      runs under Drupal's own dr: its development branch until it is
+      tagged, and the release from then on (the require prefers a stable
+      Drush 15 over the branch once there is one). A Drush 15 build has to
+      start core's dr from its docroot, with everything a server needs to
+      run it, or it fails as a Drush that does not start; on any other
+      core a Drush without drush.php still fails. The 12.0.0-beta2 line
+      keeps Drush 14.x-dev, as do the published trees that still pin it.
+
+    * Provision asks a Drupal 12 codebase that brings no Drush for a
+      released Drush 15, never a development one: until Drush 15 and what
+      it needs on Drupal 12 are tagged, Composer refuses it on stability,
+      an advisory, and the codebase is left as it was. A codebase whose
+      first Drush comes from that require inside a database update window
+      (Migrate, Clone, Restore) is read again, locked back and handed to
+      dr's window in the same task, so its updates run there.
+
     * Site owners run core's dr, the command line of Drupal 11.5 and newer
       with Drush 15's commands, in their shell: dr --url=https://<site>
       <command> from the codebase's root, the folder with vendor/, while
