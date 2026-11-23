@@ -165,11 +165,6 @@ done
 ###
 ### Local variables
 ###
-if [ "${_THIS_DB_HOST}" = "FQDN" ]; then
-  # A test, not ||: tr exits 0 on an empty /etc/hostname
-  export _THIS_DB_HOST="$(cat /etc/hostname 2>/dev/null | tr -d '\n')"
-  [ -n "${_THIS_DB_HOST}" ] || _THIS_DB_HOST="$(hostname -f 2>/dev/null)"
-fi
 export _USE_AEGIR_VER=SRC
 export _T_BUILD=SRC
 export _DIST_INSTALL=NO
@@ -1955,12 +1950,12 @@ declare -A _distros_names=(
 
 # Define distros versions for configuration
 declare -A _distros_versions=(
-  ["CMS"]="2.2.9"
+  ["CMS"]="2.2.10"
   ["CK1"]="2.77"
   ["CK2"]="2.41"
   ["CK3"]="5.1.0"
   ["EZC"]="2.2.15"
-  ["FOS"]="4.0.11"
+  ["FOS"]="4.0.12"
   ["LGV"]="4.0.5"
   ["OCS"]="3.1.9"
   ["OFD"]="13.6.11"
@@ -1985,7 +1980,7 @@ declare -A _distros_versions=(
   ["DE3"]="${_SMALLCORE11_3_V}"
   ["DE4"]="${_SMALLCORE11_4_V}"
   ["DE5"]="${_SMALLCORE11_5_V}"
-  ["DEC"]="6.20.0"
+  ["DEC"]="6.20.1"
   ["DT0"]="${_SMALLCORE12_0_V}"
   ["BDR"]="${_BACKDROP_V}"
   ["BDC"]="${_BDC_V}"
