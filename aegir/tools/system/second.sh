@@ -190,6 +190,60 @@ fi
 # shellcheck disable=SC1091
 [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
 
+# The real uids of BOA's own work: root, aegir and each account's backend
+# user (home /data/disk/<name>), as whom root runs the account's tasks and
+# queued restores; never a web, FTP or shell login, which can give its own
+# process any command line.
+_boa_run_uids() {
+  local _l=""
+  _l=$(getent passwd 2> /dev/null \
+    | awk -F: '$3 == 0 || $1 == "aegir" || $6 ~ /^\/data\/disk\/[^\/]+\/?$/ { printf "%s%s", s, $3; s = "," }')
+  echo "${_l:-0}"
+}
+
+# Duplicity runs in flight, counted from root's processes alone: root's own
+# duplicity, and root's mybackup pass, which runs an account's queued restore
+# as the account through su. An account's own process is never counted: the
+# account's site code runs as its backend user in tasks and can give a
+# process any command line.
+_dcy_live_count() {
+  local _a _b _c
+  _a=$(pgrep -u root -U root -fc '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)' 2> /dev/null)
+  _b=$(pgrep -u root -U root -fc '^[^ ]*duplicity( |$)' 2> /dev/null)
+  _c=$(pgrep -u root -U root -fc '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*mybackup( |$)' 2> /dev/null)
+  echo $(( ${_a:-0} + ${_b:-0} + ${_c:-0} ))
+}
+
+# A dump or load in flight: root's own mydumper or myloader, or one an
+# account's backend user runs (provision dumps and loads a site's database as
+# the account) when the file it runs is one root installed under the name:
+# the one on the PATH, the build beside the installed mydumper (the myloader
+# wrapper on the PATH is a script that execs it) or the wrapper's fallbacks.
+# Compared by device and inode: a path read through /proc can name a file of
+# another mount namespace, and a copy or a link only carries the name.
+_dump_tool_live() {
+  local _p="" _x="" _e="" _md="" _ok=" " _bU=""
+  pgrep -u root -U root -x "${1}" > /dev/null 2>&1 && return 0
+  _md=$(readlink -f /usr/local/bin/mydumper 2> /dev/null)
+  [ -n "${_md}" ] && [ -x "${_md}" ] \
+    || _md=$(readlink -f "$(command -v mydumper 2> /dev/null)" 2> /dev/null)
+  for _x in "$(command -v "${1}" 2> /dev/null)" "${_md:+${_md%/*}/${1}}" \
+    "/usr/local/bin/${1}.bin" "/usr/bin/${1}"; do
+    case "${_x}" in /*) ;; *) continue ;; esac
+    [ -x "${_x}" ] || continue
+    _e=$(stat -L -c '%d:%i' "${_x}" 2> /dev/null)
+    [ -n "${_e}" ] && _ok="${_ok}${_e} "
+  done
+  [ "${_ok}" != " " ] || return 1
+  _bU="$(_boa_run_uids)"
+  for _p in $(pgrep -u "${_bU}" -U "${_bU}" -x "${1}" 2> /dev/null); do
+    _e=$(stat -L -c '%d:%i' "/proc/${_p}/exe" 2> /dev/null)
+    [ -n "${_e}" ] || continue
+    case "${_ok}" in *" ${_e} "*) return 0 ;; esac
+  done
+  return 1
+}
+
 # Sanitize numeric variables (allow digits and decimal point)
 _sanitize_number() {
   echo "$1" | sed 's/[^0-9.]//g'
@@ -258,12 +312,12 @@ _manage_single_lock() {
   else
     # -------- legacy pgrep guard ---------
     # Exit if more than 2 instances of this script are running.
-    # The 2-instance slack is deliberate here: pgrep -fc matches the cron
+    # The 2-instance slack is deliberate here: the count matches root's cron
     # sh -c wrapper as well as this shell, so a cap of 1 could refuse every
     # launch on exactly the lock.inc-less boxes this fallback exists for.
     # True single-instance comes from the shared flock above.
     _SCRIPT=$(basename "$0")
-    _CNT=$(pgrep -fc "(^|(^| )[^ ]*bash )[^ ]*/${_SCRIPT//./\\.}( |$)")
+    _CNT=$(pgrep -u root -U root -fc "(^|(^| )[^ ]*bash )[^ ]*/${_SCRIPT//./\\.}( |$)")
     if (( _CNT > 2 )); then
       echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
       exit 0
@@ -346,7 +400,17 @@ _hold_services() {
   local _load_period="$3"
   touch /run/boa_second_auto_healing.pid
   sleep 3
-  service nginx stop
+  # The pause ends when the nginx watchdog starts nginx again. With a
+  # configuration nginx -t rejects that start fails and every site would stay
+  # down after the pause, so the running nginx keeps serving and only PHP-FPM
+  # is paused. Tested the way a start loads it: configtest syncs the store's
+  # copies first.
+  local _ngx_keep="" _ngx_out
+  if [ -n "$(pgrep -x nginx)" ] && ! _ngx_out=$(service nginx configtest 2>&1); then
+    _ngx_keep=$(printf '%s\n' "${_ngx_out}" | grep -m1 -E '\[(emerg|alert|crit)\]' | cut -c1-300)
+    _ngx_keep="${_ngx_keep:-no reason given}"
+  fi
+  [ -z "${_ngx_keep}" ] && service nginx stop
   _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
@@ -354,11 +418,13 @@ _hold_services() {
     fi
   done
   killall php-fpm
-  killall nginx
+  [ -z "${_ngx_keep}" ] && killall nginx
   local _log_message
   _log_message="$(date) System Load ${_current_load}% (${_load_period}) - Web Server Paused"
+  [ -n "${_ngx_keep}" ] && _log_message="$(date) System Load ${_current_load}% (${_load_period}) - PHP-FPM Paused, Nginx kept: nginx -t fails (${_ngx_keep})"
   echo "${_log_message}" >> ${_pthOml}
   local _subject="Web Services Paused - ${_load_period} Load ${_current_load}% exceeded Max Load Threshold ${_threshold}%"
+  [ -n "${_ngx_keep}" ] && _subject="PHP-FPM Paused, Nginx kept as nginx -t fails - ${_load_period} Load ${_current_load}% exceeded Max Load Threshold ${_threshold}%"
   _incident_email_report "${_subject}" "ALERT"
   echo >> ${_pthOml}
   echo "Action Taken: Web services paused due to high load."
@@ -408,11 +474,11 @@ _acct_in_real_dir() {
     /data/disk/?*) _a=/data/disk ;;
   esac
   if [ -n "${_a}" ]; then
-    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+    _want="$(cd -P -- "${_a}" 2> /dev/null && /bin/pwd -P)${_d#"${_a}"}"
   else
-    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && /bin/pwd -P)/${_d##*/}"
   fi
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] && "$@" )
 }
 # ./$1 renamed to ./$2 in the current (pinned) directory, only while ./$1 is a
 # regular file: mv -T renames over a link left at ./$2, never into what it
@@ -537,10 +603,12 @@ _proc_control() {
 }
 
 # Function to get system load averages
+# (Read by the shell itself, and both values from one awk with the same
+# formula and format: this runs ten times a minute.)
 _get_load() {
-  read -r _one _five _rest <<< "$(cat /proc/loadavg)"
-  _O_LOAD=$(awk -v _load_value="${_one}" -v _cpus="${_CPU_COUNT}" 'BEGIN { printf "%.1f", (_load_value / _cpus) * 100 }')
-  _F_LOAD=$(awk -v _load_value="${_five}" -v _cpus="${_CPU_COUNT}" 'BEGIN { printf "%.1f", (_load_value / _cpus) * 100 }')
+  read -r _one _five _rest < /proc/loadavg
+  read -r _O_LOAD _F_LOAD < <(awk -v _l1="${_one}" -v _l5="${_five}" -v _cpus="${_CPU_COUNT}" \
+    'BEGIN { printf "%.1f %.1f\n", (_l1 / _cpus) * 100, (_l5 / _cpus) * 100 }')
 }
 
 # Average count of runnable plus I/O-blocked tasks over ~9 s, read from
@@ -619,22 +687,23 @@ _spider_stand_down() {
 # never mistaken for a backup.
 _backup_in_progress() {
   [ -e "/run/boa_sql_cluster_backup.pid" ] && return 0
-  pgrep -f '(^|(^| )[^ ]*bash )/(opt|usr)/local/bin/(backboa|duobackboa|multiback)( |$)' >/dev/null 2>&1 && return 0
-  pgrep -f '(^|(^| )[^ ]*bash )/var/xdrago/(mysql_backup|mysql_cluster_backup)\.sh( |$)' >/dev/null 2>&1 && return 0
-  pgrep -x mydumper >/dev/null 2>&1 && return 0
+  pgrep -u root -U root -f '(^|(^| )[^ ]*bash )/(opt|usr)/local/bin/(backboa|duobackboa|multiback)( |$)' >/dev/null 2>&1 && return 0
+  pgrep -u root -U root -f '(^|(^| )[^ ]*bash )/var/xdrago/(mysql_backup|mysql_cluster_backup)\.sh( |$)' >/dev/null 2>&1 && return 0
+  # mydumper and myloader also run as an account's backend user: provision
+  # takes a site's dump and load with them in its backup, clone and migrate
+  _dump_tool_live mydumper && return 0
   # xtrabackup/myloader: an xmass seed or a restore is disk-bound work on
   # a box whose cron now stays armed -- its load must not trip the
   # drastic tiers any more than a duplicity run's. The packaged myloader
   # is a wrapper exec'ing myloader.bin, so match both comm names.
-  pgrep -x xtrabackup >/dev/null 2>&1 && return 0
-  pgrep -x xbstream >/dev/null 2>&1 && return 0      # the xmass seed's receiving end
-  pgrep -x myloader >/dev/null 2>&1 && return 0
-  pgrep -x myloader.bin >/dev/null 2>&1 && return 0
+  pgrep -u root -U root -x xtrabackup >/dev/null 2>&1 && return 0
+  pgrep -u root -U root -x xbstream >/dev/null 2>&1 && return 0      # the xmass seed's receiving end
+  _dump_tool_live myloader && return 0
+  _dump_tool_live myloader.bin && return 0
   # duplicity runs as its pipx venv python with the console script as the
   # argument, never as a process named duplicity: the anchored pair the other
   # gates use, not a comm test that can never match.
-  pgrep -f '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)' >/dev/null 2>&1 && return 0
-  pgrep -f '^[^ ]*duplicity( |$)' >/dev/null 2>&1
+  [ "$(_dcy_live_count)" -gt 0 ]
 }
 
 # Measured system iowait% over a short sample. Used to CONFIRM a backup's high
@@ -780,18 +849,25 @@ _load_control() {
   _limits_exceeded=false
   _skip_proc_control=false
 
-  # Thresholds in percentages (calculate using bc)
-  _CPU_SPIDER_THRESHOLD=$(echo "${_CPU_SPIDER_RATIO} * 100" | bc -l)
-  _CPU_MAX_THRESHOLD=$(echo "${_CPU_MAX_RATIO} * 100" | bc -l)
-  _CPU_CRIT_THRESHOLD=$(echo "${_CPU_CRIT_RATIO} * 100" | bc -l)
-  # A ratio that sanitised to garbage (a bare dot, two dots) makes bc emit
-  # nothing, and an empty threshold turns every tier comparison below false
-  # -- the whole controller silently off. Fall back to the documented
-  # defaults instead.
-  awk "BEGIN{exit !(${_CPU_SPIDER_THRESHOLD}>0)}" 2>/dev/null || _CPU_SPIDER_THRESHOLD=$(echo "2.1 * 100" | bc -l)
-  awk "BEGIN{exit !(${_CPU_MAX_THRESHOLD}>0)}" 2>/dev/null || _CPU_MAX_THRESHOLD=$(echo "6.1 * 100" | bc -l)
-  awk "BEGIN{exit !(${_CPU_CRIT_THRESHOLD}>0)}" 2>/dev/null || _CPU_CRIT_THRESHOLD=$(echo "8.1 * 100" | bc -l)
-  _CPU_RESUME_THRESHOLD=$(echo "${_CPU_MAX_THRESHOLD} * ${_RESUME_FRACTION}" | bc -l)
+  # Thresholds in percentages (calculate using bc). They follow from the
+  # ratios alone, so they are worked out on a run's first pass and again only
+  # when a ratio differs from the one they were worked out from (seven
+  # programs on each of the ten passes a minute, for the same four values).
+  _thr_in="${_CPU_SPIDER_RATIO}|${_CPU_MAX_RATIO}|${_CPU_CRIT_RATIO}|${_RESUME_FRACTION}"
+  if [ "${_THR_FROM-unset}" != "${_thr_in}" ]; then
+    _CPU_SPIDER_THRESHOLD=$(echo "${_CPU_SPIDER_RATIO} * 100" | bc -l)
+    _CPU_MAX_THRESHOLD=$(echo "${_CPU_MAX_RATIO} * 100" | bc -l)
+    _CPU_CRIT_THRESHOLD=$(echo "${_CPU_CRIT_RATIO} * 100" | bc -l)
+    # A ratio that sanitised to garbage (a bare dot, two dots) makes bc emit
+    # nothing, and an empty threshold turns every tier comparison below false
+    # -- the whole controller silently off. Fall back to the documented
+    # defaults instead.
+    awk "BEGIN{exit !(${_CPU_SPIDER_THRESHOLD}>0)}" 2>/dev/null || _CPU_SPIDER_THRESHOLD=$(echo "2.1 * 100" | bc -l)
+    awk "BEGIN{exit !(${_CPU_MAX_THRESHOLD}>0)}" 2>/dev/null || _CPU_MAX_THRESHOLD=$(echo "6.1 * 100" | bc -l)
+    awk "BEGIN{exit !(${_CPU_CRIT_THRESHOLD}>0)}" 2>/dev/null || _CPU_CRIT_THRESHOLD=$(echo "8.1 * 100" | bc -l)
+    _CPU_RESUME_THRESHOLD=$(echo "${_CPU_MAX_THRESHOLD} * ${_RESUME_FRACTION}" | bc -l)
+    _THR_FROM="${_thr_in}"
+  fi
 
   echo "Current Load Averages:"
   echo " - 1-minute Load (per CPU): ${_O_LOAD}%"

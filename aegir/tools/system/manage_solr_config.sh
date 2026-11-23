@@ -4,7 +4,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 export _tRee=pro
-export _xSrl=588877proT01
+export _xSrl=588888proT01
 
 [ -e "/root/.proxy.cnf" ] && exit 0
 
@@ -52,6 +52,22 @@ _sanitize_number() {
   echo "$1" | sed 's/[^0-9.]//g'
 }
 
+# The real path of the account root _usEr, in _USER_REAL, resolved once per
+# account: every per-site check compares against it (one run of an account
+# with a few dozen sites resolved it some six hundred times). Only root can
+# rename or replace an entry of /data/disk, so the account cannot move it
+# while this run lasts. Each account loop resolves it in the main shell, so
+# the checks' subshells inherit it; one called with no copy resolves its own.
+_usEr_real() {
+  if [ "${_USER_REAL_KEY:-}" != "${_usEr}" ] || [ -z "${_USER_REAL:-}" ]; then
+    _USER_REAL_KEY=""
+    _USER_REAL=$(realpath -e -- "${_usEr}" 2>/dev/null) || { _USER_REAL=""; return 1; }
+    [ -n "${_USER_REAL}" ] || return 1
+    _USER_REAL_KEY="${_usEr}"
+  fi
+  return 0
+}
+
 _validate_safe_dir() {
   local _resolved
   _resolved=$(realpath -e -- "$1" 2>/dev/null) || return 1
@@ -80,7 +96,8 @@ _validate_ctrl_dir() {
   [ -e "$1" ] || return 0
   [ -d "$1" ] || return 1
   _resolved=$(realpath -e -- "$1" 2>/dev/null) || return 1
-  _anchor=$(realpath -e -- "${_usEr}" 2>/dev/null) || return 1
+  _usEr_real || return 1
+  _anchor="${_USER_REAL}"
   case "${_resolved}/" in
     "${_anchor}"/*)
       return 0
@@ -134,11 +151,11 @@ _acct_in_real_dir() {
     /data/disk/?*) _a=/data/disk ;;
   esac
   if [ -n "${_a}" ]; then
-    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+    _want="$(cd -P -- "${_a}" 2> /dev/null && /bin/pwd -P)${_d#"${_a}"}"
   else
-    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && /bin/pwd -P)/${_d##*/}"
   fi
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] && "$@" )
 }
 # ./$1 in the current (pinned) directory: never through a link, never blocked
 # on a FIFO, at most 1 MiB. Empty for anything else.
@@ -201,13 +218,14 @@ _in_resolved_dir() {
   shift 2
   [ -n "${_d}" ] && [ ! -L "${_d}" ] && [ -d "${_d}" ] || return 1
   _rd=$(realpath -e -- "${_d}" 2> /dev/null) || return 1
-  _rus=$(realpath -e -- "${_usEr}" 2> /dev/null) || return 1
+  _usEr_real || return 1
+  _rus="${_USER_REAL}"
   case "${_rd}/" in
     "${_rus}"/?*) ;;
     /data/all/?*|/data/disk/all/?*) [ "${_k}" = "site" ] || return 1 ;;
     *) return 1 ;;
   esac
-  ( cd -P -- "${_rd}" 2> /dev/null && [ "$(pwd -P)" = "${_rd}" ] && "$@" )
+  ( cd -P -- "${_rd}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_rd}" ] && "$@" )
 }
 
 # ./$1 in the current (pinned) directory replaced by the exact bytes $2, only
@@ -278,10 +296,10 @@ _ctrl_in_stage_dir() {
 }
 _ctrl_stage_here() {
   local _h _st
-  _h="$(pwd -P)/.boa-ctrl"
+  _h="$(/bin/pwd -P)/.boa-ctrl"
   [ -L ./.boa-ctrl ] && rm -f -- ./.boa-ctrl
   [ -d ./.boa-ctrl ] || mkdir ./.boa-ctrl 2> /dev/null
-  cd -P -- ./.boa-ctrl 2> /dev/null && [ "$(pwd -P)" = "${_h}" ] || return 1
+  cd -P -- ./.boa-ctrl 2> /dev/null && [ "$(/bin/pwd -P)" = "${_h}" ] || return 1
   chown root:root . 2> /dev/null && chmod 0700 . 2> /dev/null || return 1
   # root's, and nobody else's to enter or write
   _st=$(stat -c '%u %a' . 2> /dev/null)
@@ -336,14 +354,15 @@ _reseed_ctrl_ini() {
   [ -L "${_pnt}" ] && return 1
   [ -d "${_pnt}" ] || return 1
   _rpn=$(realpath -e -- "${_pnt}" 2>/dev/null) || return 1
-  _rus=$(realpath -e -- "${_usEr}" 2>/dev/null) || return 1
+  _usEr_real || return 1
+  _rus="${_USER_REAL}"
   case "${_rpn}/" in
     "${_rus}"/*) : ;;
     *) return 1 ;;
   esac
   _rsd=$(realpath -e -- "${_src%/*}" 2>/dev/null) || return 1
   (
-    cd -P -- "${_rpn}" 2>/dev/null && [ "$(pwd -P)" = "${_rpn}" ] || exit 1
+    cd -P -- "${_rpn}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${_rpn}" ] || exit 1
     exec 9< . || exit 1
     _ctrl_in_stage_dir _reseed_ctrl_ini_here "${_rsd}" "${_src##*/}" "${_dst##*/}"
   )
@@ -354,7 +373,7 @@ _reseed_ctrl_ini() {
 _reseed_ctrl_ini_here() {
   local _new
   _new=$(mktemp ./ctrl.XXXXXX 2>/dev/null) || return 1
-  if ! ( cd -P -- "${1}" 2>/dev/null && [ "$(pwd -P)" = "${1}" ] \
+  if ! ( cd -P -- "${1}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${1}" ] \
     && _acct_read_plain_here "${2}" ) > "${_new}"; then
     rm -f -- "${_new}"
     return 1
@@ -463,8 +482,8 @@ _acct_down_real_here() {
     case "${_n}" in
       ""|.|..) return 1 ;;
     esac
-    _h="$(pwd -P)/${_n}"
-    cd -P -- "./${_n}" 2> /dev/null && [ "$(pwd -P)" = "${_h}" ] || return 1
+    _h="$(/bin/pwd -P)/${_n}"
+    cd -P -- "./${_n}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_h}" ] || return 1
   done
   "$@"
 }
@@ -497,7 +516,8 @@ _solr_in_files_here() {
     return
   fi
   _r=$(realpath -e -- ./files 2> /dev/null) || return 1
-  _rus=$(realpath -e -- "${_usEr}" 2> /dev/null) || return 1
+  _usEr_real || return 1
+  _rus="${_USER_REAL}"
   _a="${_usEr##*/}"
   case "${_r}" in
     ""|*[!A-Za-z0-9._/-]*) return 1 ;;
@@ -516,7 +536,7 @@ _solr_in_files_here() {
   case "${_top}" in
     .*) return 1 ;;
   esac
-  cd -P -- "${_r}" 2> /dev/null && [ "$(pwd -P)" = "${_r}" ] || return 1
+  cd -P -- "${_r}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_r}" ] || return 1
   _acct_down_real_here solr "$@"
 }
 
@@ -714,6 +734,10 @@ _write_solr_config() {
       _PRT="8099"
       _VRS="4.9.1"
     fi
+    # The project the file links to: the module itself, every search_api
+    # flavour one project. Set for every write, so no earlier site's value
+    # is carried over.
+    _module="${1}"
     if [ "${1}" = "search_api_solr" ] || [ "${1}" = "search_api_solr7" ] || [ "${1}" = "search_api_solr9" ]; then
       _module=search_api_solr
     fi
@@ -1130,9 +1154,35 @@ _update_solr() {
     _SOLR_CONFIG_INFO_UPDATE=NO
     if [ -e "${_fiLe}" ]; then
       # Read inside the site dir: never through a link or blocked on a FIFO.
-      _SOLR_CONFIG_INFO_TEST=$(_acct_in_resolved_dir "${_fiLe%/*}" \
-        _acct_read_plain_here "${_fiLe##*/}" | grep "${_SolrCoreID}" 2>&1)
-      if [[ ! "${_SOLR_CONFIG_INFO_TEST}" =~ "${_SolrCoreID}" ]]; then
+      # A file that ends no line with this core's name (a cloned site keeps
+      # its source's, whose name may only start with this one) is rewritten
+      # once; so is one naming another Solr version's port while this core
+      # is on disk (a switched directive keeps the core's name; a create the
+      # platform refused leaves no core, and the file as it is). A right
+      # file, or one naming no port, is left alone. A name the read refuses
+      # is rewritten as before (the write replaces a link or a FIFO), unless
+      # it is a directory or the site dir is not the real one: the write
+      # cannot replace those, and a reload would follow on every pass.
+      if _SOLR_CONFIG_INFO_TXT=$(_acct_in_resolved_dir "${_fiLe%/*}" \
+        _acct_read_plain_here "${_fiLe##*/}"); then
+        if ! awk -v id="${_SolrCoreID}" '{ n = length(id); l = length($0); if (n && l >= n && substr($0, l - n + 1) == id && (l == n || substr($0, l - n, 1) ~ /[ :\/]/)) f = 1 } END { exit !f }' \
+          <<< "${_SOLR_CONFIG_INFO_TXT}"; then
+          _SOLR_CONFIG_INFO_UPDATE=YES
+        fi
+        case "${_SERV}" in
+          jetty9) _SOLR_INFO_PRT=8099 ;;
+          solr7) _SOLR_INFO_PRT=9077 ;;
+          solr9) _SOLR_INFO_PRT=9099 ;;
+          *) _SOLR_INFO_PRT="" ;;
+        esac
+        if [ -n "${_SOLR_INFO_PRT}" ] && [ -d "${2}/conf" ] \
+          && grep -qF "  Solr port ........: " <<< "${_SOLR_CONFIG_INFO_TXT}" \
+          && ! grep -qxF "  Solr port ........: ${_SOLR_INFO_PRT}" \
+            <<< "${_SOLR_CONFIG_INFO_TXT}"; then
+          _SOLR_CONFIG_INFO_UPDATE=YES
+        fi
+      elif _acct_in_resolved_dir "${_fiLe%/*}" \
+        test -L "./${_fiLe##*/}" -o ! -d "./${_fiLe##*/}"; then
         _SOLR_CONFIG_INFO_UPDATE=YES
       fi
     fi
@@ -1241,7 +1291,7 @@ _add_solr() {
         sed -i "/^$/d" ${_SOLR_BASE}/solr.xml &> /dev/null
         wait
         pkill -9 -f '^[^ ]*java[0-9]* .*jetty9'
-        service jetty9 start &> /dev/null
+        _solr_ver_off jetty9 || service jetty9 start &> /dev/null
       fi
       echo "New Solr ${3} with ${1} for ${2} added"
     fi
@@ -1397,8 +1447,10 @@ _delete_solr() {
       wait
       rm -rf ${1}
       _acct_in_resolved_dir "${_Dir}" rm -f -- ./solr.php &> /dev/null
+      # A teardown stops Solr 4 to drop the core, and starts it again only
+      # while the version is not off: a denied one stays down.
       pkill -9 -f '^[^ ]*java[0-9]* .*jetty9'
-      service jetty9 start &> /dev/null
+      _solr_ver_off jetty9 || service jetty9 start &> /dev/null
     fi
     echo "Deleted Solr core in ${1}"
   fi
@@ -1580,6 +1632,80 @@ _reregister_solr_core() {
   fi
 }
 
+# True when Solr version $1 (solr7, solr9 or jetty9) has no service on this
+# box, with _SOLR_OFF_WHY saying why: denied, read as autoupboa reads it when
+# it parks the service (the box-wide Java deny or the version's own, as a
+# setting sourced by _load_control or as a marker file); parked, its init
+# script moved away, which autoupboa does not undo when a deny is lifted; or
+# disarmed, the script left without its exec bit. The last two are the test
+# the box-wide core steps of this pass use; its config fix and every Solr
+# start here use all three. Its CLI would only start a JVM to fail
+# on a closed port, every pass. _SOLR_OFF_PORT is the version's port.
+_solr_ver_off() {
+  local _dv _mk
+  _SOLR_OFF_WHY=""
+  case "${1}" in
+    solr7) _dv="${_DENY_SOLR7}"; _mk=/etc/boa/.deny.solr7.cnf; _SOLR_OFF_PORT=9077 ;;
+    solr9) _dv="${_DENY_SOLR9}"; _mk=/etc/boa/.deny.solr9.cnf; _SOLR_OFF_PORT=9099 ;;
+    jetty9) _dv="${_DENY_JETTY9}"; _mk=/etc/boa/.deny.jetty9.cnf; _SOLR_OFF_PORT=8099 ;;
+    *) return 1 ;;
+  esac
+  if [ "${_DENY_JAVA}" = "YES" ] || [ -e "/root/.deny.java.cnf" ] \
+    || [ "${_dv}" = "YES" ] || [ -e "${_mk}" ]; then
+    _SOLR_OFF_WHY="denied"
+    return 0
+  fi
+  if [ ! -e "/etc/init.d/${1}" ]; then
+    _SOLR_OFF_WHY="parked, with no /etc/init.d/${1}"
+    return 0
+  fi
+  if [ ! -x "/etc/init.d/${1}" ]; then
+    _SOLR_OFF_WHY="disarmed, /etc/init.d/${1} not executable"
+    return 0
+  fi
+  return 1
+}
+
+# The site's solr.php ($_Dir) removed when it is BOA's info file for this
+# site's core ($_SolrCoreID, named on its own line) and that core is not on
+# disk, so it gives the owner details of a core that is not there. With a
+# port $1, only a file naming that port goes, and only that port's version
+# is looked at: a file for a live core on another version names that
+# version's port and stays. Without one (a teardown), no core of that name
+# may be on disk under any version. One line says what happened; a file
+# that stays is reported, never claimed removed.
+_solr_info_drop() {
+  local _txt _b
+  [ -n "${_Dir}" ] && [ -n "${_SolrCoreID}" ] || return 1
+  case "${1}" in
+    9077) _b="/var/solr7/data" ;;
+    9099) _b="/var/solr9/data" ;;
+    8099) _b="/opt/solr4" ;;
+    "") _b="" ;;
+    *) return 1 ;;
+  esac
+  if [ -n "${_b}" ]; then
+    [ -e "${_b}/${_SolrCoreID}" ] && return 1
+  else
+    [ -e "/opt/solr4/${_SolrCoreID}" ] && return 1
+    [ -e "/var/solr7/data/${_SolrCoreID}" ] && return 1
+    [ -e "/var/solr9/data/${_SolrCoreID}" ] && return 1
+  fi
+  _txt=$(_acct_in_resolved_dir "${_Dir}" _acct_read_plain_here solr.php) \
+    || return 1
+  grep -qxF "  Solr core ........: ${_SolrCoreID}" <<< "${_txt}" || return 1
+  if [ -n "${1}" ]; then
+    grep -qxF "  Solr port ........: ${1}" <<< "${_txt}" || return 1
+  fi
+  _acct_in_resolved_dir "${_Dir}" rm -f -- ./solr.php &> /dev/null
+  if _acct_in_resolved_dir "${_Dir}" test ! -e ./solr.php; then
+    echo "SOLR-INFO: removed ${_Dir}/solr.php, which named core ${_SolrCoreID}${1:+ on port ${1}}, not on this server"
+    return 0
+  fi
+  echo "SOLR-INFO: could not remove ${_Dir}/solr.php, which names core ${_SolrCoreID}${1:+ on port ${1}}, not on this server"
+  return 1
+}
+
 _check_solr() {
   # ${1} is module
   # ${2} is solr core path
@@ -1733,6 +1859,18 @@ _setup_solr() {
       [ -n "${_SolrCoreID}" ] \
         && _acct_in_real_dir "${_usEr}/.boa-ctrl" \
           rm -f -- "./solr-reseeded.${_SolrCoreID}" &> /dev/null
+      # A version with no service on this box (denied, or parked) gets no
+      # core work at all: nothing is created, refreshed, re-registered or
+      # protected, and an existing core stays as it is until the version is
+      # back. Blanking the version here also holds legs 2 and 3. A solr.php
+      # an earlier pass wrote for this version after a create the closed port
+      # refused is removed when that version has no such core; it comes back
+      # with the core. A teardown is not affected.
+      if [ -n "${_SOLR_VER}" ] && _solr_ver_off "${_SOLR_VER}"; then
+        echo "SOLR-OFF: ${_Dom} binds ${_SOLR_MODULE} to ${_SOLR_VER}, which is ${_SOLR_OFF_WHY} on this server -- core ${_SolrCoreID} left as it is"
+        _solr_info_drop "${_SOLR_OFF_PORT}"
+        _SOLR_VER=
+      fi
       # A core this same text protects is protected before the check, which
       # otherwise refreshes it once from a template or an upload before leg 2
       # writes the marker; a core the check creates is protected by
@@ -1762,6 +1900,9 @@ _setup_solr() {
         _delete_solr "${_SOLR_DIR_DEL}"
         _SOLR_DIR_DEL="/var/solr9/data/${_Old_SolrCoreID}"
         _delete_solr "${_SOLR_DIR_DEL}"
+        # _delete_solr removes solr.php only with a core it deletes; one left
+        # naming a core that is on disk nowhere goes too.
+        _solr_info_drop ""
       fi
     fi
   fi
@@ -1873,18 +2014,20 @@ _check_sites_list() {
     if [ -e "${_usEr}/.drush/${_Dan}.alias.drushrc.php" ] \
       && [ "${_STATUS_DISABLED}" = "NO" ]; then
       _alTxt=$(_acct_read_in "${_usEr}/.drush" "${_Dan}.alias.drushrc.php")
+      # Each value read whole by its own key: a platform path may hold a
+      # colon or a blank, and another value may end in root or site_path.
       _Dir=$(printf '%s\n' "${_alTxt}" \
-        | grep "site_path'" \
-        | cut -d: -f2 \
-        | awk '{ print $3}' \
-        | sed "s/[\,']//g" 2>&1)
+        | sed -n "s/^[[:space:]]*'site_path'[[:space:]]*=>[[:space:]]*'\([^']*\)'.*/\1/p" \
+        | head -n 1 2>&1)
       _DIR_CTRL_F="${_Dir}/modules/boa_site_control.ini"
       _Plr=$(printf '%s\n' "${_alTxt}" \
-        | grep "root'" \
-        | cut -d: -f2 \
-        | awk '{ print $3}' \
-        | sed "s/[\,']//g" 2>&1)
+        | sed -n "s/^[[:space:]]*'root'[[:space:]]*=>[[:space:]]*'\([^']*\)'.*/\1/p" \
+        | head -n 1 2>&1)
       _PLR_CTRL_F="${_Plr}/sites/all/modules/boa_platform_control.ini"
+      if [ -z "${_Dir}" ] || [ -z "${_Plr}" ]; then
+        echo "SKIP: ${_Dom} alias names no site_path or root"
+        continue
+      fi
       if [ -n "${_Dir}" ] && ! _validate_safe_dir "${_Dir}"; then
         echo "SKIP: _Dir resolves outside allowed roots: ${_Dir}"
         continue
@@ -2069,8 +2212,21 @@ _solr_props_boa_form() {
   return 0
 }
 
+# True when Solr version $1 gets no config fix and no restart from this pass:
+# off by _solr_ver_off, so a denied version is skipped as well as one whose
+# init script is gone or not executable. autoupboa parks a denied version
+# within minutes, and a restart that races the park starts a JVM that
+# outlives its init script, which no tool stops after that. A denied
+# version gets one line in the pass log.
+_solr_fix_off() {
+  _solr_ver_off "${1}" || return 1
+  [ "${_SOLR_OFF_WHY}" = "denied" ] \
+    && echo "SOLR-OFF: ${1} is denied on this server -- no config fix and no restart"
+  return 0
+}
+
 _fix_solr9_cnf() {
-  if [ -x "/etc/init.d/solr9" ] && [ -e "/var/solr9/logs" ]; then
+  if ! _solr_fix_off solr9 && [ -e "/var/solr9/logs" ]; then
     _IF_RESTART_SOLR=NO
     for _pRp in `find /var/solr9/data/oct.*/conf/solrcore.properties -maxdepth 1 | sort`; do
       if _solr_props_boa_form "${_pRp}" solr9; then
@@ -2097,7 +2253,7 @@ _fix_solr7_core() {
 }
 
 _fix_solr7_cnf() {
-  if [ -x "/etc/init.d/solr7" ] && [ -e "/var/solr7/logs" ]; then
+  if ! _solr_fix_off solr7 && [ -e "/var/solr7/logs" ]; then
     _IF_RESTART_SOLR=NO
     for _pRp in `find /var/solr7/data/oct.*/conf/solrcore.properties -maxdepth 1 | sort`; do
       _fix_solr7_core "${_pRp}"
@@ -2131,9 +2287,9 @@ _solr_conf_path_real() {
     *) return 0 ;;
   esac
   [ ! -L "${1}" ] || return 1
-  _r="$(cd -P -- /data/conf 2> /dev/null && pwd -P)" || return 1
+  _r="$(cd -P -- /data/conf 2> /dev/null && /bin/pwd -P)" || return 1
   _rel="${1#/data/conf/}"
-  [ "$(cd -P -- "${1%/*}" 2> /dev/null && pwd -P)" = "${_r}/${_rel%/*}" ]
+  [ "$(cd -P -- "${1%/*}" 2> /dev/null && /bin/pwd -P)" = "${_r}/${_rel%/*}" ]
 }
 # /data/conf/solr replaced by a fresh copy of root's own Solr config store,
 # inside the real /data/conf (the current, pinned directory): a link left at
@@ -2236,6 +2392,7 @@ _build_active_core_set() {
 
   for _usEr in $(find /data/disk/ -maxdepth 1 -mindepth 1 | sort); do
     [ -e "${_usEr}/config/server_master/nginx/vhost.d" ] || continue
+    _usEr_real
     local _HM_U_TMP _vhDTmp
     _HM_U_TMP=$(echo "${_usEr}" | cut -d'/' -f4 | awk '{ print $1}')
     # The vhosts, aliases and site INIs are listed and read as
@@ -2276,10 +2433,19 @@ _build_active_core_set() {
         # the core empty if we archive it, losing the index permanently.
         local _sitePath _rootPath
         _alTxtTmp=$(_acct_read_in "${_usEr}/.drush" "${_DomTmp}.alias.drushrc.php")
-        _sitePath=$(printf '%s\n' "${_alTxtTmp}" | grep "site_path'" \
-          | cut -d: -f2 | awk '{print $3}' | sed "s/[\,']//g" 2>/dev/null)
-        _rootPath=$(printf '%s\n' "${_alTxtTmp}" | grep "'root' =>" \
-          | cut -d: -f2 | awk '{print $3}' | sed "s/[\,']//g" 2>/dev/null)
+        _sitePath=$(printf '%s\n' "${_alTxtTmp}" \
+          | sed -n "s/^[[:space:]]*'site_path'[[:space:]]*=>[[:space:]]*'\([^']*\)'.*/\1/p" \
+          | head -n 1 2>/dev/null)
+        _rootPath=$(printf '%s\n' "${_alTxtTmp}" \
+          | sed -n "s/^[[:space:]]*'root'[[:space:]]*=>[[:space:]]*'\([^']*\)'.*/\1/p" \
+          | head -n 1 2>/dev/null)
+        # An alias whose site path cannot be read says nothing about its
+        # INI: its core is kept as managed, never left to the age sweep.
+        if [ -z "${_sitePath}" ]; then
+          _CORES_WITH_SOLR_MODULE["oct.${_HM_U_TMP}.${_DomTmp}"]=1
+          _CORES_WITH_SOLR_MODULE["solr.${_HM_U_TMP}.${_DomTmp}"]=1
+          _CORES_WITH_SOLR_MODULE["${_HM_U_TMP}.${_DomTmp}"]=1
+        fi
         # A Grav or Textpattern site has no Solr binding for _check_sites_list
         # to manage (it skips them), so an INI a tenant edited there must not
         # keep a leftover core out of the orphan sweep.
@@ -2793,6 +2959,10 @@ _OPTIMIZE_INTERVAL_HOURS=12
 
 _start_up() {
   _REREGISTER_DONE=0
+  # The deny settings _solr_ver_off reads, before the box-wide steps: the
+  # account loop below sources them only for its own steps.
+  # shellcheck disable=SC1091
+  [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
   _fix_solr9_cnf
   _fix_solr7_cnf
 
@@ -2812,6 +2982,7 @@ _start_up() {
     if [ -e "${_usEr}/config/server_master/nginx/vhost.d" ] \
       && [ ! -e "${_usEr}/log/proxied.pid" ] \
       && [ ! -e "${_usEr}/log/CANCELLED" ]; then
+      _usEr_real
       if (( $(echo "${_O_LOAD} < ${_O_LOAD_MAX}" | bc -l) )); then
         _HM_U=$(echo ${_usEr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
         # Group owning this account's tree, re-derived for every account in
@@ -2862,7 +3033,7 @@ _is_protected_run() {
       # from this box over ssh (and every boa-info probe); anchor it
       # to the LOCAL install form, as clear.sh/runner.sh already do
       [ "${_cbn}" = "boa" ] && _cPat="^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-"
-      _CNT=$(pgrep -fc "${_cPat}")
+      _CNT=$(pgrep -u root -U root -fc "${_cPat}")
       if (( _CNT > 0 )); then
         echo "The ${_cbn} is running!"
         _protectedRun=TRUE
@@ -2871,7 +3042,7 @@ _is_protected_run() {
   done
   # The chained install's legs run as "bash /var/backups/*.sh.txt", not as
   # the wrapper binaries swept above -- match them too
-  if pgrep -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1; then
+  if pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1; then
     _protectedRun=TRUE
   fi
   [ -e "/run/octopus_install_run.pid" ] && _protectedRun=TRUE
@@ -2893,7 +3064,7 @@ _manage_single_lock() {
     # -------- legacy pgrep guard (no lock.inc on the box yet) ---------
     # Anchored to the execution form the crontab uses; the $( ) fork of
     # this very process matches as well, hence a count of two is ours.
-    _CNT=$(pgrep -fc "^(/[^ ]*/)?bash (-c )?/var/xdrago/manage_solr_config\.sh( |$)")
+    _CNT=$(pgrep -u root -U root -fc "^(/[^ ]*/)?bash (-c )?/var/xdrago/manage_solr_config\.sh( |$)")
     if (( _CNT > 2 )); then
       echo "Too many manage_solr_config.sh running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
       exit 0

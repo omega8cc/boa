@@ -1,6 +1,6 @@
 
 export _tRee=pro
-export _rLsn="BOA-5.88.877"
+export _rLsn="BOA-5.88.888"
 export _rlsE="${_rLsn}-${_tRee}"
 export _bRnh="5.x-${_tRee}"
 # A test, not ||: tr exits 0 on an empty /etc/hostname
@@ -36,16 +36,16 @@ _php_cli_local_dirs_update() {
     [ -L "${_U_HD}" ] && rm -f "${_U_HD}"
     mkdir -p ${_U_TP}
     mkdir -p ${_U_HD}
-    _U_REAL="$(cd -P -- /var/aegir 2> /dev/null && pwd -P)"
+    _U_REAL="$(cd -P -- /var/aegir 2> /dev/null && /bin/pwd -P)"
     # aged out only when .tmp is aegir's own (or the empty one just made):
     # a root-owned directory of the tree renamed onto the name is left alone
-    ( cd -P -- "${_U_TP}" 2> /dev/null && [ "$(pwd -P)" = "${_U_REAL}/.tmp" ] || exit 0
+    ( cd -P -- "${_U_TP}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_U_REAL}/.tmp" ] || exit 0
       [ "$(stat -c %U .)" = "aegir" ] \
         || { [ "$(stat -c %u .)" = "0" ] && [ -z "$(ls -A . 2> /dev/null)" ]; } || exit 0
       touch . && chmod 02755 .
       find . -mindepth 1 -mtime +0 -execdir rm -rf {} \; &> /dev/null )
     # the stamp is created exclusively, never through a link at the name
-    ( cd -P -- "${_U_HD}" 2> /dev/null && [ "$(pwd -P)" = "${_U_REAL}/.drush" ] || exit 0
+    ( cd -P -- "${_U_HD}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_U_REAL}/.drush" ] || exit 0
       rm -f -- ./.ctrl.php* "./.ctrl.${_tRee}.${_xSrl}.pid"
       echo | dd of="./.ctrl.${_tRee}.${_xSrl}.pid" conv=excl status=none 2> /dev/null
     )
@@ -256,10 +256,15 @@ _provision_backend_dbpass_generate() {
         fi
       fi
     else
+      ### Remote DB mode takes the root password from /root/.my.pass.txt,
+      ### which barracuda writes, and refuses to run without once the
+      ### Master is installed. The fixed fallback printed in the public code
+      ### is never the Master's database password: without the file the
+      ### password stays empty and nothing is changed for aegir_root.
       if [ -e "/root/.my.pass.txt" ]; then
         _ESC_PASS=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
       else
-        _ESC_PASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
+        _ESC_PASS=""
       fi
     fi
     _isPythonTwo="$(which python2)"
@@ -282,18 +287,24 @@ _provision_backend_dbpass_generate() {
       _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
       _ESC_PASS=$(_sanitize_string "${_ESC_PASS}" 2>&1)
     else
+      ### never the published fallback (see above)
       if [ -e "/root/.my.pass.txt" ]; then
         _ESC_PASS=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
       else
-        _ESC_PASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
+        _ESC_PASS=""
+      fi
+      if [ -z "${_ESC_PASS}" ]; then
+        _msg "ALRT: /root/.my.pass.txt not found or empty; remote DB mode sets no database password for aegir_root"
       fi
     fi
     _ENC_PASS="${_ESC_PASS}"
   fi
 
-  echo "${_ESC_PASS}" > ${_L_SYS}
-  chown aegir:aegir ${_L_SYS} &> /dev/null
-  chmod 0600 ${_L_SYS}
+  if [ ! -z "${_ESC_PASS}" ]; then
+    echo "${_ESC_PASS}" > ${_L_SYS}
+    chown aegir:aegir ${_L_SYS} &> /dev/null
+    chmod 0600 ${_L_SYS}
+  fi
 
   if [ "${_THIS_DB_HOST}" = "localhost" ] \
     || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
@@ -328,6 +339,11 @@ _provision_backend_dbpass_generate() {
     _THIS_DB_PORT=6033
   else
     _THIS_DB_PORT=3306
+  fi
+  ### No password (said above): aegir_root keeps its rows as they are, never
+  ### an empty password. The host and port above are still set for the sync.
+  if [ -z "${_ESC_PASS}" ]; then
+    return 0
   fi
   mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG PRIVILEGES" &> /dev/null
 
@@ -468,6 +484,10 @@ _provision_backend_dbpass_sync() {
   mv -f ${_L_SYS} ${_L_SYS}-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
   chmod 0600 ${_L_SYS}-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
   _provision_backend_dbpass_generate
+  ### No password made, nothing changed for it: the file goes back.
+  if [ -z "${_ESC_PASS}" ]; then
+    mv -f ${_L_SYS}-pre-${_xSrl}-${_X_VERSION}-${_NOW} ${_L_SYS} &> /dev/null
+  fi
   if [ ! -z "${_ESC_PASS}" ] && [ ! -z "${_ENC_PASS}" ]; then
     local _pUpd
     su -s /bin/bash - aegir -c "drush8 @hostmaster \
@@ -1626,7 +1646,8 @@ _aegir_master_upgrade() {
     rm -f /opt/tmp/testecho*
     usermod -aG users aegir
     _sudoers_safe_append /etc/sudoers \
-      "aegir ALL=NOPASSWD: /etc/init.d/nginx" "aegir ALL=NOPASSWD"
+      "aegir ALL=NOPASSWD: /etc/init.d/nginx reload" "aegir ALL=NOPASSWD"
+    _sudoers_nginx_reload_only
     _SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership fix-drupal-site-symlinks lock-local-drush-permissions)
     for SCRIPT in ${_SCRIPTS[@]}; do
       _sudoers_safe_append /etc/sudoers.d/${SCRIPT} \
@@ -1705,7 +1726,7 @@ _aegir_master_upgrade() {
       _php_cli_drush_update "${_df}"
     done
 
-    export _xSrl=588877proT01
+    export _xSrl=588888proT01
     export _X_VERSION="${_X_VERSION}"
 
     # Refuse to hand off provably broken values: an empty front domain or
@@ -1785,6 +1806,7 @@ _aegir_master_upgrade() {
     chmod 0700 /opt/tmp/state/aegir &> /dev/null
     rm -f /opt/tmp/state/aegir/status-AegirUpgrade-FAIL \
       /opt/tmp/state/aegir/status-AegirUpgrade-OK \
+      /opt/tmp/state/aegir/status-AegirUpgrade-KEPT \
       /opt/tmp/status-AegirUpgrade-FAIL &> /dev/null
     ### The panel's web front is held while it moves by the global include set
     ### (global-main.inc): deploy it before the Master's own migrate, so the
@@ -1843,7 +1865,11 @@ _aegir_master_upgrade() {
     find /var/aegir/.drush -type f -exec chmod 0644 {} \; &> /dev/null
     chmod 0440 /var/aegir/.drush/*.php &> /dev/null
     chmod 0711 /var/aegir/.drush &> /dev/null
-    _msg "INFO: Ægir Master Instance upgrade completed"
+    if [ -e "/opt/tmp/state/aegir/status-AegirUpgrade-KEPT" ]; then
+      _msg "INFO: Ægir Master Instance not upgraded, the panel stays where it was"
+    else
+      _msg "INFO: Ægir Master Instance upgrade completed"
+    fi
   else
     _msg "INFO: Ægir Master Instance not upgraded this time"
   fi
@@ -1947,11 +1973,12 @@ _aegir_master_install_upgrade() {
 
   ###--------------------###
     _msg "INFO: Installing Ægir Master Instance..."
-    adduser --system --group --home /var/aegir aegir &> /dev/null
+    _sys_user_add low adduser --system --group --home /var/aegir aegir &> /dev/null
     usermod -aG www-data aegir
     usermod -aG users aegir
     _sudoers_safe_append /etc/sudoers \
-      "aegir ALL=NOPASSWD: /etc/init.d/nginx" "aegir ALL=NOPASSWD"
+      "aegir ALL=NOPASSWD: /etc/init.d/nginx reload" "aegir ALL=NOPASSWD"
+    _sudoers_nginx_reload_only
 
     _unlock_sendmail_for_snail
     if getent group allow-snail >/dev/null 2>&1 && \
@@ -2049,10 +2076,11 @@ _aegir_master_install_upgrade() {
           fi
         fi
       else
+        ### never the published fallback (as in the upgrade's generate)
         if [ -e "/root/.my.pass.txt" ]; then
           _ESC_PASS=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
         else
-          _ESC_PASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
+          _ESC_PASS=""
         fi
       fi
       _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
@@ -2071,9 +2099,22 @@ _aegir_master_install_upgrade() {
         if [ -e "/root/.my.pass.txt" ]; then
           _ESC_PASS=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
         else
-          _ESC_PASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
+          _ESC_PASS=""
+        fi
+        if [ -z "${_ESC_PASS}" ]; then
+          _msg "ALRT: /root/.my.pass.txt not found or empty; remote DB mode sets no database password for aegir_root"
         fi
       fi
+    fi
+
+    ### No password (said above): stop before aegir_root is made, never with
+    ### an empty one; the hand-off below would refuse it anyway.
+    if [ -z "${_ESC_PASS}" ]; then
+      _msg "FATAL ERROR: no aegir_root database password, Ægir Master install aborted"
+      _msg "FATAL ERROR: Aborting Barracuda installer NOW!"
+      rm -f /opt/tmp/status-Barracuda-FAIL
+      touch /opt/tmp/status-Barracuda-FAIL
+      _clean_pid_exit _aegir_master_install_upgrade_i
     fi
 
     _ESC="*.*"
@@ -2137,7 +2178,7 @@ ALTER USER '${_AEGIR_DB_USER}'@'%' IDENTIFIED BY '${_ESC_PASS}';
 EOFMYSQL
     fi
 
-    export _xSrl=588877proT01
+    export _xSrl=588888proT01
     export _X_VERSION="${_X_VERSION}"
 
     # Never serialize an empty PHP version: these appends shadow the

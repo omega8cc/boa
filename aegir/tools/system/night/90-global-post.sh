@@ -54,11 +54,11 @@ if ! declare -F _acct_in_real_dir > /dev/null 2>&1; then
       /data/disk/?*) _a=/data/disk ;;
     esac
     if [ -n "${_a}" ]; then
-      _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+      _want="$(cd -P -- "${_a}" 2> /dev/null && /bin/pwd -P)${_d#"${_a}"}"
     else
-      _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+      _want="$(cd -P -- "${_d%/*}" 2> /dev/null && /bin/pwd -P)/${_d##*/}"
     fi
-    ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+    ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] && "$@" )
   }
 fi
 if ! declare -F _acct_read_here > /dev/null 2>&1; then
@@ -201,6 +201,13 @@ _acct_walk_uids() {
     [ "${_n}" = "${_a}" ] && _self=YES
   done < <(getent passwd 2> /dev/null)
   [ "${_self}" = "YES" ] || return 1
+  # the account's removed identities, their numbers recorded by root before
+  # deluser freed them; a number a user has again is not taken
+  while IFS= read -r _u; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    getent passwd "${_u}" > /dev/null 2>&1 && continue
+    _x="${_x},${_u}"
+  done 2> /dev/null < "/data/conf/acct-uids/${_a}.gone"
   echo "${_x}"
 }
 # As _NIGHT_FCHMOD_PL, given first the uids it acts for (_acct_walk_uids): a
@@ -290,7 +297,7 @@ _distro_sites_all_modes() {
 _vhost_tls11_drop_here() {
   local _f _rc=""
   local -a _n=() _m=()
-  while IFS= read -r -d '' _f; do
+  while LC_ALL=C IFS= read -r -d '' _f; do
     case "${_f}" in
       /rc=*) _rc="${_f#/rc=}"; continue ;;
     esac
@@ -305,7 +312,7 @@ _vhost_tls11_drop_here() {
   [ "${_rc}" = "0" ] || _rc="list"
   if [ "${_rc}" = "0" ] && [ "${#_n[@]}" -gt 0 ]; then
     _rc=""
-    while IFS= read -r -d '' _f; do
+    while LC_ALL=C IFS= read -r -d '' _f; do
       case "${_f}" in
         /rc=*) _rc="${_f#/rc=}" ;;
         *) _m+=( "${_f}" ) ;;
@@ -351,10 +358,8 @@ _night_master_platform_root_lines() {
   for _f in "${_l[@]}"; do
     [ -f "${_f}" ] || continue
     _r=$(cat "${_f}" \
-      | grep "root'" \
-      | cut -d: -f2 \
-      | awk '{ print $3}' \
-      | sed "s/[\,']//g" 2>&1)
+      | sed -n "s/^[[:space:]]*'root'[[:space:]]*=>[[:space:]]*'\([^']*\)'.*/\1/p" \
+      | head -n 1 2>&1)
     [ -n "${_r}" ] || continue
     _d=$(_detect_real_docroot "${_r}")
     printf '%s\t%s\t%s\t%s\n' "${_f}" "${_r}" "${_d:-${_r}}" \
@@ -370,6 +375,41 @@ _night_master_tasks_alive() {
   pgrep -u aegir -f "hosting-task( |$)" > /dev/null 2>&1 && return 0
   pgrep -u aegir -f '(^| )provision-[a-z0-9-]+( |$)' > /dev/null 2>&1 && return 0
   pgrep -u aegir -f "^([^ ]*/)?(php[0-9.]*|su|env|drush[0-9]*)( |$).*provision" > /dev/null 2>&1 && return 0
+  return 1
+}
+
+### A build of the control panel's Add platform form writes
+### .<folder>.unfinished-build beside the folder it builds into and removes
+### it once the build ends. While that marker stands beside the folder an
+### alias builds into, and the alias root lies in that folder, the folder is
+### the platform's leftover: the platform's Delete removes the two only
+### through its alias, so the alias stays. $1 is the alias text, $2 its root;
+### prints the folder. One text wherever it is defined.
+_ghost_unfinished_build() {
+  local _gk _gp _gm
+  for _gk in composer_project_path composer_git_path git_repository_path; do
+    _gp=$(printf '%s\n' "$1" \
+      | sed -n "s/^[[:space:]]*'${_gk}' => '\([^']*\)',[[:space:]]*\$/\1/p" \
+      | head -n 1)
+    _gp="${_gp%/}"
+    case "${_gp}" in
+      /*/*) ;;
+      *) continue ;;
+    esac
+    case "${_gp}/" in
+      */../*|*/./*) continue ;;
+    esac
+    case "${2%/}/" in
+      "${_gp}"/*) ;;
+      *) continue ;;
+    esac
+    _gm="${_gp%/*}/.${_gp##*/}.unfinished-build"
+    if [ -d "${_gp}" ] && [ ! -L "${_gp}" ] \
+      && [ -f "${_gm}" ] && [ ! -L "${_gm}" ]; then
+      printf '%s\n' "${_gp}"
+      return 0
+    fi
+  done
   return 1
 }
 
@@ -401,10 +441,8 @@ _check_old_empty_hostmaster_platforms() {
         # the name reaches a drush command line
         [[ "${_T_PFM_NAME}" =~ ^[A-Za-z0-9._-]+$ ]] || continue
         _T_PFM_ROOT=$(cat ${_Platform} \
-          | grep "root'" \
-          | cut -d: -f2 \
-          | awk '{ print $3}' \
-          | sed "s/[\,']//g" 2>&1)
+          | sed -n "s/^[[:space:]]*'root'[[:space:]]*=>[[:space:]]*'\([^']*\)'.*/\1/p" \
+          | head -n 1 2>&1)
         # The alias keeps the path the platform was registered with, which for
         # a Composer build can be its app root; site_path and sites/all live
         # under the docroot Provision serves, so both tests below read that
@@ -417,7 +455,10 @@ _check_old_empty_hostmaster_platforms() {
         if [ -z "${_T_PFM_DOC}" ]; then
           # Version-agnostic emptiness: no index.php at the alias root nor
           # under web/docroot/html. Do NOT key on sites/all, which D8+ dropped.
-          if _cnf_flag_yes /root/.barracuda.cnf _GHOST_PLATFORMS_CLEANUP; then
+          _ubDir=$(_ghost_unfinished_build "$(cat "${_Platform}" 2> /dev/null)" "${_T_PFM_ROOT}")
+          if [ -n "${_ubDir}" ]; then
+            echo "GHOST platform ${_T_PFM_ROOT} kept: the build into ${_ubDir} never finished; delete the platform in the control panel to remove both"
+          elif _cnf_flag_yes /root/.barracuda.cnf _GHOST_PLATFORMS_CLEANUP; then
             mkdir -p /var/aegir/undo
             mv -f /var/aegir/.drush/platform_${_T_PFM_NAME}.alias.drushrc.php /var/aegir/undo/ &> /dev/null
             echo "GHOST platform ${_T_PFM_ROOT} detected and moved to /var/aegir/undo/"
@@ -517,9 +558,15 @@ _global_root_only_here() {
 # above allows, and each serial and codebase only as the real directory
 # found inside it, never through a link; a codebase is moved by its name in
 # its serial, into a directory of root's that no one else can write.
+# A codebase another tree in the store links into stays: a tree whose
+# profiles is a link (an account platform's tree copied into the store)
+# reaches another serial's codebase that way, and moving that codebase
+# leaves the tree's links leading nowhere. Such a tree whose profiles link
+# leads nowhere is dead, and goes the same way once no platform alias
+# names it and nothing links into it.
 _shared_codebases_cleanup() {
   _provision_running && { echo "INFO: provision task active -- skipping shared-codebases cleanup"; return; }
-  local _gSt _sRc
+  local _gSt _sRc _aliasText _u
   [ -L "/data/all" ] || [ -d "/data/all" ] || return 0
   _global_store_pick
   _sRc=$?
@@ -533,70 +580,200 @@ _shared_codebases_cleanup() {
   else
     _CLD="/var/backups/codebases-cleanup"
   fi
-  _acct_in_real_dir "${_gSt}" _shared_codebases_here
+  # Every platform alias, the master's and the accounts', read once. Each
+  # registered platform root counts as use, so a night without all of them
+  # judges nothing.
+  _aliasText=$(mktemp) \
+    || { echo "INFO: no temporary file for the platform aliases -- skipping shared-codebases cleanup"; return; }
+  for _u in /var/aegir /data/disk/*; do
+    [ -d "${_u}/.drush" ] || continue
+    if ! _acct_in_real_dir "${_u}/.drush" _platform_aliases_text_here >> "${_aliasText}"; then
+      echo "INFO: the platform aliases in ${_u}/.drush could not be read -- skipping shared-codebases cleanup"
+      rm -f -- "${_aliasText}"
+      return
+    fi
+  done
+  _acct_in_real_dir "${_gSt}" _shared_codebases_here "${_aliasText}"
+  rm -f -- "${_aliasText}"
 }
-# Each serial of the current (pinned) store that is a real directory.
+# Each serial of the current (pinned) store that is a real directory, once
+# every link is read that may lead into its codebases: those in the store's
+# trees (_cbIn), and as use (_cbUse) those of the account platforms (each
+# platform's own entry and the links at its top) and, from the platform
+# aliases' text in $1, where each registered platform root leads and the
+# links at its top (each real directory once, however its roots are
+# spelled; read as var_export writes them, escapes included). Nothing is
+# judged when a link could not be read, or a root could not (one split over
+# lines): a failed find (glob unexpanded, unreadable tree) is not evidence a
+# codebase is unused. Paths are bytes here, for read and for the tools it
+# runs: in a UTF-8 locale read takes a byte that is not UTF-8 for the start
+# of a character and swallows the delimiter after it, joining two links or
+# two roots into one, and grep skips a line holding such a byte.
 _shared_codebases_here() {
-  local _s
+  local -x LC_ALL=C
+  local _s _t _r _x _gReal _rc=0 _q="'" _rxT _rxU
+  local -A _cbIn=() _cbUse=() _rSeen=()
+  _rxT="${_q}root${_q} => ${_q}([^${_q}\\\\]|\\\\.)*${_q}"
+  _rxU="${_q}root${_q} => ${_q}([^${_q}\\\\]|\\\\.)*\$"
+  _gReal="$(/bin/pwd -P)"
+  for _t in ./*/*; do
+    _t="${_t#./}"
+    [ -d "./${_t}" ] && [ ! -L "./${_t}" ] && [ ! -L "./${_t%%/*}" ] || continue
+    [ -e "./${_t}/profiles" ] || [ -L "./${_t}/profiles" ] || continue
+    _shared_codebases_note "${_gReal}" "${_t}" \
+      < <(find "./${_t}" -type l -printf '%p\0%l\0' 2> /dev/null)
+    wait "$!" || _rc=1
+  done
+  _shared_codebases_note "${_gReal}" "" \
+    < <(find /data/disk/*/distro/*/ -maxdepth 1 -mindepth 1 \
+      -type l -printf '%p\0%l\0' 2> /dev/null)
+  wait "$!" || _rc=1
+  _shared_codebases_note "${_gReal}" "" \
+    < <(find /data/disk/*/distro/*/*/ -maxdepth 1 -mindepth 1 \
+      -type l -printf '%p\0%l\0' 2> /dev/null)
+  wait "$!" || _rc=1
+  if [ -n "${1}" ]; then
+    grep -aqE "${_rxU}" -- "${1}" && _rc=1
+    while IFS= read -r _r; do
+      [ -n "${_r}" ] || continue
+      _x="$(realpath -e -- "${_r}" 2> /dev/null)" || continue
+      [ -z "${_rSeen[${_x}]:-}" ] || continue
+      _rSeen[${_x}]=1
+      _shared_codebases_note "${_gReal}" "" < <(printf '%s\0%s\0' "${_r}" "${_x}")
+      [ -d "${_x}" ] || continue
+      _shared_codebases_note "${_gReal}" "" \
+        < <(find "${_x}" -maxdepth 1 -mindepth 1 -type l -printf '%p\0%l\0' 2> /dev/null)
+      wait "$!" || _rc=1
+    done < <(grep -aoE "${_rxT}" -- "${1}" \
+      | sed -e "s/^${_q}root${_q} => ${_q}//" -e "s/${_q}\$//" -e 's/\\\(.\)/\1/g' | sort -u)
+  fi
+  if [ "${_rc}" != "0" ]; then
+    echo "Skipping the shared codebases cleanup: the links in the store or in the account platforms could not all be read"
+    return 0
+  fi
   for _s in ./*; do
     _s="${_s#./}"
     [ -d "./${_s}" ] && [ ! -L "./${_s}" ] || continue
-    _acct_in_real_dir "./${_s}" _shared_codebases_serial_here "${_s}"
+    _acct_in_real_dir "./${_s}" _shared_codebases_serial_here "${_s}" "${1}" "${_gReal}"
   done
 }
-# The codebases of the current (pinned) serial $1, when it holds o_contrib:
-# each real directory holding a real profiles/ directory.
+# Pairs on stdin, a link and its target as written. Each link is taken twice:
+# by its target's name (a relative one from where the link sits) and by
+# where it leads through every link on the way. A target in the store, $1
+# its real path, is noted under <serial>/<codebase>, or <serial> for a link
+# to a serial itself, or "/" for one to the store itself or above it, with
+# the first link found: in _cbIn for a link in the store's tree $2 (unless
+# it leads back into that tree), in _cbUse for any other link ($2 empty).
+_shared_codebases_note() {
+  local _p _l _x _t _r _k
+  while LC_ALL=C IFS= read -r -d '' _p && LC_ALL=C IFS= read -r -d '' _l; do
+    [[ "${_p}" == /* ]] || _p="${1}/${_p#./}"
+    [[ "${_l}" == /* ]] || _l="${_p%/*}/${_l}"
+    case "${_l}" in
+      */|*//*|*/./*|*/../*|*/.|*/..)
+        _l="$(realpath -m -s -- "${_l}" 2> /dev/null)" ;;
+    esac
+    _x="$(realpath -m -- "${_p}" 2> /dev/null)"
+    for _t in "${_l}" "${_x}"; do
+      [ -n "${_t}" ] || continue
+      _k=""
+      case "/data/all/" in "${_t%/}/"*) _k="/" ;; esac
+      case "${1}/" in "${_t%/}/"*) _k="/" ;; esac
+      if [ -z "${_k}" ]; then
+        case "${_t}" in
+          /data/all/?*) _r="${_t#/data/all/}" ;;
+          "${1}"/?*) _r="${_t#"${1}"/}" ;;
+          *) continue ;;
+        esac
+        _k="${_r%%/*}"
+        [ "${_r}" = "${_k}" ] || { _r="${_r#*/}"; _k="${_k}/${_r%%/*}"; }
+      fi
+      if [ -z "${2}" ]; then
+        [ -n "${_cbUse[${_k}]:-}" ] || _cbUse[${_k}]="${_p}"
+      elif [ "${_k}" != "${2}" ]; then
+        [ -n "${_cbIn[${_k}]:-}" ] || _cbIn[${_k}]="${_p}"
+      fi
+    done
+  done
+}
+# The codebases of the current (pinned) serial $1, when it holds o_contrib.
+# A real directory holding a real profiles/ directory is unused when no
+# account platform and no other tree in the store links into it; one whose
+# profiles is a link leading nowhere is dead when, as well, no platform
+# alias names it ($2, the aliases' text: without it none is judged dead).
+# $3 is the store's real path.
 _shared_codebases_serial_here() {
-  local _p _Codebase _CodebaseDir _CodebaseTest _to
+  local _p _CodebaseDir _kind
   [ -d "./o_contrib" ] || return 0
   for _p in ./*; do
     _p="${_p#./}"
-    [ -d "./${_p}" ] && [ ! -L "./${_p}" ] \
-      && [ -d "./${_p}/profiles" ] && [ ! -L "./${_p}/profiles" ] || continue
+    [ -d "./${_p}" ] && [ ! -L "./${_p}" ] || continue
     # The names platforms link to: the store by its /data/all name.
     _CodebaseDir="/data/all/${1}/${_p}"
-    _Codebase="${_CodebaseDir}/profiles"
-    # Defensive: a tree with a detectable docroot is a real codebase of any
-    # version -- never reap it. This loop targets the legacy D6/D7 shared
-    # /data/all store (anchored on a root-level profiles/); D8+ codebases are
-    # self-contained under distro/ and are not managed here.
-    [ -n "$(_detect_real_docroot "./${_p}")" ] && continue
-    # 2>&1 belongs to find, not to sort: bound to sort, find's own error
-    # never reached the variable and any failed enumeration read as "no
-    # references". A failed find (glob unexpanded, unreadable tree) is
-    # not evidence the codebase is unused, so it is skipped, not moved.
-    _CodebaseTest=$(find /data/disk/*/distro/*/*/ -maxdepth 1 -mindepth 1 \
-      -type l -lname "${_Codebase}" 2>&1 | sort)
-    if [[ "${_CodebaseTest}" =~ "No such file or directory" ]]; then
-      echo "Skipping ${_CodebaseDir}: could not enumerate platform symlinks (${_CodebaseTest})"
+    if [ -d "./${_p}/profiles" ] && [ ! -L "./${_p}/profiles" ]; then
+      # Defensive: a tree with a detectable docroot is a real codebase of any
+      # version -- never reap it. This loop targets the legacy D6/D7 shared
+      # /data/all store (anchored on a root-level profiles/); D8+ codebases
+      # are self-contained under distro/ and are not managed here.
+      [ -n "$(_detect_real_docroot "./${_p}")" ] && continue
+      _kind=unused
+    elif [ -L "./${_p}/profiles" ] && [ ! -e "./${_p}/profiles" ] \
+      && [ -n "${2}" ]; then
+      # Its docroot can still answer through the shared core it links to,
+      # so a registered platform alias, not the docroot, says it is used.
+      _kind=dead
+    else
       continue
     fi
-    if [ -z "${_CodebaseTest}" ]; then
-      if _cnf_flag_yes /root/.barracuda.cnf _SHARED_CODEBASES_CLEANUP; then
-        _to="${_CLD}/data/all/${1}/"
-        if ( umask 022; mkdir -p "${_CLD}" ) \
-          && _acct_in_real_dir "${_CLD}" _global_root_only_here \
-          && ( umask 022; mkdir -p "${_to}" ); then
-          echo "Moving no longer used ${_CodebaseDir} to ${_to}"
-          mv -f -- "./${_p}" "${_to}"
-        else
-          echo "Unused ${_CodebaseDir} not moved: ${_CLD} is not a real directory of root's closed to others"
-        fi
-      else
-        echo "Unused ${_CodebaseDir} detected (dry-run; set _SHARED_CODEBASES_CLEANUP=YES in /root/.barracuda.cnf to move)"
-      fi
+    [ -n "${_cbUse[${1}/${_p}]:-}${_cbUse[${1}]:-}${_cbUse[/]:-}" ] && continue
+    if [ -n "${_cbIn[${1}/${_p}]:-}${_cbIn[${1}]:-}${_cbIn[/]:-}" ]; then
+      echo "Kept ${_CodebaseDir}: ${_cbIn[${1}/${_p}]:-${_cbIn[${1}]:-${_cbIn[/]}}} links into it"
+      continue
     fi
+    if [ "${_kind}" = "dead" ] \
+      && { _platform_alias_names "${_CodebaseDir}" "${2}" \
+        || _platform_alias_names "${3}/${1}/${_p}" "${2}"; }; then
+      echo "Kept ${_CodebaseDir}: its profiles link leads nowhere, but a platform is registered on it"
+      continue
+    fi
+    _shared_codebase_move "${1}" "${_p}" "${_kind}"
   done
+}
+# The codebase $2 of the current (pinned) serial $1, unused or dead ($3),
+# moved into the cleanup directory, or only named while the flag is off.
+_shared_codebase_move() {
+  local _cd="/data/all/${1}/${2}" _to _what _how
+  _what="Unused ${_cd}"
+  _how="no longer used ${_cd}"
+  if [ "${3}" = "dead" ]; then
+    _what="Dead ${_cd} (its profiles link leads nowhere)"
+    _how="dead ${_cd} (its profiles link leads nowhere)"
+  fi
+  if _cnf_flag_yes /root/.barracuda.cnf _SHARED_CODEBASES_CLEANUP; then
+    _to="${_CLD}/data/all/${1}/"
+    if ( umask 022; mkdir -p "${_CLD}" ) \
+      && _acct_in_real_dir "${_CLD}" _global_root_only_here \
+      && ( umask 022; mkdir -p "${_to}" ); then
+      echo "Moving ${_how} to ${_to}"
+      mv -f -- "./${2}" "${_to}"
+    else
+      echo "${_what} not moved: ${_CLD} is not a real directory of root's closed to others"
+    fi
+  else
+    echo "${_what} detected (dry-run; set _SHARED_CODEBASES_CLEANUP=YES in /root/.barracuda.cnf to move)"
+  fi
 }
 
 # The text of every platform alias in the current (pinned) .drush, one
 # after another, each read bounded and never through a link or a FIFO.
 _platform_aliases_text_here() {
-  local _a
+  local _a _rc=0
   for _a in ./platform_*.alias.drushrc.php; do
-    _acct_read_plain_here "${_a#./}"
+    [ -e "${_a}" ] || [ -L "${_a}" ] || continue
+    _acct_read_plain_here "${_a#./}" || _rc=1
     echo
   done
+  return "${_rc}"
 }
 
 # True when a registered platform alias names the tree $1: the master's
@@ -786,6 +963,7 @@ _incident_detection() {
     "Traceback"
     "Drush command terminated abnormally"
     "ArgumentCountError"
+    "acct-unswept: ALERT"
   )
 
   # Loop through errors and check if any exist in the log file
@@ -925,7 +1103,7 @@ _pass_backups_heal_here() (
     _baks=( "${_live}"-pre-* )
     [ "${#_baks[@]}" -gt 3 ] || continue
     ls -t -- "${_baks[@]}" 2> /dev/null | tail -n +4 \
-      | while IFS= read -r _old; do
+      | while LC_ALL=C IFS= read -r _old; do
           rm -f -- "${_old}"
         done
   done
@@ -986,13 +1164,29 @@ _global_store_fix_here() (
     -o -regex '\./000/core/[^/]+' -o -prune
   exit 0
 )
-# The entries of the current (pinned) directory older than a week removed,
-# at any depth, as find -exec rm -rf removed them, each from the directory
-# find walked, so a directory on the way swapped for a link is never
-# followed; nothing is descended once it is removed.
+# The codebases-cleanup directory (the current, pinned one) pruned. Each
+# codebase moved into data/all/<serial>/ goes a week after its move, judged
+# by its ctime, which the move sets: mv keeps the mtime of what it moves, so
+# an old codebase judged by its mtime went the night it was moved. It is
+# never descended, and the serial folders left empty go with it. Anything
+# else here (an older layout) goes once it is older than a week, at any
+# depth, as before. Every entry is removed from the directory find walked,
+# so a directory on the way swapped for a link is never followed.
 _global_cld_prune_here() (
   PATH=/usr/local/bin:/usr/bin:/bin
-  find ./* -mtime +7 -prune -execdir rm -rf -- {} +
+  local _h
+  _h="$(/bin/pwd -P)"
+  # data/all is entered once by its real path and walked from there, so a
+  # name on the way swapped for a link moves nothing outside it.
+  if [ -d ./data/all ] && [ ! -L ./data ] && [ ! -L ./data/all ]; then
+    (
+      cd -P -- ./data/all 2> /dev/null && [ "$(/bin/pwd -P)" = "${_h}/data/all" ] \
+        || exit 0
+      find . -mindepth 2 -maxdepth 2 -ctime +7 -prune -execdir rm -rf -- {} +
+      find . -mindepth 1 -maxdepth 1 -type d -empty -delete
+    )
+  fi
+  find ./* -path ./data -prune -o -mtime +7 -prune -execdir rm -rf -- {} +
 )
 
 _global_cleanup() {
@@ -1067,10 +1261,27 @@ _global_cleanup() {
     echo "Permissions in sites/all tree just fixed"
   fi
   find /var/backups/old-sql* -mtime +1 -exec rm -rf {} \; &> /dev/null
-  find /var/backups/ltd/*/* -mtime +0 -type f -exec rm -f {} \; &> /dev/null
+  ### fpmcore holds root's records of what the ltd worker last applied for
+  ### each account, rewritten only when they change, and its PHP-FPM and
+  ### nginx holds rest on them: kept while the account's user exists, gone
+  ### with it (a day's age cleared every hold of a quiet account each night)
+  find /var/backups/ltd/*/* -mtime +0 -type f -not -path '/var/backups/ltd/fpmcore/*' \
+    -exec rm -f {} \; &> /dev/null
+  local _fcF _fcA
+  for _fcF in /var/backups/ltd/fpmcore/*; do
+    [ -f "${_fcF}" ] && [ ! -L "${_fcF}" ] || continue
+    _fcA="${_fcF##*/}"
+    _fcA="${_fcA%%.*}"
+    [[ "${_fcA}" =~ ^[a-z0-9-]+$ ]] || continue
+    id -u -- "${_fcA}" > /dev/null 2>&1 || rm -f -- "${_fcF}"
+  done
   find /var/backups/solr/*/* -mtime +0 -type f -exec rm -f {} \; &> /dev/null
   find /var/backups/solr-archive -mindepth 1 -maxdepth 1 -type f -mtime +30 -exec rm -f {} \; &> /dev/null
-  find /var/backups/jetty* -mtime +0 -exec rm -rf {} \; &> /dev/null
+  ### Old jetty leftovers go after a day; the init scripts autoupboa moves
+  ### aside (jetty9.initd, like solr7.initd and solr9.initd beside it) stay:
+  ### mv keeps their old mtime, so they went the night they were moved.
+  find /var/backups/jetty* -maxdepth 0 ! -name '*.initd' -mtime +0 \
+    -exec rm -rf {} \; &> /dev/null
   ### dragon/config is a low-volume, high-value config archive -- never
   ### auto-purged. Every other entry goes once it is a week old, judged by when
   ### it was made there (ctime): the copies keep the mtime of what they copy
@@ -1112,14 +1323,14 @@ _global_cleanup() {
   ### The shared codebases moved out of the store keep their group-writable
   ### sites/all trees, and /data/disk was once open to every account, so
   ### each is pruned only from inside its real directory.
+  ### Both places are pruned where both exist: the cleanup moves into
+  ### whichever the store's form picks that night.
   if [ "${_hostedSys}" = "YES" ]; then
-    if [ -d "/var/backups/codebases-cleanup" ]; then
-      _acct_in_real_dir /var/backups/codebases-cleanup \
-        _global_cld_prune_here &> /dev/null
-    elif [ -d "/data/disk/codebases-cleanup" ]; then
-      _acct_in_real_dir /data/disk/codebases-cleanup \
-        _global_cld_prune_here &> /dev/null
-    fi
+    local _cldDir
+    for _cldDir in /var/backups/codebases-cleanup /data/disk/codebases-cleanup; do
+      [ -d "${_cldDir}" ] || continue
+      _acct_in_real_dir "${_cldDir}" _global_cld_prune_here &> /dev/null
+    done
   fi
   rm -f /tmp/.cron.*.pid
   rm -f /tmp/.busy.*.pid
@@ -1524,5 +1735,362 @@ _dbctl_report() {
   ( unset _MY_OCTO_EMAIL
     _night_notice "dbctl-report" \
       "BOA nightly on $(hostname -f): database broker report" "${_body}" )
+  return 0
+}
+
+# The numbers BOA freed for account identities wait in
+# /data/conf/acct-uids/.unswept (the ltd worker, the Octopus upgrade and boa
+# cleanup purge write them before deluser) until this sweep has handed over
+# what each still owns on the server's own filesystems: every mount of a
+# disk filesystem and every tmpfs, each walked on its own. First the home
+# (/data/disk/<oN>) and files store of the account that recorded a number as
+# one of its removed identities (<oN>.gone) give what it owns there to that
+# account, modes kept; then everywhere else an entry goes to that account,
+# or to nobody when no account recorded the number (a gone account's),
+# closed to group and other writers and without set-ID bits: another
+# account's login could otherwise still write it, or move it into a control
+# folder. Every check of a control folder trusts root, none trusts nobody. A
+# number a user has, or a process or thread runs as (real, effective, saved
+# or file system uid), waits for a later night, and the program checks
+# again that it still names nobody. Directories and regular files are
+# handed over through a handle opened without following a link, any other
+# entry (a link, a FIFO, a socket) through a path-only one, each only while
+# the handle shows what lstat saw. A number leaves the list only when every
+# place was walked whole within two hours, nothing it owned was found gone
+# or left unchanged, no process runs as it, and it was not freed again
+# meanwhile; a number whose own entries could not all be handed over (one
+# gone since find listed it, one left unchanged) stays for another night,
+# and the others go. Leaving the list gives it to no other account: a live
+# account's freed numbers stay its own (<oN>.gone), and a gone account's
+# (.purged) are given again only when no other number is free
+# (_acct_pick_uid in the ltd worker), since no walk of folders other users
+# can rename into proves a number owns nothing. With fewer than 50 numbers
+# left that no one holds, the run says so in an ALERT.
+_NIGHT_UNSWEPT_PL='use Fcntl; use POSIX ();
+my %m;
+for (split(/,/, $ENV{_UNSWEPT_MAP} // "")) {
+  my ($u, $t, $g, $c) = split(/:/);
+  next unless defined($c) && $u =~ /^[1-9][0-9]*$/ && $t =~ /^[0-9]+$/ && $g =~ /^-?[0-9]+$/;
+  $m{$u} = [$t, $g, $c];
+}
+my $w = shift(@ARGV) // "";
+$w = 0 unless $w =~ /^[1-9][0-9]*$/;
+exit 0 unless %m;
+my $p = (POSIX::uname())[4] =~ /^(x86_64|aarch64)$/ ? 010000000 : 0;
+my (%gone, %f, $n);
+$n = 0;
+sub gone {
+  my $u = shift;
+  unless (exists $gone{$u}) {
+    local $! = 0;
+    $gone{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0;
+  }
+  return $gone{$u};
+}
+for my $e (@ARGV) {
+  # find listed it as one of these numbers: gone since, it was moved or removed
+  my @l = lstat($e);
+  unless (@l) {
+    $f{$w}++;
+    next;
+  }
+  # another owner since find listed it for this number: swapped, or a
+  # second name of an inode handed over already
+  if ($w && $l[4] != $w) {
+    $f{$w}++;
+    next;
+  }
+  my $r = $m{$l[4]} or next;
+  next unless gone($l[4]);
+  my ($t, $g, $c) = @$r;
+  my ($h, $x);
+  if (-d _ || -f _) {
+    unless (sysopen($h, $e, O_RDONLY|O_NOFOLLOW|O_NONBLOCK)) {
+      $f{$l[4]}++;
+      next;
+    }
+    $x = $h;
+  } elsif ($p) {
+    unless (sysopen($h, $e, $p|O_NOFOLLOW)) {
+      $f{$l[4]}++;
+      next;
+    }
+    $x = "/proc/self/fd/" . fileno($h);
+  } else {
+    $f{$l[4]}++;
+    next;
+  }
+  my @s = stat($h);
+  if (@s && $s[0] == $l[0] && $s[1] == $l[1] && $s[4] == $l[4] && chown($t, $g, $x)) {
+    $n++;
+    if ($c) {
+      my @a = stat($h);
+      $f{$l[4]}++ unless @a && (($a[2] & 0170000) == 0120000 || chmod($a[2] & 01755, $x));
+    }
+  } else {
+    $f{$l[4]}++;
+  }
+  close($h);
+}
+print "$n\n" if $n;
+print "F$_\n" for sort keys %f;
+exit 0;'
+
+_acct_gone_write() {
+  local _f="${1}" _t="${1}.tmp.$$" _rc
+  rm -f -- "${_t}"
+  # grep says 1 for no line (an empty list), 2 for a failed read or write
+  ( umask 077; printf '%s\n' "${2}" | grep -E '^[1-9][0-9]*( [0-9]+)?$' > "${_t}" )
+  _rc=$?
+  if [ "${_rc}" -le 1 ] && [ -f "${_t}" ] && [ ! -L "${_t}" ]; then
+    chown root:root "${_t}" && chmod 0600 "${_t}" && mv -f -T -- "${_t}" "${_f}" && return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+_acct_unswept_seed() {
+  local _f _u
+  for _f in /data/conf/acct-uids/*.gone; do
+    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
+    while IFS= read -r _u; do
+      [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+      getent passwd "${_u}" > /dev/null 2>&1 || echo "${_u}"
+    done < "${_f}"
+  done
+  return 0
+}
+_ltd_account_trees() {
+  local _d _s _m
+  for _d in "/data/disk/${1}/static" "/data/disk/${1}/distro"; do
+    [ -d "${_d}" ] && [ ! -L "${_d}" ] && echo "${_d}"
+  done
+  _s=$(realpath -e -- "/data/disk/${1}/static/files" 2> /dev/null) || return 0
+  case "${_s}" in
+    /mnt/?*/files/"${1}"/static/files)
+      _m="${_s%/files/"${1}"/static/files}"
+      case "${_m}" in
+        */files/*|*/static/*|*[!A-Za-z0-9._/-]*) return 0 ;;
+      esac
+      echo "${_s}"
+      ;;
+  esac
+  return 0
+}
+# The account $1's own places: its home and its files store on attached
+# storage (_ltd_account_trees, the ltd worker's text).
+_acct_unswept_own_trees() {
+  local _p
+  [ -d "/data/disk/${1}" ] && [ ! -L "/data/disk/${1}" ] && echo "/data/disk/${1}"
+  while IFS= read -r _p; do
+    case "${_p}" in
+      /data/disk/*) ;;
+      *) echo "${_p}" ;;
+    esac
+  done < <(_ltd_account_trees "${1}")
+  return 0
+}
+# Run "$@" inside the real directory $1, its last name checked against its
+# resolved parent: a link put at that name is never followed.
+_acct_unswept_in() {
+  local _d="${1}" _up
+  shift
+  _up="${_d%/*}"
+  _up=$(cd -P -- "${_up:-/}" 2> /dev/null && /bin/pwd -P) || return 1
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_up%/}/${_d##*/}" ] && "$@" )
+}
+# Every mount point of a disk filesystem, and of a tmpfs.
+_acct_unswept_places() {
+  local _dv _mp _fs _r
+  while read -r _dv _mp _fs _r; do
+    case "${_fs}" in
+      ext2|ext3|ext4|xfs|btrfs|zfs|f2fs|jfs|reiserfs|tmpfs) ;;
+      *) continue ;;
+    esac
+    case "${_mp}" in
+      /*) ;;
+      *) continue ;;
+    esac
+    # /proc/mounts writes a blank as \040
+    _mp="${_mp//\\040/ }"
+    [ -d "${_mp}" ] && [ ! -L "${_mp}" ] && echo "${_mp}"
+  done < /proc/mounts | sort -u
+  return 0
+}
+# How many system uids (100 to 999) no user, record or list holds.
+_acct_unswept_free() {
+  local _u _t _f _n=0 _d=/data/conf/acct-uids
+  local -A _x=()
+  while IFS=: read -r _ _ _u _; do
+    [[ "${_u}" =~ ^[0-9]+$ ]] && _x[${_u}]=1
+  done < <(getent passwd 2> /dev/null)
+  for _f in "${_d}"/*.gone "${_d}/.unswept" "${_d}/.purged"; do
+    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
+    while read -r _u _t; do
+      [[ "${_u}" =~ ^[0-9]+$ ]] && _x[${_u}]=1
+    done < "${_f}"
+  done
+  for (( _u = 100; _u <= 999; _u++ )); do
+    [ -n "${_x[${_u}]:-}" ] || _n=$(( _n + 1 ))
+  done
+  echo "${_n}"
+}
+# Every number a process or thread runs as.
+_acct_unswept_busy() {
+  ps -eL -o ruid= -o euid= -o suid= -o fsuid= 2> /dev/null | tr -s ' \t' '\n' | grep -E '^[0-9]+$' | sort -un
+}
+# The place $2 walked for the map $1 (_NIGHT_UNSWEPT_PL), within what is
+# left of the run's time, the count handed over added to _all and each
+# number with an entry it could not hand over (gone since find listed it,
+# left unchanged) named in _failed. Status 1 when it could not be entered,
+# the time ran out, or find met anything but entries removed while it
+# walked. The nightly's own marker is kept fresh: clear.sh drops one three
+# hours old.
+_acct_unswept_walk() {
+  local _m="${1}" _p="${2}" _left _out _rc _e _x _u _bad=0
+  local -a _x2=()
+  _left=$(( _UNSWEPT_END - $(date +%s) ))
+  [ "${_left}" -gt 0 ] || return 1
+  touch -c /run/daily-fix.pid 2> /dev/null
+  # each number its own branch: an entry gone since find listed it is
+  # counted for that number; the program and the map go once, in the
+  # environment, so the command line grows by a few words a number
+  for _u in ${_swl}; do
+    _x2+=( -o \( -uid "${_u}" -execdir perl -e 'eval($ENV{_UNSWEPT_PL}); die($@) if $@;' "${_u}" {} + \) )
+  done
+  _e=$(mktemp /var/tmp/.acct-unswept.XXXXXX) || return 1
+  _out=$(_acct_unswept_in "${_p}" timeout "${_left}" env PATH=/usr/local/bin:/usr/bin:/bin LC_ALL=C \
+    _UNSWEPT_PL="${_NIGHT_UNSWEPT_PL}" _UNSWEPT_MAP="${_m}" \
+    find -P . -xdev \( -false "${_x2[@]}" \) 2> "${_e}")
+  _rc=$?
+  if [ "${_rc}" -ne 0 ]; then
+    # entries removed while find walked are no failure; anything else is
+    if [ "${_rc}" -ne 1 ] || [ ! -s "${_e}" ] \
+      || grep -qvE "^find: '\./.*': No such file or directory$" "${_e}"; then
+      _bad=1
+    fi
+  fi
+  rm -f -- "${_e}"
+  for _x in ${_out}; do
+    if [[ "${_x}" =~ ^[0-9]+$ ]]; then
+      _all=$(( _all + _x ))
+    elif [[ "${_x}" =~ ^F[1-9][0-9]*$ ]]; then
+      _failed[${_x#F}]=1
+    elif [[ "${_x}" =~ ^F ]]; then
+      _bad=1
+    fi
+  done
+  if [ "${_bad}" -ne 0 ]; then
+    echo "acct-unswept: ${_p} not walked whole (status ${_rc})"
+    return 1
+  fi
+  return 0
+}
+_acct_unswept_sweep() {
+  local IFS=$' \t\n'
+  local _d=/data/conf/acct-uids _j _v _u _f _a _t _nb _ng _p _rel _rc _b
+  local _mapc="" _sw="" _swl="" _bad="" _all=0 _UNSWEPT_END _fr
+  local -A _busy=() _own=() _failed=()
+  _j="${_d}/.unswept"
+  [ -d "${_d}" ] && [ ! -L "${_d}" ] || return 0
+  _fr=$(_acct_unswept_free)
+  if [[ "${_fr}" =~ ^[0-9]+$ ]] && [ "${_fr}" -lt 50 ]; then
+    echo "acct-unswept: ALERT only ${_fr} system uids are free of every user, record and list"
+  fi
+  if [ -L "${_j}" ] || { [ -e "${_j}" ] && [ ! -f "${_j}" ]; }; then
+    echo "acct-unswept: ALERT ${_j} is not a plain file, nothing swept"
+    return 0
+  fi
+  # a number freed again from here on stays listed (_acct_unswept_add)
+  if ! ( flock -w 60 9 || exit 1; rm -f -- "${_d}/.unswept.again" ) 9> "${_d}/.unswept.lock"; then
+    echo "acct-unswept: the list is locked, nothing swept"
+    return 0
+  fi
+  if [ -f "${_j}" ]; then
+    _v=$(cat -- "${_j}") || return 0
+  else
+    _v=$(_acct_unswept_seed)
+  fi
+  _nb=$(id -u nobody 2> /dev/null)
+  _ng=$(getent group nogroup 2> /dev/null | cut -d: -f3)
+  if ! [[ "${_nb}" =~ ^[1-9][0-9]*$ && "${_ng}" =~ ^[1-9][0-9]*$ ]]; then
+    echo "acct-unswept: ALERT no nobody user or nogroup group, nothing swept"
+    return 0
+  fi
+  for _u in $(_acct_unswept_busy); do
+    _busy[${_u}]=1
+  done
+  if [ -z "${_busy[0]:-}" ]; then
+    echo "acct-unswept: ALERT no process list read, nothing swept"
+    return 0
+  fi
+  while IFS= read -r _u; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    getent passwd "${_u}" > /dev/null 2>&1 && continue
+    [ -n "${_busy[${_u}]:-}" ] && continue
+    _a=""
+    _t=""
+    for _f in "${_d}"/*.gone; do
+      [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
+      grep -qx -- "${_u}" "${_f}" || continue
+      _a="${_f##*/}"
+      _a="${_a%.gone}"
+      break
+    done
+    [[ "${_a}" =~ ^[a-z0-9-]+$ ]] && _t=$(id -u -- "${_a}" 2> /dev/null)
+    if [[ "${_t}" =~ ^[1-9][0-9]*$ ]]; then
+      _mapc="${_mapc:+${_mapc},}${_u}:${_t}:-1:1"
+      _own[${_a}]="${_own[${_a}]:+${_own[${_a}]},}${_u}:${_t}:-1:0"
+    else
+      _mapc="${_mapc:+${_mapc},}${_u}:${_nb}:${_ng}:1"
+    fi
+    _sw="${_sw} ${_u}"
+    _swl="${_swl}${_u}"$'\n'
+  done <<< "${_v}"
+  [ -n "${_swl}" ] || return 0
+  _UNSWEPT_END=$(( $(date +%s) + 7200 ))
+  echo "acct-unswept: start, numbers${_sw}"
+  for _a in "${!_own[@]}"; do
+    while IFS= read -r _p; do
+      _acct_unswept_walk "${_own[${_a}]}" "${_p}" || _bad="${_bad} ${_p}"
+    done < <(_acct_unswept_own_trees "${_a}")
+  done
+  while IFS= read -r _p; do
+    _acct_unswept_walk "${_mapc}" "${_p}" || _bad="${_bad} ${_p}"
+  done < <(_acct_unswept_places)
+  if [ -n "${_bad}" ]; then
+    echo "acct-unswept: ALERT ${_all} entries handed over, not walked whole:${_bad}; numbers${_sw} kept listed"
+    return 0
+  fi
+  for _u in "${!_failed[@]}"; do
+    echo "acct-unswept: number ${_u} kept for another night: an entry of it was gone or could not be handed over"
+  done
+  # off the list, under its lock: each number swept whole that still names
+  # nobody, no process or thread runs as, and was not freed again meanwhile
+  _b=$(_acct_unswept_busy)
+  _rel=$( ( flock -w 60 9 || exit 1
+    if [ -f "${_j}" ] && [ ! -L "${_j}" ]; then
+      _v=$(cat -- "${_j}") || exit 1
+    else
+      _v=$(_acct_unswept_seed)
+    fi
+    _p=$(cat -- "${_d}/.unswept.again" 2> /dev/null)
+    _f=""
+    while IFS= read -r _u; do
+      [ -n "${_u}" ] || continue
+      [ -n "${_failed[${_u}]:-}" ] && continue
+      getent passwd "${_u}" > /dev/null 2>&1 && continue
+      grep -qx -- "${_u}" <<< "${_b}" && continue
+      grep -qx -- "${_u}" <<< "${_p}" && continue
+      _f="${_f}${_u}"$'\n'
+    done <<< "${_swl}"
+    _acct_gone_write "${_j}" "$(printf '%s\n' "${_v}" | grep -vxF -f <(printf '%s' "${_f}"))" || exit 1
+    printf '%s' "${_f}" ) 9> "${_d}/.unswept.lock" )
+  _rc=$?
+  if [ "${_rc}" -ne 0 ]; then
+    echo "acct-unswept: ALERT ${_all} entries handed over, the list not written; numbers${_sw} kept"
+    return 0
+  fi
+  _rel="${_rel//$'\n'/ }"
+  echo "acct-unswept: done, ${_all} entries handed over, numbers swept: ${_rel% }"
   return 0
 }

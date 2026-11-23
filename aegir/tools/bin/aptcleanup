@@ -49,6 +49,7 @@ _KEEP_GLOBS_REL=(
   "listchanges.conf.d/*"
   "listchanges.conf"
   "preferences.d/00percona.pref"
+  "preferences.d/99-boa-kernel-guard"
   "preferences.d/99-droplet-agent-restrict.pref"
   "preferences.d/99-prefer-devuan"
   "preferences.d/fuse"

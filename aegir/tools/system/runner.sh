@@ -131,9 +131,9 @@ _ci_master_cron_control() {
     _if_allow_aegir_queue
     # /local/bin matches both the /opt and the PATH-resolved /usr symlink
     # form; the .sh.txt pgreps cover the chained install's legs
-    if pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/(barracuda|octopus)( |$)" >/dev/null 2>&1 \
-      || pgrep -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" >/dev/null 2>&1 \
-      || pgrep -f "^(/[^ ]*/)?(bash|sh|su) .*/aegir/scripts/AegirSetup[ABC]\.sh\.txt" >/dev/null 2>&1 \
+    if pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/(barracuda|octopus)( |$)" >/dev/null 2>&1 \
+      || pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" >/dev/null 2>&1 \
+      || pgrep -u root -U root -f "^(/[^ ]*/)?(bash|sh|su) .*/aegir/scripts/AegirSetup[ABC]\.sh\.txt" >/dev/null 2>&1 \
       || [ -e "/run/boa_run.pid" ] \
       || [ -e "/run/boa_wait.pid" ] \
       || [ -e "/run/octopus_install_run.pid" ]; then
@@ -230,9 +230,9 @@ fi
 # design (queued backend tasks must run for INIT to complete).
 _accel_now=NO
 if [ -e "/run/octopus_install_run.pid" ]; then
-  if pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/octopus" > /dev/null 2>&1 \
-    || pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-" > /dev/null 2>&1 \
-    || pgrep -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/OCTOPUS\.sh\.txt" > /dev/null 2>&1; then
+  if pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/octopus" > /dev/null 2>&1 \
+    || pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-" > /dev/null 2>&1 \
+    || pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/OCTOPUS\.sh\.txt" > /dev/null 2>&1; then
     _accel_now=YES
     touch /run/octopus_install_run.pid
   elif [ -n "$(find /run/octopus_install_run.pid -mmin -15 2>/dev/null)" ]; then
@@ -298,14 +298,185 @@ _if_accelerated_queue() {
   fi
 }
 
+# A task dispatcher (run-<account>) root may run or hand back: a regular file
+# with one link, owned by root, that no group or other user can write. Any
+# other copy was made or kept where another user could write it (a parked
+# copy outlives its account, whose number is given out again; a second link
+# stays writable through the other name), so root never runs or returns it.
+_dispatcher_trusted() {
+  local _s
+  [ -f "${1}" ] && [ ! -L "${1}" ] || return 1
+  _s=$(stat -c '%u %h %a' -- "${1}" 2> /dev/null) || return 1
+  case "${_s}" in
+    "0 1 "[0-7][0-7][0-7] | "0 1 "[0-7][0-7][0-7][0-7]) ;;
+    *) return 1 ;;
+  esac
+  (( (8#${_s##* } & 8#022) == 0 ))
+}
+
+# A new dispatcher of root's for the account $1 at /var/xdrago/run-$1. BOA
+# writes every dispatcher from one template that differs only in its _H_USER
+# line: it is made from the build tree's template when that is root's alone,
+# else from another account's dispatcher that is root's alone, live, then
+# parked (a demoted box keeps them all parked). The file it replaces is never
+# read or run. With replace as $2 the old file must still be there and is
+# claimed (renamed away) first, so one a parker took meanwhile is never put
+# back. 1 when there is no such source or the new file cannot be made.
+_dispatcher_write() {
+  local _a="${1}" _f _src="" _t _o=""
+  [ -n "${_a}" ] && [ "${_a}" = "${_a##*/}" ] || return 1
+  for _f in /opt/tmp/boa/aegir/scripts/run-xdrago /var/xdrago/run-* /var/backups/off-run/run-*; do
+    [ "${_f##*/}" != "run-${_a}" ] || continue
+    _dispatcher_trusted "${_f}" || continue
+    [ "$(grep -c '^_H_USER=' -- "${_f}" 2> /dev/null)" = "1" ] || continue
+    if [ "${_f}" = "/opt/tmp/boa/aegir/scripts/run-xdrago" ]; then
+      grep -qx '_H_USER=EDIT_USER' "${_f}" 2> /dev/null || continue
+    else
+      grep -qxF -- "_H_USER=${_f##*/run-}" "${_f}" 2> /dev/null || continue
+    fi
+    _src="${_f}"
+    break
+  done
+  [ -n "${_src}" ] || return 1
+  # mktemp's names hold no "run-", which runner.sh would dispatch
+  _t=$(mktemp /var/xdrago/.xdwrite.XXXXXX 2> /dev/null) || return 1
+  if awk -v u="${_a}" '/^_H_USER=/ { print "_H_USER=" u; next } { print }' "${_src}" > "${_t}" \
+    && chown root:root "${_t}" && chmod 700 "${_t}" && _dispatcher_trusted "${_t}" \
+    && [ "$(grep -c '^_H_USER=' -- "${_t}")" = "1" ] \
+    && grep -qxF -- "_H_USER=${_a}" "${_t}" \
+    && bash -n "${_t}" 2> /dev/null; then
+    if [ "${2:-}" = "replace" ]; then
+      if ! _o=$(mktemp /var/xdrago/.xdold.XXXXXX 2> /dev/null) \
+        || ! mv -f -T -- "/var/xdrago/run-${_a}" "${_o}" 2> /dev/null; then
+        rm -f -- "${_t}" ${_o:+"${_o}"}
+        return 1
+      fi
+    fi
+    if mv -f -T -- "${_t}" "/var/xdrago/run-${_a}"; then
+      [ -n "${_o}" ] && rm -f -- "${_o}"
+      return 0
+    fi
+    [ -n "${_o}" ] && rm -f -- "${_o}"
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+
+# A live dispatcher of a real account that is not root's alone is written
+# anew (_dispatcher_write) and named once in dispatcher.incident.log: an
+# Octopus pass copied it with the owner of a build tree that, before the
+# scratch root became root's, an account's user could own. The old file is
+# never read or run. 1 when it is no account's own dispatcher or cannot be
+# written anew.
+_runner_rewrite() {
+  local _a="${1##*/}" _s
+  [ "${1}" = "/var/xdrago/${_a}" ] && [ "${_a#run-}" != "${_a}" ] || return 1
+  [ -f "${1}" ] && [ ! -L "${1}" ] || return 1
+  _a="${_a#run-}"
+  [ -e "/root/.${_a}.octopus.cnf" ] && [ -d "/data/disk/${_a}" ] || return 1
+  _s=$(stat -c 'inode %i, owner %U (uid %u), %h links, mode %a' -- "${1}" 2> /dev/null)
+  _dispatcher_write "${_a}" replace || return 1
+  [ -d /var/log/boa ] \
+    && echo "$(date) written anew: ${1} (was ${_s:-unreadable}): not root's alone; the old file was never read or run" \
+      >> /var/log/boa/dispatcher.incident.log 2> /dev/null
+  return 0
+}
+
+# A dispatcher the loop below will not run is named once (by its path and
+# inode) in dispatcher.incident.log, with one mail to the operator unless
+# _INCIDENT_REPORT is OFF, and left where it is: its account's queue waits
+# until the account's next Octopus pass writes a new one over it.
+_runner_untrusted_note() {
+  local _s _i _m _to _l=/var/log/boa/dispatcher.incident.log
+  [ -d /var/log/boa ] && [ -e "${1}" ] || return 0
+  _i=$(stat -c '%i' -- "${1}" 2> /dev/null)
+  grep -qF -- "not run: ${1} (inode ${_i:-unreadable}," "${_l}" 2> /dev/null && return 0
+  _s=$(stat -c 'owner %U (uid %u), %h links, mode %a' -- "${1}" 2> /dev/null)
+  _m="not run: ${1} (inode ${_i:-unreadable}, ${_s:-unreadable}): root runs only a dispatcher that is root's alone; the account's tasks wait until its next Octopus pass writes a new one"
+  echo "$(date) ${_m}" >> "${_l}" 2> /dev/null
+  [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
+  case "${_INCIDENT_REPORT^^}" in
+    OFF|NO) return 0 ;;
+  esac
+  command -v s-nail > /dev/null 2>&1 || return 0
+  _to="${_MY_EMAIL:-root}"
+  _to="${_to//\\\@/@}"
+  printf ' %s\n\n ---\n This email has been sent by your BOA task queue (runner.sh)\n' "${_m}" \
+    | s-nail -s "BOA task dispatcher not run on $(uname -n)" "${_to}" > /dev/null 2>&1
+}
+
+# An account runner (run-<oN>, copied from the build tree by every Octopus
+# pass) takes its run lock on fd 9. A copy from a build tree before the fix
+# passed that descriptor to every process it starts: a site cron the panel's
+# dispatcher forked kept the lock for minutes after the run had ended, and
+# every later run of that instance exited at the lock while its queued tasks
+# waited. Such a copy is healed here, before it runs, whichever pass laid it:
+# fd 9 closed on its two su calls and on its queued Octopus upgrade, nothing
+# else changed. A copy that holds none of the three lines as shipped is left
+# alone. The new copy is made beside the old one under a mktemp name, which
+# holds no account name and so no "run-", and renamed over it, so a run that
+# already started keeps reading the bytes it opened.
+_runner_heal_lock_fd() {
+  local _r="$1" _n _chg _fd
+  [ -f "${_r}" ] && [ ! -L "${_r}" ] || return 0
+  grep -qx '  flock -n 9 || exit 0' "${_r}" 2> /dev/null || return 0
+  grep -qxF \
+    -e '    su -s /bin/bash - ${_H_USER} -c "drush8 cc drush" &> /dev/null' \
+    -e '    su -s /bin/bash - ${_H_USER} -c "bash /data/disk/${_H_USER}/aegir.sh"' \
+    -e '    nohup /opt/local/bin/octopus up-${_tRee} ${_H_USER} force log noscreen >${_UP_OCTOPUS_LOG} 2>&1 &' \
+    "${_r}" 2> /dev/null || return 0
+  _n=$(mktemp /var/xdrago/.xdheal.XXXXXX 2> /dev/null) || return 0
+  if ! sed \
+    -e 's|^\(    su -s /bin/bash - ${_H_USER} -c "drush8 cc drush" &> /dev/null\)$|\1 9>\&-|' \
+    -e 's|^\(    su -s /bin/bash - ${_H_USER} -c "bash /data/disk/${_H_USER}/aegir\.sh"\)$|\1 9>\&-|' \
+    -e 's|^\(    nohup /opt/local/bin/octopus up-${_tRee} ${_H_USER} force log noscreen >${_UP_OCTOPUS_LOG} 2>&1\) &$|\1 9>\&- \&|' \
+    "${_r}" > "${_n}" 2> /dev/null; then
+    rm -f "${_n}"
+    return 0
+  fi
+  # Only the three lines may differ, each now closing fd 9.
+  _chg=$(diff "${_r}" "${_n}" 2> /dev/null | grep -c '^>')
+  _fd=$(diff "${_r}" "${_n}" 2> /dev/null | grep '^>' | grep -c '9>&-')
+  if [ "${_chg}" -lt 1 ] || [ "${_chg}" -gt 3 ] || [ "${_fd}" != "${_chg}" ] \
+    || ! bash -n "${_n}" 2> /dev/null \
+    || ! chown --reference="${_r}" "${_n}" 2> /dev/null \
+    || ! chmod --reference="${_r}" "${_n}" 2> /dev/null \
+    || ! mv -f "${_n}" "${_r}" 2> /dev/null; then
+    rm -f "${_n}"
+    return 0
+  fi
+  echo "$(date '+%F %T') healed the run lock in ${_r}: ${_chg} line(s) close fd 9" \
+    >> /var/log/boa/runner-lock-heal.log 2> /dev/null
+}
+
+# The dispatchers run here are /var/xdrago/run-<account> of the accounts
+# this box has (their /root/.<account>.octopus.cnf and /data/disk/<account>):
+# a copy left beside one (old-run-<account>, run-<account>.bak) or a file
+# being written there never runs as root. A run-* file that is not root's
+# alone is named and mailed first, whatever its name.
 _runner_action() {
-  for _Runner in $(find /var/xdrago -maxdepth 1 -mindepth 1 -type f \
-    | grep run- \
-    | uniq \
-    | sort); do
+  local _rAcct
+  for _Runner in $(find /var/xdrago -maxdepth 1 -mindepth 1 -type f -name 'run-*' \
+    | sort -u); do
     # Honour the dedicated queue-stop file per child too, so a pause set AFTER this
     # runner parent started still holds every per-account child dispatch.
     [ -e "/run/boa_queue_stop.pid" ] && { echo "Task queue paused: /run/boa_queue_stop.pid present -- skipping ${_Runner}"; continue; }
+    # listed when the loop began; parked or removed since then: not for it
+    [ -e "${_Runner}" ] || continue
+    if ! _dispatcher_trusted "${_Runner}" && ! _runner_rewrite "${_Runner}"; then
+      _runner_untrusted_note "${_Runner}"
+      echo "Not running ${_Runner}: not root's alone (see /var/log/boa/dispatcher.incident.log)"
+      continue
+    fi
+    # root's alone but no account's: a copy left beside a dispatcher
+    _rAcct="${_Runner##*/run-}"
+    if [[ ! "${_rAcct}" =~ ^[a-z0-9-]+$ ]] \
+      || [ ! -f "/root/.${_rAcct}.octopus.cnf" ] \
+      || [ ! -d "/data/disk/${_rAcct}" ]; then
+      echo "Not running ${_Runner}: not the dispatcher of an account on this box"
+      continue
+    fi
+    _runner_heal_lock_fd "${_Runner}"
     _count_cpu
     _load_control
     _if_accelerated_queue
@@ -359,16 +530,16 @@ _if_allow_aegir_queue() {
 _SQLBACKUP_RUNNING=NO
 # Execution forms only (cron's nice/ionice bash launch, a shebang launch):
 # an editor or a grep naming the script must not hold the runner back
-if (( $(pgrep -fc '(^|(^| )[^ ]*bash )/var/xdrago/mysql_backup\.sh( |$)') > 0 )); then
+if (( $(pgrep -u root -U root -fc '(^|(^| )[^ ]*bash )/var/xdrago/mysql_backup\.sh( |$)') > 0 )); then
   _SQLBACKUP_RUNNING=YES
-elif (( $(pgrep -fc '(^|(^| )[^ ]*bash )/var/xdrago/mysql_cluster_backup\.sh( |$)') > 0 )); then
+elif (( $(pgrep -u root -U root -fc '(^|(^| )[^ ]*bash )/var/xdrago/mysql_cluster_backup\.sh( |$)') > 0 )); then
   _SQLBACKUP_RUNNING=YES
-elif (( $(pgrep -fc '^[^ ]*mydumper( |$)') > 0 )); then
+elif (( $(pgrep -u root -U root -fc '^[^ ]*mydumper( |$)') > 0 )); then
   _SQLBACKUP_RUNNING=YES
 fi
 
 _DAILY_RUNNING=NO
-if (( $(pgrep -fc '(^|(^| )[^ ]*bash )/var/xdrago/owl\.sh( |$)') > 0 )); then
+if (( $(pgrep -u root -U root -fc '(^|(^| )[^ ]*bash )/var/xdrago/owl\.sh( |$)') > 0 )); then
   _DAILY_RUNNING=YES
 fi
 
@@ -398,7 +569,7 @@ fi
 # cron must stay live through exactly those windows.
 _ci_master_cron_control
 
-if [ "$(pgrep -fc 'n7 bash /var/xdrago/runner.sh')" -gt "${_howMany}" ] \
+if [ "$(pgrep -u root -U root -fc 'n7 bash /var/xdrago/runner.sh')" -gt "${_howMany}" ] \
   || [ "${_SQLBACKUP_RUNNING}" = "YES" ] \
   || [ "${_DAILY_RUNNING}" = "YES" ] \
   || [ -e "/run/mysql_restart_running.pid" ] \

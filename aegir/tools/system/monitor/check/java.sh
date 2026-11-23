@@ -6,6 +6,17 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 
 _pthOml="/var/log/boa/java.incident.log"
 
+# Root and the named service users that exist, as a uid list for pgrep's
+# -u and -U: the JVMs and bin/solr run as their service's own user, and an
+# account's process titled like one of them must not read as it.
+_svc_uids() {
+  local _l="0" _u="" _i=""
+  for _u in "$@"; do
+    _i=$(id -u "${_u}" 2> /dev/null) && _l="${_l},${_i}"
+  done
+  echo "${_l}"
+}
+
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
     # shellcheck disable=SC1091
@@ -138,7 +149,7 @@ _manage_single_lock() {
     # -------- legacy pgrep guard ---------
     # Exit if more than 2 instances of this script are running
     _SCRIPT=$(basename "$0")
-    _CNT=$(pgrep -fc "(^|(^| )[^ ]*bash )[^ ]*/${_SCRIPT//./\\.}( |$)")
+    _CNT=$(pgrep -u root -U root -fc "(^|(^| )[^ ]*bash )[^ ]*/${_SCRIPT//./\\.}( |$)")
     if (( _CNT > 2 )); then
       echo "Too many java.sh running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
       exit 0
@@ -220,7 +231,26 @@ _jetty_restart() {
   exit 0
 }
 
+# True when Solr version $1 (solr9, solr7 or jetty9) is denied on this box,
+# read as autoupboa reads it when it parks the service: the box-wide Java
+# deny or the version's own, as a setting or as a marker file. A denied
+# version is never started here, not even in the minutes before autoupboa
+# moves its init script away: a start racing that move leaves a JVM with no
+# init script, which the checks below no longer see.
+_solr_svc_denied() {
+  local _dv=""
+  case "${1}" in
+    solr9) _dv="${_DENY_SOLR9}" ;;
+    solr7) _dv="${_DENY_SOLR7}" ;;
+    jetty9) _dv="${_DENY_JETTY9}" ;;
+    *) return 1 ;;
+  esac
+  [ "${_DENY_JAVA}" = "YES" ] || [ -e "/root/.deny.java.cnf" ] \
+    || [ "${_dv}" = "YES" ] || [ -e "/etc/boa/.deny.${1}.cnf" ]
+}
+
 _jetty_listen_conflict_detection() {
+  _solr_svc_denied jetty9 && return 0
   if [ -e "/var/log/jetty9" ]; then
     if [ `tail --lines=500 /var/log/jetty9/*stderrout.log \
       | grep --count "Address already in use"` -gt 0 ]; then
@@ -232,9 +262,11 @@ _jetty_listen_conflict_detection() {
 }
 
 _jenkins_health_check_fix() {
-  if ! pgrep -f '^[^ ]*java[0-9]* .*jenkins' \
+  local _jU=""
+  _jU=$(_svc_uids jenkins)
+  if ! pgrep -u "${_jU}" -U "${_jU}" -f '^[^ ]*java[0-9]* .*jenkins' \
     || [ ! -e "/run/jenkins/jenkins.pid" ]; then
-    pkill -9 -f '^[^ ]*java[0-9]* .*jenkins'
+    pkill -9 -u "${_jU}" -U "${_jU}" -f '^[^ ]*java[0-9]* .*jenkins'
     sleep 3
     service jenkins restart
     wait
@@ -253,17 +285,20 @@ _solr_restart_in_flight() {
   # JVMs racing for one port, a stale pid file, and an incident mail for
   # a box that was fine. The init script and bin/solr stay visible for
   # the whole window, in the executor forms matched here.
-  pgrep -f "^(/[^ ]*/)?(ba|da)?sh (-c )?/etc/init.d/${1} (start|restart|stop)( |$)" > /dev/null 2>&1 && return 0
+  pgrep -u root -U root -f "^(/[^ ]*/)?(ba|da)?sh (-c )?/etc/init.d/${1} (start|restart|stop)( |$)" > /dev/null 2>&1 && return 0
   if [ -n "${2}" ]; then
-    pgrep -f "^(/[^ ]*/)?bash (-c )?${2}/bin/solr (start|restart|stop)( |$)" > /dev/null 2>&1 && return 0
+    local _sU=""
+    _sU=$(_svc_uids "${1}")
+    pgrep -u "${_sU}" -U "${_sU}" -f "^(/[^ ]*/)?bash (-c )?${2}/bin/solr (start|restart|stop)( |$)" > /dev/null 2>&1 && return 0
   fi
   return 1
 }
 
 _solr_health_check_fix() {
-  if [ -x "/etc/init.d/solr9" ] && ! _solr_restart_in_flight solr9 /opt/solr9; then
+  if [ -x "/etc/init.d/solr9" ] && ! _solr_svc_denied solr9 \
+    && ! _solr_restart_in_flight solr9 /opt/solr9; then
     _pidfile="/var/solr9/solr-9099.pid"
-    if ! pgrep -f /var/solr9 || [ ! -e "${_pidfile}" ]; then
+    if ! pgrep -u "$(_svc_uids solr9)" -U "$(_svc_uids solr9)" -f /var/solr9 || [ ! -e "${_pidfile}" ]; then
       find /tmp -mindepth 1 -maxdepth 1 -user solr9 -exec rm -rf -- {} + 2>/dev/null
       service solr9 restart
       wait
@@ -284,9 +319,10 @@ _solr_health_check_fix() {
       fi
     fi
   fi
-  if [ -x "/etc/init.d/solr7" ] && ! _solr_restart_in_flight solr7 /opt/solr7; then
+  if [ -x "/etc/init.d/solr7" ] && ! _solr_svc_denied solr7 \
+    && ! _solr_restart_in_flight solr7 /opt/solr7; then
     _pidfile="/var/solr7/solr-9077.pid"
-    if ! pgrep -f /var/solr7 || [ ! -e "${_pidfile}" ]; then
+    if ! pgrep -u "$(_svc_uids solr7)" -U "$(_svc_uids solr7)" -f /var/solr7 || [ ! -e "${_pidfile}" ]; then
       find /tmp -mindepth 1 -maxdepth 1 -user solr7 -exec rm -rf -- {} + 2>/dev/null
       service solr7 restart
       wait
@@ -307,9 +343,10 @@ _solr_health_check_fix() {
       fi
     fi
   fi
-  if [ -x "/etc/init.d/jetty9" ] && ! _solr_restart_in_flight jetty9 ""; then
+  if [ -x "/etc/init.d/jetty9" ] && ! _solr_svc_denied jetty9 \
+    && ! _solr_restart_in_flight jetty9 ""; then
     _pidfile="/run/jetty9.pid"
-    if ! pgrep -f /opt/jetty9 || [ ! -e "${_pidfile}" ]; then
+    if ! pgrep -u "$(_svc_uids jetty9)" -U "$(_svc_uids jetty9)" -f /opt/jetty9 || [ ! -e "${_pidfile}" ]; then
       find /tmp -mindepth 1 -maxdepth 1 -user jetty9 -exec rm -rf -- {} + 2>/dev/null
       service jetty9 restart
       wait
@@ -361,7 +398,7 @@ _is_protected_run() {
       # from this box over ssh (and every boa-info probe); anchor it
       # to the LOCAL install form, as clear.sh/runner.sh already do
       [ "${_cbn}" = "boa" ] && _cPat="^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-"
-      _CNT=$(pgrep -fc "${_cPat}")
+      _CNT=$(pgrep -u root -U root -fc "${_cPat}")
       if (( _CNT > 0 )); then
         echo "The ${_cbn} is running!"
         _protectedRun=TRUE
@@ -372,7 +409,7 @@ _is_protected_run() {
   # the wrapper binaries swept above -- match them too: the installer takes
   # solr/jetty down and up inside those legs, and this watchdog fires ~9x a
   # minute, so a blind window here is near-certain to be hit
-  if pgrep -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1; then
+  if pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1; then
     _protectedRun=TRUE
   fi
   [ -e "/run/octopus_install_run.pid" ] && _protectedRun=TRUE

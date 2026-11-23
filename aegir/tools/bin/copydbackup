@@ -106,7 +106,7 @@ _dbk_store_dir() {
   local _u="${1}" _own _sto _real _ok=NO
   _DBK_DIR=""
   _DBK_WHY=""
-  _own="$(cd -P /data/disk 2>/dev/null && pwd -P)/${_u}/static/files"
+  _own="$(cd -P /data/disk 2>/dev/null && /bin/pwd -P)/${_u}/static/files"
   _sto=$(readlink -f "/data/disk/${_u}/static/files" 2>/dev/null)
   # The account's own static/files, or its store in migratefs' layout on
   # attached storage (/mnt/<mount>/files/<oN>/static/files), as the nightly
@@ -131,7 +131,7 @@ _dbk_store_dir() {
   fi
   if [ ! -e "/data/disk/${_u}/static/files/dbackup" ] \
     && [ ! -L "/data/disk/${_u}/static/files/dbackup" ]; then
-    ( cd -P -- "${_sto}" 2>/dev/null && [ "$(pwd -P)" = "${_sto}" ] \
+    ( cd -P -- "${_sto}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${_sto}" ] \
       && mkdir -p ./dbackup )
   fi
   _real=$(readlink -f "/data/disk/${_u}/static/files/dbackup" 2>/dev/null)
@@ -222,7 +222,7 @@ _dbk_here_ours() {
 _DBK_COPY_PL='use Fcntl; my ($s, $n, $u, $g) = @ARGV; sysopen(my $i, $s, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit 1; my @t = stat($i); exit 1 unless @t && -f _; sysopen(my $o, $n, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600) or exit 1; my ($r, $w, $p); while ($r = sysread($i, my $b, 1048576)) { for ($p = 0; $p < $r; $p += $w) { $w = syswrite($o, $b, $r - $p, $p) or exit 1; } } defined $r or exit 1; chown($u, $g, $o) or exit 1; chmod($t[2] & 0666, $o) or exit 1; utime($t[8], $t[9], $o) or exit 1; close($o) or exit 1; exit 0'
 _dbk_copy_here() {
   local _here _t
-  _here="$(pwd -P)"
+  _here="$(/bin/pwd -P)"
   if [ ! -d "./${1}" ] || [ -L "./${1}" ]; then
     rm -f -- "./${1}" 2>/dev/null
     # explicit mode, not the run's umask: the dated directory must be
@@ -230,7 +230,7 @@ _dbk_copy_here() {
     # tell this tool's own mkdir from a directory an account moved here
     mkdir -m 0755 "./${1}" 2>/dev/null || return 1
   fi
-  cd -P -- "./${1}" 2>/dev/null && [ "$(pwd -P)" = "${_here}/${1}" ] || return 1
+  cd -P -- "./${1}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${_here}/${1}" ] || return 1
   _dbk_here_ours "${6}" || return 1
   if [ -e "./${3}" ] || [ -L "./${3}" ]; then
     return 2
@@ -276,8 +276,8 @@ _dbk_in_real_dir() {
     /data/disk/?*) ;;
     *) return 1 ;;
   esac
-  _want="$(cd -P -- /data/disk 2>/dev/null && pwd -P)${_d#/data/disk}"
-  ( cd -P -- "${_d}" 2>/dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+  _want="$(cd -P -- /data/disk 2>/dev/null && /bin/pwd -P)${_d#/data/disk}"
+  ( cd -P -- "${_d}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] && "$@" )
 }
 
 # ./$1 of the current (pinned) directory: never through a link, never
@@ -287,11 +287,67 @@ _dbk_read_here() {
     bs="${2:-1048576}" count=1 status=none 2>/dev/null
 }
 
-# What ./$1 of the current (pinned) directory is: "odd" for a link or
-# anything but a regular file, "set" for a non-empty regular file, "empty"
-# for an empty one, "none" when absent.
+# The account's static/control is taken only as its own: every other
+# account's .ftp login is in the box-wide group, which an account not yet on
+# its own group still has on static/, so such a login could put a control/
+# of its own there for root to act on. A name is taken only when it, the
+# directory it is in and every directory above that up to / are root's or
+# one of the account's identities' (the uids given second, _acct_walk_uids,
+# with the account's recorded removed identities). Status 0 taken, 2 no such name in
+# a place of the account's, 1 refused (as helper.sh.inc's copy).
+#   e  the name exists (lstat; a link of the account's only when it leads
+#      somewhere) and is the account's
+#   r  the name's bytes through one handle opened without following a
+#      link or blocking on a FIFO, only when it is a regular file of the
+#      account's no longer than the count given third
+_ACCT_OWN_READ_PL='use Fcntl;
+my ($op, $o, $c, $n) = @ARGV;
+exit 1 unless defined $n && $n =~ m{^[^/\0]+$};
+my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, $o);
+sub own { my $u = shift; return exists $own{$u} ? 1 : 0; }
+my ($p, $ok, @d, @x) = (".", 0);
+for (1 .. 256) {
+  @x = stat($p) or last;
+  last unless own($x[4]);
+  if (@d && $x[0] == $d[0] && $x[1] == $d[1]) { $ok = 1; last; }
+  @d = @x;
+  $p .= "/..";
+}
+exit 1 unless $ok;
+if ($op eq "e") { my @s = lstat("./$n") or exit($!{ENOENT} ? 2 : 1); exit 1 unless own($s[4]); exit(-e "./$n" ? 0 : 2); }
+exit 1 unless $op eq "r" && $c =~ /^[0-9]+$/;
+sysopen(my $h, "./$n", O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or exit($!{ENOENT} ? 2 : 1);
+my @s = stat($h);
+exit 1 unless @s && -f _ && own($s[4]);
+my ($d, $r) = ("");
+while ($r = sysread($h, my $b, 65536)) { $d .= $b; last if length($d) > $c; }
+exit 1 unless defined $r && length($d) <= $c;
+binmode(STDOUT);
+print $d;
+exit 0;'
+
+# ./$1 of the current (pinned) directory, whole when it is at most $3 bytes,
+# only as the account $2's own (_ACCT_OWN_READ_PL); nothing otherwise.
+_dbk_own_read_here() {
+  local _o
+  _o=$(_acct_walk_uids "${2}") || { _dbk_read_here "${1}" "${3}"; return; }
+  perl -e "${_ACCT_OWN_READ_PL}" r "${_o}" "${3}" "${1}" 2> /dev/null
+}
+
+# What ./$1 of the current (pinned) directory is: "foreign" when it or this
+# directory is not the account $2's own (_ACCT_OWN_READ_PL), "odd" for a
+# link or anything but a regular file, "set" for a non-empty regular file,
+# "empty" for an empty one, "none" when absent.
 _dbk_cycle_state_here() {
-  if [ -L "./${1}" ] || { [ -e "./${1}" ] && [ ! -f "./${1}" ]; }; then
+  local _o _rc=0
+  # an account no passwd entry names has nothing to judge it by
+  if _o=$(_acct_walk_uids "${2}"); then
+    perl -e "${_ACCT_OWN_READ_PL}" e "${_o}" 0 "${1}" 2> /dev/null
+    _rc=$?
+  fi
+  if [ "${_rc}" = "1" ]; then
+    echo foreign
+  elif [ -L "./${1}" ] || { [ -e "./${1}" ] && [ ! -f "./${1}" ]; }; then
     echo odd
   elif [ -s "./${1}" ]; then
     echo set
@@ -304,16 +360,17 @@ _dbk_cycle_state_here() {
 
 # The uids root's walks over the account $1's trees act on, comma-separated:
 # root's own (0, what root wrote there for the account) and those of every
-# identity of the account as passwd names them: oN and oN.<name>, that is
-# its .ftp login, its client sub-accounts oN.<client> and oN.<client>-dev
-# and its PHP-FPM users oN.web and oN.<ver>.web. An account name holds no
-# dot, so the match is exact: o1 never takes o10's. Status 1, and nothing,
-# unless the account itself is in passwd. The walks also take a uid no passwd
-# entry names as the account's own: a login removed before the limited-shell
-# worker handed its files to the account at removal left those. Nothing
-# records which account a freed number served, so such an entry is taken
-# wherever it came from. A lookup that fails, rather than finding no such
-# user, leaves the entry another user's.
+# identity of the account as passwd names them: oN and oN.<name>, that is its
+# .ftp login, its client sub-accounts oN.<client> and oN.<client>-dev and its
+# PHP-FPM users oN.web and oN.<ver>.web. An account name holds no dot, so the
+# match is exact: o1 never takes o10's. Status 1, and nothing, unless the
+# account itself is in passwd. The numbers of the account's removed
+# identities that root recorded in /data/conf/acct-uids/<oN>.gone (the ltd
+# worker, before deluser frees one) are listed too while no user has them.
+# Root's check of the control folder, its reads of the control files and its
+# hand-overs into that folder take a uid no passwd entry names only when it
+# is listed: another account's removed login leaves files under such a number
+# too. Its other hand-overs, mode walks and removal walks still take any.
 _acct_walk_uids() {
   local _a="${1}" _n _p _u _r _x="0" _self=NO
   case "${_a}" in
@@ -326,6 +383,13 @@ _acct_walk_uids() {
     [ "${_n}" = "${_a}" ] && _self=YES
   done < <(getent passwd 2> /dev/null)
   [ "${_self}" = "YES" ] || return 1
+  # the account's removed identities, their numbers recorded by root before
+  # deluser freed them; a number a user has again is not taken
+  while IFS= read -r _u; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    getent passwd "${_u}" > /dev/null 2>&1 && continue
+    _x="${_x},${_u}"
+  done 2> /dev/null < "/data/conf/acct-uids/${_a}.gone"
   echo "${_x}"
 }
 # Root's removals in an account's trees, run inside the directory they act in:
@@ -612,7 +676,7 @@ for _backup_dir in "${_ARCH_SQL_BASE}"/*; do
         # The copy goes to the account's .ftp login and group, as the dated
         # directory does below, handed over by the handle that makes it
         read -r _cp_uid _cp_gid <<< "$(_dbk_ids "${_user}.ftp" "$(_acct_group "${_user}")")"
-        ( cd -P -- "${_DBK_DIR}" 2>/dev/null && [ "$(pwd -P)" = "${_DBK_DIR}" ] \
+        ( cd -P -- "${_DBK_DIR}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${_DBK_DIR}" ] \
           && _dbk_copy_here "${_datetime}" "${_backup_file}" "${_base_file}" \
             "${_cp_uid}" "${_cp_gid}" "$(_dbk_own_uids "${_user}")" )
         case $? in
@@ -645,7 +709,7 @@ for _backup_dir in "${_ARCH_SQL_BASE}"/*; do
     echo "Setting ownership for ${_target_dir} => ${_user}.ftp:${_grp}"
     # inside the real dated directory, never through a name the account put
     # there (_dbk_reown_here)
-    ( cd -P -- "${_target_dir}" 2>/dev/null && [ "$(pwd -P)" = "${_target_dir}" ] \
+    ( cd -P -- "${_target_dir}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${_target_dir}" ] \
       && _dbk_reown_here "${_user}.ftp" "${_grp}" "$(_dbk_own_uids "${_user}")" )
     if [ "$?" = "2" ]; then
       echo "Warning: ${_target_dir} is another user's. Not handed to ${_user}.ftp."
@@ -690,10 +754,15 @@ for _user in "${!_all_involved_users[@]}"; do
   # override would let the store grow against the account's own quota.
   # Only a regular file in the real static/control is read; a link or
   # device planted at that path, or a control directory that is itself a
-  # link, is ignored the same way.
+  # link, is ignored the same way, and so is a file or a control directory
+  # that is not the account's own (another account's login can put one
+  # there while the account is on the box-wide group).
   _cycle_state=$(_dbk_in_real_dir "/data/disk/${_user}/static/control" \
-    _dbk_cycle_state_here dBackupCycle.info)
-  if [ "${_cycle_state}" = "odd" ] \
+    _dbk_cycle_state_here dBackupCycle.info "${_user}")
+  if [ "${_cycle_state}" = "foreign" ]; then
+    echo "Warning: ${_cycle_file} or its directory is not ${_user}'s own. Using the default ${_days_to_keep} days for ${_user}."
+    _log_issue "${_user}" "${_cycle_file}" "Cycle file or its directory is not the account's own"
+  elif [ "${_cycle_state}" = "odd" ] \
     || { [ -z "${_cycle_state}" ] \
       && { [ -e "${_cycle_file}" ] || [ -L "${_cycle_file}" ]; }; }; then
     echo "Warning: ${_cycle_file} is not a plain file. Using the default ${_days_to_keep} days for ${_user}."
@@ -702,11 +771,15 @@ for _user in "${!_all_involved_users[@]}"; do
     # Bounded read: no valid value is long, and what is read is echoed to
     # the log, so never pull an arbitrary tenant file into root's memory
     _cycle_value=$(_dbk_in_real_dir "/data/disk/${_user}/static/control" \
-      _dbk_read_here dBackupCycle.info 64)
+      _dbk_own_read_here dBackupCycle.info "${_user}" 4096)
+    _cycle_rc=$?
     _cycle_value="${_cycle_value#"${_cycle_value%%[![:space:]]*}"}"
     _cycle_value="${_cycle_value%"${_cycle_value##*[![:space:]]}"}"
     if [[ "${_cycle_value}" =~ ^[0-9]{1,4}$ ]] && [ "$((10#${_cycle_value}))" -gt 0 ]; then
       _days_to_keep="$((10#${_cycle_value}))"
+    elif [ "${_cycle_rc}" != "0" ]; then
+      echo "Warning: ${_cycle_file} could not be read as ${_user}'s own plain file. Using the default ${_days_to_keep} days for ${_user}."
+      _log_issue "${_user}" "${_cycle_file}" "Cycle file could not be read"
     elif [ -n "${_cycle_value}" ]; then
       # Report only what was really written: a file cleared in place still
       # holds its newline, and that is the documented empty case
@@ -735,7 +808,7 @@ for _user in "${!_all_involved_users[@]}"; do
   # walked from inside the real directory, so a name on the way swapped for
   # a link after the check is never followed either; what another user owns
   # stays, each entry counted once
-  _left=$( ( cd -P -- "${_dbk}" 2>/dev/null && [ "$(pwd -P)" = "${_dbk}" ] \
+  _left=$( ( cd -P -- "${_dbk}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${_dbk}" ] \
     && _dbk_cleanup_here "${_own_set}" "${_days_to_keep}" ) \
     | grep -cE '^[0-9]+:[0-9]+$')
   if [[ "${_left}" =~ ^[1-9][0-9]*$ ]]; then

@@ -43,7 +43,7 @@
 #   bash fpm_tune.sh --force --stdout      # sample once, print + store records
 #
 # Conventions: BOA monitor sibling (cf. php.sh / nginx.sh). No systemd. Parser is
-# dependency-free (grep/sort/awk) to match the other monitors; needs cgi-fcgi.
+# dependency-free (bash's own pattern tests, no program per value); needs cgi-fcgi.
 
 export HOME=/root
 export SHELL=/bin/bash
@@ -116,7 +116,7 @@ _manage_single_lock() {
     _single_instance_lock
   else
     _SCRIPT=$(basename "$0")
-    _CNT=$(pgrep -fc "(^|(^| )[^ ]*bash )[^ ]*/${_SCRIPT//./\\.}( |$)")
+    _CNT=$(pgrep -u root -U root -fc "(^|(^| )[^ ]*bash )[^ ]*/${_SCRIPT//./\\.}( |$)")
     if (( _CNT > 2 )); then
       echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
       exit 0
@@ -289,15 +289,48 @@ _fcgi_get() {
   SCRIPT_NAME="$2" SCRIPT_FILENAME="$2" QUERY_STRING="$3" REQUEST_METHOD=GET \
     timeout 5 cgi-fcgi -bind -connect "$1" 2>/dev/null
 }
-# Sanitise to a non-negative integer (default 0).
-_num()  { local _x="${1//[^0-9]/}"; printf '%s' "${_x:-0}"; }
-# First integer value of "key":N (summary scalars precede the processes array, so
-# head -n1 picks the master/summary value for keys that also appear per-process).
-_jint() { printf '%s' "$1" | grep -o "\"$2\":[0-9]*" | head -n1 | grep -o '[0-9]*$'; }
-# Max integer over all occurrences of "key":N (per-process fields).
-_jmax() { printf '%s' "$1" | grep -o "\"$2\":[0-9]*" | grep -o '[0-9]*$' | sort -n | tail -n1; }
-# First string value of "key":"...".
-_jstr() { printf '%s' "$1" | grep -o "\"$2\":\"[^\"]*\"" | head -n1 | cut -d'"' -f4; }
+# The JSON readers run in the shell and set the variable named by $1: a sample
+# reads 11 keys per pool and 23 per version, and each read was a pipeline of
+# three programs (some 3,000 a sample on a box with many pools). The same
+# values as those grep pipelines: grep -o reads line by line, and none of these
+# patterns can match across a line. The keys are plain words, never regex.
+# $1 = the first integer value of "key":N, 0 when there is none or it has no
+# digits (summary scalars precede the processes array, so the first match is
+# the master/summary value for keys that also appear per-process).
+_jint_v() {
+  local _re="\"$3\":([0-9]*)"
+  if [[ "$2" =~ ${_re} ]] && [[ -n "${BASH_REMATCH[1]}" ]]; then
+    printf -v "$1" '%s' "${BASH_REMATCH[1]}"
+  else
+    printf -v "$1" '%s' 0
+  fi
+}
+# $1 = the largest integer over every "key":N (per-process fields), 0 when
+# none; compared by length, then digit by digit (JSON integers carry no
+# leading zero), so no value is too large to compare.
+_jmax_v() {
+  local _s="$2" _re="\"$3\":([0-9]*)" _m="" _v
+  while [[ "${_s}" =~ ${_re} ]]; do
+    _v="${BASH_REMATCH[1]}"
+    _s="${_s#*"${BASH_REMATCH[0]}"}"
+    [[ -n "${_v}" ]] || continue
+    if [[ -z "${_m}" ]] || (( ${#_v} > ${#_m} )) \
+      || { (( ${#_v} == ${#_m} )) && [[ "${_v}" > "${_m}" ]]; }; then
+      _m="${_v}"
+    fi
+  done
+  printf -v "$1" '%s' "${_m:-0}"
+}
+# $1 = the first string value of "key":"..." on one line, empty when none.
+_jstr_v() {
+  local _nl=$'\n' _re
+  _re="\"$3\":\"([^\"${_nl}]*)\""
+  if [[ "$2" =~ ${_re} ]]; then
+    printf -v "$1" '%s' "${BASH_REMATCH[1]}"
+  else
+    printf -v "$1" '%s' ""
+  fi
+}
 # Parse pool socket name: sets _pool/_user/_ver (system pool is wwwNN, no dot);
 # returns non-zero when no numeric version can be derived.
 _parse_pool() {
@@ -372,22 +405,22 @@ for _sock in "${_socks[@]}"; do
   esac
   _t="_VPID_${_ver}"; _mpid="${!_t}"
   _st=$(_fcgi_get "${_sock}" /fpm-status "json&full")
-  printf '%s' "${_st}" | grep -q '"pool"' || continue
+  [[ "${_st}" == *'"pool"'* ]] || continue
 
-  _mstart=$(_num "$(_jint "${_st}" "start time")")
-  _acc=$(_num "$(_jint "${_st}" "accepted conn")")
-  _active=$(_num "$(_jint "${_st}" "active processes")")
-  _idle=$(_num "$(_jint "${_st}" "idle processes")")
-  _total=$(_num "$(_jint "${_st}" "total processes")")
-  _maxact=$(_num "$(_jint "${_st}" "max active processes")")
-  _mcr=$(_num "$(_jint "${_st}" "max children reached")")
-  _lq=$(_num "$(_jint "${_st}" "listen queue")")
-  _mlq=$(_num "$(_jint "${_st}" "max listen queue")")
-  _slow=$(_num "$(_jint "${_st}" "slow requests")")
+  _jint_v _mstart "${_st}" "start time"
+  _jint_v _acc "${_st}" "accepted conn"
+  _jint_v _active "${_st}" "active processes"
+  _jint_v _idle "${_st}" "idle processes"
+  _jint_v _total "${_st}" "total processes"
+  _jint_v _maxact "${_st}" "max active processes"
+  _jint_v _mcr "${_st}" "max children reached"
+  _jint_v _lq "${_st}" "listen queue"
+  _jint_v _mlq "${_st}" "max listen queue"
+  _jint_v _slow "${_st}" "slow requests"
   # peak_req_mem: max per-process "last request memory" (bytes). On pools with
   # real traffic the max dominates; on probe-only pools this may be 0 or the
   # probe's own small footprint — Phase 4 treats tiny values as idle noise.
-  _peak=$(_num "$(_jmax "${_st}" "last request memory")")
+  _jmax_v _peak "${_st}" "last request memory"
   # First live pool of a version supplies master_start for its version record.
   _t="_VMST_${_ver}"
   [ -z "${!_t}" ] && printf -v "_VMST_${_ver}" '%s' "${_mstart}"
@@ -427,32 +460,32 @@ for _ver in ${_VERS_SEEN}; do
   _ooom=0; _ohash=0; _oscripts=0; _okeys=0; _omaxkeys=0; _oconf=0; _omaxf=0
   _afn=0; _aen=0; _aseg=0; _aavail=0; _aent=0; _aexp=0; _aconf=0
   _pr=$(_fcgi_get "${_vtsock}" "${_PROBE_PHP}" "")
-  if printf '%s' "${_pr}" | grep -q '"probe":"ok"'; then
+  if [[ "${_pr}" == *'"probe":"ok"'* ]]; then
     _pok=1
-    _php=$(_jstr "${_pr}" "php"); _php=${_php//[^A-Za-z0-9._-]/}
-    _mlb=$(_num "$(_jint "${_pr}" "memory_limit_bytes")")
-    _ofn=$(_num "$(_jint "${_pr}" "opcache_fn")")
-    _oie=$(_num "$(_jint "${_pr}" "opcache_ini_enable")")
-    _ores=$(_num "$(_jint "${_pr}" "opcache_restricted")")
-    _oen=$(_num "$(_jint "${_pr}" "opcache_enabled")")
-    _oused=$(_num "$(_jint "${_pr}" "opcache_used_bytes")")
-    _ofree=$(_num "$(_jint "${_pr}" "opcache_free_bytes")")
-    _owaste=$(_num "$(_jint "${_pr}" "opcache_wasted_bytes")")
-    _ohit=$(_num "$(_jint "${_pr}" "opcache_hit_x100")")
-    _ooom=$(_num "$(_jint "${_pr}" "opcache_oom_restarts")")
-    _ohash=$(_num "$(_jint "${_pr}" "opcache_hash_restarts")")
-    _oscripts=$(_num "$(_jint "${_pr}" "opcache_cached_scripts")")
-    _okeys=$(_num "$(_jint "${_pr}" "opcache_cached_keys")")
-    _omaxkeys=$(_num "$(_jint "${_pr}" "opcache_max_keys")")
-    _oconf=$(_num "$(_jint "${_pr}" "opcache_conf_bytes")")
-    _omaxf=$(_num "$(_jint "${_pr}" "opcache_max_files")")
-    _afn=$(_num "$(_jint "${_pr}" "apcu_fn")")
-    _aen=$(_num "$(_jint "${_pr}" "apcu_enabled")")
-    _aseg=$(_num "$(_jint "${_pr}" "apcu_seg_bytes")")
-    _aavail=$(_num "$(_jint "${_pr}" "apcu_avail_bytes")")
-    _aent=$(_num "$(_jint "${_pr}" "apcu_entries")")
-    _aexp=$(_num "$(_jint "${_pr}" "apcu_expunges")")
-    _aconf=$(_num "$(_jint "${_pr}" "apcu_conf_bytes")")
+    _jstr_v _php "${_pr}" "php"; _php=${_php//[^A-Za-z0-9._-]/}
+    _jint_v _mlb "${_pr}" "memory_limit_bytes"
+    _jint_v _ofn "${_pr}" "opcache_fn"
+    _jint_v _oie "${_pr}" "opcache_ini_enable"
+    _jint_v _ores "${_pr}" "opcache_restricted"
+    _jint_v _oen "${_pr}" "opcache_enabled"
+    _jint_v _oused "${_pr}" "opcache_used_bytes"
+    _jint_v _ofree "${_pr}" "opcache_free_bytes"
+    _jint_v _owaste "${_pr}" "opcache_wasted_bytes"
+    _jint_v _ohit "${_pr}" "opcache_hit_x100"
+    _jint_v _ooom "${_pr}" "opcache_oom_restarts"
+    _jint_v _ohash "${_pr}" "opcache_hash_restarts"
+    _jint_v _oscripts "${_pr}" "opcache_cached_scripts"
+    _jint_v _okeys "${_pr}" "opcache_cached_keys"
+    _jint_v _omaxkeys "${_pr}" "opcache_max_keys"
+    _jint_v _oconf "${_pr}" "opcache_conf_bytes"
+    _jint_v _omaxf "${_pr}" "opcache_max_files"
+    _jint_v _afn "${_pr}" "apcu_fn"
+    _jint_v _aen "${_pr}" "apcu_enabled"
+    _jint_v _aseg "${_pr}" "apcu_seg_bytes"
+    _jint_v _aavail "${_pr}" "apcu_avail_bytes"
+    _jint_v _aent "${_pr}" "apcu_entries"
+    _jint_v _aexp "${_pr}" "apcu_expunges"
+    _jint_v _aconf "${_pr}" "apcu_conf_bytes"
   else
     echo "$(date) probe failed for php${_ver} via ${_vtsock}" >> "${_pthLog}"
   fi

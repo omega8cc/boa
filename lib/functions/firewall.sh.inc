@@ -360,6 +360,57 @@ _csf_kill_own() {
   return 0
 }
 
+# lfd login triggers whose lines only a local program could write: SMTP AUTH,
+# POP3 and IMAP read mail.log, where no BOA service writes such lines (postfix
+# takes no SMTP AUTH, no POP3 or IMAP server runs), and the distributed FTP
+# login check reads pure-ftpd's "is now logged in" line, which the session
+# writes as the account it serves, so rsyslog keeps it out of messages with
+# every other user's ftp lines. A forged line made lfd block the address it
+# named on every port. Only the shipped values ("10", and "5" for LF_DISTFTP)
+# are retuned, as the other retunes do, and lfd restarts once to read them: it
+# reads csf.conf only when it starts, and a pass never restarts it otherwise.
+_csf_forgeable_login_triggers_off() {
+  local _c=/etc/csf/csf.conf
+  grep -qE '^((LF_SMTPAUTH|LF_POP3D|LF_IMAPD) = "10"|LF_DISTFTP = "5")$' "${_c}" 2> /dev/null \
+    || return 0
+  sed -i -E -e 's/^(LF_SMTPAUTH|LF_POP3D|LF_IMAPD) = "10"$/\1 = "0"/' \
+    -e 's/^LF_DISTFTP = "5"$/LF_DISTFTP = "0"/' "${_c}" &> /dev/null
+  wait
+  _mrun "service lfd restart"
+}
+
+# lfd's SSH login rules in csf's RegexMain.pm match only the sshd[PID] tag, and
+# OpenSSH 9.8 and newer logs logins and failures as sshd-session[PID], so
+# LF_SSHD counted no failure at all. Each rule takes an optional -session
+# suffix, non-capturing so no capture number the rules read moves. The edited
+# copy must keep every rule and compile before it replaces the live file, and
+# lfd restarts once to load it. This fixes csf's code, not a setting, so it
+# runs with _CUSTOM_CONFIG_CSF=YES too.
+_csf_lfd_sshd_session_rules() {
+  local _rm=/usr/local/csf/lib/ConfigServer/RegexMain.pm
+  local _old='sshd\[\d+\]'
+  local _fix='sshd(?:-session)?\[\d+\]'
+  local _tmp="${_rm}.boa-new"
+  local _cnt _got
+  [[ -e "${_rm}" ]] || return 0
+  _cnt=$(grep -oF "${_old}" "${_rm}" 2> /dev/null | wc -l)
+  [[ "${_cnt}" -gt 0 ]] || return 0
+  rm -f "${_tmp}"
+  sed 's/sshd\\\[\\d+\\\]/sshd(?:-session)?\\[\\d+\\]/g' "${_rm}" > "${_tmp}" 2> /dev/null
+  _got=$(grep -oF "${_fix}" "${_tmp}" 2> /dev/null | wc -l)
+  if [[ "${_got}" -eq "${_cnt}" ]] \
+    && ! grep -qF "${_old}" "${_tmp}" \
+    && perl -I/usr/local/csf/lib -c "${_tmp}" &> /dev/null \
+    && chown --reference="${_rm}" "${_tmp}" \
+    && chmod --reference="${_rm}" "${_tmp}" \
+    && mv -f "${_tmp}" "${_rm}"; then
+    _mrun "service lfd restart"
+  else
+    rm -f "${_tmp}"
+    _msg "WARN: lfd SSH login rules left as shipped, sshd-session not matched"
+  fi
+}
+
 _csf_lfd_install_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _csf_lfd_install_upgrade"
@@ -447,7 +498,9 @@ _csf_lfd_install_upgrade() {
         wait
         sed -i "s/^DROP_OUT_LOGGING = \"1\"$/DROP_OUT_LOGGING = \"0\"/g" /etc/csf/csf.conf &> /dev/null
         wait
+        _csf_forgeable_login_triggers_off
       fi
+      _csf_lfd_sshd_session_rules
       if [ "${_VMFAMILY}" = "VZ" ]; then
         sed -i "s/^PORTFLOOD .*/PORTFLOOD = \"\"/g" /etc/csf/csf.conf &> /dev/null
         wait
