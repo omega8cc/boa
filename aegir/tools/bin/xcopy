@@ -7247,6 +7247,25 @@ _migrate_init() {
             _xcopy_in_real_dir "${_USR}/static/control" _xcopy_copy_here "${_tgt}" \
               "${_DST}/static/control" '' -aEAXqu ${_ieni} --exclude='*/' \
               --exclude=/web-group-notes.txt '--exclude=/.web-group-notes.txt.put.*'
+            # MyQuick.info, which the target's install writes, sends the
+            # account's Delete and Migrate safety copies to the fast dumps, and
+            # the copy above only adds: an account that left them
+            # (MyClassic.info) held both there and was on them again. It
+            # follows the source both ways, as in xoct, when the source's
+            # control directory can be read at all; a link the tenant keeps at
+            # the name is no deletion, and the copy above carries it.
+            if _xcopy_in_real_dir "${_USR}/static/control" test -f ./fpm.info; then
+              if _xcopy_in_real_dir "${_USR}/static/control" \
+                test -f ./MyQuick.info -a ! -L ./MyQuick.info; then
+                _xcopy_in_real_dir "${_USR}/static/control" _xcopy_put_file_remote_here \
+                  MyQuick.info "${_tgt}" "${_DST}/static/control" "${_ieni}"
+              elif [ "${_MODE}" = "LIVE" ] \
+                && ! _xcopy_in_real_dir "${_USR}/static/control" \
+                  test -e ./MyQuick.info -o -L ./MyQuick.info; then
+                _xcopy_remote_in "${_tgt}" "${_DST}/static/control" \
+                  'rm -f -- ./MyQuick.info' &> /dev/null
+              fi
+            fi
           fi
           #
           # backups/ and backup-exports/ follow the nightly's store layout
