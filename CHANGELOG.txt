@@ -1,4 +1,16 @@
 ###
+### In development - changes since BOA-5.88.888
+###
+
+@=> Security
+
+    * Drupal 7 core 7.108.1 (D7ES): the Field UI fix of SA-CORE-2026-014, the
+      cache hardening of SA-CORE-2024-008 restored, and an access bypass
+      through external authentication names that differ only in case. A
+      panel build no longer puts the older core back over the one the Ægir
+      package carries, as it did while the pin stayed at 7.106.3.
+
+###
 ### Stable BOA-5.88.888 PRO/LTS - DRAGON EDITION
 ### Date: Mon 23 Nov 2026 13:32:57 CET in Warsaw
 ### Enjoy the luck of the Dragon
