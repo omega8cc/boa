@@ -1485,6 +1485,9 @@
       a real module no longer takes its place (the panel recorded a test
       copy of canvas_translate on Drupal CMS). From Drupal 11.2 on the
       type is read from the parsed .info.yml, as Drupal 11.2 reads it.
+      Drupal 7 and Backdrop platforms also leave out a name that is no
+      PHP function name, as those cores do (Backdrop's own test file
+      basis.tests.info was recorded as a theme); Drupal 6 takes any name.
 
     * On Backdrop the panel records a module or theme that an install
       profile and the root folder both hold at the root folder's copy,
