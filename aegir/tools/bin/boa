@@ -1288,6 +1288,13 @@ _client_mail_hold() {
   _MAIL_HOLD_RCPT=""
   return 1
 }
+
+# The log as its mail carries it: the password in a mysql:// URL, which Drush
+# prints in debug mode, is masked and nothing else is changed.
+_mail_mask_dbpass() {
+  LC_ALL=C sed -E "s#(mysqli?:(\\\\?/){2}[^:@/[:space:]'\"]*:)[^@[:space:]'\"]*(@[^@/:,[:space:]'\"]*)*@#\1***@#g" "$@"
+}
+
 _send_report() {
   if [ -e "${_IN_BARRACUDA_LOG}" ]; then
     _THIS_LOG="${_IN_BARRACUDA_LOG}"
@@ -1312,7 +1319,8 @@ _send_report() {
     _repSub="REPORT: ${_repSub} on ${_hName}"
     _repSub=$(echo -n ${_repSub} | fmt -su -w 2500 2>&1)
     _if_extended_report
-    cat ${_THIS_LOG} | s-nail -s "${_repSub} at ${_NOW}${_MAIL_HOLD_SFX}" ${_MAIL_HOLD_RCPT}
+    cat ${_THIS_LOG} | _mail_mask_dbpass \
+      | s-nail -s "${_repSub} at ${_NOW}${_MAIL_HOLD_SFX}" ${_MAIL_HOLD_RCPT}
     echo "${_repSub} sent to ${_MAIL_HOLD_RCPT}"
   fi
 }
@@ -1362,7 +1370,8 @@ _send_errors() {
     _repSub="REPORT: ${_repSub} on ${_hName}"
     _repSub=$(echo -n ${_repSub} | fmt -su -w 2500 2>&1)
     _if_extended_report
-    cat ${_THIS_LOG} | s-nail -s "${_repSub} at ${_NOW}${_MAIL_HOLD_SFX}" ${_MAIL_HOLD_RCPT}
+    cat ${_THIS_LOG} | _mail_mask_dbpass \
+      | s-nail -s "${_repSub} at ${_NOW}${_MAIL_HOLD_SFX}" ${_MAIL_HOLD_RCPT}
     echo "${_repSub} sent to ${_MAIL_HOLD_RCPT}"
   fi
 }
@@ -1823,6 +1832,21 @@ _barracuda_install() {
   fi
 }
 
+# The reports below this folder hold what a run printed, in debug mode a
+# database password among it, in files left readable to anyone: with the
+# folder itself closed no other account reaches them, whatever their modes.
+# A link at the name, or a folder that is not root's, is left as it is
+# (status 1).
+_reports_root_only() {
+  local _d="${_vBs}/reports" _s
+  [ -L "${_d}" ] && return 1
+  [ -d "${_d}" ] || return 0
+  _s=$(stat -c '%u:%g:%a' -- "${_d}" 2> /dev/null)
+  [ "${_s%%:*}" = "0" ] || return 1
+  [ "${_s}" = "0:0:700" ] && return 0
+  chown -h root:root -- "${_d}" && chmod 00700 -- "${_d}"
+}
+
 _init_start() {
   if [ -e "/run/boa_run.pid" ]; then
     echo
@@ -1858,6 +1882,8 @@ _init_start() {
     trap '_boa_on_signal TERM 143' TERM
     mkdir -p ${_LOG_IN_DIR}
     mkdir -p ${_LOG_UP_DIR}
+    _reports_root_only \
+      || echo "ALRT: ${_vBs}/reports is a link or not root's own folder, left as it is: other accounts may reach the reports"
     cd ${_vBs}
     rm -f ${_vBs}/*.sh.cnf*
     rm -f ${_vBs}/BARRACUDA.sh*
