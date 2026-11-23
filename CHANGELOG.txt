@@ -35,6 +35,13 @@
 
 @=> Important Fixes
 
+    * A Delete, Migrate, Restore or forced reinstall keeps a database, and
+      its login, that another site names as its own, and ends with a
+      warning that says which site. A copy whose making was cut off before
+      it had settings of its own is listed as a site by the next Verify of
+      its platform, and deleting it dropped the database of the live site
+      it was copied from.
+
     * A few uncommon lines of a shell account that the redirection reading
       had refused run again: a test bracket behind a wrapper, a redirection
       glued to a NAME=value word, a blank inside ${...}. dr finds its site
