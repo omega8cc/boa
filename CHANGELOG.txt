@@ -3879,6 +3879,10 @@
 
 @=> Changes
 
+    * New Drupal CMS platforms are built on 2.2.10, farmOS on 4.0.12, and
+      the CiviCRM platforms for Drupal 11 and Backdrop on CiviCRM 6.20.1;
+      the Grav fallback is 2.2.33. Existing platforms keep their sites.
+
     * A barracuda upgrade no longer sends Valkey a reload signal. Valkey has
       no reload: the signal only wrote a warning to its log and changed
       nothing. The init script's reload now says so and sends nothing.
