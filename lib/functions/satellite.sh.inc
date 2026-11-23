@@ -5093,6 +5093,25 @@ _satellite_if_db_broker() {
 }
 
 #
+# An account in the box's own name mode (_THIS_DB_HOST=FQDN) once reached
+# the password step with the name already resolved, taken for a remote
+# server, so its password file was given the database root password. A file
+# that still holds exactly that password (compared here, never printed) is
+# removed with its PHP twin, never kept or moved to a backup: the step's own
+# random password replaces both. Status 0 when it was removed.
+_satellite_root_pass_leftover_drop() {
+  local _r _p
+  [ "${_THIS_DB_HOST}" = "FQDN" ] || return 1
+  _r=$(cat /root/.my.pass.txt 2> /dev/null | tr -d '\n')
+  [ -n "${_r}" ] || return 1
+  _p=$(_acct_read_in "${_ROOT}" ".${_USER}.pass.txt" | tr -d '\n')
+  [ "${_p}" = "${_r}" ] || return 1
+  _acct_in_real_dir "${_ROOT}" rm -f -- "./.${_USER}.pass.txt" "./.${_USER}.pass.php"
+  _msg "ALRT: ${_USER}: its database password file held the root password, replaced by a new random one"
+  return 0
+}
+
+#
 # Generate provision backend db_passwd.
 _provision_backend_dbpass_generate() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -5183,6 +5202,7 @@ _provision_backend_dbpass_generate() {
     _ENC_PASS="${_ESC_PASS}"
   fi
 
+  _satellite_root_pass_leftover_drop
   ### Both files are put in the account root (the instance user's) as fresh
   ### 0600 files handed to that user, never written, handed over or given a
   ### mode through a link put at the name.
@@ -5386,6 +5406,7 @@ _provision_backend_dbpass_sync() {
     _THIS_DB_PORT=3306
   fi
   _L_SYS="${_ROOT}/.${_USER}.pass.txt"
+  _satellite_root_pass_leftover_drop
   ### The account home allows traversal, so a lax mode on these backups is
   ### readable by local users by exact path; never trust the moved file's
   ### inherited mode -- set 0600 explicitly. Moved by name inside the real
@@ -5403,7 +5424,7 @@ _provision_backend_dbpass_sync() {
     "./.${_USER}.pass.php-pre-${_xSrl}-${_X_VERSION}-${_NOW}" &> /dev/null
   _provision_backend_dbpass_generate
   if [ ! -z "${_ESC_PASS}" ] || [ ! -z "${_ENC_PASS}" ]; then
-    local _pUpd
+    local _pUpd _pDbHost
     su -s /bin/bash - ${_USER} -c "${_DRUSHCMD} @hostmaster \
       sqlq \"UPDATE hosting_db_server SET db_passwd='${_ESC_PASS}' \
       WHERE db_user='${_USER}'\"" &> /dev/null
@@ -5453,9 +5474,15 @@ ALTER USER '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_ESC_PASS}';
 EOFMYSQL
     fi
     ### The aliases are the instance user's: edited inside the real .drush,
-    ### never through a link put at an alias or at .drush.
+    ### never through a link put at an alias or at .drush. The box's own
+    ### name mode keeps the name its install gave the database server.
+    _pDbHost="${_SQL_CONNECT}"
+    if [ "${_THIS_DB_HOST}" = "FQDN" ] \
+      && [ ! -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
+      _pDbHost="${_hName}"
+    fi
     _acct_in_real_dir "${_ROOT}/.drush" _satellite_edit_all_here \
-      "s/mysql:\/\/${_USER}:.*/mysql:\/\/${_USER}:${_ENC_PASS}@${_SQL_CONNECT}',/g" \
+      "s/mysql:\/\/${_USER}:.*/mysql:\/\/${_USER}:${_ENC_PASS}@${_pDbHost}',/g" \
       'server_*.alias.drushrc.php' &> /dev/null
     wait
   else
@@ -6065,6 +6092,8 @@ _satellite_run_pre_install() {
       0) _msg "${_STATUS} A: Old panel core: error handler made safe for PHP 8" ;;
       2) _msg "${_STATUS} A: ALRT: Old panel core keeps an error handler PHP 8 cannot call" ;;
     esac
+    ### syncpass replaces the password file without reading it: check it first
+    _satellite_root_pass_leftover_drop
     _RST=$(syncpass fix ${_USER} 2>&1)
     _provision_backend_dbpass_sync
   fi
@@ -8655,7 +8684,8 @@ _satellite_ctrl_dir_here() {
 }
 # The control directory on install and upgrade (run inside it): fpm.info
 # and cli.info where missing (cli.info from a regular fpm.info), the README
-# and this serial's stamp on its first pass, the tree handed to the main
+# and this serial's stamp on its first pass, at install the release pass's
+# defaults where the owner has none, the tree handed to the main
 # login as _satellite_reown_own_here hands it (never a link, nor a file the
 # login hard-linked there, nor what another user owns: the login can rename
 # into it what another account left group-writable).
@@ -8683,6 +8713,19 @@ _satellite_ctrl_make_here() {
   # the account's owner puts here.
   if [ "${_STATUS}" = "INIT" ] && [ ! -e ./.disFastTrack.pid ]; then
     _acct_put_here .disFastTrack.pid OK
+  fi
+  # The release pass's two defaults, by its rules (BOA.sh.txt _ctrl_seed_here):
+  # it seeds each account once per release, so an account made after it would
+  # wait for the next one, its Delete and Migrate safety copies taking the
+  # classic dump meanwhile (only MyQuick.info sends them to the fast dumps).
+  # At install only: what an existing account holds is the owner's choice.
+  if [ "${_STATUS}" = "INIT" ]; then
+    if [ ! -e ./MyQuick.info ] && [ ! -e ./MyClassic.info ]; then
+      _acct_put_here MyQuick.info ON
+    fi
+    if [ ! -e ./FastTrack.info ] && [ ! -e ./ClassicTrack.info ]; then
+      _acct_put_here ClassicTrack.info ON
+    fi
   fi
   # an account still on the box-wide group gets group root here, as the ltd
   # worker gives it (_ltd_ctrl_shut): what the login makes in this

@@ -256,10 +256,15 @@ _provision_backend_dbpass_generate() {
         fi
       fi
     else
+      ### Remote DB mode takes the root password from /root/.my.pass.txt,
+      ### which barracuda writes, and refuses to run without once the
+      ### Master is installed. The fixed fallback printed in the public code
+      ### is never the Master's database password: without the file the
+      ### password stays empty and nothing is changed for aegir_root.
       if [ -e "/root/.my.pass.txt" ]; then
         _ESC_PASS=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
       else
-        _ESC_PASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
+        _ESC_PASS=""
       fi
     fi
     _isPythonTwo="$(which python2)"
@@ -282,18 +287,24 @@ _provision_backend_dbpass_generate() {
       _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
       _ESC_PASS=$(_sanitize_string "${_ESC_PASS}" 2>&1)
     else
+      ### never the published fallback (see above)
       if [ -e "/root/.my.pass.txt" ]; then
         _ESC_PASS=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
       else
-        _ESC_PASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
+        _ESC_PASS=""
+      fi
+      if [ -z "${_ESC_PASS}" ]; then
+        _msg "ALRT: /root/.my.pass.txt not found or empty; remote DB mode sets no database password for aegir_root"
       fi
     fi
     _ENC_PASS="${_ESC_PASS}"
   fi
 
-  echo "${_ESC_PASS}" > ${_L_SYS}
-  chown aegir:aegir ${_L_SYS} &> /dev/null
-  chmod 0600 ${_L_SYS}
+  if [ ! -z "${_ESC_PASS}" ]; then
+    echo "${_ESC_PASS}" > ${_L_SYS}
+    chown aegir:aegir ${_L_SYS} &> /dev/null
+    chmod 0600 ${_L_SYS}
+  fi
 
   if [ "${_THIS_DB_HOST}" = "localhost" ] \
     || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
@@ -328,6 +339,11 @@ _provision_backend_dbpass_generate() {
     _THIS_DB_PORT=6033
   else
     _THIS_DB_PORT=3306
+  fi
+  ### No password (said above): aegir_root keeps its rows as they are, never
+  ### an empty password. The host and port above are still set for the sync.
+  if [ -z "${_ESC_PASS}" ]; then
+    return 0
   fi
   mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG PRIVILEGES" &> /dev/null
 
@@ -468,6 +484,10 @@ _provision_backend_dbpass_sync() {
   mv -f ${_L_SYS} ${_L_SYS}-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
   chmod 0600 ${_L_SYS}-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
   _provision_backend_dbpass_generate
+  ### No password made, nothing changed for it: the file goes back.
+  if [ -z "${_ESC_PASS}" ]; then
+    mv -f ${_L_SYS}-pre-${_xSrl}-${_X_VERSION}-${_NOW} ${_L_SYS} &> /dev/null
+  fi
   if [ ! -z "${_ESC_PASS}" ] && [ ! -z "${_ENC_PASS}" ]; then
     local _pUpd
     su -s /bin/bash - aegir -c "drush8 @hostmaster \
@@ -2051,10 +2071,11 @@ _aegir_master_install_upgrade() {
           fi
         fi
       else
+        ### never the published fallback (as in the upgrade's generate)
         if [ -e "/root/.my.pass.txt" ]; then
           _ESC_PASS=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
         else
-          _ESC_PASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
+          _ESC_PASS=""
         fi
       fi
       _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
@@ -2073,9 +2094,22 @@ _aegir_master_install_upgrade() {
         if [ -e "/root/.my.pass.txt" ]; then
           _ESC_PASS=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
         else
-          _ESC_PASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
+          _ESC_PASS=""
+        fi
+        if [ -z "${_ESC_PASS}" ]; then
+          _msg "ALRT: /root/.my.pass.txt not found or empty; remote DB mode sets no database password for aegir_root"
         fi
       fi
+    fi
+
+    ### No password (said above): stop before aegir_root is made, never with
+    ### an empty one; the hand-off below would refuse it anyway.
+    if [ -z "${_ESC_PASS}" ]; then
+      _msg "FATAL ERROR: no aegir_root database password, Ægir Master install aborted"
+      _msg "FATAL ERROR: Aborting Barracuda installer NOW!"
+      rm -f /opt/tmp/status-Barracuda-FAIL
+      touch /opt/tmp/status-Barracuda-FAIL
+      _clean_pid_exit _aegir_master_install_upgrade_i
     fi
 
     _ESC="*.*"

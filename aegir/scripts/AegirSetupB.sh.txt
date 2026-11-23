@@ -133,11 +133,8 @@ done
 ###
 ### Local variables
 ###
-if [ "${_THIS_DB_HOST}" = "FQDN" ]; then
-  # A test, not ||: tr exits 0 on an empty /etc/hostname
-  _THIS_DB_HOST="$(cat /etc/hostname 2>/dev/null | tr -d '\n')"
-  [ -n "${_THIS_DB_HOST}" ] || _THIS_DB_HOST="$(hostname -f 2>/dev/null)"
-fi
+# _THIS_DB_HOST is used as the account's cnf sets it: the panel's install
+# turns FQDN into the box's name itself, with the account's own login.
 _DIST_INSTALL=NO
 _STATUS=INIT
 _LOCAL_STATUS="${_STATUS}"
