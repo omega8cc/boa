@@ -11,6 +11,14 @@
     * websh reads the words in front of a Drush or dr runner after the
       shell's expansions too, as it reads those up to the command word.
 
+    * The install and upgrade reports under /var/backups/reports are root's
+      alone, and the mail of a report masks the database password Drush
+      prints in debug mode.
+
+    * An upgrade of an account in the box's own name database mode
+      (_THIS_DB_HOST=FQDN) also removes old backups of its password file
+      that hold the root password, and says how many.
+
 @=> New Features
 
     * Upgrade all sites, the platform task that upgrades every Drupal 10 or
@@ -42,6 +50,18 @@
       from the platform's own records alone, on the site form and in
       Install, Import, Migrate and Clone tasks.
 
+    * An octopus upgrade no longer waits 50 seconds in part A for a queue run
+      that cannot start while the upgrade holds the account's queue runners,
+      and it no longer announces one. A server's first install keeps its
+      accelerated queue.
+
+    * The Upgrade and Upgrade all sites dialogs no longer call a site Ready
+      whose upgrade would be refused over what an earlier one left: a copy
+      from a run cut off in its move, one the next run cannot remove, or a
+      folder of the site on the new platform. The site's page and the
+      dialogs say Not ready with the reason, and Upgrade all sites leaves
+      the site out, where it took it first and stopped there.
+
     * A platform set to another command line PHP than its account's cli.info
       (a line in cli-per-platform.info, or a phpNN.info marker) no longer
       fails the Verify an octopus upgrade queues for it. During the upgrade
@@ -62,6 +82,10 @@
     * A Drush or dr line that gives an option from a variable of the
       option's own name (--uri=$uri) runs: websh took --uri= for an
       assignment to uri and refused the line.
+
+    * barracuda and octopus stop on an empty /root/.my.pass.txt and compare
+      its whole value with the password in /root/.my.cnf: an empty file, or
+      one holding only the beginning of that password, passed as in sync.
 
 ###
 ### Stable BOA-5.88.888 PRO/LTS - DRAGON EDITION
