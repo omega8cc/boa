@@ -55,6 +55,13 @@
       and it no longer announces one. A server's first install keeps its
       accelerated queue.
 
+    * The Upgrade and Upgrade all sites dialogs no longer call a site Ready
+      whose upgrade would be refused over what an earlier one left: a copy
+      from a run cut off in its move, one the next run cannot remove, or a
+      folder of the site on the new platform. The site's page and the
+      dialogs say Not ready with the reason, and Upgrade all sites leaves
+      the site out, where it took it first and stopped there.
+
     * A platform set to another command line PHP than its account's cli.info
       (a line in cli-per-platform.info, or a phpNN.info marker) no longer
       fails the Verify an octopus upgrade queues for it. During the upgrade
