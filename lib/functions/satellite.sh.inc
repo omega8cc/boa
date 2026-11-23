@@ -5093,22 +5093,49 @@ _satellite_if_db_broker() {
 }
 
 #
+# In the current (pinned) account home: each backup of the account's
+# password file that holds exactly $1 (compared here, never printed) is
+# removed with its PHP twin, and the count of them is printed. Only regular
+# files of a single link, read as _acct_read_here reads: the account owns
+# the home and can put any name there.
+_satellite_root_pass_backups_drop_here() {
+  local _f _n=0
+  for _f in "./.${_USER}.pass.txt-pre-"*; do
+    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
+    [ "$(stat -c %h -- "${_f}" 2> /dev/null)" = "1" ] || continue
+    [ "$(_acct_read_here "${_f#./}" | tr -d '\n')" = "${1}" ] || continue
+    rm -f -- "${_f}" \
+      "./.${_USER}.pass.php-pre-${_f#"./.${_USER}.pass.txt-pre-"}" 2> /dev/null
+    _n=$(( _n + 1 ))
+  done
+  echo "${_n}"
+}
+
+#
 # An account in the box's own name mode (_THIS_DB_HOST=FQDN) once reached
 # the password step with the name already resolved, taken for a remote
 # server, so its password file was given the database root password. A file
 # that still holds exactly that password (compared here, never printed) is
 # removed with its PHP twin, never kept or moved to a backup: the step's own
-# random password replaces both. Status 0 when it was removed.
+# random password replaces both. Upgrades of those years moved such a file
+# to a backup: one that still holds it goes too. Status 0 when the password
+# file was removed.
 _satellite_root_pass_leftover_drop() {
-  local _r _p
+  local _r _p _n _st=1
   [ "${_THIS_DB_HOST}" = "FQDN" ] || return 1
   _r=$(cat /root/.my.pass.txt 2> /dev/null | tr -d '\n')
   [ -n "${_r}" ] || return 1
   _p=$(_acct_read_in "${_ROOT}" ".${_USER}.pass.txt" | tr -d '\n')
-  [ "${_p}" = "${_r}" ] || return 1
-  _acct_in_real_dir "${_ROOT}" rm -f -- "./.${_USER}.pass.txt" "./.${_USER}.pass.php"
-  _msg "ALRT: ${_USER}: its database password file held the root password, replaced by a new random one"
-  return 0
+  if [ "${_p}" = "${_r}" ]; then
+    _acct_in_real_dir "${_ROOT}" rm -f -- "./.${_USER}.pass.txt" "./.${_USER}.pass.php"
+    _msg "ALRT: ${_USER}: its database password file held the root password, replaced by a new random one"
+    _st=0
+  fi
+  _n=$(_acct_in_real_dir "${_ROOT}" _satellite_root_pass_backups_drop_here "${_r}")
+  if [[ "${_n}" =~ ^[1-9][0-9]*$ ]]; then
+    _msg "ALRT: ${_USER}: backups of its database password file that held the root password removed: ${_n}"
+  fi
+  return "${_st}"
 }
 
 #
