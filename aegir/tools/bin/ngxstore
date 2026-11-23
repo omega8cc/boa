@@ -1,0 +1,1228 @@
+#!/bin/bash
+###
+### ngxstore -- nginx loads only what root has judged of a hosted account's files
+###
+### Root's nginx master opens, as root, every log file a loaded file names and
+### reads every file it includes, at each reload and each configtest. A hosted
+### account's backend user writes its own vhosts and the fragments they
+### include, and site code runs as that user in backend tasks. So no byte of an
+### account's tree may reach nginx unjudged.
+###
+###   ngxstore report       judge, read-only, every account file nginx would
+###                         load and write /var/log/boa/ngxstore.report
+###   ngxstore judge <account> <file> [<kind>]
+###                         judge one file as the account's (exit 0 kept, 1 refused)
+###   ngxstore canon <file> the file as the store would write it, unjudged
+###   ngxstore sync [--reload-if-changed] [--quiet]
+###                         armed: each account's judged files copied into the
+###                         root-only store /etc/nginx/boa-acct.d/<account>/,
+###                         root's config pointed at it, tested, an account's
+###                         previous set put back when the test names it;
+###                         not armed: the account paths put back if a switch
+###                         is found, else nothing
+###   ngxstore unarm        the account paths again, whatever the setting
+###
+### Armed when /root/.barracuda.cnf sets _NGINX_ACCT_STORE=YES.
+###
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+export SHELL=/bin/bash
+# the test switches never reach a run that sudo started
+[ -n "${SUDO_UID:-}${SUDO_USER:-}" ] && unset NGXS_TEST && export NGXS_TEST
+[ "${NGXS_TEST}" = "1" ] && [ -n "${NGXS_PATH}" ] && export PATH="${NGXS_PATH}:${PATH}"
+
+_msg() { echo "ngxstore: $*"; }
+_die() { echo "ngxstore: ERROR: $*" >&2; exit 2; }
+
+[ "$(id -u)" = "0" ] || [ "${NGXS_TEST}" = "1" ] || _die "run as root"
+
+_ngxs_perl() {
+  perl - "$@" <<'NGXPL'
+use strict;
+use warnings;
+use Fcntl qw(O_RDONLY O_WRONLY O_CREAT O_EXCL O_NOFOLLOW O_NONBLOCK S_ISREG S_ISDIR S_ISLNK);
+use Digest::MD5 qw(md5_hex);
+
+my %O = (
+  disk     => '/data/disk',
+  store    => '/etc/nginx/boa-acct.d',
+  conf     => '/etc/nginx/nginx.conf',
+  nginx    => '/usr/sbin/nginx',
+  prefix   => '',
+  sslpriv  => '/etc/ssl/private',
+  dataconf => '/data/conf',
+  maxsz    => 4194304,
+  test_owner => '',
+);
+if (($ENV{NGXS_TEST} // '') eq '1') {
+  for my $k (keys %O) {
+    my $e = 'NGXS_' . uc $k;
+    $O{$k} = $ENV{$e} if defined $ENV{$e} && $ENV{$e} ne '';
+  }
+}
+my $ACCT_RE = qr/^[a-z0-9][a-z0-9_-]{0,31}$/;
+
+### -------- the tokenizer: nginx's ngx_conf_read_token, char for char --------
+
+sub ngx_unescape {
+  my ($raw) = @_;
+  my $o = '';
+  my $i = 0;
+  my $n = length $raw;
+  while ($i < $n) {
+    my $c = substr($raw, $i, 1);
+    if ($c eq '\\' && $i + 1 < $n) {
+      my $d = substr($raw, $i + 1, 1);
+      if ($d eq '"' || $d eq "'" || $d eq '\\') { $o .= $d; $i += 2; next; }
+      if ($d eq 't') { $o .= "\t"; $i += 2; next; }
+      if ($d eq 'r') { $o .= "\r"; $i += 2; next; }
+      if ($d eq 'n') { $o .= "\n"; $i += 2; next; }
+    }
+    $o .= $c;
+    $i++;
+  }
+  return $o;
+}
+
+# One statement: ('stmt'|'block', [words], line), ('end', [], line) or ('done').
+sub ngx_token {
+  my ($sr, $pr, $lr) = @_;
+  my @w;
+  my ($found, $need_space, $last_space, $sharp, $variable, $quoted, $sq, $dq) =
+    (0, 0, 1, 0, 0, 0, 0, 0);
+  my ($start, $wl) = (0, $$lr);
+  my $len = length $$sr;
+  for (;;) {
+    if ($$pr >= $len) {
+      die "line $$lr: unexpected end of file, expecting \";\" or \"}\"\n"
+        if @w || !$last_space;
+      return ('done', [], $$lr);
+    }
+    my $ch = substr($$sr, $$pr, 1);
+    $$pr++;
+    if ($ch eq "\n") { $$lr++; $sharp = 0 if $sharp; }
+    next if $sharp;
+    if ($quoted) { $quoted = 0; next; }
+    if ($need_space) {
+      if ($ch eq ' ' || $ch eq "\t" || $ch eq "\r" || $ch eq "\n") {
+        $last_space = 1; $need_space = 0; next;
+      }
+      return ('stmt', \@w, $wl) if $ch eq ';';
+      return ('block', \@w, $wl) if $ch eq '{';
+      if ($ch eq ')') { $last_space = 1; $need_space = 0; }
+      else { die "line $$lr: unexpected \"$ch\"\n"; }
+    }
+    if ($last_space) {
+      $start = $$pr - 1;
+      next if $ch eq ' ' || $ch eq "\t" || $ch eq "\r" || $ch eq "\n";
+      $wl = $$lr unless @w;
+      if ($ch eq ';' || $ch eq '{') {
+        die "line $$lr: unexpected \"$ch\"\n" unless @w;
+        return ($ch eq '{' ? 'block' : 'stmt', \@w, $wl);
+      }
+      if ($ch eq '}') {
+        die "line $$lr: unexpected \"}\"\n" if @w;
+        return ('end', [], $$lr);
+      }
+      if ($ch eq '#') { $sharp = 1; next; }
+      if ($ch eq '\\') { $quoted = 1; $last_space = 0; next; }
+      if ($ch eq '"') { $start++; $dq = 1; $last_space = 0; next; }
+      if ($ch eq "'") { $start++; $sq = 1; $last_space = 0; next; }
+      if ($ch eq '$') { $variable = 1; $last_space = 0; next; }
+      $last_space = 0;
+      next;
+    }
+    if ($ch eq '{' && $variable) { next; }
+    $variable = 0;
+    if ($ch eq '\\') { $quoted = 1; next; }
+    if ($ch eq '$') { $variable = 1; next; }
+    if ($dq) {
+      if ($ch eq '"') { $dq = 0; $need_space = 1; $found = 1; }
+    } elsif ($sq) {
+      if ($ch eq "'") { $sq = 0; $need_space = 1; $found = 1; }
+    } elsif ($ch eq ' ' || $ch eq "\t" || $ch eq "\r" || $ch eq "\n"
+      || $ch eq ';' || $ch eq '{') {
+      $last_space = 1; $found = 1;
+    }
+    if ($found) {
+      push @w, ngx_unescape(substr($$sr, $start, $$pr - 1 - $start));
+      return ('stmt', \@w, $wl) if $ch eq ';';
+      return ('block', \@w, $wl) if $ch eq '{';
+      $found = 0;
+    }
+  }
+}
+
+# The whole file as a tree: [{ name, args, line, block => [..] or undef }, ..]
+sub ngx_parse {
+  my ($text) = @_;
+  my @stack = ([]);
+  my $depth = 0;
+  my ($p, $l) = (0, 1);
+  for (;;) {
+    my ($r, $w, $wl) = ngx_token(\$text, \$p, \$l);
+    if ($r eq 'done') {
+      die "line $l: unexpected end of file, expecting \"}\"\n" if $depth;
+      last;
+    }
+    if ($r eq 'end') {
+      die "line $wl: unexpected \"}\"\n" unless $depth;
+      pop @stack; $depth--;
+      next;
+    }
+    my $node = { name => $w->[0], args => [ @{$w}[1 .. $#$w] ], line => $wl };
+    push @{ $stack[-1] }, $node;
+    if ($r eq 'block') {
+      $node->{block} = [];
+      push @stack, $node->{block};
+      $depth++;
+      die "line $wl: blocks nested too deep\n" if $depth > 12;
+    }
+  }
+  return $stack[0];
+}
+
+### -------- the canonical copy: exactly the judged tokens, each argument quoted --------
+
+sub q_word {
+  my ($w) = @_;
+  (my $e = $w) =~ s/([\\"])/\\$1/g;
+  $e =~ s/\t/\\t/g;
+  $e =~ s/\r/\\r/g;
+  $e =~ s/\n/\\n/g;
+  return "\"$e\"";
+}
+
+sub ngx_emit {
+  my ($nodes, $depth) = @_;
+  my $out = '';
+  my $ind = '  ' x $depth;
+  for my $n (@$nodes) {
+    my $name = $n->{name} =~ /^[A-Za-z0-9_]+$/ ? $n->{name} : q_word($n->{name});
+    my $line = $ind . join(' ', $name, map { q_word($_) } @{ $n->{args} });
+    if ($n->{block}) {
+      $out .= "$line {\n" . ngx_emit($n->{block}, $depth + 1) . "$ind}\n";
+    } else {
+      $out .= "$line;\n";
+    }
+  }
+  return $out;
+}
+
+### -------- where an account path leads, and what kind of file it may be --------
+
+my %SRV_OK = map { $_ => 1 } qw(absolute_redirect access_log add_header alias allow
+  auth_basic charset default_type deny error_page etag expires fastcgi_cache
+  fastcgi_cache_bypass fastcgi_cache_key fastcgi_cache_lock fastcgi_cache_lock_timeout
+  fastcgi_cache_methods fastcgi_cache_min_uses fastcgi_cache_use_stale fastcgi_cache_valid
+  fastcgi_ignore_headers fastcgi_index fastcgi_intercept_errors fastcgi_no_cache
+  fastcgi_param fastcgi_pass fastcgi_pass_header fastcgi_split_path_info flv
+  gzip_http_version http2 http3 http3_hq if if_modified_since include index internal
+  limit_conn limit_conn_status limit_req limit_req_status listen location log_not_found
+  mp4 mp4_buffer_size mp4_max_buffer_size open_file_cache return rewrite root
+  send_timeout server_name set ssi ssi_silent_errors ssl_certificate ssl_certificate_key
+  ssl_conf_command ssl_dhparam try_files types);
+my %SRV_BLOCK = map { $_ => 1 } qw(location if types);
+
+# The kind of the file at an account-relative path (a glob only in the last
+# part, and only after the fixed start of a name BOA writes there), or undef.
+sub rel_kind {
+  my ($rel) = @_;
+  return undef if $rel =~ m{(^|/)\.{1,2}(/|$)} || $rel =~ m{//} || $rel =~ m{[*?\[\]].*/};
+  return 'srv' if $rel eq 'config/includes/nginx_vhost_common.conf';
+  return 'srv' if $rel =~ m{^config/includes/(ip_access|user_admin_access|ai_policy)/[^/*?\[\]][^/]*$};
+  return 'uamap' if $rel =~ m{^config/includes/user_admin_access_map/[^/*?\[\]][^/]*$};
+  return 'fhttp' if $rel =~ m{^config/includes/(ip_access|user_admin_access)_front/[^/]*\.http\.conf$};
+  return 'fsrv' if $rel =~ m{^config/includes/(ip_access|user_admin_access)_front/[^/]*\.srv\.conf$};
+  return 'srv' if $rel =~ m{^config/server_master/nginx/post\.d/(fpm_include|nginx_force_include|nginx_vhost_include)[^/]*$};
+  return 'vhost' if $rel =~ m{^config/server_master/nginx/vhost\.d/[^/]+$};
+  return 'srv' if $rel =~ m{^config/server_master/nginx/subdir\.d/[^/*?\[\]]+/[^/]+$};
+  return 'cert' if $rel =~ m{^tools/le/certs/[^/*?\[\]]+/[^/*?\[\]]+$};
+  return 'cert' if $rel =~ m{^config/server_master/ssl\.d/[^/*?\[\]]+/[^/*?\[\]]+$};
+  return undef;
+}
+
+# A file (or a folder) nginx may read straight: every part root's, no group or
+# other write, no link.
+sub root_chain_ok {
+  my ($p) = @_;
+  return 0 unless $p =~ m{^/};
+  my $want = $O{test_owner} ? $> : 0;
+  my $acc = '';
+  for my $part (grep { length } split m{/}, $p) {
+    $acc .= "/$part";
+    my @st = lstat $acc or return 0;
+    next if $O{test_owner} && index($O{test_owner}, $acc) == 0 && length $acc < length $O{test_owner};
+    return 0 if S_ISLNK($st[2]) || $st[4] != $want || ($st[2] & 022);
+  }
+  return 1;
+}
+
+sub glob_re {
+  my ($g) = @_;
+  my $r = '';
+  my $i = 0;
+  while ($i < length $g) {
+    my $c = substr($g, $i, 1);
+    if ($c eq '*') { $r .= '[^/]*'; }
+    elsif ($c eq '?') { $r .= '[^/]'; }
+    elsif ($c eq '[') {
+      my $j = index($g, ']', $i + 1);
+      return undef if $j < 0;
+      my $cls = substr($g, $i + 1, $j - $i - 1);
+      $cls =~ s/^!/^/;
+      $cls =~ s/([\\\]])/\\$1/g;
+      $r .= "[$cls]";
+      $i = $j;
+    } else { $r .= quotemeta $c; }
+    $i++;
+  }
+  return $g =~ /^\./ ? qr/^$r$/ : qr/^(?!\.)$r$/;
+}
+
+### -------- the judge --------
+
+our ($A, $REL, @WHY, @REFS);
+
+sub why { push @WHY, sprintf('line %d: %s', $_[0]{line}, $_[1]); }
+
+# An include or certificate path in an account's file: the account's own path
+# of the right kind (recorded, so it is copied too), else a reason.
+sub acct_ref {
+  my ($n, $path, @kinds) = @_;
+  my $base = "$O{disk}/$A/";
+  if (index($path, $base) != 0) { why($n, "\"$path\" is not this account's own path"); return 0; }
+  my $rel = substr($path, length $base);
+  my $k = rel_kind($rel);
+  if (!defined $k || !grep { $_ eq $k } @kinds) {
+    why($n, "\"$path\" is not a place BOA keeps " . join(' or ', @kinds) . ' files');
+    return 0;
+  }
+  push @REFS, [$rel, $k];
+  return 1;
+}
+
+sub judge_srv_node {
+  my ($n) = @_;
+  my $d = $n->{name};
+  my @a = @{ $n->{args} };
+  if ($n->{block}) {
+    if (!$SRV_BLOCK{$d}) { why($n, "a \"$d\" block"); return; }
+    if ($d eq 'types') {
+      for my $c (@{ $n->{block} }) {
+        why($c, 'a block inside types') if $c->{block};
+      }
+      return;
+    }
+    judge_srv_list($n->{block});
+    return;
+  }
+  if (!$SRV_OK{$d}) { why($n, "the directive \"$d\""); return; }
+  if ($d eq 'access_log' || $d eq 'auth_basic') {
+    why($n, "\"$d\" other than off") unless @a == 1 && $a[0] eq 'off';
+  } elsif ($d eq 'include') {
+    if (@a != 1) { why($n, 'include with more than one path'); return; }
+    my $p = $a[0];
+    return if $p eq 'fastcgi_params';
+    if ($p =~ m{^\Q$O{dataconf}\E/[^/]+$}) {
+      why($n, "\"$p\" is not root's alone") unless root_chain_ok($O{dataconf});
+      return;
+    }
+    acct_ref($n, $p, 'srv');
+  } elsif ($d eq 'ssl_certificate' || $d eq 'ssl_certificate_key') {
+    if (@a != 1 || $a[0] =~ /\$|^data:/) { why($n, "\"$d\" with a variable or more than one value"); return; }
+    if ($a[0] =~ m{^\Q$O{sslpriv}\E/[A-Za-z0-9._-]+$}) {
+      why($n, "\"$a[0]\" is not root's alone") unless root_chain_ok($a[0]);
+      return;
+    }
+    acct_ref($n, $a[0], 'cert');
+  } elsif ($d eq 'ssl_dhparam') {
+    why($n, "ssl_dhparam outside root's private folder")
+      unless @a == 1 && $a[0] =~ m{^\Q$O{sslpriv}\E/[A-Za-z0-9._-]+$} && root_chain_ok($a[0]);
+  } elsif ($d eq 'ssl_conf_command') {
+    why($n, 'an ssl_conf_command BOA does not write')
+      unless @a == 2 && (($a[0] eq 'Options' && $a[1] eq 'KTLS')
+        || ($a[0] eq 'NumTickets' && $a[1] eq '0'));
+  } elsif ($d eq 'fastcgi_pass') {
+    why($n, "a PHP-FPM socket not this account's own")
+      unless @a == 1 && ($a[0] eq 'unix:/run/$user_socket.fpm.socket'
+        || $a[0] =~ m{^unix:(/var)?/run/\Q$A\E(\.[a-z0-9]+)?\.fpm\.socket$});
+  } elsif ($d eq 'fastcgi_param') {
+    why($n, "the FastCGI parameter \"$a[0]\"")
+      if @a && $a[0] =~ /^\s*PHP_(ADMIN_)?VALUE\s*$/i;
+  } elsif ($d eq 'set') {
+    if (@a >= 1 && $a[0] eq '$user_socket') {
+      why($n, "a PHP-FPM pool not this account's own")
+        unless @a == 2 && $a[1] =~ /^\Q$A\E(\.[a-z0-9]+)?$/;
+    } elsif (@a >= 1 && $a[0] eq '$main_site_name') {
+      # $server_name holds no slash: server_name below takes none
+      why($n, '$main_site_name other than a host name')
+        unless @a == 2 && ($a[1] =~ /^[A-Za-z0-9][A-Za-z0-9.-]*$/ || $a[1] eq '$server_name');
+    }
+  } elsif ($d eq 'server_name') {
+    for my $x (@a) {
+      next if $x eq '' || $x =~ /^[A-Za-z0-9*._-]+$/ || $x =~ m{^~[^/\s]+$};
+      why($n, "the server name \"$x\""); last;
+    }
+  } elsif ($d eq 'root' || $d eq 'alias') {
+    my $p = $a[0] // '';
+    my $ok = @a == 1 && $p !~ m{(^|/)\.\.?(/|$)};
+    if ($ok && $p =~ /\$/) {
+      $ok = $d eq 'alias' && $p =~ m{^\Q$O{disk}/$A\E/static/control/mta-sts-\$main_site_name\.txt$};
+    } elsif ($ok) {
+      $ok = index($p, "$O{disk}/$A/") == 0 || index($p, '/data/all/') == 0
+        || $p eq '/var/www/nginx-default' || index($p, '/var/www/nginx-default/') == 0;
+    }
+    why($n, "$d \"$p\" outside this account's own tree") unless $ok;
+  } elsif ($d eq 'listen') {
+    my $addr = $a[0] // '';
+    my $ok = $addr =~ /^((\*|[0-9.]+|\[[0-9A-Fa-f:.]+\]):)?(80|443)$/;
+    for my $x (@a[1 .. $#a]) { $ok = 0 unless $x =~ /^(ssl|quic|reuseport|http2)$/; }
+    why($n, 'a listen form BOA does not write') unless $ok;
+  }
+}
+
+sub judge_srv_list { judge_srv_node($_) for @{ $_[0] }; }
+
+# geo and map blocks only, each defining a name this file may define, no include.
+sub judge_maps {
+  my ($tree, $okname) = @_;
+  for my $n (@$tree) {
+    if (!$n->{block} || ($n->{name} ne 'geo' && $n->{name} ne 'map')) {
+      why($n, "\"$n->{name}\" where only geo and map blocks belong");
+      next;
+    }
+    my @a = @{ $n->{args} };
+    my $var = $a[-1] // '';
+    if (($n->{name} eq 'geo' && (@a < 1 || @a > 2)) || ($n->{name} eq 'map' && @a != 2)
+      || !$okname->($var)) {
+      why($n, "a $n->{name} defining \"$var\"");
+      next;
+    }
+    for my $c (@{ $n->{block} }) {
+      why($c, 'a block inside a ' . $n->{name}) if $c->{block};
+      why($c, "include inside a $n->{name}") if $c->{name} eq 'include';
+    }
+  }
+}
+
+sub site_of { my ($rel, $suf) = @_; (my $s = $rel) =~ s{^.*/}{}; $s =~ s/\Q$suf\E.*$//; return $s; }
+
+sub judge_cert {
+  my ($text) = @_;
+  my $in = '';
+  my $blocks = 0;
+  my $ln = 0;
+  for my $l (split /\n/, $text, -1) {
+    $ln++;
+    $l =~ s/\r$//;
+    if ($in eq '') {
+      next if $l eq '';
+      if ($l =~ /^-----BEGIN (CERTIFICATE|PRIVATE KEY|RSA PRIVATE KEY|EC PRIVATE KEY|EC PARAMETERS|TRUSTED CERTIFICATE)-----$/) {
+        $in = $1; next;
+      }
+      push @WHY, "line $ln: not a PEM certificate or key"; return;
+    }
+    if ($l eq "-----END $in-----") { $in = ''; $blocks++; next; }
+    next if $l =~ m{^[A-Za-z0-9+/=]{1,80}$};
+    push @WHY, "line $ln: not a PEM certificate or key"; return;
+  }
+  push @WHY, 'no PEM block' if !$blocks || $in ne '';
+}
+
+# Judge one file of kind $kind for account $A at $REL; fills @WHY and @REFS.
+# Returns the tree (undef for a certificate or a parse failure).
+sub judge_text {
+  my ($kind, $text) = @_;
+  if ($kind eq 'cert') { judge_cert($text); return undef; }
+  if ($text =~ /\x00/) { push @WHY, 'a NUL byte'; return undef; }
+  my $tree = eval { ngx_parse($text) };
+  if (!$tree) { (my $e = $@) =~ s/\n$//; push @WHY, "nginx would not read it: $e"; return undef; }
+  if ($kind eq 'vhost') {
+    for my $n (@$tree) {
+      if ($n->{block} && $n->{name} eq 'server') { judge_srv_list($n->{block}); }
+      elsif (!$n->{block} && $n->{name} eq 'include' && @{ $n->{args} } == 1) {
+        acct_ref($n, $n->{args}[0], 'uamap');
+      } else { why($n, "\"$n->{name}\" at the top of a vhost"); }
+    }
+  } elsif ($kind eq 'srv') {
+    judge_srv_list($tree);
+  } elsif ($kind eq 'uamap') {
+    my $h = substr(md5_hex(site_of($REL, '.conf')), 0, 12);
+    judge_maps($tree, sub { $_[0] =~ /^\$ua_(ip_ok|u|deny|lk)_\Q$h\E$/ });
+  } elsif ($kind eq 'fhttp' || $kind eq 'fsrv') {
+    my $site = site_of($REL, $kind eq 'fhttp' ? '.http.conf' : '.srv.conf');
+    my ($pre, $h) = $REL =~ m{/ip_access_front/}
+      ? ('ipaf', substr(md5_hex("$O{disk}/$A/config/includes/ip_access/$site"), 0, 12))
+      : ('uaf', substr(md5_hex("$O{disk}/$A/$site"), 0, 12));
+    if ($kind eq 'fhttp') {
+      judge_maps($tree, sub { $_[0] =~ /^\$\Q$pre\E_(h|ok|d|u|deny|lk)_\Q$h\E$/ });
+    } else {
+      for my $n (@$tree) {
+        my $ok = $n->{block} && $n->{name} eq 'if' && @{ $n->{block} } == 1
+          && !$n->{block}[0]{block};
+        if ($ok) {
+          my $cond = join(' ', @{ $n->{args} });
+          my $c = $n->{block}[0];
+          my $body = join(' ', $c->{name}, @{ $c->{args} });
+          $ok = ($cond eq "(\$${pre}_deny_$h)" && $body eq 'return 403')
+            || ($pre eq 'uaf' && $cond eq "(\$uaf_h_$h)"
+              && $body eq "set \$boa_ua_lk_fwd \$uaf_lk_$h");
+        }
+        why($n, 'a front gate BOA does not write') unless $ok;
+      }
+    }
+  } else {
+    push @WHY, "no judge for kind $kind";
+  }
+  return $tree;
+}
+
+# Rewrite every account path in a judged tree to the store.
+sub to_store {
+  my ($tree) = @_;
+  my $from = "$O{disk}/$A/";
+  my $to = "$O{store}/$A/";
+  for my $n (@$tree) {
+    if ($n->{block}) { to_store($n->{block}); next; }
+    next unless $n->{name} =~ /^(include|ssl_certificate|ssl_certificate_key)$/;
+    for (@{ $n->{args} }) { s{^\Q$from\E}{$to} }
+  }
+}
+
+### -------- reading an account's file without following anything --------
+
+# chdir step by step through real folders only; 1 when cwd is the folder
+# $O{disk}/$A/$reldir, reached by no link.
+sub enter_real {
+  my ($reldir) = @_;
+  chdir '/' or return 0;
+  my @parts = (grep({ length } split m{/}, $O{disk}), $A, grep({ length } split m{/}, $reldir));
+  for my $part (@parts) {
+    return 0 if $part eq '.' || $part eq '..';
+    my @l = lstat $part or return 0;
+    return 0 unless S_ISDIR($l[2]);
+    chdir $part or return 0;
+    my @s = stat '.' or return 0;
+    return 0 unless $s[0] == $l[0] && $s[1] == $l[1];
+  }
+  return 1;
+}
+
+# Names in an account folder matching a glob, sorted as nginx's include reads them.
+sub list_glob {
+  my ($reldir, $glob) = @_;
+  enter_real($reldir) or do { chdir '/'; return () };
+  opendir(my $dh, '.') or do { chdir '/'; return () };
+  my $re = glob_re($glob);
+  my @m = $re ? sort grep { $_ ne '.' && $_ ne '..' && /$re/ } readdir $dh : ();
+  closedir $dh;
+  chdir '/';
+  return @m;
+}
+
+# (text, stat) of an account file, or (undef, reason). With $sibling, a link
+# whose target is a plain name in the same folder (dehydrated's certificate
+# links) is read as that file; no other link is ever followed.
+sub read_acct {
+  my ($rel, $sibling) = @_;
+  my ($dir, $name) = $rel =~ m{^(.*)/([^/]+)$} or return (undef, 'not a file path');
+  enter_real($dir) or do { chdir '/'; return (undef, 'its folder is a link or missing') };
+  my $fh;
+  my $ok = sysopen($fh, $name, O_RDONLY | O_NOFOLLOW | O_NONBLOCK);
+  if (!$ok && $!{ELOOP} && $sibling) {
+    my $t = readlink $name;
+    $ok = defined $t && $t =~ /^[A-Za-z0-9._-]+$/ && $t ne '.' && $t ne '..'
+      && sysopen($fh, $t, O_RDONLY | O_NOFOLLOW | O_NONBLOCK);
+  }
+  if (!$ok) {
+    my $e = $!{ELOOP} ? 'a link' : "cannot open: $!";
+    chdir '/';
+    return (undef, $e);
+  }
+  my @st = stat $fh;
+  chdir '/';
+  return (undef, 'not a regular file') unless S_ISREG($st[2]);
+  return (undef, 'more than one link') if $st[3] != 1;
+  return (undef, "larger than $O{maxsz} bytes") if $st[7] > $O{maxsz};
+  my $text = '';
+  my $got;
+  while ($got = sysread($fh, my $buf, 65536)) {
+    $text .= $buf;
+    last if length $text > $O{maxsz};
+  }
+  close $fh;
+  return (undef, "cannot read: $!") unless defined $got;
+  return (undef, 'it grew while read') if length $text > $O{maxsz};
+  return ($text, \@st);
+}
+
+### -------- an account's whole set, as nginx would load it --------
+
+# Patterns root's config points at in every account: [reldir, glob, kind].
+sub acct_seeds {
+  my ($extra) = @_;
+  return (['config/server_master/nginx/vhost.d', '*', 'vhost'],
+          ['config/includes/ip_access_front', '*.http.conf', 'fhttp'],
+          ['config/includes/ip_access_front', '*.srv.conf', 'fsrv'],
+          ['config/includes/user_admin_access_front', '*.http.conf', 'fhttp'],
+          ['config/includes/user_admin_access_front', '*.srv.conf', 'fsrv'],
+          @{ $extra // [] });
+}
+
+# Judge every file the seeds and their includes reach: rel => { kind, text,
+# tree, why => [..], st }.
+sub acct_walk {
+  my ($acct, $extra) = @_;
+  local $A = $acct;
+  my %seen;
+  my @queue = acct_seeds($extra);
+  my %files;
+  while (my $q = shift @queue) {
+    my ($reldir, $glob, $kind) = @$q;
+    next if $seen{"$reldir\0$glob\0$kind"}++;
+    my @names = list_glob($reldir, $glob);
+    # a named file (no pattern) that is gone is a refusal, so its previous
+    # copy stays: a certificate moved away must not fail the whole server
+    if (!@names && $glob !~ /[*?\[]/ && !$files{"$reldir/$glob"}) {
+      $files{"$reldir/$glob"} = { kind => $kind, why => ['missing, or not a regular file in a real folder'] };
+    }
+    for my $name (@names) {
+      my $rel = "$reldir/$name";
+      next if $files{$rel};
+      my $k = rel_kind($rel);
+      local $REL = $rel;
+      local @WHY = ();
+      local @REFS = ();
+      my %f = (kind => $kind);
+      if (!defined $k || $k ne $kind) {
+        push @WHY, "a $kind include reaches a file that is not one";
+      } else {
+        my ($text, $st) = read_acct($rel, $kind eq 'cert');
+        if (!defined $text) { push @WHY, $st; }
+        else {
+          $f{text} = $text;
+          $f{st} = $st;
+          $f{tree} = judge_text($kind, $text);
+        }
+      }
+      $f{why} = [@WHY];
+      $files{$rel} = \%f;
+      for my $r (@REFS) {
+        my ($rrel, $rk) = @$r;
+        my ($rd, $rg) = $rrel =~ m{^(.*)/([^/]+)$};
+        push @queue, [$rd, $rg, $rk];
+      }
+    }
+  }
+  return \%files;
+}
+
+### -------- root's own config: what it loads from accounts --------
+
+# Every line of root's config (outside the accounts and the store) that names
+# an account or store path: [file, line, directive, path]; platform.d links
+# count as [link, 0, 'link', target].
+our @ROOT_SKIP;
+sub root_walk {
+  my (%seen, @refs);
+  my @queue = ($O{conf});
+  my $base = $O{conf} =~ m{^(.*)/[^/]+$} ? $1 : '/etc/nginx';
+  @ROOT_SKIP = ();
+  while (defined(my $f = shift @queue)) {
+    next if $seen{$f}++;
+    my $fh;
+    if (!open($fh, '<', $f)) { push @ROOT_SKIP, "$f: cannot read: $!"; next; }
+    my $text = do { local $/; <$fh> };
+    close $fh;
+    my $tree = eval { ngx_parse($text) };
+    if (!$tree) { (my $e = $@) =~ s/\n$//; push @ROOT_SKIP, "$f: $e"; next; }
+    my @stack = @$tree;
+    while (my $n = shift @stack) {
+      if ($n->{block}) { unshift @stack, @{ $n->{block} }; next; }
+      next unless $n->{name} =~ /^(include|ssl_certificate|ssl_certificate_key)$/;
+      my $p = $n->{args}[0] // next;
+      $p = "$base/$p" unless $p =~ m{^/};
+      if (index($p, "$O{disk}/") == 0 || index($p, "$O{store}/") == 0) {
+        push @refs, [$f, $n->{line}, $n->{name}, $p];
+        next;
+      }
+      next unless $n->{name} eq 'include';
+      for my $g (sort glob $p) {
+        if (-l $g) {
+          my $t = readlink $g;
+          next unless defined $t;
+          (my $gd = $g) =~ s{/[^/]*$}{};
+          $t = "$gd/$t" unless $t =~ m{^/};
+          if (index($t, "$O{disk}/") == 0 || index($t, "$O{store}/") == 0) {
+            push @refs, [$g, 0, 'link', $t];
+            next;
+          }
+        }
+        push @queue, $g if -f $g;
+      }
+    }
+  }
+  return \@refs;
+}
+
+# Accounts nginx loads: each account folder a root line or link names (a * in
+# the account's place names every account folder).
+sub accounts_named {
+  my ($refs) = @_;
+  my %a;
+  for my $r (@$refs) {
+    my $p = $r->[3];
+    for my $pre ($O{disk}, $O{store}) {
+      next unless index($p, "$pre/") == 0;
+      my ($who) = substr($p, length($pre) + 1) =~ m{^([^/]+)};
+      next unless defined $who;
+      if ($who eq '*') {
+        opendir(my $dh, $O{disk}) or next;
+        for my $d (readdir $dh) {
+          next unless $d =~ $ACCT_RE;
+          my @l = lstat "$O{disk}/$d";
+          $a{$d} = 1 if @l && S_ISDIR($l[2]);
+        }
+        closedir $dh;
+      } elsif ($who =~ $ACCT_RE) {
+        $a{$who} = 1;
+      }
+    }
+  }
+  return sort keys %a;
+}
+
+# Extra seeds from root's own lines into one account (the panel proxies'
+# fragments and certificates).
+sub root_seeds_for {
+  my ($acct, $refs) = @_;
+  my @s;
+  for my $r (@$refs) {
+    next if $r->[2] eq 'link';
+    my $p = $r->[3];
+    for my $pre ($O{disk}, $O{store}) {
+      my $b = "$pre/$acct/";
+      next unless index($p, $b) == 0;
+      my $rel = substr($p, length $b);
+      my ($rd, $rg) = $rel =~ m{^(.*)/([^/]+)$} or next;
+      my $k = rel_kind($rel) // next;
+      push @s, [$rd, $rg, $k];
+    }
+  }
+  return \@s;
+}
+
+### -------- modes --------
+
+sub cmd_judge {
+  my ($acct, $file, $kind) = @_;
+  die "usage: judge <account> <file> [<kind>]\n"
+    unless defined $file && defined $acct && $acct =~ $ACCT_RE;
+  local $A = $acct;
+  my $rel = index($file, "$O{disk}/$acct/") == 0 ? substr($file, length("$O{disk}/$acct/")) : $file;
+  $kind //= rel_kind($rel) // die "no kind for $rel\n";
+  local $REL = $rel;
+  local @WHY = ();
+  local @REFS = ();
+  open(my $fh, '<', $file) or die "cannot read $file: $!\n";
+  my $text = do { local $/; <$fh> };
+  close $fh;
+  my $tree = judge_text($kind, $text);
+  if (@WHY) { print "REFUSED $acct $rel: $_\n" for @WHY; return 1; }
+  print "KEPT $acct $rel ($kind)\n";
+  print "REF $_->[1] $_->[0]\n" for @REFS;
+  if ($tree) { to_store($tree); print ngx_emit($tree, 0); }
+  return 0;
+}
+
+sub cmd_report {
+  my $refs = root_walk();
+  my @acc = accounts_named($refs);
+  my ($nf, $nr) = (0, 0);
+  print "ROOT-UNREAD $_\n" for @ROOT_SKIP;
+  print "ROOT-REF $_->[2] $_->[3] ($_->[0]:$_->[1])\n" for @$refs;
+  for my $acct (@acc) {
+    my $set = acct_walk($acct, root_seeds_for($acct, $refs));
+    for my $rel (sort keys %$set) {
+      $nf++;
+      my $f = $set->{$rel};
+      next unless @{ $f->{why} };
+      $nr++;
+      print "REFUSED $acct $rel ($f->{kind}): $_\n" for @{ $f->{why} };
+    }
+  }
+  printf "SUMMARY accounts=%d files=%d refused=%d\n", scalar @acc, $nf, $nr;
+  return $nr ? 1 : 0;
+}
+
+### -------- the store --------
+
+my $OURS = '# Written by ngxstore: the judged copies of this account\'s vhosts.';
+
+sub slurp { my ($p) = @_; open(my $fh, '<', $p) or return undef; local $/; my $t = <$fh>; close $fh; return $t; }
+
+sub mkdirs_0700 {
+  my ($d) = @_;
+  my $acc = '';
+  for my $p (grep { length } split m{/}, $d) {
+    $acc .= "/$p";
+    if (!lstat $acc) { mkdir($acc, 0700) or return 0; next; }
+    return 0 if -l $acc || !-d _;
+  }
+  return 1;
+}
+
+sub write_new {
+  my ($path, $content) = @_;
+  my ($dir) = $path =~ m{^(.*)/[^/]+$};
+  mkdirs_0700($dir) or return 0;
+  sysopen(my $fh, $path, O_WRONLY | O_CREAT | O_EXCL, 0600) or return 0;
+  print {$fh} $content or return 0;
+  close $fh or return 0;
+  return 1;
+}
+
+# Put $content at $path (a root file in a folder another user may own):
+# a new file beside it, renamed over it, its owner and mode kept or given.
+sub put_file {
+  my ($path, $content, $uid, $gid, $mode) = @_;
+  my $tmp = "$path.ngxstore.$$";
+  unlink $tmp;
+  sysopen(my $fh, $tmp, O_WRONLY | O_CREAT | O_EXCL, 0600) or return 0;
+  print {$fh} $content or do { close $fh; unlink $tmp; return 0 };
+  close $fh or do { unlink $tmp; return 0 };
+  chown $uid, $gid, $tmp;
+  chmod $mode, $tmp;
+  rename($tmp, $path) or do { unlink $tmp; return 0 };
+  return 1;
+}
+
+sub rmtree {
+  my ($d) = @_;
+  return unless $d && index($d, "$O{store}/") == 0 && -d $d && !-l $d;
+  system('rm', '-rf', '--', $d);
+}
+
+# Every source file with its kind, identity, times and verdict count: the
+# store is rebuilt only when this changes.
+sub manifest {
+  my ($set) = @_;
+  my @l;
+  for my $rel (sort keys %$set) {
+    my $f = $set->{$rel};
+    my $st = $f->{st} || [];
+    push @l, join("\t", $rel, $f->{kind}, join(':', map { $_ // '' } @{$st}[0, 1, 7, 9, 10]),
+      scalar @{ $f->{why} });
+  }
+  return md5_hex(join("\n", @l));
+}
+
+# The new set of one account in a folder of its own: judged copies, and for a
+# refused file its previous copy when there is one.
+sub build_acct {
+  my ($acct, $set, $old) = @_;
+  local $A = $acct;
+  my $new = "$O{store}/.$acct.new.$$";
+  rmtree($new);
+  mkdir($new, 0700) or die "cannot make $new: $!\n";
+  my (@refused, @prev);
+  for my $rel (sort keys %$set) {
+    my $f = $set->{$rel};
+    my $dst = "$new/$rel";
+    if (!@{ $f->{why} }) {
+      my $content;
+      if ($f->{kind} eq 'cert') { $content = $f->{text}; }
+      else {
+        to_store($f->{tree});
+        $content = "# $O{disk}/$acct/$rel, judged by ngxstore\n" . ngx_emit($f->{tree}, 0);
+      }
+      write_new($dst, $content) or die "cannot write $dst: $!\n";
+      next;
+    }
+    push @refused, $rel;
+    if ($old) {
+      my $p = slurp("$old/$rel");
+      if (defined $p && !-l "$old/$rel") {
+        write_new($dst, $p) or die "cannot write $dst: $!\n";
+        push @prev, $rel;
+      }
+    }
+  }
+  return ($new, \@refused, \@prev);
+}
+
+# The root lines of root's own files pointed at the store ($way 'in') or back
+# at the accounts ('out'), for the accounts in %$only (all when undef).
+sub rewrite_root {
+  my ($refs, $way, $only) = @_;
+  my ($from, $to) = $way eq 'in' ? ($O{disk}, $O{store}) : ($O{store}, $O{disk});
+  my %files;
+  for my $r (@$refs) { $files{ $r->[0] } = 1 unless $r->[2] eq 'link'; }
+  my $n = 0;
+  for my $f (sort keys %files) {
+    my $text = slurp($f) // next;
+    my $out = '';
+    for my $line (split /(?<=\n)/, $text) {
+      if ($line =~ m{^(\s*(?:include|ssl_certificate|ssl_certificate_key)\s+["']?)\Q$from\E/([^/\s"';]+)(/.*)$}s) {
+        my ($pre, $who, $rest) = ($1, $2, $3);
+        $line = "$pre$to/$who$rest" if !$only || $who eq '*' || $only->{$who};
+      }
+      $out .= $line;
+    }
+    next if $out eq $text;
+    my @st = stat $f or next;
+    put_file($f, $out, $st[4], $st[5], $st[2] & 07777) or die "cannot rewrite $f: $!\n";
+    $n++;
+  }
+  return $n;
+}
+
+# platform.d: an account's link becomes root's own file that includes the store.
+sub switch_platd {
+  my ($refs, $built) = @_;
+  my $n = 0;
+  for my $r (@$refs) {
+    next unless $r->[2] eq 'link';
+    my ($g, $t) = ($r->[0], $r->[3]);
+    my ($who) = $t =~ m{^\Q$O{disk}\E/([^/]+)/config/[^/]+\.nginx\.conf$} or next;
+    next unless $built->{$who} && $t eq "$O{disk}/$who/config/$who.nginx.conf";
+    put_file($g, "$OURS\ninclude $O{store}/$who/config/server_master/nginx/vhost.d/*;\n", 0, 0, 0644)
+      or die "cannot switch $g: $!\n";
+    $n++;
+  }
+  return $n;
+}
+
+# The way back: each of root's platform.d files a link to the account's own
+# file again (only where that file is there).
+sub unswitch_platd {
+  my ($platd, $only) = @_;
+  my $n = 0;
+  opendir(my $dh, $platd) or return 0;
+  for my $e (sort readdir $dh) {
+    my ($who) = $e =~ /^(.+)\.conf$/ or next;
+    next unless $who =~ $ACCT_RE;
+    next if $only && !$only->{$who};
+    my $p = "$platd/$e";
+    next if -l $p || !-f $p;
+    my $t = slurp($p) // next;
+    next unless index($t, "$OURS\n") == 0;
+    my $target = "$O{disk}/$who/config/$who.nginx.conf";
+    next unless -f $target;
+    my $tmp = "$p.ngxstore.$$";
+    unlink $tmp;
+    symlink($target, $tmp) && rename($tmp, $p) or do { unlink $tmp; die "cannot put back $p: $!\n" };
+    $n++;
+  }
+  closedir $dh;
+  return $n;
+}
+
+sub platd_dirs {
+  my ($refs) = @_;
+  my %d;
+  for my $r (@$refs) {
+    my $f = $r->[0];
+    $d{$1} = 1 if $f =~ m{^(.*/platform\.d)/[^/]+$};
+  }
+  return sort keys %d;
+}
+
+sub ngx_test {
+  my @cmd = ($O{nginx}, '-t', '-c', $O{conf});
+  push @cmd, '-p', $O{prefix} if $O{prefix};
+  my $out = '';
+  if (open(my $ph, '-|')) { local $/; $out = <$ph> // ''; close $ph; }
+  else { open(STDERR, '>&', \*STDOUT); exec @cmd; exit 127; }
+  return ($? == 0, $out);
+}
+
+sub cmd_sync {
+  die "the store $O{store} is not root's alone\n"
+    if -e $O{store} && !root_chain_ok($O{store});
+  mkdirs_0700($O{store}) or die "cannot make $O{store}\n";
+  my $refs = root_walk();
+  my (%built, %st, @news);
+  my $changed = 0;
+  for my $acct (accounts_named($refs)) {
+    my @l = lstat "$O{disk}/$acct";
+    next unless @l && S_ISDIR($l[2]);
+    my $set = acct_walk($acct, root_seeds_for($acct, $refs));
+    my $cur = "$O{store}/$acct";
+    next if !%$set && !-d $cur;
+    my $man = manifest($set);
+    my $mf = "$O{store}/.$acct.manifest";
+    if (-d $cur && (slurp($mf) // '') eq $man) { $built{$acct} = 1; next; }
+    # a set that failed the test stays out until the account's files change
+    if ((slurp("$O{store}/.$acct.failed") // '') eq $man) { $built{$acct} = 1 if -d $cur; next; }
+    my ($new, $refused, $prev) = build_acct($acct, $set, -d $cur ? $cur : undef);
+    my $was = "$O{store}/.$acct.old.$$";
+    if (-d $cur) { rename($cur, $was) or die "cannot set aside $cur: $!\n"; } else { $was = ''; }
+    rename($new, $cur) or do { rename($was, $cur) if $was; die "cannot put $cur in place: $!\n" };
+    $st{$acct} = { old => $was, man => $man, oldman => slurp($mf), aside => '', on => 1 };
+    put_file($mf, $man, 0, 0, 0600);
+    $built{$acct} = 1;
+    $changed++;
+    # each refusal named once: what was refused and why, by its content
+    my $seenf = "$O{store}/.$acct.refused";
+    my %seen = map { $_ => 1 } split /\n/, (slurp($seenf) // '');
+    my @keep;
+    for my $rel (@$refused) {
+      my $f = $set->{$rel};
+      my $key = $rel . "\t" . md5_hex(($f->{text} // '') . join("\n", @{ $f->{why} }));
+      push @keep, $key;
+      next if $seen{$key};
+      my $was_prev = grep { $_ eq $rel } @$prev;
+      push @news, "$acct $rel ($f->{kind}) " . ($was_prev ? 'previous copy kept' : 'left out')
+        . ': ' . join('; ', @{ $f->{why} });
+    }
+    put_file($seenf, join("\n", @keep) . "\n", 0, 0, 0600);
+  }
+  $changed += rewrite_root($refs, 'in', \%built);
+  $changed += switch_platd($refs, \%built);
+  print "NEW-REFUSAL $_\n" for @news;
+  if (!$changed) { print "UNCHANGED\n"; return 0; }
+
+  # An account's new set taken off (its previous set back, or on a first
+  # build nginx reading its own files again) and put on again.
+  my $off = sub {
+    my ($acct) = @_;
+    my $s = $st{$acct};
+    return unless $s->{on};
+    my $cur = "$O{store}/$acct";
+    $s->{aside} = "$O{store}/.$acct.aside.$$";
+    rename($cur, $s->{aside}) or die "cannot set aside $cur: $!\n";
+    if ($s->{old}) { rename($s->{old}, $cur) or die "cannot put back $cur: $!\n"; }
+    else {
+      my $r = root_walk();
+      rewrite_root($r, 'out', { $acct => 1 });
+      unswitch_platd($_, { $acct => 1 }) for platd_dirs($r);
+    }
+    $s->{on} = 0;
+  };
+  my $on = sub {
+    my ($acct) = @_;
+    my $s = $st{$acct};
+    return if $s->{on};
+    my $cur = "$O{store}/$acct";
+    if ($s->{old}) { rename($cur, $s->{old}) or die "cannot set aside $cur: $!\n"; }
+    rename($s->{aside}, $cur) or die "cannot put $cur in place: $!\n";
+    $s->{aside} = '';
+    if (!$s->{old}) {
+      my $r = root_walk();
+      rewrite_root($r, 'in', { $acct => 1 });
+      switch_platd($r, { $acct => 1 });
+    }
+    $s->{on} = 1;
+  };
+
+  my $rc = 0;
+  my ($ok, $out) = ngx_test();
+  if (!$ok) {
+    $rc = 3;
+    # the accounts the test names come off first
+    my %named = map { $_ => 1 } grep { $st{$_} } ($out =~ m{\Q$O{store}\E/([^/\s"']+)/}g);
+    $off->($_) for sort keys %named;
+    ($ok, $out) = ngx_test() if %named;
+    if (!$ok) {
+      # nginx named no file: every new set off, then back one at a time
+      my @rest = sort grep { $st{$_}{on} } keys %st;
+      $off->($_) for @rest;
+      ($ok, $out) = ngx_test();
+      if ($ok) {
+        for my $acct (@rest) {
+          $on->($acct);
+          my ($ok2) = ngx_test();
+          $off->($acct) unless $ok2;
+        }
+      } else {
+        # not ours: the server fails with every new set off too
+        $on->($_) for @rest;
+        (my $o = $out) =~ s/\n/ | /g;
+        print "TEST-FAILS-ELSEWHERE $o\n";
+      }
+    }
+    for my $acct (sort keys %st) {
+      my $s = $st{$acct};
+      next if $s->{on};
+      put_file("$O{store}/.$acct.failed", $s->{man}, 0, 0, 0600);
+      if (defined $s->{oldman}) { put_file("$O{store}/.$acct.manifest", $s->{oldman}, 0, 0, 0600); }
+      else { unlink "$O{store}/.$acct.manifest"; }
+      my $bad = "$O{store}/.$acct.bad";
+      rmtree($bad);
+      rename($s->{aside}, $bad) if $s->{aside};
+      print $s->{old}
+        ? "REVERTED $acct: its new set fails the test, the previous one is back; see $bad\n"
+        : "UNSWITCHED $acct: no set of its passed the test, nginx reads its own files again; see $bad\n";
+    }
+  }
+  for my $acct (keys %st) {
+    next unless $st{$acct}{on};
+    rmtree($st{$acct}{old}) if $st{$acct}{old};
+    unlink "$O{store}/.$acct.failed";
+  }
+  print "CHANGED\n";
+  return $rc;
+}
+
+sub cmd_unarm {
+  my $refs = root_walk();
+  my $n = rewrite_root($refs, 'out', undef);
+  $n += unswitch_platd($_, undef) for platd_dirs($refs);
+  if (!$n) { print "UNCHANGED\n"; return 0; }
+  my ($ok, $out) = ngx_test();
+  if (!$ok) { (my $o = $out) =~ s/\n/ | /g; print "TEST-FAILS $o\n"; }
+  print "CHANGED\n";
+  return $ok ? 0 : 3;
+}
+
+# The canonical copy of any file, unjudged: what the store writes for it.
+sub cmd_canon {
+  my ($file) = @_;
+  open(my $fh, '<', $file // '') or die "cannot read the file: $!\n";
+  my $text = do { local $/; <$fh> };
+  close $fh;
+  my $tree = eval { ngx_parse($text) } or do { print "UNREADABLE $@"; return 1 };
+  print ngx_emit($tree, 0);
+  return 0;
+}
+
+my $mode = shift @ARGV // '';
+if ($mode eq 'judge') { exit cmd_judge(@ARGV); }
+if ($mode eq 'canon') { exit cmd_canon(@ARGV); }
+if ($mode eq 'sync') { exit cmd_sync(@ARGV); }
+if ($mode eq 'unarm') { exit cmd_unarm(@ARGV); }
+if ($mode eq 'report') { exit cmd_report(); }
+die "ngxstore: unknown mode \"$mode\"\n";
+NGXPL
+}
+
+_ngxs_report() {
+  local _rpt="/var/log/boa/ngxstore.report"
+  local _rc
+  [ "${NGXS_TEST}" = "1" ] && _rpt="${NGXS_REPORT:-${_rpt}}"
+  mkdir -p "$(dirname "${_rpt}")"
+  {
+    echo "# ngxstore report $(date '+%F %T %Z'): what the store would leave out"
+    _ngxs_perl report
+  } > "${_rpt}.tmp.$$" 2>&1
+  _rc=$?
+  mv -f "${_rpt}.tmp.$$" "${_rpt}"
+  tail -n 1 "${_rpt}"
+  return "${_rc}"
+}
+
+_NGXS_CNF="/root/.barracuda.cnf"
+_NGXS_LOCK="/run/ngxstore.lock"
+_NGXS_INC="/var/log/boa/ngxstore.incident.log"
+_NGXS_PID="/run/nginx.pid"
+_NGXS_STORE="/etc/nginx/boa-acct.d"
+if [ "${NGXS_TEST}" = "1" ]; then
+  _NGXS_CNF="${NGXS_CNF:-${_NGXS_CNF}}"
+  _NGXS_LOCK="${NGXS_LOCK:-${_NGXS_LOCK}}"
+  _NGXS_INC="${NGXS_INC:-${_NGXS_INC}}"
+  _NGXS_PID="${NGXS_PID:-${_NGXS_PID}}"
+  _NGXS_STORE="${NGXS_STORE:-${_NGXS_STORE}}"
+fi
+
+# A value from root's cnf: its last assignment, quotes taken off.
+_ngxs_cnf() {
+  sed -n "s/^[[:space:]]*${1}=[\"']\{0,1\}\([^\"']*\)[\"']\{0,1\}[[:space:]]*$/\1/p" \
+    "${_NGXS_CNF}" 2> /dev/null | tail -n 1
+}
+
+_ngxs_armed() {
+  [ "$(_ngxs_cnf _NGINX_ACCT_STORE)" = "YES" ]
+}
+
+# Each refusal is named once in the incident log, all of a run in one mail.
+_ngxs_note() {
+  local _f="${1}"
+  local _to _l
+  [ -s "${_f}" ] || return 0
+  mkdir -p "$(dirname "${_NGXS_INC}")"
+  while IFS= read -r _l; do
+    echo "$(date '+%F %T %Z') ${_l}" >> "${_NGXS_INC}"
+  done < "${_f}"
+  [ "${NGXS_TEST}" = "1" ] && [ -z "${NGXS_MAIL}" ] && return 0
+  command -v s-nail > /dev/null 2>&1 || return 0
+  _to=$(_ngxs_cnf _MY_EMAIL)
+  [ -n "${_to}" ] || _to=root
+  {
+    echo " nginx no longer reads these files of hosted accounts as written:"
+    echo
+    sed 's/^/  /' "${_f}"
+    echo
+    echo " A refused file keeps its previous judged copy when there is one."
+    echo " The log: ${_NGXS_INC}"
+    printf '\n ---\n This email has been sent by your BOA nginx store (ngxstore)\n'
+  } | s-nail -s "BOA nginx: account files refused on $(uname -n)" "${_to}" > /dev/null 2>&1
+}
+
+# nginx's master, told to reload once the test above passed; never through
+# the init script, whose reload runs this tool.
+_ngxs_hup() {
+  local _p
+  _p=$(cat "${_NGXS_PID}" 2> /dev/null)
+  [[ "${_p}" =~ ^[0-9]+$ ]] || return 1
+  [ "$(ps -o comm= -p "${_p}" 2> /dev/null)" = "nginx" ] || return 1
+  kill -HUP "${_p}"
+}
+
+_ngxs_sync() {
+  local _reload=NO _quiet=NO _a _out _rc _new
+  for _a in "$@"; do
+    case "${_a}" in
+      --reload-if-changed) _reload=YES ;;
+      --quiet) _quiet=YES ;;
+    esac
+  done
+  # never armed here: nothing was ever switched, nothing to do
+  if ! _ngxs_armed && [ ! -d "${_NGXS_STORE}" ]; then
+    return 0
+  fi
+  exec 9> "${_NGXS_LOCK}"
+  if ! flock -w 90 9; then
+    _msg "another run holds ${_NGXS_LOCK}; nothing done"
+    return 1
+  fi
+  if _ngxs_armed; then
+    _out=$(_ngxs_perl sync 2>&1)
+  else
+    _out=$(_ngxs_perl unarm 2>&1)
+  fi
+  _rc=$?
+  _new=$(mktemp "${TMPDIR:-/tmp}/ngxstore.new.XXXXXX")
+  echo "${_out}" | sed -n 's/^NEW-REFUSAL //p' > "${_new}"
+  echo "${_out}" | grep -E '^(REVERTED|UNSWITCHED|TEST-FAILS)' >> "${_new}"
+  _ngxs_note "${_new}"
+  rm -f "${_new}"
+  [ "${_quiet}" = "YES" ] || echo "${_out}" | grep -v '^NEW-REFUSAL '
+  if [ "${_reload}" = "YES" ] && [ "${_rc}" = "0" ] && echo "${_out}" | grep -qx CHANGED; then
+    _ngxs_hup || _msg "no nginx master to reload"
+  fi
+  exec 9>&-
+  return "${_rc}"
+}
+
+case "${1:-}" in
+  report)
+    _ngxs_report
+    ;;
+  sync)
+    shift
+    _ngxs_sync "$@"
+    ;;
+  unarm)
+    exec 9> "${_NGXS_LOCK}"
+    flock -w 90 9 || _die "another run holds ${_NGXS_LOCK}"
+    _ngxs_perl unarm
+    ;;
+  judge|canon)
+    _ngxs_perl "$@"
+    ;;
+  *)
+    sed -n '2,/^###$/p' "$0" | sed 's/^### \{0,1\}//'
+    exit 2
+    ;;
+esac

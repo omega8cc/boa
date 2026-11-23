@@ -25,7 +25,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 export _tRee=lts
-export _xSrl=588877ltsT01
+export _xSrl=588888ltsT01
 # shellcheck disable=SC1091
 [ -r "/var/xdrago/night/night.inc.sh" ] && . /var/xdrago/night/night.inc.sh
 # shellcheck disable=SC1091
@@ -216,6 +216,101 @@ _web_group_conv() {
 }
 fi
 
+### The control/ gate, the night.inc.sh bodies carried for the same skew,
+### defined only when the library lacks them.
+if [ -z "${_ACCT_CTRL_OWN_PL:-}" ]; then
+# The whole of an account's control/, judged once before a run acts on it:
+# run inside the account's real static/, it prints OK when control/ and
+# everything in it, never followed through a link, and static/ and every
+# directory above it up to /, are root's or one of the account's identities'
+# (the uids given first, _acct_walk_uids, with the account's recorded
+# removed identities), ABSENT when there is no control/, and otherwise why
+# not, on one line.
+# Every other account's .ftp login is in the box-wide group, which an account
+# not yet on its own group still has on static/: such a login could put a
+# control/ of its own there, or a file of its own in a group-writable
+# directory below it, for root to act on as the account's.
+_ACCT_CTRL_OWN_PL='use Fcntl;
+my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, shift @ARGV // "");
+sub own { my $u = shift; return exists $own{$u} ? 1 : 0; }
+sub isd { ($_[0] & 0170000) == 0040000 }
+sub nm { (my $v = shift) =~ s/[^\x20-\x7e]/?/g; return substr($v, 0, 200); }
+sub refuse { print "$_[0]\n"; exit 0; }
+my ($p, $top, @d, @x) = (".", 0);
+for (1 .. 256) {
+  @x = stat($p) or refuse("static/ cannot be read");
+  own($x[4]) or refuse("a directory above control/ is owned by uid $x[4]");
+  if (@d && $x[0] == $d[0] && $x[1] == $d[1]) { $top = 1; last; }
+  @d = @x;
+  $p .= "/..";
+}
+$top or refuse("static/ is too deep");
+my @s = lstat("./control");
+unless (@s) { print(($!{ENOENT} ? "ABSENT" : "control/ cannot be read") . "\n"); exit 0; }
+isd($s[2]) or refuse("control is not a directory");
+my ($n, @q) = (0, ["control", @s]);
+while (my $e = shift @q) {
+  my ($f, @t) = @$e;
+  own($t[4]) or refuse(nm($f) . " is owned by uid $t[4]" . (defined(getpwuid($t[4])) ? "" : ", which no user has and root never recorded for this account: if the file is its own, give it to its .ftp login"));
+  next unless isd($t[2]);
+  opendir(my $h, "./$f") or refuse(nm($f) . " cannot be read");
+  for my $b (readdir($h)) {
+    next if $b eq "." || $b eq "..";
+    ++$n > 100000 and refuse("control/ holds more than 100000 entries");
+    my @u = lstat("./$f/$b") or next;
+    push @q, ["$f/$b", @u];
+  }
+  closedir($h);
+}
+print "OK\n";
+exit 0;'
+fi
+# 0 when the account $1's control/ is its own as _ACCT_CTRL_OWN_PL judges it
+# (or it has none); otherwise why not on stdout, status 1. A run that acts
+# on what control/ says leaves the account as it is when it is not.
+if ! declare -F _acct_ctrl_own > /dev/null 2>&1; then
+  _acct_ctrl_own() {
+    local _a="${1}" _o _r _want
+    # an account not in passwd (not made yet, or removed) has nothing to
+    # judge it by: read as before
+    _o=$(_acct_walk_uids "${_a}" 2> /dev/null) || return 0
+    [ -e "/data/disk/${_a}/static" ] || [ -L "/data/disk/${_a}/static" ] || return 0
+    _want="$(cd -P -- /data/disk 2> /dev/null && /bin/pwd -P)/${_a}/static"
+    _r=$(cd -P -- "/data/disk/${_a}/static" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] \
+      && perl -e "${_ACCT_CTRL_OWN_PL}" -- "${_o}" 2> /dev/null)
+    case "${_r}" in
+      OK|ABSENT) return 0 ;;
+    esac
+    echo "${_r:-static/ is not a real directory}"
+    return 1
+  }
+fi
+# The account's control/ judged once a run and account (_acct_ctrl_own):
+# _ctrl_has is 0 when the name $1 is in it and it is the account's own,
+# _ctrl_foreign is 0 when it is not the account's own. A marker in a
+# control/ another account put there reads as not there.
+if ! declare -F _ctrl_judge > /dev/null 2>&1; then
+  _ctrl_judge() {
+    [ "${_CTRL_JUDGED_FOR:-}" = "${_usEr}" ] && return 0
+    _CTRL_JUDGED_FOR="${_usEr}"
+    _CTRL_OWN=YES
+    _CTRL_WHY=$(_acct_ctrl_own "${_usEr##*/}") || _CTRL_OWN=NO
+    return 0
+  }
+fi
+if ! declare -F _ctrl_has > /dev/null 2>&1; then
+  _ctrl_has() {
+    _ctrl_judge
+    [ "${_CTRL_OWN}" = "YES" ] && [ -e "${_usEr}/static/control/${1}" ]
+  }
+fi
+if ! declare -F _ctrl_foreign > /dev/null 2>&1; then
+  _ctrl_foreign() {
+    _ctrl_judge
+    [ "${_CTRL_OWN}" = "NO" ]
+  }
+fi
+
 ### oN owns its /data/disk/oN (log/, .drush/, config/, tools/, .tmp/, clients/,
 ### backups/, distro/, undo/), the main login owns /home/<oN>.ftp, and
 ### static/ is group-writable: any name there can be a link or a FIFO, and
@@ -232,11 +327,11 @@ if ! declare -F _acct_in_real_dir > /dev/null 2>&1; then
       /data/disk/?*) _a=/data/disk ;;
     esac
     if [ -n "${_a}" ]; then
-      _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+      _want="$(cd -P -- "${_a}" 2> /dev/null && /bin/pwd -P)${_d#"${_a}"}"
     else
-      _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+      _want="$(cd -P -- "${_d%/*}" 2> /dev/null && /bin/pwd -P)/${_d##*/}"
     fi
-    ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+    ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] && "$@" )
   }
 fi
 if ! declare -F _acct_read_here > /dev/null 2>&1; then
@@ -286,7 +381,7 @@ fi
 if ! declare -F _acct_undo_here > /dev/null 2>&1; then
   _acct_undo_here() {
     local _u
-    _u="$(cd -P /data/disk 2> /dev/null && pwd -P)${_usEr#/data/disk}/undo"
+    _u="$(cd -P /data/disk 2> /dev/null && /bin/pwd -P)${_usEr#/data/disk}/undo"
     _acct_in_real_dir "${_usEr}" mkdir -p ./undo 2> /dev/null
     exec 9< "${_u}/." || return 1
     [ "$(readlink /proc/self/fd/9)" = "${_u}" ] || return 1
@@ -335,8 +430,8 @@ if ! declare -F _night_chattr_entries_here > /dev/null 2>&1; then
   _ACCT_CHATTR_PL='use Fcntl; my ($op, @f) = @ARGV; my $rc = 0; for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or do { $rc = 1; next }; my @s = stat($h); if (@s && (-d _ || (-f _ && $s[3] == 1))) { my $b = pack("L", 0); if (ioctl($h, 0x80086601, $b)) { my $fl = unpack("L", $b); $fl = $op eq "+" ? ($fl | 0x10) : ($fl & ~0x10); ioctl($h, 0x40086602, pack("L", $fl)) or $rc = 1; } else { $rc = 1 } } else { $rc = 1 } close($h); } exit $rc'
   _night_chattr_sub_here() {
     local _h
-    _h="$(pwd -P)"
-    ( cd -P -- "./${2}" 2> /dev/null && [ "$(pwd -P)" = "${_h}/${2}" ] \
+    _h="$(/bin/pwd -P)"
+    ( cd -P -- "./${2}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_h}/${2}" ] \
       && chattr "${1}i" . ) &> /dev/null
     return 0
   }
@@ -360,14 +455,14 @@ fi
 _night_in_pinned() {
   local _d="${1}"
   shift
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_d}" ] && "$@" )
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_d}" ] && "$@" )
 }
 ### Run "$@" inside ./$1 of the current (pinned) directory, entered for real.
 _night_sub() {
   local _h _s="${1}"
   shift
-  _h="$(pwd -P)"
-  ( cd -P -- "./${_s}" 2> /dev/null && [ "$(pwd -P)" = "${_h}/${_s}" ] && "$@" )
+  _h="$(/bin/pwd -P)"
+  ( cd -P -- "./${_s}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_h}/${_s}" ] && "$@" )
 }
 ### The account's files store as it resolves now, printed: its own
 ### static/files, or migratefs' layout on attached storage
@@ -439,12 +534,14 @@ _night_bak_unpurged() {
 ### its .ftp login, its client sub-accounts oN.<client> and oN.<client>-dev
 ### and its PHP-FPM users oN.web and oN.<ver>.web. An account name holds no
 ### dot, so the match is exact: o1 never takes o10's. Status 1, and nothing,
-### unless the account itself is in passwd. The walks also take a uid no
-### passwd entry names as the account's own: a login removed before the
-### limited-shell worker handed its files to the account at removal left
-### those. Nothing records which account a freed number served, so such an
-### entry is taken wherever it came from. A lookup that fails, rather than
-### finding no such user, leaves the entry another user's.
+### unless the account itself is in passwd. The numbers of the account's
+### removed identities that root recorded in /data/conf/acct-uids/<oN>.gone
+### (the ltd worker, before deluser frees one) are listed too while no user
+### has them. Root's check of the control folder, its reads of the control
+### files and its hand-overs into that folder take a uid no passwd entry names
+### only when it is listed: another account's removed login leaves files under
+### such a number too. Its other hand-overs, mode walks and removal walks
+### still take any.
 _acct_walk_uids() {
   local _a="${1}" _n _p _u _r _x="0" _self=NO
   case "${_a}" in
@@ -457,6 +554,13 @@ _acct_walk_uids() {
     [ "${_n}" = "${_a}" ] && _self=YES
   done < <(getent passwd 2> /dev/null)
   [ "${_self}" = "YES" ] || return 1
+  # the account's removed identities, their numbers recorded by root before
+  # deluser freed them; a number a user has again is not taken
+  while IFS= read -r _u; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    getent passwd "${_u}" > /dev/null 2>&1 && continue
+    _x="${_x},${_u}"
+  done 2> /dev/null < "/data/conf/acct-uids/${_a}.gone"
   echo "${_x}"
 }
 ### Root's removals in an account's trees, run inside the directory they act
@@ -1154,12 +1258,12 @@ _night_export_dir_here() {
 # another folder of such a name (a move can leave two), moved into the folder $3.
 _night_export_gather_here() {
   local _t="${3}" _f _d _as=(setpriv --reuid="${1}" --regid="${2}" --clear-groups)
-  while IFS= read -r -d '' _f; do
+  while LC_ALL=C IFS= read -r -d '' _f; do
     "${_as[@]}" mv -n -- "${_f}" "./${_t}/" 2> /dev/null
   done < <(env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 -maxdepth 1 -type f -print0 2> /dev/null)
   while IFS= read -r _d; do
     [ "${_d}" != "${_t}" ] || continue
-    while IFS= read -r -d '' _f; do
+    while LC_ALL=C IFS= read -r -d '' _f; do
       "${_as[@]}" mv -n -- "${_f}" "./${_t}/" 2> /dev/null
     done < <(env PATH=/usr/local/bin:/usr/bin:/bin find -P "./${_d}" -mindepth 1 -maxdepth 1 -type f -print0 2> /dev/null)
     "${_as[@]}" rmdir -- "./${_d}" 2> /dev/null
@@ -1232,7 +1336,8 @@ _relocate_backups_to_static_fs() {
 
   # Kill-switch: box-wide or per-account.
   [ -f "/data/conf/disable_backups_on_static_fs.cnf" ] && return 0
-  [ -f "${_acct}/static/control/no_backups_on_static_fs.info" ] && return 0
+  # an opt-out in a control/ that is not the account's own: as it is
+  { _ctrl_has no_backups_on_static_fs.info || _ctrl_foreign; } && return 0
 
   # static/files must exist and resolve to a DIFFERENT device than the account root
   # (else the relocation gives no protection). static/files is a separate disk only
@@ -1799,7 +1904,7 @@ _le_hm_ssl_check_update() {
       _leChain=""
       _leCfg=" --config ${_usEr}/tools/le/config.sh"
     fi
-    if [ "${_DOM}" = "${_RDM}" ] || [ -e "${_usEr}/static/control/force-ssl-certs-rebuild.info" ]; then
+    if [ "${_DOM}" = "${_RDM}" ] || _ctrl_has force-ssl-certs-rebuild.info; then
       if [ ! -e "${_usEr}/log/ctrl/site.${_hmFront}.cert-x1-rebuilt.info" ]; then
         _leParams="--cron --ipv4${_leChain:+ ${_leChain}}${_leCfg} --force"
         _log_ctrl_mark "site.${_hmFront}.cert-x1-rebuilt.info"
@@ -1941,10 +2046,10 @@ ${_fails}
 EOF
   [ -z "${_clList}" ] && return 0
   _clBody="Hello,"$'\n'
-  _clBody="${_clBody}"$'\n'"Automatic HTTPS (Let's Encrypt SSL) certificate renewal failed for the"$'\n'"following site(s) in your hosting account on ${_hName}:"$'\n'"${_clList}"
-  _clBody="${_clBody}"$'\n'"While a certificate cannot be renewed, this check runs and fails again every"$'\n'"night, so please take one of these actions:"$'\n'
-  _clBody="${_clBody}"$'\n'"  - If the site is still in use: point its domain's DNS A record at this"$'\n'"    server and remove any AAAA record (the server answers on IPv4 only),"$'\n'"    and the certificate will renew automatically."$'\n'
-  _clBody="${_clBody}"$'\n'"  - If the site or alias is no longer used: please disable Encryption (SSL)"$'\n'"    for it, or remove the obsolete domain alias, to stop these daily"$'\n'"    failures and notices."$'\n'
+  _clBody="${_clBody}"$'\n'"Automatic HTTPS (Let's Encrypt SSL) certificate renewal failed for the following site(s) in your hosting account on ${_hName}:"$'\n'"${_clList}"
+  _clBody="${_clBody}"$'\n'"While a certificate cannot be renewed, this check runs and fails again every night, so please take one of these actions:"$'\n'
+  _clBody="${_clBody}"$'\n'"  - If the site is still in use: point its domain's DNS A record at this server and remove any AAAA record (the server answers on IPv4 only), and the certificate will renew automatically."$'\n'
+  _clBody="${_clBody}"$'\n'"  - If the site or alias is no longer used: please disable Encryption (SSL) for it, or remove the obsolete domain alias, to stop these daily failures and notices."$'\n'
   _clBody="${_clBody}"$'\n'"This is an automated message from your hosting platform."$'\n'
   # Reply-To the account owner (else the server admin) so a client's reply
   # reaches a human, not the undeliverable root@<host> envelope sender. Only set
@@ -2040,12 +2145,12 @@ ${_ghosts}
 EOF
   [ -z "${_ghList}" ] && return 0
   _clBody="Hello,"$'\n'
-  _clBody="${_clBody}"$'\n'"The nightly maintenance on ${_hName} found broken leftover site"$'\n'"registration(s) in your hosting account:"$'\n'"${_ghList}"$'\n'
-  _clBody="${_clBody}"$'\n'"Each of these is a record of a site that has no directory on the server"$'\n'"any more -- typically an install or clone that failed or was rolled back,"$'\n'"so only its registration was left behind. The record still shows up in"$'\n'"your Aegir control panel and keeps being re-detected until it is removed"$'\n'"there; the server cannot remove it for you, because the control panel"$'\n'"re-creates the backend records on the next task run."$'\n'
+  _clBody="${_clBody}"$'\n'"The nightly maintenance on ${_hName} found broken leftover site registration(s) in your hosting account:"$'\n'"${_ghList}"$'\n'
+  _clBody="${_clBody}"$'\n'"Each of these is a record of a site that has no directory on the server any more -- typically an install or clone that failed or was rolled back, so only its registration was left behind. The record still shows up in your Aegir control panel and keeps being re-detected until it is removed there; the server cannot remove it for you, because the control panel re-creates the backend records on the next task run."$'\n'
   _clBody="${_clBody}"$'\n'"How to remove it in your Aegir control panel (takes a minute):"$'\n'
-  _clBody="${_clBody}"$'\n'"  - If you do not need the site: open the site's page in the control"$'\n'"    panel, run Disable first if the site still shows as enabled (the"$'\n'"    Delete button appears only on a disabled site), then run Delete."$'\n'"    If Delete fails or never finishes, note the number at the end of"$'\n'"    the site page's address (it looks like /node/12345), then open"$'\n'"    /node/12345/delete in your browser and confirm -- this removes the"$'\n'"    stuck record directly."$'\n'
-  _clBody="${_clBody}"$'\n'"  - If you still need the site: open the site's page and re-run the"$'\n'"    failed task (Install or Clone), or delete the broken record and"$'\n'"    create the site afresh."$'\n'
-  _clBody="${_clBody}"$'\n'"These records point at no site data on the server, so removing them"$'\n'"does not touch any of your working sites, and nothing is deleted on the"$'\n'"server side by this process."$'\n'
+  _clBody="${_clBody}"$'\n'"  - If you do not need the site: open the site's page in the control panel, run Disable first if the site still shows as enabled (the Delete button appears only on a disabled site), then run Delete. If Delete fails or never finishes, note the number at the end of the site page's address (it looks like /node/12345), then open /node/12345/delete in your browser and confirm -- this removes the stuck record directly."$'\n'
+  _clBody="${_clBody}"$'\n'"  - If you still need the site: open the site's page and re-run the failed task (Install or Clone), or delete the broken record and create the site afresh."$'\n'
+  _clBody="${_clBody}"$'\n'"These records point at no site data on the server, so removing them does not touch any of your working sites, and nothing is deleted on the server side by this process."$'\n'
   _clBody="${_clBody}"$'\n'"This is an automated message from your hosting platform."$'\n'
   _reply="${_MY_OCTO_EMAIL}"
   if [ -z "${_reply}" ] || [ "${_reply}" = "root" ] \
@@ -2098,10 +2203,8 @@ _night_platform_root_lines_here() {
   fi
   for _f in "${_l[@]}"; do
     _r=$(_acct_read_plain_here "${_f#./}" \
-      | grep "root'" \
-      | cut -d: -f2 \
-      | awk '{ print $3}' \
-      | sed "s/[\,']//g" 2>&1)
+      | sed -n "s/^[[:space:]]*'root'[[:space:]]*=>[[:space:]]*'\([^']*\)'.*/\1/p" \
+      | head -n 1 2>&1)
     [ -n "${_r}" ] || continue
     _d=$(_detect_real_docroot "${_r}")
     printf '%s\t%s\t%s\t%s\n' "${_f#./}" "${_r}" "${_d:-${_r}}" \
@@ -2119,12 +2222,47 @@ _night_user_tasks_alive() {
   return 1
 }
 
+### A build of the control panel's Add platform form writes
+### .<folder>.unfinished-build beside the folder it builds into and removes
+### it once the build ends. While that marker stands beside the folder an
+### alias builds into, and the alias root lies in that folder, the folder is
+### the platform's leftover: the platform's Delete removes the two only
+### through its alias, so the alias stays. $1 is the alias text, $2 its root;
+### prints the folder. One text wherever it is defined.
+_ghost_unfinished_build() {
+  local _gk _gp _gm
+  for _gk in composer_project_path composer_git_path git_repository_path; do
+    _gp=$(printf '%s\n' "$1" \
+      | sed -n "s/^[[:space:]]*'${_gk}' => '\([^']*\)',[[:space:]]*\$/\1/p" \
+      | head -n 1)
+    _gp="${_gp%/}"
+    case "${_gp}" in
+      /*/*) ;;
+      *) continue ;;
+    esac
+    case "${_gp}/" in
+      */../*|*/./*) continue ;;
+    esac
+    case "${2%/}/" in
+      "${_gp}"/*) ;;
+      *) continue ;;
+    esac
+    _gm="${_gp%/*}/.${_gp##*/}.unfinished-build"
+    if [ -d "${_gp}" ] && [ ! -L "${_gp}" ] \
+      && [ -f "${_gm}" ] && [ ! -L "${_gm}" ]; then
+      printf '%s\n' "${_gp}"
+      return 0
+    fi
+  done
+  return 1
+}
+
 _check_old_empty_platforms() {
-  local _drD="${_usEr}/.drush" _pf _siteLines _rootLines _rootNew _snapT _twin _twinMsg
+  local _drD="${_usEr}/.drush" _pf _siteLines _rootLines _rootNew _snapT _twin _twinMsg _ubDir
   _provision_running && { echo "INFO: provision task active -- skipping empty-platform cleanup"; return; }
   if [ "${_hostedSys}" = "YES" ]; then
     if [[ "${_hName}" =~ "demo.aegir.cc" ]] \
-      || [ -e "${_usEr}/static/control/platforms.info" ]; then
+      || _ctrl_has platforms.info || _ctrl_foreign; then
       _DO_NOTHING=YES
     else
       if [ -n "${_DEL_OLD_EMPTY_PLATFORMS}" ] \
@@ -2153,10 +2291,8 @@ _check_old_empty_platforms() {
         # the name reaches a drush command line
         [[ "${_T_PFM_NAME}" =~ ^[A-Za-z0-9._-]+$ ]] || continue
         _T_PFM_ROOT=$(_acct_read_in "${_drD}" "${_pf}" \
-          | grep "root'" \
-          | cut -d: -f2 \
-          | awk '{ print $3}' \
-          | sed "s/[\,']//g" 2>&1)
+          | sed -n "s/^[[:space:]]*'root'[[:space:]]*=>[[:space:]]*'\([^']*\)'.*/\1/p" \
+          | head -n 1 2>&1)
         # The alias keeps the path the platform was registered with, which for
         # a Composer build can be its app root; site_path and sites/all live
         # under the docroot Provision serves, so both tests below read that.
@@ -2167,7 +2303,10 @@ _check_old_empty_platforms() {
         if [ -z "${_T_PFM_DOC}" ]; then
           # Version-agnostic emptiness: no index.php at the alias root nor
           # under web/docroot/html. Do NOT key on sites/all (D8+ dropped it).
-          if _cnf_flag_yes /root/.${_HM_U}.octopus.cnf _GHOST_PLATFORMS_CLEANUP \
+          _ubDir=$(_ghost_unfinished_build "$(_acct_read_in "${_drD}" "${_pf}")" "${_T_PFM_ROOT}")
+          if [ -n "${_ubDir}" ]; then
+            echo "GHOST platform ${_T_PFM_ROOT} kept: the build into ${_ubDir} never finished; delete the platform in the control panel to remove both"
+          elif _cnf_flag_yes /root/.${_HM_U}.octopus.cnf _GHOST_PLATFORMS_CLEANUP \
             || _cnf_flag_yes /root/.barracuda.cnf _GHOST_PLATFORMS_CLEANUP; then
             if _acct_in_real_dir "${_drD}" \
               _acct_undo_here "platform_${_T_PFM_NAME}.alias.drushrc.php" &> /dev/null; then
@@ -2252,7 +2391,7 @@ _purge_hits_under_account() {
   # one above it (_ACCT_RM_OWN_PL): the account's identities can rename what
   # another account left group-writable into these trees, a whole directory
   # with files nested in it included
-  while IFS= read -r -d '' _f; do
+  while LC_ALL=C IFS= read -r -d '' _f; do
     _r=$(realpath -e -- "${_f}" 2>/dev/null) || continue
     case "${_r}/" in
       "${_acct}"/*) ;;
@@ -2264,7 +2403,7 @@ _purge_hits_under_account() {
         esac
         ;;
     esac
-    _n=$( ( cd -P -- "${_r%/*}" 2>/dev/null && [ "$(pwd -P)" = "${_r%/*}" ] \
+    _n=$( ( cd -P -- "${_r%/*}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${_r%/*}" ] \
       && perl -e "${_ACCT_RM_OWN_PL}" -- h "${_o}" - "./${_r##*/}" ) 2> /dev/null )
     _purge_left_add "${_n}"
   done
@@ -2559,7 +2698,7 @@ _purge_cruft_machine() {
       _igSel+=(-o \( -type f -o -type p \) \( "${_igOwn[@]}" \))
     fi
     _igSel+=(\))
-    _igBak=$(_night_in_bak_dir backups pwd -P 2>/dev/null)
+    _igBak=$(_night_in_bak_dir backups /bin/pwd -P 2>/dev/null)
     # The account's own web group (the hostmaster site's files/, private/
     # and settings.php once converted) is no drift: its gid is exempt from
     # the moment the group exists, since a conversion moves those paths
@@ -2681,6 +2820,13 @@ _night_distro_ghosts_here() {
   local i _n _s
   for i in ./*; do
     [ -d "${i}" ] && [ ! -L "${i}" ] || continue
+    # A Platform Path may name a folder here. While the marker of the Add
+    # platform form's build into it stands, that build never finished and
+    # the platform's Delete removes the folder and the marker: it stays.
+    if [ -f "./.${i#./}.unfinished-build" ] && [ ! -L "./.${i#./}.unfinished-build" ]; then
+      echo "GHOST revision ${_usEr}/distro/${i#./} kept: a build into it never finished"
+      continue
+    fi
     # The account owns distro/ and its entries: never through a link at
     # that name (a revision or keys itself), and root's own directory stays
     # root's (the owner and mode it has always had).
@@ -2736,7 +2882,7 @@ _night_src_ghosts_here() {
 # on either path can send the move elsewhere.
 _night_undo_dist_here() {
   local _u
-  _u="$(cd -P /data/disk 2> /dev/null && pwd -P)${_usEr#/data/disk}/undo/dist/${2}"
+  _u="$(cd -P /data/disk 2> /dev/null && /bin/pwd -P)${_usEr#/data/disk}/undo/dist/${2}"
   _acct_in_real_dir "${_usEr}" mkdir -p ./undo 2> /dev/null
   _acct_in_real_dir "${_usEr}/undo" mkdir -p ./dist 2> /dev/null
   _acct_in_real_dir "${_usEr}/undo/dist" mkdir -p -- "./${2}" 2> /dev/null
@@ -2812,6 +2958,10 @@ if [ "${0##*/}" = "10-account.sh" ]; then
   if [ -z "${_usEr}" ] || [ ! -d "${_usEr}" ]; then
     echo "FATAL ERROR: 10-account.sh requires a valid account path argument"
     exit 1
+  fi
+  # judged once here, in this shell, for every marker test of the run
+  if _ctrl_foreign; then
+    echo "ALERT: ${_usEr}/static/control is not ${_usEr##*/}'s own (${_CTRL_WHY}); its markers are not read tonight"
   fi
   _account_process
 fi

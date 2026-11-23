@@ -117,7 +117,9 @@ file is removed automatically. Without platforms.info the trigger is
 ignored. Note that platforms.info REPLACES the default list — pinned
 symbols mean you skip distributions added in future releases, while
 ALL skips only the platforms built when named: the CiviCRM ones (BDC
-DEC) and a pre-release core (DT0). ALL BDC gets everything and BDC.
+DEC), the pre-release core DE5 and Drupal 12 (DT0), which stays out of
+ALL until its build carries a released Drush 15. ALL BDC gets everything
+and BDC.
 
 The Drupal 8+ platforms BOA provides (every distribution and the plain
 Drupal 9, 10 and 11 cores) and both CiviCRM platforms are for
@@ -130,7 +132,7 @@ CiviCRM) come with CiviCRM installed on every new site. Each is one
 platform, built only when named, of about 240 MB (BDC) or 520 MB (DEC).
 DEC needs PHP 8.4 or newer.
 
-Drupal 11 symbols (DE4 DE3 and the Drupal 11 distributions CMS CK3
+Drupal 11 symbols (DE5 DE4 DE3 and the Drupal 11 distributions CMS CK3
 LGV THR VBX FOS OCS DEC) need MySQL 8, which on BOA means Percona 8.4. On a
 Percona 5.7 server they are skipped with a NOTE in the upgrade log, and a
 Drupal 11 site Install stops with that one reason; ask your host to upgrade
@@ -147,6 +149,12 @@ Platform symbols:
 
   Textpattern (opt-in; ask your host to switch it on for the server)
     TXP — Textpattern prod/stage/dev
+
+  Drupal 12 (for testing, built only when named, on the PHP it needs)
+    DT0 — Drupal 12 prod/stage/dev
+
+  Drupal 11.5 (a pre-release for testing, built only when named)
+    DE5 — Drupal 11.5 pre-release prod/stage/dev
 
   Drupal 11.4
     DE4 — Drupal 11.4 prod/stage/dev
@@ -267,7 +275,8 @@ Also available here
       https://docs.boa.io/operating/security/per-instance-group
 
   run-php-fpm-reload.pid — graceful PHP-FPM reload, clears APCu
-      (higher plans, or ask your host)
+      (higher plans, or ask your host; once in 15 minutes: one made
+      again sooner is removed with no reload)
       https://docs.boa.io/using/caching/php-opcache-and-apcu
 
   newrelic.info — your New Relic license key (pairs with a per-site

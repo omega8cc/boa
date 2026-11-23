@@ -51,12 +51,25 @@
 #   stackbuild check                report installed versions vs published packages
 #   stackbuild package [name ...]   build the missing/stale (or named) packages
 #   stackbuild publish              gzip + sha256 sidecar into the mirror tree,
-#                                   then the peer sync and the purge hook
+#                                   then the peer sync, the check that every
+#                                   file still holds its bytes, the purge hook
 #   stackbuild sync                 rsync fresh packages to the peer active mirror
 #   stackbuild all                  package missing + stale + publish + sync
 #   stackbuild force [name ...]     rebuild named (all installed if none given)
 #                                   regardless of state + publish + sync
 # Component names: ssl3 ssl-legacy icu curl valkey nginx unbound pure-ftpd php56 php70 .. php86
+#
+# A published file can go back. A builder mirror that pulls the mirror
+# master's tree on a timer takes the master's older copy over a package
+# published here whenever a pull falls between the publish and the peer sync:
+# content, sidecar and mtime alike, so the pair looks consistent, and the
+# sync, which never moves a file backwards, then leaves the master on the old
+# build while the run reports success. 'publish', 'all' and 'force' therefore
+# compare every file they published with the bytes they wrote, after the peer
+# sync and again after the purge hook, and publish and sync again any that
+# differ. The summary says so (REVERTED), never OK; a file that keeps going
+# back is a FAIL and the run ends with status 1, its build left pending, so
+# the next 'publish' or 'all' publishes it again.
 #
 # A package rebuilt at an unchanged version is republished under the SAME
 # filename, and a CDN in front of the mirrors keeps the previous .gz for its
@@ -100,6 +113,16 @@ _PEER_MIRROR=""
 _PURGE_HOOK=""
 _PURGE_TIMEOUT=3600
 
+# Every file published in a run is compared with the bytes written, after the
+# cross-sync and again after the purge hook. One that holds other bytes is
+# published again from its kept build and synced again, at most
+# _REPUBLISH_MAX times a run, and compared again _REPUBLISH_WAIT seconds
+# later (a copy still on its way in lands meanwhile); the run's last
+# comparison comes no sooner than that wait after its last sync. A bad value
+# in the cnf never switches the check off: the default applies.
+_REPUBLISH_MAX=3
+_REPUBLISH_WAIT=15
+
 # Codenames packages are built for (daedalus + excalibur only;
 # beowulf/chimaera age out on the source path).
 _BUILD_CODENAMES="daedalus excalibur"
@@ -123,6 +146,17 @@ _LOCK_HELD=0
 _RESULTS=()
 _PUBLISHED_FILES=()
 _REPLACED_FILES=()
+# Per package published in this run, same index: the .deb name (its build is
+# kept in ${_WORK_DIR}/.published until the run ends), the sha256 of the .gz
+# as written, and how many times an older copy came back over it.
+_KEPT_DEBS=()
+_KEPT_SUMS=()
+_KEPT_BACK=()
+_WENT_BACK=()
+_REPUBLISH_TRY=0
+_SYNCED_AT=0
+_PURGE_RAN=0
+_PUBLISH_LOST=0
 
 # ---------------------------------------------------------------------------
 # Output helpers.
@@ -444,7 +478,7 @@ _calc_depends() {
   # Echoes the Depends value (may be empty); never fails the build.
   local _stage="$1" _work="$2"
   local _elves=() _f _out
-  while IFS= read -r -d '' _f; do
+  while LC_ALL=C IFS= read -r -d '' _f; do
     if file -b "${_f}" 2>/dev/null | grep -q '^ELF'; then
       _elves+=("${_f}")
     fi
@@ -625,7 +659,7 @@ do_publish() {
   # The sidecar hashes the COMPRESSED file (the installer verifies before
   # gunzip). Old versions are never deleted - mirrors keep them so slower
   # trees and older pins keep finding their exact filename.
-  local _t _base _comp _ref _n=0 _was=""
+  local _t _base _comp _ref _n=0 _was="" _sum _gz _i _at
   _detect_pub_dir
   for _t in "${_WORK_DIR}"/boa-*.deb; do
     [[ -e "${_t}" ]] || continue
@@ -645,37 +679,82 @@ do_publish() {
       rm -f "${_t}"
       continue
     fi
-    if ! gzip -9 -c "${_t}" > "${_PUB_DIR}/${_base}.gz.tmp"; then
+    # Compressed and hashed outside the mirror tree. The checksum written to
+    # the sidecar, and compared later (do_verify), is the one of these bytes,
+    # never one read back from a tree another copy may be writing into: a
+    # sidecar or a sum taken from the tree an instant after the publish can
+    # already be an older copy's. The tree sees the temporary name only for
+    # the copy, not for the whole compression, so a mirror that pulls this
+    # tree rarely takes a half-written one along, to keep it for good.
+    _gz="${_WORK_DIR}/.publish.${_base}.gz"
+    if ! gzip -9 -c "${_t}" > "${_gz}"; then
       _alrt "gzip failed: ${_base}"
-      rm -f "${_PUB_DIR}/${_base}.gz.tmp"
+      rm -f "${_gz}"
+      continue
+    fi
+    _sum="$(sha256sum < "${_gz}")"
+    _sum="${_sum%% *}"
+    if [[ ! "${_sum}" =~ ^[0-9a-f]{64}$ ]]; then
+      _alrt "sha256 failed: ${_base}.gz; not published"
+      rm -f "${_gz}"
       continue
     fi
     _was=""
     [[ -e "${_PUB_DIR}/${_base}.gz" ]] && _was="YES"
     # Checked: on a same-version republish the target already exists, and a
     # refused overwrite (immutable bit, permissions) would otherwise leave the
-    # old bytes in place while the sidecar below is rebuilt from them and the
-    # run still reports success - stale bytes, self-consistent, undetectable.
-    if ! mv -f "${_PUB_DIR}/${_base}.gz.tmp" "${_PUB_DIR}/${_base}.gz"; then
+    # old bytes in place under a new sidecar while the run still reports
+    # success.
+    if ! { cp -f "${_gz}" "${_PUB_DIR}/${_base}.gz.tmp" \
+      && mv -f "${_PUB_DIR}/${_base}.gz.tmp" "${_PUB_DIR}/${_base}.gz"; }; then
       _alrt "publish failed (cannot replace): ${_base}.gz"
-      rm -f "${_PUB_DIR}/${_base}.gz.tmp"
+      rm -f "${_PUB_DIR}/${_base}.gz.tmp" "${_gz}"
       continue
     fi
+    rm -f "${_gz}"
     # Sidecar gets the same tmp+mv treatment as the .gz: an in-place rewrite
     # would expose a new-.gz/old-sidecar window on a same-version republish,
-    # tripping spurious checksum-mismatch source fallbacks fleet-wide.
-    if ! (cd "${_PUB_DIR}" && sha256sum "${_base}.gz" > "${_base}.gz.sha256.tmp" \
-      && mv -f "${_base}.gz.sha256.tmp" "${_base}.gz.sha256"); then
+    # tripping spurious checksum-mismatch source fallbacks fleet-wide. Its
+    # line is sha256sum's own: the sum, two blanks, the name.
+    if ! { printf '%s  %s\n' "${_sum}" "${_base}.gz" > "${_PUB_DIR}/${_base}.gz.sha256.tmp" \
+      && mv -f "${_PUB_DIR}/${_base}.gz.sha256.tmp" "${_PUB_DIR}/${_base}.gz.sha256"; }; then
       # Fail closed: no sidecar means the installer will not use the package.
       _alrt "sha256 sidecar failed: ${_base}.gz; removing the package"
       rm -f "${_PUB_DIR}/${_base}.gz" "${_PUB_DIR}/${_base}.gz.sha256" \
         "${_PUB_DIR}/${_base}.gz.sha256.tmp"
       continue
     fi
-    rm -f "${_t}"
+    # The build is kept until the run ends, with that checksum: a file that
+    # goes back to an older copy is published again from it (do_verify). A
+    # package published a second time in the run keeps its one entry in
+    # every list.
+    mkdir -p "${_WORK_DIR}/.published"
+    mv -f "${_t}" "${_WORK_DIR}/.published/${_base}" || rm -f "${_t}"
     _msg "published: ${_base}.gz (+ sha256)"
-    _PUBLISHED_FILES+=("${_PUB_DIR}/${_base}.gz" "${_PUB_DIR}/${_base}.gz.sha256")
-    [[ -n "${_was}" ]] && _REPLACED_FILES+=("${_base}.gz")
+    _at=""
+    for _i in "${!_KEPT_DEBS[@]}"; do
+      [[ "${_KEPT_DEBS[${_i}]}" == "${_base}" ]] && _at="${_i}"
+    done
+    if [[ -n "${_at}" ]]; then
+      _KEPT_SUMS[${_at}]="${_sum}"
+    else
+      _KEPT_DEBS+=("${_base}")
+      _KEPT_SUMS+=("${_sum}")
+      _KEPT_BACK+=(0)
+    fi
+    _at=""
+    for _i in "${!_PUBLISHED_FILES[@]}"; do
+      [[ "${_PUBLISHED_FILES[${_i}]}" == "${_PUB_DIR}/${_base}.gz" ]] && _at="${_i}"
+    done
+    [[ -n "${_at}" ]] \
+      || _PUBLISHED_FILES+=("${_PUB_DIR}/${_base}.gz" "${_PUB_DIR}/${_base}.gz.sha256")
+    if [[ -n "${_was}" ]]; then
+      _at=""
+      for _i in "${!_REPLACED_FILES[@]}"; do
+        [[ "${_REPLACED_FILES[${_i}]}" == "${_base}.gz" ]] && _at="${_i}"
+      done
+      [[ -n "${_at}" ]] || _REPLACED_FILES+=("${_base}.gz")
+    fi
     _n=$((_n + 1))
   done
   [[ "${_n}" -gt 0 ]] || _msg "nothing to publish (run 'package' first)"
@@ -724,6 +803,7 @@ do_purge_hook() {
   # It stays in the foreground, so Ctrl-C stops it and the run alike; a child it
   # leaves behind is not stopped at the limit.
   _t0="${SECONDS}"
+  _PURGE_RAN=1
   timeout --foreground -k 60 "${_limit}" "${_hook[@]}" "${_PUBLISHED_FILES[@]}" < /dev/null
   _rc=$?
   if [[ "${_rc}" -eq 0 ]]; then
@@ -772,6 +852,150 @@ do_sync() {
   fi
 }
 
+_result_set() {
+  # One summary line a published package: it replaces the package step's OK
+  # line, or the package's own earlier line, so a file that went back never
+  # also reads OK.
+  local _deb="$1" _line="$2" _i
+  for _i in "${!_RESULTS[@]}"; do
+    case "${_RESULTS[${_i}]}" in
+      "OK    ${_deb}"|"REVERTED ${_deb}.gz "*|"FAIL  ${_deb}.gz "*)
+        _RESULTS[${_i}]="${_line}"
+        return 0
+        ;;
+    esac
+  done
+  _RESULTS+=("${_line}")
+}
+
+_went_back() {
+  # Fills _WENT_BACK with the index of every package published in this run
+  # whose .gz or sidecar no longer holds the bytes written; a missing file
+  # counts. Bytes, never mtimes: the copy that comes back carries a time and
+  # a sidecar of its own, and looks as consistent as the one it replaced.
+  local _i _base _now _side _rest
+  _WENT_BACK=()
+  for _i in "${!_KEPT_DEBS[@]}"; do
+    _base="${_KEPT_DEBS[${_i}]}"
+    [[ -n "${_base}" ]] || continue
+    _now="$(sha256sum "${_PUB_DIR}/${_base}.gz" 2>/dev/null)"
+    _now="${_now%% *}"
+    _side=""
+    [[ -r "${_PUB_DIR}/${_base}.gz.sha256" ]] \
+      && read -r _side _rest < "${_PUB_DIR}/${_base}.gz.sha256"
+    if [[ -z "${_KEPT_SUMS[${_i}]}" || "${_now}" != "${_KEPT_SUMS[${_i}]}" \
+      || "${_side}" != "${_KEPT_SUMS[${_i}]}" ]]; then
+      _WENT_BACK+=("${_i}")
+    fi
+  done
+}
+
+_publish_lost() {
+  # The packages in _WENT_BACK stay on an older copy: say so, fail the run,
+  # and leave each kept build pending, so the next publish needs no rebuild.
+  local _i _base _next _state
+  _PUBLISH_LOST=1
+  _alrt "PUBLISH LOST: ${#_WENT_BACK[@]} package(s) published in this run hold an"
+  _alrt "older copy again and the mirror serves the OLD build:"
+  for _i in "${_WENT_BACK[@]}"; do
+    _base="${_KEPT_DEBS[${_i}]}"
+    _alrt "  ${_base}.gz"
+    # The copy that came back keeps its own, older time, so the staleness
+    # check names the component on the next run.
+    _state="the mirror holds the OLD build; 'check' reads it STALE"
+    [[ -e "${_PUB_DIR}/${_base}.gz" ]] || _state="the mirror holds no such file now"
+    _next="no build kept: 'force' rebuilds it"
+    if [[ -e "${_WORK_DIR}/.published/${_base}" ]] \
+      && mv -f "${_WORK_DIR}/.published/${_base}" "${_WORK_DIR}/${_base}"; then
+      _next="its build stays pending: the next 'publish' or 'all' publishes it again"
+    fi
+    _result_set "${_base}" "FAIL  ${_base}.gz (keeps going back to an older copy, ${_state}; ${_next})"
+    _KEPT_DEBS[${_i}]=""
+  done
+  _alrt "Something keeps writing older copies into ${_PUB_DIR} (a timed pull"
+  _alrt "of another mirror's tree is the known case). Then: stackbuild publish"
+}
+
+do_verify() {
+  # Every file published in this run must still hold the bytes written. An
+  # older copy that came back over one (see the header) is published again
+  # from its kept build and synced again, and all are compared once more
+  # after a short wait, since a copy already on its way in can land after the
+  # first repair. $1 = "purged" once the purge hook has run: what is
+  # published again after that goes to the hook again, alone. Returns 1 when
+  # a file is lost.
+  local _purged="${1:-}" _max="${_REPUBLISH_MAX:-}" _wait="${_REPUBLISH_WAIT:-}"
+  local _i _base _again=() _all=() _left
+  [[ "${#_KEPT_DEBS[@]}" -gt 0 ]] || return 0
+  [[ "${_max}" =~ ^[0-9]{1,2}$ ]] || _max=3
+  [[ "${_wait}" =~ ^[0-9]{1,4}$ ]] || _wait=15
+  # The last comparison of a run comes no sooner than the wait after the last
+  # sync, however fast the purge hook returned: a copy that was on its way in
+  # while the first comparison ran has landed by then.
+  if [[ -n "${_purged}" ]]; then
+    _left=$(( _wait - (SECONDS - _SYNCED_AT) ))
+    [[ "${_left}" -gt 0 ]] && sleep "${_left}"
+  fi
+  while :; do
+    _went_back
+    [[ "${#_WENT_BACK[@]}" -gt 0 ]] || return 0
+    _again=()
+    for _i in "${_WENT_BACK[@]}"; do
+      if [[ "${_REPUBLISH_TRY}" -lt "${_max}" \
+        && -e "${_WORK_DIR}/.published/${_KEPT_DEBS[${_i}]}" ]]; then
+        _again+=("${_i}")
+      fi
+    done
+    if [[ "${#_again[@]}" -eq 0 ]]; then
+      _publish_lost
+      return 1
+    fi
+    _REPUBLISH_TRY=$((_REPUBLISH_TRY + 1))
+    _alrt "an older copy came back over ${#_again[@]} package(s) published in this"
+    _alrt "run; publishing again (try ${_REPUBLISH_TRY} of ${_max}):"
+    for _i in "${_again[@]}"; do
+      _base="${_KEPT_DEBS[${_i}]}"
+      _alrt "  ${_base}.gz"
+      _KEPT_BACK[${_i}]=$(( ${_KEPT_BACK[${_i}]:-0} + 1 ))
+      mv -f "${_WORK_DIR}/.published/${_base}" "${_WORK_DIR}/${_base}"
+      _result_set "${_base}" "REVERTED ${_base}.gz (an older copy came back over it, ${_KEPT_BACK[${_i}]} time(s); published again and holds the new build)"
+    done
+    do_publish
+    do_sync
+    _SYNCED_AT="${SECONDS}"
+    if [[ -n "${_purged}" && "${_PURGE_RAN}" == "1" ]]; then
+      _all=("${_PUBLISHED_FILES[@]}")
+      _PUBLISHED_FILES=()
+      for _i in "${_again[@]}"; do
+        _base="${_KEPT_DEBS[${_i}]}"
+        _PUBLISHED_FILES+=("${_PUB_DIR}/${_base}.gz" "${_PUB_DIR}/${_base}.gz.sha256")
+      done
+      do_purge_hook
+      _PUBLISHED_FILES=("${_all[@]}")
+    fi
+    sleep "${_wait}"
+  done
+}
+
+do_deliver() {
+  # Publish, cross-sync, purge: the tail of 'publish', 'all' and 'force'.
+  # The peer gets the files before anything is purged: a builder that pulls
+  # the mirror master's tree every few minutes would otherwise take the
+  # master's older copy back over the file just published while the purge
+  # hook waits, and the purge would serve it. The same pull can still fall
+  # between the publish and the sync, so the files are compared with the
+  # bytes written before the hook gets them, and once more after it.
+  rm -rf "${_WORK_DIR}/.published"
+  rm -f "${_WORK_DIR}"/.publish.boa-*.gz
+  do_publish
+  do_sync
+  _SYNCED_AT="${SECONDS}"
+  do_verify
+  do_purge_hook
+  do_verify purged
+  rm -rf "${_WORK_DIR}/.published"
+}
+
 print_summary() {
   [[ "${#_RESULTS[@]}" -gt 0 ]] || return 0
   _msg ""
@@ -815,14 +1039,9 @@ main() {
       _require_builder
       trap '_cleanup' EXIT
       _acquire_lock
-      do_publish
-      # The peer gets the files before anything is purged, as in all/force:
-      # a builder that pulls the mirror master's tree every few minutes
-      # would otherwise take the master's older copy back over the file just
-      # published while the purge hook waits, and the purge would serve it.
-      do_sync
-      do_purge_hook
+      do_deliver
       print_summary
+      [[ "${_PUBLISH_LOST}" == "0" ]] || exit 1
       ;;
     sync)
       _require_root
@@ -836,10 +1055,9 @@ main() {
       trap '_cleanup' EXIT
       _acquire_lock
       do_package
-      do_publish
-      do_sync
-      do_purge_hook
+      do_deliver
       print_summary
+      [[ "${_PUBLISH_LOST}" == "0" ]] || exit 1
       ;;
     force)
       # Rebuild and republish regardless of what the mirror already holds -
@@ -859,10 +1077,9 @@ main() {
         [[ -n "${_fVer}" ]] && rm -f "${_WORK_DIR}/$(_deb_name "${_fComp}" "${_fVer}")"
       done
       do_package ${_targets}
-      do_publish
-      do_sync
-      do_purge_hook
+      do_deliver
       print_summary
+      [[ "${_PUBLISH_LOST}" == "0" ]] || exit 1
       ;;
     *)
       _die "unknown action '${_action}' (try -h)"

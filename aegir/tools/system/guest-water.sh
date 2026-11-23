@@ -1184,9 +1184,10 @@ _guard_stats() {
 # The lines the pass owns inside the guarded window, by their EXACT shape:
 # " # <tag> ips" at the end of the line for every provider tag the refreshes
 # above write (site24x7_extra is a tag of its own) and the migration proxy
-# line; the DHCP lease line is rewritten after the guard and listed for
-# safety. Exact shapes, not bare words: an operator line whose comment merely
-# mentions a provider is foreign to the pass, so a change to it is caught by
+# line; the DHCP lease lines are pruned and added after the guard, from the
+# lease files, and listed for safety. Exact shapes, not bare words: an
+# operator line whose comment merely mentions a provider is foreign to the
+# pass, so a change to it is caught by
 # the diff-guard and named by the rollback alert instead of being tolerated
 # and hidden. A provider added above is added here, once -- left out, its own
 # lines would roll every pass back and the alert would name them.
@@ -1322,6 +1323,73 @@ _csf_kill_own() {
   done
   pkill -9 -f '^[^ ]*ConfigServer' 2>/dev/null
   return 0
+}
+
+# The DHCP servers named in root dhclient's lease files, one dotted quad a
+# line. Never from log text: any local program can log a "DHCPREQUEST ... to
+# <address>" or a "dhclient ... Failed" line.
+_dhcp_lease_servers() {
+  local _p _lf
+  local _oct="(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])"
+  for _p in $(pgrep -u root -x dhclient 2> /dev/null); do
+    _lf=$(tr '\0' '\n' 2> /dev/null < "/proc/${_p}/cmdline" \
+      | sed -n '/^-lf$/{n;p;q;}')
+    [ -n "${_lf}" ] || _lf="/var/lib/dhcp/dhclient.leases"
+    [ -f "${_lf}" ] && [ ! -L "${_lf}" ] || continue
+    [ "$(stat -c %u "${_lf}" 2> /dev/null)" = "0" ] || continue
+    sed -n -E 's/^[[:space:]]*option dhcp-server-identifier[[:space:]]+([0-9.]+);.*$/\1/p' "${_lf}"
+  done | grep -E "^(${_oct}\.){3}${_oct}$" | sort -u
+}
+
+# dhclient renews its lease by unicast to the server that granted it, and
+# csf's egress filter drops that unless csf.allow lets udp/67 out to it. Adds
+# the allow line of each lease server that has none and prints that server;
+# lines already in csf.allow stay, whoever wrote them.
+_dhcp_allow_lease_servers() {
+  local _srv
+  [ -e "/etc/csf/csf.allow" ] || return 0
+  for _srv in $(_dhcp_lease_servers); do
+    if ! grep -qE "^udp\|out\|d=67\|d=${_srv//./\\.}([[:space:]#]|$)" /etc/csf/csf.allow; then
+      echo "udp|out|d=67|d=${_srv} # Local DHCP out" >> /etc/csf/csf.allow
+      echo "${_srv}"
+    fi
+  done
+}
+
+# Every server any lease file names: those of the running dhclients, whatever
+# their owner, and every lease file in /var/lib/dhcp. Used only to keep lines,
+# so a file another user could write can at most keep one; never to add one.
+_dhcp_known_servers() {
+  local _p _lf
+  {
+    for _p in $(pgrep -u root -x dhclient 2> /dev/null); do
+      tr '\0' '\n' 2> /dev/null < "/proc/${_p}/cmdline" | sed -n '/^-lf$/{n;p;q;}'
+    done
+    ls -1 /var/lib/dhcp/*.leases 2> /dev/null
+  } | sort -u | while IFS= read -r _lf; do
+    [ -f "${_lf}" ] || continue
+    sed -n -E 's/^[[:space:]]*option dhcp-server-identifier[[:space:]]+([0-9.]+);.*$/\1/p' "${_lf}"
+  done | sort -u
+}
+
+# BOA's own DHCP allow lines (that exact shape) for a server no lease file
+# names any more: a former server, or an address an older BOA took from a
+# forged log line. Nothing is pruned unless a running root dhclient holds a
+# lease, and a server named in any lease file on disk keeps its line, so a
+# dhclient between restarts, or one whose lease file the add step does not
+# trust, keeps its line; every other line stays.
+_dhcp_prune_stale_lines() {
+  local _keep _l _ip
+  [ -e "/etc/csf/csf.allow" ] || return 0
+  [ -n "$(_dhcp_lease_servers)" ] || return 0
+  _keep="$(_dhcp_known_servers)"
+  grep -E '^udp\|out\|d=67\|d=[0-9.]+ # Local DHCP out$' /etc/csf/csf.allow \
+    | while IFS= read -r _l; do
+    _ip="${_l#udp|out|d=67|d=}"
+    _ip="${_ip%% *}"
+    grep -qxF "${_ip}" <<< "${_keep}" && continue
+    sed -i "/^udp|out|d=67|d=${_ip//./\\.} # Local DHCP out$/d" /etc/csf/csf.allow
+  done
 }
 
 _whitelist_ip_dns() {
@@ -1493,27 +1561,14 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
   service lfd restart
   _NOW=$(date +%y%m%d-%H%M%S)
   cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-dhcp-${_NOW}
-  sed -i "s/.*DHCP.*//g" /etc/csf/csf.allow
-  wait
+  _dhcp_prune_stale_lines
   _NOW=$(date +%y%m%d-%H%M%S)
   cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-clear-${_NOW}
   sed -i "/^$/d" /etc/csf/csf.allow
   wait
   sed -i "/^$/d" /etc/csf/csf.ignore
   wait
-  if [ -e "/var/log/daemon.log" ]; then
-    _DHCP_LOG="/var/log/daemon.log"
-  else
-    _DHCP_LOG="/var/log/syslog"
-  fi
-  grep DHCPREQUEST "${_DHCP_LOG}" | awk '{print $12}' | sort -u | while read -r _IP; do
-    if [[ ${_IP} =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
-      IFS='.' read -r oct1 oct2 oct3 oct4 <<< "${_IP}"
-      if (( oct1 <= 255 && oct2 <= 255 && oct3 <= 255 && oct4 <= 255 )); then
-        echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow
-      fi
-    fi
-  done
+  _dhcp_allow_lease_servers > /dev/null
   if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
     csf -ra &> /dev/null
     synproxy_reassert -p "443 80" --no-quic -q &> /dev/null

@@ -19,7 +19,9 @@
 # Root's own verbs keep a switched account switched: register and regrant
 # for the databases a root tool makes for it, rekey when a pass rotates its
 # instance password (the user made again on its rows in use only), purge
-# when the account is purged (its databases stay, so their names stay held),
+# when the account is purged (its databases stay, so their names stay held;
+# the site users its records still name exactly, each one's recorded login
+# opening its database, go with the account, on any box, switched or not),
 # and witness, the nightly check of what a switched account holds.
 #
 # Root's box-wide verbs switch an account and judge the whole server: scope
@@ -221,7 +223,9 @@ Usage: sudo -n boa-dbctl <verb> [arguments]      (an Octopus account)
   register <db> --account <oN> --via <tool> [--server <@context>]  (root)
   regrant --account <oN>                     (root)
   rekey --account <oN>                       (root, the new password on stdin)
-  purge --account <oN>                       (root, a cancelled or purged account)
+  purge --account <oN>                       (root, a cancelled or purged account;
+                                     from its running purge, its site
+                                     users too)
   witness                                    (root, every switched account)
   scope <oN> plan | status                   (root)
   scope <oN> on --sha <plan sha> [--force] [--accept-refusals]  (root)
@@ -344,11 +348,11 @@ _acct_in_real_dir() {
     /data/disk/?*) _a=/data/disk ;;
   esac
   if [ -n "${_a}" ]; then
-    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+    _want="$(cd -P -- "${_a}" 2> /dev/null && /bin/pwd -P)${_d#"${_a}"}"
   else
-    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && /bin/pwd -P)/${_d##*/}"
   fi
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] && "$@" )
 }
 # ./$1 in the current (pinned) directory: never through a link, never blocked
 # on a FIFO, at most 1 MiB. Empty for anything else.
@@ -466,18 +470,28 @@ _mydumper_lockwait_opts() {
 # and then behaves otherwise. _MYDUMPER_MODES_PL gives each object back the
 # mode the server stored for it: a plain SET before its CREATE and the
 # file's mode after it (myloader stops on a versioned-comment SET in the
-# middle of a file), mode words 8.x refuses left out. It reads the file
-# whole, never through a link, and replaces it through a new one in the same
+# middle of a file), mode words 8.x refuses left out. A routine's utf8mb4
+# parameters and return value take the loading session's
+# default_collation_for_utf8mb4, which no dump names: a routine whose
+# parameters (and return value) share one of the two defaults that setting
+# takes gets it the same way, the session's own value back after it, read on
+# any server (a 5.x or MariaDB one names utf8mb4_general_ci there, which a
+# load on MySQL 8 then keeps; a server that refuses that read gives the modes
+# alone); each is a statement prepared from one that names MySQL 8, so a 5.x
+# or MariaDB server, which has no such setting, runs DO 0 in its place. It
+# reads the file whole, never through a link, and replaces it through a new one in the same
 # directory: exit 1, the file as it was, when a line cannot be placed; 2
 # when an object had no mode to give (one text wherever it is copied).
 _MYDUMPER_MODES_PL='use strict; use Fcntl;
-my ($f) = @ARGV; my (%m, @o, $p, $miss);
+my ($f) = @ARGV; my (%m, %c, @o, $p, $q, $miss);
 my $gone = qr/^(?:NO_AUTO_CREATE_USER|NO_FIELD_OPTIONS|NO_KEY_OPTIONS|NO_TABLE_OPTIONS|DB2|MAXDB|MSSQL|MYSQL323|MYSQL40|ORACLE|POSTGRESQL)$/;
 for (split /\n/, (defined $ENV{_MYDUMPER_MODES} ? $ENV{_MYDUMPER_MODES} : "")) {
-  my ($t, $h, $s) = split /\t/, $_, 3;
+  my ($t, $h, $s, $k) = split /\t/, $_, 4;
   next unless defined $s && $t =~ /^(?:TRIGGER|FUNCTION|PROCEDURE|EVENT)$/
     && $h =~ /^[0-9A-Fa-f]+$/ && $s =~ /^[A-Z0-9_,]*$/;
   $m{$t . " " . lc($h)} = join(",", grep { $_ !~ $gone } split(/,/, $s));
+  $c{$t . " " . lc($h)} = $k if defined $k && $t =~ /^(?:FUNCTION|PROCEDURE)$/
+    && $k =~ /^utf8mb4_(?:general_ci|0900_ai_ci)$/;
 }
 sysopen(my $in, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit 1;
 my @st = stat($in); exit 1 unless @st && -f _;
@@ -489,17 +503,27 @@ for my $x (@l[0 .. ($#l < 9 ? $#l : 9)]) {
 exit 1 unless defined $fm;
 for my $i (0 .. $#l) {
   my $x = $l[$i];
-  if ($p && $x =~ /^SET character_set_client = \@PREV_CHARACTER_SET_CLIENT;$/) {
-    push @o, "SET SQL_MODE=\x27$fm\x27;\n"; $p = 0;
+  if (($p || $q) && $x =~ /^SET character_set_client = \@PREV_CHARACTER_SET_CLIENT;$/) {
+    push @o, "SET SQL_MODE=\x27$fm\x27;\n" if $p;
+    push @o, "SET \@BOA_UTF8MB4_SQL = IF(VERSION() LIKE \x278.%\x27, \x27SET SESSION default_collation_for_utf8mb4 = \@BOA_PREV_UTF8MB4\x27, \x27DO 0\x27);\n",
+      "PREPARE boa_utf8mb4 FROM \@BOA_UTF8MB4_SQL;\n", "EXECUTE boa_utf8mb4;\n", "DEALLOCATE PREPARE boa_utf8mb4;\n" if $q;
+    $p = 0; $q = 0;
   }
   push @o, $x;
   next unless $x =~ /^DROP (TRIGGER|FUNCTION|PROCEDURE|EVENT) IF EXISTS `((?:[^`]|``)+)`;$/;
   my ($t, $n) = ($1, $2); $n =~ s/``/`/g;
-  exit 0 if $i < $#l && $l[$i + 1] =~ /^SET SQL_MODE=/;
-  my $s = $m{$t . " " . unpack("H*", $n)};
+  exit 0 if $i < $#l && $l[$i + 1] =~ /^SET (?:SQL_MODE=|\@BOA_UTF8MB4_SQL )/;
+  my $key = $t . " " . unpack("H*", $n);
+  my $s = $m{$key};
   if (defined $s) { push @o, "SET SQL_MODE=\x27$s\x27;\n"; $p = 1; } else { $miss = 1; }
+  if (defined $c{$key}) {
+    push @o, "SET \@BOA_UTF8MB4_SQL = IF(VERSION() LIKE \x278.%\x27, \x27SET \@BOA_PREV_UTF8MB4 = \@\@SESSION.default_collation_for_utf8mb4,"
+      . " SESSION default_collation_for_utf8mb4 = \x27\x27$c{$key}\x27\x27\x27, \x27DO 0\x27);\n",
+      "PREPARE boa_utf8mb4 FROM \@BOA_UTF8MB4_SQL;\n", "EXECUTE boa_utf8mb4;\n";
+    $q = 1;
+  }
 }
-exit 1 if $p;
+exit 1 if $p || $q;
 my $w = $f . ".modes";
 sysopen(my $out, $w, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600) or exit 1;
 if (!(print {$out} @o) || !close($out) || !chmod($st[2] & 07777, $w)
@@ -511,13 +535,21 @@ exit($miss ? 2 : 0);'
 # 0 done or nothing to do, 1 the modes unread (the files as mydumper wrote
 # them), 2 an object or a file kept the dump's mode. It never fails a dump.
 _mydumper_object_modes() {
-  local _db="${1}" _dir="${2}" _q _modes _f _rc=0
+  local _db="${1}" _dir="${2}" _q _c _modes _f _rc=0
   shift 2
   [[ "${_db}" =~ ^[A-Za-z0-9_]+$ ]] || return 2
-  _q="SELECT 'TRIGGER', HEX(TRIGGER_NAME), SQL_MODE FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = '${_db}'"
-  _q="${_q} UNION ALL SELECT ROUTINE_TYPE, HEX(ROUTINE_NAME), SQL_MODE FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA = '${_db}'"
-  _q="${_q} UNION ALL SELECT 'EVENT', HEX(EVENT_NAME), SQL_MODE FROM information_schema.EVENTS WHERE EVENT_SCHEMA = '${_db}'"
-  _modes=$("$@" -N -B -e "${_q}" 2> /dev/null) || return 1
+  _c="IFNULL((SELECT IF(COUNT(DISTINCT p.COLLATION_NAME) = 1, MIN(p.COLLATION_NAME), '') FROM information_schema.PARAMETERS p"
+  _c="${_c} WHERE p.SPECIFIC_SCHEMA = r.ROUTINE_SCHEMA AND p.SPECIFIC_NAME = r.ROUTINE_NAME AND p.ROUTINE_TYPE = r.ROUTINE_TYPE"
+  _c="${_c} AND p.COLLATION_NAME IN ('utf8mb4_general_ci', 'utf8mb4_0900_ai_ci')), '')"
+  while :; do
+    _q="SELECT 'TRIGGER', HEX(TRIGGER_NAME), SQL_MODE, '' FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = '${_db}'"
+    _q="${_q} UNION ALL SELECT r.ROUTINE_TYPE, HEX(r.ROUTINE_NAME), r.SQL_MODE, ${_c} FROM information_schema.ROUTINES r WHERE r.ROUTINE_SCHEMA = '${_db}'"
+    _q="${_q} UNION ALL SELECT 'EVENT', HEX(EVENT_NAME), SQL_MODE, '' FROM information_schema.EVENTS WHERE EVENT_SCHEMA = '${_db}'"
+    _modes=$("$@" -N -B -e "${_q}" 2> /dev/null) && break
+    [[ "${_c}" != "''" ]] || return 1
+    echo "WARN: the stored routines' utf8mb4 defaults of ${_db} could not be read: its routines load with the loading server's default" >&2
+    _c="''"
+  done
   [[ -n "${_modes}" ]] || return 0
   for _f in "${_dir}"/*-schema-post.sql "${_dir}"/*-schema-triggers.sql; do
     if [[ -L "${_f}" ]]; then
@@ -789,8 +821,8 @@ _acct_ok() {
   [[ "${_n}" == "${_a}" && "${_uid}" =~ ^[0-9]+$ ]] || return 1
   [[ "${_home%/}" == "${_DISK}/${_a}" ]] || return 1
   [[ -d "${_DISK}/${_a}" && ! -L "${_DISK}/${_a}" ]] || return 1
-  _real="$(cd -P -- "${_DISK}" 2> /dev/null && pwd -P)/${_a}"
-  [[ "$(cd -P -- "${_DISK}/${_a}" 2> /dev/null && pwd -P)" == "${_real}" ]] || return 1
+  _real="$(cd -P -- "${_DISK}" 2> /dev/null && /bin/pwd -P)/${_a}"
+  [[ "$(cd -P -- "${_DISK}/${_a}" 2> /dev/null && /bin/pwd -P)" == "${_real}" ]] || return 1
   [[ "$(stat -c %u -- "${_real}" 2> /dev/null)" == "${_uid}" ]] || return 1
   [[ -f "${_RHOME}/.${_a}.octopus.cnf" ]] || return 1
   _ACCT_UID="${_uid}"
@@ -2234,7 +2266,7 @@ _in_backups() {
     return
   fi
   _r="$(readlink -f -- "${_d}" 2> /dev/null)"
-  _s="$(cd -P -- "${_DISK}" 2> /dev/null && pwd -P)/${_ACCT}/static/files/"
+  _s="$(cd -P -- "${_DISK}" 2> /dev/null && /bin/pwd -P)/${_ACCT}/static/files/"
   case "${_r}" in
     ""|*[!A-Za-z0-9._/-]*) return 1 ;;
     "${_s}"?*) ;;
@@ -2246,7 +2278,7 @@ _in_backups() {
       ;;
     *) return 1 ;;
   esac
-  ( cd -P -- "${_r}" 2> /dev/null && [[ "$(pwd -P)" == "${_r}" ]] && "$@" )
+  ( cd -P -- "${_r}" 2> /dev/null && [[ "$(/bin/pwd -P)" == "${_r}" ]] && "$@" )
 }
 
 # "<device> <mount point>" of the current (pinned) directory, or of $1.
@@ -2262,7 +2294,7 @@ _root_path() {
   local -a _parts
   [[ -n "${_p}" ]] || _p="/"
   [[ "${_p}" =~ ^/[A-Za-z0-9._/-]*$ ]] || return 1
-  [[ "$(cd -P -- "${_p}" 2> /dev/null && pwd -P)" == "${_p}" ]] || return 1
+  [[ "$(cd -P -- "${_p}" 2> /dev/null && /bin/pwd -P)" == "${_p}" ]] || return 1
   [[ -z "${_r}" || "${_p}" == "${_r}" || "${_p}" == "${_r}"/* ]] || return 1
   _c="${_r:-/}"
   _x="${_p#"${_r}"}"
@@ -2538,8 +2570,10 @@ _cnf_tests() {
 # account's own myloader through an inherited descriptor. It is the
 # account's (so that reading works) inside root's private directory, which
 # no one else can enter, and goes with it. The plan's proof of a site's
-# recorded login is read from such a file too. 1, with no file left, when
-# the name or the password may not become its lines (_cnf_tests).
+# recorded login is read from such a file too. With $2 = root the file
+# stays root's: the purge's proof, read by root's own client, whose
+# account may have no Unix user left. 1, with no file left, when the name
+# or the password may not become its lines (_cnf_tests).
 _write_cnf() {
   local _e
   _CNF="${_TMPD}/client.cnf"
@@ -2552,7 +2586,9 @@ _write_cnf() {
   printf '[client]\nuser=%s\npassword="%s"\n' "${1}" "${_e}" > "${_CNF}" \
     || _die 7 "credentials-file-failed"
   _e=""
-  chown -- "${_ACCT}" "${_CNF}" 2> /dev/null || _die 7 "credentials-file-failed"
+  if [[ "${2:-}" != "root" ]]; then
+    chown -- "${_ACCT}" "${_CNF}" 2> /dev/null || _die 7 "credentials-file-failed"
+  fi
   chmod 0600 "${_CNF}" 2> /dev/null
   return 0
 }
@@ -3061,19 +3097,31 @@ CREATE USER \`${_ACCT}\`@\`${_r}\` IDENTIFIED BY ${_pw};"; then
 # them), so their names stay held: every entry of it turns purged, which
 # no account owns, but a reservation with no database of its name is let
 # go. Only for an account on its way out: cancelled (its log/CANCELLED) or
-# gone (no root cnf).
+# gone (no root cnf). Then the site users its records still name exactly
+# go, saved first (_ps_sites), on a box with no registry too: the purge's
+# own call, made while those records are in place, is the only one that
+# reads them. A drop or a save that fails, or a baseline lock another run
+# holds past the wait, ends the call ERR 7, the rest done.
 _v_purge() {
-  local _x _s _t _v _d _st _rel=0 _a
   [[ "${_ROOT_RUN}" == "YES" ]] || _die 2 "root-only"
   [[ "${#_ARGS[@]}" -eq 0 ]] || _die 2 "usage purge --account <oN>"
   if [[ -e "${_RHOME}/.${_ACCT}.octopus.cnf" ]] \
     && ! _acct_in_real_dir "${_DISK}/${_ACCT}/log" test -e ./CANCELLED; then
     _die 3 "not-cancelled"
   fi
-  if [[ "${_REG_HAS}" != "YES" ]]; then
-    _info "purge ${_ACCT} purged=0 released=0"
-    return 0
-  fi
+  _PG_N=0
+  _PG_REL=0
+  [[ "${_REG_HAS}" != "YES" ]] || _purge_mark
+  _ps_sites
+  [[ "${_PS_BAD}" -eq 0 ]] || _die 7 "purge-incomplete ${_PS_BAD}"
+  _info "purge ${_ACCT} purged=${_PG_N} released=${_PG_REL} site-dropped=${_PS_DROP} site-kept=${_PS_KEPT}"
+}
+
+# The account's registry entries marked purged, its reservations with no
+# database let go, under its registry lock. Sets _PG_N (its entries) and
+# _PG_REL (those let go).
+_purge_mark() {
+  local _x _s _t _v _d _st _a
   _reg_lock
   _reg_list
   while IFS='|' read -r _x _s _t _v; do
@@ -3085,7 +3133,7 @@ _v_purge() {
     _schema_exists "${_d}" && continue
     _reg_del "${_d}" || _die 7 "registry-write-failed"
     _log_note "released ${_d}"
-    _rel=$(( _rel + 1 ))
+    _PG_REL=$(( _PG_REL + 1 ))
   done <<< "${_SQL_OUT}"
   _a=$(_sql_str "${_ACCT}")
   _sql "/*q:regpurge*/ UPDATE ${_REG_TBL} SET state = 'purged', since = $(_sql_str "$(_now)"), via = 'purge' WHERE account = ${_a} AND state <> 'purged';
@@ -3094,8 +3142,491 @@ SELECT COUNT(*) FROM ${_REG_TBL} WHERE account = ${_a} AND state <> 'purged';" \
   [[ "${_SQL_OUT}" == "0" ]] || _die 7 "registry-write-failed"
   _sql_or_die "SELECT /*q:regpurged*/ COUNT(*) FROM ${_REG_TBL} WHERE account = ${_a}" regpurged
   [[ "${_SQL_OUT}" =~ ^[0-9]+$ ]] || _die 7 "sql-failed regpurged"
+  _PG_N="${_SQL_OUT}"
   _reg_unlock
-  _info "purge ${_ACCT} purged=${_SQL_OUT} released=${_rel}"
+}
+
+# The site database users of the account being purged go with it, by its
+# purge and never by settle: only while that purge runs and the records
+# that name them are still in place, only the names they give exactly, and
+# never a database. Each one kept is said, with why.
+#   G0 the purge is running now: the home a real directory marked
+#      log/CANCELLED, no root cnf, which it parks beside its own list (a
+#      plain file of root's) in the parked home. Otherwise nothing is read.
+#   G1 the box: no standby in the making, no switch of its pair under way,
+#      no ProxySQL, no database cluster.
+#   G2 the account's databases are on this server: the server alias that
+#      names its instance login names a host of this box, and so does the
+#      parked cnf.
+#   G3 each site record: a plain alias in the account's own .drush, its
+#      site inside the home and not the panel, on the context that alias
+#      gives, its database and user one plain name, which is none of the
+#      server's own nor the account's instance or panel user.
+#   G4 no other record claims the name (with the account's cnf parked a
+#      claim is always another's), no other account has it, and the
+#      registry gives its database to no other account.
+#   G5 its rows on the server: each at a host only this box reaches the
+#      server from, none pinned in the baseline, no global privilege, no
+#      login holding it as a role or proxying it, every grant row on its
+#      own database (in either spelling) or on a name with no schema, no
+#      stored object it defines (a read of them that is not whole keeps
+#      every user).
+#   G6 the login each record of the user holds opens that record's
+#      database, as a switch proves a site's before it registers it (an
+#      account can write its own records, so a name alone proves nothing).
+#      Tried last, so that no login is tried on a user another owns or
+#      whose rows stay anyway, and never on a user a row of which carries a
+#      failed-login limit (a refusal would count against a row that may be
+#      someone's). A row the user gains after its login was tried changes
+#      what was judged, which the read under the lock sees.
+# Then, under the baseline lock, each user's rows, pins, global privileges
+# and grant rows read again and as they were: its CREATE USER lines and
+# grants saved into root's own file, a save that fails dropping nothing of
+# it, then each row dropped, its baseline row with it. A lock another run
+# holds past the wait keeps every user judged, each said and counted as not
+# done: no later call reads them. On a pair the drop is binlogged as every
+# other: the standby loses the same rows. Sets _PS_DROP and _PS_KEPT
+# (users, and records that name no plain user) and _PS_BAD (a save or a
+# drop that failed, a user the lock kept).
+_ps_sites() {
+  local _why="" _sp _ds _dn _du _pp _pu _u _i _ok=$'\n' _ko=$'\n' _t _gu _gh _up _hp _d _rest
+  local -a _cand=() _go=() _sig=()
+  _PS_DROP=0
+  _PS_KEPT=0
+  _PS_BAD=0
+  _PS_RECS=""
+  if ! _ps_running; then
+    printf 'site users of %s not read: %s\n' "${_ACCT}" "${_PS_WHY}"
+    return 0
+  fi
+  _box_facts
+  _ps_box || _why="${_PS_WHY}"
+  if [[ -z "${_why}" ]] && ! _ps_local; then
+    _why="${_PS_WHY}"
+  fi
+  _pp=""
+  _pu=""
+  if _panel_of "${_DISK}/${_ACCT}"; then
+    _pp="${_PN_PATH}"
+    _pu="${_PN_USER}"
+  elif [[ -z "${_why}" ]]; then
+    _why="its panel cannot be read, so its record cannot be told from a site's"
+  fi
+  # A user two records name is judged by each: one that fails keeps it.
+  while IFS='|' read -r _sp _ds _dn _du; do
+    [[ -n "${_sp}" ]] || continue
+    [[ -z "${_pp}" || "${_sp}" != "${_pp}" ]] || continue
+    if [[ "${_du}" == "-" ]]; then
+      _PS_KEPT=$(( _PS_KEPT + 1 ))
+      # a site path _rec_sites passes is plain
+      printf 'kept site %s: its record names no plain database user\n' "${_sp}"
+      continue
+    fi
+    [[ "${_ko}" != *$'\n'"${_du}"$'\n'* ]] || continue
+    if [[ -n "${_why}" ]] || ! _ps_record "${_ds}" "${_dn}" "${_du}" "${_pu}"; then
+      [[ -n "${_why}" ]] && _PS_WHY="${_why}"
+      _ok="${_ok/$'\n'"${_du}"$'\n'/$'\n'}"
+      _ko="${_ko}${_du}"$'\n'
+      _ps_kept "${_du}" "${_PS_WHY}"
+      continue
+    fi
+    [[ "${_ok}" == *$'\n'"${_du}"$'\n'* ]] || _ok="${_ok}${_du}"$'\n'
+    # each record's login is tried once its user has passed G4 and G5
+    _PS_RECS="${_PS_RECS}${_du}|${_sp}|${_dn}"$'\n'
+  done <<< "$(_rec_sites "${_ACCT}")"
+  while IFS= read -r _u; do
+    [[ -n "${_u}" ]] && _cand+=("${_u}")
+  done <<< "${_ok}"
+  [[ "${#_cand[@]}" -gt 0 ]] || return 0
+  _al_load
+  _settle_defs_read
+  # the users other logins hold as a role or a default role, or proxy, read
+  # once for every user
+  _PS_DEP=$'\n'
+  while IFS='|' read -r _t _gu _gh _up _hp _d _rest; do
+    case "${_t}" in
+      proxies_priv|role_edges|default_roles) _PS_DEP="${_PS_DEP}${_d}"$'\n' ;;
+    esac
+  done <<< "${_AL_GR}"
+  for _u in "${_cand[@]}"; do
+    if ! _ps_user "${_u}"; then
+      _ps_kept "${_u}" "${_PS_WHY}"
+      continue
+    fi
+    _ps_rows "${_u}"
+    case "$?" in
+      0) ;;
+      2) continue ;;
+      *)
+        _ps_kept "${_u}" "${_PS_WHY}"
+        continue
+        ;;
+    esac
+    if ! _ps_proof "${_u}"; then
+      _ps_kept "${_u}" "${_PS_WHY}"
+      continue
+    fi
+    _go+=("${_u}")
+    _sig+=("${_PS_SIG}")
+  done
+  [[ "${#_go[@]}" -gt 0 ]] || return 0
+  if ! _ps_base_lock; then
+    for _u in "${_go[@]}"; do
+      _ps_kept "${_u}" "another run holds the baseline lock, so nothing of it is dropped"
+    done
+    _PS_BAD=$(( _PS_BAD + ${#_go[@]} ))
+    return 0
+  fi
+  # what began while the box was read ends the step here, nothing dropped
+  if ! _ps_box; then
+    for _u in "${_go[@]}"; do
+      _ps_kept "${_u}" "${_PS_WHY}"
+    done
+    flock -u 7 2> /dev/null
+    return 0
+  fi
+  _base_ready
+  _base_load
+  _SAVEF="${_SAVED}/purge-$(date -u +%Y%m%dT%H%M%SZ)-$$.sql"
+  for (( _i = 0; _i < ${#_go[@]}; _i++ )); do
+    _ps_drop "${_go[${_i}]}" "${_sig[${_i}]}"
+  done
+  flock -u 7 2> /dev/null
+  return 0
+}
+
+_ps_kept() {
+  _PS_KEPT=$(( _PS_KEPT + 1 ))
+  printf 'kept %s: %s\n' "${1}" "${2}"
+}
+
+# The baseline lock, as _base_lock takes it, for the site step's drops: 1
+# while another run holds it past the wait, where every other caller ends
+# ERR 9. Only this call ever reads the users it judged, so it names them.
+_ps_base_lock() {
+  exec 7>> "${_RUNP}.baseline.lock" || _die 7 "lock-failed"
+  flock -w "${_REG_WAIT}" 7
+}
+
+# G0, into _PS_WHY when it fails.
+_ps_running() {
+  local _z="${_ZOMBIE}/${_ACCT}/home"
+  _PS_WHY=""
+  if [[ ! -d "${_DISK}/${_ACCT}" || -L "${_DISK}/${_ACCT}" ]]; then
+    _PS_WHY="its home is not there: only its running purge reads them"
+  elif ! _acct_in_real_dir "${_DISK}/${_ACCT}/log" test -e ./CANCELLED; then
+    _PS_WHY="it is not marked log/CANCELLED"
+  elif [[ -e "${_RHOME}/.${_ACCT}.octopus.cnf" || -L "${_RHOME}/.${_ACCT}.octopus.cnf" ]]; then
+    _PS_WHY="its root cnf is in place: only its running purge, which parks it, reads them"
+  elif [[ ! -d "${_ZOMBIE}/${_ACCT}" || -L "${_ZOMBIE}/${_ACCT}" || ! -d "${_z}" || -L "${_z}" \
+    || ! -f "${_z}/.purge.list" || -L "${_z}/.purge.list" \
+    || "$(stat -c %u -- "${_z}/.purge.list" 2> /dev/null)" != "${_ROOT_UID}" ]]; then
+    _PS_WHY="its parked home holds no list of its purge"
+  elif [[ -L "${_z}/root" || ! -f "${_z}/root/.${_ACCT}.octopus.cnf" \
+    || -L "${_z}/root/.${_ACCT}.octopus.cnf" ]]; then
+    _PS_WHY="its parked home holds no root cnf of it"
+  fi
+  [[ -z "${_PS_WHY}" ]]
+}
+
+# G1, into _PS_WHY when it fails. The pair's state is read fresh each time.
+_ps_box() {
+  _PS_WHY=""
+  if [[ -e "${_STANDBY}" || -L "${_STANDBY}" || -e "${_XMASS_INIT}" || -L "${_XMASS_INIT}" \
+    || -e "${_STANDBY_INIT}" || -L "${_STANDBY_INIT}" ]]; then
+    _PS_WHY="this box is a standby, or one being seeded"
+  elif [[ -e "${_PREP}" || -L "${_PREP}" ]]; then
+    _PS_WHY="this box is being made a standby"
+  elif [[ -e "${_CONF}/${_ACCT}_use_proxysql.txt" || -e "${_RHOME}/.my.proxysql_adm_pwd.txt" ]]; then
+    _PS_WHY="its databases are reached through ProxySQL"
+  elif [[ -e "${_CONF}/clstr.cnf" || -e "${_RHOME}/.my.cluster_root_pwd.txt" ]]; then
+    _PS_WHY="this box serves a database cluster"
+  else
+    _PAIR_READ="NO"
+    _pair_state
+    case "${_PAIR_PHASE}" in
+      cutover|rename-failed) _PS_WHY="a switch of this box's pair to ${_PAIR_IP} is under way" ;;
+    esac
+  fi
+  [[ -z "${_PS_WHY}" ]]
+}
+
+# G2, into _PS_WHY when it fails, the context of the account's own server
+# into _PS_CTX: as a switch reads it (_scope_pre), the parked cnf in place
+# of root's.
+_ps_local() {
+  local _h
+  _PS_WHY=""
+  _PS_CTX=""
+  if ! _root_login "${_DISK}/${_ACCT}" "${_ACCT}"; then
+    _PW=""
+    _PS_WHY="no server alias of the account names its own database login"
+    return 1
+  fi
+  _PW=""
+  _PS_CTX="${_CTX}"
+  case "${_MDB_HOST}" in
+    localhost|127.0.0.1) ;;
+    *)
+      if [[ "${_MDB_HOST}" != "${_BOX}" ]] && ! _own_ip "${_MDB_HOST}"; then
+        _PS_WHY="on the database server ${_MDB_HOST}: drop them there"
+        return 1
+      fi
+      ;;
+  esac
+  _h=$(grep -s "^_THIS_DB_HOST=" "${_ZOMBIE}/${_ACCT}/home/root/.${_ACCT}.octopus.cnf" | tail -n 1 \
+    | cut -d= -f2 | tr -d "\"' ")
+  case "${_h}" in
+    ""|localhost|127.0.0.1|FQDN) ;;
+    PROXYSQL)
+      _PS_WHY="its databases are reached through ProxySQL"
+      return 1
+      ;;
+    *)
+      if ! _own_ip "${_h}"; then
+        _PS_WHY="on the database server $(_log_safe "${_h}"): drop them there"
+        return 1
+      fi
+      ;;
+  esac
+  return 0
+}
+
+# G3 for the record whose db_server, database and user are $1 to $3, the
+# panel's user $4. Into _PS_WHY when it fails.
+_ps_record() {
+  _PS_WHY=""
+  if [[ "${1}" == "-" ]]; then
+    _PS_WHY="its site names no plain database server"
+  elif [[ "${1}" != "${_PS_CTX}" ]]; then
+    _PS_WHY="its site is on the database server ${1}: drop it there"
+  elif [[ "${2}" != "${3}" ]]; then
+    _PS_WHY="its site does not name its database as its user"
+  else
+    case "${3}" in
+      root|aegir|aegir_root|xmass_repl|debian-sys-maint|mysql.*|percona.*)
+        _PS_WHY="it is one of the server's own logins"
+        ;;
+      *)
+        if [[ "${3}" == "${_ACCT}" || "${3}" == "${4}" ]]; then
+          _PS_WHY="it is the account's instance or panel user, which the purge drops itself"
+        elif ! _db_ok "${2}"; then
+          _PS_WHY="its name is no site database's"
+        fi
+        ;;
+    esac
+  fi
+  [[ -z "${_PS_WHY}" ]]
+}
+
+# G6 for user $1: every record of it (_PS_RECS) proven, the password each
+# records opening that record's database as that user, as a switch proves a
+# site's login (_scope_sites); one that is not keeps the user. No login is
+# tried while a row of the user carries a failed-login limit. The client
+# file stays root's: root's own client reads it, and the account's Unix
+# user may be gone already. Into _PS_WHY when it fails.
+_ps_proof() {
+  local _ru _sp _dn
+  _PS_WHY=""
+  if _settle_flim "$(_hex "${1}")"; then
+    _PS_WHY="a row of it carries a failed-login limit, so no login is tried"
+    return 1
+  fi
+  while IFS='|' read -r _ru _sp _dn; do
+    [[ -n "${_ru}" && "${_ru}" == "${1}" ]] || continue
+    if ! _site_pw "${_sp}"; then
+      _PS_WHY="its site records no password for it"
+    elif ! _write_cnf "${1}" root; then
+      # no client file is written with it, and no login tried
+      _PS_WHY="${_CNF_WHY}"
+    else
+      _PW=""
+      _prove "${1}" "${_dn}" || _PS_WHY="the login its site records was not proven on its database"
+      rm -f -- "${_CNF}"
+    fi
+    _PW=""
+    [[ -z "${_PS_WHY}" ]] || return 1
+  done <<< "${_PS_RECS}"
+  return 0
+}
+
+# G4, and of G5 what the box-wide read holds (the logins that hold the user
+# as a role or proxy it, the stored objects), for user $1. Into _PS_WHY
+# when it fails.
+_ps_user() {
+  local _px _k _sx _nx _dx
+  _PS_WHY=""
+  _u_claim "${1}"
+  if [[ -n "${_UC_K}" ]]; then
+    _PS_WHY="another record claims it (${_UC_K} ${_UC_O})"
+    return 1
+  fi
+  if [[ -e "${_DISK}/${1}" || -L "${_DISK}/${1}" \
+    || -e "${_RHOME}/.${1}.octopus.cnf" || -L "${_RHOME}/.${1}.octopus.cnf" ]]; then
+    _PS_WHY="it is the name of another account"
+    return 1
+  fi
+  if _reg_get "${1}" && [[ "${_E_ACCOUNT}" != "${_ACCT}" ]]; then
+    _PS_WHY="the registry gives its database to ${_E_ACCOUNT}"
+    return 1
+  fi
+  _px=$(_hex "${1}")
+  if [[ "${_PS_DEP}" == *$'\n'"${_px}"$'\n'* ]]; then
+    _PS_WHY="another login holds it as a role, or proxies it"
+    return 1
+  fi
+  if [[ "${_ST_DEFS_OK}" != "YES" ]]; then
+    _PS_WHY="${_ST_DEFS_WHY}: nothing is dropped on a guess"
+    return 1
+  fi
+  # definers as the server keeps them, compared without case; the objects
+  # are walked only when one may be its
+  _px=$(_hex "$(printf '%s@' "${1}" | tr '[:upper:]' '[:lower:]')")
+  [[ "${_ST_DEFS}" == *"|${_px}"* ]] || return 0
+  while IFS='|' read -r _k _sx _nx _dx; do
+    [[ -n "${_k}" && "${_dx}" == "${_px}"* ]] || continue
+    _PS_WHY="it defines ${_k} $(_log_safe "$(_unhex "${_sx}")").$(_log_safe "$(_unhex "${_nx}")"): a drop would leave that without its definer"
+    return 1
+  done <<< "${_ST_DEFS}"
+  return 0
+}
+
+# A host only this box reaches the server from, as a row's host.
+_ps_host() {
+  case "${1}" in
+    localhost|127.0.0.1|::1|%) return 0 ;;
+  esac
+  [[ -n "${_BOX}" && "${1}" == "${_BOX}" ]] && return 0
+  _held_ip "${1}"
+}
+
+# Of G5 what the server holds for user $1 now: its rows, its global
+# privileges, its grant rows, its baseline rows. 0 when it passes, with its
+# rows' host hex in _PS_HOSTS and what was read in _PS_SIG; 1 with
+# _PS_WHY; 2 when the user has no row.
+_ps_rows() {
+  local _u="${1}" _ux _x _h _k _dx _sx _d _s _n _gr
+  _PS_WHY=""
+  _PS_SIG=""
+  _ux=$(_hex "${_u}")
+  _user_hosts_hex "${_u}"
+  _PS_HOSTS="${_HOSTS_HEX}"
+  [[ -n "${_PS_HOSTS}" ]] || return 2
+  while IFS= read -r _x; do
+    [[ -n "${_x}" ]] || continue
+    _h=$(_unhex "${_x}") || _h="?"
+    if [[ ! "${_h}" =~ ^[A-Za-z0-9_.:%-]{1,255}$ ]] || ! _ps_host "${_h}"; then
+      _PS_WHY="it has a row at $(_log_safe "${_h}"), a host this box does not own"
+      return 1
+    fi
+    if _base_get "${_ux}@${_x}" && [[ "${_B_CLASS}" == "pinned" ]]; then
+      _PS_WHY="the baseline pins ${_u}@${_h} as one of the server's own logins"
+      return 1
+    fi
+  done <<< "${_PS_HOSTS}"
+  if _global_privs "${_u}" ""; then
+    _PS_WHY="it holds a global privilege"
+    return 1
+  fi
+  _grant_rows "${_u}" ""
+  _gr="${_SQL_OUT}"
+  _rk "${_u}"
+  _n="${_RK}"
+  while IFS='|' read -r _k _dx _sx; do
+    [[ -n "${_k}" ]] || continue
+    [[ "${_dx}" =~ ^[0-9A-F]+$ && "${_sx}" =~ ^[0-9A-F]*$ ]] || _die 7 "sql-failed grantrows"
+    _d=$(_unhex "${_dx}")
+    # a row that reaches a live schema other than its own, a pattern's too
+    if [[ -n "${_sx}" ]]; then
+      _s=$(_unhex "${_sx}")
+      _rk "${_s}"
+      if [[ "${_RK}" != "${_n}" ]]; then
+        _PS_WHY="it holds a grant that reaches the database $(_log_safe "${_s}")"
+        return 1
+      fi
+    fi
+    # a database-level row read as the name it spells, escapes taken off
+    if [[ "${_k}" == "w" ]]; then
+      _db_literal "${_d}"
+      if [[ "${_PAT}" == "YES" && "${_d}" != "${_u}" ]]; then
+        _PS_WHY="it holds a pattern grant on $(_log_safe "${_d}")"
+        return 1
+      fi
+    else
+      _LIT="${_d}"
+    fi
+    _rk "${_LIT}"
+    [[ "${_RK}" == "${_n}" ]] && continue
+    # another name: only a dead one, which MySQL keeps after a drop, and
+    # never one the registry gives to another account (a schema of the
+    # name in another case, where the server folds names, is not dead)
+    if _schema_exists "${_LIT}"; then
+      _PS_WHY="it holds a grant on the database $(_log_safe "${_LIT}")"
+      return 1
+    fi
+    if _db_ok "${_LIT}" && _reg_get "${_LIT}" && [[ "${_E_ACCOUNT}" != "${_ACCT}" ]]; then
+      _PS_WHY="it holds a grant on $(_log_safe "${_LIT}"), which the registry gives to ${_E_ACCOUNT}"
+      return 1
+    fi
+  done <<< "${_gr}"
+  _PS_SIG="${_PS_HOSTS}#${_gr}"
+  return 0
+}
+
+# User $1 dropped, every row, under the baseline lock: read again first and
+# as it was when judged ($2), every row saved, read again, then dropped.
+_ps_drop() {
+  local _u="${1}" _ux _x _h _left=0
+  _ux=$(_hex "${_u}")
+  _ps_rows "${_u}"
+  case "$?" in
+    0) ;;
+    2) return 0 ;;
+    *)
+      _ps_kept "${_u}" "${_PS_WHY}"
+      return 0
+      ;;
+  esac
+  if [[ "${_PS_SIG}" != "${2}" ]]; then
+    _ps_kept "${_u}" "it changed while this ran"
+    return 0
+  fi
+  while IFS= read -r _x; do
+    [[ -n "${_x}" ]] || continue
+    _h=$(_unhex "${_x}")
+    if ! _show_create "${_u}" "${_h}" || ! _save_grants "${_ux}" "${_x}" replay "${_SC}"; then
+      _PS_BAD=$(( _PS_BAD + 1 ))
+      _alrt "${_u}@${_h}: its row and grants could not be saved, so nothing of ${_u} is dropped"
+      return 0
+    fi
+  done <<< "${_PS_HOSTS}"
+  # the user as it was judged: a row or a grant made while it was saved
+  # keeps it
+  _ps_rows "${_u}"
+  if [[ "$?" -ne 0 || "${_PS_SIG}" != "${2}" ]]; then
+    _ps_kept "${_u}" "it changed while this ran"
+    return 0
+  fi
+  while IFS= read -r _x; do
+    [[ -n "${_x}" ]] || continue
+    _h=$(_unhex "${_x}")
+    if _sql_prepared "'DROP USER ', $(_sql_qid "${_ux}"), '@', $(_sql_qid "${_x}")"; then
+      _log_note "purge-site-dropped ${_u}@${_h}"
+      if [[ "${_BASE_HAS}" == "YES" ]]; then
+        _sql "/*q:basedel*/ DELETE FROM ${_BASE_TBL} WHERE pair = '${_ux}@${_x}';"
+      fi
+      printf 'dropped %s@%s saved=%s\n' "${_u}" "${_h}" "${_SAVEF##*/}"
+    else
+      _left=$(( _left + 1 ))
+      _alrt "${_u}@${_h} could not be dropped (${_SQL_ERRNO})"
+    fi
+  done <<< "${_PS_HOSTS}"
+  if [[ "${_left}" -gt 0 ]]; then
+    _PS_BAD=$(( _PS_BAD + 1 ))
+  else
+    _PS_DROP=$(( _PS_DROP + 1 ))
+  fi
+  return 0
 }
 
 # witness (root, every night): what each switched account holds, reported
@@ -3512,7 +4043,9 @@ _master_db() {
 }
 
 # The instance login of the Aegir root $1 (an account's home, or the
-# master's) for user $2, from the server alias that names it: _CTX the
+# master's) for user $2, from the server alias that names it (Aegir names
+# a local database server's alias after its host: localhost, 127.0.0.1,
+# or the box's own name, whose server is server_master): _CTX the
 # alias context, _MDB_HOST its host, _PW its password. 1 when no alias
 # gives one; _RL_WHY then holds the word of _master_db's refusal when an
 # alias names the user and its password is refused, _RL_NOTE its note (a
@@ -3522,7 +4055,7 @@ _root_login() {
   _CTX=""
   _RL_WHY=""
   _RL_NOTE=""
-  for _c in server_localhost server_master; do
+  for _c in server_localhost server_127.0.0.1 server_master; do
     _t=$(_acct_read_in "${1}/.drush" "${_c}.alias.drushrc.php")
     [[ -n "${_t}" ]] || continue
     if ! _master_db "${_t}"; then
@@ -3789,6 +4322,10 @@ _ref_data() {
 8.4.11-11 row mysql.sys@localhost 324e34d9dc87fdc36ab7abdb37f22d62ba5a4bbc915b7dc441fc9ff3c67d9ecc 46e95e53675c5a329ba4febc07fa3d5833593dad9ec0854340c538d64d314725
 8.4.11-11 row percona.telemetry@localhost 814c60ac96ad59b992a564e771f338cbd8c216b4d657ea4a42913118d7012e2b e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
 8.4.11-11 objects 150 37921471a408230e73c9ee604594d9c4a0e4d322da93fa1b1af6f13001528047
+8.4.11-12 row mysql.infoschema@localhost 8941273913c91805afd34f3747e52a80b62d371f5ea2ae8fea9f608a06de21ff e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+8.4.11-12 row mysql.session@localhost 9d0945c608b068996ef4b7e58fc8ac1e738ac64e2aa90382517455ef30dec2a1 5ae9190fa1f527e60d3167dd5cdb75c972eca3a181b39a5c00b021c0ecaf5095
+8.4.11-12 row mysql.sys@localhost 55c04f9ddab8c21d2e34e69fdc475b4f76d2c8d007ea1f7d032a38c9e0d8fd48 46e95e53675c5a329ba4febc07fa3d5833593dad9ec0854340c538d64d314725
+8.4.11-12 objects 150 846464885fbd346b05ed83d7f032c1714208ee0576cd1402c6442de868321f5b
 5.7.44-48 row mysql.session@localhost b9e11618df1fd0853f08dad85cd52a78542fe9d17d585f4d65eda84734a02b03 5ae9190fa1f527e60d3167dd5cdb75c972eca3a181b39a5c00b021c0ecaf5095
 5.7.44-48 row mysql.sys@localhost dff3cad8de3d11d14da0a0a4cd1311d5cf6019401b1e6e925ff6591d38d32973 46e95e53675c5a329ba4febc07fa3d5833593dad9ec0854340c538d64d314725
 5.7.44-48 objects 150 67e0aba5e78b0055a417dbc31d1c0d424fa5b2c3e264e5d40da49f4ab5300b2c
@@ -4224,7 +4761,8 @@ SELECT /*q:alroles*/ CONCAT_WS('|', IF(@@GLOBAL.mandatory_roles = '', 0, 1), (SE
 # no schema, which MySQL keeps after a drop), judged as the box-wide check
 # judges a grant row. It is then that account's user (PURGED): its grant
 # rows and objects there belong to it, the login itself waits for a ruling,
-# and leftovers lists it in section A. Never by the shape of a name.
+# and leftovers lists it in section A (in B while it defines a stored
+# object). Never by the shape of a name.
 _al_psites() {
   local _ux _hx _u _h _g _lk _sec _a _st _rest _seen=$'\n' _save _ok _n
   local _t _gu _gh _up _hp _d _dp _f _go
@@ -5114,25 +5652,29 @@ _revoke_global() {
 # root's own directory before they change, in the file named in _SAVEF.
 # With $3 = replay (settle) the entry can be run again as it is written:
 # the login's CREATE USER line $4 first, when one is given, then its
-# grants, every statement ended.
+# grants, every statement ended. The entry is written whole by one write,
+# whose status decides, and synced to disk before the caller changes
+# anything: 1 when either fails.
 _save_grants() {
-  local _l
+  local _l _e
   _show_grants "${1}" "${2}" || return 1
   if [[ ! -d "${_SAVED}" ]]; then
     mkdir -p -- "${_SAVED}" 2> /dev/null || return 1
   fi
   [[ -d "${_SAVED}" && ! -L "${_SAVED}" ]] || return 1
   chmod 0700 "${_SAVED}" 2> /dev/null
-  { printf -- '-- %s %s@%s\n' "$(_now)" "$(_log_safe "$(_unhex "${1}")")" "$(_log_safe "$(_unhex "${2}")")"
-    if [[ "${3:-}" == "replay" ]]; then
-      [[ -z "${4:-}" ]] || printf '%s;\n' "${4}"
-      while IFS= read -r _l; do
-        [[ -n "${_l}" ]] && printf '%s;\n' "${_l}"
-      done <<< "${_SG}"
-    else
-      printf '%s\n' "${_SG}"
-    fi; } >> "${_SAVEF}" 2> /dev/null || return 1
+  printf -v _e -- '-- %s %s@%s\n' "$(_now)" "$(_log_safe "$(_unhex "${1}")")" "$(_log_safe "$(_unhex "${2}")")"
+  if [[ "${3:-}" == "replay" ]]; then
+    [[ -z "${4:-}" ]] || _e="${_e}${4};"$'\n'
+    while IFS= read -r _l; do
+      [[ -n "${_l}" ]] && _e="${_e}${_l};"$'\n'
+    done <<< "${_SG}"
+  else
+    _e="${_e}${_SG}"$'\n'
+  fi
+  printf '%s' "${_e}" >> "${_SAVEF}" 2> /dev/null || return 1
   chmod 0600 "${_SAVEF}" 2> /dev/null
+  sync -- "${_SAVEF}" 2> /dev/null || return 1
   return 0
 }
 
@@ -5652,14 +6194,9 @@ _settle_row_tests() {
     _ST_WHY="the password of a row of this user was set after the purge of ${3}: something made since uses the name"
     return 1
   fi
-  if [[ "${_ST_DEFS_OK}" != "YES" ]]; then
-    _ST_WHY="${_ST_DEFS_WHY}: nothing is dropped on a guess"
-    return 1
-  fi
-  if _settle_defines "${1}" "${2}"; then
-    _ST_WHY="it defines ${_ST_OBJ}: a drop would leave that without its definer"
-    return 1
-  fi
+  # A row that defines a stored object, and every row while the read of
+  # the objects is not whole, is never asked here: _leftovers_build keeps
+  # it in section B, from the one read this run makes.
   return 0
 }
 
@@ -5838,9 +6375,9 @@ _v_baseline_settle() {
   # reads its list: the login proofs (those of the rows 3 may drop too),
   # the standby's answer and the parked homes. A root tool that records
   # its own row again waits for this lock for a minute at most. What a
-  # write depends on is read again under it.
+  # write depends on is read again under it. The stored objects are read
+  # once, by _leftovers_build (_settle_defs_read), for its rows and these.
   _leftovers_build
-  _settle_defs_read
   _settle_proofs
   _pins=$'\n'"${_AL_PINS}"
   _base_lock
@@ -6814,10 +7351,14 @@ _v_scope() {
 #      home names it, and its site users as its registry entries name
 #      their databases (_al_psites)
 #   B  never dropped here: a name that only has the shape of a purged
-#      account's panel user, and a purged account the pair's standby still
-#      carries
-#   C  stored objects in kept databases that a user of A defines: a drop
-#      leaves them without a definer
+#      account's panel user, a purged account the pair's standby still
+#      carries, a user that defines a stored object (the object runs as its
+#      definer: without it the object fails, and so does every unforced
+#      switch on the box), as the purge and the settle keep it, and every
+#      row that would be in A while the read of the stored objects is not
+#      whole (_settle_defs_read)
+#   C  the stored objects each user B keeps for its definer defines; once
+#      they are dropped or given another definer, the user is in A again
 # Their databases are never touched.
 _zombie_panel() {
   local _p="${1}" _tb="${_ZOMBIE}/${1}/home/${1}.tar.gz" _t _sp _dr _du _dn
@@ -6860,7 +7401,7 @@ _zombie_inst() {
   _PW=""
   _ZI_WHY=""
   [[ -f "${_tb}" && ! -L "${_tb}" ]] || return 1
-  for _c in server_localhost server_master; do
+  for _c in server_localhost server_127.0.0.1 server_master; do
     _t=$(timeout 300 tar --occurrence=1 -xzOf "${_tb}" "${_DISK#/}/${_p}/.drush/${_c}.alias.drushrc.php" \
       2> /dev/null 7>&- 8>&- 9>&- | head -c 1048576)
     [[ -n "${_t}" ]] || continue
@@ -6878,7 +7419,8 @@ _zombie_inst() {
 }
 
 _leftovers_build() {
-  local _k _o _ux _hx _u _h _g _lk _sec _p _carried="" _out _peerok="YES" _ty _sx _nx _def _zp=$'\n'
+  local _k _o _ux _hx _u _h _g _lk _sec _p _carried="" _out _peerok="YES" _ty _sx _nx _dx _x _zp=$'\n'
+  local _kd=$'\n'
   _al_judge ""
   _LO_A=""
   _LO_B=""
@@ -6905,6 +7447,10 @@ _leftovers_build() {
       :|PURGEDGEN:"${_p}") _zp="${_zp}${_ZP} ${_p}"$'\n' ;;
     esac
   done
+  # the definers as the purge and the settle read them, after the slow
+  # reads above, so the rows are judged on the newest answer: a read that
+  # is not whole keeps every row it would judge
+  _settle_defs_read
   while IFS='|' read -r _ux _hx _u _h _g _lk _sec; do
     [[ -n "${_g}" && "${_u}" != "?" && "${_h}" != "?" ]] || continue
     _k=""
@@ -6935,15 +7481,22 @@ _leftovers_build() {
       _LO_B="${_LO_B}B ${_u}@${_h} account=${_o} global=${_g} the standby ${_PAIR_IP} could not be read"$'\n'
     elif [[ "${_carried}" == *$'\n'"PA-HAS ${_o}"$'\n'* ]]; then
       _LO_B="${_LO_B}B ${_u}@${_h} account=${_o} global=${_g} the standby ${_PAIR_IP} still carries the account"$'\n'
+    elif [[ "${_ST_DEFS_OK}" != "YES" ]]; then
+      _LO_B="${_LO_B}B ${_u}@${_h} account=${_o} global=${_g} ${_ST_DEFS_WHY}: nothing is dropped on a guess"$'\n'
+    elif _settle_defines "${_u}" "${_h}"; then
+      _LO_B="${_LO_B}B ${_u}@${_h} account=${_o} global=${_g} it defines ${_ST_OBJ}: a drop would leave that without its definer"$'\n'
+      _kd="${_kd}$(_hex "$(printf '%s@%s' "${_u}" "${_h}" | tr '[:upper:]' '[:lower:]')") ${_u}@${_h}"$'\n'
     else
       _LO_A="${_LO_A}A ${_u}@${_h} account=${_o} ${_k} global=${_g}"$'\n'
     fi
   done <<< "${_AL_PAIRS}"
-  while IFS='|' read -r _ty _sx _nx _def; do
-    [[ -n "${_ty}" && "${_def}" != "?" ]] || continue
-    [[ "${_LO_A}" == *"A ${_def} "* ]] || continue
-    _LO_C="${_LO_C}C ${_ty} $(_log_safe "$(_unhex "${_sx}")").$(_log_safe "$(_unhex "${_nx}")") definer=${_def}"$'\n'
-  done <<< "${_AL_DEF}"
+  # every object of each user kept for its definer, named as its row is
+  while IFS='|' read -r _ty _sx _nx _dx; do
+    [[ -n "${_ty}" && -n "${_dx}" && "${_kd}" == *$'\n'"${_dx} "* ]] || continue
+    _x="${_kd#*$'\n'"${_dx} "}"
+    _x="${_x%%$'\n'*}"
+    _LO_C="${_LO_C}C ${_ty} $(_log_safe "$(_unhex "${_sx}")").$(_log_safe "$(_unhex "${_nx}")") definer=${_x}"$'\n'
+  done <<< "${_ST_DEFS}"
   _LO_SHA=$(printf '%s' "${_LO_A}" | sha256sum | cut -c1-64)
   [[ "${_LO_SHA}" =~ ^[0-9a-f]{64}$ ]] || _die 7 "sha-failed"
 }
@@ -6990,9 +7543,6 @@ _v_leftovers() {
         fi
       done <<< "${_LO_A}"
       flock -u 7 2> /dev/null
-      while IFS= read -r _l; do
-        [[ -n "${_l}" ]] && _alrt "left without its definer: ${_l#C }"
-      done <<< "${_LO_C}"
       [[ "${_bad}" -eq 0 ]] || _die 7 "sql-failed leftovers-drop ${_bad}"
       _info "leftovers drop ${_n}"
       ;;

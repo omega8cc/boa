@@ -45,8 +45,8 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 export _tRee=lts
-export _xSrl=588877ltsT01
-export _rLsn="BOA-5.88.877"
+export _xSrl=588888ltsT01
+export _rLsn="BOA-5.88.888"
 
 ###
 ### Avoid too many questions
@@ -300,6 +300,96 @@ _acct_group() {
 }
 fi
 
+# The uids root's walks over the account $1's trees act on, comma-separated:
+# root's own (0) and those of every identity of the account as passwd names
+# them: oN and oN.<name> (its .ftp login, its client sub-accounts oN.<client>
+# and oN.<client>-dev) and its PHP-FPM users oN.web and oN.<ver>.web. An
+# account name holds no dot, so the match is exact: o1 never takes o10's.
+# Status 1, and nothing, unless the account itself is in passwd.
+_acct_walk_uids() {
+  local _a="${1}" _n _p _u _r _x="0" _self=NO
+  case "${_a}" in
+    ""|*[!a-z0-9-]*) return 1 ;;
+  esac
+  while IFS=: read -r _n _p _u _r; do
+    [[ "${_n}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]] || continue
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    _x="${_x},${_u}"
+    [ "${_n}" = "${_a}" ] && _self=YES
+  done < <(getent passwd 2> /dev/null)
+  [ "${_self}" = "YES" ] || return 1
+  # the account's removed identities, their numbers recorded by root before
+  # deluser freed them; a number a user has again is not taken
+  while IFS= read -r _u; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    getent passwd "${_u}" > /dev/null 2>&1 && continue
+    _x="${_x},${_u}"
+  done 2> /dev/null < "/data/conf/acct-uids/${_a}.gone"
+  echo "${_x}"
+}
+# The whole of an account's control/, judged once before a run acts on it:
+# run inside the account's real static/, it prints OK when control/ and
+# everything in it, never followed through a link, and static/ and every
+# directory above it up to /, are root's or one of the account's identities'
+# (the uids given first, _acct_walk_uids, with the account's recorded
+# removed identities), ABSENT when there is no control/, and otherwise why
+# not, on one line.
+# Every other account's .ftp login is in the box-wide group, which an account
+# not yet on its own group still has on static/: such a login could put a
+# control/ of its own there, or a file of its own in a group-writable
+# directory below it, for root to act on as the account's.
+_ACCT_CTRL_OWN_PL='use Fcntl;
+my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, shift @ARGV // "");
+sub own { my $u = shift; return exists $own{$u} ? 1 : 0; }
+sub isd { ($_[0] & 0170000) == 0040000 }
+sub nm { (my $v = shift) =~ s/[^\x20-\x7e]/?/g; return substr($v, 0, 200); }
+sub refuse { print "$_[0]\n"; exit 0; }
+my ($p, $top, @d, @x) = (".", 0);
+for (1 .. 256) {
+  @x = stat($p) or refuse("static/ cannot be read");
+  own($x[4]) or refuse("a directory above control/ is owned by uid $x[4]");
+  if (@d && $x[0] == $d[0] && $x[1] == $d[1]) { $top = 1; last; }
+  @d = @x;
+  $p .= "/..";
+}
+$top or refuse("static/ is too deep");
+my @s = lstat("./control");
+unless (@s) { print(($!{ENOENT} ? "ABSENT" : "control/ cannot be read") . "\n"); exit 0; }
+isd($s[2]) or refuse("control is not a directory");
+my ($n, @q) = (0, ["control", @s]);
+while (my $e = shift @q) {
+  my ($f, @t) = @$e;
+  own($t[4]) or refuse(nm($f) . " is owned by uid $t[4]" . (defined(getpwuid($t[4])) ? "" : ", which no user has and root never recorded for this account: if the file is its own, give it to its .ftp login"));
+  next unless isd($t[2]);
+  opendir(my $h, "./$f") or refuse(nm($f) . " cannot be read");
+  for my $b (readdir($h)) {
+    next if $b eq "." || $b eq "..";
+    ++$n > 100000 and refuse("control/ holds more than 100000 entries");
+    my @u = lstat("./$f/$b") or next;
+    push @q, ["$f/$b", @u];
+  }
+  closedir($h);
+}
+print "OK\n";
+exit 0;'
+# 0 when the account $1's control/ is its own as _ACCT_CTRL_OWN_PL judges it
+# (or it has none); otherwise why not on stdout, status 1. A run that acts
+# on what control/ says leaves the account as it is when it is not.
+_acct_ctrl_own() {
+  local _a="${1}" _o _r _want
+  # an account not in passwd (not made yet, or removed) has nothing to
+  # judge it by: read as before
+  _o=$(_acct_walk_uids "${_a}" 2> /dev/null) || return 0
+  [ -e "/data/disk/${_a}/static" ] || [ -L "/data/disk/${_a}/static" ] || return 0
+  _want="$(cd -P -- /data/disk 2> /dev/null && /bin/pwd -P)/${_a}/static"
+  _r=$(cd -P -- "/data/disk/${_a}/static" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] \
+    && perl -e "${_ACCT_CTRL_OWN_PL}" -- "${_o}" 2> /dev/null)
+  case "${_r}" in
+    OK|ABSENT) return 0 ;;
+  esac
+  echo "${_r:-static/ is not a real directory}"
+  return 1
+}
 # An account owns its static/control, so it can put a link or a FIFO at any
 # name there. These are helper.sh.inc's, defined here unconditionally: this
 # runs as root from cron, and a guard must never fall back to an older copy.
@@ -313,11 +403,11 @@ _acct_in_real_dir() {
     /data/disk/?*) _a=/data/disk ;;
   esac
   if [ -n "${_a}" ]; then
-    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+    _want="$(cd -P -- "${_a}" 2> /dev/null && /bin/pwd -P)${_d#"${_a}"}"
   else
-    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && /bin/pwd -P)/${_d##*/}"
   fi
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] && "$@" )
 }
 # ./$1 read without following a link or blocking on a FIFO, at most 1 MiB.
 _acct_read_here() {
@@ -513,23 +603,40 @@ _ctrl_seed_here() {
   fi
   return 0
 }
+# One PHP version in the text $1, dotted (8.4) or two digits (84), printed
+# dotted; any other text, or more than 64 characters, prints nothing. Read
+# as satellite.sh.inc's _satellite_php_vrn reads one.
+_ctrl_php_vrn() {
+  [ "${#1}" -le 64 ] || return 0
+  local _t="${1//[^0-9.]/}" _d="${1//[^0-9]/}"
+  case "${_t}" in
+    [0-9].[0-9]|[0-9][0-9]) ;;
+    *) return 0 ;;
+  esac
+  case "${_d}" in
+    56|70|71|72|73|74|80|81|82|83|84|85|86) echo "${_d:0:1}.${_d:1:1}" ;;
+  esac
+}
 # fpm.info and cli.info of an account that has none (run inside the real
-# control directory), handed to the main login: fpm.info the default
-# version, cli.info the fpm.info version or the default. Each is a fresh
-# 0644 file owned through its handle (_acct_put_own_here): the main login
-# can rename a hard link over a name between a put and a chown by name.
+# control directory), handed to the main login, as an Octopus pass writes
+# them back: fpm.info the version the account runs (_logFpm, its
+# log/fpm.txt) or the default, cli.info its CLI version (_logCli, its
+# log/cli.txt), the fpm.info version or the default. Each is a fresh 0644
+# file owned through its handle (_acct_put_own_here): the main login can
+# rename a hard link over a name between a put and a chown by name.
 _ctrl_pins_here() {
   local _v
-  if [ ! -e ./fpm.info ] && [ -n "${_useFpm}" ]; then
-    printf '%s\n' "${_useFpm}" \
+  _v="${_logFpm:-${_useFpm}}"
+  if [ ! -e ./fpm.info ] && [ -n "${_v}" ]; then
+    printf '%s\n' "${_v}" \
       | _acct_put_own_here fpm.info "${_tUsr}.ftp:${_usrGroup}" 644
   fi
   if [ ! -e ./cli.info ]; then
-    if [ -e ./fpm.info ]; then
+    _v="${_logCli}"
+    if [ -z "${_v}" ] && [ -e ./fpm.info ]; then
       _v="$(_acct_read_here fpm.info)"
-    else
-      _v="${_useCli}"
     fi
+    _v="${_v:-${_useCli}}"
     [ -n "${_v}" ] && printf '%s\n' "${_v}" \
       | _acct_put_own_here cli.info "${_tUsr}.ftp:${_usrGroup}" 644
   fi
@@ -552,6 +659,9 @@ _ctrl_init_here() {
   fi
   _uid=$(id -u -- "${_tUsr}.ftp" 2> /dev/null)
   _gid=$(getent group "${_usrGroup}" 2> /dev/null | cut -d: -f3)
+  # an account still on the box-wide group gets group root, as the ltd worker
+  # gives it: nothing the login makes here is another account's to write
+  [ "${_usrGroup}" = "${_tUsr}" ] || _gid=0
   if [[ "${_uid}" =~ ^[0-9]+$ && "${_gid}" =~ ^[0-9]+$ ]]; then
     env PATH=/usr/local/bin:/usr/bin:/bin find . \( -type d -o -type f \) \
       -execdir perl -e "${_ACCT_REOWN_PL}" "${_uid}" "${_gid}" {} +
@@ -803,6 +913,25 @@ _find_fast_mirror_early() {
     fi
   else
     _USE_MIR="files.boa.io"
+  fi
+  # A mirror box (it holds a published tree's stamp) takes its files from
+  # files.aegir.cc, the one mirror name with no cache in front of it, when
+  # that name is not this box itself and serves that stamp; any other box,
+  # or a mirror box where it does not, keeps the pick above.
+  _mirStp=""
+  for _mirStp in /var/www/static/versions/*/boa/.update.txt; do
+    [[ -s "${_mirStp}" ]] && break
+    _mirStp=""
+  done
+  if [[ -n "${_mirStp}" ]]; then
+    _mirIp="$(getent ahostsv4 files.aegir.cc 2> /dev/null | awk '{ print $1; exit }')"
+    if [[ -n "${_mirIp}" ]] \
+      && ! ip -o addr show 2> /dev/null | grep -qF " ${_mirIp}/" \
+      && curl -s --fail --max-time 10 -A iCab \
+        "https://files.aegir.cc/${_mirStp#/var/www/static/}" 2> /dev/null \
+        | head -c 64 | grep -q '^[^<]'; then
+      _USE_MIR="files.aegir.cc"
+    fi
   fi
   _urlDev="https://${_USE_MIR}/dev"
   _urlHmr="https://${_USE_MIR}/versions/${_tRee}/boa/aegir"
@@ -1220,13 +1349,21 @@ _verify_boa_keys() {
       _allw=YES
     fi
     mkdir -p /var/opt
-    rm -f /var/opt/_encN*
-    curl ${_crlGet} "${_urlEnc}/${_encName}" -o /var/opt/_encN.${_encName}.tmp
-    wait
-    echo "${_hName}.${_encName}" > /var/opt/_encN_local.${_encName}.tmp
-    wait
-    if [ -e "/var/opt/_encN.${_encName}.tmp" ] && [ -e "/var/opt/_encN_local.${_encName}.tmp" ]; then
-      _diffTestIf=$(diff -w -B /var/opt/_encN.${_encName}.tmp /var/opt/_encN_local.${_encName}.tmp 2>&1)
+    # Each check keeps its files in a folder of its own and removes it when
+    # done, so checks that overlap (an account's backup starting beside
+    # root's) never remove each other's files; a folder a killed check left
+    # behind is removed an hour later.
+    find /var/opt -maxdepth 1 -type d -name '_enck.*' -mmin +60 \
+      -exec rm -rf -- {} + 2> /dev/null
+    _encDir="$(mktemp -d /var/opt/_enck.XXXXXXXX 2> /dev/null)"
+    if [ -n "${_encDir}" ] && [ -d "${_encDir}" ]; then
+      curl ${_crlGet} "${_urlEnc}/${_encName}" -o "${_encDir}/_encN.${_encName}.tmp"
+      wait
+      echo "${_hName}.${_encName}" > "${_encDir}/_encN_local.${_encName}.tmp"
+      wait
+    fi
+    if [ -e "${_encDir}/_encN.${_encName}.tmp" ] && [ -e "${_encDir}/_encN_local.${_encName}.tmp" ]; then
+      _diffTestIf=$(diff -w -B "${_encDir}/_encN.${_encName}.tmp" "${_encDir}/_encN_local.${_encName}.tmp" 2>&1)
       if [ ! -z "${_diffTestIf}" ] && [ "${_allw}" = "NO" ]; then
         echo
         echo "Your system requires valid license for access to ${_rLsn}-${_tRee}"
@@ -1235,15 +1372,15 @@ _verify_boa_keys() {
         if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
           && [ ! -e "/var/aegir/key/barracuda_key.txt" ]; then
           mkdir -p /var/aegir/key
-          cat /var/opt/_encN_local.${_encName}.tmp > /var/aegir/key/barracuda_key.txt
+          cat "${_encDir}/_encN_local.${_encName}.tmp" > /var/aegir/key/barracuda_key.txt
         fi
-        rm -f /var/opt/_encN*
+        if [ -n "${_encDir}" ]; then rm -rf -- "${_encDir}"; fi
         exit 0
       else
         if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
           && [ ! -e "/var/aegir/key/barracuda_key.txt" ]; then
           mkdir -p /var/aegir/key
-          cat /var/opt/_encN_local.${_encName}.tmp > /var/aegir/key/barracuda_key.txt
+          cat "${_encDir}/_encN_local.${_encName}.tmp" > /var/aegir/key/barracuda_key.txt
         fi
       fi
     elif [ "${_allw}" = "YES" ]; then
@@ -1254,15 +1391,17 @@ _verify_boa_keys() {
       echo
       echo "NOTE: the key server could not be reached; ${_hName} is allowed on the ${_tRee} tree by its hostname"
       echo
-      rm -f /var/opt/_encN*
+      if [ -n "${_encDir}" ]; then rm -rf -- "${_encDir}"; fi
     else
       echo
       echo "Your system requires valid license to use this BOA version (${_tRee})"
       echo "Unfortunately it was not possible to verify your system status"
       echo "Please contact our support but visit https://omega8.cc/licenses first"
       echo
+      if [ -n "${_encDir}" ]; then rm -rf -- "${_encDir}"; fi
       exit 0
     fi
+    if [ -n "${_encDir}" ]; then rm -rf -- "${_encDir}"; fi
   fi
 }
 
@@ -1866,15 +2005,70 @@ _fetch_versioned() {
   # pre-publish content long after the local tree is current. Measured 2026-08-10: the
   # tree went current at 19:01:29 and a mirror still received the previous bytes at
   # 19:03:10, 101 seconds later. Cache purges are best-effort and cannot be relied on.
-  # The webroot mirrors the URL path 1:1, so drop scheme+host and graft it on;
-  # /var/www/static/getboa marks a box that carries the tree (every mirror has it,
-  # publisher or passive). A URL that is not ours, or a tree this box does not hold,
-  # simply has no local file and falls through to curl.
-  local _lcl=""
-  if [[ -e "/var/www/static/getboa" ]]; then
-    _lcl="${_url#*://}"
-    _lcl="/var/www/static/${_lcl#*/}"
-    [[ -s "${_lcl}" ]] || _lcl=""
+  # The webroot mirrors the URL path 1:1, so drop scheme+host and graft it on.
+  # Only a tree no mirror serves a newer copy of is read: one behind, or no
+  # longer pulled, would put older bytes over newer ones. The tree's stamp,
+  # versions/<tree>/boa/.update.txt, is written by the publish inside the tree
+  # and moved in with it, so it dates the tools beside it, and every copy of the
+  # tree (the mirrors' pull, a migration's copy) keeps its time. Every mirror
+  # name this box uses is asked (the list the mirror pick reads, and
+  # files.aegir.cc, which no cache fronts), never one alone: a box whose tree
+  # stopped is still the origin of its own name. The local tree counts when at
+  # least one name answers with a stamp and none serves one that differs from
+  # it and is not older, so a mirror ahead of an intermediary still reads its
+  # own bytes. Asked once per tree in a run, and
+  # not at all when clear.sh passes its answer for the copy of BOA.sh.txt it ran
+  # (_LCL_TREE_KEY, _LCL_TREE_OK): the tools then come from where BOA.sh.txt
+  # came from. That answer counts only when clear.sh, the parent of this run,
+  # gave it (_LCL_TREE_BY, its pid), never from a shell's leftover exports. A
+  # box with no stamp of its own asks nothing. A tree this box does not hold,
+  # one behind, or a file the tree lacks falls through to curl.
+  local _lcl="" _lrt _lst _lgt _lms _lmn _lnm _lnw
+  if [[ "${_LCL_TREE_BY:-}" != "run:$$" ]]; then
+    [[ "${_LCL_TREE_BY:-}" == "${PPID}" ]] || unset _LCL_TREE_KEY _LCL_TREE_OK
+    _LCL_TREE_BY="run:$$"
+    export -n _LCL_TREE_KEY _LCL_TREE_OK _LCL_TREE_BY 2>/dev/null
+  fi
+  _lrt="${_url#*://}"
+  _lrt="${_lrt#*/}"
+  if [[ "${_lrt}" =~ ^(versions/[^/]+/boa)/ ]]; then
+    _lrt="${BASH_REMATCH[1]}"
+    _lst="/var/www/static/${_lrt}/.update.txt"
+    if [[ -s "${_lst}" ]] && [[ "${_LCL_TREE_KEY:-}" != "${_lrt}" ]]; then
+      _LCL_TREE_KEY="${_lrt}"
+      _LCL_TREE_OK=NO
+      _lnm=0
+      _lnw=""
+      _lgt="${_pthLog}/.tree.stamp.$$"
+      _lms="$(grep -E '^[a-z0-9.-]+$' /var/backups/boa-mirrors-2026-07.txt 2>/dev/null)"
+      [[ -n "${_lms}" ]] \
+        || _lms="files.boa.io files.o8.io files.host8.biz files.aegir.biz files.aoboshi.com"
+      # files.aegir.cc as well, the one name with no cache in front of it
+      _lms="files.aegir.cc $(grep -vx 'files\.aegir\.cc' <<< "${_lms}")"
+      for _lmn in ${_lms}; do
+        rm -f "${_lgt}"
+        curl -L --max-redirs 3 -s --fail --max-time 10 -A iCab -R -o "${_lgt}" \
+          "https://${_lmn}/${_lrt}/.update.txt" 2>/dev/null || continue
+        [[ -s "${_lgt}" ]] && [[ "$(wc -c < "${_lgt}")" -le 512 ]] \
+          && ! grep -q '<' "${_lgt}" || continue
+        _lnm=$(( _lnm + 1 ))
+        cmp -s "${_lst}" "${_lgt}" || [[ "${_lst}" -nt "${_lgt}" ]] || _lnw="${_lnw} ${_lmn}"
+      done
+      rm -f "${_lgt}"
+      if [[ "${_lnm}" -gt 0 ]] && [[ -z "${_lnw}" ]]; then
+        _LCL_TREE_OK=YES
+      elif [[ -n "${_lnw}" ]]; then
+        echo "The local ${_lrt} tree is not read: a newer one is served at${_lnw}"
+      else
+        echo "The local ${_lrt} tree is not read: no mirror answered with its stamp"
+      fi
+    fi
+    if [[ -s "${_lst}" ]] && [[ "${_LCL_TREE_KEY:-}" == "${_lrt}" ]] \
+      && [[ "${_LCL_TREE_OK:-}" == "YES" ]]; then
+      _lcl="${_url#*://}"
+      _lcl="/var/www/static/${_lcl#*/}"
+      [[ -s "${_lcl}" ]] || _lcl=""
+    fi
   fi
 
   # Up to date? marker present AND dest non-empty AND (symlink intact if
@@ -1930,9 +2124,9 @@ _fetch_versioned() {
   # the backup family's --guard duplicity permanently inert (2026-08-30).
   if [[ -n "${_grd}" ]] && [[ -s "${_dst}" ]]; then
     _grdEsc="${_grd//./\\.}"
-    _cnt="$(pgrep -fc "^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*${_grdEsc}( |$)" 2>/dev/null)"
+    _cnt="$(pgrep -u root -U root -fc "^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*${_grdEsc}( |$)" 2>/dev/null)"
     _cnt="${_cnt:-0}"
-    _cntD="$(pgrep -fc "^[^ ]*${_grdEsc}( |$)" 2>/dev/null)"
+    _cntD="$(pgrep -u root -U root -fc "^[^ ]*${_grdEsc}( |$)" 2>/dev/null)"
     _cntD="${_cntD:-0}"
     if (( _cnt + _cntD > 0 )); then
       echo "The ${_lbl} is running!"
@@ -2064,7 +2258,13 @@ _fetch_versioned() {
       # tool unchanged) is the same bytes by definition and arms at once;
       # holding it re-downloaded every unchanged tool on every pass for an
       # hour after each release, unarmed and with its symlink unrepaired.
-      if [[ "${_fnnMove}" = "YES" ]]; then
+      # Never for a copy from this box's own tree: the up-to-date test above
+      # compares the deployed bytes with that tree on every pass, so a serial
+      # armed over bytes the tree later replaces is installed again on the
+      # next pass. Held, a tool the tree delivered before the BOA.sh.txt that
+      # names its new serial was copied again on every pass for an hour and
+      # reported as a mirror not caught up.
+      if [[ "${_fnnMove}" = "YES" ]] && [[ -z "${_lcl}" ]]; then
         local _stl="${_pthLog}/${_cnm}.stale.${_srl}.${_tRee}.${_xSrl}.pid"
         if [[ -z "$(find "${_stl}" -mmin +60 2>/dev/null)" ]]; then
           [[ -e "${_stl}" ]] || touch "${_stl}"
@@ -2251,6 +2451,81 @@ _a2b_import_live() {
   perl -e "${_A2B_LIVE_PL}" /proc "${1}" 2> /dev/null
 }
 
+# A task dispatcher (run-<account>) root may run or hand back: a regular file
+# with one link, owned by root, that no group or other user can write. Any
+# other copy was made or kept where another user could write it (a parked
+# copy outlives its account, whose number is given out again; a second link
+# stays writable through the other name), so root never runs or returns it.
+_dispatcher_trusted() {
+  local _s
+  [ -f "${1}" ] && [ ! -L "${1}" ] || return 1
+  _s=$(stat -c '%u %h %a' -- "${1}" 2> /dev/null) || return 1
+  case "${_s}" in
+    "0 1 "[0-7][0-7][0-7] | "0 1 "[0-7][0-7][0-7][0-7]) ;;
+    *) return 1 ;;
+  esac
+  (( (8#${_s##* } & 8#022) == 0 ))
+}
+
+# A parked copy that is not root's alone is set aside under a dot name beside
+# it, never handed back, and named in dispatcher.incident.log.
+_dispatcher_set_aside() {
+  local _s
+  _s=$(stat -c 'owner %U (uid %u), %h links, mode %a' -- "${1}" 2> /dev/null)
+  mv -f -- "${1}" "${1%/*}/.untrusted-${1##*/}.$(date +%s)" 2> /dev/null || return 1
+  [ -d /var/log/boa ] && echo "$(date) set aside, not handed back: ${1} (${_s:-unreadable}): not root's alone" \
+    >> /var/log/boa/dispatcher.incident.log
+  return 0
+}
+
+# A new dispatcher of root's for the account $1 at /var/xdrago/run-$1. BOA
+# writes every dispatcher from one template that differs only in its _H_USER
+# line: it is made from the build tree's template when that is root's alone,
+# else from another account's dispatcher that is root's alone, live, then
+# parked (a demoted box keeps them all parked). The file it replaces is never
+# read or run. With replace as $2 the old file must still be there and is
+# claimed (renamed away) first, so one a parker took meanwhile is never put
+# back. 1 when there is no such source or the new file cannot be made.
+_dispatcher_write() {
+  local _a="${1}" _f _src="" _t _o=""
+  [ -n "${_a}" ] && [ "${_a}" = "${_a##*/}" ] || return 1
+  for _f in /opt/tmp/boa/aegir/scripts/run-xdrago /var/xdrago/run-* /var/backups/off-run/run-*; do
+    [ "${_f##*/}" != "run-${_a}" ] || continue
+    _dispatcher_trusted "${_f}" || continue
+    [ "$(grep -c '^_H_USER=' -- "${_f}" 2> /dev/null)" = "1" ] || continue
+    if [ "${_f}" = "/opt/tmp/boa/aegir/scripts/run-xdrago" ]; then
+      grep -qx '_H_USER=EDIT_USER' "${_f}" 2> /dev/null || continue
+    else
+      grep -qxF -- "_H_USER=${_f##*/run-}" "${_f}" 2> /dev/null || continue
+    fi
+    _src="${_f}"
+    break
+  done
+  [ -n "${_src}" ] || return 1
+  # mktemp's names hold no "run-", which runner.sh would dispatch
+  _t=$(mktemp /var/xdrago/.xdwrite.XXXXXX 2> /dev/null) || return 1
+  if awk -v u="${_a}" '/^_H_USER=/ { print "_H_USER=" u; next } { print }' "${_src}" > "${_t}" \
+    && chown root:root "${_t}" && chmod 700 "${_t}" && _dispatcher_trusted "${_t}" \
+    && [ "$(grep -c '^_H_USER=' -- "${_t}")" = "1" ] \
+    && grep -qxF -- "_H_USER=${_a}" "${_t}" \
+    && bash -n "${_t}" 2> /dev/null; then
+    if [ "${2:-}" = "replace" ]; then
+      if ! _o=$(mktemp /var/xdrago/.xdold.XXXXXX 2> /dev/null) \
+        || ! mv -f -T -- "/var/xdrago/run-${_a}" "${_o}" 2> /dev/null; then
+        rm -f -- "${_t}" ${_o:+"${_o}"}
+        return 1
+      fi
+    fi
+    if mv -f -T -- "${_t}" "/var/xdrago/run-${_a}"; then
+      [ -n "${_o}" ] && rm -f -- "${_o}"
+      return 0
+    fi
+    [ -n "${_o}" ] && rm -f -- "${_o}"
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+
 _update_agents() {
 
   _if_hosted_sys
@@ -2270,7 +2545,15 @@ _update_agents() {
     _PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
     _PrTestUltra=$(grep "ULTRA" /root/.*.octopus.cnf 2>&1)
     _PrTestMonster=$(grep "MONSTER" /root/.*.octopus.cnf 2>&1)
-    _InTest=$(ls /data/disk/*/static/control/cli.info | wc -l 2>&1)
+    # One per account whose cli.info is a plain file: an account owns its
+    # control folder, and ls listed the entries of a cli.info it made a
+    # directory (or a link to one), re-tuning the whole box.
+    _InTest=0
+    for _ciUsr in /data/disk/*; do
+      [ -f "${_ciUsr}/static/control/cli.info" ] \
+        && [ ! -L "${_ciUsr}/static/control/cli.info" ] \
+        && _InTest=$(( _InTest + 1 ))
+    done
     # (Removed dead `_SQL_PSWD=$(cat /root/.my.pass.txt)` read — never
     #  referenced. The mysql calls below this block use /root/.my.cnf
     #  implicitly via `mysql -u root` with no -p.)
@@ -2427,6 +2710,7 @@ _update_agents() {
     [ ! -e "/var/xdrago/checksql.sh" ] && rm -f ${_pthLog}/checksql.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/clear.sh" ] && rm -f ${_pthLog}/clear.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/cloudflare_realip.sh" ] && rm -f ${_pthLog}/cloudflare_realip.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/fstrim.sh" ] && rm -f ${_pthLog}/fstrim.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/owl.sh" ] && rm -f ${_pthLog}/owl.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/graceful.sh" ] && rm -f ${_pthLog}/graceful.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/guest-fire.sh" ] && rm -f ${_pthLog}/guest-fire.sh.ctrl.*.pid
@@ -2468,6 +2752,7 @@ _update_agents() {
     [ ! -e "/var/xdrago/monitor/check/batch_guard.sh" ] && rm -f ${_pthLog}/batch_guard.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/monitor/check/task_guard.sh" ] && rm -f ${_pthLog}/task_guard.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/monitor/check/cron_guard.sh" ] && rm -f ${_pthLog}/cron_guard.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/container_guard.sh" ] && rm -f ${_pthLog}/container_guard.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/monitor/check/autosync.sh" ] && rm -f ${_pthLog}/autosync.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/monitor/check/system.sh" ] && rm -f ${_pthLog}/system.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/monitor/check/unbound.sh" ] && rm -f ${_pthLog}/unbound.sh.ctrl.*.pid
@@ -2475,7 +2760,7 @@ _update_agents() {
     [ ! -e "/var/xdrago/monitor/check/escapecheck.sh" ] && rm -f ${_pthLog}/escapecheck.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/monitor/check/hackcheck.sh" ] && rm -f ${_pthLog}/hackcheck.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/monitor/check/hackftp.sh" ] && rm -f ${_pthLog}/hackftp.sh.ctrl.*.pid
-    [ ! -e "/var/xdrago/monitor/check/segfault_alert.pl" ] && rm -f ${_pthLog}/segfault_alert.pl.ctrl.*.pid
+    [ ! -e "/var/xdrago/monitor/check/segfault_alert.sh" ] && rm -f ${_pthLog}/segfault_alert.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/monitor/check/sqlcheck.sh" ] && rm -f ${_pthLog}/sqlcheck.sh.ctrl.*.pid
 
     [ ! -e "/var/xdrago/monitor/check/bind9.sh" ] && rm -f ${_pthLog}/bind9.sh.ctrl.*.pid
@@ -2501,6 +2786,9 @@ _update_agents() {
     [ -e "/var/xdrago/monitor/check/hackcheck.pl" ] && rm -f /var/xdrago/monitor/check/hackcheck.pl
     [ -e "/var/xdrago/monitor/check/hackftp.pl" ] && rm -f /var/xdrago/monitor/check/hackftp.pl
     [ -e "/var/xdrago/monitor/check/sqlcheck.pl" ] && rm -f /var/xdrago/monitor/check/sqlcheck.pl
+    [ -e "/var/xdrago/monitor/check/segfault_alert.pl" ] && rm -f /var/xdrago/monitor/check/segfault_alert.pl \
+      /var/xdrago/monitor/log/segfault_alert.log
+    rm -f ${_pthLog}/segfault_alert.pl.ctrl.*.pid
 
     [ -e "/var/xdrago/monitor/check/scan_nginx.pl" ] && rm -f /var/xdrago/monitor/check/scan_nginx.pl
     [ -e "/var/xdrago/monitor/check/locked_nginx.pl" ] && rm -f /var/xdrago/monitor/check/locked_nginx.pl
@@ -2524,18 +2812,16 @@ _update_agents() {
 
   if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ] \
     && [ -d "/var/aegir/drush" ]; then
-    if grep -q "Out of memory: Killed process.*duplicity" /var/log/iptables.log; then
-     if [ ! -e "/root/.remote_backups/schedule/backup_schedule.txt-off" ]; then
-       cp -a /root/.remote_backups/schedule/backup_schedule.txt /root/.remote_backups/schedule/backup_schedule.txt-off
-       echo "# Backup schedule (service user) OFF" > /root/.remote_backups/schedule/backup_schedule.txt
-       chattr +i /root/.remote_backups/schedule/backup_schedule.txt
-     fi
-    else
-      if [ -e "/root/.remote_backups/schedule/backup_schedule.txt-off" ]; then
-        chattr -i /root/.remote_backups/schedule/backup_schedule.txt
-        rm -f /root/.remote_backups/schedule/backup_schedule.txt
-        mv /root/.remote_backups/schedule/backup_schedule.txt-off /root/.remote_backups/schedule/backup_schedule.txt
-      fi
+    # An out-of-memory kill of any duplicity used to turn the whole
+    # schedule off until the line left the weekly-rotated log: the
+    # server's own entries and every account's, for one run that ran out
+    # of memory. multiback now holds only the entry whose own duplicity
+    # was killed (its memory_holds mark), so a schedule left off by the
+    # old switch is put back.
+    if [ -e "/root/.remote_backups/schedule/backup_schedule.txt-off" ]; then
+      chattr -i /root/.remote_backups/schedule/backup_schedule.txt 2> /dev/null
+      rm -f /root/.remote_backups/schedule/backup_schedule.txt
+      mv /root/.remote_backups/schedule/backup_schedule.txt-off /root/.remote_backups/schedule/backup_schedule.txt
     fi
     # Genuine executions only, the same anchored pair as this function's
     # fetch guard: the bare substrings here SIGKILLed any command line
@@ -2546,24 +2832,34 @@ _update_agents() {
     # reaped mid-backup whenever no multiback happened to be running.
     # A wrapper that died leaves its duplicity a genuine orphan (none of
     # the five counts as alive), so orphan recovery is unchanged.
-    _dcyLive="$(pgrep -fc "^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)" 2>/dev/null)"
-    _dcyLiveD="$(pgrep -fc "^[^ ]*duplicity( |$)" 2>/dev/null)"
+    _dcyLive="$(pgrep -u root -U root -fc "^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)" 2>/dev/null)"
+    _dcyLiveD="$(pgrep -u root -U root -fc "^[^ ]*duplicity( |$)" 2>/dev/null)"
     _dcyLive=$(( ${_dcyLive:-0} + ${_dcyLiveD:-0} ))
     _bupLive=0
     for _bupTool in dcysetup mybackup multiback backboa duobackboa; do
-      _bupCnt="$(pgrep -fc "^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*${_bupTool}( |$)" 2>/dev/null)"
+      _bupCnt="$(pgrep -u root -U root -fc "^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*${_bupTool}( |$)" 2>/dev/null)"
       _bupLive=$(( _bupLive + ${_bupCnt:-0} ))
-      _bupCnt="$(pgrep -fc "^[^ ]*${_bupTool}( |$)" 2>/dev/null)"
+      _bupCnt="$(pgrep -u root -U root -fc "^[^ ]*${_bupTool}( |$)" 2>/dev/null)"
       _bupLive=$(( _bupLive + ${_bupCnt:-0} ))
     done
     if [ "${_dcyLive}" -gt 0 ] && [ "${_bupLive}" -lt 1 ]; then
-      pkill -9 -f "^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)"
-      pkill -9 -f "^[^ ]*duplicity( |$)"
+      pkill -9 -u root -U root -f "^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)"
+      pkill -9 -u root -U root -f "^[^ ]*duplicity( |$)"
       rm -rf /tmp/duplicity*
       rm -rf /root/.cache/duplicity/*/duplicity-*tempdir
       rm -f /root/.cache/duplicity/*/lockfile
       echo "$(date) Orphaned duplicity processes killed" >> /var/log/duplicity-cleanup.log
     fi
+  fi
+
+  # A duplicity run with --concurrency starts helper processes from its own
+  # interpreter ("<venv>/bin/python -c from multiprocessing..."). When that
+  # duplicity is killed, here above or by the kernel's out-of-memory killer,
+  # init takes its helpers and they wait for good (about 40 MB a pair): no
+  # duplicity pattern names them. The ones init holds are reaped here, on
+  # any box; a running duplicity's helpers have it as their parent.
+  if pkill -9 -u root -U root -P 1 -f "^[^ ]*/duplicity/bin/python[0-9.]* (-[^ ]+ )*-c from multiprocessing\." 2> /dev/null; then
+    echo "$(date) Orphaned duplicity helpers killed" >> /var/log/duplicity-cleanup.log
   fi
 
   # The core tool set every box carries (barracuda, boa, octopus, x*, auto*,
@@ -2587,7 +2883,7 @@ _update_agents() {
     fi
   fi
 
-  _fetch_versioned ${_optBin}/edgetest "${_urlHmr}/tools/bin/edgetest" f85 --symlink ${_usrBin}/edgetest --guard /local/bin/edgetest
+  _fetch_versioned ${_optBin}/edgetest "${_urlHmr}/tools/bin/edgetest" f82 --symlink ${_usrBin}/edgetest --guard /local/bin/edgetest
   _fetch_versioned ${_optBin}/clearwebbans "${_urlHmr}/tools/bin/clearwebbans" f94 --symlink ${_usrBin}/clearwebbans --guard /local/bin/clearwebbans
   _fetch_versioned ${_optBin}/defaultkeys "${_urlHmr}/tools/bin/defaultkeys" f99 --symlink ${_usrBin}/defaultkeys --guard /local/bin/defaultkeys
   # PHP-selecting bee launcher (identity verb policy). Deployed unconditionally
@@ -2609,8 +2905,8 @@ _update_agents() {
   # existing build user (o8 unless -u says otherwise) and never guesses one
   # from /data/disk.
   if [ -e "/root/.stackbuild.cnf" ]; then
-    _fetch_versioned ${_optBin}/staticbuild "${_urlHmr}/tools/bin/staticbuild" f25 --mode 755 --symlink ${_usrBin}/staticbuild --guard /local/bin/staticbuild
-    _fetch_versioned ${_optBin}/stackbuild "${_urlHmr}/tools/bin/stackbuild" f90 --mode 755 --symlink ${_usrBin}/stackbuild --guard /local/bin/stackbuild
+    _fetch_versioned ${_optBin}/staticbuild "${_urlHmr}/tools/bin/staticbuild" f10 --mode 755 --symlink ${_usrBin}/staticbuild --guard /local/bin/staticbuild
+    _fetch_versioned ${_optBin}/stackbuild "${_urlHmr}/tools/bin/stackbuild" f87 --mode 755 --symlink ${_usrBin}/stackbuild --guard /local/bin/stackbuild
   else
     # A box that is not a build box carries no copy of either. Boxes that had
     # fetched staticbuild before this gate existed kept an unmanaged copy the
@@ -2651,55 +2947,56 @@ _update_agents() {
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
-    _fetch_versioned /var/xdrago/monitor/check/scan_nginx.sh "${_urlHmr}/tools/system/monitor/check/scan_nginx.sh" f33
-    _fetch_versioned /var/xdrago/monitor/check/java.sh "${_urlHmr}/tools/system/monitor/check/java.sh" f77
-    _fetch_versioned /var/xdrago/monitor/check/mysql.sh "${_urlHmr}/tools/system/monitor/check/mysql.sh" f48
-    _fetch_versioned /var/xdrago/monitor/check/nginx.sh "${_urlHmr}/tools/system/monitor/check/nginx.sh" f66
-    _fetch_versioned /var/xdrago/monitor/check/nginx_guard.sh "${_urlHmr}/tools/system/monitor/check/nginx_guard.sh" f91
-    _fetch_versioned /var/xdrago/monitor/check/php.sh "${_urlHmr}/tools/system/monitor/check/php.sh" f57
-    _fetch_versioned /var/xdrago/monitor/check/fpm_tune.sh "${_urlHmr}/tools/system/monitor/check/fpm_tune.sh" f95
-    _fetch_versioned /var/xdrago/monitor/check/sqlprobe.sh "${_urlHmr}/tools/system/monitor/check/sqlprobe.sh" f89
-    _fetch_versioned /var/xdrago/monitor/check/sqlsnap.sh "${_urlHmr}/tools/system/monitor/check/sqlsnap.sh" f94
-    _fetch_versioned /var/xdrago/monitor/check/xdr9000.sh "${_urlHmr}/tools/system/monitor/check/xdr9000.sh" f90
-    _fetch_versioned /var/xdrago/monitor/check/batch_guard.sh "${_urlHmr}/tools/system/monitor/check/batch_guard.sh" f91
-    _fetch_versioned /var/xdrago/monitor/check/task_guard.sh "${_urlHmr}/tools/system/monitor/check/task_guard.sh" f97
-    _fetch_versioned /var/xdrago/monitor/check/cron_guard.sh "${_urlHmr}/tools/system/monitor/check/cron_guard.sh" f86
-    _fetch_versioned /var/xdrago/monitor/check/autosync.sh "${_urlHmr}/tools/system/monitor/check/autosync.sh" f00
-    _fetch_versioned /var/xdrago/monitor/check/valkey.sh "${_urlHmr}/tools/system/monitor/check/valkey.sh" f74
-    _fetch_versioned /var/xdrago/monitor/check/system.sh "${_urlHmr}/tools/system/monitor/check/system.sh" f63
-    _fetch_versioned /var/xdrago/monitor/check/unbound.sh "${_urlHmr}/tools/system/monitor/check/unbound.sh" f78
-    _fetch_versioned /var/xdrago/monitor/check/escapecheck.sh "${_urlHmr}/tools/system/monitor/check/escapecheck.sh" f97
-    _fetch_versioned /var/xdrago/monitor/check/hackcheck.sh "${_urlHmr}/tools/system/monitor/check/hackcheck.sh" f87
-    _fetch_versioned /var/xdrago/monitor/check/hackftp.sh "${_urlHmr}/tools/system/monitor/check/hackftp.sh" f94
-    _fetch_versioned /var/xdrago/monitor/check/segfault_alert.pl "${_urlHmr}/tools/system/monitor/check/segfault_alert.pl" f92
-    _fetch_versioned /var/xdrago/monitor/check/sqlcheck.sh "${_urlHmr}/tools/system/monitor/check/sqlcheck.sh" f85
-    _fetch_versioned /var/xdrago/monitor/check/bind9.sh "${_urlHmr}/tools/system/monitor/check/bind9.sh" f99
-    _fetch_versioned /var/xdrago/monitor/check/proxysql.sh "${_urlHmr}/tools/system/monitor/check/proxysql.sh" f99
-    _fetch_versioned /var/xdrago/monitor/check/droplet.sh "${_urlHmr}/tools/system/monitor/check/droplet.sh" f99
+    _fetch_versioned /var/xdrago/monitor/check/scan_nginx.sh "${_urlHmr}/tools/system/monitor/check/scan_nginx.sh" f27
+    _fetch_versioned /var/xdrago/monitor/check/java.sh "${_urlHmr}/tools/system/monitor/check/java.sh" f74
+    _fetch_versioned /var/xdrago/monitor/check/mysql.sh "${_urlHmr}/tools/system/monitor/check/mysql.sh" f45
+    _fetch_versioned /var/xdrago/monitor/check/nginx.sh "${_urlHmr}/tools/system/monitor/check/nginx.sh" f53
+    _fetch_versioned /var/xdrago/monitor/check/nginx_guard.sh "${_urlHmr}/tools/system/monitor/check/nginx_guard.sh" f90
+    _fetch_versioned /var/xdrago/monitor/check/php.sh "${_urlHmr}/tools/system/monitor/check/php.sh" f49
+    _fetch_versioned /var/xdrago/monitor/check/fpm_tune.sh "${_urlHmr}/tools/system/monitor/check/fpm_tune.sh" f93
+    _fetch_versioned /var/xdrago/monitor/check/sqlprobe.sh "${_urlHmr}/tools/system/monitor/check/sqlprobe.sh" f84
+    _fetch_versioned /var/xdrago/monitor/check/sqlsnap.sh "${_urlHmr}/tools/system/monitor/check/sqlsnap.sh" f97
+    _fetch_versioned /var/xdrago/monitor/check/xdr9000.sh "${_urlHmr}/tools/system/monitor/check/xdr9000.sh" f83
+    _fetch_versioned /var/xdrago/monitor/check/batch_guard.sh "${_urlHmr}/tools/system/monitor/check/batch_guard.sh" f89
+    _fetch_versioned /var/xdrago/monitor/check/task_guard.sh "${_urlHmr}/tools/system/monitor/check/task_guard.sh" f95
+    _fetch_versioned /var/xdrago/monitor/check/cron_guard.sh "${_urlHmr}/tools/system/monitor/check/cron_guard.sh" f84
+    _fetch_versioned /var/xdrago/monitor/check/container_guard.sh "${_urlHmr}/tools/system/monitor/check/container_guard.sh" f93
+    _fetch_versioned /var/xdrago/monitor/check/autosync.sh "${_urlHmr}/tools/system/monitor/check/autosync.sh" f97
+    _fetch_versioned /var/xdrago/monitor/check/valkey.sh "${_urlHmr}/tools/system/monitor/check/valkey.sh" f71
+    _fetch_versioned /var/xdrago/monitor/check/system.sh "${_urlHmr}/tools/system/monitor/check/system.sh" f58
+    _fetch_versioned /var/xdrago/monitor/check/unbound.sh "${_urlHmr}/tools/system/monitor/check/unbound.sh" f77
+    _fetch_versioned /var/xdrago/monitor/check/escapecheck.sh "${_urlHmr}/tools/system/monitor/check/escapecheck.sh" f90
+    _fetch_versioned /var/xdrago/monitor/check/hackcheck.sh "${_urlHmr}/tools/system/monitor/check/hackcheck.sh" f86
+    _fetch_versioned /var/xdrago/monitor/check/hackftp.sh "${_urlHmr}/tools/system/monitor/check/hackftp.sh" f90
+    _fetch_versioned /var/xdrago/monitor/check/segfault_alert.sh "${_urlHmr}/tools/system/monitor/check/segfault_alert.sh" f98
+    _fetch_versioned /var/xdrago/monitor/check/sqlcheck.sh "${_urlHmr}/tools/system/monitor/check/sqlcheck.sh" f84
+    _fetch_versioned /var/xdrago/monitor/check/bind9.sh "${_urlHmr}/tools/system/monitor/check/bind9.sh" f98
+    _fetch_versioned /var/xdrago/monitor/check/proxysql.sh "${_urlHmr}/tools/system/monitor/check/proxysql.sh" f98
+    _fetch_versioned /var/xdrago/monitor/check/droplet.sh "${_urlHmr}/tools/system/monitor/check/droplet.sh" f98
     # written once by aptcleanup on a DO box, refreshed here from then on (its
     # stop arm used to TERM the init script itself)
     [ -e "/etc/init.d/droplet-agent" ] \
       && _fetch_versioned /etc/init.d/droplet-agent "${_urlHmr}/conf/droplet/droplet-agent" f99 --mode 755
-    _fetch_versioned /var/xdrago/monitor/check/newrelic_daemon.sh "${_urlHmr}/tools/system/monitor/check/newrelic_daemon.sh" f99
-    _fetch_versioned /var/xdrago/monitor/check/newrelic_sysmond.sh "${_urlHmr}/tools/system/monitor/check/newrelic_sysmond.sh" f97
-    _fetch_versioned /var/xdrago/monitor/check/collectd.sh "${_urlHmr}/tools/system/monitor/check/collectd.sh" f99
-    _fetch_versioned /var/xdrago/monitor/check/xinetd.sh "${_urlHmr}/tools/system/monitor/check/xinetd.sh" f99
-    _fetch_versioned /var/xdrago/monitor/check/lsyncd.sh "${_urlHmr}/tools/system/monitor/check/lsyncd.sh" f99
-    _fetch_versioned /var/xdrago/monitor/check/sendmail_guard.sh "${_urlHmr}/tools/system/monitor/check/sendmail_guard.sh" f00
-    _fetch_versioned /var/xdrago/monitor/check/convert_guard.sh "${_urlHmr}/tools/system/monitor/check/convert_guard.sh" f00
-    _fetch_versioned /var/xdrago/monitor/check/hostname_sync.sh "${_urlHmr}/tools/system/monitor/check/hostname_sync.sh" f01
+    _fetch_versioned /var/xdrago/monitor/check/newrelic_daemon.sh "${_urlHmr}/tools/system/monitor/check/newrelic_daemon.sh" f98
+    _fetch_versioned /var/xdrago/monitor/check/newrelic_sysmond.sh "${_urlHmr}/tools/system/monitor/check/newrelic_sysmond.sh" f96
+    _fetch_versioned /var/xdrago/monitor/check/collectd.sh "${_urlHmr}/tools/system/monitor/check/collectd.sh" f98
+    _fetch_versioned /var/xdrago/monitor/check/xinetd.sh "${_urlHmr}/tools/system/monitor/check/xinetd.sh" f98
+    _fetch_versioned /var/xdrago/monitor/check/lsyncd.sh "${_urlHmr}/tools/system/monitor/check/lsyncd.sh" f98
+    _fetch_versioned /var/xdrago/monitor/check/sendmail_guard.sh "${_urlHmr}/tools/system/monitor/check/sendmail_guard.sh" f99
+    _fetch_versioned /var/xdrago/monitor/check/convert_guard.sh "${_urlHmr}/tools/system/monitor/check/convert_guard.sh" f99
+    _fetch_versioned /var/xdrago/monitor/check/hostname_sync.sh "${_urlHmr}/tools/system/monitor/check/hostname_sync.sh" f00
     _fetch_versioned /etc/init.d/clean-boa-env "${_urlHmr}/conf/var/clean-boa-env" f93
-    _fetch_versioned /var/xdrago/mysql_backup.sh "${_urlHmr}/tools/system/mysql_backup.sh" f56 --guard mysql_backup.sh
+    _fetch_versioned /var/xdrago/mysql_backup.sh "${_urlHmr}/tools/system/mysql_backup.sh" f49 --guard mysql_backup.sh
     _fetch_versioned /usr/libexec/unbound-helper "${_urlHmr}/conf/dns/unbound-helper" f95 --mode 755
-    _fetch_versioned /var/xdrago/mysql_cleanup.sh "${_urlHmr}/tools/system/mysql_cleanup.sh" f83
-    _fetch_versioned /var/xdrago/mysql_cluster_backup.sh "${_urlHmr}/tools/system/mysql_cluster_backup.sh" f64 --guard mysql_cluster_backup.sh
+    _fetch_versioned /var/xdrago/mysql_cleanup.sh "${_urlHmr}/tools/system/mysql_cleanup.sh" f82
+    _fetch_versioned /var/xdrago/mysql_cluster_backup.sh "${_urlHmr}/tools/system/mysql_cluster_backup.sh" f57 --guard mysql_cluster_backup.sh
     _runner_parked runner.sh \
-      || _fetch_versioned /var/xdrago/runner.sh "${_urlHmr}/tools/system/runner.sh" f58
-    _fetch_versioned /var/xdrago/minute.sh "${_urlHmr}/tools/system/minute.sh" f73
-    _fetch_versioned /var/xdrago/second.sh "${_urlHmr}/tools/system/second.sh" f64
-    _fetch_versioned /var/xdrago/ip_access.sh "${_urlHmr}/tools/system/ip_access.sh" f73
-    _fetch_versioned /var/xdrago/user_admin_access.sh "${_urlHmr}/tools/system/user_admin_access.sh" f79
-    _fetch_versioned /var/xdrago/cloudflare_realip.sh "${_urlHmr}/tools/system/cloudflare_realip.sh" f93
+      || _fetch_versioned /var/xdrago/runner.sh "${_urlHmr}/tools/system/runner.sh" f53
+    _fetch_versioned /var/xdrago/minute.sh "${_urlHmr}/tools/system/minute.sh" f65
+    _fetch_versioned /var/xdrago/second.sh "${_urlHmr}/tools/system/second.sh" f56
+    _fetch_versioned /var/xdrago/ip_access.sh "${_urlHmr}/tools/system/ip_access.sh" f59
+    _fetch_versioned /var/xdrago/user_admin_access.sh "${_urlHmr}/tools/system/user_admin_access.sh" f65
+    _fetch_versioned /var/xdrago/cloudflare_realip.sh "${_urlHmr}/tools/system/cloudflare_realip.sh" f92
     # Activate Cloudflare realip immediately by writing the set_real_ip_from
     # ranges include now, so a fresh/updated box does not wait for the daily
     # cron; the tool no-ops when nginx is absent and is idempotent otherwise.
@@ -2709,10 +3006,10 @@ _update_agents() {
     [ -e "/var/xdrago/cloudflare_realip.sh" ] \
       && [ ! -s "/data/conf/nginx_cloudflare_real_ip.conf" ] \
       && bash /var/xdrago/cloudflare_realip.sh >/dev/null 2>&1
-    _fetch_versioned /var/xdrago/ai_policy.sh "${_urlHmr}/tools/system/ai_policy.sh" f90
-    _fetch_versioned /var/xdrago/nginx_deny.sh "${_urlHmr}/tools/system/nginx_deny.sh" f93
-    _fetch_versioned /var/xdrago/nginx_deny6.sh "${_urlHmr}/tools/system/nginx_deny6.sh" f93
-    _fetch_versioned /var/xdrago/nginx_fleet.sh "${_urlHmr}/tools/system/nginx_fleet.sh" f89
+    _fetch_versioned /var/xdrago/ai_policy.sh "${_urlHmr}/tools/system/ai_policy.sh" f83
+    _fetch_versioned /var/xdrago/nginx_deny.sh "${_urlHmr}/tools/system/nginx_deny.sh" f92
+    _fetch_versioned /var/xdrago/nginx_deny6.sh "${_urlHmr}/tools/system/nginx_deny6.sh" f92
+    _fetch_versioned /var/xdrago/nginx_fleet.sh "${_urlHmr}/tools/system/nginx_fleet.sh" f88
     # The per-minute line otherwise arrives only with the crontab template on a
     # full up-* run, so a fetched detector would sit idle until then; ensure it
     # whenever the script is present. A line an operator commented out still
@@ -2729,7 +3026,7 @@ _update_agents() {
     # up-* tar, so a source box that had not upgraded since it shipped had NO
     # mirror at all -- the exact box that needs it. The trust and realip tools
     # ride with xoct and xmass in the tools pass.
-    _fetch_versioned /var/xdrago/migration_proxy_certs.sh "${_urlHmr}/tools/system/migration_proxy_certs.sh" f88
+    _fetch_versioned /var/xdrago/migration_proxy_certs.sh "${_urlHmr}/tools/system/migration_proxy_certs.sh" f87
     # A fetch-delivered mirror without its schedule is a false comfort: the
     # daily line normally arrives only with the crontab template on a full
     # up-* run, so ensure it whenever the script is present.
@@ -2741,17 +3038,47 @@ _update_agents() {
       chmod 600 /var/spool/cron/crontabs/root &> /dev/null
       service cron reload &> /dev/null || /etc/init.d/cron reload &> /dev/null
     fi
-    _fetch_versioned /var/xdrago/move_sql.sh "${_urlHmr}/tools/system/move_sql.sh" f80
-    _fetch_versioned /var/xdrago/mysql_repair.sh "${_urlHmr}/tools/system/mysql_repair.sh" f89
-    _fetch_versioned /var/xdrago/purge_binlogs.sh "${_urlHmr}/tools/system/purge_binlogs.sh" f88
-    _fetch_versioned /var/xdrago/checksql.sh "${_urlHmr}/tools/system/checksql.sh" f95
-    _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f66
-    _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f51
-    _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f08
-    _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f24
-    _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f42
+    _fetch_versioned /var/xdrago/fstrim.sh "${_urlHmr}/tools/system/fstrim.sh" f99
+    # The weekly line otherwise arrives only with the crontab template on a
+    # full up-* run; ensure it whenever the script is present, as above.
+    if [ -x "/var/xdrago/fstrim.sh" ] \
+      && [ -e "/var/spool/cron/crontabs/root" ] \
+      && ! grep -q "fstrim.sh" /var/spool/cron/crontabs/root 2>/dev/null; then
+      echo '47 5 * * 3  /usr/bin/nice -n10 /usr/bin/ionice -c3 bash /var/xdrago/fstrim.sh                       >/dev/null 2>&1' >> /var/spool/cron/crontabs/root
+      chown root:crontab /var/spool/cron/crontabs/root &> /dev/null
+      chmod 600 /var/spool/cron/crontabs/root &> /dev/null
+      service cron reload &> /dev/null || /etc/init.d/cron reload &> /dev/null
+    fi
+    # The account nginx store's two lines (the minute sync, a no-op unless the
+    # store is armed, and the nightly report), likewise.
+    if [ -x "/opt/local/bin/ngxstore" ] \
+      && [ -e "/var/spool/cron/crontabs/root" ] \
+      && ! grep -q "ngxstore" /var/spool/cron/crontabs/root 2>/dev/null; then
+      echo '* * * * *   /usr/bin/nice -n5 bash /opt/local/bin/ngxstore sync --quiet --reload-if-changed >/dev/null 2>&1' >> /var/spool/cron/crontabs/root
+      echo '05 6 * * *  /usr/bin/nice -n10 /usr/bin/ionice -c3 bash /opt/local/bin/ngxstore report     >/dev/null 2>&1' >> /var/spool/cron/crontabs/root
+      chown root:crontab /var/spool/cron/crontabs/root &> /dev/null
+      chmod 600 /var/spool/cron/crontabs/root &> /dev/null
+      service cron reload &> /dev/null || /etc/init.d/cron reload &> /dev/null
+    fi
+    # The nightly database backup starts at this box's own minute, not at the
+    # template's 01:15 every box on one host would share; the template copy of
+    # a full up-* run puts 01:15 back, so every pass re-applies it (a no-op
+    # once the lines carry it).
+    if [ -e "/opt/local/bin/heavyslots" ] \
+      && [ -e "/var/spool/cron/crontabs/root" ]; then
+      bash /opt/local/bin/heavyslots apply --quiet &> /dev/null
+    fi
+    _fetch_versioned /var/xdrago/move_sql.sh "${_urlHmr}/tools/system/move_sql.sh" f77
+    _fetch_versioned /var/xdrago/mysql_repair.sh "${_urlHmr}/tools/system/mysql_repair.sh" f88
+    _fetch_versioned /var/xdrago/purge_binlogs.sh "${_urlHmr}/tools/system/purge_binlogs.sh" f87
+    _fetch_versioned /var/xdrago/checksql.sh "${_urlHmr}/tools/system/checksql.sh" f92
+    _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f53
+    _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f41
+    _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f89
+    _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f15
+    _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f36
     _runner_parked owl.sh \
-      || _fetch_versioned /var/xdrago/owl.sh "${_urlHmr}/tools/system/owl.sh" f66
+      || _fetch_versioned /var/xdrago/owl.sh "${_urlHmr}/tools/system/owl.sh" f62
     ###
     ### Migration: daily.sh was renamed to owl.sh. Carry an xoct/xcopy-disabled
     ### state (.daily.sh.off) across to owl so a box that had the nightly run
@@ -2775,9 +3102,9 @@ _update_agents() {
       rm -f ${_pthLog}/daily.sh.ctrl.*.pid
     fi
     _runner_parked graceful.sh \
-      || _fetch_versioned /var/xdrago/graceful.sh "${_urlHmr}/tools/system/graceful.sh" f64
+      || _fetch_versioned /var/xdrago/graceful.sh "${_urlHmr}/tools/system/graceful.sh" f69
     _runner_parked usage.sh \
-      || _fetch_versioned /var/xdrago/usage.sh "${_urlHmr}/tools/system/usage.sh" f52
+      || _fetch_versioned /var/xdrago/usage.sh "${_urlHmr}/tools/system/usage.sh" f44
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
@@ -2821,7 +3148,7 @@ _update_agents() {
     # post-install steps run only when the file actually changed.
     if ! _runner_parked manage_ltd_users.sh; then
       _ltdSum="$(md5sum /var/xdrago/manage_ltd_users.sh 2>/dev/null | cut -d' ' -f1)"
-      _fetch_versioned /var/xdrago/manage_ltd_users.sh "${_urlHmr}/tools/system/manage_ltd_users.sh" f19 --guard /xdrago/manage_ltd_users.sh
+      _fetch_versioned /var/xdrago/manage_ltd_users.sh "${_urlHmr}/tools/system/manage_ltd_users.sh" f90 --guard /xdrago/manage_ltd_users.sh
       if [ -s "/var/xdrago/manage_ltd_users.sh" ] \
         && [ "$(md5sum /var/xdrago/manage_ltd_users.sh 2>/dev/null | cut -d' ' -f1)" != "${_ltdSum}" ]; then
         [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
@@ -2838,7 +3165,7 @@ _update_agents() {
     # not caught up kept the previous tool under the new marker for good.
     # The post-install step runs only when the file actually changed.
     _slrSum="$(md5sum /var/xdrago/manage_solr_config.sh 2>/dev/null | cut -d' ' -f1)"
-    _fetch_versioned /var/xdrago/manage_solr_config.sh "${_urlHmr}/tools/system/manage_solr_config.sh" f50
+    _fetch_versioned /var/xdrago/manage_solr_config.sh "${_urlHmr}/tools/system/manage_solr_config.sh" f39
     if [ -s "/var/xdrago/manage_solr_config.sh" ] \
       && [ "$(md5sum /var/xdrago/manage_solr_config.sh 2>/dev/null | cut -d' ' -f1)" != "${_slrSum}" ]; then
       rm -f /run/manage_solr_config.pid
@@ -2865,10 +3192,10 @@ _update_agents() {
   fi
 
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] && [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ] \
-    && _fetch_versioned /var/xdrago/guest-fire.sh "${_urlHmr}/tools/system/guest-fire.sh" f83
+    && _fetch_versioned /var/xdrago/guest-fire.sh "${_urlHmr}/tools/system/guest-fire.sh" f80
 
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/xdrago" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] && [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ] \
-    && _fetch_versioned /var/xdrago/guest-water.sh "${_urlHmr}/tools/system/guest-water.sh" f66
+    && _fetch_versioned /var/xdrago/guest-water.sh "${_urlHmr}/tools/system/guest-water.sh" f62
 
   # Re-put trigger for the current lshell.conf. The sentinel MUST be a
   # literal that exists in the shipped file (here the comment that opens the
@@ -2897,7 +3224,7 @@ _update_agents() {
     if [ -z "${_CUSTOM_CONFIG_LSHELL}" ] \
       || [ "${_CUSTOM_CONFIG_LSHELL}" = "NO" ]; then
       _lshSum="$(md5sum /var/xdrago/conf/lshell.conf.dist 2>/dev/null | cut -d' ' -f1)"
-      _fetch_versioned /var/xdrago/conf/lshell.conf.dist "${_urlHmr}/tools/system/conf/lshell.conf" f79 --mode 644
+      _fetch_versioned /var/xdrago/conf/lshell.conf.dist "${_urlHmr}/tools/system/conf/lshell.conf" f80 --mode 644
       if _source_due /var/xdrago/conf/lshell.conf.dist "${_lshSum}" \
         "${_pthLog}/lshell.ctrl.${_tRee}.${_xSrl}.pid"; then
         mv -f /var/xdrago/conf/lshell.conf /var/xdrago/conf/lshell.conf.old
@@ -2963,7 +3290,7 @@ _update_agents() {
     && [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     _poolSum="$(md5sum /var/xdrago/conf/fpm-pool-common.conf.dist 2>/dev/null | cut -d' ' -f1)"
-    _fetch_versioned /var/xdrago/conf/fpm-pool-common.conf.dist "${_urlHmr}/conf/php/fpm-pool-common.conf" f97 --mode 644
+    _fetch_versioned /var/xdrago/conf/fpm-pool-common.conf.dist "${_urlHmr}/conf/php/fpm-pool-common.conf" f96 --mode 644
     if _source_due /var/xdrago/conf/fpm-pool-common.conf.dist "${_poolSum}" \
       "${_pthLog}/common.ctrl.${_tRee}.${_xSrl}.pid"; then
       mv -f /var/xdrago/conf/fpm-pool-common.conf /var/xdrago/conf/fpm-pool-common.conf.old
@@ -2983,7 +3310,7 @@ _update_agents() {
     && [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     _poolSum="$(md5sum /var/xdrago/conf/fpm-pool-common-legacy.conf.dist 2>/dev/null | cut -d' ' -f1)"
-    _fetch_versioned /var/xdrago/conf/fpm-pool-common-legacy.conf.dist "${_urlHmr}/conf/php/fpm-pool-common-legacy.conf" f97 --mode 644
+    _fetch_versioned /var/xdrago/conf/fpm-pool-common-legacy.conf.dist "${_urlHmr}/conf/php/fpm-pool-common-legacy.conf" f96 --mode 644
     if _source_due /var/xdrago/conf/fpm-pool-common-legacy.conf.dist "${_poolSum}" \
       "${_pthLog}/legacy.ctrl.${_tRee}.${_xSrl}.pid"; then
       mv -f /var/xdrago/conf/fpm-pool-common-legacy.conf /var/xdrago/conf/fpm-pool-common-legacy.conf.old
@@ -3003,7 +3330,7 @@ _update_agents() {
     && [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     _poolSum="$(md5sum /var/xdrago/conf/fpm-pool-common-modern.conf.dist 2>/dev/null | cut -d' ' -f1)"
-    _fetch_versioned /var/xdrago/conf/fpm-pool-common-modern.conf.dist "${_urlHmr}/conf/php/fpm-pool-common-modern.conf" f97 --mode 644
+    _fetch_versioned /var/xdrago/conf/fpm-pool-common-modern.conf.dist "${_urlHmr}/conf/php/fpm-pool-common-modern.conf" f96 --mode 644
     if _source_due /var/xdrago/conf/fpm-pool-common-modern.conf.dist "${_poolSum}" \
       "${_pthLog}/modern.ctrl.${_tRee}.${_xSrl}.pid"; then
       mv -f /var/xdrago/conf/fpm-pool-common-modern.conf /var/xdrago/conf/fpm-pool-common-modern.conf.old
@@ -3082,7 +3409,7 @@ _update_agents() {
     # is named like this file's fetch marker: the fetcher takes it for
     # another serial's marker and would hold the unchanged readme an hour.
     rm -f "${_pthLog}/control-readme.txt.ctrl.${_tRee}."*".pid"
-    _fetch_versioned /var/xdrago/conf/control-readme.txt "${_urlHmr}/tools/system/conf/control-readme.txt" f84 --mode 644
+    _fetch_versioned /var/xdrago/conf/control-readme.txt "${_urlHmr}/tools/system/conf/control-readme.txt" f81 --mode 644
   fi
 
   # The queue template is fetched through _fetch_versioned, which holds a
@@ -3129,7 +3456,7 @@ _update_agents() {
           | md5sum | cut -d' ' -f1 > "${_hQueueR}"
       fi
     fi
-    _fetch_versioned "${_hQueueP}" "${_urlHmr}/patches/${_hQueueF}" f92 --mode 644
+    _fetch_versioned "${_hQueueP}" "${_urlHmr}/patches/${_hQueueF}" f91 --mode 644
     if [ "${_hQueueA}" = "YES" ] && [ -s "${_hQueueP}" ]; then
       _hQueueL="$(grep -xE '[0-9a-f]{32}' "${_hQueueR}" 2> /dev/null | tail -n 20)"
       _hQueueN="$(sed "s/127.0.0.1/${_LOC_IP}/g" "${_hQueueP}" 2> /dev/null \
@@ -3186,21 +3513,86 @@ _update_agents() {
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -d "/data/u" ] \
     && [ -e "/usr/sbin/csf" ] \
-    && [ ! -e "${_pthLog}/fpm-cli.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/fpm-cli.ctrl.f98.${_tRee}.${_xSrl}.pid" ]; then
     _usrGroup=users
+    _useCli=
+    _useFpm=
+    for _version in 84 85 86 83 82 81 74 56; do
+      if [ -x "/opt/php${_version}/bin/php" ]; then
+        if [ "${_version}" = "74" ]; then
+          _useCli="7.4"
+          _useFpm="7.4"
+        elif [ "${_version}" = "56" ]; then
+          _useCli="5.6"
+          _useFpm="5.6"
+        else
+          _useCli="8.${_version:1}"
+          _useFpm="8.${_version:1}"
+        fi
+        break
+      fi
+    done
     for _pthSysUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
       _tUsr=
       _tUsr=$(echo ${_pthSysUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
       _usrGroup=$(_acct_group "${_tUsr}")
       if [ "${_tUsr}" != "arch" ]; then
-        _acct_in_real_dir "${_pthSysUsr}/static/control" _ctrl_seed_here
+        # a control/ that is not the account's own (_acct_ctrl_own) is
+        # neither seeded nor read: its cli.info never parks the dispatcher
+        _ctlOwn=YES
+        _acct_ctrl_own "${_tUsr}" > /dev/null || _ctlOwn=NO
+        ### fpm.info and cli.info the account lost go back before the seed and
+        ### the park test below, with the versions its log/ records, as an
+        ### Octopus pass puts them back: put back only after the park test,
+        ### they never came back for an account that lost both, and its
+        ### dispatcher stayed parked for good. Not for an account cancelled,
+        ### relayed elsewhere or left by a failed conversion (each stays
+        ### parked), one with no main login, nor on a standby, whose account
+        ### trees come from the active with every sync; and with no cli.info,
+        ### only where log/ records a version (a removed account's leftovers
+        ### and an install that stopped before its control panel was made have
+        ### none). A control folder removed whole is made again first, as the
+        ### hand-back below makes one, and judged again.
+        _logFpm=
+        _logCli=
+        _ctlPin=NO
+        if [ "${_ctlOwn}" = "YES" ] \
+          && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
+          && [ ! -e "${_pthSysUsr}/log/CANCELLED" ] \
+          && [ ! -e "${_pthSysUsr}/log/proxied.pid" ] \
+          && [ ! -e "${_pthSysUsr}/log/proxy-failed.pid" ] \
+          && [ ! -e "/root/.standby.cnf" ] \
+          && [ ! -e "/root/.standby.prep.cnf" ] \
+          && id -u -- "${_tUsr}.ftp" > /dev/null 2>&1; then
+          _logFpm=$(_ctrl_php_vrn "$(_acct_in_real_dir "${_pthSysUsr}/log" \
+            _acct_read_here fpm.txt)")
+          _logCli=$(_ctrl_php_vrn "$(_acct_in_real_dir "${_pthSysUsr}/log" \
+            _acct_read_here cli.txt)")
+          if [ -n "${_logFpm}${_logCli}" ] \
+            || [ -e "${_pthSysUsr}/static/control/cli.info" ]; then
+            _ctlPin=YES
+          fi
+        fi
+        if [ "${_ctlPin}" = "YES" ]; then
+          if [ ! -e "${_pthSysUsr}/static/control" ] \
+            && [ ! -L "${_pthSysUsr}/static/control" ] \
+            && [ -e "/home/${_tUsr}.ftp/clients" ]; then
+            _acct_in_real_dir "${_pthSysUsr}/static" _acct_ctrl_dir_here
+            _acct_ctrl_own "${_tUsr}" > /dev/null || _ctlOwn=NO
+          fi
+          [ "${_ctlOwn}" = "YES" ] \
+            && _acct_in_real_dir "${_pthSysUsr}/static/control" _ctrl_pins_here
+        fi
+        [ "${_ctlOwn}" = "YES" ] \
+          && _acct_in_real_dir "${_pthSysUsr}/static/control" _ctrl_seed_here
         ### proxy-failed.pid: a cutover could not convert the account, and its
         ### panel database lives on the target; its dispatcher would run the
         ### travelled queue against the stale local copy until xoct repairs it
         if [ -e "${_pthSysUsr}/log/CANCELLED" ] \
           || [ -e "${_pthSysUsr}/log/proxied.pid" ] \
           || [ -e "${_pthSysUsr}/log/proxy-failed.pid" ] \
-          || [ ! -e "${_pthSysUsr}/static/control/cli.info" ]; then
+          || { [ "${_ctlOwn}" = "YES" ] \
+            && [ ! -e "${_pthSysUsr}/static/control/cli.info" ]; }; then
           if [ -e "/var/xdrago/run-${_tUsr}" ] \
             && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
             [ -d "/var/backups/off-run" ] || mkdir -p /var/backups/off-run
@@ -3215,13 +3607,32 @@ _update_agents() {
           ### live one the parked copy is stale: set it aside, so off-run
           ### holds only dispatchers that are parked now
           if [ -e "/var/backups/off-run/run-${_tUsr}" ]; then
-            if [ -s /etc/boa/control/instgrp-web-arm.ready.txt ] \
+            if [ "${_ctlOwn}" = "NO" ] \
+              && [ ! -e "/var/xdrago/run-${_tUsr}" ]; then
+              # a control/ that is not the account's own (_acct_ctrl_own)
+              # keeps a parked dispatcher where it is
+              :
+            elif [ -s /etc/boa/control/instgrp-web-arm.ready.txt ] \
               && _a2b_import_unfinished "${_tUsr}"; then
               # an unfinished aegir2boa db-import holds it: only the
               # import's success or revert hands a dispatcher back
               :
+            elif grep -sqx returning "/root/.${_tUsr}.fix-accounts.txt"; then
+              # xmass --return-accounts laid it here parked: its own last
+              # step hands it back once the account's panel names this box
+              :
             elif [ ! -e "/var/xdrago/run-${_tUsr}" ]; then
-              mv -f "/var/backups/off-run/run-${_tUsr}" /var/xdrago/ &> /dev/null
+              # only a copy that is root's alone goes back (runner.sh runs
+              # no other); any other is set aside once a new one is written,
+              # and stays parked, named, while none can be
+              if _dispatcher_trusted "/var/backups/off-run/run-${_tUsr}"; then
+                mv -f "/var/backups/off-run/run-${_tUsr}" /var/xdrago/ &> /dev/null
+              elif _dispatcher_write "${_tUsr}"; then
+                _dispatcher_set_aside "/var/backups/off-run/run-${_tUsr}"
+              elif [ -d /var/log/boa ]; then
+                echo "$(date) not handed back: /var/backups/off-run/run-${_tUsr}: not root's alone, and no new dispatcher could be written" \
+                  >> /var/log/boa/dispatcher.incident.log
+              fi
             else
               mv -f "/var/backups/off-run/run-${_tUsr}" \
                 "/var/backups/off-run/.superseded-run-${_tUsr}" &> /dev/null
@@ -3234,37 +3645,26 @@ _update_agents() {
           _ngxCnf="${_dscUsr}/config/includes/nginx_vhost_common.conf"
           _acct_in_real_dir "${_ngxCnf%/*}" _acct_sed_here "${_ngxCnf##*/}" \
             "s/args.*q=/args ~* \"foobaroff=/g" foobaroff
-          for _version in 84 85 86 83 82 81 74 56; do
-            if [ -x "/opt/php${_version}/bin/php" ]; then
-              if [ "${_version}" = "74" ]; then
-                _useCli="7.4"
-                _useFpm="7.4"
-              elif [ "${_version}" = "56" ]; then
-                _useCli="5.6"
-                _useFpm="5.6"
-              else
-                _useCli="8.${_version:1}"
-                _useFpm="8.${_version:1}"
-              fi
-              break
-            fi
-          done
-          if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
-            _acct_in_real_dir "${_dscUsr}/static/control" _ctrl_pins_here
-          fi
-          if [ ! -e "${_dscUsr}/static/control/.ctrl.${_tRee}.${_xSrl}.pid" ] \
+          if [ "${_ctlOwn}" = "YES" ] \
+            && [ ! -e "${_dscUsr}/static/control/.ctrl.${_tRee}.${_xSrl}.pid" ] \
             && [ -e "/home/${_tUsr}.ftp/clients" ]; then
             _acct_in_real_dir "${_dscUsr}/static" _acct_ctrl_dir_here
-            _acct_in_real_dir "${_dscUsr}/static/control" _ctrl_init_here
+            # judged again once the folder is there: one another account
+            # made meanwhile is never handed to the account
+            _acct_ctrl_own "${_tUsr}" > /dev/null \
+              && _acct_in_real_dir "${_dscUsr}/static/control" _ctrl_init_here
           fi
         fi
       fi
     done
-    touch ${_pthLog}/fpm-cli.ctrl.${_tRee}.${_xSrl}.pid
+    touch ${_pthLog}/fpm-cli.ctrl.f98.${_tRee}.${_xSrl}.pid
   fi
 
-  # Create the destination directory if it doesn't exist
+  # Create the destination directory if it doesn't exist; root's alone, so no
+  # other user can reach a parked dispatcher there
   [ -d "/var/backups/off-run" ] || mkdir -p /var/backups/off-run
+  [ -d "/var/backups/off-run" ] && [ ! -L "/var/backups/off-run" ] \
+    && chown root:root /var/backups/off-run && chmod 700 /var/backups/off-run
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -d "/data/u" ] \
@@ -3283,13 +3683,17 @@ _update_agents() {
       _PROXIED_PID_FILE="${_USER_DIR}/log/proxied.pid"
       _PROXY_FAILED_FILE="${_USER_DIR}/log/proxy-failed.pid"
       _CLI_INFO_FILE="${_USER_DIR}/static/control/cli.info"
+      # a control/ that is not the account's own (_acct_ctrl_own): its
+      # cli.info, there or not, never parks the dispatcher
+      _ctlOwn=YES
+      [ -d "${_USER_DIR}" ] && ! _acct_ctrl_own "${_USER}" > /dev/null && _ctlOwn=NO
 
       # Check the conditions
       if [ ! -d "${_USER_DIR}" ] || \
          [ -f "${_CANCELLED_FILE}" ] || \
          [ -f "${_PROXIED_PID_FILE}" ] || \
          [ -f "${_PROXY_FAILED_FILE}" ] || \
-         [ ! -f "${_CLI_INFO_FILE}" ]; then
+         { [ "${_ctlOwn}" = "YES" ] && [ ! -f "${_CLI_INFO_FILE}" ]; }; then
         # Move the file if any condition is met
         mv -f "${_file}" /var/backups/off-run/
         continue
@@ -3331,6 +3735,7 @@ _update_agents() {
     for _pthSysUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
       if [ -e "${_pthSysUsr}/config/server_master/nginx/vhost.d" ] \
         && [ -e "${_pthSysUsr}/static/control/cli.info" ] \
+        && _acct_ctrl_own "${_pthSysUsr##*/}" > /dev/null \
         && [ ! -e "/root/.standby.cnf" ] \
         && [ ! -e "${_pthSysUsr}/log/proxied.pid" ] \
         && [ ! -e "${_pthSysUsr}/log/CANCELLED" ]; then
@@ -3483,7 +3888,7 @@ _update_agents() {
     && _fetch_versioned /etc/cron.hourly/systemtime "${_urlHmr}/helpers/systemtime" f94 --mode 755
 
   _Dir="/data/all/000/modules"
-  _REDIS_E_VERSION=8.x-1.11.4
+  _REDIS_E_VERSION=8.x-1.11.5
   if [ -e "/var/xdrago/manage_solr_config.sh" ]; then
     if _shared_module_stale redis_ten_eleven "ver-${_REDIS_E_VERSION}.${_xSrl}.full.info"; then
       _shared_module_update redis_ten_eleven "${_REDIS_E_VERSION}"
@@ -3553,7 +3958,7 @@ _update_agents() {
   # shelf, and only once the pin names a published tarball (empty: no box
   # fetches it). The same version as OCTOPUS.sh.txt's _REDIS_W_VERSION.
   _Dir="/data/all/000/modules"
-  _REDIS_W_VERSION=2.0.0-alpha2.1
+  _REDIS_W_VERSION=2.0.0-alpha2.2
   if [ -n "${_REDIS_W_VERSION}" ] \
     && [ -e "/var/xdrago/manage_solr_config.sh" ] \
     && [ -d "${_Dir}/o_contrib_twelve" ]; then
@@ -3600,7 +4005,7 @@ _fix_core_dgd() {
     [ -z "${2}" ] || [ ! -e "./profiles/${2}" ] || return 0
     patch -p1 &> /dev/null < "${1}"
     [ -z "${2}" ] \
-      || _acct_in_real_dir "$(pwd -P)/profiles" _acct_put_here "${2}" fixed
+      || _acct_in_real_dir "$(/bin/pwd -P)/profiles" _acct_put_here "${2}" fixed
   }
 
   # SA-CORE D8 patch
@@ -3981,7 +4386,7 @@ _if_fix_lshell() {
     [ ! -d "/usr/local/etc" ] && mkdir -p /usr/local/etc
     ln -sfn /etc/lshell.conf /usr/local/etc/lshell.conf
   fi
-  _LSHELL_VRN=0.11.15
+  _LSHELL_VRN=0.11.16
   # 0.11.x needs Python 3.10+; a box whose python3 is older (chimaera 3.9,
   # beowulf 3.7) keeps 0.10, which stays installable there so a broken shell
   # on a legacy box still heals instead of failing the 0.11 build every pass.
@@ -4286,6 +4691,25 @@ MYLOADEREOF
   echo "INFO: MyQuick ${_MYQUICK_VRN_TWO} installed from the ${_mqCode} package"
 }
 
+# True when Solr version $1 (solr9, solr7 or jetty9) is denied on this box,
+# read as autoupboa reads it when it parks the service: the box-wide Java
+# deny or the version's own, as a setting or as a marker file. The fixes
+# below leave a denied version alone, as they leave a parked one: their
+# restart would start it, to run until autoupboa parks it, or for good where
+# _SKYNET_MODE=OFF stops autoupboa before its deny arms. The first run once
+# the version is back makes the fix and the restart if they are still due.
+_solr_svc_denied() {
+  local _dv=""
+  case "${1}" in
+    solr9) _dv="${_DENY_SOLR9}" ;;
+    solr7) _dv="${_DENY_SOLR7}" ;;
+    jetty9) _dv="${_DENY_JETTY9}" ;;
+    *) return 1 ;;
+  esac
+  [ "${_DENY_JAVA}" = "YES" ] || [ -e "/root/.deny.java.cnf" ] \
+    || [ "${_dv}" = "YES" ] || [ -e "/etc/boa/.deny.${1}.cnf" ]
+}
+
 ### A Drupal 8 or newer core is created on Solr's stock configset and stays
 ### there until the site uploads its own files. That configset guesses the
 ### type of every unknown field from the first documents it takes, and the
@@ -4301,17 +4725,29 @@ MYLOADEREOF
 ### a line that cannot be appended is logged, never a restart every tick.
 ### A replication standby and a box under the xmass Solr hold keep Solr
 ### down (manage_solr_config.sh and java.sh stand down on the same two
-### markers), so neither is rewritten or restarted here.
+### markers), so neither is rewritten or restarted here, and neither is a
+### denied version (_solr_svc_denied).
+### Solr 9 runs on Java 17 or 21, whose x86 Base64 decode intrinsic writes
+### past its buffer on CPUs with AVX-512 VBMI (CVE-2026-114938), and every
+### account on the box can reach Solr's local port. Its line carries
+### -XX:-UseBASE64Intrinsics, which keeps the JVM on the plain Java decoder
+### whatever build is installed. Solr 7 runs on Java 11, which has no such
+### decoder, and can meet a JVM that would refuse the option, so it gets
+### none. A line without the option is stale, so each box rewrites it once
+### and restarts Solr 9 for it.
 _fix_solr_defaults_line() {
   # ${1} = solr7 or solr9  ${2} = its stop port  ${3} = its stop key
-  local _svc="${1}" _port="${2}" _key="${3}" _file _stamp _sum
+  # ${4} = an extra JVM option the line must carry (optional)
+  local _svc="${1}" _port="${2}" _key="${3}" _xopt="${4}" _file _stamp _sum
   _file="/etc/default/${_svc}.in.sh"
   _stamp="/etc/boa/control/${_svc}.in.005.fixed.pid"
   [ -x "/etc/init.d/${_svc}" ] && [ -e "${_file}" ] || return 0
+  _solr_svc_denied "${_svc}" && return 0
   if [ -e "${_stamp}" ] \
     && grep -q "STOP\.PORT=${_port}" "${_file}" \
     && grep -q "SOLR_START_WAIT=\"10\"" "${_file}" \
-    && grep -q "update\.autoCreateFields=false" "${_file}"; then
+    && grep -q "update\.autoCreateFields=false" "${_file}" \
+    && { [ -z "${_xopt}" ] || grep -q -e "^SOLR_OPTS=.*${_key}.* ${_xopt}\"$" "${_file}"; }; then
     return 0
   fi
   _sum=$(md5sum "${_file}" 2> /dev/null | cut -d' ' -f1)
@@ -4319,7 +4755,7 @@ _fix_solr_defaults_line() {
   sed -i "s/^SOLR_STOP_KEY.*//g" "${_file}"
   sed -i "s/.*${_key}.*//g" "${_file}"
   sed -i "s/.*_WAIT.*//g" "${_file}"
-  echo "SOLR_OPTS=\"\$SOLR_OPTS -DSTOP.PORT=${_port} -DSTOP.KEY=${_key} -Dupdate.autoCreateFields=false\"" >> "${_file}"
+  echo "SOLR_OPTS=\"\$SOLR_OPTS -DSTOP.PORT=${_port} -DSTOP.KEY=${_key} -Dupdate.autoCreateFields=false${_xopt:+ ${_xopt}}\"" >> "${_file}"
   echo "SOLR_START_WAIT=\"10\"" >> "${_file}"
   echo "SOLR_STOP_WAIT=\"10\"" >> "${_file}"
   echo "SOLR_WAIT_FOR_ZK=\"10\"" >> "${_file}"
@@ -4340,11 +4776,61 @@ _fix_solr_defaults_line() {
   fi
 }
 
+### A Solr JVM that no longer runs what its box holds is restarted here: one
+### whose java a package upgrade replaced (unattended-upgrades installs a
+### fixed openjdk under a running Solr, which keeps the old build, deleted
+### from disk, until a barracuda pass restarts it, maybe days later), and
+### one started without the JVM option its own line now holds (a pass that
+### wrote the line and stopped before its restart): only when the value the
+### file sets last carries it and the file is newer than the JVM, so a line
+### of the operator's that drops it never restarts Solr every hour. Never
+### while root's dpkg or the unattended-upgrade worker runs, so no restart
+### meets a half-unpacked JDK, and at most once an hour, so a restart that
+### does not take is never repeated every run. The pid file lives in the
+### service user's own folder: only a plain file is read, in one open that
+### follows no link and never waits on a FIFO, and only its first bytes.
+_restart_stale_solr_jvm() {
+  # ${1} = solr7 or solr9  ${2} = its port
+  # ${3} = a JVM option its line carries and the JVM must too (optional)
+  local _svc="${1}" _port="${2}" _xopt="${3}" _pf _inc _pid _exe _mark _age _mt _why=""
+  _mark="/run/boa_${_svc}_jvm_restart.pid"
+  _pf="/var/${_svc}/solr-${_port}.pid"
+  _inc="/etc/default/${_svc}.in.sh"
+  [ -x "/etc/init.d/${_svc}" ] || return 0
+  _solr_svc_denied "${_svc}" && return 0
+  [ -f "${_pf}" ] && [ ! -L "${_pf}" ] || return 0
+  _pid="$(timeout 10 dd if="${_pf}" iflag=nofollow,nonblock bs=16 count=1 status=none 2> /dev/null | tr -dc '0-9')"
+  [ -n "${_pid}" ] && [ -d "/proc/${_pid}" ] || return 0
+  [ "$(stat -c %U "/proc/${_pid}" 2> /dev/null)" = "${_svc}" ] || return 0
+  _exe="$(readlink "/proc/${_pid}/exe" 2> /dev/null)"
+  case "${_exe}" in
+    *"/java (deleted)") _why="its replaced JVM ${_exe}" ;;
+  esac
+  if [ -z "${_why}" ] && [ -n "${_xopt}" ] \
+    && grep '^SOLR_OPTS=' "${_inc}" 2> /dev/null | tail -n 1 | grep -q -e " ${_xopt}\"$" \
+    && ! tr '\0' '\n' 2> /dev/null < "/proc/${_pid}/cmdline" | grep -q -x -e "${_xopt}"; then
+    _age="$(ps -o etimes= -p "${_pid}" 2> /dev/null | tr -dc '0-9')"
+    _mt="$(stat -c %Y "${_inc}" 2> /dev/null)"
+    if [ -n "${_age}" ] && [ -n "${_mt}" ] && [ "$(( $(date +%s) - _age ))" -le "${_mt}" ]; then
+      _why="a JVM started without ${_xopt}"
+    fi
+  fi
+  [ -n "${_why}" ] || return 0
+  pgrep -u root -x dpkg > /dev/null 2>&1 && return 0
+  pgrep -u root -U root -f '^([^ ]*/)?python[0-9.]* (/usr)?/bin/unattended-upgrade( |$)' > /dev/null 2>&1 && return 0
+  [ -n "$(find "${_mark}" -mmin -60 2> /dev/null)" ] && return 0
+  touch "${_mark}"
+  echo "_restart${_svc^} for ${_why} at $(date)" >> ${_pthLog}/_fix_start_stop_ports_solr.log
+  service "${_svc}" restart
+}
+
 _fix_start_stop_ports_solr() {
   if [ ! -e "/root/.standby.cnf" ] \
     && [ ! -e "/var/log/boa/.xmass_solr_hold.pid" ]; then
-    _fix_solr_defaults_line solr9 19099 mycustomkey9
+    _fix_solr_defaults_line solr9 19099 mycustomkey9 "-XX:-UseBASE64Intrinsics"
     _fix_solr_defaults_line solr7 19077 mycustomkey7
+    _restart_stale_solr_jvm solr9 9099 "-XX:-UseBASE64Intrinsics"
+    _restart_stale_solr_jvm solr7 9077
   fi
   if [ -x "/etc/init.d/jetty9" ]; then
     _restartSolr4=FALSE
@@ -4374,7 +4860,8 @@ _fix_start_stop_ports_solr() {
 _fix_log4j_solr7() {
   _LOG4J_VRN=2.17.1
   _DO_SOLR_RESTART=
-  if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
+  if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ] \
+    && ! _solr_svc_denied solr7; then
     if [ -e "/opt/solr-7.7.3" ] \
       && [ ! -e "/opt/solr-7.7.3/server/lib/ext/log4j-core-${_LOG4J_VRN}.jar" ]; then
       cd /var/opt
@@ -4563,7 +5050,7 @@ _fix_java_symlinks() {
 }
 
 _fix_composer_version() {
-  _COMPOSER_VRN=2.11.1
+  _COMPOSER_VRN=2.11.2
   if [ -x "/usr/local/bin/composer" ]; then
     _COMPOSER_IS=$(composer --no-interaction --version 2>&1 \
       | tr -d "\n" \
@@ -4919,7 +5406,7 @@ _crawler_store() {
 _crawler_revert() {
   local _p _f _u _g _m
   [ -d "${_crwPrev}" ] || return 0
-  while IFS= read -r -d '' _p; do
+  while LC_ALL=C IFS= read -r -d '' _p; do
     _f="${_p#"${_crwPrev}"}"
     if read -r _u _g _m < "${_p}.own"; then
       _acct_in_real_dir "${_f%/*}" _acct_put_mode_here "${_f##*/}" \
@@ -5086,6 +5573,29 @@ _log_crawler_fix() {
   echo "$(date 2> /dev/null) $1" >> "${_pthLog}/crawler-access-fix.log"
 }
 
+# Each user's nginx line in /etc/sudoers names reload alone, the restart
+# command of provision and the panel: the bare init script let a hosted
+# account run any verb of it as root. helper.sh.inc's
+# _sudoers_nginx_reload_only does the same in a pass; visudo checks the result
+# before it goes live.
+_fix_nginx_sudo_verb() {
+  local _f="/etc/sudoers"
+  local _re='^([a-z0-9][a-z0-9_.-]*) ALL=NOPASSWD: /etc/init\.d/nginx[[:space:]]*$'
+  local _tmp
+  [ -e "${_f}" ] || return 0
+  command -v visudo > /dev/null 2>&1 || return 0
+  grep -qE "${_re}" "${_f}" 2> /dev/null || return 0
+  _tmp=$(mktemp /etc/.sudoers.boa.XXXXXX 2> /dev/null) || return 0
+  if sed -E "s#${_re}#\\1 ALL=NOPASSWD: /etc/init.d/nginx reload#" "${_f}" > "${_tmp}" \
+    && visudo -cf "${_tmp}" > /dev/null 2>&1; then
+    chown root:root "${_tmp}"
+    chmod 0440 "${_tmp}"
+    mv -f "${_tmp}" "${_f}"
+  else
+    rm -f "${_tmp}"
+  fi
+}
+
 _fix_nginx_crawler_access() {
   local _bAse=""
   local _fIle=""
@@ -5160,23 +5670,23 @@ _install_in_flight() {
   # Anchored, not a bare substring: a command line that merely MENTIONS the
   # wrapper -- an editor, a checksum, an operator's ssh probe -- must not read
   # as an install in flight and defer the agent indefinitely.
-  pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/barracuda( |$)" > /dev/null 2>&1 && return 0
-  pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/octopus( |$)" > /dev/null 2>&1 && return 0
+  pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/barracuda( |$)" > /dev/null 2>&1 && return 0
+  pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/octopus( |$)" > /dev/null 2>&1 && return 0
   # Anchored: a LOCAL install only -- "ssh root@box /opt/local/bin/boa in-"
   # (a remote install driven from this box) must not defer this box
-  pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-" > /dev/null 2>&1 && return 0
+  pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-" > /dev/null 2>&1 && return 0
   # Dual-path for the staging move: match both the old /var/backups home and
   # the root-only /var/opt/boa-dist one, because tools arrive per file and a
   # box runs whatever mix it has converged on. A watcher that knows only one
   # path would read a box as idle in the middle of an install. Anchored on
   # the executor for the same reason as the wrapper arms above; left open at
   # the tail because the octopus leg runs as "OCTOPUS.sh.txt.oN".
-  pgrep -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1 && return 0
+  pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1 && return 0
   # The Ægir setup children ("su - oN -c bash .../AegirSetupC.sh.txt") match
   # none of the forms above and are the phase that consumes /opt/tmp/boa the
   # longest. Anchored on the executor so a remotely driven install cannot
   # defer this box; the [ABC] class keeps it from matching its own pgrep
-  pgrep -f "^(/[^ ]*/)?(bash|sh|su) .*/aegir/scripts/AegirSetup[ABC]\.sh\.txt" > /dev/null 2>&1 && return 0
+  pgrep -u root -U root -f "^(/[^ ]*/)?(bash|sh|su) .*/aegir/scripts/AegirSetup[ABC]\.sh\.txt" > /dev/null 2>&1 && return 0
   return 1
 }
 
@@ -5282,6 +5792,7 @@ _fix_wiped_nginx_config() {
       continue
     fi
     _uSr=$(basename "${_bAse}")
+    _acct_ctrl_own "${_uSr}" > /dev/null || continue
     _acct_in_real_dir "${_bAse}/static" _acct_ctrl_dir_here
     if _acct_in_real_dir "${_bAse}/static/control" _ctrl_upgrade_here \
       "${_uSr}.ftp:$(_acct_group "${_uSr}")"; then
@@ -5565,6 +6076,7 @@ _if_boa_key_tools_update_allowed() {
 # mirror box reads its own tree.
 _fetch_core_coverage() {
   local _dst="${_pthLog}/drupal-supported.txt" _tmp _l
+  local _pub="/data/conf/drupal-supported.txt"
   _tmp="${_dst}.new.$$"
   if [ -s "/var/www/static/core/drupal-supported.txt" ]; then
     cp -f "/var/www/static/core/drupal-supported.txt" "${_tmp}" 2> /dev/null
@@ -5578,6 +6090,18 @@ _fetch_core_coverage() {
       && mv -f "${_tmp}" "${_dst}"
   fi
   rm -f "${_tmp}"
+  # The control panel's PHP reads /data/conf, never the log folder: the
+  # kept line is published there on every pass, also on one that fetched
+  # nothing, and only when it differs from what is there.
+  _l="$(head -n 1 "${_dst}" 2> /dev/null | tr -d '\r')"
+  if [[ "${_l}" =~ ^[0-9]+\.[0-9]+(\ [0-9]+\.[0-9]+)*$ ]] \
+    && [ -d "/data/conf" ] \
+    && [ "$(cat "${_pub}" 2> /dev/null)" != "${_l}" ]; then
+    printf '%s\n' "${_l}" > "${_pub}.new.$$" \
+      && chmod 0644 "${_pub}.new.$$" \
+      && mv -f "${_pub}.new.$$" "${_pub}"
+    rm -f "${_pub}.new.$$"
+  fi
 }
 
 _update_boa_tools() {
@@ -5673,13 +6197,13 @@ CSFSTANDBY
   fi
   rm -f ${_pthLog}/vmnetfix.sh.ctrl.*
   if [ -e "${_pthLog}" ]; then
-    _fetch_versioned ${_usrBin}/fix-drupal-platform-permissions.sh "${_urlHmr}/${_tBn}/fix-drupal-platform-permissions.sh" f57
-    _fetch_versioned ${_usrBin}/fix-drupal-site-permissions.sh     "${_urlHmr}/${_tBn}/fix-drupal-site-permissions.sh"     f60
-    _fetch_versioned ${_usrBin}/fix-drupal-platform-ownership.sh   "${_urlHmr}/${_tBn}/fix-drupal-platform-ownership.sh"   f69
-    _fetch_versioned ${_usrBin}/fix-drupal-site-ownership.sh       "${_urlHmr}/${_tBn}/fix-drupal-site-ownership.sh"       f64
-    _fetch_versioned ${_usrBin}/lock-local-drush-permissions.sh    "${_urlHmr}/${_tBn}/lock-local-drush-permissions.sh"    f92
-    _fetch_versioned ${_usrBin}/fix-drupal-site-symlinks.sh        "${_urlHmr}/${_tBn}/fix-drupal-site-symlinks.sh"        f97
-    _fetch_versioned ${_usrBin}/boa-dbctl                          "${_urlHmr}/${_tBn}/boa-dbctl"                          f16
+    _fetch_versioned ${_usrBin}/fix-drupal-platform-permissions.sh "${_urlHmr}/${_tBn}/fix-drupal-platform-permissions.sh" f52
+    _fetch_versioned ${_usrBin}/fix-drupal-site-permissions.sh     "${_urlHmr}/${_tBn}/fix-drupal-site-permissions.sh"     f58
+    _fetch_versioned ${_usrBin}/fix-drupal-platform-ownership.sh   "${_urlHmr}/${_tBn}/fix-drupal-platform-ownership.sh"   f66
+    _fetch_versioned ${_usrBin}/fix-drupal-site-ownership.sh       "${_urlHmr}/${_tBn}/fix-drupal-site-ownership.sh"       f61
+    _fetch_versioned ${_usrBin}/lock-local-drush-permissions.sh    "${_urlHmr}/${_tBn}/lock-local-drush-permissions.sh"    f90
+    _fetch_versioned ${_usrBin}/fix-drupal-site-symlinks.sh        "${_urlHmr}/${_tBn}/fix-drupal-site-symlinks.sh"        f96
+    _fetch_versioned ${_usrBin}/boa-dbctl                          "${_urlHmr}/${_tBn}/boa-dbctl"                          f02
   fi
   mkdir -p ${_optBin}
   # Per-file, serial-gated, retry-on-failure fetch of the core /opt/local/bin
@@ -5700,83 +6224,85 @@ CSFSTANDBY
     # documented /usr/local/bin path stays a symlink to the fleet copy.
     _fetch_versioned ${_optBin}/aegir2boa-preflight "${_urlHmr}/${_tBn}/aegir2boa-preflight" f94 --guard /local/bin/aegir2boa-preflight
     _fetch_versioned ${_optBin}/aegir2boa-stage1 "${_urlHmr}/${_tBn}/aegir2boa-stage1" f95 --guard /local/bin/aegir2boa-stage1
-    _fetch_versioned ${_optBin}/aegir2boa-stage2 "${_urlHmr}/${_tBn}/aegir2boa-stage2" f58 --symlink ${_usrBin}/aegir2boa-stage2 --guard /local/bin/aegir2boa-stage2
-    _fetch_versioned ${_optBin}/aptcleanup "${_urlHmr}/${_tBn}/aptcleanup" f91 --guard /local/bin/aptcleanup
+    _fetch_versioned ${_optBin}/aegir2boa-stage2 "${_urlHmr}/${_tBn}/aegir2boa-stage2" f47 --symlink ${_usrBin}/aegir2boa-stage2 --guard /local/bin/aegir2boa-stage2
+    _fetch_versioned ${_optBin}/aptcleanup "${_urlHmr}/${_tBn}/aptcleanup" f92 --guard /local/bin/aptcleanup
     _fetch_versioned ${_optBin}/aptfast "${_urlHmr}/${_tBn}/aptfast" f95 --guard /local/bin/aptfast
-    _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/${_tBn}/autobeowulf" f82 --guard /local/bin/autobeowulf
-    _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/${_tBn}/autoexcalibur" f81 --guard /local/bin/autoexcalibur
-    _fetch_versioned ${_optBin}/autosymlink "${_urlHmr}/${_tBn}/autosymlink" f36 --guard /local/bin/autosymlink
-    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/${_tBn}/autoupboa" f12 --guard /local/bin/autoupboa
+    _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/${_tBn}/autobeowulf" f79 --guard /local/bin/autobeowulf
+    _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/${_tBn}/autoexcalibur" f78 --guard /local/bin/autoexcalibur
+    _fetch_versioned ${_optBin}/autosymlink "${_urlHmr}/${_tBn}/autosymlink" f33 --guard /local/bin/autosymlink
+    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/${_tBn}/autoupboa" f03 --guard /local/bin/autoupboa
     # Backup family: guard on duplicity itself -- never replace a backup tool
     # while a backup run is in flight.
-    _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f53 --guard duplicity
-    _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f38 --guard /local/bin/barracuda
-    _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f04 --guard /local/bin/boa
-    _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/${_tBn}/dcysetup" f90 --guard duplicity
+    _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f39 --guard duplicity
+    _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f30 --guard /local/bin/barracuda
+    _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f80 --guard /local/bin/boa
+    _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/${_tBn}/dcysetup" f91 --guard duplicity
     _fetch_versioned ${_optBin}/dhcpfix "${_urlHmr}/${_tBn}/dhcpfix" f98 --guard /local/bin/dhcpfix
-    _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/${_tBn}/duobackboa" f53 --guard duplicity
+    _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/${_tBn}/duobackboa" f40 --guard duplicity
     # The remote-backups run scripts ride here with dcysetup, which drives
     # them from clear.sh every few minutes: on a _SKYNET_MODE=OFF box the
     # agents pass never runs, and a refreshed dcysetup calling a stale
     # installer (no --patch-only arm yet) ran the whole dependency install.
     if [ -d "/root/.remote_backups/run" ]; then
-      _fetch_versioned /root/.remote_backups/run/install_dependencies.sh "${_urlHmr}/tools/backup/run/install_dependencies.sh" f31
-      _fetch_versioned /root/.remote_backups/run/create_credentials_templates.sh "${_urlHmr}/tools/backup/run/create_credentials_templates.sh" f45
+      _fetch_versioned /root/.remote_backups/run/install_dependencies.sh "${_urlHmr}/tools/backup/run/install_dependencies.sh" f27
+      _fetch_versioned /root/.remote_backups/run/create_credentials_templates.sh "${_urlHmr}/tools/backup/run/create_credentials_templates.sh" f41
       _fetch_versioned /root/.remote_backups/run/create_global_paths_config.sh "${_urlHmr}/tools/backup/run/create_global_paths_config.sh" f43
-      _fetch_versioned /root/.remote_backups/run/create_user_paths_config.sh "${_urlHmr}/tools/backup/run/create_user_paths_config.sh" f40
-      _fetch_versioned /root/.remote_backups/run/create_cron_entries.sh "${_urlHmr}/tools/backup/run/create_cron_entries.sh" f41
-      _fetch_versioned /root/.remote_backups/run/create_readme.sh "${_urlHmr}/tools/backup/run/create_readme.sh" f43
-      _fetch_versioned /root/.remote_backups/run/create_config_readme.sh "${_urlHmr}/tools/backup/run/create_config_readme.sh" f41
+      _fetch_versioned /root/.remote_backups/run/create_user_paths_config.sh "${_urlHmr}/tools/backup/run/create_user_paths_config.sh" f36
+      _fetch_versioned /root/.remote_backups/run/create_cron_entries.sh "${_urlHmr}/tools/backup/run/create_cron_entries.sh" f32
+      _fetch_versioned /root/.remote_backups/run/create_readme.sh "${_urlHmr}/tools/backup/run/create_readme.sh" f39
+      _fetch_versioned /root/.remote_backups/run/create_config_readme.sh "${_urlHmr}/tools/backup/run/create_config_readme.sh" f37
     fi
     _fetch_versioned ${_optBin}/ffdevuan "${_urlHmr}/${_tBn}/ffdevuan" f93 --guard /local/bin/ffdevuan
     _fetch_versioned ${_optBin}/ffmirror "${_urlHmr}/${_tBn}/ffmirror" f97 --guard /local/bin/ffmirror
     _fetch_versioned ${_optBin}/fixmounts "${_urlHmr}/${_tBn}/fixmounts" f98 --guard /local/bin/fixmounts
-    _fetch_versioned ${_optBin}/fixrepo "${_urlHmr}/${_tBn}/fixrepo" f91 --guard /local/bin/fixrepo
-    _fetch_versioned ${_optBin}/instgrp "${_urlHmr}/${_tBn}/instgrp" f04 --guard /local/bin/instgrp
-    _fetch_versioned ${_optBin}/linkguard "${_urlHmr}/${_tBn}/linkguard" f88 --guard /local/bin/linkguard
-    _fetch_versioned ${_optBin}/eolreport "${_urlHmr}/${_tBn}/eolreport" f99 --symlink ${_usrBin}/eolreport --guard /local/bin/eolreport
+    _fetch_versioned ${_optBin}/fixrepo "${_urlHmr}/${_tBn}/fixrepo" f90 --guard /local/bin/fixrepo
+    _fetch_versioned ${_optBin}/instgrp "${_urlHmr}/${_tBn}/instgrp" f99 --guard /local/bin/instgrp
+    _fetch_versioned ${_optBin}/linkguard "${_urlHmr}/${_tBn}/linkguard" f86 --guard /local/bin/linkguard
+    _fetch_versioned ${_optBin}/ngxstore "${_urlHmr}/${_tBn}/ngxstore" f01 --guard /local/bin/ngxstore
+    _fetch_versioned ${_optBin}/eolreport "${_urlHmr}/${_tBn}/eolreport" f98 --symlink ${_usrBin}/eolreport --guard /local/bin/eolreport
     _fetch_core_coverage
     _fetch_versioned ${_optBin}/floodreport "${_urlHmr}/${_tBn}/floodreport" f99 --symlink ${_usrBin}/floodreport --guard /local/bin/floodreport
-    _fetch_versioned ${_optBin}/fpmreport "${_urlHmr}/${_tBn}/fpmreport" f99 --symlink ${_usrBin}/fpmreport --guard /local/bin/fpmreport
-    _fetch_versioned ${_optBin}/loadreport "${_urlHmr}/${_tBn}/loadreport" f93 --symlink ${_usrBin}/loadreport --guard /local/bin/loadreport
-    _fetch_versioned ${_optBin}/lock.inc "${_urlHmr}/${_tBn}/lock.inc" f85 --guard /local/bin/lock.inc
-    _fetch_versioned ${_optBin}/multiback "${_urlHmr}/${_tBn}/multiback" f79 --guard duplicity
-    _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/${_tBn}/mybackup" f97 --mode 755 --guard duplicity
-    _fetch_versioned ${_optBin}/octopus "${_urlHmr}/${_tBn}/octopus" f50 --guard /local/bin/octopus
-    _fetch_versioned ${_optBin}/perftest "${_urlHmr}/${_tBn}/perftest" f93 --symlink ${_usrBin}/perftest --guard /local/bin/perftest
-    _fetch_versioned ${_optBin}/renameaegirhost "${_urlHmr}/${_tBn}/renameaegirhost" f41 --guard /local/bin/renameaegirhost
+    _fetch_versioned ${_optBin}/fpmreport "${_urlHmr}/${_tBn}/fpmreport" f98 --symlink ${_usrBin}/fpmreport --guard /local/bin/fpmreport
+    _fetch_versioned ${_optBin}/heavyslots "${_urlHmr}/${_tBn}/heavyslots" f01 --symlink ${_usrBin}/heavyslots --guard /local/bin/heavyslots
+    _fetch_versioned ${_optBin}/loadreport "${_urlHmr}/${_tBn}/loadreport" f91 --symlink ${_usrBin}/loadreport --guard /local/bin/loadreport
+    _fetch_versioned ${_optBin}/lock.inc "${_urlHmr}/${_tBn}/lock.inc" f84 --guard /local/bin/lock.inc
+    _fetch_versioned ${_optBin}/multiback "${_urlHmr}/${_tBn}/multiback" f70 --guard duplicity
+    _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/${_tBn}/mybackup" f85 --mode 755 --guard duplicity
+    _fetch_versioned ${_optBin}/octopus "${_urlHmr}/${_tBn}/octopus" f47 --guard /local/bin/octopus
+    _fetch_versioned ${_optBin}/perftest "${_urlHmr}/${_tBn}/perftest" f92 --symlink ${_usrBin}/perftest --guard /local/bin/perftest
+    _fetch_versioned ${_optBin}/renameaegirhost "${_urlHmr}/${_tBn}/renameaegirhost" f39 --guard /local/bin/renameaegirhost
     _fetch_versioned ${_optBin}/screenfetch "${_urlHmr}/${_tBn}/screenfetch" f99 --guard /local/bin/screenfetch
-    _fetch_versioned ${_optBin}/updatesymlinks "${_urlHmr}/${_tBn}/updatesymlinks" f78 --guard /local/bin/updatesymlinks
-    _fetch_versioned ${_optBin}/symlinkinfo "${_urlHmr}/${_tBn}/symlinkinfo" f96 --guard /local/bin/symlinkinfo
-    _fetch_versioned ${_optBin}/migratefs "${_urlHmr}/${_tBn}/migratefs" f79 --guard /local/bin/migratefs
+    _fetch_versioned ${_optBin}/updatesymlinks "${_urlHmr}/${_tBn}/updatesymlinks" f74 --guard /local/bin/updatesymlinks
+    _fetch_versioned ${_optBin}/symlinkinfo "${_urlHmr}/${_tBn}/symlinkinfo" f95 --guard /local/bin/symlinkinfo
+    _fetch_versioned ${_optBin}/migratefs "${_urlHmr}/${_tBn}/migratefs" f76 --guard /local/bin/migratefs
     _fetch_versioned ${_optBin}/synproxy "${_urlHmr}/${_tBn}/synproxy" f93 --guard /local/bin/synproxy
     _fetch_versioned ${_optBin}/synproxy_hook_fix "${_urlHmr}/${_tBn}/synproxy_hook_fix" f99 --guard /local/bin/synproxy_hook_fix
     _fetch_versioned ${_optBin}/synproxy_monitor "${_urlHmr}/${_tBn}/synproxy_monitor" f98 --guard /local/bin/synproxy_monitor
-    _fetch_versioned ${_optBin}/synproxy_reassert "${_urlHmr}/${_tBn}/synproxy_reassert" f98 --guard /local/bin/synproxy_reassert
+    _fetch_versioned ${_optBin}/synproxy_reassert "${_urlHmr}/${_tBn}/synproxy_reassert" f97 --guard /local/bin/synproxy_reassert
     _fetch_versioned ${_optBin}/synproxy_rollback "${_urlHmr}/${_tBn}/synproxy_rollback" f94 --guard /local/bin/synproxy_rollback
     _fetch_versioned ${_optBin}/synproxy_snapshot "${_urlHmr}/${_tBn}/synproxy_snapshot" f99 --guard /local/bin/synproxy_snapshot
     _fetch_versioned ${_optBin}/synproxy_status "${_urlHmr}/${_tBn}/synproxy_status" f99 --guard /local/bin/synproxy_status
-    _fetch_versioned ${_optBin}/webserver "${_urlHmr}/${_tBn}/webserver" f93 --guard /local/bin/webserver
-    _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f49 --guard /local/bin/xcopy
-    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f63 --guard /local/bin/xmass
-    _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f33 --guard /local/bin/xoct
-    _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f40 --guard /local/bin/xtrim
+    _fetch_versioned ${_optBin}/webserver "${_urlHmr}/${_tBn}/webserver" f91 --guard /local/bin/webserver
+    _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f93 --guard /local/bin/xcopy
+    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f72 --guard /local/bin/xmass
+    _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f68 --guard /local/bin/xoct
+    _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f15 --guard /local/bin/xtrim
     # The migration-proxy trust and realip tools ride here with xoct and xmass,
     # which run them: on a _SKYNET_MODE=OFF box the agents pass never runs, and
     # a refreshed xoct calling a stale trust tool (no adopt verb) left the
     # accounts' log/ records unread and every move undeclared. An installed box
     # only: before the install there is no /var/xdrago to put them in.
     if [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
-      _fetch_versioned /var/xdrago/migration_proxy_trust.sh "${_urlHmr}/tools/system/migration_proxy_trust.sh" f72 --peer-written
+      _fetch_versioned /var/xdrago/migration_proxy_trust.sh "${_urlHmr}/tools/system/migration_proxy_trust.sh" f71 --peer-written
       # Proxy records and proxied markers moved out of the accounts' log/ into
       # /root: import what older tools left there once, before any tool reads
       # the root copies. It reloads nothing and is a no-op after its stamp.
       [ -x /var/xdrago/migration_proxy_trust.sh ] && [ ! -e /root/.migration.records.adopted ] && bash /var/xdrago/migration_proxy_trust.sh adopt --once &> /dev/null
-      _fetch_versioned /var/xdrago/migration_proxy_realip.sh "${_urlHmr}/tools/system/migration_proxy_realip.sh" f93 --peer-written
+      _fetch_versioned /var/xdrago/migration_proxy_realip.sh "${_urlHmr}/tools/system/migration_proxy_realip.sh" f92 --peer-written
     fi
-    _fetch_versioned ${_optBin}/solrtrim "${_urlHmr}/${_tBn}/solrtrim" f84 --guard /local/bin/solrtrim
-    _fetch_versioned ${_optBin}/autochimaera "${_urlHmr}/${_tBn}/autochimaera" f83 --guard /local/bin/autochimaera
-    _fetch_versioned ${_optBin}/autodaedalus "${_urlHmr}/${_tBn}/autodaedalus" f83 --guard /local/bin/autodaedalus
+    _fetch_versioned ${_optBin}/solrtrim "${_urlHmr}/${_tBn}/solrtrim" f82 --guard /local/bin/solrtrim
+    _fetch_versioned ${_optBin}/autochimaera "${_urlHmr}/${_tBn}/autochimaera" f80 --guard /local/bin/autochimaera
+    _fetch_versioned ${_optBin}/autodaedalus "${_urlHmr}/${_tBn}/autodaedalus" f80 --guard /local/bin/autodaedalus
     _fetch_versioned ${_optBin}/autoinit "${_urlHmr}/${_tBn}/autoinit" f65 --guard /local/bin/autoinit
     # automini is retired: a reduced copy of autoinit made for custom
     # testing, never started by BOA. Markers go with the file.
@@ -5784,12 +6310,12 @@ CSFSTANDBY
       ${_pthLog}/automini.ctrl.* ${_pthLog}/automini.stale.* \
       ${_pthLog}/automini.mvfail.* ${_pthLog}/automini.compared.pid &> /dev/null
     _fetch_versioned ${_optBin}/backchain "${_urlHmr}/${_tBn}/backchain" f93 --mode 755 --guard /local/bin/backchain
-    _fetch_versioned ${_optBin}/checkmyperms "${_urlHmr}/${_tBn}/checkmyperms" f99 --mode 755 --guard /local/bin/checkmyperms
-    _fetch_versioned ${_optBin}/codebasecheck "${_urlHmr}/${_tBn}/codebasecheck" f90 --guard /local/bin/codebasecheck
-    _fetch_versioned ${_optBin}/copydbackup "${_urlHmr}/${_tBn}/copydbackup" f82 --guard /local/bin/copydbackup
+    _fetch_versioned ${_optBin}/checkmyperms "${_urlHmr}/${_tBn}/checkmyperms" f96 --mode 755 --guard /local/bin/checkmyperms
+    _fetch_versioned ${_optBin}/codebasecheck "${_urlHmr}/${_tBn}/codebasecheck" f88 --guard /local/bin/codebasecheck
+    _fetch_versioned ${_optBin}/copydbackup "${_urlHmr}/${_tBn}/copydbackup" f77 --guard /local/bin/copydbackup
     _fetch_versioned ${_optBin}/fancynow "${_urlHmr}/${_tBn}/fancynow" f99 --guard /local/bin/fancynow
-    _fetch_versioned ${_optBin}/killer "${_urlHmr}/${_tBn}/killer" f99 --guard /local/bin/killer
-    _fetch_versioned ${_optBin}/memorytuner "${_urlHmr}/${_tBn}/memorytuner" f87 --guard /local/bin/memorytuner
+    _fetch_versioned ${_optBin}/killer "${_urlHmr}/${_tBn}/killer" f98 --guard /local/bin/killer
+    _fetch_versioned ${_optBin}/memorytuner "${_urlHmr}/${_tBn}/memorytuner" f86 --guard /local/bin/memorytuner
     _fetch_versioned ${_optBin}/mergecsf "${_urlHmr}/${_tBn}/mergecsf" f99 --guard /local/bin/mergecsf
     # mycnfup is retired: a Debian-only tuner that only the discontinued
     # cluster tooling ever called. Markers go with the file.
@@ -5797,19 +6323,19 @@ CSFSTANDBY
       ${_pthLog}/mycnfup.ctrl.* ${_pthLog}/mycnfup.stale.* &> /dev/null
     _fetch_versioned ${_optBin}/randpass "${_urlHmr}/${_tBn}/randpass" f99 --mode 755 --guard /local/bin/randpass
     _fetch_versioned ${_optBin}/setprio "${_urlHmr}/${_tBn}/setprio" f96 --guard /local/bin/setprio
-    _fetch_versioned ${_optBin}/smtpgapps "${_urlHmr}/${_tBn}/smtpgapps" f97 --guard /local/bin/smtpgapps
-    _fetch_versioned ${_optBin}/sqlclean "${_urlHmr}/${_tBn}/sqlclean" f90 --guard /local/bin/sqlclean
+    _fetch_versioned ${_optBin}/smtpgapps "${_urlHmr}/${_tBn}/smtpgapps" f96 --guard /local/bin/smtpgapps
+    _fetch_versioned ${_optBin}/sqlclean "${_urlHmr}/${_tBn}/sqlclean" f89 --guard /local/bin/sqlclean
     _fetch_versioned ${_optBin}/sqlmagic "${_urlHmr}/${_tBn}/sqlmagic" f97 --mode 755 --guard /local/bin/sqlmagic
-    _fetch_versioned ${_optBin}/syncpass "${_urlHmr}/${_tBn}/syncpass" f84 --guard /local/bin/syncpass
+    _fetch_versioned ${_optBin}/syncpass "${_urlHmr}/${_tBn}/syncpass" f83 --guard /local/bin/syncpass
     _fetch_versioned ${_optBin}/thinkdifferent "${_urlHmr}/${_tBn}/thinkdifferent" f99 --mode 755 --guard /local/bin/thinkdifferent
-    _fetch_versioned ${_optBin}/verifyvhostsdns "${_urlHmr}/${_tBn}/verifyvhostsdns" f98 --guard /local/bin/verifyvhostsdns
-    _fetch_versioned ${_optBin}/vhostcheck "${_urlHmr}/${_tBn}/vhostcheck" f98 --guard /local/bin/vhostcheck
-    _fetch_versioned ${_optBin}/vmnetfix "${_urlHmr}/${_tBn}/vmnetfix" f94 --guard /local/bin/vmnetfix
+    _fetch_versioned ${_optBin}/verifyvhostsdns "${_urlHmr}/${_tBn}/verifyvhostsdns" f97 --guard /local/bin/verifyvhostsdns
+    _fetch_versioned ${_optBin}/vhostcheck "${_urlHmr}/${_tBn}/vhostcheck" f97 --guard /local/bin/vhostcheck
+    _fetch_versioned ${_optBin}/vmnetfix "${_urlHmr}/${_tBn}/vmnetfix" f93 --guard /local/bin/vmnetfix
     # weblogx: skip while owl.sh runs (preserves the old loop guard)
-    _wlOwlCnt=$(pgrep -fc /var/xdrago/owl.sh 2>/dev/null)
+    _wlOwlCnt=$(pgrep -u root -U root -fc /var/xdrago/owl.sh 2>/dev/null)
     _wlOwlCnt=${_wlOwlCnt:-0}
     if (( _wlOwlCnt == 0 )); then
-      _fetch_versioned ${_optBin}/weblogx "${_urlHmr}/${_tBn}/weblogx" f92 --guard /local/bin/weblogx
+      _fetch_versioned ${_optBin}/weblogx "${_urlHmr}/${_tBn}/weblogx" f94 --guard /local/bin/weblogx
     else
       echo "The weblogx and owl.sh is running!"
     fi
@@ -5817,7 +6343,7 @@ CSFSTANDBY
     # tail-anchored sentinel refuses a wrong OR truncated payload before it
     # can reach client shells -- websh invokes its dash forwarder near EOF,
     # so the token must keep living in websh's last 4 KiB.
-    _fetch_versioned ${_optBin}/websh "${_urlHmr}/${_tBn}/websh" f55 --mode 755 --require-token _forward_to_dash --guard /local/bin/websh
+    _fetch_versioned ${_optBin}/websh "${_urlHmr}/${_tBn}/websh" f57 --mode 755 --require-token _forward_to_dash --guard /local/bin/websh
     _fetch_versioned ${_optBin}/xdr9000 "${_urlHmr}/${_tBn}/xdr9000" f98 --symlink ${_usrBin}/xdr9000 --guard /local/bin/xdr9000
   fi
 
@@ -5871,7 +6397,7 @@ CSFSTANDBY
   chmod 700 ${_optBin}/{aegir2boa-preflight,aegir2boa-stage1,aegir2boa-stage2,lock.inc,renameaegirhost,solrtrim,syncpass,weblogx,xcopy,xmass,xoct,xtrim} &> /dev/null
 
   # _DB (700): performance and DB tuners
-  chmod 700 ${_optBin}/{eolreport,floodreport,fpmreport,loadreport,memorytuner,perftest,xdr9000} &> /dev/null
+  chmod 700 ${_optBin}/{eolreport,floodreport,fpmreport,heavyslots,loadreport,memorytuner,perftest,xdr9000} &> /dev/null
 
   # _MAIL (700): mail + priority tools
   chmod 700 ${_optBin}/{setprio,smtpgapps} &> /dev/null
@@ -5880,7 +6406,7 @@ CSFSTANDBY
   chmod 700 ${_optBin}/synproxy* &> /dev/null
 
   # _SYS (700): system utilities
-  chmod 700 ${_optBin}/{aptfast,codebasecheck,dhcpfix,fancynow,fixmounts,fixrepo,instgrp,linkguard,mergecsf,screenfetch,vmnetfix} &> /dev/null
+  chmod 700 ${_optBin}/{aptfast,codebasecheck,dhcpfix,fancynow,fixmounts,fixrepo,instgrp,linkguard,ngxstore,mergecsf,screenfetch,vmnetfix} &> /dev/null
 
   # _SYS (700): cleanup tools
   chmod 700 ${_optBin}/{aptcleanup,autosymlink,sqlclean,updatesymlinks,verifyvhostsdns,vhostcheck} &> /dev/null
@@ -5926,6 +6452,37 @@ _ensure_ipset_symlinks() {
     ln -sfn "${_IPSET_REAL}" "${_CAND}"
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       echo "Linked ${_CAND} -> ${_IPSET_REAL}"
+    fi
+  done
+}
+
+# The DHCP servers named in root dhclient's lease files, one dotted quad a
+# line. Never from log text: any local program can log a "DHCPREQUEST ... to
+# <address>" or a "dhclient ... Failed" line.
+_dhcp_lease_servers() {
+  local _p _lf
+  local _oct="(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])"
+  for _p in $(pgrep -u root -x dhclient 2> /dev/null); do
+    _lf=$(tr '\0' '\n' 2> /dev/null < "/proc/${_p}/cmdline" \
+      | sed -n '/^-lf$/{n;p;q;}')
+    [ -n "${_lf}" ] || _lf="/var/lib/dhcp/dhclient.leases"
+    [ -f "${_lf}" ] && [ ! -L "${_lf}" ] || continue
+    [ "$(stat -c %u "${_lf}" 2> /dev/null)" = "0" ] || continue
+    sed -n -E 's/^[[:space:]]*option dhcp-server-identifier[[:space:]]+([0-9.]+);.*$/\1/p' "${_lf}"
+  done | grep -E "^(${_oct}\.){3}${_oct}$" | sort -u
+}
+
+# dhclient renews its lease by unicast to the server that granted it, and
+# csf's egress filter drops that unless csf.allow lets udp/67 out to it. Adds
+# the allow line of each lease server that has none and prints that server;
+# lines already in csf.allow stay, whoever wrote them.
+_dhcp_allow_lease_servers() {
+  local _srv
+  [ -e "/etc/csf/csf.allow" ] || return 0
+  for _srv in $(_dhcp_lease_servers); do
+    if ! grep -qE "^udp\|out\|d=67\|d=${_srv//./\\.}([[:space:]#]|$)" /etc/csf/csf.allow; then
+      echo "udp|out|d=67|d=${_srv} # Local DHCP out" >> /etc/csf/csf.allow
+      echo "${_srv}"
     fi
   done
 }
@@ -6006,22 +6563,8 @@ _if_update_boa_key_tools_only() {
           update-alternatives --set ebtables /usr/sbin/ebtables-legacy &> /dev/null
         fi
       fi
-      sed -i "s/.*DHCP.*//g" /etc/csf/csf.allow
-      wait
       sed -i "/^$/d" /etc/csf/csf.allow
-      if [ -e "/var/log/daemon.log" ]; then
-        _DHCP_LOG="/var/log/daemon.log"
-      else
-        _DHCP_LOG="/var/log/syslog"
-      fi
-      grep DHCPREQUEST "${_DHCP_LOG}" | awk '{print $12}' | sort -u | while read -r _IP; do
-        if [[ ${_IP} =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
-          IFS='.' read -r oct1 oct2 oct3 oct4 <<< "${_IP}"
-          if (( oct1 <= 255 && oct2 <= 255 && oct3 <= 255 && oct4 <= 255 )); then
-            echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow
-          fi
-        fi
-      done
+      _dhcp_allow_lease_servers > /dev/null
       if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
         csf -ra &> /dev/null
         synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
@@ -6720,6 +7263,86 @@ _php_upload_progress_off() {
   done
 }
 
+# Keep catch_workers_output off in the settings of every PHP-FPM pool, for
+# every PHP version on the box. With it on, the master holds a pipe to each
+# worker's output, and its cleanup of those pipes can be turned against the
+# master, which runs as root, by code running in a pool (CVE-2026-129291;
+# upstream's fix is in 8.2.36, 8.3.37, 8.4.28 and 8.5.13 only). Off, no
+# version has such pipes. The price is the log: a worker cannot write PHP's
+# own log in /var/log/php (root only), and its PHP errors no longer reach the
+# master's log either. Checked on every run, never stamped: a barracuda pass
+# from a tree whose templates still say yes copies them over these files. A
+# changed file is applied by a reload of every running master after its own
+# config test. A master failing that test keeps serving, and the reload is
+# retried on every run until it passes; the marker lives in /run, since a
+# master started after a reboot reads the changed files anyway.
+_php_fpm_worker_output_off() {
+  local _e=""
+  local _fIle=""
+  local _pId=""
+  local _pNd=""
+  local _rO=""
+  local _cHg=NO
+  local _aCt="^[[:space:]]*catch_workers_output[[:space:]]*="
+  local _lIne="catch_workers_output = no"
+  for _fIle in /opt/etc/fpm/fpm-pool-common*.conf /opt/php[0-9][0-9]/etc/pool.d/*.conf; do
+    [ -f "${_fIle}" ] || continue
+    ### Nothing to do in a file without an active line (FPM's own default is
+    ### no) or with every active line already at no.
+    if ! grep -E "${_aCt}" "${_fIle}" 2> /dev/null | grep -qvxF "${_lIne}"; then
+      continue
+    fi
+    ### Once per file while it stays so, not every five minutes (an
+    ### immutable file): a marker in /run per file.
+    _rO="/run/php-fpm-worker-output.$(echo "${_fIle}" | cksum | cut -d' ' -f1).ro"
+    if ! sed -i --follow-symlinks -E "s/${_aCt}.*/${_lIne}/" "${_fIle}" 2> /dev/null; then
+      if [ ! -e "${_rO}" ]; then
+        [ -d "${_pthLog}" ] && echo "$(date 2> /dev/null) ERROR: ${_fIle} not writable" \
+          >> "${_pthLog}/php-fpm-worker-output.log"
+        touch "${_rO}"
+      fi
+      continue
+    fi
+    rm -f "${_rO}"
+    [ -d "${_pthLog}" ] && echo "$(date 2> /dev/null) ${_lIne} in ${_fIle}" \
+      >> "${_pthLog}/php-fpm-worker-output.log"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      echo "INFO: ${_lIne} in ${_fIle}"
+    fi
+    _cHg=YES
+  done
+  for _e in 86 85 84 83 82 81 80 74 73 72 71 70 56; do
+    _pNd="/run/php${_e}-fpm.pool-reload"
+    [ "${_cHg}" = "YES" ] && touch "${_pNd}"
+    [ -e "${_pNd}" ] || continue
+    _pId=$(cat "/run/php${_e}-fpm.pid" 2> /dev/null)
+    case "${_pId}" in
+      ''|*[!0-9]*) _pId="" ;;
+    esac
+    ### No init script or no live master: the next start reads the files.
+    if [ ! -e "/etc/init.d/php${_e}-fpm" ] || [ -z "${_pId}" ] \
+      || ! kill -0 "${_pId}" 2> /dev/null; then
+      rm -f "${_pNd}"
+      continue
+    fi
+    if [ -x "/opt/php${_e}/sbin/php-fpm" ] \
+      && "/opt/php${_e}/sbin/php-fpm" -t --fpm-config "/opt/php${_e}/etc/php${_e}-fpm.conf" \
+        -c "/opt/php${_e}/etc/php${_e}.ini" &> /dev/null; then
+      if service "php${_e}-fpm" reload &> /dev/null; then
+        rm -f "${_pNd}"
+        [ -d "${_pthLog}" ] && echo "$(date 2> /dev/null) php${_e}-fpm reloaded" \
+          >> "${_pthLog}/php-fpm-worker-output.log"
+      elif [ "${_cHg}" = "YES" ]; then
+        [ -d "${_pthLog}" ] && echo "$(date 2> /dev/null) ERROR: php${_e}-fpm reload failed, retried every run" \
+          >> "${_pthLog}/php-fpm-worker-output.log"
+      fi
+    elif [ "${_cHg}" = "YES" ]; then
+      [ -d "${_pthLog}" ] && echo "$(date 2> /dev/null) ERROR: php${_e}-fpm config test failed, reload retried every run" \
+        >> "${_pthLog}/php-fpm-worker-output.log"
+    fi
+  done
+}
+
 # PHP security floor: the first point release of each minor version that
 # carries a security fix no box may wait for, e.g. "8.2.35 8.3.36"; empty
 # means off. A release PHP no longer fixes takes BOA's own security patch
@@ -6732,15 +7355,95 @@ _php_upload_progress_off() {
 # for this pass alone: a pass that may break an old Octopus instance until
 # that is upgraded as well is still safer than a known remote code execution
 # hole, and a system pass leaves the master Ægir instance as it is.
-_PHP_SEC_FLOOR="8.2.35 8.3.36 8.4.27 8.5.12 8.6.0RC4 7.4.33+cve-2026-109618-109619 8.0.30+cve-2026-109618-109619 8.1.34+cve-2026-109618-109619 5.6.40+sury-105 5.6.40+openssl3-pkey-export 7.0.33+sury-93 7.0.33+openssl3-pkey-export 7.1.33+sury-81 7.2.34+sury-66 7.3.33+sury-35 7.4.33+sury-31 8.0.30+sury-25 8.1.34+sury-9 5.6.40+xlts-1 7.0.33+xlts-1 7.1.33+xlts-1 7.2.34+xlts-1 7.3.33+xlts-1 7.4.33+xlts-1 8.0.30+xlts-1"
+_PHP_SEC_FLOOR="8.2.36 8.3.37 8.4.28 8.5.13 8.6.0 7.4.33+cve-2026-109618-109619 8.0.30+cve-2026-109618-109619 8.1.34+cve-2026-109618-109619 8.1.34+cve-2026-129291 5.6.40+sury-105 5.6.40+openssl3-pkey-export 7.0.33+sury-93 7.0.33+openssl3-pkey-export 7.1.33+sury-81 7.2.34+sury-66 7.3.33+sury-35 7.4.33+sury-31 8.0.30+sury-25 8.1.34+sury-9 5.6.40+xlts-1 7.0.33+xlts-1 7.1.33+xlts-1 7.2.34+xlts-1 7.3.33+xlts-1 7.4.33+xlts-1 8.0.30+xlts-1 5.6.40+xlts-2 7.0.33+xlts-2 7.1.33+xlts-2 7.2.34+xlts-2 7.3.33+xlts-2 7.4.33+xlts-2 8.0.30+xlts-2 8.1.34+xlts-2"
+
+# Nginx security floor: the first release no box may run below, e.g.
+# "1.31.9"; empty means off. A box whose /usr/sbin/nginx is older gets the
+# same pass, under the same rules, once the tree pins that release or newer
+# and its source is on the mirror: the pass installs the pin. Both floors
+# share one state, one log and the launcher's override, so one pass serves
+# both: /etc/boa/control/sec-floor.<sum>.txt, /var/log/boa/sec-floor.log
+# and the pass's own /var/log/boa/barracuda-sec-floor.log.
+_NGINX_SEC_FLOOR="1.31.9"
 
 # One line per state: a wait repeated on every run is logged once, until
 # something else is logged. TRUE only when it wrote the line, so a mail can
 # follow a new state alone.
 _php_floor_log() {
   [ -d "${_pthLog}" ] || return 1
-  tail -n 1 "${_pthLog}/php-sec-floor.log" 2> /dev/null | grep -qF -- "$1" && return 1
-  echo "$(date 2> /dev/null) $1" >> "${_pthLog}/php-sec-floor.log"
+  tail -n 1 "${_pthLog}/sec-floor.log" 2> /dev/null | grep -qF -- "$1" && return 1
+  echo "$(date 2> /dev/null) $1" >> "${_pthLog}/sec-floor.log"
+}
+
+# Copies $1 to $2 when $1 is there and $2 is not; a copy that fails partway
+# is removed, so $2 never holds a cut history.
+_sec_floor_copy() {
+  if [ -f "$1" ] && [ ! -e "$2" ]; then
+    cp -p "$1" "$2" 2> /dev/null || rm -f "$2"
+  fi
+}
+
+# Puts the lines of $1 past the head it shares with $2 (the history the first
+# run copied, if any) right after that head in $2, through a file of its own,
+# and removes $1; on any failure both stay as they were. The shared head is
+# read from the files, whole equal lines from the first, so nothing recorded
+# elsewhere can make the history appear twice or cut a line.
+_sec_floor_join() {
+  local _n="" _j="$2.join"
+  if [ ! -s "$1" ]; then
+    rm -f "$1"
+    return 0
+  fi
+  _n=$(LC_ALL=C awk 'NR == FNR { a[FNR] = $0; m = FNR; next }
+    !d && FNR <= m && a[FNR] == $0 { n += length($0) + 1; next }
+    { d = 1 }
+    END { print n + 0 }' "$1" "$2" 2> /dev/null)
+  case "${_n}" in
+    ''|*[!0-9]*) return 1 ;;
+  esac
+  if { head -c "${_n}" "$2" && tail -c +"$(( _n + 1 ))" "$1" \
+    && tail -c +"$(( _n + 1 ))" "$2"; } 2> /dev/null > "${_j}" \
+    && mv -f "${_j}" "$2" 2> /dev/null; then
+    rm -f "$1"
+  fi
+  rm -f "${_j}" 2> /dev/null
+}
+
+# The floor's files were named for PHP alone until the floor covered Nginx.
+# This agent's first run here copies the log and the pass log to the new
+# names with their history and marks the time in
+# /etc/boa/control/sec-floor.since. While mirrors disagree after a publish, an agent from
+# before the rename can still run here now and then: its state and old-name
+# logs stay exactly as it keeps them for a day after the mark, so it neither
+# starts over nor logs and mails a line again. Then no such agent or its pass
+# runs any more: what it added to an old log after the copy goes into the new
+# log right after the copied history, the old files go, and so do its states.
+# The pass log is joined only while no BOA run can be writing it.
+_sec_floor_rename_logs() {
+  local _sInce=/etc/boa/control/sec-floor.since
+  local _oLd="${_pthLog}/php-sec-floor.log" _nEw="${_pthLog}/sec-floor.log"
+  local _oPs=/var/log/boa/barracuda-php-floor.log _nPs=/var/log/boa/barracuda-sec-floor.log
+  if [ ! -e "${_sInce}" ]; then
+    _sec_floor_copy "${_oLd}" "${_nEw}"
+    _sec_floor_copy "${_oPs}" "${_nPs}"
+    mkdir -p /etc/boa/control
+    touch "${_sInce}"
+    return 0
+  fi
+  [ -n "$(find "${_sInce}" -mmin +1440 2> /dev/null)" ] || return 0
+  if [ -f "${_oLd}" ] && [ ! -e "${_nEw}" ]; then
+    mv -f "${_oLd}" "${_nEw}" 2> /dev/null
+  elif [ -f "${_oLd}" ] && [ -f "${_nEw}" ]; then
+    _sec_floor_join "${_oLd}" "${_nEw}"
+  fi
+  if [ ! -e /run/boa_run.pid ]; then
+    if [ -f "${_oPs}" ] && [ ! -e "${_nPs}" ]; then
+      mv -f "${_oPs}" "${_nPs}" 2> /dev/null
+    elif [ -f "${_oPs}" ] && [ -f "${_nPs}" ]; then
+      _sec_floor_join "${_oPs}" "${_nPs}"
+    fi
+  fi
+  find /etc/boa/control -maxdepth 1 -name 'php-sec-floor.*.txt' -delete 2> /dev/null
 }
 
 # TRUE when version $2 is older than $3 by PHP's own rules, asked of the PHP
@@ -6748,6 +7451,12 @@ _php_floor_log() {
 _php_floor_older() {
   # shellcheck disable=SC2016 # $argv is PHP's, not the shell's
   "$1" -n -r 'exit(version_compare($argv[1], $argv[2], "<") ? 0 : 1);' "$2" "$3" 2> /dev/null
+}
+
+# TRUE when Nginx version $1 is older than $2: digits and dots only, so
+# sort -V orders them as Nginx does (1.31.6.1 before 1.31.9 before 1.31.10).
+_ngx_floor_older() {
+  [ "$1" != "$2" ] && [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | head -n 1)" = "$1" ]
 }
 
 # TRUE while no pass may start: an install or upgrade, the nightly dump, an
@@ -6766,6 +7475,63 @@ _php_floor_mail() {
   echo "$2" | s-nail -s "$1" "${_MY_EMAIL}" &> /dev/null
 }
 
+# A pass the floor started has ended with versions still below: one log line
+# and one mail, naming the pass's report and its own last lines (those after
+# the line its launch wrote). $1 what is below, $2 PHP/Nginx, $3 host, $4 the
+# pass's number, $5 next start, $6 state, $7 the set below now, $8 the set
+# the pass was for. Another set below now (part upgraded, a version retired
+# or newly below): it counts afresh. The same set after the third pass: BOA
+# starts no more, as the state says. A log with no launch line yet (a pass an
+# older agent started) names no report: its newest may be an earlier pass's.
+_sec_floor_failed() {
+  local _sEc="" _rEp="" _tAil="" _nXt="" _sUb="" _wHy="" _nOne=""
+  _nOne="none, the pass stopped before it began its work"
+  if grep -q '^=== .* security floor pass ' /var/log/boa/barracuda-sec-floor.log 2> /dev/null; then
+    _sEc=$(awk '/^=== .* security floor pass /{ b = ""; next } { b = b $0 "\n" } END { printf "%s", b }' \
+      /var/log/boa/barracuda-sec-floor.log 2> /dev/null)
+    _rEp=$(echo "${_sEc}" | grep -o '/var/backups/reports/up/barracuda/[0-9]*/barracuda-up-[0-9-]*\.log' \
+      | tail -n 1)
+  else
+    _sEc=$(tail -n 12 /var/log/boa/barracuda-sec-floor.log 2> /dev/null)
+    _nOne="under /var/backups/reports/up/barracuda/"
+  fi
+  _tAil=$(echo "${_sEc}" | grep -v '^$' | tail -n 12 | sed 's/\x1b\[[0-9;]*m//g')
+  _sUb="$2 security upgrade failed on [$3]"
+  if [ "$7" != "$8" ]; then
+    _php_floor_log "$1 still below the security floor after barracuda system pass $4, which was started for another set below; counted afresh from $(date -d "@$5" 2> /dev/null)"
+    _wHy="ended with another set below than it was started for, and this is still below"
+    _nXt="BOA starts a pass for it from $(date -d "@$5" 2> /dev/null), counted afresh
+(1 of 3). Fix what stopped it before then, or run
+'barracuda up-<tree> system' by hand once it is fixed."
+  elif [ "$4" -ge 3 ]; then
+    echo "$5 4 $7" > "$6"
+    _php_floor_log "$1 below the security floor after three barracuda system passes; no forced pass from here on"
+    _sUb="$2 security upgrade needs you on [$3]"
+    _wHy="ended without upgrading what it was for"
+    _nXt="This was the third pass: BOA starts no more for it. Fix what stopped
+it, then run 'barracuda up-<tree> system' by hand."
+  else
+    _php_floor_log "$1 below the security floor after barracuda system pass $4 of 3, the next due $(date -d "@$5" 2> /dev/null)"
+    _wHy="ended without upgrading what it was for"
+    _nXt="BOA starts pass $(( $4 + 1 )) of 3 from $(date -d "@$5" 2> /dev/null). Fix what
+stopped it before then, or run 'barracuda up-<tree> system' by hand
+once it is fixed."
+  fi
+  _php_floor_mail "${_sUb}" \
+    "On $3 the barracuda system pass BOA started for the security
+release it requires (pass $4 of 3) ${_wHy}:
+$1
+
+${_nXt}
+
+The pass's report: ${_rEp:-${_nOne}}
+
+Its last lines in /var/log/boa/barracuda-sec-floor.log:
+${_tAil:-(none)}
+
+Log: ${_pthLog}/sec-floor.log"
+}
+
 # Decides whether this box needs the floor's pass. _php_security_floor_launch
 # starts it at the end of the run, after the tools refresh: the run's own apt
 # and service steps never overlap the pass, and a SKYNET-off box already has
@@ -6775,18 +7541,22 @@ _php_floor_mail() {
 # 30 minutes, also when a wait for the release ends, so the fleet does not
 # fetch from the mirrors at once. A version waits while the pin of the box's
 # tree is below its floor or the pin's source is not on the mirror. A pass
-# that leaves a version below is tried again 12 hours later; after three, or
-# when a major OS upgrade is staged in the cnf, the operator is mailed once
-# and the box is left to them.
+# that ends with a version still below is told to the operator once, at the
+# first agent run after it, and is tried again 12 hours after it started;
+# after the third, or when a major OS upgrade is staged in the cnf, the box is
+# left to the operator. Nginx below its own floor counts as one more version
+# below, with the same waits.
 _php_security_floor() {
   local _fLr="" _e="" _iV="" _pIn="" _bElow="" _lIst="" _sTp="" _nOw=""
   local _dUe="" _tRies="" _lAst="" _sUm="" _hN="" _sPr="" _pIns="" _sZ=""
-  local _tR="" _wAit="" _eNt="" _fV="" _fId="" _hOst=""
+  local _tR="" _wAit="" _eNt="" _fV="" _fId="" _hOst="" _nGx="" _wHat="" _tOld="" _pAss=""
   _PHP_FLOOR_GO=NO
-  [ -n "${_PHP_SEC_FLOOR}" ] || return 0
+  [ -n "${_PHP_SEC_FLOOR}${_NGINX_SEC_FLOOR}" ] || return 0
+  _sec_floor_rename_logs
   [ -x "/opt/local/bin/barracuda" ] || return 0
   [ -e "/var/log/barracuda_log.txt" ] || return 0
-  ### A major OS upgrade in progress rebuilds every PHP version itself.
+  ### A major OS upgrade in progress rebuilds every PHP version itself; the
+  ### floor waits for it to end.
   ls /root/.run-to-*.cnf > /dev/null 2>&1 && return 0
   for _fLr in ${_PHP_SEC_FLOOR}; do
     _fV="${_fLr%%+*}"
@@ -6806,11 +7576,34 @@ _php_security_floor() {
       _lIst="${_lIst} ${_iV}${_fId:+ (without ${_fId})}"
     fi
   done
-  _sTp="/etc/boa/control/php-sec-floor.$(echo "${_PHP_SEC_FLOOR}" | cksum | cut -d' ' -f1).txt"
-  find /etc/boa/control -maxdepth 1 -name 'php-sec-floor.*.txt' ! -name "${_sTp##*/}" \
+  if [ -n "${_NGINX_SEC_FLOOR}" ] && [ -x "/usr/sbin/nginx" ]; then
+    _nGx=$(/usr/sbin/nginx -v 2>&1 | sed -n 's#^nginx version: nginx/\([0-9][0-9.]*\).*#\1#p' | head -n 1)
+    if [ -n "${_nGx}" ] && _ngx_floor_older "${_nGx}" "${_NGINX_SEC_FLOOR}"; then
+      _bElow="${_bElow} nginx:${_NGINX_SEC_FLOOR}"
+    else
+      _nGx=""
+    fi
+  fi
+  ### What is below, as the log and the mails name it: "PHP 8.4.26",
+  ### "Nginx 1.31.8" or "PHP 8.4.26 and Nginx 1.31.8".
+  _wHat=""
+  [ -n "${_lIst}" ] && _wHat="PHP" && _lIst="PHP${_lIst}"
+  if [ -n "${_nGx}" ]; then
+    _wHat="${_wHat:+${_wHat} and }Nginx"
+    _lIst="${_lIst:+${_lIst} and }Nginx ${_nGx}"
+  fi
+  ### The state is named by both floors; a state of other floors goes (one
+  ### under the floor's older name goes in _sec_floor_rename_logs).
+  _sTp="/etc/boa/control/sec-floor.$(echo "${_PHP_SEC_FLOOR}${_NGINX_SEC_FLOOR:+ nginx-${_NGINX_SEC_FLOOR}}" \
+    | cksum | cut -d' ' -f1).txt"
+  find /etc/boa/control -maxdepth 1 -name 'sec-floor.*.txt' ! -name "${_sTp##*/}" \
+    -delete 2> /dev/null
+  ### Beside the state: the set and the pass whose failure was told.
+  _tOld="${_sTp%.txt}.told"
+  find /etc/boa/control -maxdepth 1 -name 'sec-floor.*.told' ! -name "${_tOld##*/}" \
     -delete 2> /dev/null
   if [ -z "${_bElow}" ]; then
-    rm -f "${_sTp}"
+    rm -f "${_sTp}" "${_tOld}"
     return 0
   fi
   _sUm=$(echo "${_bElow}" | cksum | cut -d' ' -f1)
@@ -6823,17 +7616,17 @@ _php_security_floor() {
       _dUe=$(( _nOw + _sPr ))
       mkdir -p /etc/boa/control
       echo "${_dUe} 0 ${_sUm}" > "${_sTp}"
-      _php_floor_log "PHP${_lIst} below the security floor, barracuda system pass due $(date -d "@${_dUe}" 2> /dev/null)"
+      _php_floor_log "${_lIst} below the security floor, barracuda system pass due $(date -d "@${_dUe}" 2> /dev/null)"
       if [ "${_SKYNET_MODE}" = "OFF" ]; then
-        _php_floor_mail "PHP security upgrade scheduled for [${_hN}]" \
-          "PHP${_lIst} on ${_hN} is older than the security release BOA requires.
+        _php_floor_mail "${_wHat} security upgrade scheduled for [${_hN}]" \
+          "${_lIst} on ${_hN} is older than the security release BOA requires.
 
-A barracuda system pass rebuilds PHP from $(date -d "@${_dUe}" 2> /dev/null), once the
+A barracuda system pass upgrades ${_wHat} from $(date -d "@${_dUe}" 2> /dev/null), once the
 release is out for this box. It runs although _SKYNET_MODE=OFF is set:
 the release fixes remote code execution bugs. The pass does not touch
 the master Aegir instance.
 
-Log: ${_pthLog}/php-sec-floor.log"
+Log: ${_pthLog}/sec-floor.log"
       fi
       return 0
       ;;
@@ -6841,21 +7634,31 @@ Log: ${_pthLog}/php-sec-floor.log"
   case "${_tRies}" in
     ''|*[!0-9]*) _tRies=0 ;;
   esac
+  _pAss="${_tRies}"
   ### Other versions below than the passes so far were for: count afresh.
   [ "${_lAst}" = "${_sUm}" ] || _tRies=0
+  ### A pass started for the state's set has ended (clear.sh runs no agent
+  ### beside one) with versions still below, all or part of it: tell it
+  ### once, before its retry is due. A launch clears the marker.
+  if [ "${_pAss}" -ge 1 ] && [ "${_pAss}" -le 3 ] && [ "${_nOw}" -lt "${_dUe}" ] \
+    && [ "$(cat "${_tOld}" 2> /dev/null)" != "${_lAst}:${_pAss}" ] && ! _install_in_flight; then
+    echo "${_lAst}:${_pAss}" > "${_tOld}"
+    _sec_floor_failed "${_lIst}" "${_wHat}" "${_hN}" "${_pAss}" "${_dUe}" "${_sTp}" "${_sUm}" "${_lAst}"
+    return 0
+  fi
   [ "${_nOw}" -ge "${_dUe}" ] || return 0
   [ "${_tRies}" -ge 4 ] && return 0
   if [ "${_tRies}" -eq 3 ]; then
     echo "${_dUe} 4 ${_sUm}" > "${_sTp}"
-    _php_floor_log "PHP${_lIst} below the security floor after three barracuda system passes; no forced pass from here on"
-    _php_floor_mail "PHP security upgrade needs you on [${_hN}]" \
-      "PHP${_lIst} on ${_hN} is older than the security release BOA requires,
+    _php_floor_log "${_lIst} below the security floor after three barracuda system passes; no forced pass from here on"
+    _php_floor_mail "${_wHat} security upgrade needs you on [${_hN}]" \
+      "${_lIst} on ${_hN} is older than the security release BOA requires,
 and still is after three barracuda system passes.
 
 BOA starts no more passes for it. Run 'barracuda up-<tree> system' by
 hand and read its report in /var/backups/reports/up/barracuda/.
 
-Log: ${_pthLog}/php-sec-floor.log"
+Log: ${_pthLog}/sec-floor.log"
     return 0
   fi
   _php_floor_busy && return 0
@@ -6871,12 +7674,28 @@ Log: ${_pthLog}/php-sec-floor.log"
   ### this box's mirror when that gives nothing.
   for _hOst in files.boa.io "${_USE_MIR}"; do
     _pIns=$(curl -sL --max-time 60 -A iCab "https://${_hOst}/versions/${_tR}/boa/BARRACUDA.sh.txt" \
-      2> /dev/null | grep -E '^_PHP[0-9]{2}_VRN=')
+      2> /dev/null | grep -E '^_(PHP[0-9]{2}|NGINX)_VRN=')
     [ -n "${_pIns}" ] && break
   done
   for _eNt in ${_bElow}; do
     _e="${_eNt%%:*}"
     _fLr="${_eNt#*:}"
+    if [ "${_e}" = "nginx" ]; then
+      _pIn=$(echo "${_pIns}" | grep "^_NGINX_VRN=" | head -n 1 | cut -d= -f2 | tr -cd '0-9.')
+      if [ -z "${_pIn}" ] || _ngx_floor_older "${_pIn}" "${_fLr}"; then
+        _php_floor_log "waiting for the ${_tR} tree to pin Nginx ${_fLr} or newer (it pins ${_pIn:-nothing readable})"
+        _wAit=YES
+        break
+      fi
+      _sZ=$(curl -sIL --max-time 30 -A iCab "${_urlDev}/src/nginx-${_pIn}.tar.gz" 2> /dev/null \
+        | grep -i "^content-length:" | tail -n 1 | tr -dc '0-9')
+      if [ -z "${_sZ}" ] || [ "${_sZ}" -lt 500000 ]; then
+        _php_floor_log "waiting for nginx-${_pIn}.tar.gz on ${_USE_MIR}"
+        _wAit=YES
+        break
+      fi
+      continue
+    fi
     _fV="${_fLr%%+*}"
     _fId=""
     [ "${_fV}" = "${_fLr}" ] || _fId="${_fLr#*+}"
@@ -6923,15 +7742,15 @@ Log: ${_pthLog}/php-sec-floor.log"
       _BUSTER_TO_BULLSEYE _STRETCH_TO_BUSTER _JESSIE_TO_STRETCH _WHEEZY_TO_JESSIE \
       _SQUEEZE_TO_WHEEZY _LENNY_TO_SQUEEZE; do
       [ "${!_eNt}" = "YES" ] || continue
-      if _php_floor_log "PHP${_lIst} below the security floor, held: ${_eNt}=YES is staged in /root/.barracuda.cnf"; then
-        _php_floor_mail "PHP security upgrade needs you on [${_hN}]" \
-          "PHP${_lIst} on ${_hN} is older than the security release BOA requires.
+      if _php_floor_log "${_lIst} below the security floor, held: ${_eNt}=YES is staged in /root/.barracuda.cnf"; then
+        _php_floor_mail "${_wHat} security upgrade needs you on [${_hN}]" \
+          "${_lIst} on ${_hN} is older than the security release BOA requires.
 
 The barracuda system pass that rebuilds it would also run the major OS
 upgrade staged with ${_eNt}=YES in /root/.barracuda.cnf. BOA starts it
 once that upgrade has been run or the line is removed.
 
-Log: ${_pthLog}/php-sec-floor.log"
+Log: ${_pthLog}/sec-floor.log"
       fi
       _wAit=YES
       break
@@ -6944,6 +7763,7 @@ Log: ${_pthLog}/php-sec-floor.log"
   _PHP_FLOOR_GO=YES
   _PHP_FLOOR_TREE="${_tR}"
   _PHP_FLOOR_STATE="${_sTp}"
+  _PHP_FLOOR_TOLD="${_tOld}"
   _PHP_FLOOR_NEXT="$(( _nOw + 43200 )) $(( _tRies + 1 )) ${_sUm}"
   _PHP_FLOOR_LIST="${_lIst}"
 }
@@ -6962,13 +7782,17 @@ _php_security_floor_launch() {
     return 0
   fi
   echo "${_PHP_FLOOR_NEXT}" > "${_PHP_FLOOR_STATE}"
-  [ -d "${_pthLog}" ] && echo "$(date 2> /dev/null) PHP${_PHP_FLOOR_LIST} below the security floor, barracuda up-${_PHP_FLOOR_TREE} system launched" \
-    >> "${_pthLog}/php-sec-floor.log"
+  rm -f "${_PHP_FLOOR_TOLD}"
+  [ -d "${_pthLog}" ] && echo "$(date 2> /dev/null) ${_PHP_FLOOR_LIST} below the security floor, barracuda up-${_PHP_FLOOR_TREE} system launched" \
+    >> "${_pthLog}/sec-floor.log"
+  ### The pass's own lines start after this one: a failure is told from them.
+  echo "=== $(date 2> /dev/null) security floor pass for ${_PHP_FLOOR_LIST}" \
+    >> /var/log/boa/barracuda-sec-floor.log
   ### Nothing of an earlier run may stay in /opt/tmp, hidden entries included
   ### (a stale build tree or its refetch marker): the pass starts clean.
   find /opt/tmp/ -mindepth 1 -maxdepth 1 -exec rm -rf -- {} + 2> /dev/null
   ( _PHP_SEC_FLOOR_PASS=YES nohup setsid /opt/local/bin/barracuda "up-${_PHP_FLOOR_TREE}" system noscreen \
-    >> /var/log/boa/barracuda-php-floor.log 2>&1 < /dev/null & )
+    >> /var/log/boa/barracuda-sec-floor.log 2>&1 < /dev/null & )
 }
 
 ###--------------------###
@@ -6988,6 +7812,9 @@ if [ "$(id -u)" -eq 0 ]; then
 
   # PHP session upload progress Off in every ini, re-asserted every run
   _php_upload_progress_off
+
+  # No capture of the workers' output in any PHP-FPM pool, the same way
+  _php_fpm_worker_output_off
 
   if ! command -v bc &> /dev/null; then
     apt-get update -qq &> /dev/null
@@ -7027,10 +7854,10 @@ if [ "$(id -u)" -eq 0 ]; then
   # and the backup tools use: bare substrings counted any command line
   # that merely mentioned the word, so this notice could fire off an
   # operator's editor or log tail rather than a real run.
-  _DCY=$(pgrep -fc "^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)" 2>/dev/null)
-  _DCYD=$(pgrep -fc "^[^ ]*duplicity( |$)" 2>/dev/null)
+  _DCY=$(pgrep -u root -U root -fc "^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)" 2>/dev/null)
+  _DCYD=$(pgrep -u root -U root -fc "^[^ ]*duplicity( |$)" 2>/dev/null)
   _DCY=$(( ${_DCY:-0} + ${_DCYD:-0} ))
-  _MLT=$(pgrep -fc "^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*multiback( |$)" 2>/dev/null)
+  _MLT=$(pgrep -u root -U root -fc "^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*multiback( |$)" 2>/dev/null)
   _MLT=${_MLT:-0}
   if (( _DCY > 0 )) && (( _MLT > 0 )); then
     _bLogA="/var/backups/multiback_waiting_queue.log"
@@ -7092,8 +7919,8 @@ if [ "$(id -u)" -eq 0 ]; then
     [ "${_bupStuckH}" -lt 24 ] && _bupStuckH=24
     _bupLiveAny=NO
     _bupStuckKey=""
-    _bupStuckWhat=""
-    _bupStuckAgeH=0
+    _bupStuckKeys=""
+    _bupStuckList=""
     for _bupPidF in /run/duplicity_*.pid; do
       [ -e "${_bupPidF}" ] || continue
       _bupPid=$(tr -dc '0-9' 2>/dev/null < "${_bupPidF}")
@@ -7114,13 +7941,23 @@ if [ "$(id -u)" -eq 0 ]; then
       _bupHeldT=$(stat -c %Y "${_bupPidF}" 2>/dev/null)
       [ -n "${_bupHeldT}" ] || _bupHeldT="${_bupNowT}"
       _bupHeldH=$(( (_bupNowT - _bupHeldT) / 3600 ))
-      if [ "${_bupHeldH}" -ge "${_bupStuckH}" ] && [ -z "${_bupStuckKey}" ]; then
-        _bupStuckKey="${_bupPidF##*/}"
-        _bupStuckKey="${_bupStuckKey#duplicity_}"
-        _bupStuckKey="${_bupStuckKey%.pid}"
-        _bupStuckKey="${_bupStuckKey%_sequential}"
-        _bupStuckWhat="${_bupStuckKey} (lock ${_bupPidF})"
-        _bupStuckAgeH="${_bupHeldH}"
+      # every stream past the ceiling is named, once each: up to two
+      # accounts' entries run at once, root's own beside them, and one of
+      # them must never hide another (an entry's lock and its wrapper's
+      # sequential lock name the same stream)
+      if [ "${_bupHeldH}" -ge "${_bupStuckH}" ]; then
+        _bupStuckOne="${_bupPidF##*/}"
+        _bupStuckOne="${_bupStuckOne#duplicity_}"
+        _bupStuckOne="${_bupStuckOne%.pid}"
+        _bupStuckOne="${_bupStuckOne%_sequential}"
+        case " ${_bupStuckKeys} " in
+          *" ${_bupStuckOne} "*) ;;
+          *)
+            _bupStuckKeys="${_bupStuckKeys} ${_bupStuckOne}"
+            _bupStuckList="${_bupStuckList}${_bupStuckOne}|${_bupStuckOne} (lock ${_bupPidF})|${_bupHeldH}"$'\n'
+            ;;
+        esac
+        [ -n "${_bupStuckKey}" ] || _bupStuckKey="${_bupStuckOne}"
       fi
     done
     for _bupPat in \
@@ -7132,26 +7969,31 @@ if [ "$(id -u)" -eq 0 ]; then
       # wrapper is briefly live between entries -- so pid-file mtimes
       # alone would leave this path with no ceiling and suppress for as
       # long as such a run hangs.
-      for _bupProcP in $(pgrep -f "${_bupPat}" 2>/dev/null); do
+      for _bupProcP in $(pgrep -u root -U root -f "${_bupPat}" 2>/dev/null); do
         _bupLiveAny=YES
         _bupProcS=$(ps -o etimes= -p "${_bupProcP}" 2>/dev/null | tr -dc '0-9')
         _bupProcH=$(( ${_bupProcS:-0} / 3600 ))
+        # a process stands in for a stream only when no lock named one
+        # (backboa and duobackboa lock under their own names)
         if [ "${_bupProcH}" -ge "${_bupStuckH}" ] && [ -z "${_bupStuckKey}" ]; then
           _bupStuckKey="pid-${_bupProcP}"
-          _bupStuckWhat="a backup process (pid ${_bupProcP})"
-          _bupStuckAgeH="${_bupProcH}"
+          _bupStuckKeys=" ${_bupStuckKey}"
+          _bupStuckList="${_bupStuckKey}|a backup process (pid ${_bupProcP})|${_bupProcH}"$'\n'
         fi
       done
     done
-    # A stream past the ceiling gets ONE distinct daily notice naming it,
-    # and the pending entries behind it stay quiet: the operator should
-    # read one true cause, not a list of its symptoms. This is deliberately
-    # self-contained -- the older waiting-queue notice above cannot serve
-    # as the backstop here, since it fires at most once per box until its
-    # queue logs are cleared.
-    if [ -n "${_bupStuckKey}" ]; then
-      _bupStuckKey="${_bupStuckKey//[^a-zA-Z0-9_-]/_}"
-      _bupStamp="/var/log/boa/backup-freshness-stalled-${_bupStuckKey}.alerted"
+    # Each stream past the ceiling gets ONE distinct daily notice naming
+    # it, and the pending entries behind it stay quiet: the operator should
+    # read the true causes, not a list of their symptoms. This is
+    # deliberately self-contained -- the older waiting-queue notice above
+    # cannot serve as the backstop here, since it fires at most once per
+    # box until its queue logs are cleared.
+    _bupStampKeep=""
+    while IFS='|' read -r _bupStuckOne _bupStuckWhat _bupStuckAgeH; do
+      [ -n "${_bupStuckOne}" ] || continue
+      _bupStuckOne="${_bupStuckOne//[^a-zA-Z0-9_-]/_}"
+      _bupStamp="/var/log/boa/backup-freshness-stalled-${_bupStuckOne}.alerted"
+      _bupStampKeep="${_bupStampKeep} ${_bupStamp}"
       if [ ! -e "${_bupStamp}" ] \
         || [ "$(( _bupNowT - $(stat -c %Y "${_bupStamp}" 2>/dev/null || echo 0) ))" -ge 86400 ]; then
         touch "${_bupStamp}"
@@ -7163,19 +8005,28 @@ if [ "$(id -u)" -eq 0 ]; then
             echo
             echo "Stuck stream: ${_bupStuckWhat}"
             echo
-            echo "The schedule is sequential, so every entry behind this one is"
-            echo "waiting and no freshness alert is raised for them. Check the"
-            echo "running duplicity process and its bucket log under /var/log/boa"
-            echo "before killing anything -- a monthly full legitimately runs for"
-            echo "many hours, and killing a full costs the whole chain a cycle."
+            echo "While it runs, the entries waiting behind it raise no freshness"
+            echo "alert of their own (up to two accounts' entries run at once, the"
+            echo "server's own beside them; each stream past this limit gets a"
+            echo "notice of its own). Check the running duplicity process and its"
+            echo "bucket log under /var/log/boa before killing anything -- a monthly"
+            echo "full legitimately runs for many hours, and killing a full costs the"
+            echo "whole chain a cycle."
             echo
             echo "This notice repeats daily until the stream finishes."
-          } | s-nail -s "Backup STALLED Alert for [${_bupHstN}]: ${_bupStuckKey} running ${_bupStuckAgeH}h" ${_MY_EMAIL}
+          } | s-nail -s "Backup STALLED Alert for [${_bupHstN}]: ${_bupStuckOne} running ${_bupStuckAgeH}h" ${_MY_EMAIL}
         fi
       fi
-    else
-      rm -f /var/log/boa/backup-freshness-stalled-*.alerted
-    fi
+    done <<< "${_bupStuckList}"
+    # a stream that finished, or is no longer past the ceiling, loses its
+    # stamp; a stream still stuck keeps its own daily repeat
+    for _bupStamp in /var/log/boa/backup-freshness-stalled-*.alerted; do
+      [ -e "${_bupStamp}" ] || continue
+      case " ${_bupStampKeep} " in
+        *" ${_bupStamp} "*) ;;
+        *) rm -f "${_bupStamp}" ;;
+      esac
+    done
     while read -r _bupSvc _bupUsr _bupRest; do
       case "${_bupSvc}" in ""|\#*) continue ;; esac
       [ -n "${_bupUsr}" ] || continue
@@ -7221,7 +8072,12 @@ if [ "$(id -u)" -eq 0 ]; then
       [ "${_bupOkT}" -gt 0 ] && _bupOkD="$(date -d @${_bupOkT} 2>/dev/null)"
       _bupErD="never"
       [ "${_bupErT}" -gt 0 ] && _bupErD="$(date -d @${_bupErT} 2>/dev/null)"
-      echo "$(date) ${_bupKind}: ${_bupSvc} ${_bupUsr} last OK ${_bupOkD}; last ERR ${_bupErD}" \
+      # an entry multiback holds after its duplicity ran out of memory
+      # (multiback's memory hold, the same name)
+      _bupMemH="/root/.remote_backups/memory_holds/$(printf '%s.%s' "${_bupSvc}" "${_bupUsr}" | tr -dc 'A-Za-z0-9_.-')"
+      _bupMemT=""
+      [ -e "${_bupMemH}" ] && _bupMemT="$(head -c 19 "${_bupMemH}" 2>/dev/null)"
+      echo "$(date) ${_bupKind}: ${_bupSvc} ${_bupUsr} last OK ${_bupOkD}; last ERR ${_bupErD}${_bupMemT:+; memory hold since ${_bupMemT}}" \
         >> /var/log/boa/backup-freshness.log
       if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" != "OFF" ]; then
         {
@@ -7231,11 +8087,17 @@ if [ "$(id -u)" -eq 0 ]; then
           echo "Last OK:  ${_bupOkD}"
           echo "Last ERR: ${_bupErD}"
           echo
+          if [ -e "${_bupMemH}" ]; then
+            echo "This entry ran out of memory at ${_bupMemT} and waits seven days"
+            echo "from then before it runs again. Remove ${_bupMemH}"
+            echo "to let it run sooner, for example once the box has more memory."
+            echo
+          fi
           echo "Every scheduled run mails its own report, but this box has had"
           echo "no completed backup past the alert floor. Check first:"
           echo "  ${_bupErF}"
           echo "  /var/log/boa/*conn-test-err.log (credentials/bucket problems)"
-          echo "  /etc/cron.d/duplicity_backup and /var/log/backup_runtime.log"
+          echo "  /etc/cron.d/duplicity_backup"
           echo
           echo "This notice repeats daily until a run completes."
         } | s-nail -s "Backup FRESHNESS Alert for [${_bupHstN}]: ${_bupSvc} ${_bupUsr} ${_bupKind}" ${_MY_EMAIL}
@@ -7330,11 +8192,30 @@ if [ "$(id -u)" -eq 0 ]; then
     rmmod dccp_probe &> /dev/null
   fi
 
+  ### Linux kernel SCTP hotfix: any local user can autoload sctp by opening
+  ### an SCTP socket, and an unpatched flaw in it gives root. Nothing in BOA
+  ### uses SCTP. A module already loaded cannot be removed and stays until
+  ### the next reboot; /proc/sys/net/sctp exists while SCTP is live. In a
+  ### container the host's modprobe loads modules, reading the host's files.
+  ### The file is checked by its lines, so an empty or partial one is
+  ### written again; modprobe reads only *.conf, never the .new copy.
+  _sctpConf="/etc/modprobe.d/blacklist-sctp.conf"
+  if [ -d "/etc/modprobe.d" ] \
+    && { ! grep -qsx "install sctp /bin/true" "${_sctpConf}" \
+      || ! grep -qsx "install sctp_diag /bin/true" "${_sctpConf}"; }; then
+    if printf 'install sctp /bin/true\ninstall sctp_diag /bin/true\n' \
+      2> /dev/null > "${_sctpConf}.new"; then
+      mv -f "${_sctpConf}.new" "${_sctpConf}"
+    else
+      rm -f "${_sctpConf}.new"
+    fi
+  fi
+
   if [ ! -e "/data/all/cpuinfo" ]; then
     _count_cpu
   fi
 
-  # Below the PHP security floor: decide on a barracuda system pass,
+  # Below the PHP or Nginx security floor: decide on a barracuda system pass,
   # SKYNET-off too; it starts at the end of whichever branch runs below
   _php_security_floor
 
@@ -7417,6 +8298,7 @@ if [ "$(id -u)" -eq 0 ]; then
     _fix_newrelic
     _fix_leftovers
     _fix_nginx_crawler_access
+    _fix_nginx_sudo_verb
     _fix_wiped_nginx_config
     _update_agents
     _sysctl_update
@@ -7435,7 +8317,7 @@ if [ "$(id -u)" -eq 0 ]; then
     # _saCoreN="3143016-83"
     # _fix_core_dgd
   fi
-  # The PHP security floor's pass, decided above, after this run's own work
+  # The security floor's pass, decided above, after this run's own work
   _php_security_floor_launch
   if [ ! -e "/etc/ssl/private/4096.dhp" ] && [ -d "/var/xdrago" ]; then
     echo "Generating 4096.dhp -- it may take a very long time..."

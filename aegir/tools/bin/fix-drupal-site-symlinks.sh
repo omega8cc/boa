@@ -139,7 +139,7 @@ if [ -n "${_caller}" ]; then
           # most 1 MiB and never through a link or from a FIFO put at the
           # name since.
           _hm_uri=$(cd -P -- "${_hm_r%/*}" 2>/dev/null \
-            && [ "$(pwd -P)" = "${_hm_r%/*}" ] \
+            && [ "$(/bin/pwd -P)" = "${_hm_r%/*}" ] \
             && timeout 10 dd if="./${_hm_r##*/}" \
               iflag=nofollow,nonblock,fullblock bs=1048576 count=1 \
               status=none 2>/dev/null \

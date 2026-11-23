@@ -119,6 +119,14 @@ _line_is_recent() {
 # Value-valid IPv4 octet: 0-255, no leading zeros
 readonly _IPV4_OCTET_RX="(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])"
 
+# sshd's own lines: its tag in the place the syslog header gives the program
+# (classic or ISO 8601 stamp, host, tag), the message after it. A program
+# writing to the log socket picks its own tag, and a setuid one logs words a
+# local user chose (sudo puts a refused command line into auth.log), so a
+# pattern found under another tag, or anywhere else in a line, is not
+# sshd's. The ISO stamp may have lost its '+' to the sanitiser.
+readonly _SSHD_LINE_RX='^([A-Z][a-z]{2} +[0-9]{1,2} [0-9]{2}:[0-9]{2}:[0-9]{2}|[0-9]{4}-[0-9]{2}-[0-9]{2}T[^ ]+) [^ ]+ sshd(-session)?\[[0-9]+\]: (.*)$'
+
 _LOCAL_IPS=()
 
 _load_local_ips() {
@@ -280,12 +288,15 @@ _makeactions() {
   # line, not a bare "Accepted " substring. Otherwise an attacker who probes
   # with the username "Accepted" produces "Invalid user Accepted from <ip>",
   # whose <ip> would be added to _accepted[] and permanently exempt that
-  # attacker from every detection branch (a full IDS bypass). The sed strips
-  # the syslog header up to and including the first program tag ("...sshd[pid]: "
-  # / "...sshd-session[pid]: "), which is written by sshd/syslog and never by
-  # the client; the ^Accepted anchor then cannot be satisfied by any
-  # attacker-controlled username text, which can only ever appear AFTER a fixed
-  # "Invalid user "/"Failed password for " prefix.
+  # attacker from every detection branch (a full IDS bypass). The sed keeps
+  # only a line whose program tag, in its place after the stamp and the host,
+  # is sshd's ("sshd[pid]: " / "sshd-session[pid]: ") and whose message then
+  # starts "Accepted ": a remote client's username text can only ever appear
+  # after a fixed "Invalid user "/"Failed password for " prefix, and a local
+  # program's words logged under its own tag (sudo's refused command line,
+  # which once exempted any address it named) never reach the anchor. NUL
+  # bytes are dropped first, so a NUL block at the head of a line cannot hide
+  # its stamp.
   # Pure-bash field extraction: the former grep|tail subshell pair forked two
   # processes for each of up to _AUTH_LOG_BASELINE lines on EVERY run — tens
   # of CPU-seconds per minute on a login-busy box, and the longest pole in
@@ -305,8 +316,8 @@ _makeactions() {
       _is_ipv4 "${_acc_ip}" && _accepted["${_acc_ip}"]=1
     fi
   done < <(grep -aF "Accepted " "${_AUTH_LOG}" 2>/dev/null \
-    | sed -E 's/^[^]]*\]: //' \
-    | grep -aE '^Accepted ' \
+    | tr -d '\000' \
+    | sed -nE 's/^([A-Z][a-z]{2} +[0-9]{1,2} [0-9]{2}:[0-9]{2}:[0-9]{2}|[0-9]{4}-[0-9]{2}-[0-9]{2}T[^ ]+) [^ ]+ sshd(-session)?\[[0-9]+\]: (Accepted .*)$/\3/p' \
     | tail -n "${_AUTH_LOG_BASELINE}")
 
   # -------------------------------------------------------------------------
@@ -339,46 +350,49 @@ _makeactions() {
     # come first and '-' last to be literal; the previous form closed the
     # class early and stripped nothing.
     _line="${_line//[^]a-zA-Z0-9: 	\/@_()*[.,-]/}"
+    # sshd's own lines only; the patterns below read the message part
+    [[ "${_line}" =~ ${_SSHD_LINE_RX} ]] || continue
+    local _msg="${BASH_REMATCH[3]}"
 
     local _ip=""
 
-    if   [[ "${_line}" =~ "Failed password for root" ]] || \
-         [[ "${_line}" =~ "Failed password for invalid user" ]] || \
-         [[ "${_line}" =~ "Failed password for" && ! "${_line}" =~ "invalid user" ]]; then
+    if   [[ "${_msg}" =~ "Failed password for root" ]] || \
+         [[ "${_msg}" =~ "Failed password for invalid user" ]] || \
+         [[ "${_msg}" =~ "Failed password for" && ! "${_msg}" =~ "invalid user" ]]; then
       _line_is_recent "${_line}" || continue
-      _ip=$(grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' <<< "${_line}" | tail -1)
+      _ip=$(grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' <<< "${_msg}" | tail -1)
 
-    elif [[ "${_line}" =~ "Invalid user" ]]; then
+    elif [[ "${_msg}" =~ "Invalid user" ]]; then
       # Catches empty-username probes: "Invalid user  from 1.2.3.4 port N"
       # These never produce a "Failed password" line so fall through without this branch.
       _line_is_recent "${_line}" || continue
-      _ip=$(grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' <<< "${_line}" | tail -1)
+      _ip=$(grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' <<< "${_msg}" | tail -1)
 
-    elif [[ "${_line}" =~ "Received disconnect" && ! "${_line}" =~ "disconnected by user" ]]; then
+    elif [[ "${_msg}" =~ "Received disconnect" && ! "${_msg}" =~ "disconnected by user" ]]; then
       _line_is_recent "${_line}" || continue
-      _ip=$(grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' <<< "${_line}" | tail -1)
+      _ip=$(grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' <<< "${_msg}" | tail -1)
 
-    elif [[ "${_line}" =~ "Timeout before authentication" ]]; then
+    elif [[ "${_msg}" =~ "Timeout before authentication" ]]; then
       # Client connected but never completed auth within LoginGraceTime —
       # slow scanners or deliberate connection exhaustion.
       # Line format: "...from ATTACKER_IP to LOCAL_IP..." — take first IP match.
       _line_is_recent "${_line}" || continue
-      _ip=$(grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' <<< "${_line}" | head -1)
+      _ip=$(grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' <<< "${_msg}" | head -1)
 
-    elif [[ "${_line}" =~ "Connection reset by" && "${_line}" =~ \[preauth\] ]]; then
+    elif [[ "${_msg}" =~ "Connection reset by" && "${_msg}" =~ \[preauth\] ]]; then
       # TCP RST during key exchange — masscan-style scanners probing for sshd
       _line_is_recent "${_line}" || continue
-      _ip=$(grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' <<< "${_line}" | tail -1)
+      _ip=$(grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' <<< "${_msg}" | tail -1)
 
-    elif [[ "${_line}" =~ "banner exchange" && "${_line}" =~ "invalid format" ]]; then
+    elif [[ "${_msg}" =~ "banner exchange" && "${_msg}" =~ "invalid format" ]]; then
       # SSH protocol scanners that fail to complete the banner handshake
       _line_is_recent "${_line}" || continue
-      _ip=$(grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' <<< "${_line}" | tail -1)
+      _ip=$(grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' <<< "${_msg}" | tail -1)
 
-    elif [[ "${_line}" =~ "Connection closed by" && "${_line}" =~ \[preauth\] && ! "${_line}" =~ "authenticating user" && ! "${_line}" =~ "invalid user" && ! "${_line}" =~ "disconnected by user" ]]; then
+    elif [[ "${_msg}" =~ "Connection closed by" && "${_msg}" =~ \[preauth\] && ! "${_msg}" =~ "authenticating user" && ! "${_msg}" =~ "invalid user" && ! "${_msg}" =~ "disconnected by user" ]]; then
       # Port scanners that connect and immediately close with no auth attempt
       _line_is_recent "${_line}" || continue
-      _ip=$(grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' <<< "${_line}" | tail -1)
+      _ip=$(grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' <<< "${_msg}" | tail -1)
     fi
 
     _is_ipv4 "${_ip}" || continue

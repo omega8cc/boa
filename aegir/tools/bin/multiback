@@ -16,6 +16,70 @@ if [ -e "/root/.standby.cnf" ]; then
   exit 0
 fi
 
+# Duplicity runs in flight, counted from root's processes alone: root's own
+# duplicity, and root's mybackup pass, which runs an account's queued restore
+# as the account through su. An account's own process is never counted: the
+# account's site code runs as its backend user in tasks and can give a
+# process any command line.
+_dcy_live_count() {
+  local _a _b _c
+  _a=$(pgrep -u root -U root -fc '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)' 2> /dev/null)
+  _b=$(pgrep -u root -U root -fc '^[^ ]*duplicity( |$)' 2> /dev/null)
+  _c=$(pgrep -u root -U root -fc '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*mybackup( |$)' 2> /dev/null)
+  echo $(( ${_a:-0} + ${_b:-0} + ${_c:-0} ))
+}
+
+# Duplicity runs in flight that hold the server's own backup: those
+# _dcy_live_count counts, less the ones an account's own entry runs (multiback
+# backup <service> <account>, which the schedule starts for an account whose
+# own off-site credentials are filled in). The account sets how long that
+# runs (its data, its bucket), so the server's own backup runs beside it
+# instead of waiting on it, and an account's entry does not start while the
+# server's own backup runs. One snapshot of root's processes alone, read by
+# their own argument lists: an account's process can take any title.
+_dcy_box_count() {
+  ps -e -ww -o pid= -o ppid= -o ruid= -o euid= -o args= 2> /dev/null | awk '
+    $3 == 0 && $4 == 0 {
+      a = $0; sub(/^ *[0-9]+ +[0-9]+ +[0-9]+ +[0-9]+ */, "", a)
+      n++; k[n] = $1; p[$1] = $2; c[$1] = a
+      if (a ~ /^([^ ]*\/)?bash \/(opt|usr)\/local\/bin\/multiback backup [^ ]+ [^ ]+$/ &&
+        a !~ / (global|data|custom)$/) e[$1] = 1
+    }
+    END {
+      for (i = 1; i <= n; i++) {
+        a = c[k[i]]
+        if (a !~ /^([^ ]*\/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*(duplicity|mybackup)( |$)/ &&
+          a !~ /^[^ ]*duplicity( |$)/) continue
+        q = p[k[i]]; d = 0
+        while ((q in p) && !(q in e) && d < 64) { q = p[q]; d++ }
+        if (!(q in e)) m++
+      }
+      print m + 0
+    }'
+}
+# The server's own duplicity: _dcy_box_count less its mybackup arm, so a
+# restore pass is not counted either. The same text as mybackup's.
+_dcy_srv_count() {
+  ps -e -ww -o pid= -o ppid= -o ruid= -o euid= -o args= 2> /dev/null | awk '
+    $3 == 0 && $4 == 0 {
+      a = $0; sub(/^ *[0-9]+ +[0-9]+ +[0-9]+ +[0-9]+ */, "", a)
+      n++; k[n] = $1; p[$1] = $2; c[$1] = a
+      if (a ~ /^([^ ]*\/)?bash \/(opt|usr)\/local\/bin\/multiback backup [^ ]+ [^ ]+$/ &&
+        a !~ / (global|data|custom)$/) e[$1] = 1
+    }
+    END {
+      for (i = 1; i <= n; i++) {
+        a = c[k[i]]
+        if (a !~ /^([^ ]*\/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)/ &&
+          a !~ /^[^ ]*duplicity( |$)/) continue
+        q = p[k[i]]; d = 0
+        while ((q in p) && !(q in e) && d < 64) { q = p[q]; d++ }
+        if (!(q in e)) m++
+      }
+      print m + 0
+    }'
+}
+
 # Function to print env for debugging
 _print_env() {
   if [ "$(id -u)" -eq 0 ] && [ -e "/root/.dev.server.cnf" ]; then
@@ -58,13 +122,21 @@ _verify_boa_keys() {
       _allw=YES
     fi
     mkdir -p /var/opt
-    rm -f /var/opt/_encN*
-    curl ${_crlGet} "${_urlEnc}/${_encName}" -o /var/opt/_encN.${_encName}.tmp
-    wait
-    echo "${_hName}.${_encName}" > /var/opt/_encN_local.${_encName}.tmp
-    wait
-    if [ -e "/var/opt/_encN.${_encName}.tmp" ] && [ -e "/var/opt/_encN_local.${_encName}.tmp" ]; then
-      _diffTestIf=$(diff -w -B /var/opt/_encN.${_encName}.tmp /var/opt/_encN_local.${_encName}.tmp 2>&1)
+    # Each check keeps its files in a folder of its own and removes it when
+    # done, so checks that overlap (an account's backup starting beside
+    # root's) never remove each other's files; a folder a killed check left
+    # behind is removed an hour later.
+    find /var/opt -maxdepth 1 -type d -name '_enck.*' -mmin +60 \
+      -exec rm -rf -- {} + 2> /dev/null
+    _encDir="$(mktemp -d /var/opt/_enck.XXXXXXXX 2> /dev/null)"
+    if [ -n "${_encDir}" ] && [ -d "${_encDir}" ]; then
+      curl ${_crlGet} "${_urlEnc}/${_encName}" -o "${_encDir}/_encN.${_encName}.tmp"
+      wait
+      echo "${_hName}.${_encName}" > "${_encDir}/_encN_local.${_encName}.tmp"
+      wait
+    fi
+    if [ -e "${_encDir}/_encN.${_encName}.tmp" ] && [ -e "${_encDir}/_encN_local.${_encName}.tmp" ]; then
+      _diffTestIf=$(diff -w -B "${_encDir}/_encN.${_encName}.tmp" "${_encDir}/_encN_local.${_encName}.tmp" 2>&1)
       if [ ! -z "${_diffTestIf}" ] && [ "${_allw}" = "NO" ]; then
         echo
         echo "Your system requires valid license to use this function"
@@ -73,15 +145,15 @@ _verify_boa_keys() {
         if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
           && [ ! -e "/var/aegir/key/barracuda_key.txt" ]; then
           mkdir -p /var/aegir/key
-          cat /var/opt/_encN_local.${_encName}.tmp > /var/aegir/key/barracuda_key.txt
+          cat "${_encDir}/_encN_local.${_encName}.tmp" > /var/aegir/key/barracuda_key.txt
         fi
-        rm -f /var/opt/_encN*
+        if [ -n "${_encDir}" ]; then rm -rf -- "${_encDir}"; fi
         exit 0
       else
         if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
           && [ ! -e "/var/aegir/key/barracuda_key.txt" ]; then
           mkdir -p /var/aegir/key
-          cat /var/opt/_encN_local.${_encName}.tmp > /var/aegir/key/barracuda_key.txt
+          cat "${_encDir}/_encN_local.${_encName}.tmp" > /var/aegir/key/barracuda_key.txt
         fi
       fi
     elif [ "${_allw}" = "YES" ]; then
@@ -91,15 +163,17 @@ _verify_boa_keys() {
       echo
       echo "NOTE: the key server could not be reached; ${_hName} is allowed by its hostname"
       echo
-      rm -f /var/opt/_encN*
+      if [ -n "${_encDir}" ]; then rm -rf -- "${_encDir}"; fi
     else
       echo
       echo "Your system requires valid license to use this BOA feature"
       echo "Unfortunately it was not possible to verify your system status"
       echo "Please contact our support but visit https://omega8.cc/licenses first"
       echo
+      if [ -n "${_encDir}" ]; then rm -rf -- "${_encDir}"; fi
       exit 0
     fi
+    if [ -n "${_encDir}" ]; then rm -rf -- "${_encDir}"; fi
   fi
 }
 
@@ -289,15 +363,159 @@ _waiting_notify() {
 # backups back whenever any concurrent command line merely mentioned
 # the literal, e.g. a probe naming /root/.cache/duplicity/ paths,
 # observed live.
-_CNT="$(pgrep -fc '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)' 2>/dev/null)"
-_CNT="${_CNT:-0}"
-_CNTD="$(pgrep -fc '^[^ ]*duplicity( |$)' 2>/dev/null)"
-_CNTD="${_CNTD:-0}"
-if (( _CNT + _CNTD > 0 )); then
-  echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
+# this backup entry's own held mark (service and target from the arguments)
+_HELD_MARK="/run/boa_backup_held.multiback.$(printf '%s.%s' "${2}" "${3}" | tr -dc 'A-Za-z0-9_.-')"
+# A backup run of the server's own: backboa's or duobackboa's, or root's own
+# entry (global, data, custom). An account's entry does not start while one
+# runs (see _dcy_box_count).
+_box_bup_live() {
+  pgrep -u root -U root -f '^([^ ]*/)?bash /(opt|usr)/local/bin/(backboa|duobackboa) backup( |$)' \
+    > /dev/null 2>&1 && return 0
+  pgrep -u root -U root -f '^([^ ]*/)?bash /(opt|usr)/local/bin/multiback backup [^ ]+ (global|data|custom)$' \
+    > /dev/null 2>&1
+}
+# The other accounts' entries whose backup root runs now: distinct
+# "<service> <target>" pairs, this entry's own left out, from one snapshot
+# of root's processes alone, read by their own argument lists (pairs, not
+# processes: a run's subshells carry its arguments). Processes, never the
+# lock files: a run takes its lock at the end of this script, after the
+# gate, so a lock count would miss a run between the two.
+_acct_bup_others() {
+  ps -e -ww -o pid= -o ppid= -o ruid= -o euid= -o args= 2> /dev/null | awk -v me="${1} ${2}" '
+    $3 == 0 && $4 == 0 {
+      a = $0; sub(/^ *[0-9]+ +[0-9]+ +[0-9]+ +[0-9]+ */, "", a)
+      if (a ~ /^([^ ]*\/)?bash \/(opt|usr)\/local\/bin\/multiback backup [^ ]+ [^ ]+$/ &&
+        a !~ / (global|data|custom)$/) {
+        n = split(a, w, " ")
+        k = w[n - 1] " " w[n]
+        if (k != me) s[k] = 1
+      }
+    }
+    END { c = 0; for (k in s) c++; print c }'
+}
+# Room for an account's backup stream beside another account's: available
+# memory and free space on / (each full keeps its volumes there). No tool
+# checks memory before a run, and the brake after an OOM kill holds an
+# entry only once it has run out of memory, so a second account stream
+# starts only with room.
+_acct_stream_room() {
+  local _mem _dsk
+  _mem=$(awk '/^MemAvailable:/ { print int($2 / 1024) }' /proc/meminfo 2> /dev/null)
+  _dsk=$(df -Pm / 2> /dev/null | awk 'NR == 2 { print $4 }')
+  [ "${_mem:-0}" -ge 1536 ] && [ "${_dsk:-0}" -ge 2048 ]
+}
+# A restore of this account is under way: mybackup's records of the window
+# that hands the account its credentials and secret, put before anything is
+# handed over and removed once the give-back is done or logged as failed,
+# while a queue pass is live. A record a pass that died left behind holds
+# nothing: the next pass closes it before its first restore.
+_acct_window_open() {
+  [ -e "/root/.remote_backups/restore_windows/${1}.rb" ] \
+    || [ -e "/root/.remote_backups/restore_windows/${1}.cred" ] || return 1
+  pgrep -u root -U root -f '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*mybackup( |$)' \
+    > /dev/null 2>&1
+}
+# The installed wrapper caps the accounts' streams alone and never defers
+# root's own entries; an older wrapper caps every stream and would defer
+# the server's own entries behind two account runs, so an account's entry
+# runs beside another account's only under the new wrapper.
+_wrapper_caps_accounts() {
+  grep -q '^_live_account_streams()' /root/.remote_backups/run/sequential_backups.sh 2> /dev/null
+}
+# An entry whose own duplicity the kernel killed for lack of memory waits
+# _MEM_HOLD_DAYS before it runs again: on this box that backup would only
+# run out of memory again, and an out-of-memory kill may take any process.
+# Only that entry waits; the server's own entries and other accounts' run.
+# The mark is the run's own verdict (its duplicity ended by SIGKILL while a
+# new kernel line named a duplicity), so it can name the entry; removing
+# the file lets the entry try again at once.
+_MEM_HOLD_DAYS=7
+_MEM_HOLD_DIR="/root/.remote_backups/memory_holds"
+_MEM_HOLD="${_MEM_HOLD_DIR}/$(printf '%s.%s' "${2}" "${3}" | tr -dc 'A-Za-z0-9_.-')"
+# Out-of-memory kills of a duplicity in the kernel's log
+_oom_dcy_lines() {
+  local _n
+  _n=$(grep -cE 'Out of memory: Killed process [0-9]+ \(duplicity\)' /var/log/iptables.log 2> /dev/null)
+  echo "${_n:-0}"
+}
+# After a backup run: $1 is _oom_dcy_lines before it. A duplicity that
+# ended by SIGKILL while a new line came (the log is written a moment
+# later, so it waits up to 15 seconds for one) marks this entry held.
+_mem_hold_check() {
+  local _i _n
+  [ "${_BUP_RC:-0}" -eq 137 ] || return 0
+  for _i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+    _n=$(_oom_dcy_lines)
+    # fewer than before: the log rotated, and any line in it is new
+    if [ "${_n}" -gt "${1:-0}" ] || { [ "${_n}" -lt "${1:-0}" ] && [ "${_n}" -gt 0 ]; }; then
+      mkdir -p "${_MEM_HOLD_DIR}" && chmod 700 "${_MEM_HOLD_DIR}"
+      date '+%F %T' > "${_MEM_HOLD}"
+      echo "The kernel killed duplicity for lack of memory; ${_SERVICE} ${_USER} waits ${_MEM_HOLD_DAYS} days before its next run (remove ${_MEM_HOLD} to try sooner)." >> ${_LOGFILE}
+      return 0
+    fi
+    sleep 1
+  done
+  return 0
+}
+if [ "${1}" = "backup" ] && [ -n "${2}" ] && [ -n "${3}" ] && [ -e "${_MEM_HOLD}" ]; then
+  if [ -n "$(find "${_MEM_HOLD}" -mmin "-$(( _MEM_HOLD_DAYS * 1440 ))" 2> /dev/null)" ]; then
+    echo "[$(date)] ${2} ${3} ran out of memory at $(head -c 19 "${_MEM_HOLD}" 2> /dev/null) and waits ${_MEM_HOLD_DAYS} days from then (remove ${_MEM_HOLD} to try sooner)..." >> /var/log/mybackup_waiting_queue.log
+    # a held entry runs no backup for days: a held mark left from the run
+    # that ran out of memory would hold the account's restores (a root
+    # entry's, every restore) for a day
+    rm -f "${_HELD_MARK}"
+    exit 1
+  fi
+  rm -f "${_MEM_HOLD}"
+fi
+_CNT=$(_dcy_live_count)
+# root's own entry backs up (and repairs its own chain, as backchain does
+# first) beside an account's entry (_dcy_box_count); an account's entry
+# waits on the server's own backup and its duplicity and on a restore of its
+# own account, and runs beside other accounts' restores and beside one other
+# account's entry when there is room for it
+_BOX_FIRST=NO
+_ACCT_HOLD=""
+case "${3:-}" in
+  global|data|custom)
+    case "${1}" in
+      backup|repair) _CNT=$(_dcy_box_count) ;;
+    esac
+    ;;
+  *)
+    if [ "${1}" = "backup" ] && [ -n "${2}" ]; then
+      _box_bup_live && _BOX_FIRST=YES
+      if [ "${_BOX_FIRST}" = "NO" ] && _wrapper_caps_accounts; then
+        _CNT=$(_dcy_srv_count)
+        _OTHERS=$(_acct_bup_others "${2}" "${3}")
+        if _acct_window_open "${3}"; then
+          _ACCT_HOLD="${3}'s own restore runs"
+        elif [ "${_OTHERS:-0}" -ge 2 ]; then
+          _ACCT_HOLD="Two account entries already back up"
+        elif [ "${_OTHERS:-0}" -ge 1 ] && ! _acct_stream_room; then
+          _ACCT_HOLD="Not enough free memory or disk for a second account backup stream"
+        fi
+      fi
+    fi
+    ;;
+esac
+if (( _CNT > 0 )) || [ "${_BOX_FIRST}" = "YES" ] || [ -n "${_ACCT_HOLD}" ]; then
+  if [ "${_BOX_FIRST}" = "YES" ]; then
+    echo "[$(date)] The server's own backup runs first, ${3}'s backup will try again later..." >> /var/log/mybackup_waiting_queue.log
+  elif (( _CNT > 0 )); then
+    echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
+  else
+    echo "[$(date)] ${_ACCT_HOLD}, ${2} ${3} will try again later..." >> /var/log/mybackup_waiting_queue.log
+  fi
+  # a backup run waits: mybackup's queue starts no restore until this
+  # entry's next run gets through, for a day from the first hold (an
+  # account's entry under the wrapper that caps the accounts' streams: no
+  # restore of that account alone)
+  [ "${1}" = "backup" ] && [ -n "${2}" ] && { [ -e "${_HELD_MARK}" ] || touch "${_HELD_MARK}"; }
   _waiting_notify
   exit 1
 fi
+[ "${1}" = "backup" ] && [ -n "${2}" ] && rm -f "${_HELD_MARK}"
 
 # Function to display usage information
 _usage() {
@@ -332,11 +550,22 @@ _usage() {
 # by another user. An unreadable or empty cmdline means the process
 # exited (or is a zombie) between the checks: dead.
 _pid_is_live() {
-  local _pid=$1 _cmd
+  local _pid=$1 _tool="${2:-}" _cmd
   [[ "${_pid}" =~ ^[0-9]+$ ]] || return 1
   [ -d "/proc/${_pid}" ] || return 1
+  # The lock is root's: a recycled pid now held by another user's process
+  # titled like a backup is not its owner.
+  [ "$(awk '/^Uid:/ { print $2 " " $3; exit }' "/proc/${_pid}/status" 2> /dev/null)" = "0 0" ] || return 1
   _cmd=$(tr '\0' ' ' 2>/dev/null < "/proc/${_pid}/cmdline")
   [ -n "${_cmd}" ] || return 1
+  # A tool's own lock is owned by that tool's run alone: a pid recycled by
+  # a run of an account's own entry, which the backup gate leaves out, must
+  # not hold it.
+  if [ -n "${_tool}" ]; then
+    [[ "${_cmd}" =~ ^([^\ ]*/)?bash(\ [-+][^\ ]+|\ [-+][oO]\ [^\ ]+|\ --(rcfile|init-file)\ [^\ ]+)*\ ([^\ ]*/)?${_tool}( |$) ]] \
+      && return 0
+    return 1
+  fi
   case "${_cmd}" in
     *duplicity*|*multiback*|*mybackup*|*backboa*|*sequential_backups*) return 0 ;;
     *) return 1 ;;
@@ -354,7 +583,7 @@ _pid_is_live() {
 # is read back, so a starter whose fresh claim was swept by a slower
 # healer detects the loss and re-enters instead of running unlocked.
 _create_pid_file() {
-  local _pidfile=$1 _old_pid _now_pid _try=0
+  local _pidfile=$1 _tool="${2:-}" _old_pid _now_pid _try=0
   while [ "${_try}" -lt 3 ]; do
     _try=$((_try + 1))
     if ( set -o noclobber; echo $$ > "${_pidfile}" ) 2>/dev/null; then
@@ -365,7 +594,8 @@ _create_pid_file() {
       continue
     fi
     _old_pid=$(tr -dc '0-9' 2>/dev/null < "${_pidfile}")
-    if _pid_is_live "${_old_pid}"; then
+    # a lock left holding this run's own pid is stale: no run precedes itself
+    if [ "${_old_pid}" != "$$" ] && _pid_is_live "${_old_pid}" "${_tool}"; then
       echo "Process already running with PID ${_old_pid} holding ${_pidfile}"
       exit 1
     fi
@@ -462,11 +692,11 @@ _acct_in_real_dir() {
     /data/disk/?*) _a=/data/disk ;;
   esac
   if [ -n "${_a}" ]; then
-    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+    _want="$(cd -P -- "${_a}" 2> /dev/null && /bin/pwd -P)${_d#"${_a}"}"
   else
-    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && /bin/pwd -P)/${_d##*/}"
   fi
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] && "$@" )
 }
 # ./$1 in the current (pinned) directory: never through a link, never blocked
 # on a FIFO, at most 1 MiB. Empty for anything else.
@@ -624,6 +854,15 @@ _load_credentials() {
         exit 1
       fi
     done
+    # and when static/control is not the account's own: another account's
+    # login can put one there while the account is on the box-wide group
+    local _why
+    if ! _why=$(_acct_ctrl_own "${_user}"); then
+      echo "[$(date)] REFUSED credentials for ${_user}: static/control is not the account's own (${_why})" \
+        >> /var/log/mybackup_invalid_queued.log
+      echo "Error: static/control of ${_user} is not the account's own (${_why}). Unable to proceed."
+      exit 1
+    fi
   fi
   if [ "${_user}" = "global" ] || [ "${_user}" = "data" ] || [ "${_user}" = "custom" ]; then
     local _cred_file="/root/.remote_backups/credentials/${_service}.txt"
@@ -801,16 +1040,38 @@ _validate_or_default_duration() {
   local _default=$3
 
   # Supported formats: number followed by D (days), W (weeks), M (months), Y (years)
-  if [[ ! "${_value}" =~ ^[0-9]+[DWMY]$ ]] || [[ "${_value}" =~ ^[0][DWMY]$ ]]; then
+  # A zero in any spelling (0M, 00M) is invalid: duplicity reads it as now.
+  if [[ ! "${_value}" =~ ^[0-9]+[DWMY]$ ]] || [[ "${_value}" =~ ^0+[DWMY]$ ]]; then
     echo "Warning: Invalid value '${_value}' for ${_var_name}. Using default '${_default}'."
     eval "${_var_name}='${_default}'"
     _print_env "multiback_validate_or_default_duration"
   fi
 
-  # Enforced min value for KEEP_WITHIN (1M)
+  # Enforced min value for KEEP_WITHIN (1M). A day or week value never keeps
+  # less than it asks: one longer than the default becomes the whole months
+  # that cover it (duplicity's month is 30 days, so 120D is 4M and 100D is
+  # 4M); a shorter one keeps the default, as every day or week value did.
   if [ "${_var_name}" = "KEEP_WITHIN" ] && [[ ! "${_value}" =~ ^[0-9]+[MY]$ ]]; then
-    echo "Warning: Invalid value '${_value}' for ${_var_name}. It must be at least 1M. Using default '${_default}'."
-    eval "${_var_name}='${_default}'"
+    local _kDays= _kMon= _dMon=
+    # leading zeros dropped: bash reads 0120 as octal
+    if [[ "${_value}" =~ ^0*([1-9][0-9]{0,5})([DW])$ ]]; then
+      _kDays="${BASH_REMATCH[1]}"
+      [ "${BASH_REMATCH[2]}" = "W" ] && _kDays=$(( _kDays * 7 ))
+      _kMon=$(( (_kDays + 29) / 30 ))
+    fi
+    if [[ "${_default}" =~ ^([1-9][0-9]*)M$ ]]; then
+      _dMon="${BASH_REMATCH[1]}"
+    elif [[ "${_default}" =~ ^([1-9][0-9]*)Y$ ]]; then
+      _dMon=$(( BASH_REMATCH[1] * 12 ))
+    fi
+    if [ -n "${_kMon}" ] && [ -n "${_dMon}" ] && [ "${_kMon}" -gt "${_dMon}" ]; then
+      echo "Warning: ${_var_name} '${_value}' is not in months or years. Using '${_kMon}M', the whole months that cover it."
+      [ -n "${_LOGFILE}" ] && echo "${_var_name} '${_value}' is used as '${_kMon}M' on $(date)" >> "${_LOGFILE}"
+      eval "${_var_name}='${_kMon}M'"
+    else
+      echo "Warning: Invalid value '${_value}' for ${_var_name}. It must be at least 1M. Using default '${_default}'."
+      eval "${_var_name}='${_default}'"
+    fi
     _print_env "multiback_validate_or_default_duration_keep"
   fi
 
@@ -1383,6 +1644,14 @@ _check_if_worked_cleanly_or_log_err() {
         return 0
       fi
     done
+    # the run's log never goes into a static/control that is not the
+    # account's own (another account's login can put one there)
+    local _why
+    if ! _why=$(_acct_ctrl_own "${_user}"); then
+      echo "[$(date)] REFUSED sentinel for ${_user}: static/control is not the account's own (${_why})" \
+        >> /var/log/mybackup_invalid_queued.log
+      return 0
+    fi
   fi
   local _sentinel
   if tail -n +$(( ${_bupRun0:-0} + 1 )) "${_LOGFILE}" 2> /dev/null \
@@ -1487,12 +1756,70 @@ while args:
 # the worst case (all output is captured, so a stall is silent).
 config.num_retries = 2
 
+
+def b2_wipe(b2):
+    # On b2, every version of every duplicity-named file goes by the id one
+    # version listing gives (a list call for each thousand versions), never
+    # by name: deleting by name makes the backend look each id up first, a
+    # download-class request the provider caps per day, so a large wipe
+    # spends that cap and every delete after it fails. An upload that never
+    # finished is cancelled: its parts are stored, though no listing of
+    # names shows them. The verified claim rests on a version listing that
+    # comes back with no duplicity-named version left.
+    prefix = b2.path or ""
+
+    def versions():
+        mine, foreign = [], 0
+        for fv, _ in b2.bucket.ls(prefix, latest_only=False, recursive=True):
+            rel = fv.file_name[len(prefix):] if fv.file_name.startswith(prefix) else fv.file_name
+            if file_naming.parse(rel.encode()):
+                mine.append(fv)
+            else:
+                foreign += 1
+        return mine, foreign
+
+    doomed, foreign = versions()
+    if foreign:
+        print(f"wipe driver: leaving {foreign} version(s) of non-duplicity files untouched")
+    if not doomed:
+        print("wipe driver: no duplicity files at the target, nothing to delete")
+        return 0
+    issued = 0
+    passes = 0
+    while True:
+        passes += 1
+        print(f"wipe driver: deleting {len(doomed)} version(s) of duplicity files by id")
+        for fv in doomed:
+            print(f"wipe driver: deleting {fv.file_name} ({fv.action})")
+            try:
+                if fv.action == "start":
+                    b2.bucket.api.cancel_large_file(fv.id_)
+                else:
+                    b2.bucket.delete_file_version(fv.id_, fv.file_name)
+                issued += 1
+            except Exception as e:
+                print(f"wipe driver: {fv.file_name}: {e.__class__.__name__}: {e}")
+        doomed, foreign = versions()
+        if not doomed:
+            break
+        if passes == 5:
+            print(f"wipe driver: FAILED: {len(doomed)} version(s) of duplicity files still listed after {passes} delete passes")
+            print("wipe driver: re-running purge continues the wipe if deletions were succeeding")
+            return 1
+        print(f"wipe driver: {len(doomed)} version(s) still listed; deleting again")
+    print(f"wipe driver: verified: no version of any duplicity-named file remains at the target ({issued} deletion(s) in {passes} pass(es))")
+    return 0
+
+
 try:
     backend.import_backends()
     remote = backend.get_backend(url)
     if remote is None:
         print("wipe driver: target is not a recognized backend URL")
         sys.exit(2)
+    b2 = getattr(remote, "backend", None)
+    if b2 is not None and b2.__class__.__name__ == "B2Backend" and getattr(b2, "bucket", None) is not None:
+        sys.exit(b2_wipe(b2))
     names = remote.list()
     doomed = [f for f in names if file_naming.parse(f)]
     foreign = len(names) - len(doomed)
@@ -1607,6 +1934,7 @@ _run_backup() {
   # the length before this run's output: a run killed before its log was
   # archived leaves its lines behind, and only this run's may decide a retry
   _bupLog0="$( { wc -l < "${_LOGFILE}"; } 2> /dev/null | tr -d ' ')"
+  _oom0=$(_oom_dcy_lines)
   set -f
   ${_DCY_BUP_CMD} ${_BATCH_EXCLUDE} ${_BATCH_INCLUDE} --exclude '**' / ${_BACKUP_TARGET} >> ${_LOGFILE} 2>&1
   _BUP_RC=$?
@@ -1636,6 +1964,7 @@ _run_backup() {
     set +f
     wait
   fi
+  _mem_hold_check "${_oom0}"
   export _BUP_RC
   _print_env "multiback_run_backup"
 }
@@ -2216,12 +2545,12 @@ _rst_links() {
 _rst_staged_here() {
   local _st _stid _want _rc
   if [ -e "./${2}" ] || [ -L "./${2}" ]; then
-    echo "Error: $(pwd -P)/${2} already exists. Unable to proceed."
+    echo "Error: $(/bin/pwd -P)/${2} already exists. Unable to proceed."
     return 1
   fi
   _st="$(mktemp -d ./.multiback-restore.XXXXXX 2> /dev/null)" || return 1
-  _want="$(pwd -P)/${_st#./}"
-  if ! cd -P -- "${_st}" 2> /dev/null || [ "$(pwd -P)" != "${_want}" ] \
+  _want="$(/bin/pwd -P)/${_st#./}"
+  if ! cd -P -- "${_st}" 2> /dev/null || [ "$(/bin/pwd -P)" != "${_want}" ] \
     || [ "$(stat -c '%u %a' .)" != "0 700" ]; then
     echo "Error: the staging directory ${_want} is not root's own. Unable to proceed."
     return 1
@@ -2255,7 +2584,7 @@ _rst_staged_here() {
 _rst_in_dir() {
   local _d="${1}"
   shift
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_d}" ] && "$@" )
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_d}" ] && "$@" )
 }
 # ./$1 made in the current (pinned) directory unless the name is taken.
 _acct_mkdir_here() {
@@ -2754,7 +3083,7 @@ _acct_reclaim_restored() {
   # link, a link or a FIFO put in it is left alone, and no file outside it is
   # regrouped (nothing checks a link's own group).
   if [[ "${_gid}" =~ ^[0-9]+$ ]]; then
-    ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_d}" ] \
+    ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_d}" ] \
       && env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_w[@]}" \
         ! -group "${_g}" ! -group www-data ! -group root "${_x[@]}" \
         \( -type d -o -type f \) \
@@ -2789,7 +3118,77 @@ _acct_walk_uids() {
     [ "${_n}" = "${_a}" ] && _self=YES
   done < <(getent passwd 2> /dev/null)
   [ "${_self}" = "YES" ] || return 1
+  # the account's removed identities, their numbers recorded by root before
+  # deluser freed them; a number a user has again is not taken
+  while IFS= read -r _u; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    getent passwd "${_u}" > /dev/null 2>&1 && continue
+    _x="${_x},${_u}"
+  done 2> /dev/null < "/data/conf/acct-uids/${_a}.gone"
   echo "${_x}"
+}
+# The whole of an account's control/, judged once before a run acts on it:
+# run inside the account's real static/, it prints OK when control/ and
+# everything in it, never followed through a link, and static/ and every
+# directory above it up to /, are root's or one of the account's identities'
+# (the uids given first, _acct_walk_uids, with the account's recorded
+# removed identities), ABSENT when there is no control/, and otherwise why
+# not, on one line.
+# Every other account's .ftp login is in the box-wide group, which an account
+# not yet on its own group still has on static/: such a login could put a
+# control/ of its own there, or a file of its own in a group-writable
+# directory below it, for root to act on as the account's.
+_ACCT_CTRL_OWN_PL='use Fcntl;
+my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, shift @ARGV // "");
+sub own { my $u = shift; return exists $own{$u} ? 1 : 0; }
+sub isd { ($_[0] & 0170000) == 0040000 }
+sub nm { (my $v = shift) =~ s/[^\x20-\x7e]/?/g; return substr($v, 0, 200); }
+sub refuse { print "$_[0]\n"; exit 0; }
+my ($p, $top, @d, @x) = (".", 0);
+for (1 .. 256) {
+  @x = stat($p) or refuse("static/ cannot be read");
+  own($x[4]) or refuse("a directory above control/ is owned by uid $x[4]");
+  if (@d && $x[0] == $d[0] && $x[1] == $d[1]) { $top = 1; last; }
+  @d = @x;
+  $p .= "/..";
+}
+$top or refuse("static/ is too deep");
+my @s = lstat("./control");
+unless (@s) { print(($!{ENOENT} ? "ABSENT" : "control/ cannot be read") . "\n"); exit 0; }
+isd($s[2]) or refuse("control is not a directory");
+my ($n, @q) = (0, ["control", @s]);
+while (my $e = shift @q) {
+  my ($f, @t) = @$e;
+  own($t[4]) or refuse(nm($f) . " is owned by uid $t[4]" . (defined(getpwuid($t[4])) ? "" : ", which no user has and root never recorded for this account: if the file is its own, give it to its .ftp login"));
+  next unless isd($t[2]);
+  opendir(my $h, "./$f") or refuse(nm($f) . " cannot be read");
+  for my $b (readdir($h)) {
+    next if $b eq "." || $b eq "..";
+    ++$n > 100000 and refuse("control/ holds more than 100000 entries");
+    my @u = lstat("./$f/$b") or next;
+    push @q, ["$f/$b", @u];
+  }
+  closedir($h);
+}
+print "OK\n";
+exit 0;'
+# 0 when the account $1's control/ is its own as _ACCT_CTRL_OWN_PL judges it
+# (or it has none); otherwise why not on stdout, status 1. A run that acts
+# on what control/ says leaves the account as it is when it is not.
+_acct_ctrl_own() {
+  local _a="${1}" _o _r _want
+  # an account not in passwd (not made yet, or removed) has nothing to
+  # judge it by: read as before
+  _o=$(_acct_walk_uids "${_a}" 2> /dev/null) || return 0
+  [ -e "/data/disk/${_a}/static" ] || [ -L "/data/disk/${_a}/static" ] || return 0
+  _want="$(cd -P -- /data/disk 2> /dev/null && /bin/pwd -P)/${_a}/static"
+  _r=$(cd -P -- "/data/disk/${_a}/static" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] \
+    && perl -e "${_ACCT_CTRL_OWN_PL}" -- "${_o}" 2> /dev/null)
+  case "${_r}" in
+    OK|ABSENT) return 0 ;;
+  esac
+  echo "${_r:-static/ is not a real directory}"
+  return 1
 }
 
 # A root-run restore lands the owners its archive recorded: duplicity sets
@@ -3039,7 +3438,8 @@ _print_env "multiback_main"
 # Create the PID file; stale-heal happens inside, before this point the
 # lock may belong to a live run, so no trap is set yet -- an exit on a
 # held lock must not remove the owner's file
-_create_pid_file "${_PIDFILE}"
+# the entry's lock is owned by a run of this entry alone
+_create_pid_file "${_PIDFILE}" "multiback [^ ]+ ${_SERVICE//[^a-z0-9_]/} ${_USER//[^a-zA-Z0-9_-]/}"
 # Root-private copies of an account's filelists (see _load_account_paths),
 # and a restore's own files (see _rst_setup), removed with the lock
 _LISTS_TMP="$(mktemp -d 2> /dev/null)"

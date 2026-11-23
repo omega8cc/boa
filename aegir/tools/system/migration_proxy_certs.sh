@@ -231,11 +231,11 @@ _mpc_in_real_dir() {
     /data/disk/?*) _a=/data/disk ;;
   esac
   if [ -n "${_a}" ]; then
-    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+    _want="$(cd -P -- "${_a}" 2> /dev/null && /bin/pwd -P)${_d#"${_a}"}"
   else
-    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && /bin/pwd -P)/${_d##*/}"
   fi
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] && "$@" )
 }
 ### ./$1 in the current (pinned) directory: never through a link, never
 ### blocked on a FIFO, at most 1 MiB. Empty for anything else.
@@ -396,7 +396,7 @@ _mpc_remote_cert() {
 _mpc_acct_path() {
   local _r _p
   [ -n "${2}" ] || return 1
-  _r=$(cd -P -- "${1}" 2> /dev/null && pwd -P) || return 1
+  _r=$(cd -P -- "${1}" 2> /dev/null && /bin/pwd -P) || return 1
   _p=$(realpath -e -- "${2}" 2> /dev/null) || return 1
   case "${_p}" in
     "${_r}"/?*) printf '%s' "${1}${_p#"${_r}"}" ;;

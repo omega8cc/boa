@@ -56,7 +56,7 @@ _check_root
 [ ! -e "/root/.my.cluster_write_node.txt" ] && exit 0
 [ ! -e "/root/.my.cluster_root_pwd.txt" ] && exit 0
 
-_IS_SQLBACKUP_RUNNING=$(pgrep -f '(^|(^| )[^ ]*bash )/var/xdrago/mysql_backup\.sh( |$)')
+_IS_SQLBACKUP_RUNNING=$(pgrep -u root -U root -f '(^|(^| )[^ ]*bash )/var/xdrago/mysql_backup\.sh( |$)')
 if [ ! -z "${_IS_SQLBACKUP_RUNNING}" ]; then
   exit 0
 fi
@@ -323,6 +323,59 @@ if [[ -n "${_mfsPid}" ]]; then
   fi
   _arch_wait_log "mysql_cluster_backup.sh (pid $$) waited ${_mfsWait} s; /data/disk/arch is no longer held, the database backup starts"
 fi
+# A migration's database snapshot holds this box: /run/boa_xmass_snapshot.pid
+# names a live root process that runs xmass init, matched as executed (a
+# pid reused after a kill -9, by another user's process, another command or
+# another verb of the tool, never holds; root is read as the real uid in
+# /proc/<pid>/status). Prints that pid while the hold stands.
+_xmass_snap_held() {
+  local _p
+  _p=$( { tr -dc '0-9' < /run/boa_xmass_snapshot.pid; } 2> /dev/null )
+  [ -n "${_p}" ] && kill -0 "${_p}" 2> /dev/null \
+    && [ "$(awk '/^Uid:/ { print $2; exit }' "/proc/${_p}/status" 2> /dev/null)" = "0" ] \
+    && { tr '\0' ' ' < "/proc/${_p}/cmdline"; } 2> /dev/null \
+    | grep -qE '^([^ ]*/)?bash (-[^ ]+ )*([^ ]*/)?xmass init( |$)' \
+    && echo "${_p}"
+}
+# The wait for that snapshot, on the console and in a log of its own: cron
+# discards this output, and a wait that ends in a normal run is no incident
+# for the incident log.
+_snap_wait_log() {
+  echo "INFO: $*"
+  mkdir -p /var/log/boa
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] INFO: $*" >> /var/log/boa/mysql.backup.wait.log
+}
+# This run empties cache tables, and a snapshot xtrabackup copies from this
+# box's live datadir must not meet that: the wait the basic backup makes,
+# with the wait marker still in place (xmass writes its hold before it
+# looks for this run, and gives way, dropping the hold, when it sees it; so
+# one of the two always goes ahead). Up to 3 hours, checked every 60 s,
+# then this run is skipped with a notice.
+_snapPid=$(_xmass_snap_held)
+if [[ -n "${_snapPid}" ]]; then
+  _snapWait=0
+  _snap_wait_log "mysql_cluster_backup.sh (pid $$) waits for a migration (xmass pid ${_snapPid}) to finish its database snapshot, up to 3 hours"
+  while [[ -n "${_snapPid}" ]] && [[ "${_snapWait}" -lt 10800 ]]; do
+    sleep 60
+    _snapWait=$(( _snapWait + 60 ))
+    _snapPid=$(_xmass_snap_held)
+  done
+  if [[ -n "${_snapPid}" ]]; then
+    _snap_wait_log "mysql_cluster_backup.sh (pid $$) waited ${_snapWait} s and the migration (xmass pid ${_snapPid}) has not finished its database snapshot; this run is skipped"
+    {
+      echo "The cluster database backup run on ${_hName} did not start: a"
+      echo "migration (xmass pid ${_snapPid}) had not finished its database snapshot"
+      echo "after this run had waited 3 hours for it. No database was dumped. Once"
+      echo "the snapshot has ended, run:"
+      echo
+      echo "  bash /var/xdrago/mysql_cluster_backup.sh"
+      echo
+    } | _backup_notice "Backup SKIPPED on [${_hName}]: a migration's database snapshot is running" "xmass pid ${_snapPid} still held it after ${_snapWait} s"
+    _sql_wait_drop
+    exit 0
+  fi
+  _snap_wait_log "mysql_cluster_backup.sh (pid $$) waited ${_snapWait} s; the migration's snapshot has ended, the database backup starts"
+fi
 if ! _check_dump_fs; then
   _sql_wait_drop
   exit 0
@@ -556,7 +609,7 @@ _mydumper_session() {
   _MYDUMPER_PREV="$!"
   trap '_p="${_MYDUMPER_PID}"; [ -z "${_p}" ] && [ "$!" != "${_MYDUMPER_PREV}" ] && _p="$!"; [ -n "${_p}" ] && kill -9 "${_p}" 2> /dev/null; exit 130' INT TERM HUP
   ( cd -P -- "${_d}" 2> /dev/null \
-    && { [ "${_want}" = "-" ] || [ "$(pwd -P)" = "${_want}" ]; } \
+    && { [ "${_want}" = "-" ] || [ "$(/bin/pwd -P)" = "${_want}" ]; } \
     && exec setsid -w "$@" ) < /dev/null &
   _MYDUMPER_PID=$!
   wait "${_MYDUMPER_PID}"
@@ -648,17 +701,27 @@ _mydumper_lockwait_opts() {
 ### the server stored for it: a plain SET before its CREATE and the file's
 ### mode after it (myloader stops on a versioned-comment SET in the middle
 ### of a file). Mode words 8.x refuses are left out, so a 5.7 dump loads
-### there. It reads the file whole, never through a link, and replaces it
+### there. A routine's utf8mb4 parameters and return value take the loading
+### session's default_collation_for_utf8mb4, which no dump names: a routine
+### whose parameters (and return value) share one of the two defaults that
+### setting takes gets it the same way, the session's own value back after
+### it, read on any server (a 5.x or MariaDB one names utf8mb4_general_ci
+### there, which a load on MySQL 8 then keeps; a server that refuses that
+### read gives the modes alone); each is a statement prepared from one that
+### names MySQL 8, so a 5.x or MariaDB server, which has no such setting,
+### runs DO 0 in its place. It reads the file whole, never through a link, and replaces it
 ### through a new one in the same directory. Exits 1, the file as it was,
 ### when a line cannot be placed; 2 when an object had no mode to give.
 _MYDUMPER_MODES_PL='use strict; use Fcntl;
-my ($f) = @ARGV; my (%m, @o, $p, $miss);
+my ($f) = @ARGV; my (%m, %c, @o, $p, $q, $miss);
 my $gone = qr/^(?:NO_AUTO_CREATE_USER|NO_FIELD_OPTIONS|NO_KEY_OPTIONS|NO_TABLE_OPTIONS|DB2|MAXDB|MSSQL|MYSQL323|MYSQL40|ORACLE|POSTGRESQL)$/;
 for (split /\n/, (defined $ENV{_MYDUMPER_MODES} ? $ENV{_MYDUMPER_MODES} : "")) {
-  my ($t, $h, $s) = split /\t/, $_, 3;
+  my ($t, $h, $s, $k) = split /\t/, $_, 4;
   next unless defined $s && $t =~ /^(?:TRIGGER|FUNCTION|PROCEDURE|EVENT)$/
     && $h =~ /^[0-9A-Fa-f]+$/ && $s =~ /^[A-Z0-9_,]*$/;
   $m{$t . " " . lc($h)} = join(",", grep { $_ !~ $gone } split(/,/, $s));
+  $c{$t . " " . lc($h)} = $k if defined $k && $t =~ /^(?:FUNCTION|PROCEDURE)$/
+    && $k =~ /^utf8mb4_(?:general_ci|0900_ai_ci)$/;
 }
 sysopen(my $in, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit 1;
 my @st = stat($in); exit 1 unless @st && -f _;
@@ -670,17 +733,27 @@ for my $x (@l[0 .. ($#l < 9 ? $#l : 9)]) {
 exit 1 unless defined $fm;
 for my $i (0 .. $#l) {
   my $x = $l[$i];
-  if ($p && $x =~ /^SET character_set_client = \@PREV_CHARACTER_SET_CLIENT;$/) {
-    push @o, "SET SQL_MODE=\x27$fm\x27;\n"; $p = 0;
+  if (($p || $q) && $x =~ /^SET character_set_client = \@PREV_CHARACTER_SET_CLIENT;$/) {
+    push @o, "SET SQL_MODE=\x27$fm\x27;\n" if $p;
+    push @o, "SET \@BOA_UTF8MB4_SQL = IF(VERSION() LIKE \x278.%\x27, \x27SET SESSION default_collation_for_utf8mb4 = \@BOA_PREV_UTF8MB4\x27, \x27DO 0\x27);\n",
+      "PREPARE boa_utf8mb4 FROM \@BOA_UTF8MB4_SQL;\n", "EXECUTE boa_utf8mb4;\n", "DEALLOCATE PREPARE boa_utf8mb4;\n" if $q;
+    $p = 0; $q = 0;
   }
   push @o, $x;
   next unless $x =~ /^DROP (TRIGGER|FUNCTION|PROCEDURE|EVENT) IF EXISTS `((?:[^`]|``)+)`;$/;
   my ($t, $n) = ($1, $2); $n =~ s/``/`/g;
-  exit 0 if $i < $#l && $l[$i + 1] =~ /^SET SQL_MODE=/;
-  my $s = $m{$t . " " . unpack("H*", $n)};
+  exit 0 if $i < $#l && $l[$i + 1] =~ /^SET (?:SQL_MODE=|\@BOA_UTF8MB4_SQL )/;
+  my $key = $t . " " . unpack("H*", $n);
+  my $s = $m{$key};
   if (defined $s) { push @o, "SET SQL_MODE=\x27$s\x27;\n"; $p = 1; } else { $miss = 1; }
+  if (defined $c{$key}) {
+    push @o, "SET \@BOA_UTF8MB4_SQL = IF(VERSION() LIKE \x278.%\x27, \x27SET \@BOA_PREV_UTF8MB4 = \@\@SESSION.default_collation_for_utf8mb4,"
+      . " SESSION default_collation_for_utf8mb4 = \x27\x27$c{$key}\x27\x27\x27, \x27DO 0\x27);\n",
+      "PREPARE boa_utf8mb4 FROM \@BOA_UTF8MB4_SQL;\n", "EXECUTE boa_utf8mb4;\n";
+    $q = 1;
+  }
 }
-exit 1 if $p;
+exit 1 if $p || $q;
 my $w = $f . ".modes";
 sysopen(my $out, $w, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600) or exit 1;
 if (!(print {$out} @o) || !close($out) || !chmod($st[2] & 07777, $w)
@@ -694,13 +767,21 @@ exit($miss ? 2 : 0);'
 ### mydumper wrote them), 2 when an object or a file kept the dump's mode.
 ### It never fails a dump: the caller says what was left.
 _mydumper_object_modes() {
-  local _db="${1}" _dir="${2}" _q _modes _f _rc=0
+  local _db="${1}" _dir="${2}" _q _c _modes _f _rc=0
   shift 2
   [[ "${_db}" =~ ^[A-Za-z0-9_]+$ ]] || return 2
-  _q="SELECT 'TRIGGER', HEX(TRIGGER_NAME), SQL_MODE FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = '${_db}'"
-  _q="${_q} UNION ALL SELECT ROUTINE_TYPE, HEX(ROUTINE_NAME), SQL_MODE FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA = '${_db}'"
-  _q="${_q} UNION ALL SELECT 'EVENT', HEX(EVENT_NAME), SQL_MODE FROM information_schema.EVENTS WHERE EVENT_SCHEMA = '${_db}'"
-  _modes=$("$@" -N -B -e "${_q}" 2> /dev/null) || return 1
+  _c="IFNULL((SELECT IF(COUNT(DISTINCT p.COLLATION_NAME) = 1, MIN(p.COLLATION_NAME), '') FROM information_schema.PARAMETERS p"
+  _c="${_c} WHERE p.SPECIFIC_SCHEMA = r.ROUTINE_SCHEMA AND p.SPECIFIC_NAME = r.ROUTINE_NAME AND p.ROUTINE_TYPE = r.ROUTINE_TYPE"
+  _c="${_c} AND p.COLLATION_NAME IN ('utf8mb4_general_ci', 'utf8mb4_0900_ai_ci')), '')"
+  while :; do
+    _q="SELECT 'TRIGGER', HEX(TRIGGER_NAME), SQL_MODE, '' FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = '${_db}'"
+    _q="${_q} UNION ALL SELECT r.ROUTINE_TYPE, HEX(r.ROUTINE_NAME), r.SQL_MODE, ${_c} FROM information_schema.ROUTINES r WHERE r.ROUTINE_SCHEMA = '${_db}'"
+    _q="${_q} UNION ALL SELECT 'EVENT', HEX(EVENT_NAME), SQL_MODE, '' FROM information_schema.EVENTS WHERE EVENT_SCHEMA = '${_db}'"
+    _modes=$("$@" -N -B -e "${_q}" 2> /dev/null) && break
+    [[ "${_c}" != "''" ]] || return 1
+    echo "WARN: the stored routines' utf8mb4 defaults of ${_db} could not be read: its routines load with the loading server's default" >&2
+    _c="''"
+  done
   [[ -n "${_modes}" ]] || return 0
   for _f in "${_dir}"/*-schema-post.sql "${_dir}"/*-schema-triggers.sql; do
     if [[ -L "${_f}" ]]; then
@@ -841,10 +922,92 @@ _mysqldump_objects_opts() {
   return 0
 }
 
+### A routine's utf8mb4 parameters and return value take the loading
+### session's default_collation_for_utf8mb4, which no dump names, so a load
+### on MySQL 8 gave a routine made under utf8mb4_general_ci the server's
+### default. mysqldump writes each routine after its DROP line, between a
+### line setting the routine's sql_mode and one putting the saved sql_mode
+### back: a routine whose parameters (and return value) share one of the two
+### defaults that setting takes gets it after the first and the session's
+### own value back after the second, as the MyQuick dumps and the panel's
+### classic dump write them, each a statement prepared from one naming
+### MySQL 8 (a 5.x or MariaDB server, which has no such setting, runs DO 0
+### in its place). Reads the dump on stdin and writes it on stdout, one line
+### at a time; _MYSQLDUMP_ROUTINES holds each routine's type, hex name and
+### default, tab-separated, one per line. Exits 1 when a write fails.
+_MYSQLDUMP_ROUTINES_PL='use strict;
+binmode(STDIN); binmode(STDOUT);
+my (%c, $p, $r);
+for (split /\n/, (defined $ENV{_MYSQLDUMP_ROUTINES} ? $ENV{_MYSQLDUMP_ROUTINES} : "")) {
+  my ($t, $h, $k) = split /\t/, $_, 3;
+  next unless defined $k && $t =~ /^(?:FUNCTION|PROCEDURE)$/ && $h =~ /^[0-9A-Fa-f]+$/
+    && $k =~ /^utf8mb4_(?:general_ci|0900_ai_ci)$/;
+  $c{$t . " " . lc($h)} = $k;
+}
+while (defined(my $x = <STDIN>)) {
+  print $x or exit 1;
+  next unless %c && substr($x, 0, 9) eq "/*!50003 ";
+  if ($x =~ /^\/\*!50003 DROP (FUNCTION|PROCEDURE) IF EXISTS `((?:[^`]|``)+)` \*\/;\n\z/) {
+    my ($t, $n) = ($1, $2); $n =~ s/``/`/g;
+    $p = $c{$t . " " . unpack("H*", $n)};
+  }
+  elsif (defined $p && $x =~ /^\/\*!50003 SET sql_mode +=[ ]+\x27[A-Z0-9_,]*\x27 \*\/ ;\n\z/) {
+    print "SET \@BOA_UTF8MB4_SQL = IF(VERSION() LIKE \x278.%\x27, \x27SET \@BOA_PREV_UTF8MB4 = \@\@SESSION.default_collation_for_utf8mb4,"
+      . " SESSION default_collation_for_utf8mb4 = \x27\x27$p\x27\x27\x27, \x27DO 0\x27);\n",
+      "PREPARE boa_utf8mb4 FROM \@BOA_UTF8MB4_SQL;\n", "EXECUTE boa_utf8mb4;\n" or exit 1;
+    undef $p; $r = 1;
+  }
+  elsif ($r && $x =~ /^\/\*!50003 SET sql_mode +=[ ]+\@saved_sql_mode \*\/ ;\n\z/) {
+    print "SET \@BOA_UTF8MB4_SQL = IF(VERSION() LIKE \x278.%\x27, \x27SET SESSION default_collation_for_utf8mb4 = \@BOA_PREV_UTF8MB4\x27, \x27DO 0\x27);\n",
+      "PREPARE boa_utf8mb4 FROM \@BOA_UTF8MB4_SQL;\n", "EXECUTE boa_utf8mb4;\n", "DEALLOCATE PREPARE boa_utf8mb4;\n" or exit 1;
+    $r = 0;
+  }
+}
+close(STDOUT) or exit 1;
+exit 0;'
+
+### Sets _MYSQLDUMP_ROUTINES for _MYSQLDUMP_ROUTINES_PL: each stored routine
+### of database $1 with the utf8mb4 default its parameters and return value
+### share (empty when they share none), read with the client command that
+### follows on any server (a 5.x or MariaDB one names utf8mb4_general_ci,
+### which a load on MySQL 8 then keeps). A refused read is said on stderr
+### and leaves it empty, so the dump is written as it always was.
+_mysqldump_routine_colls() {
+  local _db="$1" _q _r
+  shift
+  _MYSQLDUMP_ROUTINES=""
+  [[ "${_db}" =~ ^[A-Za-z0-9_]+$ ]] || return 1
+  _q="SELECT r.ROUTINE_TYPE, HEX(r.ROUTINE_NAME), IFNULL((SELECT IF(COUNT(DISTINCT p.COLLATION_NAME) = 1, MIN(p.COLLATION_NAME), '') FROM information_schema.PARAMETERS p"
+  _q="${_q} WHERE p.SPECIFIC_SCHEMA = r.ROUTINE_SCHEMA AND p.SPECIFIC_NAME = r.ROUTINE_NAME AND p.ROUTINE_TYPE = r.ROUTINE_TYPE"
+  _q="${_q} AND p.COLLATION_NAME IN ('utf8mb4_general_ci', 'utf8mb4_0900_ai_ci')), '') FROM information_schema.ROUTINES r WHERE r.ROUTINE_SCHEMA = '${_db}'"
+  if ! _r=$("$@" -N -B -e "${_q}" 2> /dev/null); then
+    echo "WARN: the stored routines' utf8mb4 defaults of ${_db} could not be read: its routines load with the loading server's default" >&2
+    return 1
+  fi
+  _MYSQLDUMP_ROUTINES="${_r}"
+  return 0
+}
+
+### A dump's routines take their own utf8mb4 default along, written as the
+### dump goes (_MYSQLDUMP_ROUTINES_PL), so no second copy of it is made; a
+### database with none passes as it is.
+_mysqldump_routine_lines() {
+  if [[ "${_MYSQLDUMP_ROUTINES}" == *$'\t'utf8mb4_* ]]; then
+    _MYSQLDUMP_ROUTINES="${_MYSQLDUMP_ROUTINES}" perl -e "${_MYSQLDUMP_ROUTINES_PL}"
+  else
+    cat
+  fi
+}
+
 _backup_this_database_with_mysqldump() {
+  local -a _ps
   _check_running
   ### _C_SQL unquoted by design: the client and its option file, two words.
   _mysqldump_objects_opts "${_DB}" ${_C_SQL}
+  _MYSQLDUMP_ROUTINES=""
+  case " ${_MYSQLDUMP_OBJECTS[*]} " in
+    *" --routines "*) _mysqldump_routine_colls "${_DB}" ${_C_SQL} ;;
+  esac
   ### --defaults-extra-file must stay the first option.
   mysqldump \
     --defaults-extra-file=/root/.my.cluster_root.cnf \
@@ -856,8 +1019,12 @@ _backup_this_database_with_mysqldump() {
     --no-tablespaces \
     "${_MYSQLDUMP_OBJECTS[@]}" \
     --hex-blob ${_DB} \
-    > ${_SAVELOCATION}/${_DB}.sql 2> "${_SAVELOCATION}/${_DB}.mysqldump.log"
-  _MYSQLDUMP_RC=$?
+    2> "${_SAVELOCATION}/${_DB}.mysqldump.log" \
+    | _mysqldump_routine_lines > ${_SAVELOCATION}/${_DB}.sql
+  ### Either side failing fails the dump: the filter writes the file.
+  _ps=("${PIPESTATUS[@]}")
+  _MYSQLDUMP_RC="${_ps[0]}"
+  [ "${_MYSQLDUMP_RC}" -ne "0" ] || _MYSQLDUMP_RC="${_ps[1]}"
   ### A failed or truncated dump used to be compressed and kept as THE
   ### backup for the night: the rc was never read, and gzip turns any
   ### partial file into a valid archive. Demand rc=0 and mysqldump's own
