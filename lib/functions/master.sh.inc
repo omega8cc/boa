@@ -1806,6 +1806,7 @@ _aegir_master_upgrade() {
     chmod 0700 /opt/tmp/state/aegir &> /dev/null
     rm -f /opt/tmp/state/aegir/status-AegirUpgrade-FAIL \
       /opt/tmp/state/aegir/status-AegirUpgrade-OK \
+      /opt/tmp/state/aegir/status-AegirUpgrade-KEPT \
       /opt/tmp/status-AegirUpgrade-FAIL &> /dev/null
     ### The panel's web front is held while it moves by the global include set
     ### (global-main.inc): deploy it before the Master's own migrate, so the
@@ -1864,7 +1865,11 @@ _aegir_master_upgrade() {
     find /var/aegir/.drush -type f -exec chmod 0644 {} \; &> /dev/null
     chmod 0440 /var/aegir/.drush/*.php &> /dev/null
     chmod 0711 /var/aegir/.drush &> /dev/null
-    _msg "INFO: Ægir Master Instance upgrade completed"
+    if [ -e "/opt/tmp/state/aegir/status-AegirUpgrade-KEPT" ]; then
+      _msg "INFO: Ægir Master Instance not upgraded, the panel stays where it was"
+    else
+      _msg "INFO: Ægir Master Instance upgrade completed"
+    fi
   else
     _msg "INFO: Ægir Master Instance not upgraded this time"
   fi
