@@ -4273,6 +4273,21 @@ _fix_tmp_perms() {
   fi
 }
 
+# The reports below this folder hold what a run printed, in debug mode a
+# database password among it, in files left readable to anyone: with the
+# folder itself closed no other account reaches them, whatever their modes.
+# A link at the name, or a folder that is not root's, is left as it is
+# (status 1).
+_reports_root_only() {
+  local _d="${_vBs}/reports" _s
+  [ -L "${_d}" ] && return 1
+  [ -d "${_d}" ] || return 0
+  _s=$(stat -c '%u:%g:%a' -- "${_d}" 2> /dev/null)
+  [ "${_s%%:*}" = "0" ] || return 1
+  [ "${_s}" = "0:0:700" ] && return 0
+  chown -h root:root -- "${_d}" && chmod 00700 -- "${_d}"
+}
+
 # The master Drush arm, run from the barracuda process with no _ROOT exported,
 # copied the Drush 8 tree to /drush and rotated the previous copy under
 # /backups/system. The arm is guarded now and heals its own leftovers, but
@@ -6234,8 +6249,8 @@ CSFSTANDBY
     # Backup family: guard on duplicity itself -- never replace a backup tool
     # while a backup run is in flight.
     _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f39 --guard duplicity
-    _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f30 --guard /local/bin/barracuda
-    _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f80 --guard /local/bin/boa
+    _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f29 --guard /local/bin/barracuda
+    _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f79 --guard /local/bin/boa
     _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/${_tBn}/dcysetup" f91 --guard duplicity
     _fetch_versioned ${_optBin}/dhcpfix "${_urlHmr}/${_tBn}/dhcpfix" f98 --guard /local/bin/dhcpfix
     _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/${_tBn}/duobackboa" f40 --guard duplicity
@@ -6268,7 +6283,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/lock.inc "${_urlHmr}/${_tBn}/lock.inc" f84 --guard /local/bin/lock.inc
     _fetch_versioned ${_optBin}/multiback "${_urlHmr}/${_tBn}/multiback" f70 --guard duplicity
     _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/${_tBn}/mybackup" f85 --mode 755 --guard duplicity
-    _fetch_versioned ${_optBin}/octopus "${_urlHmr}/${_tBn}/octopus" f47 --guard /local/bin/octopus
+    _fetch_versioned ${_optBin}/octopus "${_urlHmr}/${_tBn}/octopus" f46 --guard /local/bin/octopus
     _fetch_versioned ${_optBin}/perftest "${_urlHmr}/${_tBn}/perftest" f92 --symlink ${_usrBin}/perftest --guard /local/bin/perftest
     _fetch_versioned ${_optBin}/renameaegirhost "${_urlHmr}/${_tBn}/renameaegirhost" f39 --guard /local/bin/renameaegirhost
     _fetch_versioned ${_optBin}/screenfetch "${_urlHmr}/${_tBn}/screenfetch" f99 --guard /local/bin/screenfetch
@@ -8275,6 +8290,7 @@ if [ "$(id -u)" -eq 0 ]; then
     _fix_sftp_server
     _fix_ping_perms
     _fix_tmp_perms
+    _reports_root_only
     _fix_stray_drush
     _fix_fpm_process_max
     _if_fix_lshell

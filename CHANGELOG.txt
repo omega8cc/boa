@@ -11,6 +11,10 @@
     * websh reads the words in front of a Drush or dr runner after the
       shell's expansions too, as it reads those up to the command word.
 
+    * The install and upgrade reports under /var/backups/reports are root's
+      alone, and the mail of a report masks the database password Drush
+      prints in debug mode.
+
 @=> New Features
 
     * Upgrade all sites, the platform task that upgrades every Drupal 10 or

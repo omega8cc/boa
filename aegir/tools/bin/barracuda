@@ -850,6 +850,12 @@ _if_extended_report() {
   fi
 }
 
+# The log as its mail carries it: the password in a mysql:// URL, which Drush
+# prints in debug mode, is masked and nothing else is changed.
+_mail_mask_dbpass() {
+  LC_ALL=C sed -E "s#(mysqli?:(\\\\?/){2}[^:@/[:space:]'\"]*:)[^@[:space:]'\"]*(@[^@/:,[:space:]'\"]*)*@#\1***@#g" "$@"
+}
+
 # The pass log as a mail's body; when it is larger than a mail can carry
 # (one failed unpack wrote 270,000 tar errors, 59 MB, and the mail was never
 # sent), its ALRT, FATAL and ERROR lines, its first and last lines and where
@@ -861,15 +867,16 @@ _up_mail_body() {
     echo "The log is ${_sz} bytes, too large to mail whole; it is ${_UP_LOG}"
     echo
     echo "Its first 200 ALRT, FATAL and ERROR lines:"
-    grep -a -E 'ALRT|FATAL|ERROR' "${_UP_LOG}" | head -n 200 | cut -c1-2000
+    grep -a -E 'ALRT|FATAL|ERROR' "${_UP_LOG}" | head -n 200 \
+      | _mail_mask_dbpass | cut -c1-2000
     echo
     echo "Its first 100 lines:"
-    head -n 100 "${_UP_LOG}" | cut -c1-2000
+    head -n 100 "${_UP_LOG}" | _mail_mask_dbpass | cut -c1-2000
     echo
     echo "Its last 300 lines:"
-    tail -n 300 "${_UP_LOG}" | cut -c1-2000
+    tail -n 300 "${_UP_LOG}" | _mail_mask_dbpass | cut -c1-2000
   else
-    cut -c1-2000 "${_UP_LOG}"
+    _mail_mask_dbpass "${_UP_LOG}" | cut -c1-2000
   fi
 }
 
@@ -1663,6 +1670,21 @@ _boa_on_signal() {
   exit "${2}"
 }
 
+# The reports below this folder hold what a run printed, in debug mode a
+# database password among it, in files left readable to anyone: with the
+# folder itself closed no other account reaches them, whatever their modes.
+# A link at the name, or a folder that is not root's, is left as it is
+# (status 1).
+_reports_root_only() {
+  local _d="${_vBs}/reports" _s
+  [ -L "${_d}" ] && return 1
+  [ -d "${_d}" ] || return 0
+  _s=$(stat -c '%u:%g:%a' -- "${_d}" 2> /dev/null)
+  [ "${_s%%:*}" = "0" ] || return 1
+  [ "${_s}" = "0:0:700" ] && return 0
+  chown -h root:root -- "${_d}" && chmod 00700 -- "${_d}"
+}
+
 _up_start() {
   if [ -e "/run/boa_run.pid" ]; then
     echo
@@ -1702,6 +1724,8 @@ _up_start() {
     #pkill -9 -f owl.sh
     #rm -f /run/*daily*.pid
     mkdir -p ${_LOG_DIR}
+    _reports_root_only \
+      || echo "ALRT: ${_vBs}/reports is a link or not root's own folder, left as it is: other accounts may reach the reports"
     cd ${_vBs}
     rm -f ${_vBs}/BARRACUDA.sh*
     ### Debugging helper: the build tree in /opt/tmp/boa is fetched ONCE and
