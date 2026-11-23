@@ -25,6 +25,11 @@
       from the platform's own records alone, on the site form and in
       Install, Import, Migrate and Clone tasks.
 
+    * A barracuda pass whose Master panel upgrade stopped before the panel
+      moved ("FATAL ERROR: hostmaster-migrate exited") no longer closes that
+      step with "Ægir Master Instance upgrade completed"; it says the panel
+      was not upgraded and stays where it was.
+
 ###
 ### Stable BOA-5.88.888 PRO/LTS - DRAGON EDITION
 ### Date: Mon 23 Nov 2026 13:32:57 CET in Warsaw
