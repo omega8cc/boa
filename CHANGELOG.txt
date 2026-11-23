@@ -1,4 +1,18 @@
 ###
+### In development - changes since BOA-5.88.888
+###
+
+@=> Important Fixes
+
+    * A Backup or Clone of a Drupal or Backdrop site no longer fails on a file
+      or folder that a shell user of the account made closed (0600, 0700) in
+      the site's files or private store, and a renaming Migrate copies the
+      stores with one in them, private/temp included. The step that opens
+      what the web server wrote closed before every archive now reads the
+      account's shell users as well: group read for the account's own
+      groups, and nothing else.
+
+###
 ### Stable BOA-5.88.888 PRO/LTS - DRAGON EDITION
 ### Date: Mon 23 Nov 2026 13:32:57 CET in Warsaw
 ### Enjoy the luck of the Dragon
