@@ -1332,6 +1332,19 @@
 
 @=> Important Fixes
 
+    * An account set to its box's own database host (_THIS_DB_HOST=FQDN)
+      installs again. Its setup turned the keyword into the box's name
+      before any step read it, so each step took the name for a remote
+      database server: no login of the account's own was made and the
+      control panel's install failed. The keyword now reaches every step,
+      which reads it as the box's own server: the account's own login with
+      a random password and the box's name as its database host, kept so
+      by each upgrade. An attempted install no longer leaves the database
+      root password in the account's password file; a file an earlier
+      attempt left is replaced, with an alert. The two settings templates
+      set _THIS_DB_HOST once, where DATABASE DEFAULT HOST documents it: a
+      second line further down set it back to localhost.
+
     * In remote database mode the Master's database login (aegir_root)
       takes a password only from /root/.my.pass.txt. Without the file, or
       with it empty, the upgrade's database password sync changes nothing
