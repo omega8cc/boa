@@ -15,6 +15,10 @@
       alone, and the mail of a report masks the database password Drush
       prints in debug mode.
 
+    * An upgrade of an account in the box's own name database mode
+      (_THIS_DB_HOST=FQDN) also removes old backups of its password file
+      that hold the root password, and says how many.
+
 @=> New Features
 
     * Upgrade all sites, the platform task that upgrades every Drupal 10 or
