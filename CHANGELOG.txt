@@ -1332,6 +1332,20 @@
 
 @=> Important Fixes
 
+    * A site whose database was dumped from a MySQL 5.7 or MariaDB server
+      under an sql_mode naming NO_AUTO_CREATE_USER (MariaDB's default) or
+      another word MySQL 8.x no longer has loads on Percona 8.x: the fast
+      load's store and a classic dump's stored routines, triggers and
+      events lose those words just before the load, and a 5.7 or MariaDB
+      target loads the dump as it is. Its Migrate onto an 8.x box ended at
+      the load with ERROR 1231.
+
+    * A Verify or Backup of a site whose database lives on a MariaDB
+      server finds a login lock a killed load left there and gives it
+      back. The check read a column MariaDB does not have, so every such
+      task ended with a warning, and a login left locked stayed locked,
+      its site's backups failing.
+
     * A Drupal 8 or newer site's temporary directory is written to
       settings.php as an absolute path, as Drupal's own settings file asks
       for it: the site's private/temp under the codebase's root, read when
