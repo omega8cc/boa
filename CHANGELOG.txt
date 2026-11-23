@@ -50,6 +50,11 @@
       from the platform's own records alone, on the site form and in
       Install, Import, Migrate and Clone tasks.
 
+    * An octopus upgrade no longer waits 50 seconds in part A for a queue run
+      that cannot start while the upgrade holds the account's queue runners,
+      and it no longer announces one. A server's first install keeps its
+      accelerated queue.
+
     * A platform set to another command line PHP than its account's cli.info
       (a line in cli-per-platform.info, or a phpNN.info marker) no longer
       fails the Verify an octopus upgrade queues for it. During the upgrade
