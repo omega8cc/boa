@@ -2559,68 +2559,62 @@ _init_sql_root_credentials() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _init_sql_root_credentials"
   fi
-  if [ ! -e "/root/.my.pass.txt" ]; then
-    if [ "${_THIS_DB_HOST}" = "localhost" ] \
-      || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
-      || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
-      || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        _msg "INFO: Generating random password for ${_DB_SERVER}"
-      fi
-    else
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        _msg "INFO: Using default dummy password for ${_DB_SERVER}"
-      fi
+  ### In remote DB mode the file is the operator's to create: it holds the
+  ### database server's root password. Nothing is written without it, not
+  ### even an empty file, which the next run would take for that password.
+  local _remoteDb=YES
+  if [ "${_THIS_DB_HOST}" = "localhost" ] \
+    || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
+    || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
+    || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
+    _remoteDb=NO
+  fi
+  if [ ! -e "/root/.my.pass.txt" ] && [ "${_remoteDb}" = "NO" ]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: Generating random password for ${_DB_SERVER}"
     fi
     touch /root/.my.pass.txt
     chmod 0600 /root/.my.pass.txt &> /dev/null
-    if [ "${_THIS_DB_HOST}" = "localhost" ] \
-      || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
-      || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
-      || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
-      _ESC_PASS=""
-      _LEN_PASS=0
-      if [ "${_STRONG_PASSWORDS}" = "YES" ]; then
-        _PWD_CHARS=64
-      elif [ "${_STRONG_PASSWORDS}" = "NO" ]; then
-        _PWD_CHARS=32
-      else
-        _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
-        if [ ! -z "${_STRONG_PASSWORDS}" ] \
-          && [ "${_STRONG_PASSWORDS}" -gt 32 ]; then
-          _PWD_CHARS="${_STRONG_PASSWORDS}"
-        else
-          _PWD_CHARS=32
-        fi
-        if [ ! -z "${_PWD_CHARS}" ] \
-          && [ "${_PWD_CHARS}" -gt 128 ]; then
-          _PWD_CHARS=128
-        fi
-      fi
-      if [ "${_STRONG_PASSWORDS}" = "YES" ] \
-        || [ "${_PWD_CHARS}" -gt 32 ]; then
-        if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
-          _ESC_PASS="$(openssl rand -base64 64 | tr -d '\n')"
-        else
-          _RANDPASS_TEST=$(randpass -V 2>&1)
-          if [[ "${_RANDPASS_TEST}" =~ "alnum" ]]; then
-            _ESC_PASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
-          else
-            _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
-            _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
-            _ESC_PASS=$(_sanitize_string "${_ESC_PASS}" 2>&1)
-          fi
-        fi
-        _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
-        _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
-      fi
-      if [ -z "${_ESC_PASS}" ] || [ "${_LEN_PASS}" -lt 9 ]; then
-        _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
-        _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
-        _ESC_PASS=$(_sanitize_string "${_ESC_PASS}" 2>&1)
-      fi
+    _ESC_PASS=""
+    _LEN_PASS=0
+    if [ "${_STRONG_PASSWORDS}" = "YES" ]; then
+      _PWD_CHARS=64
+    elif [ "${_STRONG_PASSWORDS}" = "NO" ]; then
+      _PWD_CHARS=32
     else
-      _ESC_PASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
+      _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
+      if [ ! -z "${_STRONG_PASSWORDS}" ] \
+        && [ "${_STRONG_PASSWORDS}" -gt 32 ]; then
+        _PWD_CHARS="${_STRONG_PASSWORDS}"
+      else
+        _PWD_CHARS=32
+      fi
+      if [ ! -z "${_PWD_CHARS}" ] \
+        && [ "${_PWD_CHARS}" -gt 128 ]; then
+        _PWD_CHARS=128
+      fi
+    fi
+    if [ "${_STRONG_PASSWORDS}" = "YES" ] \
+      || [ "${_PWD_CHARS}" -gt 32 ]; then
+      if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
+        _ESC_PASS="$(openssl rand -base64 64 | tr -d '\n')"
+      else
+        _RANDPASS_TEST=$(randpass -V 2>&1)
+        if [[ "${_RANDPASS_TEST}" =~ "alnum" ]]; then
+          _ESC_PASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
+        else
+          _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
+          _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
+          _ESC_PASS=$(_sanitize_string "${_ESC_PASS}" 2>&1)
+        fi
+      fi
+      _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
+      _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
+    fi
+    if [ -z "${_ESC_PASS}" ] || [ "${_LEN_PASS}" -lt 9 ]; then
+      _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
+      _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
+      _ESC_PASS=$(_sanitize_string "${_ESC_PASS}" 2>&1)
     fi
     echo "${_ESC_PASS}" > /root/.my.pass.txt
   fi
@@ -2641,6 +2635,13 @@ _init_sql_root_credentials() {
     chmod 0600 /root/.my.pass.txt
 
 EOF
+    if [ "${_remoteDb}" = "YES" ]; then
+      cat <<EOF
+    In REMOTE DB SERVER MODE (_THIS_DB_HOST=${_THIS_DB_HOST}) the file must
+    hold the root password of that database server before the first run.
+
+EOF
+    fi
     _msg "EXIT on error due to not found file with your ${_DB_SERVER} root password"
     _clean_pid_exit _init_sql_root_credentials_a
   fi
