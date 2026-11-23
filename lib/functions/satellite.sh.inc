@@ -6092,6 +6092,8 @@ _satellite_run_pre_install() {
       0) _msg "${_STATUS} A: Old panel core: error handler made safe for PHP 8" ;;
       2) _msg "${_STATUS} A: ALRT: Old panel core keeps an error handler PHP 8 cannot call" ;;
     esac
+    ### syncpass replaces the password file without reading it: check it first
+    _satellite_root_pass_leftover_drop
     _RST=$(syncpass fix ${_USER} 2>&1)
     _provision_backend_dbpass_sync
   fi
