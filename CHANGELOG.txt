@@ -1,4 +1,31 @@
 ###
+### In development - changes since BOA-5.88.888
+###
+
+@=> Important Fixes
+
+    * A Backup or Clone of a Drupal or Backdrop site no longer fails on a file
+      or folder that a shell user of the account made closed (0600, 0700) in
+      the site's files or private store, and a renaming Migrate copies the
+      stores with one in them, private/temp included. The step that opens
+      what the web server wrote closed before every archive now reads the
+      account's shell users as well: group read for the account's own
+      groups, and nothing else.
+
+    * A platform Verify reads a module's update hooks through the files its
+      install file includes, ten levels down, and only under the module's
+      own name; a distribution that keeps its hooks there (Varbase) had
+      every such module recorded as unknown, so a downgrade went unseen.
+
+    * The Drupal 7 and Backdrop platform scans follow those cores' own
+      listings: a copy made for another core takes no other copy's place,
+      and nothing inside Backdrop's css, js or templates folders is listed.
+
+    * The panel reads a platform's install profiles and their languages
+      from the platform's own records alone, on the site form and in
+      Install, Import, Migrate and Clone tasks.
+
+###
 ### Stable BOA-5.88.888 PRO/LTS - DRAGON EDITION
 ### Date: Mon 23 Nov 2026 13:32:57 CET in Warsaw
 ### Enjoy the luck of the Dragon
