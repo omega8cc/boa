@@ -2,6 +2,15 @@
 ### In development - changes since BOA-5.88.888
 ###
 
+@=> Security
+
+    * websh reads a redirection as dash does wherever it stands: in front
+      of the command, behind a wrapper or glued to a word it is the shell's,
+      and the words around it are judged by the Drush and PHP rules.
+
+    * websh reads the words in front of a Drush or dr runner after the
+      shell's expansions too, as it reads those up to the command word.
+
 @=> Important Fixes
 
     * A Backup or Clone of a Drupal or Backdrop site no longer fails on a file
@@ -29,6 +38,15 @@
       moved ("FATAL ERROR: hostmaster-migrate exited") no longer closes that
       step with "Ægir Master Instance upgrade completed"; it says the panel
       was not upgraded and stays where it was.
+
+    * dr in a shell account finds its site when the value of --url comes
+      from a variable, or the folder of a cd in front of it comes from one
+      or stands in quotes: a Composer script or a git alias that named the
+      site as --url=$URL started dr with no site.
+
+    * A Drush or dr line that gives an option from a variable of the
+      option's own name (--uri=$uri) runs: websh took --uri= for an
+      assignment to uri and refused the line.
 
 ###
 ### Stable BOA-5.88.888 PRO/LTS - DRAGON EDITION
