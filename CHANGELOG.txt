@@ -1332,6 +1332,14 @@
 
 @=> Important Fixes
 
+    * In remote database mode the Master's database login (aegir_root)
+      takes a password only from /root/.my.pass.txt. Without the file, or
+      with it empty, the upgrade's database password sync changes nothing
+      for it (the login keeps the random password the upgrade gave it
+      just before) and an install stops before the login is made, each
+      with an alert. A fixed fallback was used without the file, and an
+      empty file gave the login an empty password its panel could not use.
+
     * A site whose database was dumped from a MySQL 5.7 or MariaDB server
       under an sql_mode naming NO_AUTO_CREATE_USER (MariaDB's default) or
       another word MySQL 8.x no longer has loads on Percona 8.x: the fast
