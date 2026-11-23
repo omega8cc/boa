@@ -378,7 +378,7 @@ _nginx_names_with_here() {
   local _p="${1}" _f _rc=""
   local -a _n=() _m=()
   shift
-  while IFS= read -r -d '' _f; do
+  while LC_ALL=C IFS= read -r -d '' _f; do
     case "${_f}" in
       /rc=*) _rc="${_f#/rc=}"; continue ;;
     esac
@@ -395,7 +395,7 @@ _nginx_names_with_here() {
   if [ "${_rc}" = "0" ]; then
     [ "${#_n[@]}" -gt 0 ] || return 0
     _rc=""
-    while IFS= read -r -d '' _f; do
+    while LC_ALL=C IFS= read -r -d '' _f; do
       case "${_f}" in
         /rc=*) _rc="${_f#/rc=}" ;;
         *) _m+=( "${_f}" ) ;;
@@ -424,7 +424,7 @@ _nginx_sed_if_here() {
     shift
   done
   shift
-  while IFS= read -r -d '' _f; do
+  while LC_ALL=C IFS= read -r -d '' _f; do
     _nginx_sed_here "${_f}" "$@"
   done < <(_nginx_names_with_here "${_p}" "${_g[@]}")
 }
@@ -444,7 +444,7 @@ _nginx_acct_sed_if() {
 # its name there, so no link on the way is followed and no FIFO blocks.
 _nginx_drop_marked() {
   local _top="${1}" _f _sub
-  while IFS= read -r -d '' -u 9 _f; do
+  while LC_ALL=C IFS= read -r -d '' -u 9 _f; do
     _f="${_f#./}"
     _sub=""
     case "${_f}" in
@@ -1042,11 +1042,21 @@ _nginx_initd_check() {
     ### copy with the older predicate still names standby.serve.cnf -- so
     ### the test names a string only the CURRENT gate carries.
     _X_INIT_TEST_D=$(cat /etc/init.d/nginx | grep standby_promoted 2>&1)
+    ### A hosted account's own nginx files are read only as root's judged
+    ### copies once the store is armed: configtest, reload and start bring the
+    ### copies up to date first, so an older script is refreshed.
+    _X_INIT_TEST_E=$(cat /etc/init.d/nginx | grep _ngxstore_sync 2>&1)
+    ### A restart tests the configuration first and keeps a running nginx
+    ### when the test fails: an older script stops every site on a file
+    ### nginx -t rejects, so it is refreshed.
+    _X_INIT_TEST_F=$(cat /etc/init.d/nginx | grep restart_tested 2>&1)
   fi
   if [[ "${_X_INIT_TEST_A}" =~ ULIMIT ]] \
     && [[ "${_X_INIT_TEST_B}" =~ Giedymin ]] \
     && [[ "${_X_INIT_TEST_C}" =~ rotate ]] \
-    && [[ "${_X_INIT_TEST_D}" =~ standby_promoted ]]; then
+    && [[ "${_X_INIT_TEST_D}" =~ standby_promoted ]] \
+    && [[ "${_X_INIT_TEST_E}" =~ _ngxstore_sync ]] \
+    && [[ "${_X_INIT_TEST_F}" =~ restart_tested ]]; then
     chown root:root /etc/init.d/nginx &> /dev/null
     chmod 755 /etc/init.d/nginx &> /dev/null
     _mrun "update-rc.d nginx defaults"
@@ -1059,6 +1069,32 @@ _nginx_initd_check() {
     _mrun "update-rc.d nginx defaults"
     _mrun "service nginx start"
   fi
+}
+
+### The init script's restart tests the configuration first and keeps a
+### running nginx when the test fails, so the configuration this pass wrote
+### is not live. Said as a failure notice (the pass mails it) and in nginx's
+### incident log, with nginx -t's own first error. Running means the master
+### /run/nginx.pid names, as the init script reads it: a bare process name
+### also matches an nginx -t another tool runs at that moment.
+_nginx_restart_report() {
+  local _why _state _mp
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _nginx_restart_report"
+  fi
+  command -v nginx > /dev/null 2>&1 || return 0
+  nginx -t > /dev/null 2>&1 && return 0
+  _why=$(nginx -t 2>&1 | grep -m1 -E '\[(emerg|alert|crit)\]' | cut -c1-300)
+  _mp=$(cat /run/nginx.pid 2> /dev/null)
+  if [[ "${_mp}" =~ ^[0-9]+$ ]] \
+    && ps -p "${_mp}" -o args= 2> /dev/null | grep -q '^nginx: master process'; then
+    _state="the running Nginx keeps its previous configuration"
+  else
+    _state="Nginx is not running"
+  fi
+  _msg "OOPS: Nginx was not restarted, nginx -t fails (${_why:-no reason given}); ${_state}"
+  mkdir -p /var/log/boa
+  echo "$(date) Nginx not restarted by a barracuda pass: nginx -t fails (${_why:-no reason given}); ${_state}" >> /var/log/boa/nginx.incident.log
 }
 
 _nginx_mime_check_fix() {
@@ -1126,14 +1162,18 @@ _nginx_limit_req_zones_update() {
   ### must never be able to trust a file the running nginx cannot load.
   ### Skip the test where nginx is not installed yet (fresh INIT ordering);
   ### the shipped content is static and known-good on every nginx BOA builds.
+  ### nginx -t's own first error is named: the file it fails on may be another
+  ### one, such as a broken line in a map file root keeps under /data/conf.
   if command -v nginx > /dev/null 2>&1; then
     if ! nginx -t > /dev/null 2>&1; then
+      local _why
+      _why=$(nginx -t 2>&1 | grep -m1 -E '\[(emerg|alert|crit)\]' | cut -c1-300)
       if [ -n "${_zones_bak}" ] && [ -e "${_zones_bak}" ]; then
         mv -f "${_zones_bak}" "${_zones_dst}"
       else
         rm -f "${_zones_dst}"
       fi
-      _msg "ALERT: nginx -t rejected ${_zones_dst}; previous state restored"
+      _msg "ALERT: nginx -t rejected ${_zones_dst}; previous state restored (${_why:-no reason given})"
       return 0
     fi
   fi
@@ -1143,11 +1183,12 @@ _nginx_limit_req_zones_update() {
   return 0
 }
 
-### The wild-ssl front is a static copy in the master render tree and the
-### upgrade path restarts nginx without a configtest, so its crawler-fleet
-### guard may only exist while the installed zones file declares the variable
-### it reads. The range is anchored on the exact marker lines, so text that
-### merely quotes a marker can never widen what is deleted.
+### The wild-ssl front is a static copy in the master render tree, and with a
+### configuration nginx -t rejects no reload or restart brings in anything
+### new, so its crawler-fleet guard may only exist while the installed zones
+### file declares the variable it reads. The range is anchored on the exact
+### marker lines, so text that merely quotes a marker can never widen what is
+### deleted.
 _nginx_wild_ssl_fleet_gate() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _nginx_wild_ssl_fleet_gate"
@@ -1211,6 +1252,7 @@ _nginx_wildcard_ssl_install() {
     if [ -e "/etc/init.d/valkey-server" ]; then
       _valkey_password_update
     fi
+    _nginx_acct_store_sync
     _mrun "service nginx restart"
   else
     _WILD_SSL_PROXY_UP=NO
@@ -1336,6 +1378,7 @@ _nginx_wildcard_ssl_install() {
         && sed -i "/ssl_conf_command Options.*KTLS/d" ${_WILD_SSL_VHOST}
       [ "${_ka_want}" = "YES" ] \
         || sed -i "/^[[:space:]]*keepalive[[:space:]]\+0;/d" ${_WILD_SSL_VHOST}
+      _nginx_acct_store_sync
       if ! nginx -t > /dev/null 2>&1; then
         if [ -s "${_wildPrev}" ]; then
           cp -af "${_wildPrev}" ${_WILD_SSL_VHOST}
@@ -1488,15 +1531,13 @@ _nginx_quic_bpf_sync() {
   ### fragment, written only while the live probe passes, because a box
   ### where the eBPF init fails would otherwise have an Nginx that refuses
   ### to start. _NGINX_QUIC_BPF=NO in barracuda.cnf sheds it for good; the
-  ### latch is left after an init that failed with the fragment in place
-  ### (here on the enabling reload, or by the Nginx monitor after a failed
-  ### start) and holds it off until an operator removes it.
+  ### latch is left by the Nginx monitor after a start that failed with the
+  ### fragment in place, and holds it off until an operator removes it.
   local _mDir="/etc/nginx/main.d"
   local _frag="${_mDir}/quic_bpf.conf"
   local _latch="${_mDir}/quic_bpf.failed"
   local _cnf="/etc/nginx/nginx.conf"
-  local _eLog="/var/log/nginx/error.log"
-  local _want=NO _why="" _kMaj _kMin _eOld _eNow
+  local _want=NO _why="" _kMaj _kMin
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _nginx_quic_bpf_sync"
   fi
@@ -1559,27 +1600,14 @@ _nginx_quic_bpf_sync() {
   if [ "${_want}" = "YES" ]; then
     if [ ! -e "${_frag}" ]; then
       echo "quic_bpf on;" > "${_frag}"
+      ### A reload keeps the quic_bpf setting the running master started
+      ### with (Nginx logs that it cannot change it after reload), so it
+      ### runs no eBPF init: the fragment takes effect at the next start,
+      ### which the Nginx monitor judges on a log no worker has written to.
+      ### Lines a reload's workers add to the shared error log can come
+      ### from any site's PHP, and once latched the fragment off for good.
       if nginx -t > /dev/null 2>&1; then
-        _eOld=$( { wc -l < "${_eLog}"; } 2> /dev/null | tr -dc '0-9' )
-        [ -n "${_eOld}" ] || _eOld=0
-        _mrun "service nginx reload"
-        sleep 3
-        ### A reload only logs a failed eBPF init and carries on, and this is
-        ### the one init that sees the box's real listeners and the running
-        ### master's limits. Left alone, the fragment would sit here until
-        ### the next real start refused to come up.
-        _eNow=$( { wc -l < "${_eLog}"; } 2> /dev/null | tr -dc '0-9' )
-        [ -n "${_eNow}" ] || _eNow=0
-        [ "${_eNow}" -ge "${_eOld}" ] || _eOld=0
-        if tail -n "+$(( _eOld + 1 ))" "${_eLog}" 2> /dev/null \
-          | grep -qE "ngx_quic_bpf_module failed|failed to create BPF"; then
-          rm -f "${_frag}"
-          echo "$(date) The eBPF init failed when quic_bpf was enabled by reload; the fragment was removed. Delete this file to let the next barracuda pass probe again." > "${_latch}"
-          _mrun "service nginx reload"
-          _msg "ALERT: Nginx could not initialise quic_bpf on reload; left off, see ${_latch}"
-        else
-          _msg "INFO: HTTP/3 transfers now survive Nginx reloads (quic_bpf enabled)"
-        fi
+        _msg "INFO: quic_bpf written; HTTP/3 transfers survive Nginx reloads from its next start"
       else
         rm -f "${_frag}"
         _msg "ALERT: nginx -t rejected ${_frag}; quic_bpf left off"
@@ -1587,11 +1615,11 @@ _nginx_quic_bpf_sync() {
     fi
   else
     if [ -e "${_frag}" ]; then
+      ### A reload keeps the quic_bpf setting the running master started
+      ### with, the other way as well: the fragment's removal takes effect at
+      ### Nginx's next start, so nothing is reloaded for it.
       rm -f "${_frag}"
-      if nginx -t > /dev/null 2>&1; then
-        _mrun "service nginx reload"
-      fi
-      _msg "INFO: quic_bpf disabled: ${_why}"
+      _msg "INFO: quic_bpf disabled: ${_why}; this takes effect at Nginx's next start"
     elif [ "${_NGINX_QUIC_BPF}" != "NO" ]; then
       ### Say why: a quiet decline reads exactly like a quiet success.
       _msg "INFO: quic_bpf stays off: ${_why}"
@@ -2108,7 +2136,7 @@ _nginx_migration_proxy_backend_drop() {
 # leaves <n>.orig and <n>.path in $1 for the rollback.
 _nginx_migration_proxy_backend_drop_here() {
   local _d="${1}" _v="${2}" _f _k
-  while IFS= read -r -d '' _f; do
+  while LC_ALL=C IFS= read -r -d '' _f; do
     [ -f "./${_f}" ] && [ ! -L "./${_f}" ] || continue
     _k=$(mktemp "${_d}/v.XXXXXX" 2> /dev/null) || continue
     _acct_read_here "${_f}" > "${_k}.orig"
@@ -2170,7 +2198,7 @@ _nginx_migration_proxy_client() {
 # $1 for the rollback.
 _nginx_migration_proxy_client_here() {
   local _d="${1}" _v="${2}" _f _k
-  while IFS= read -r -d '' _f; do
+  while LC_ALL=C IFS= read -r -d '' _f; do
     [ -f "./${_f}" ] && [ ! -L "./${_f}" ] || continue
     _k=$(mktemp "${_d}/v.XXXXXX" 2> /dev/null) || continue
     _acct_read_here "${_f}" > "${_k}.orig"
@@ -2498,24 +2526,31 @@ _nginx_config_update_fix() {
     if [ ! -e "/root/.local.IP.list" ]; then
       rm -f /root/.tmp.IP.list*
       rm -f /root/.local.IP.list*
-      for _IP in `hostname -I`;do echo ${_IP} >> /root/.tmp.IP.list;done
-      for _IP in `cat /root/.tmp.IP.list \
-        | sort \
-        | uniq`; do
+    fi
+    ### The list is made once, and only the daily firewall run added an
+    ### address to it later, so a pass on a cloned or re-addressed box found
+    ### its own address missing and skipped the call below. Every address
+    ### the box holds now is added here, as that run writes it, and an
+    ### address counts as listed only as a whole entry.
+    for _IP in $(hostname -I 2> /dev/null); do
+      [[ "${_IP}" =~ ^[0-9A-Fa-f.:]+$ ]] || continue
+      if ! sed -e 's/#.*//' -e 's/[[:space:]]//g' /root/.local.IP.list 2> /dev/null \
+        | grep -qxF -- "${_IP}"; then
         echo "${_IP} # local IP address" >> /root/.local.IP.list
-      done
-      rm -f /root/.tmp.IP.list*
-    fi
-    _IP_IF_PRESENT=$(grep "${_CRON_IP}" /root/.local.IP.list 2>&1)
-    if [[ "${_IP_IF_PRESENT}" =~ "${_CRON_IP}" ]]; then
-      _IP_PRESENT=YES
-    else
-      _IP_PRESENT=NO
-    fi
+      fi
+    done
+    _IP_PRESENT=NO
     if [ ! -z "${_CRON_IP}" ] \
-      && [ "${_IP_PRESENT}" = "YES" ] \
-      && [ -e "/root/.local.IP.list" ]; then
+      && sed -e 's/#.*//' -e 's/[[:space:]]//g' /root/.local.IP.list 2> /dev/null \
+        | grep -qxF -- "${_CRON_IP}"; then
+      _IP_PRESENT=YES
+    fi
+    if [ "${_IP_PRESENT}" = "YES" ]; then
       _master_fix_multi_ip_cron_access
+    elif [ -z "${_CRON_IP}" ]; then
+      _msg "NOTE: cron routes stay open to 127.0.0.1 only: no address is known for this box"
+    else
+      _msg "NOTE: cron routes stay open to 127.0.0.1 only: ${_CRON_IP} is not an address of this box"
     fi
     _mrun "service nginx reload"
     _nginx_proxy_stray_log_purge

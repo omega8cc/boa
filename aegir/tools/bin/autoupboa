@@ -4,7 +4,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 export _tRee=dev
-export _xSrl=588877devT01
+export _xSrl=588888devT01
 
 _barCnf="/root/.barracuda.cnf"
 _crlGet="-L --max-redirs 3 -s --fail --retry 9 --retry-delay 9 -A iCab"
@@ -38,12 +38,15 @@ _check_root
 # read a healthy run as a stuck duplicate the moment one subshell of the
 # backup was sampled, and killed the run mid-dump without a word.
 _SQL_BACKUP_EXEC='^([^ ]*/)?bash /var/xdrago/mysql_backup\.sh( |$)'
+# A cluster write node's nightly backup, launched the same way; while it runs
+# the plain backup stands down, so a hung one is the box's only backup.
+_SQL_CLUSTER_BACKUP_EXEC='^([^ ]*/)?bash /var/xdrago/mysql_cluster_backup\.sh( |$)'
 _SQL_CLEANUP_EXEC='^([^ ]*/)?bash /var/xdrago/mysql_cleanup\.sh( |$)'
 
 # Seconds the oldest process of the form has run; empty when none runs.
 _exec_age() {
   local _pat="$1" _p="" _e="" _max=""
-  for _p in $(pgrep -f "${_pat}" 2> /dev/null); do
+  for _p in $(pgrep -u root -U root -f "${_pat}" 2> /dev/null); do
     _e=$(ps -o etimes= -p "${_p}" 2> /dev/null | tr -dc '0-9')
     [ -z "${_e}" ] && continue
     if [ -z "${_max}" ] || [ "${_e}" -gt "${_max}" ]; then
@@ -61,12 +64,16 @@ _sql_backup_limit() {
   echo $(( _h * 3600 ))
 }
 
-# 0 while a nightly backup runs within its limit: the weekly pass and the
-# staged reboot wait, nothing restarts the database under a dump.
+# 0 while a nightly backup, plain or cluster, runs within its limit: the
+# weekly pass and the staged reboot wait, nothing restarts the database
+# under a dump.
 _sql_backup_live() {
-  local _a=""
+  local _a="" _lim=""
+  _lim=$(_sql_backup_limit)
   _a=$(_exec_age "${_SQL_BACKUP_EXEC}")
-  [ -n "${_a}" ] && [ "${_a}" -le "$(_sql_backup_limit)" ]
+  [ -n "${_a}" ] && [ "${_a}" -le "${_lim}" ] && return 0
+  _a=$(_exec_age "${_SQL_CLUSTER_BACKUP_EXEC}")
+  [ -n "${_a}" ] && [ "${_a}" -le "${_lim}" ]
 }
 
 _cron_names_to_numbers() {
@@ -222,13 +229,13 @@ _weekly_install_in_flight() {
       # INSTALL may defer the weekly, or transient probes and remote legs
       # walk it into the skip-a-week terminal state
       [ "${_cbn}" = "boa" ] && _cPat="^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-"
-      _CNT=$(pgrep -fc "${_cPat}")
+      _CNT=$(pgrep -u root -U root -fc "${_cPat}")
       if (( _CNT > 0 )); then
         return 0
       fi
     fi
   done
-  if pgrep -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1; then
+  if pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1; then
     return 0
   fi
   [ -e "/run/octopus_install_run.pid" ] && return 0
@@ -704,43 +711,80 @@ _is_empty_file() {
   [[ ! -s "$file" ]]
 }
 
+# A usable DH file: a regular file openssl reads as DH parameters (plain or
+# X9.42). A file cut short or overwritten fails nginx's config load as surely
+# as an empty one, header or not, and must never be the copy the others are
+# repaired from.
+_dhp_valid() {
+  [[ -f "$1" && ! -L "$1" ]] \
+    && openssl dhparam -in "$1" -noout > /dev/null 2>&1
+}
+
+# One generation at a time: openssl writes its -out file only when done, so
+# a file being generated still reads as unusable on the next run. Only a
+# generation root started counts (real uid too: a setuid program another
+# user runs under the title keeps euid 0).
+_dhp_generate() {
+  [[ -n "${_dhp_gen}" ]] && return 0
+  pgrep -u root -U root -f '^openssl dhparam ' > /dev/null 2>&1 && return 0
+  _dhp_gen=1
+  echo "Generating new .dhp file for $1"
+  openssl dhparam -out "$1" 4096 > /dev/null 2>&1 &
+}
+
 # Check for empty .dhp files and attempt to replace or regenerate them
 _process_dhp_files() {
   _dhp_files=("${_SSL_DIR}"/*.dhp)
   _non_empty_dhp=""
-  # Find the first non-empty .dhp file
+  _dhp_gen=""
+  # Find the first usable .dhp file
   for _dhp_file in "${_dhp_files[@]}"; do
-    if ! _is_empty_file "${_dhp_file}"; then
+    if _dhp_valid "${_dhp_file}"; then
       _non_empty_dhp="${_dhp_file}"
       break
     fi
   done
-  # Loop over all .dhp files
+  # Loop over all .dhp files: regular ones only, so an entry no copy or
+  # generation can fix never takes the run's one generation
   for _dhp_file in "${_dhp_files[@]}"; do
-    if _is_empty_file "${_dhp_file}"; then
+    [[ -f "${_dhp_file}" && ! -L "${_dhp_file}" ]] || continue
+    if ! _dhp_valid "${_dhp_file}"; then
       if [[ -n "${_non_empty_dhp}" ]]; then
-        echo "Replacing empty file ${_dhp_file} with ${_non_empty_dhp}"
+        echo "Replacing unusable file ${_dhp_file} with ${_non_empty_dhp}"
         cp "${_non_empty_dhp}" "${_dhp_file}"
       else
-        echo "No non-empty .dhp file found, generating new file for ${_dhp_file}"
-        openssl dhparam -out "${_dhp_file}" 4096 > /dev/null 2>&1 &
+        _dhp_generate "${_dhp_file}"
       fi
     fi
   done
 }
 
-# Scan Nginx error log for .dhp related errors
+# Repair the DH files root's own nginx config names when nginx reports a DH
+# file it cannot load (BIO_new_file for a missing one, PEM_read_bio_DHparams
+# for a bad one). The error log is a hint only, never the source of a name:
+# it holds text a request chose, and a decoded %0A in a logged path starts a
+# line of its own, so any line in it can be forged. The names come from the
+# ssl_dhparam lines root and the Aegir backend write, in the key store only.
 _scan_nginx_errors() {
-  grep "PEM_read_bio_DHparams" "${_NGINX_ERROR_LOG}" | awk -F'(")' '{print $2}' | while read -r _missing_dhp; do
-    if [[ ! -f "${_missing_dhp}" ]]; then
-      echo "Missing .dhp file detected: ${_missing_dhp}"
-      if [[ -n "${_non_empty_dhp}" ]]; then
-        echo "Copying non-empty .dhp file to ${_missing_dhp}"
-        cp "${_non_empty_dhp}" "${_missing_dhp}"
-      else
-        echo "Generating new .dhp file for ${_missing_dhp}"
-        openssl dhparam -out "${_missing_dhp}" 4096 > /dev/null 2>&1 &
-      fi
+  local _missing_dhp
+  [[ -r "${_NGINX_ERROR_LOG}" ]] || return 0
+  LC_ALL=C grep -aqE '(BIO_new_file|PEM_read_bio_DHparams)\("[^"]*\.dhp"\)' \
+    "${_NGINX_ERROR_LOG}" || return 0
+  LC_ALL=C grep -ahoE '^[[:space:]]*ssl_dhparam[[:space:]]+/etc/ssl/private/[A-Za-z0-9._-]+\.dhp[[:space:]]*;' \
+    -r /etc/nginx /var/aegir/config/server_master/nginx 2> /dev/null \
+    | LC_ALL=C grep -aoE '/etc/ssl/private/[A-Za-z0-9._-]+\.dhp' | sort -u \
+    | while LC_ALL=C IFS= read -r _missing_dhp; do
+    [[ "${_missing_dhp}" =~ ^/etc/ssl/private/[A-Za-z0-9._-]+\.dhp$ ]] || continue
+    [[ -L "${_missing_dhp}" ]] && continue
+    [[ -e "${_missing_dhp}" && ! -f "${_missing_dhp}" ]] && continue
+    _dhp_valid "${_missing_dhp}" && continue
+    [[ "${_missing_dhp}" = "${_non_empty_dhp}" ]] && continue
+    echo "Missing or unusable .dhp file detected: ${_missing_dhp}"
+    if [[ -n "${_non_empty_dhp}" ]]; then
+      echo "Copying non-empty .dhp file to ${_missing_dhp}"
+      cp "${_non_empty_dhp}" "${_missing_dhp}"
+    else
+      _dhp_generate "${_missing_dhp}"
     fi
   done
 }
@@ -792,6 +836,35 @@ _bring_all_ram_cpu_online() {
   done
 }
 _bring_all_ram_cpu_online
+
+# Every process of a denied Solr version ($1: solr9, solr7 or jetty9)
+# stopped, by its service user where one exists, else by its JVM's title
+# among root's processes: an install adds each version's own user, and an
+# init script with no user to switch to runs the JVM as root. Each deny
+# below runs it on every pass while the deny holds, not only on the one that
+# moves the init script away: a restart already under way when the script
+# moves starts a JVM after the kill, and with the script gone no other tool
+# would stop it. A kill by the bare name would also match a process that
+# only names the version's paths, such as a transfer of its data tree.
+_stop_denied_jvm() {
+  if id "${1}" &> /dev/null; then
+    pkill -9 -u "${1}" &> /dev/null
+  else
+    pkill -9 -u root -U root -f "^[^ ]*jav[a][0-9]* .*${1}" &> /dev/null
+  fi
+}
+
+# Deny setting $1 as /root/.barracuda.cnf gives it now, read as a source of
+# the file reads it (NO when the file sets none), for each deny right where
+# it is tested. The run sourced the file when it started; xmass restore-solr
+# may since have cleared a deny, put the init script back and started the
+# version, and acting on the value read then would park and stop the version
+# it just brought back, which then stays parked until restore-solr runs again
+# (or, for Solr 4, until the next barracuda pass).
+_cnf_deny_now() {
+  [ -e "/root/.barracuda.cnf" ] || { echo "NO"; return 0; }
+  ( unset "$1"; . /root/.barracuda.cnf > /dev/null 2>&1 < /dev/null; printf '%s' "${!1:-NO}"; exit 0 )
+}
 
 _if_disable_not_used_services() {
   if [ "${_tRee}" = "dev" ] && [ -e "/etc/boa/.ice.vm.cnf" ]; then
@@ -848,7 +921,7 @@ _if_disable_not_used_services() {
     rm -f /run/clamav/*
   fi
 
-  if [ "${_DENY_JAVA}" = "YES" ] \
+  if [ "$(_cnf_deny_now _DENY_JAVA)" = "YES" ] \
     || [ -e "/root/.deny.java.cnf" ]; then
     if [ -e "/etc/init.d/solr9" ]; then
       update-rc.d -f solr9 remove &> /dev/null
@@ -867,42 +940,38 @@ _if_disable_not_used_services() {
     # its title: the jetty9-only kill left a Solr 7/9 JVM running after its
     # init script was gone.
     for _jvmSvc in solr9 solr7 jetty9; do
-      if id "${_jvmSvc}" &> /dev/null; then
-        pkill -9 -u "${_jvmSvc}" &> /dev/null
-      else
-        pkill -9 -f "^[^ ]*jav[a][0-9]* .*${_jvmSvc}" &> /dev/null
-      fi
+      _stop_denied_jvm "${_jvmSvc}"
     done
   fi
 
-  if [ "${_DENY_JETTY9}" = "YES" ] \
+  if [ "$(_cnf_deny_now _DENY_JETTY9)" = "YES" ] \
     || [ -e "/etc/boa/.deny.jetty9.cnf" ]; then
     if [ -e "/etc/init.d/jetty9" ]; then
       update-rc.d -f jetty9 remove &> /dev/null
       mv -f /etc/init.d/jetty9 /var/backups/jetty9.initd
       pkill -9 -f '^[^ ]*avahi-daemon( |:|$)'
-      pkill -9 -f '^[^ ]*java[0-9]* .*jetty9'
     fi
+    _stop_denied_jvm jetty9
   fi
 
-  if [ "${_DENY_SOLR7}" = "YES" ] \
+  if [ "$(_cnf_deny_now _DENY_SOLR7)" = "YES" ] \
     || [ -e "/etc/boa/.deny.solr7.cnf" ]; then
     if [ -e "/etc/init.d/solr7" ]; then
       update-rc.d -f solr7 remove &> /dev/null
       mv -f /etc/init.d/solr7 /var/backups/solr7.initd
       pkill -9 -f '^[^ ]*avahi-daemon( |:|$)'
-      pkill -9 -f '^[^ ]*java[0-9]* .*solr7'
     fi
+    _stop_denied_jvm solr7
   fi
 
-  if [ "${_DENY_SOLR9}" = "YES" ] \
+  if [ "$(_cnf_deny_now _DENY_SOLR9)" = "YES" ] \
     || [ -e "/etc/boa/.deny.solr9.cnf" ]; then
     if [ -e "/etc/init.d/solr9" ]; then
       update-rc.d -f solr9 remove &> /dev/null
       mv -f /etc/init.d/solr9 /var/backups/solr9.initd
       pkill -9 -f '^[^ ]*avahi-daemon( |:|$)'
-      pkill -9 -f '^[^ ]*java[0-9]* .*solr9'
     fi
+    _stop_denied_jvm solr9
   fi
 }
 _if_disable_not_used_services
@@ -1092,6 +1161,28 @@ _if_hosted_sys() {
   fi
 }
 
+# The hidden .off copies in /var/xdrago are disabled scripts, removed here.
+# A migration's runner park (xoct and xcopy pre-mig until post-mig, an xmass
+# cutover until its unpark) keeps runner.sh, owl.sh, usage.sh, graceful.sh
+# and manage_ltd_users.sh as such copies while /run/boa_migration_park.pid
+# lives, and the tools refresh fetches a runner back once its parked copy is
+# gone: removing those five ended every park within minutes. clear.sh
+# expires the marker after 24 hours; their copies then go with the rest.
+_rm_xdrago_off() {
+  local _off _nme
+  for _off in /var/xdrago/.*.off; do
+    [ -e "${_off}" ] || [ -L "${_off}" ] || continue
+    _nme="${_off#/var/xdrago/.}"
+    _nme="${_nme%.off}"
+    if [ -e "/run/boa_migration_park.pid" ]; then
+      case "${_nme}" in
+        runner.sh|owl.sh|usage.sh|graceful.sh|manage_ltd_users.sh) continue ;;
+      esac
+    fi
+    rm -f "${_off}"
+  done
+}
+
 _send_boa_system_report() {
   if [ -e "${_barCnf}" ]; then
     _RCPT_EMAIL=
@@ -1179,7 +1270,7 @@ _is_protected_run() {
       # cleanup, suspend and unsuspend; info, version and help read only.
       _cPat="^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/${_cbn}( |$)"
       [ "${_cbn}" = "boa" ] && _cPat="^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa (in-|cleanup|suspend|unsuspend)"
-      _CNT=$(pgrep -fc "${_cPat}")
+      _CNT=$(pgrep -u root -U root -fc "${_cPat}")
       if (( _CNT > 0 )); then
         echo "The ${_cbn} is running!"
         _protectedRun=TRUE
@@ -1188,7 +1279,7 @@ _is_protected_run() {
   done
   # The chained install's legs run as "bash /var/backups/*.sh.txt", not as
   # the wrapper binaries swept above -- match them too
-  if pgrep -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1; then
+  if pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1; then
     _protectedRun=TRUE
   fi
   [ -e "/run/octopus_install_run.pid" ] && _protectedRun=TRUE
@@ -1202,11 +1293,12 @@ _is_protected_run() {
 
 # A backup ended by the reaper is said where the backup's own notices go,
 # and mailed: a run killed in silence left incomplete sets nobody heard of.
-_sql_backup_reaped_notice() {
-  local _hrs="$1" _hostN="" _mailTo="" _sub="" _body=""
+_sql_backup_reaped_notice() {   # 1 = hours  [2 = the script  3 = its dumps' dir  4 = "cluster "]
+  local _hrs="$1" _scr="${2:-mysql_backup.sh}" _dir="${3:-/data/disk/arch/sql}" _kind="${4:-}"
+  local _hostN="" _mailTo="" _sub="" _body=""
   _hostN="$(cat /etc/hostname 2>/dev/null | tr -d '\n')"
-  _sub="Backup KILLED on [${_hostN}]: the nightly run was still going after ${_hrs} h"
-  _body="$(date) ${_sub}: mysql_backup.sh and mydumper were ended by autoupboa. The dumps already written tonight stay in /data/disk/arch/sql; the databases after them are missing until the next run. For a complete set now, run: bash /var/xdrago/mysql_backup.sh"
+  _sub="Backup KILLED on [${_hostN}]: the nightly ${_kind}run was still going after ${_hrs} h"
+  _body="$(date) ${_sub}: ${_scr} and mydumper were ended by autoupboa. The dumps already written tonight stay in ${_dir}; the databases after them are missing until the next run. For a complete set now, run: bash /var/xdrago/${_scr}"
   [ -d "/var/log/boa" ] || mkdir -p /var/log/boa
   echo "${_body}" >> /var/log/boa/mysql.backup.incident.log
   _if_hosted_sys
@@ -1232,9 +1324,9 @@ _reap_stuck_sql_helpers() {
 
   # move_sql.sh runs from the watchdog and the backup, never from cron:
   # three executors of it is a pile-up, as before
-  _cnt=$(pgrep -fc '^([^ ]*/)?bash /var/xdrago/move_sql\.sh( |$)')
+  _cnt=$(pgrep -u root -U root -fc '^([^ ]*/)?bash /var/xdrago/move_sql\.sh( |$)')
   if (( _cnt > 2 )); then
-    pkill -9 -f '^([^ ]*/)?bash /var/xdrago/move_sql\.sh( |$)'
+    pkill -9 -u root -U root -f '^([^ ]*/)?bash /var/xdrago/move_sql\.sh( |$)'
     rm -f /run/mysql_restart_running.pid
     rm -f /run/boa_wait.pid
     rm -f /var/log/boa/.move_sql_ctrl*
@@ -1244,7 +1336,7 @@ _reap_stuck_sql_helpers() {
   # mysql_cleanup.sh runs hourly from cron, under the same launcher shell
   _age=$(_exec_age "${_SQL_CLEANUP_EXEC}")
   if [ -n "${_age}" ] && [ "${_age}" -gt "${_lim}" ]; then
-    pkill -9 -f "${_SQL_CLEANUP_EXEC}"
+    pkill -9 -u root -U root -f "${_SQL_CLEANUP_EXEC}"
     rm -f /run/mysql_backup_running.pid
     rm -f /var/log/boa/.sqlcleanup_ctrl*
     touch /var/log/boa/.sqlcleanup_ctrl.${_tRee}.${_xSrl}.pid
@@ -1256,9 +1348,9 @@ _reap_stuck_sql_helpers() {
     touch /var/log/boa/.solr_start_ctrl.${_tRee}.${_xSrl}.pid
   fi
 
-  _cnt=$(pgrep -fc '^([^ ]*perl )?/var/xdrago/proc_num_ctrl\.pl( |$)')
+  _cnt=$(pgrep -u root -U root -fc '^([^ ]*perl )?/var/xdrago/proc_num_ctrl\.pl( |$)')
   if (( _cnt > 1 )); then
-    pkill -9 -f '^([^ ]*perl )?/var/xdrago/proc_num_ctrl\.pl( |$)'
+    pkill -9 -u root -U root -f '^([^ ]*perl )?/var/xdrago/proc_num_ctrl\.pl( |$)'
     touch /var/log/boa/.proc_num_ctrl.${_tRee}.${_xSrl}.pid
   fi
 
@@ -1266,16 +1358,16 @@ _reap_stuck_sql_helpers() {
 
   _age=$(_exec_age "${_SQL_BACKUP_EXEC}")
   if [ -n "${_age}" ] && [ "${_age}" -gt "${_lim}" ]; then
-    pkill -9 -f "${_SQL_BACKUP_EXEC}"
+    pkill -9 -u root -U root -f "${_SQL_BACKUP_EXEC}"
     # Under the SQL maintenance marker a mydumper may be a migration's dump:
     # only the backup's own goes then, told by where it writes.
     if [ -n "$(find /run/boa_sql_maintenance.pid -mmin -240 2>/dev/null)" ]; then
-      pkill -9 -f '^[^ ]*mydumper( |$).*--outputdir=/data/disk/arch/sql/'
+      pkill -9 -u root -U root -f '^[^ ]*mydumper( |$).*--outputdir=/data/disk/arch/sql/'
     else
-      pkill -9 -f '^[^ ]*mydumper( |$)'
+      pkill -9 -u root -U root -f '^[^ ]*mydumper( |$)'
     fi
-    pkill -9 -f '^([^ ]*/)?bash /var/xdrago/usage\.sh( |$)'
-    pkill -9 -f '^([^ ]*/)?bash /var/xdrago/runner\.sh( |$)'
+    pkill -9 -u root -U root -f '^([^ ]*/)?bash /var/xdrago/usage\.sh( |$)'
+    pkill -9 -u root -U root -f '^([^ ]*/)?bash /var/xdrago/runner\.sh( |$)'
     rm -f /run/boa_sql_backup.pid
     rm -f /run/mysql_backup_running.pid
     rm -f /run/boa_wait.pid
@@ -1283,6 +1375,17 @@ _reap_stuck_sql_helpers() {
     rm -f /var/log/boa/.sqlbackup_ctrl*
     touch /var/log/boa/.sqlbackup_ctrl.${_tRee}.${_xSrl}.pid
     _sql_backup_reaped_notice "$(( _age / 3600 ))"
+  fi
+
+  # The cluster backup the same way. A kill -9 runs none of its traps, and
+  # its mydumper runs in a session of its own: that goes by where it
+  # writes, and the run marker it would have removed goes here.
+  _age=$(_exec_age "${_SQL_CLUSTER_BACKUP_EXEC}")
+  if [ -n "${_age}" ] && [ "${_age}" -gt "${_lim}" ]; then
+    pkill -9 -u root -U root -f "${_SQL_CLUSTER_BACKUP_EXEC}"
+    pkill -9 -u root -U root -f '^[^ ]*mydumper( |$).*--outputdir=/data/disk/arch/cluster/'
+    rm -f /run/boa_sql_cluster_backup.pid
+    _sql_backup_reaped_notice "$(( _age / 3600 ))" mysql_cluster_backup.sh /data/disk/arch/cluster "cluster "
   fi
 }
 
@@ -1452,6 +1555,282 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
   fi
 fi
 
+###
+### Kernel guard. Debian's 6.1.192-1 (6.1.0-55) carries a stable backport
+### that moved ext4's block allocator to folios with the newer page cache's
+### answer for a miss, an error pointer, while the 6.1 page cache answers
+### NULL: once a group's buddy page is evicted, ext4_mb_load_buddy_gfp()
+### takes that NULL for a folio, the task oopses holding a journal handle,
+### and every later write to the filesystem waits until a hard reset
+### (Debian bug 1154101, fixed in 6.1.192-2). On a server with a 6.1 kernel
+### image the guard keeps the broken builds out of apt with a pin, purges
+### such an image that does not run (a meta package that goes with it comes
+### back once apt offers a fixed build), and the night window never reboots
+### into one. It never sets GRUB's default (the next boot is GRUB's stock
+### choice, the newest kernel in /boot); it only puts back, once, a default
+### an earlier release's guard redirected. _KERNEL_GUARD=NO in
+### /root/.barracuda.cnf turns it off: it then writes, removes, installs
+### and refuses nothing.
+###
+_KGUARD_PIN="/etc/apt/preferences.d/99-boa-kernel-guard"
+_KGUARD_DIR="/etc/boa/control/kernel-guard"
+_KGUARD_LOG="/var/log/boa/kernel-guard.log"
+# The broken builds as Debian versions them, Debian 11's forms included;
+# the pin and every check below read this one pattern.
+_KGUARD_RE='^6\.1\.19[12]-1(~(deb11u|bpo11\+)[0-9]+)?$'
+# The last broken build: a meta package the purge took comes back past it.
+_KGUARD_LAST="6.1.192-1"
+
+# True when a Debian package version is a broken build.
+_kguard_broken() {
+  [ -n "$1" ] && [[ "$1" =~ ${_KGUARD_RE} ]]
+}
+
+_kguard_log() {
+  [ -d "/var/log/boa" ] || mkdir -p /var/log/boa
+  echo "[$(date 2>/dev/null)] $*" >> "${_KGUARD_LOG}"
+  echo "INFO: kernel guard: $*"
+}
+
+# What the guard could not do is logged, and mailed once a boot for each
+# distinct message: it needs a hand.
+_kguard_refused() {
+  local _msg="$1" _mark="/run/boa_kguard_refused" _hostN _mailTo=""
+  if grep -q -s -x -F -- "${_msg}" "${_mark}"; then
+    echo "INFO: kernel guard: ${_msg}"
+    return 0
+  fi
+  echo "${_msg}" >> "${_mark}"
+  _kguard_log "${_msg}"
+  _hostN="$(cat /etc/hostname 2>/dev/null | tr -d '\n')"
+  _if_hosted_sys
+  if [ "${_hostedSys}" = "YES" ]; then
+    _mailTo="$(basename "$0")@omega8.cc"
+  else
+    _mailTo="${_MY_EMAIL:-}"
+  fi
+  if [ -n "${_mailTo}" ] && [ -x "$(command -v s-nail)" ]; then
+    echo "The kernel guard on ${_hostN}: ${_msg}. Log: ${_KGUARD_LOG}" \
+      | s-nail -S ttycharset=utf-8 -S sendcharsets=utf-8 \
+        -s "KERNEL GUARD: refused on ${_hostN}" "${_mailTo}" &> /dev/null
+  fi
+}
+
+# The 6.1 kernel images on the server, in any dpkg state that keeps their
+# files: "<package> <version>" a line.
+_kguard_images() {
+  dpkg-query -W -f '${Package} ${Version} ${db:Status-Status}\n' 'linux-image-6.1.0-*' 2>/dev/null \
+    | awk '$3 != "" && $3 != "not-installed" && $3 != "config-files" {print $1, $2}'
+}
+
+# The kernel release an image package boots.
+_kguard_release() {
+  local _r="${1#linux-image-}"
+  _r="${_r%-unsigned}"
+  echo "${_r%-dbg}"
+}
+
+# True while apt, dpkg or a daily security run works: the guard waits for
+# a later pass and never stops one.
+_kguard_pkg_busy() {
+  pgrep -u root -U root -x 'apt|apt-get|aptitude|dpkg|unattended-upgr' > /dev/null 2>&1 && return 0
+  pgrep -u root -U root -f '^([^ ]*/)?python[0-9.]* /usr/bin/unattended-upgrade( |$)' > /dev/null 2>&1 && return 0
+  pgrep -u root -U root -f '^([^ ]*/)?(ba|da)?sh /usr/lib/apt/apt\.systemd\.daily( |$)' > /dev/null 2>&1
+}
+
+# A purged kernel asks for no reboot: its line leaves the request, and the
+# request goes once nothing else is in it.
+_kguard_drop_reboot_lines() {
+  local _f="/run/reboot-required.pkgs"
+  [ "$#" -gt 0 ] && [ -s "${_f}" ] || return 0
+  if ! awk 'NR == FNR {gone[$1]; next} !($1 in gone)' <(printf '%s\n' "$@") "${_f}" > "${_f}.kguard"; then
+    rm -f "${_f}.kguard"
+    return 1
+  fi
+  if [ -s "${_f}.kguard" ]; then
+    mv -f "${_f}.kguard" "${_f}"
+  else
+    rm -f "${_f}.kguard" "${_f}" /run/reboot-required
+  fi
+}
+
+# Purges the broken images that do not run, after a simulation that
+# removes nothing but linux-image-* packages, none of them held; a meta
+# package that goes with them is written down to come back.
+_kguard_purge() {
+  local _run _pkg _ver _list="" _sim _bad _held _rc _m _gone=""
+  _run="$(uname -r 2>/dev/null)"
+  [ -n "${_run}" ] || return 0
+  while read -r _pkg _ver; do
+    _kguard_broken "${_ver}" || continue
+    [ "$(_kguard_release "${_pkg}")" = "${_run}" ] && continue
+    _list="${_list} ${_pkg}"
+  done < <(_kguard_images)
+  [ -n "${_list}" ] || return 0
+  _kguard_pkg_busy && return 0
+  # shellcheck disable=SC2086
+  _sim="$(LC_ALL=C apt-get -s purge ${_list} < /dev/null 2>/dev/null | awk '$1 == "Purg" || $1 == "Remv" {print $2}')"
+  _bad="$(echo "${_sim}" | grep -v -E '^(linux-image-|$)' | tr '\n' ' ')"
+  _held="$(apt-mark showhold 2>/dev/null | grep -x -F -f <(echo "${_sim}") | tr '\n' ' ')"
+  if [ -z "${_sim}" ] || [ -n "${_bad}" ] || [ -n "${_held}" ]; then
+    # shellcheck disable=SC2086
+    _kguard_refused "purge refused:${_list} (the simulation would remove: $(echo ${_sim:-nothing})${_bad:+; not an image: ${_bad% }}${_held:+; held: ${_held% }})"
+    return 1
+  fi
+  [ -d "/var/log/boa" ] || mkdir -p /var/log/boa
+  # shellcheck disable=SC2086
+  LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=60 \
+    -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold \
+    purge -y -qq ${_list} < /dev/null >> "${_KGUARD_LOG}" 2>&1
+  _rc=$?
+  for _m in ${_sim}; do
+    case "$(dpkg-query -W -f '${db:Status-Status}' "${_m}" 2>/dev/null)" in
+      ""|not-installed|config-files) ;;
+      *) continue ;;
+    esac
+    _gone="${_gone} ${_m}"
+    # a meta package names no x.y.z- release
+    [[ "${_m}" =~ [0-9]+\.[0-9]+\.[0-9]+- ]] && continue
+    mkdir -p "${_KGUARD_DIR}"
+    grep -q -s -x -F -- "${_m}" "${_KGUARD_DIR}/meta-removed" || echo "${_m}" >> "${_KGUARD_DIR}/meta-removed"
+  done
+  # shellcheck disable=SC2086
+  [ -n "${_gone}" ] && _kguard_drop_reboot_lines ${_gone}
+  if [ "${_rc}" -ne 0 ]; then
+    _kguard_refused "purge failed (apt-get exit ${_rc}):${_list}; removed:${_gone:- nothing}"
+    return 1
+  fi
+  _kguard_log "purged:${_gone}"
+}
+
+# A meta package the purge took goes back once apt offers it past the last
+# broken build, when its install removes nothing.
+_kguard_meta_back() {
+  local _rec="${_KGUARD_DIR}/meta-removed" _m _cand _rm _left=() _names=()
+  [ -s "${_rec}" ] || return 0
+  _kguard_pkg_busy && return 0
+  mapfile -t _names < "${_rec}"
+  for _m in "${_names[@]}"; do
+    # nothing but a kernel package name is ever acted on
+    [[ "${_m}" =~ ^linux-(image|headers)-[a-z0-9][a-z0-9.+-]*$ ]] || continue
+    if [ "$(dpkg-query -W -f '${db:Status-Status}' "${_m}" 2>/dev/null)" = "installed" ]; then
+      _kguard_log "meta package back: ${_m}, installed meanwhile"
+      continue
+    fi
+    _cand="$(LC_ALL=C apt-cache policy "${_m}" 2>/dev/null | awk '/Candidate:/ {print $2; exit}')"
+    if [ -z "${_cand}" ] || [ "${_cand}" = "(none)" ] \
+      || ! dpkg --compare-versions "${_cand}" gt "${_KGUARD_LAST}"; then
+      _left+=("${_m}")
+      continue
+    fi
+    _rm="$(LC_ALL=C apt-get -s --no-install-recommends install "${_m}" < /dev/null 2>/dev/null \
+      | awk '$1 == "Remv" || $1 == "Purg" {print $2}' | tr '\n' ' ')"
+    if [ -n "${_rm}" ]; then
+      _kguard_refused "meta package ${_m} ${_cand} left out: its install would remove ${_rm% }"
+      _left+=("${_m}")
+      continue
+    fi
+    [ -d "/var/log/boa" ] || mkdir -p /var/log/boa
+    if LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=60 \
+      -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold \
+      install -y -qq --no-install-recommends "${_m}" < /dev/null >> "${_KGUARD_LOG}" 2>&1; then
+      _kguard_log "meta package back: ${_m} ${_cand}"
+    else
+      _kguard_refused "meta package ${_m} ${_cand}: its install failed"
+      _left+=("${_m}")
+    fi
+  done
+  if [ "${#_left[@]}" -gt 0 ]; then
+    printf '%s\n' "${_left[@]}" > "${_rec}.new" && mv -f "${_rec}.new" "${_rec}"
+  else
+    rm -f "${_rec}"
+  fi
+}
+
+# The guard of an earlier release pointed GRUB's default at another kernel
+# while the running one was a build it kept out (a published pattern also
+# caught the fixed 6.1.192-2), recorded the line it replaced, and asked for
+# the night window's reboot. Once GRUB's stock choice, the newest kernel in
+# /boot, is no broken build, its reboot request goes and its default goes
+# back once, while GRUB's default is still the one it wrote; a default
+# changed by hand since stays. Nothing else here writes GRUB's settings.
+_kguard_old_boot_back() {
+  local _rec="${_KGUARD_DIR}/grub-default" _f="/etc/default/grub"
+  local _rr="/run/reboot-required.pkgs" _was _cur
+  _kguard_newest_broken && return 0
+  if grep -q -s ' (BOA kernel guard)$' "${_rr}"; then
+    grep -v ' (BOA kernel guard)$' "${_rr}" > "${_rr}.kguard"
+    if [ -s "${_rr}.kguard" ]; then
+      mv -f "${_rr}.kguard" "${_rr}"
+    else
+      rm -f "${_rr}.kguard" "${_rr}" /run/reboot-required
+    fi
+    _kguard_log "an earlier guard's reboot request withdrawn"
+  fi
+  [ -e "${_rec}" ] || return 0
+  _was="$(cat "${_rec}" 2>/dev/null)"
+  _cur="$(grep -E '^GRUB_DEFAULT=' "${_f}" 2>/dev/null)"
+  case "${_was}" in
+    ""|GRUB_DEFAULT=0|GRUB_DEFAULT=\"0\"|GRUB_DEFAULT=\'0\') ;;
+    *) _was="?" ;;
+  esac
+  if [ "${_was}" != "?" ] \
+    && [[ "${_cur}" =~ ^GRUB_DEFAULT=\"gnulinux-advanced-[^\"\>]+\>gnulinux-[^\"\>]+-advanced-[^\"\>]+\"$ ]]; then
+    cp -p "${_f}" "${_KGUARD_DIR}/grub.redirected" || return 1
+    if [ -n "${_was}" ]; then
+      sed "s|^GRUB_DEFAULT=.*|${_was}|" "${_KGUARD_DIR}/grub.redirected" > "${_f}.kguard"
+    else
+      sed '/^GRUB_DEFAULT=/d' "${_KGUARD_DIR}/grub.redirected" > "${_f}.kguard"
+    fi
+    chmod 0644 "${_f}.kguard" && mv -f "${_f}.kguard" "${_f}" || return 1
+    if ! update-grub > /dev/null 2>&1; then
+      # grub.cfg still starts the redirect: the file says so too, and the
+      # next pass tries again
+      cp -p "${_KGUARD_DIR}/grub.redirected" "${_f}"
+      _kguard_refused "an earlier guard's GRUB default not put back: update-grub failed"
+      return 1
+    fi
+    rm -f "${_KGUARD_DIR}/grub.redirected"
+    _kguard_log "an earlier guard's GRUB default put back: ${_was:-no line}"
+  else
+    _kguard_log "an earlier guard's GRUB record dropped, GRUB's default left as it is: ${_cur:-no line}"
+  fi
+  rm -f "${_rec}" "${_KGUARD_DIR}/grub.before"
+}
+
+# True when the newest kernel in /boot, the one GRUB's stock default
+# boots, is a broken build.
+_kguard_newest_broken() {
+  local _k _new _ver
+  _new="$(for _k in /boot/vmlinuz-*; do [ -f "${_k}" ] && echo "${_k#/boot/vmlinuz-}"; done | sort -V | tail -n 1)"
+  [ -n "${_new}" ] || return 1
+  _ver="$(dpkg-query -W -f '${Version}' "linux-image-${_new}" 2>/dev/null)"
+  [ -n "${_ver}" ] || _ver="$(dpkg-query -W -f '${Version}' "linux-image-${_new}-unsigned" 2>/dev/null)"
+  _kguard_broken "${_ver}"
+}
+
+_kernel_guard() {
+  [ "${_KERNEL_GUARD:-}" = "NO" ] && return 0
+  command -v dpkg-query > /dev/null 2>&1 || return 0
+  [ -n "$(_kguard_images)" ] || return 0
+  _write_managed_apt_conf "${_KGUARD_PIN}" \
+"Explanation: Managed by BOA (autoupboa), the kernel guard: Debian's 6.1.192-1 (6.1.0-55) freezes ext4
+Explanation: (a NULL folio in the block allocator, Debian bug 1154101, fixed in 6.1.192-2).
+Package: linux-image-* linux-headers-* linux-kbuild-*
+Pin: version /${_KGUARD_RE}/
+Pin-Priority: -1"
+  case "$?" in
+    2) _kguard_log "apt pin written: ${_KGUARD_PIN}" ;;
+    1) _kguard_refused "apt pin not written: ${_KGUARD_PIN}" ;;
+  esac
+  # packages and GRUB change only outside a BOA run and the night backup
+  _is_protected_run > /dev/null
+  [ "${_protectedRun}" = "FALSE" ] || return 0
+  _kguard_purge
+  _kguard_old_boot_back
+  _kguard_meta_back
+}
+
 _announce_kernel_reboot() {
   # An unattended kernel-activation reboot must never be silent: log it
   # in /var/log/boa/ and alert the admin by email before firing, so an
@@ -1511,6 +1890,22 @@ _if_new_kernel_reboot() {
         echo "NOTE: kernel reboot pending, deferred: xmass window in flight"
         return 0
       fi
+      ### A migration's runner park (xoct and xcopy pre-mig until post-mig,
+      ### an xmass cutover until its unpark, the source's relay window
+      ### included) lives in /run: a reboot would end it, and the next
+      ### tools refresh would fetch the parked runners back on a box that
+      ### is being moved. The marker's existence is the test, as for the
+      ### park itself; clear.sh expires it after 24 hours.
+      if [ -e "/run/boa_migration_park.pid" ]; then
+        echo "NOTE: kernel reboot pending, deferred: a migration park stands"
+        return 0
+      fi
+      ### Never into a broken build the kernel guard keeps out (one it has
+      ### not purged): GRUB's stock default boots the newest kernel in /boot.
+      if [ "${_KERNEL_GUARD:-}" != "NO" ] && _kguard_newest_broken; then
+        echo "NOTE: kernel reboot pending, refused: the newest kernel in /boot is a broken build the kernel guard keeps out"
+        return 0
+      fi
       ### A staged kernel is activated only inside the silent night
       ### maintenance window (04:00-04:59 server time): an apt security
       ### run staging a kernel mid-day must never reboot a box mid-day.
@@ -1531,6 +1926,8 @@ _if_new_kernel_reboot() {
     fi
   fi
 }
+
+_kernel_guard
 
 _if_hosted_sys
 if [ "${_hostedSys}" = "YES" ] || [ -e "/root/.allow.auto.reboot.cnf" ]; then
@@ -1627,6 +2024,37 @@ _crontab_update() {
 
     echo Cron Update Completed
   fi
+}
+
+# The DHCP servers named in root dhclient's lease files, one dotted quad a
+# line. Never from log text: any local program can log a "DHCPREQUEST ... to
+# <address>" or a "dhclient ... Failed" line.
+_dhcp_lease_servers() {
+  local _p _lf
+  local _oct="(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])"
+  for _p in $(pgrep -u root -x dhclient 2> /dev/null); do
+    _lf=$(tr '\0' '\n' 2> /dev/null < "/proc/${_p}/cmdline" \
+      | sed -n '/^-lf$/{n;p;q;}')
+    [ -n "${_lf}" ] || _lf="/var/lib/dhcp/dhclient.leases"
+    [ -f "${_lf}" ] && [ ! -L "${_lf}" ] || continue
+    [ "$(stat -c %u "${_lf}" 2> /dev/null)" = "0" ] || continue
+    sed -n -E 's/^[[:space:]]*option dhcp-server-identifier[[:space:]]+([0-9.]+);.*$/\1/p' "${_lf}"
+  done | grep -E "^(${_oct}\.){3}${_oct}$" | sort -u
+}
+
+# dhclient renews its lease by unicast to the server that granted it, and
+# csf's egress filter drops that unless csf.allow lets udp/67 out to it. Adds
+# the allow line of each lease server that has none and prints that server;
+# lines already in csf.allow stay, whoever wrote them.
+_dhcp_allow_lease_servers() {
+  local _srv
+  [ -e "/etc/csf/csf.allow" ] || return 0
+  for _srv in $(_dhcp_lease_servers); do
+    if ! grep -qE "^udp\|out\|d=67\|d=${_srv//./\\.}([[:space:]#]|$)" /etc/csf/csf.allow; then
+      echo "udp|out|d=67|d=${_srv} # Local DHCP out" >> /etc/csf/csf.allow
+      echo "${_srv}"
+    fi
+  done
 }
 
 _crontab_cleanup() {
@@ -1751,9 +2179,12 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
   	  rm -f /etc/csf/csf.conf-pre*
   	else
   	  if [ ! -e "/var/log/boa/.csf_legacy_cleanup.${_xSrl}.pid" ]; then
-  	    sed -i "s/.*Legacy.*//g"    /etc/csf/csf.ignore
+  	    ### A move's own trust, "<source ip> # Legacy Proxy" as xoct asks for it
+  	    ### on the target, stays until the operator removes it once the proxy is
+  	    ### no longer needed: a release in the middle of a move must not end it.
+  	    sed -i "/Legacy Proxy/!s/.*Legacy.*//g"    /etc/csf/csf.ignore
   	    wait
-  	    sed -i "s/.*Legacy.*//g"    /etc/csf/csf.allow
+  	    sed -i "/Legacy Proxy/!s/.*Legacy.*//g"    /etc/csf/csf.allow
   	    wait
   	    sed -i "s/.*Manually.*//g"  /etc/csf/csf.ignore
   	    wait
@@ -1771,25 +2202,11 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
   	fi
 
   	rm -f /var/xdrago/*.old
-  	rm -f /var/xdrago/.*.off
+  	_rm_xdrago_off
 
     if [ ! -e "/var/log/boa/.csf_dhcp_udp_cleanup.${_xSrl}.pid" ]; then
-      sed -i "s/.*DHCP.*//g" /etc/csf/csf.allow
-      wait
       sed -i "/^$/d" /etc/csf/csf.allow
-      if [ -e "/var/log/daemon.log" ]; then
-        _DHCP_LOG="/var/log/daemon.log"
-      else
-        _DHCP_LOG="/var/log/syslog"
-      fi
-      grep DHCPREQUEST "${_DHCP_LOG}" | awk '{print $12}' | sort -u | while read -r _IP; do
-        if [[ ${_IP} =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
-          IFS='.' read -r oct1 oct2 oct3 oct4 <<< "${_IP}"
-          if (( oct1 <= 255 && oct2 <= 255 && oct3 <= 255 && oct4 <= 255 )); then
-            echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow
-          fi
-        fi
-      done
+      _dhcp_allow_lease_servers > /dev/null
       if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
         csf -ra &> /dev/null
         synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
@@ -1875,14 +2292,14 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
 
   # Second-level: per-tree PID; only cleared once when lock toggles
   if [ -e "/root/.dev.server.cnf" ]; then
-    if [ ! -e "/var/log/boa/.etc_crontab_update_dev_ctrl_588877v01.${_tRee}.${_xSrl}.pid" ]; then
+    if [ ! -e "/var/log/boa/.etc_crontab_update_dev_ctrl_588888v01.${_tRee}.${_xSrl}.pid" ]; then
       rm -f /var/log/boa/.etc_crontab_update_dev_ctrl*.pid
       _crontab_cleanup
       service cron restart
-      touch "/var/log/boa/.etc_crontab_update_dev_ctrl_588877v01.${_tRee}.${_xSrl}.pid"
+      touch "/var/log/boa/.etc_crontab_update_dev_ctrl_588888v01.${_tRee}.${_xSrl}.pid"
     fi
   else
-    if [ ! -e "/var/log/boa/.etc_crontab_update_prod_ctrl_588877v01.${_tRee}.${_xSrl}.pid" ]; then
+    if [ ! -e "/var/log/boa/.etc_crontab_update_prod_ctrl_588888v01.${_tRee}.${_xSrl}.pid" ]; then
       rm -f /var/log/boa/.etc_crontab_update_prod_ctrl*.pid
       if [ -n "${_AUTO_UP_MONTH}" ] && [ -n "${_AUTO_UP_DAY}" ]; then
         _crontab_update
@@ -1890,7 +2307,7 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
         _crontab_cleanup
       fi
       service cron restart
-      touch "/var/log/boa/.etc_crontab_update_prod_ctrl_588877v01.${_tRee}.${_xSrl}.pid"
+      touch "/var/log/boa/.etc_crontab_update_prod_ctrl_588888v01.${_tRee}.${_xSrl}.pid"
     fi
   fi
 

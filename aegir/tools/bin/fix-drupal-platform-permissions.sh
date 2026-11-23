@@ -122,7 +122,7 @@ _validate_path_prefix() {
 _in_pinned_dir() {
   local _d="${1}"
   shift
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_d}" ] && "$@" )
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_d}" ] && "$@" )
 }
 
 # vendor may be a link to elsewhere in the caller's own tree, and the lock
@@ -211,6 +211,13 @@ _acct_walk_uids() {
     [ "${_n}" = "${_a}" ] && _self=YES
   done < <(getent passwd 2> /dev/null)
   [ "${_self}" = "YES" ] || return 1
+  # the account's removed identities, their numbers recorded by root before
+  # deluser freed them; a number a user has again is not taken
+  while IFS= read -r _u; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    getent passwd "${_u}" > /dev/null 2>&1 && continue
+    _x="${_x},${_u}"
+  done 2> /dev/null < "/data/conf/acct-uids/${_a}.gone"
   echo "${_x}"
 }
 # The uids the walks below act for, from the root as resolved, never
@@ -374,6 +381,21 @@ _chmod_any_own_here() {
   _chmod_own_here d "${_mode}" "$@"
   _chmod_own_here f "${_mode}" "$@"
 }
+# An executable a shell runs by its path, in the current directory (entered
+# by _in_scoped_dir): core's dr in vendor/bin, Drush's drush.php. It keeps its
+# execute bits, and group write only where the tree it really sits in is a
+# tenant codebase's (~/static), never a built-in platform's a link leads to:
+# there the group holds the account's SFTP and client logins, and the backend
+# user runs the code.
+_chmod_exec_here() {
+  case "$(/bin/pwd -P)/" in
+    */static/*) _chmod_any_own_here 0775 "${1}" ;;
+    *) _chmod_any_own_here 0755 "${1}" ;;
+  esac
+}
+_chmod_dr_here() {
+  _chmod_exec_here dr
+}
 # _chmod_any_own_here inside the directory $1 (resolved once above), entered
 # for real.
 _chmod_any_own_in() {
@@ -406,12 +428,12 @@ _in_own_here() {
 _links_left_note() {
   local _f _n=0 _first="" _here
   [ /dev/fd/3 -ef /dev/null ] && return 0
-  while IFS= read -r -d '' _f; do
+  while LC_ALL=C IFS= read -r -d '' _f; do
     [ -n "${_first}" ] || _first="${_f}"
     _n=$(( _n + 1 ))
   done < <(find "$@" -type f -links +1 -print0 2> /dev/null)
   [ "${_n}" -gt 0 ] || return 0
-  _here="$(pwd -P)"
+  _here="$(/bin/pwd -P)"
   _first="${_here}/${_first#./}"
   printf "Notice: %s file(s) with more than one link left unchanged under %s, first: %s\n" \
     "${_n}" "${_here//[[:cntrl:]]/?}" "${_first//[[:cntrl:]]/?}" >&3
@@ -538,7 +560,7 @@ _off_drush_here() {
 # user owns.
 _grav_capsules_perm_here() {
   local _c _here
-  _here="$(pwd -P)"
+  _here="$(/bin/pwd -P)"
   for _c in ./*/; do
     _c="${_c#./}"
     _in_pinned_dir "${_here}/${_c%/}" _grav_capsule_perm_here
@@ -548,7 +570,7 @@ _grav_capsule_perm_here() {
   local _wd _sd _here _ov
   local -a _keep=()
   [ -f ./system/defines.php ] || return 0
-  _here="$(pwd -P)"
+  _here="$(/bin/pwd -P)"
   _place_own_here || return 0
   # The host overlay in Grav's older shape, user/<site name>/ where there is
   # no user/env/, holds config overrides as user/config does. The site name
@@ -960,17 +982,28 @@ printf 'Setting permissions of all codebase files inside %s...\n' "$(_nm "${drup
 _left_add _in_pinned_dir "${drupal_root}" _walk_here f "${_MODE_FILE}" \
   ./modules ./themes ./libraries ./includes ./misc ./profiles ./core
 
+### vendor/drush and the console Input and Style directories: one the owner
+### cannot write is locked (provision's lock leaves 0400, on Drupal 7 too)
+### and keeps its mode, since only provision's lock and unlock change it, as
+### in the nightly pass. Widening them here and closing them again at the
+### end opened the lock for the length of the walk in every platform Verify,
+### and a run on a platform its owner had unlocked closed the modes over a
+### tree whose patches were off. An open one (after Unlock Local Drush, or
+### never locked) takes the walk's mode like any vendor directory, which
+### leaves it open. What is in them is walked either way.
+_LOCK_DIRS_KEPT=( ! \( \( -path ./vendor/drush -o -path ./vendor/symfony/console/Input \
+  -o -path ./vendor/symfony/console/Style \) ! -perm -0200 \) )
 if [ -e "${drupal_root}/vendor" ]; then
   printf 'Setting permissions of all codebase directories inside %s...\n' "$(_nm "${drupal_root}/vendor")"
   _left_add _in_pinned_dir "${drupal_root}" \
-    _fwalk_own_here d "${_MODE_DIR}" ./vendor
+    _fwalk_own_here d "${_MODE_DIR}" ./vendor "${_LOCK_DIRS_KEPT[@]}"
   printf 'Setting permissions of all codebase files inside %s...\n' "$(_nm "${drupal_root}/vendor")"
   _left_add _in_pinned_dir "${drupal_root}" \
     _fwalk_own_here f "${_MODE_FILE}" ./vendor
 elif [ -e "${drupal_root}/../vendor" ]; then
   printf 'Setting permissions of all codebase directories inside %s...\n' "$(_nm "${drupal_root}/../vendor")"
   _left_add _in_pinned_dir "${drupal_root%/*}" \
-    _fwalk_own_here d "${_MODE_DIR}" ./vendor
+    _fwalk_own_here d "${_MODE_DIR}" ./vendor "${_LOCK_DIRS_KEPT[@]}"
   printf 'Setting permissions of all codebase files inside %s...\n' "$(_nm "${drupal_root}/../vendor")"
   _left_add _in_pinned_dir "${drupal_root%/*}" \
     _fwalk_own_here f "${_MODE_FILE}" ./vendor
@@ -994,12 +1027,30 @@ elif [ -e "${drupal_root}/../vendor/drush/drush/drush" ]; then
     _in_own_here _off_drush_here
 fi
 
+### Drush's drush.php keeps its execute bits (vdrush runs it by its path),
+### with group write in a tenant codebase alone (_chmod_exec_here).
 if [ -e "${drupal_root}/vendor/drush/drush/drush.php" ]; then
   _left_add _in_scoped_dir "${drupal_root}/vendor/drush/drush" \
-    _chmod_any_own_here 0775 drush.php
+    _chmod_exec_here drush.php
 elif [ -e "${drupal_root}/../vendor/drush/drush/drush.php" ]; then
   _left_add _in_scoped_dir "${drupal_root%/*}/vendor/drush/drush" \
-    _chmod_any_own_here 0775 drush.php
+    _chmod_exec_here drush.php
+fi
+
+### Composer's proxy for core's dr (Drupal 11.5 and newer, Drush 15) keeps an
+### execute bit: the shell's dr runs it by its path, and the shell runs only a
+### file that may be executed. It is the vendor/ the walk above takes (the
+### docroot's own, else the one above it), and its mode is the one of the
+### tree its folder really sits in, a vendor/ link followed (_in_scoped_dir):
+### group write only where that is a tenant codebase (~/static), never on a
+### built-in or master platform, whose code the backend runs and no shell
+### login writes (_chmod_dr_here).
+if [ -e "${drupal_root}/vendor" ]; then
+  if [ -e "${drupal_root}/vendor/bin/dr" ]; then
+    _left_add _in_scoped_dir "${drupal_root}/vendor/bin" _chmod_dr_here
+  fi
+elif [ -e "${drupal_root}/../vendor/bin/dr" ]; then
+  _left_add _in_scoped_dir "${drupal_root%/*}/vendor/bin" _chmod_dr_here
 fi
 
 _left_add _chmod_own_in "${drupal_root}" d "${_MODE_DIR}" .
@@ -1122,8 +1173,14 @@ printf 'Setting permissions of all codebase files inside %s...\n' "$(_nm "${drup
 _left_add _in_pinned_dir "${drupal_root}/sites/all" \
   _fwalk_own_here f "${_SA_FILE}" ./modules ./themes ./libraries
 
+### Core's composer scaffold rewrites autoload.php and, from Drupal 11.4 on,
+### autoload_runtime.php in place on every composer run (no unlink first, so
+### the file itself must be writable, not only its directory): both keep the
+### tree's file mode. Every other scaffold file is replaced through an unlink
+### and keeps the tighter 0644.
 _left_add _chmod_any_own_in "${drupal_root}" 0644 '*.php'
-_left_add _chmod_any_own_in "${drupal_root}" "${_MODE_FILE}" autoload.php
+_left_add _chmod_any_own_in "${drupal_root}" "${_MODE_FILE}" autoload.php \
+  autoload_runtime.php
 _left_add _chmod_any_own_in "${drupal_root}" 0751 sites
 _left_add _chmod_any_own_in "${drupal_root}/sites" 0755 '*'
 _left_add _chmod_any_own_in "${drupal_root}/sites" 0644 '*.php'
@@ -1142,23 +1199,6 @@ if [[ "${drupal_root}" =~ "/static/" ]] \
   && [ -e "${drupal_root}/core/lib/Drupal.php" ]; then
   _left_add _chmod_any_own_in "${drupal_root}" 02771 sites
   _left_add _chmod_any_own_in "${drupal_root}/sites" 02775 default
-fi
-
-### Lock Local Drush and Symfony Console Input/Style
-if [ -e "${drupal_root}/core" ]; then
-  if [ -e "${drupal_root}/vendor" ]; then
-    printf 'Locking Drush and Symfony Console Input in %s...\n' "$(_nm "${drupal_root}/vendor")"
-    _left_add _in_scoped_dir "${drupal_root}/vendor" \
-      _chmod_any_own_here 0400 drush
-    _left_add _in_scoped_dir "${drupal_root}/vendor/symfony/console" \
-      _chmod_any_own_here 0400 Input Style
-  elif [ -e "${drupal_root}/../vendor" ]; then
-    printf 'Locking Drush and Symfony Console Input in %s...\n' "$(_nm "${drupal_root}/../vendor")"
-    _left_add _in_scoped_dir "${drupal_root%/*}/vendor" \
-      _chmod_any_own_here 0400 drush
-    _left_add _in_scoped_dir "${drupal_root%/*}/vendor/symfony/console" \
-      _chmod_any_own_here 0400 Input Style
-  fi
 fi
 
 ### Known exceptions

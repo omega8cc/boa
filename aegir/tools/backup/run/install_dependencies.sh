@@ -4,7 +4,7 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 
-_PTN_VRN=3.14.6
+_PTN_VRN=3.14.10
 _PTN_MNR="${_PTN_VRN%.*}"
 _DCY_VRN=3.2.0.2
 _DCY_CMD="/usr/local/bin/duplicity"
@@ -166,6 +166,25 @@ _find_fast_mirror_early() {
   else
     _USE_MIR="files.boa.io"
   fi
+  # A mirror box (it holds a published tree's stamp) takes its files from
+  # files.aegir.cc, the one mirror name with no cache in front of it, when
+  # that name is not this box itself and serves that stamp; any other box,
+  # or a mirror box where it does not, keeps the pick above.
+  _mirStp=""
+  for _mirStp in /var/www/static/versions/*/boa/.update.txt; do
+    [[ -s "${_mirStp}" ]] && break
+    _mirStp=""
+  done
+  if [[ -n "${_mirStp}" ]]; then
+    _mirIp="$(getent ahostsv4 files.aegir.cc 2> /dev/null | awk '{ print $1; exit }')"
+    if [[ -n "${_mirIp}" ]] \
+      && ! ip -o addr show 2> /dev/null | grep -qF " ${_mirIp}/" \
+      && curl -s --fail --max-time 10 -A iCab \
+        "https://files.aegir.cc/${_mirStp#/var/www/static/}" 2> /dev/null \
+        | head -c 64 | grep -q '^[^<]'; then
+      _USE_MIR="files.aegir.cc"
+    fi
+  fi
   _urlDev="https://${_USE_MIR}/dev"
   _urlHmr="https://${_USE_MIR}/versions/${_tRee}/boa/aegir"
 }
@@ -182,6 +201,14 @@ _duplicity_venv_on_pin() {
   [[ "${_VNV_PYT}" == *"python${_PTN_MNR}" ]] \
     && [ -x "${_VNV_PYT}" ] \
     && [ -d "${_PIPX_VNV}/duplicity/lib/python${_PTN_MNR}/site-packages/duplicity" ]
+}
+
+# The source-built interpreter to the patch level, the one test every
+# rebuild decision uses: a version that only begins with the pin (3.14.10
+# against a 3.14.1 pin) is not the pin.
+_python_on_pin() {
+  [ -x "${_DCY_PTN}" ] \
+    && [ "$(${_DCY_PTN} --version 2>&1)" = "Python ${_PTN_VRN}" ]
 }
 
 # pipx install --force reuses an existing venv AND its interpreter -- it
@@ -217,11 +244,22 @@ _pipx_install_pinned() {
 # backend burns the full spaced retry budget per file instead of taking
 # the no-need-to-retry branch; over one historically damaged chain that
 # stalled a weekly retention for hours and starved the whole backup
-# schedule on a hosted box. The pinned venv copy gets the backend's
-# _error_code hook appended: marker-guarded, exact-pin gated, and the
-# candidate is compile-checked before an atomic same-directory swap, so
-# a failed patch leaves the stock file untouched. Re-check the need at
-# the next duplicity pin bump.
+# schedule on a hosted box. And the backend deletes by name: it looks
+# each file's id up first, a download-class request B2 caps per day, so
+# a retention pass or cleanup on a capped account fails file by file and
+# leaves old chains holding storage. And the SDK sends any file over the
+# storage side's recommended part size (100 MB) as a large file in
+# parallel parts, so every 300 MiB volume is a start call, four parts and
+# a finish call, and one part the storage side refuses fails the whole
+# volume: runs gave up on 503 answers where a whole upload passes, and a
+# first full copy of a large store stopped completing. The pinned venv
+# copy gets the backend's _error_code hook, a _delete_list that deletes
+# by version id from one listing and a _put that sends each volume in one
+# request appended: marker-guarded (a copy that carries only some of the
+# blocks has them replaced), exact-pin gated, and the candidate is
+# compile-checked before an atomic same-directory swap, so a failed
+# patch leaves the file as it was. Re-check the need at the next
+# duplicity pin bump.
 _patch_duplicity_b2backend() {
   local _b2fLive _b2fTemp _dcyLive
   # Cheapest guards first: this also runs from the nightly dcysetup
@@ -229,13 +267,24 @@ _patch_duplicity_b2backend() {
   # path must cost a file read, not a duplicity --version subprocess
   _b2fLive="${_PIPX_VNV}/duplicity/lib/python${_PTN_MNR}/site-packages/duplicity/backends/b2backend.py"
   [ -f "${_b2fLive}" ] || return 0
-  if grep -q "BOA-b2-error-code" "${_b2fLive}"; then
+  # every block's own marker line, never one alone and never the words
+  # alone: a copy that carries some of the blocks, or a line of the stock
+  # part that happens to hold a marker's words, must not read as patched
+  if grep -q "^# BOA-b2-error-code:" "${_b2fLive}" \
+    && grep -q "^# BOA-b2-delete-list:" "${_b2fLive}" \
+    && grep -q "^# BOA-b2-one-request:" "${_b2fLive}"; then
     return 0
   fi
   _dcyLive=$(/usr/local/bin/duplicity --version 2>&1)
   [[ "${_dcyLive}" =~ "duplicity ${_DCY_VRN} " ]] || return 0
   _b2fTemp="${_b2fLive%.py}_boapatch$$.py"
   cp -af "${_b2fLive}" "${_b2fTemp}" || return 0
+  # a copy patched before carries some of the blocks, appended at its
+  # end from the first one's marker on: they go, the whole set below
+  # replaces them
+  if grep -q "^# BOA-b2-error-code:" "${_b2fTemp}"; then
+    sed -i '/^# BOA-b2-error-code:/,$d' "${_b2fTemp}" || { rm -f "${_b2fTemp}"; return 0; }
+  fi
   cat >> "${_b2fTemp}" <<'B2NOTFOUND'
 
 
@@ -263,12 +312,66 @@ def _boa_b2_error_code(self, operation, e):
 
 
 B2Backend._error_code = _boa_b2_error_code
+
+
+# BOA-b2-delete-list: delete by version id from one listing of the target,
+# never by name: a name lookup is a download-class request B2 caps per
+# day, so a retention pass or cleanup on a capped account failed file by
+# file. Every version of each named file goes (a re-sent volume leaves
+# two); a name no longer listed is gone already, so a retried batch
+# finishes the rest. Hide mode keeps the stock path.
+def _boa_b2_delete_list(self, filename_list):
+    if config.b2_hide_files:
+        for _boa_f in filename_list:
+            self._delete(_boa_f)
+        return
+    _boa_want = set(self.path + os.fsdecode(_boa_f) for _boa_f in filename_list)
+    _boa_seen = [
+        _boa_fv
+        for (_boa_fv, _boa_dir) in self.bucket.ls(self.path, latest_only=False)
+        if _boa_fv is not None and _boa_fv.file_name in _boa_want
+    ]
+    for _boa_fv in _boa_seen:
+        log.Log(f"Delete: {_boa_fv.file_name} (version {_boa_fv.id_})", log.INFO)
+        self.bucket.delete_file_version(_boa_fv.id_, _boa_fv.file_name)
+    for _boa_n in sorted(_boa_want - set(_boa_fv.file_name for _boa_fv in _boa_seen)):
+        log.Log(f"Delete: {_boa_n} not listed, gone already", log.INFO)
+
+
+B2Backend._delete_list = _boa_b2_delete_list
+
+
+# BOA-b2-one-request: each volume goes up in one upload request. Left to
+# itself the SDK sends any file over the storage side's recommended part
+# size (100 MB) as a large file in parallel parts: a start call, the parts
+# and a finish call per 300 MiB volume, and one part the storage side
+# refuses fails the whole volume. A minimum part size above the volume
+# makes the SDK send it whole; a larger file (the signatures of a big
+# full) still goes in parts, of that size.
+_BOA_B2_ONE_REQUEST = 536870912
+
+
+def _boa_b2_put(self, source_path, remote_filename):
+    log.Log(
+        f"Put: {os.fsdecode(source_path.name)} -> {self.path + os.fsdecode(remote_filename)}",
+        log.INFO,
+    )
+    self.bucket.upload_local_file(
+        os.fsdecode(source_path.name),
+        quote_plus(self.path + os.fsdecode(remote_filename), "/"),
+        content_type="application/pgp-encrypted",
+        progress_listener=B2ProgressListener(),
+        min_part_size=_BOA_B2_ONE_REQUEST,
+    )
+
+
+B2Backend._put = _boa_b2_put
 B2NOTFOUND
   if "${_PIPX_VNV}/duplicity/bin/python" -m py_compile "${_b2fTemp}" 2>/dev/null; then
     chmod 644 "${_b2fTemp}"
     mv -f "${_b2fTemp}" "${_b2fLive}"
     find "${_b2fLive%/*}/__pycache__" -name "b2backend*" -delete 2>/dev/null
-    echo "Patched duplicity b2backend: missing-file deletions no longer burn spaced retries"
+    echo "Patched duplicity b2backend: one request a volume, deletions by version id, missing files no longer burn spaced retries"
   else
     rm -f "${_b2fTemp}"
     echo "NOTE: duplicity b2backend patch did not compile; stock file left in place"
@@ -520,9 +623,7 @@ _python_install_src() {
     tzdata \
     uuid-dev
 
-  _PTN_TEST=$(python3 --version 2>&1)
-  if [[ ! "${_PTN_TEST}" =~ "Python ${_PTN_VRN}" ]] \
-    || [ ! -x "${_DCY_PTN}" ]; then
+  if ! _python_on_pin; then
     _python_stage_src || exit 1
     cd "${_PTN_DIR}/Python-${_PTN_VRN}" || { echo "Cannot enter the Python source tree"; exit 1; }
     if ! bash ./configure --with-openssl=/usr/local/ssl3; then
@@ -540,7 +641,7 @@ _python_install_src() {
     cd
   fi
   _PTN_TEST=$(${_DCY_PTN} --version 2>&1)
-  if [[ "${_PTN_TEST}" =~ "Python ${_PTN_VRN}" ]]; then
+  if _python_on_pin; then
     echo "Python ${_PTN_VRN} installed"
     export PYTHONPATH="/usr/local/lib/python${_PTN_MNR}/site-packages"
   else
@@ -563,8 +664,7 @@ _python_install_src() {
 _if_python_install_src() {
   _PYTHON_INSTALL=NO
   [ -e "/root/.gnupg" ] && chmod 700 /root/.gnupg
-  _PYTHON_TEST=$(python3 --version 2>&1)
-  if [[ ! "${_PYTHON_TEST}" =~ "Python ${_PTN_VRN}" ]]; then
+  if ! _python_on_pin; then
     echo "Python ${_PTN_VRN} installation is required to support Duplicity ${_DCY_VRN}"
     _python_install_src
   else

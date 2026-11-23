@@ -772,7 +772,7 @@ _php_conf_update() {
   if [ "${_DB_SERIES}" = "5.7" ]; then
     _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
   fi
-  # 8.6 is opt-in while it is a release candidate: its pool user, config
+  # 8.6 is opt-in, outside the default set: its pool user, config
   # and pool exist only on a box that has built it
   if [ -x "/opt/php86/bin/php" ]; then
     _PHP_V="86 ${_PHP_V}"
@@ -787,7 +787,8 @@ _php_conf_update() {
   _T_MWRB=$(_master_web_group_rb)
   for e in ${_PHP_V}; do
     if [ ! -e "/var/www/www${e}" ]; then
-      adduser --system --group --home /var/www/www${e} www${e} &> /dev/null
+      # never under a number a removed account identity freed
+      _sys_user_add low adduser --system --group --home /var/www/www${e} www${e} &> /dev/null
       # a master whose pools have left www-data keeps a new one out of it
       [ "${_T_MWGS%% *}" = "phaseb" ] || usermod -aG www-data www${e}
     fi
@@ -865,7 +866,7 @@ _php_conf_update() {
 }
 
 #
-# PHP 8.6 is a release candidate, and some extensions do not build against
+# PHP 8.6 is the newest version, and some extensions do not build against
 # it yet: their extension= line is commented out, or every PHP start logs a
 # load warning. Each pass copies the ini again and runs the fixers first, so
 # an extension that builds later is loaded again with no step of its own.
@@ -927,7 +928,7 @@ _php86_note_once() {
 #
 # True (and said once per pass) when PHP $1 is 8.6 and the extension release
 # $2 is listed in _PHP86_EXT_SKIP: a pinned release not shown to build against
-# the pinned release candidate is not built for it. A new pin is not listed,
+# the pinned PHP 8.6 is not built for it. A new pin is not listed,
 # so the next pass tries it. Every other PHP version is never matched.
 _php_ext_rc_skip() {
   [ "$1" = 86 ] || return 1
@@ -1205,7 +1206,7 @@ _php_imagick_build() {
   fi
   local _so="${_THIS_PHP_EXT_DIR}/imagick.so"
   local _prev="/var/backups/php$1-imagick-prev.so"
-  # a release candidate runs without Imagick: a failed try is a warning,
+  # 8.6 runs without Imagick for now: a failed try is a warning,
   # never a failed pass
   local _bad="OOPS"
   [ "$1" = 86 ] && _bad="WARN"
@@ -4478,7 +4479,7 @@ _php_install_upgrade() {
       _T_PHP_PTH=""
       _FRESH_PHP85_BUILD=85
     fi
-    # 8.6 is a release candidate: built only when listed, never the default
+    # 8.6 is outside the default set: built only when listed
     if [[ "${_PHP_MULTI_INSTALL}" =~ "8.6" ]] \
       && [ -n "${_PHP86_VRN}" ] \
       && [ ! -x "/opt/php86/bin/php" ]; then
@@ -4495,7 +4496,7 @@ _php_install_upgrade() {
 }
 
 #
-# PHP 8.6 is a release candidate and never the box's php: a build of it, or
+# PHP 8.6 is opt-in and never the box's php: a build of it, or
 # a pass over it, points /usr/bin/php at it, so the default goes back.
 _php_rc_cli_restore() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then

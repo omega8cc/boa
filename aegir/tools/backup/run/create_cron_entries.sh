@@ -5,13 +5,13 @@ export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 
 # Configurable in /root/.barracuda.cnf interval in minutes between backup cycles
+# (whole hours count; _BACKUP_START=HH:MM there pins the cycle's start)
 _BACKUP_INTERVAL=360
 _WRAPPER_DIR="/root/.remote_backups/run"
 _WRAPPER_SCRIPT="${_WRAPPER_DIR}/sequential_backups.sh"
 _SCHEDULE_DIR="/root/.remote_backups/schedule"
 _SCHEDULE_FILE="${_SCHEDULE_DIR}/backup_schedule.txt"
 _CRON_FILE="/etc/cron.d/duplicity_backup"
-_LOGFILE="/var/log/backup_runtime.log"
 
 # Function to verify root access
 _check_root() {
@@ -81,7 +81,6 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 # File paths
 _SCHEDULE_FILE="/root/.remote_backups/schedule/backup_schedule.txt"
 _PID_DIR="/run"
-_LOGFILE="/var/log/backup_runtime.log"
 
 # Liveness for a recorded lock owner: the pid must exist AND still look
 # like this tooling. A pid recycled by an unrelated long-lived process
@@ -91,11 +90,22 @@ _LOGFILE="/var/log/backup_runtime.log"
 # by another user. An unreadable or empty cmdline means the process
 # exited (or is a zombie) between the checks: dead.
 _pid_is_live() {
-  local _pid=$1 _cmd
+  local _pid=$1 _tool="${2:-}" _cmd
   [[ "${_pid}" =~ ^[0-9]+$ ]] || return 1
   [ -d "/proc/${_pid}" ] || return 1
+  # The lock is root's: a recycled pid now held by another user's process
+  # titled like a backup is not its owner.
+  [ "$(awk '/^Uid:/ { print $2 " " $3; exit }' "/proc/${_pid}/status" 2> /dev/null)" = "0 0" ] || return 1
   _cmd=$(tr '\0' ' ' 2>/dev/null < "/proc/${_pid}/cmdline")
   [ -n "${_cmd}" ] || return 1
+  # A tool's own lock is owned by that tool's run alone: a pid recycled by
+  # a run of an account's own entry, which the backup gate leaves out, must
+  # not hold it.
+  if [ -n "${_tool}" ]; then
+    [[ "${_cmd}" =~ ^([^\ ]*/)?bash(\ [-+][^\ ]+|\ [-+][oO]\ [^\ ]+|\ --(rcfile|init-file)\ [^\ ]+)*\ ([^\ ]*/)?${_tool}( |$) ]] \
+      && return 0
+    return 1
+  fi
   case "${_cmd}" in
     *duplicity*|*multiback*|*mybackup*|*backboa*|*sequential_backups*) return 0 ;;
     *) return 1 ;;
@@ -114,7 +124,7 @@ _pid_is_live() {
 # claim was swept by a slower healer detects the loss and re-enters
 # instead of running unlocked.
 _acquire_pid_file() {
-  local _pidfile=$1 _old_pid _now_pid _try=0
+  local _pidfile=$1 _tool="${2:-}" _old_pid _now_pid _try=0
   while [ "${_try}" -lt 3 ]; do
     _try=$((_try + 1))
     if ( set -o noclobber; echo $$ > "${_pidfile}" ) 2>/dev/null; then
@@ -125,7 +135,8 @@ _acquire_pid_file() {
       continue
     fi
     _old_pid=$(tr -dc '0-9' 2>/dev/null < "${_pidfile}")
-    if _pid_is_live "${_old_pid}"; then
+    # a lock left holding this run's own pid is stale: no run precedes itself
+    if [ "${_old_pid}" != "$$" ] && _pid_is_live "${_old_pid}" "${_tool}"; then
       echo "Process already running with PID ${_old_pid} holding ${_pidfile}"
       return 1
     fi
@@ -140,20 +151,35 @@ _acquire_pid_file() {
 }
 
 # Function to count live backup streams across ALL wrapper instances --
-# the live (non-sequential) multiback locks. One instance dispatches
-# entries strictly one at a time, but each 6-hour cron tick can add an
-# instance while a monthly full still runs (18-hour fulls are real), and
-# unbounded skip-and-continue would pile concurrent fulls onto the same
-# day. At the cap, the remaining entries wait for a later cycle.
-_live_backup_streams() {
-  local _n=0 _f _p
+# the live (non-sequential) multiback locks, of the accounts' entries
+# (account) or of root's own (root). One instance dispatches entries
+# strictly one at a time, but each 6-hour cron tick can add an instance
+# while a monthly full still runs (18-hour fulls are real), and unbounded
+# skip-and-continue would pile concurrent fulls onto the same day.
+_live_entry_streams() {
+  local _n=0 _f _p _e _t
   for _f in /run/duplicity_*.pid; do
     [ -e "${_f}" ] || continue
     case "${_f}" in *_sequential.pid) continue ;; esac
     _p=$(tr -dc '0-9' 2>/dev/null < "${_f}")
-    _pid_is_live "${_p}" && _n=$((_n + 1))
+    # a lock counts while a run of its own entry holds it (the name is
+    # duplicity_<service>_<target>.pid; a service may hold _, a target not)
+    _e="${_f##*/duplicity_}"
+    _e="${_e%.pid}"
+    _t="${_e##*_}"
+    case "${_t}" in
+      global|data|custom) [ "${1}" = "root" ] || continue ;;
+      *) [ "${1}" = "account" ] || continue ;;
+    esac
+    _pid_is_live "${_p}" "multiback [^ ]+ ${_e%_*} ${_t}" && _n=$((_n + 1))
   done
   echo "${_n}"
+}
+# The accounts' streams alone: the cap of two applies to them, and root's
+# own entries are never deferred by it (multiback reads this function's
+# name in the installed wrapper before it lets two accounts run).
+_live_account_streams() {
+  _live_entry_streams account
 }
 
 # Function to remove PID file
@@ -184,7 +210,7 @@ _remove_stale_multiback_pid() {
   _multiback_pidfile="/run/duplicity_${_service}_${_user}.pid"
   if [ -f "${_multiback_pidfile}" ]; then
     _old_pid=$(tr -dc '0-9' 2>/dev/null < "${_multiback_pidfile}")
-    if ! _pid_is_live "${_old_pid}"; then
+    if ! _pid_is_live "${_old_pid}" "multiback [^ ]+ ${_service} ${_user}"; then
       _now_pid=$(tr -dc '0-9' 2>/dev/null < "${_multiback_pidfile}")
       if [ "${_now_pid}" = "${_old_pid}" ]; then
         echo "Stale multiback PID file detected: ${_multiback_pidfile}. Removing it."
@@ -227,14 +253,17 @@ trap 'exit 1' INT TERM HUP
 
 # Process each line in the backup configuration file
 while IFS= read -r _line || [ -n "${_line}" ]; do
-  # Skip empty lines and comments
-  if [[ "${_line}" =~ ^\s*# ]] || [[ -z "${_line}" ]]; then
+  # Skip empty lines, lines of white space and comments (POSIX classes:
+  # bash's =~ reads \s as the letter s)
+  if [[ "${_line}" =~ ^[[:space:]]*(#|$) ]]; then
     continue
   fi
 
   # Parse the service and user
   _service=$(echo "${_line}" | cut -d' ' -f1)
-  _user=$(echo "${_line}" | cut -d' ' -f2)
+  # -s: a line without a second field has no user (cut prints a whole line
+  # that carries no delimiter)
+  _user=$(echo "${_line}" | cut -s -d' ' -f2)
 
   # Ensure both service and user are defined
   if [ -z "${_service}" ] || [ -z "${_user}" ]; then
@@ -246,19 +275,37 @@ while IFS= read -r _line || [ -n "${_line}" ]; do
   export _service="${_service}"
   export _user="${_user}"
 
-  # Defer the rest of the schedule when two backup streams already run
-  # box-wide; skipping past every held lock must not stack a third
-  if [ "$(_live_backup_streams)" -ge 2 ]; then
-    echo "Two backup streams already running; deferring ${_service} (${_user}) and the rest of the schedule to a later cycle."
-    break
-  fi
+  # root's own entries come first in the schedule and are never deferred
+  # behind the accounts' streams; one of them waits for the next cycle
+  # only while another of root's own entries still runs, and marks itself
+  # held as multiback's gate would (mybackup's queue starts no restore until
+  # its next run gets through). The accounts' entries defer, with the rest
+  # of the schedule, when two accounts' streams already run box-wide:
+  # skipping past every held lock must not stack a third
+  case "${_user}" in
+    global|data|custom)
+      if [ "$(_live_entry_streams root)" -ge 1 ]; then
+        echo "Another of root's own entries still runs; ${_service} (${_user}) waits for a later cycle."
+        _held_mark="/run/boa_backup_held.multiback.$(printf '%s.%s' "${_service}" "${_user}" | tr -dc 'A-Za-z0-9_.-')"
+        [ -e "${_held_mark}" ] || touch "${_held_mark}"
+        continue
+      fi
+      ;;
+    *)
+      if [ "$(_live_account_streams)" -ge 2 ]; then
+        echo "Two accounts' backup streams already running; deferring ${_service} (${_user}) and the rest of the schedule to a later cycle."
+        break
+      fi
+      ;;
+  esac
 
   # Define the PID file path
   _SEQ_PIDFILE="${_PID_DIR}/duplicity_${_service}_${_user}_sequential.pid"
 
   # Acquire the per-service lock; a service still running from an
   # earlier cycle skips only itself, the rest of the schedule proceeds
-  if ! _acquire_pid_file "${_SEQ_PIDFILE}"; then
+  # the entry's lock is owned by a run of this wrapper alone
+  if ! _acquire_pid_file "${_SEQ_PIDFILE}" 'sequential_backups\.sh'; then
     echo "Skipping backup for ${_service} (${_user}): a previous run still holds its lock."
     continue
   fi
@@ -357,15 +404,44 @@ EOF
   echo "Wrapper script created at ${_WRAPPER_SCRIPT}"
 }
 
-# Function to create cron entries
+# Function to create cron entries. The minute and hours are this box's own
+# (heavyslots: a lane from its IPv4 address, clear of its nightly database
+# backup, the night maintenance and the weekly upgrade), so the boxes sharing
+# one host do not all start their uploads at :00; the interval stays
+# _BACKUP_INTERVAL. _BACKUP_START=HH:MM in /root/.barracuda.cnf pins the start.
+# Written to a fresh file and moved into place only when it changes: cron
+# reads the file whenever its time stamp moves, and this runs every few
+# minutes.
 _create_cron_entries() {
-  echo "# Cron job for sequential backups" > "${_CRON_FILE}"
+  local _hrs _slot _new="${_CRON_FILE}.new"
+  _hrs=$(( _BACKUP_INTERVAL / 60 ))
+  [ "${_hrs}" -lt 1 ] && _hrs=1
+  [ "${_hrs}" -gt 24 ] && _hrs=24
+  _slot="0 */${_hrs}"
+  if [ -e "/opt/local/bin/heavyslots" ]; then
+    _slot="$(bash /opt/local/bin/heavyslots dcy "${_hrs}" 2> /dev/null)"
+    # no answer this time: the line in place stays, so a passing failure
+    # never moves the schedule back and forth
+    [[ "${_slot}" =~ ^[0-9]{1,2}\ [0-9]{1,2}(,[0-9]{1,2})*$ ]] \
+      || _slot="$(awk -v w="${_WRAPPER_SCRIPT}" \
+        '$0 !~ /^[ \t]*#/ && index($0, w) { print $1, $2; exit }' "${_CRON_FILE}" 2> /dev/null)"
+    [[ "${_slot}" =~ ^[0-9*/,]+\ [0-9*/,]+$ ]] || _slot="0 */${_hrs}"
+  fi
   # bash + full path, never a bare path: cron must not depend on an executable
   # bit or on PATH. The wrapper is written with chmod +x a few lines above, but
   # a mode can be lost by any later hand copy, and the failure is silent —
   # "Permission denied" into a log nobody reads while the schedule looks live.
-  echo "0 */$((_BACKUP_INTERVAL / 60)) * * * root bash ${_WRAPPER_SCRIPT}" >> "${_CRON_FILE}"
-  chmod 644 "${_CRON_FILE}"
+  # The fresh file's dot keeps cron from reading it.
+  {
+    echo "# Cron job for sequential backups"
+    echo "${_slot} * * * root bash ${_WRAPPER_SCRIPT}"
+  } > "${_new}"
+  chmod 644 "${_new}"
+  if cmp -s "${_new}" "${_CRON_FILE}"; then
+    rm -f "${_new}"
+  else
+    mv -f "${_new}" "${_CRON_FILE}"
+  fi
   echo "Cron entry created at ${_CRON_FILE}"
 
   # Validate the cron file
@@ -389,6 +465,96 @@ _validate_cron_file() {
 # Run "$@" inside the real directory $1: below /data/disk and /home every name
 # on the path must be a real directory; once entered, ./name stays there
 # whatever is swapped.
+# The uids root's walks over the account $1's trees act on, comma-separated:
+# root's own (0) and those of every identity of the account as passwd names
+# them: oN and oN.<name> (its .ftp login, its client sub-accounts oN.<client>
+# and oN.<client>-dev) and its PHP-FPM users oN.web and oN.<ver>.web. An
+# account name holds no dot, so the match is exact: o1 never takes o10's.
+# Status 1, and nothing, unless the account itself is in passwd.
+_acct_walk_uids() {
+  local _a="${1}" _n _p _u _r _x="0" _self=NO
+  case "${_a}" in
+    ""|*[!a-z0-9-]*) return 1 ;;
+  esac
+  while IFS=: read -r _n _p _u _r; do
+    [[ "${_n}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]] || continue
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    _x="${_x},${_u}"
+    [ "${_n}" = "${_a}" ] && _self=YES
+  done < <(getent passwd 2> /dev/null)
+  [ "${_self}" = "YES" ] || return 1
+  # the account's removed identities, their numbers recorded by root before
+  # deluser freed them; a number a user has again is not taken
+  while IFS= read -r _u; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    getent passwd "${_u}" > /dev/null 2>&1 && continue
+    _x="${_x},${_u}"
+  done 2> /dev/null < "/data/conf/acct-uids/${_a}.gone"
+  echo "${_x}"
+}
+# The whole of an account's control/, judged once before a run acts on it:
+# run inside the account's real static/, it prints OK when control/ and
+# everything in it, never followed through a link, and static/ and every
+# directory above it up to /, are root's or one of the account's identities'
+# (the uids given first, _acct_walk_uids, with the account's recorded
+# removed identities), ABSENT when there is no control/, and otherwise why
+# not, on one line.
+# Every other account's .ftp login is in the box-wide group, which an account
+# not yet on its own group still has on static/: such a login could put a
+# control/ of its own there, or a file of its own in a group-writable
+# directory below it, for root to act on as the account's.
+_ACCT_CTRL_OWN_PL='use Fcntl;
+my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, shift @ARGV // "");
+sub own { my $u = shift; return exists $own{$u} ? 1 : 0; }
+sub isd { ($_[0] & 0170000) == 0040000 }
+sub nm { (my $v = shift) =~ s/[^\x20-\x7e]/?/g; return substr($v, 0, 200); }
+sub refuse { print "$_[0]\n"; exit 0; }
+my ($p, $top, @d, @x) = (".", 0);
+for (1 .. 256) {
+  @x = stat($p) or refuse("static/ cannot be read");
+  own($x[4]) or refuse("a directory above control/ is owned by uid $x[4]");
+  if (@d && $x[0] == $d[0] && $x[1] == $d[1]) { $top = 1; last; }
+  @d = @x;
+  $p .= "/..";
+}
+$top or refuse("static/ is too deep");
+my @s = lstat("./control");
+unless (@s) { print(($!{ENOENT} ? "ABSENT" : "control/ cannot be read") . "\n"); exit 0; }
+isd($s[2]) or refuse("control is not a directory");
+my ($n, @q) = (0, ["control", @s]);
+while (my $e = shift @q) {
+  my ($f, @t) = @$e;
+  own($t[4]) or refuse(nm($f) . " is owned by uid $t[4]" . (defined(getpwuid($t[4])) ? "" : ", which no user has and root never recorded for this account: if the file is its own, give it to its .ftp login"));
+  next unless isd($t[2]);
+  opendir(my $h, "./$f") or refuse(nm($f) . " cannot be read");
+  for my $b (readdir($h)) {
+    next if $b eq "." || $b eq "..";
+    ++$n > 100000 and refuse("control/ holds more than 100000 entries");
+    my @u = lstat("./$f/$b") or next;
+    push @q, ["$f/$b", @u];
+  }
+  closedir($h);
+}
+print "OK\n";
+exit 0;'
+# 0 when the account $1's control/ is its own as _ACCT_CTRL_OWN_PL judges it
+# (or it has none); otherwise why not on stdout, status 1. A run that acts
+# on what control/ says leaves the account as it is when it is not.
+_acct_ctrl_own() {
+  local _a="${1}" _o _r _want
+  # an account not in passwd (not made yet, or removed) has nothing to
+  # judge it by: read as before
+  _o=$(_acct_walk_uids "${_a}" 2> /dev/null) || return 0
+  [ -e "/data/disk/${_a}/static" ] || [ -L "/data/disk/${_a}/static" ] || return 0
+  _want="$(cd -P -- /data/disk 2> /dev/null && /bin/pwd -P)/${_a}/static"
+  _r=$(cd -P -- "/data/disk/${_a}/static" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] \
+    && perl -e "${_ACCT_CTRL_OWN_PL}" -- "${_o}" 2> /dev/null)
+  case "${_r}" in
+    OK|ABSENT) return 0 ;;
+  esac
+  echo "${_r:-static/ is not a real directory}"
+  return 1
+}
 _acct_in_real_dir() {
   local _d="${1}" _a="" _want
   shift
@@ -397,11 +563,11 @@ _acct_in_real_dir() {
     /data/disk/?*) _a=/data/disk ;;
   esac
   if [ -n "${_a}" ]; then
-    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+    _want="$(cd -P -- "${_a}" 2> /dev/null && /bin/pwd -P)${_d#"${_a}"}"
   else
-    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && /bin/pwd -P)/${_d##*/}"
   fi
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] && "$@" )
 }
 # ./$1 in the current (pinned) directory: never through a link, never blocked
 # on a FIFO, at most 1 MiB. Empty for anything else.
@@ -421,18 +587,31 @@ _acct_ready_services_here() {
   done
 }
 
-# Function to generate the backup schedule
+# Function to generate the backup schedule. Written to a fresh file and
+# moved into place, as the wrapper is: a wrapper run that started hours ago
+# still reads the schedule a line at a time, and a rewrite in place would
+# end its walk early or hand it half a line. The run keeps reading the file
+# it opened to its end.
 _generate_backup_schedule() {
-  echo "# Backup schedule (service user)" > "${_SCHEDULE_FILE}"
+  local _new="${_SCHEDULE_FILE}.fresh.$$"
+  # a generator killed before its move leaves its fresh file behind
+  find "${_SCHEDULE_DIR}" -maxdepth 1 -name 'backup_schedule.txt.fresh.*' -mmin +60 \
+    -exec rm -f {} + 2> /dev/null
+  rm -f "${_new}"
+  if ! echo "# Backup schedule (service user)" > "${_new}"; then
+    rm -f "${_new}"
+    echo "Backup schedule not written: ${_SCHEDULE_DIR} is not writable."
+    return 1
+  fi
 
   # Add global backups
   _custom_paths_file="/root/.remote_backups/paths/custom_paths.txt"
   _GLOBAL_CRED_DIR="/root/.remote_backups/credentials"
   for _service in aws aws_one_zone aws_standard_ia azure b2 cloudflare do_spaces gcs ibm linode wasabi; do
     if [ -f "${_GLOBAL_CRED_DIR}/${_service}.txt" ] && ! grep -q "your_" "${_GLOBAL_CRED_DIR}/${_service}.txt"; then
-      echo "${_service} global" >> "${_SCHEDULE_FILE}"
-      echo "${_service} data" >> "${_SCHEDULE_FILE}"
-      [ -s "${_custom_paths_file}" ] && echo "${_service} custom" >> "${_SCHEDULE_FILE}"
+      echo "${_service} global" >> "${_new}"
+      echo "${_service} data" >> "${_new}"
+      [ -s "${_custom_paths_file}" ] && echo "${_service} custom" >> "${_new}"
     fi
   done
 
@@ -443,29 +622,27 @@ _generate_backup_schedule() {
       _user=$(basename "${_user_dir}")
       _USER_CRED_DIR="/data/disk/${_user}/static/control/remote_backups/credentials"
       [ -d "${_USER_CRED_DIR}" ] || continue
+      # only from the account's own static/control (_acct_ctrl_own); multiback
+      # refuses a run on another one as well
+      if ! _why=$(_acct_ctrl_own "${_user}"); then
+        echo "Skipping ${_user}: static/control is not the account's own (${_why})."
+        continue
+      fi
       _acct_in_real_dir "${_USER_CRED_DIR}" \
-        _acct_ready_services_here "${_user}" >> "${_SCHEDULE_FILE}"
+        _acct_ready_services_here "${_user}" >> "${_new}"
     fi
   done
 
-  echo "Backup schedule created at ${_SCHEDULE_FILE}"
-}
-
-# Function to adjust the backup interval dynamically
-_adjust_backup_interval() {
-  if [ -f "${_LOGFILE}" ]; then
-    _TOTAL_RUNTIME=$(tail -n1 "${_LOGFILE}" | awk '{print $NF}')
-    _NEW_INTERVAL=$(( (_TOTAL_RUNTIME / 3600 + 1) * 60 ))  # Round up to the next hour
-    if [ "${_NEW_INTERVAL}" -gt "${_BACKUP_INTERVAL}" ]; then
-      _BACKUP_INTERVAL="${_NEW_INTERVAL}"
-      echo "Adjusted backup interval to $((_BACKUP_INTERVAL / 60)) hours."
-      _create_cron_entries
-    fi
+  chmod 0644 "${_new}" 2> /dev/null
+  if ! mv -f "${_new}" "${_SCHEDULE_FILE}"; then
+    rm -f "${_new}"
+    echo "Backup schedule not replaced at ${_SCHEDULE_FILE}."
+    return 1
   fi
+  echo "Backup schedule created at ${_SCHEDULE_FILE}"
 }
 
 # Main script execution
 _generate_wrapper_script
 _generate_backup_schedule
-_adjust_backup_interval
 _create_cron_entries

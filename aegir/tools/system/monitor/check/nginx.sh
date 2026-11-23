@@ -58,6 +58,10 @@ fi
 renice ${_B_NICE} -p $$ &> /dev/null
 
 _cd="/run/nginx-monitor.cooldown"
+# when the last restart for a memory error ran (_nginx_oom_detection)
+_ngxOomSt="/run/nginx-monitor.oom-restart"
+# when the last restart for the serving master's own bind error ran
+_ngxBindSt="/run/nginx-monitor.bind-restart"
 : "${_NGINX_COOLDOWN_SECS:=30}"
 
 ###
@@ -75,7 +79,7 @@ _manage_single_lock() {
     # -------- legacy pgrep guard ---------
     # Exit if more than 2 instances of this script are running
     _SCRIPT=$(basename "$0")
-    _CNT=$(pgrep -fc "(^|(^| )[^ ]*bash )[^ ]*/${_SCRIPT//./\\.}( |$)")
+    _CNT=$(pgrep -u root -U root -fc "(^|(^| )[^ ]*bash )[^ ]*/${_SCRIPT//./\\.}( |$)")
     if (( _CNT > 2 )); then
       echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
       exit 0
@@ -115,7 +119,13 @@ _normalize_incident_report
 
 _incident_email_report() {
   if ! _check_uptime_grace_period >/dev/null; then return 1; fi
-  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "ALL" ]; then
+  # The heals mail at ALL alone. An ALERT is mailed at every level but OFF:
+  # an nginx kept for a configuration nginx -t rejects takes no new one, and
+  # one that is down cannot start until the file is fixed.
+  local _send=NO
+  [ "${_INCIDENT_REPORT}" = "ALL" ] && _send=YES
+  [ "${3}" = "ALERT" ] && [ "${_INCIDENT_REPORT}" != "OFF" ] && _send=YES
+  if [ -n "${_MY_EMAIL}" ] && [ "${_send}" = "YES" ]; then
     # One alert per cooldown, not one per pass. A service that keeps failing
     # used to send a mail every time a watchdog acted, which buries the signal
     # exactly when it matters most. Nothing is lost: every incident is still
@@ -189,21 +199,44 @@ _nginx_start_in_flight() {
   # Nginx that races it for the ports. The init script stays visible for
   # the whole gap; one older than two minutes is stuck, not starting.
   local _p _age
-  for _p in $(pgrep -f '^(/[^ ]*/)?(ba|da)?sh (-c )?/etc/init.d/nginx (start|restart|stop|force-reload)( |$)' 2> /dev/null); do
+  for _p in $(pgrep -u root -U root -f '^(/[^ ]*/)?(ba|da)?sh (-c )?/etc/init.d/nginx (start|restart|stop|force-reload)( |$)' 2> /dev/null); do
     _age=$(ps -o etimes= -p "${_p}" 2> /dev/null | tr -d ' ')
     [[ -n "${_age}" ]] && [[ "${_age}" -lt 120 ]] && return 0
   done
   return 1
 }
 
+_nginx_pid_is_nginx() {
+  # The process runs the nginx binary, or the one an upgrade replaced while
+  # it ran: a package swaps the file (deleted), a source build's make install
+  # renames it to nginx.old first. A title is whatever argv[0] its caller
+  # chose, and a setuid program run under one keeps euid 0, so neither the
+  # title nor the user tells root's nginx from a process another user named
+  # after it; only root writes /usr/sbin.
+  local _x
+  _x="$(readlink "/proc/$1/exe" 2> /dev/null)"
+  case "${_x}" in
+    /usr/sbin/nginx|/usr/sbin/nginx.old) return 0 ;;
+    "/usr/sbin/nginx (deleted)"|"/usr/sbin/nginx.old (deleted)") return 0 ;;
+  esac
+  return 1
+}
+
 _nginx_master_pids() {
-  # The box's own master(s) only. A barracuda pass probes quic_bpf with a
-  # throwaway master that lives a second or two and carries its config path
-  # in its title; counting it would read as a second master, and taking it
-  # for the real one would stand a genuine outage down.
-  pgrep -af '^nginx: master process' 2> /dev/null \
+  # The box's own master(s) only: run by root, both uids, from the nginx
+  # binary. Any other user can run a process titled "nginx: master process"
+  # (a site's PHP can exec one, a setuid program among them), which would
+  # read as a second master and restart nginx for every site, or stand in
+  # for a dead one. A barracuda pass probes quic_bpf with a throwaway master
+  # that lives a second or two and carries its config path in its title;
+  # counting it would read as a second master, and taking it for the real
+  # one would stand a genuine outage down.
+  local _p
+  for _p in $(pgrep -u root -U root -af '^nginx: master process' 2> /dev/null \
     | grep -v 'boa-nginx-quic-bpf-probe' \
-    | awk '{print $1}'
+    | awk '{print $1}'); do
+    _nginx_pid_is_nginx "${_p}" && echo "${_p}"
+  done
 }
 
 _box_going_down() {
@@ -216,6 +249,38 @@ _box_going_down() {
     *" 0"|*" 6") return 0 ;;
   esac
   return 1
+}
+
+# A heal stops nginx and starts it again. With a configuration nginx -t
+# rejects (one broken line in a file root keeps under /data/conf is enough)
+# that start fails, so whatever still serves would be stopped for nothing and
+# every site would stay down. Tested the way a start loads it: the init
+# script's configtest brings the store's copies up to date first. Status 0
+# means refused: nothing was stopped and no start was tried.
+_nginx_conf_refused() {
+  local _out _why _oom _state
+  _out=$(service nginx configtest 2>&1) && return 1
+  _why=$(printf '%s\n' "${_out}" | grep -m1 -E '\[(emerg|alert|crit)\]' | cut -c1-300)
+  # A test that ran out of memory says nothing about the files, and the
+  # memory heal exists for exactly that state: the heal goes ahead. Only
+  # nginx's own allocation failure counts: an error can quote a file's text,
+  # and that text can carry the same words.
+  _oom=$(printf '%s\n' "${_out}" \
+    | grep -m1 -E '^nginx: \[(emerg|alert|crit)\] [a-z_]+\([^")]*\) failed \(12: Cannot allocate memory\)' \
+    | cut -c1-300)
+  if [ -n "${_oom}" ]; then
+    echo "$(date) INFO: NGX $1: nginx -t ran out of memory (${_oom}); not read as a configuration error" >> "${_pthOml}"
+    return 1
+  fi
+  if command -v ss > /dev/null 2>&1 \
+    && ss -Hltn 2> /dev/null | grep -qE ':(80|443) '; then
+    _state="what still serves is kept with the configuration it loaded"
+  else
+    _state="Nginx is down and cannot start until nginx -t passes"
+  fi
+  echo "$(date) NGX $1: not restarted, nginx -t fails (${_why:-no reason given}); ${_state}" >> "${_pthOml}"
+  _incident_email_report "NGX $1: nginx -t fails, not restarted" "nginx-conf" "ALERT"
+  return 0
 }
 
 _nginx_quic_bpf_shed() {
@@ -347,6 +412,17 @@ _restart_nginx() {
       return 0
     fi
   fi
+  # the hourly checks' hours start only with a restart that runs
+  case "$1" in
+    "Nginx OOM") touch "${_ngxOomSt}" ;;
+    "Nginx BIND PORT error, serving master") touch "${_ngxBindSt}" ;;
+  esac
+  if _nginx_conf_refused "$1"; then
+    date +%s > "${_cd}"
+    echo >> ${_pthOml}
+    [ -e "/run/boa_nginx_auto_healing.pid" ] && rm -f /run/boa_nginx_auto_healing.pid
+    exit 0
+  fi
   echo "Killing all Nginx processes and restarting Nginx..."
   _stop_nginx_processes
   _nginx_error_log_aside
@@ -369,20 +445,51 @@ _restart_nginx() {
 }
 
 _nginx_oom_detection() {
-  if [ -e "/var/log/nginx/error.log" ]; then
-    if [ `tail --lines=500 /var/log/nginx/error.log \
-      | grep --count "Cannot allocate memory"` -gt 0 ]; then
-      _thisErrLog="$(date) Nginx OOM error"
-      echo "${_thisErrLog}" >> ${_pthOml}
-      _restart_nginx "Nginx OOM"
-    fi
+  # A memory error counts when nginx itself reported one: the errno right
+  # after nginx's own message, before any quoted path or request field (a
+  # referrer, a host, a path carry text a request chose), on a line whose
+  # own "<pid>#" is root's master or one of its children. A decoded %0A in a
+  # logged path still starts a line of its own, and pids are only hidden,
+  # not secret (they are handed out in order), so a restart for memory runs
+  # at most once an hour: the hour starts when such a restart runs
+  # (_restart_nginx), never when one stood down.
+  local _mp _live _p _hit=NO _now _ts
+  [ -e "/var/log/nginx/error.log" ] || return 0
+  _live=" $(for _mp in $(_nginx_master_pids); do
+    echo "${_mp}"; ps -o pid= --ppid "${_mp}"; done 2> /dev/null | tr -s ' \n' '  ') "
+  # nginx's own message ends where a quoted path or the request context
+  # (", client: ...") begins; the one quoted name nginx writes itself with
+  # ENOMEM is the process it failed to fork.
+  local _pre='^[0-9]{4}/[0-9]{2}/[0-9]{2} [0-9:]{8} \[(alert|emerg|crit)\] [0-9]+#[0-9]+: (\*[0-9]+ )?'
+  for _p in $( { tail --lines=500 /var/log/nginx/error.log 2> /dev/null \
+      | LC_ALL=C sed -E 's/("|, client: ).*$//' \
+      | LC_ALL=C grep -aE "${_pre}"'.*failed \(12: Cannot allocate memory\)'
+    tail --lines=500 /var/log/nginx/error.log 2> /dev/null \
+      | LC_ALL=C grep -aE "${_pre}"'fork\(\) failed while spawning "[a-z ]+" \(12: Cannot allocate memory\)'
+    } | LC_ALL=C sed -nE 's/^[0-9/]{10} [0-9:]{8} \[[a-z]+\] ([0-9]+)#.*/\1/p' | sort -u); do
+    [[ "${_live}" == *" ${_p} "* ]] && _hit=YES
+  done
+  [ "${_hit}" = "YES" ] || return 0
+  _now=$(date +%s)
+  _ts=$(stat -c %Y "${_ngxOomSt}" 2> /dev/null)
+  if [[ "${_ts}" =~ ^[0-9]+$ ]] && (( _now - _ts >= 0 && _now - _ts < 3600 )); then
+    echo "$(date) INFO: NGX memory error, a restart for one ran in the last hour" >> ${_pthOml}
+    return 0
   fi
+  _thisErrLog="$(date) Nginx OOM error"
+  echo "${_thisErrLog}" >> ${_pthOml}
+  _restart_nginx "Nginx OOM"
 }
 
 _nginx_bind_check_fix() {
-  local _bnd _mst _pid _p _own=NO
+  local _bnd _mst _pid _p _own=NO _now _ts
+  # nginx's own bind() line only, read before any quoted field or request
+  # context: the error log also carries text a request chose (a referrer, a
+  # logged path), and the master's pid is judged from each line's own
+  # "<pid>#" alone.
   _bnd=$(tail --lines=8 /var/log/nginx/error.log 2> /dev/null \
-    | grep "Address already in use")
+    | LC_ALL=C sed -E 's/("|, client: ).*$//' \
+    | LC_ALL=C grep -aE '^[0-9]{4}/[0-9]{2}/[0-9]{2} [0-9:]{8} \[emerg\] [0-9]+#[0-9]+: (bind\(\) to [^ ]+|listen\(\) to [^ ]+ backlog -?[0-9]+) failed \(98: Address already in use\)')
   [ -n "${_bnd}" ] || return 0
   # A start still in flight may yet win the ports: its lines are judged on a
   # later pass, once it has a master.
@@ -398,7 +505,8 @@ _nginx_bind_check_fix() {
     && [ "${_pid}" = "${_mst}" ] \
     && command -v ss > /dev/null 2>&1 \
     && ss -Hltn 2> /dev/null | grep -qE ':(80|443) '; then
-    for _p in $(printf '%s\n' "${_bnd}" | grep -oE '\] [0-9]+#' | tr -dc '0-9\n'); do
+    for _p in $(printf '%s\n' "${_bnd}" \
+      | LC_ALL=C sed -nE 's/^[0-9/]{10} [0-9:]{8} \[[a-z]+\] ([0-9]+)#.*/\1/p'); do
       [ "${_p}" = "${_mst}" ] && _own=YES
     done
     if [ "${_own}" = "NO" ]; then
@@ -414,6 +522,19 @@ _nginx_bind_check_fix() {
       echo "$(date) INFO: NGX bind error left by an exited start, master ${_mst} serving; log moved aside, no restart" >> "${_pthOml}"
       return 0
     fi
+    # The serving master's own bind error (a reload that could not bind)
+    # gets one restart an hour: a decoded %0A in a logged path can start a
+    # line of this form, and pids are only hidden, not secret. The hour
+    # starts when that restart runs (_restart_nginx).
+    _now=$(date +%s)
+    _ts=$(stat -c %Y "${_ngxBindSt}" 2> /dev/null)
+    if [[ "${_ts}" =~ ^[0-9]+$ ]] && (( _now - _ts >= 0 && _now - _ts < 3600 )); then
+      echo "$(date) INFO: NGX bind error of the serving master, a restart for one ran in the last hour" >> "${_pthOml}"
+      return 0
+    fi
+    _thisErrLog="$(date) Nginx BIND PORT error of the serving master, service will be restarted"
+    echo "${_thisErrLog}" >> ${_pthOml}
+    _restart_nginx "Nginx BIND PORT error, serving master"
   fi
   _thisErrLog="$(date) Nginx BIND PORT error, service will be restarted"
   echo "${_thisErrLog}" >> ${_pthOml}
@@ -423,8 +544,13 @@ _nginx_bind_check_fix() {
 _nginx_health_check_fix() {
   # Initialize a flag to indicate whether Nginx service has been restarted
   _NGINX_RESTARTED=false
-  # Check if Nginx is running and capture the process details
-  _NGINX_PROCESSES=$(ps aux | grep 'nginx: ' | grep -v 'grep')
+  # Root's master(s) and their own children only: a process any user titles
+  # "nginx: worker process" and stops would read as a stuck worker, and no
+  # such process can be a child of the master.
+  local _mp _mpids
+  _mpids=$(_nginx_master_pids)
+  _NGINX_PROCESSES=$(for _mp in ${_mpids}; do
+    ps -o user=,pid=,ppid=,stat=,args= -p "${_mp}" --ppid "${_mp}"; done 2> /dev/null)
   # Check for multiple master processes (shouldn't happen)
   if [ "${_NGINX_RESTARTED}" = false ]; then
     _MASTER_COUNT=$(_nginx_master_pids | grep -c .)
@@ -441,10 +567,18 @@ _nginx_health_check_fix() {
   fi
   # Check the state of the master process
   if [ "${_NGINX_RESTARTED}" = false ]; then
-    _MASTER_STATE=$(echo "${_NGINX_PROCESSES}" | grep 'nginx: master process' | awk '{print $8}')
-    if [ "${_MASTER_STATE}" = "Z" ] \
-      || [ "${_MASTER_STATE}" = "T" ] \
-      || [ "${_MASTER_STATE}" = "D" ]; then
+    # The state's first letter: the master is a session leader, so ps prints
+    # "Ss", "Ts", "Ds", and a whole-string match never fired. A moment in
+    # uninterruptible sleep (a reload, a slow disk) is not a stuck master,
+    # so a D is read again after the same grace as the count. A defunct
+    # master never gets here (no title, no exe link): the up check heals it.
+    _MASTER_STATE=$(for _mp in ${_mpids}; do ps -o stat= -p "${_mp}"; done 2> /dev/null | tr -d ' ')
+    if [ "${_MASTER_STATE:0:1}" = "D" ]; then
+      sleep 5
+      _MASTER_STATE=$(for _mp in ${_mpids}; do ps -o stat= -p "${_mp}"; done 2> /dev/null | tr -d ' ')
+    fi
+    if [ "${_MASTER_STATE:0:1}" = "T" ] \
+      || [ "${_MASTER_STATE:0:1}" = "D" ]; then
       echo "Nginx master process is in an abnormal state: ${_MASTER_STATE}."
       echo "$(date) NGX master process is in an abnormal state: ${_MASTER_STATE}" >> ${_pthOml}
       echo "$(date) NGX ${_NGINX_PROCESSES}" >> ${_pthOml}
@@ -453,7 +587,8 @@ _nginx_health_check_fix() {
   fi
   # Check the state of the worker processes
   if [ "${_NGINX_RESTARTED}" = false ]; then
-    _WORKER_STATE=$(echo "${_NGINX_PROCESSES}" | grep 'nginx: worker process' | awk '{print $8}')
+    _WORKER_STATE=$(for _mp in ${_mpids}; do ps -o stat=,args= --ppid "${_mp}"; done 2> /dev/null \
+      | awk '$2 == "nginx:" && $3 == "worker" { print $1 }')
     if [[ "${_WORKER_STATE}" =~ "Z" ]] \
       || [[ "${_WORKER_STATE}" =~ "T" ]]; then
       echo "Nginx worker process is in an abnormal state: ${_WORKER_STATE}."
@@ -510,20 +645,145 @@ _nginx_if_up_check_fix() {
           echo "$(date) INFO: Nginx master alive and serving; missing pidfile treated as an artefact, standing down" >> ${_pthOml}
           return 0
         fi
+        if _nginx_conf_refused "Nginx Server was down"; then
+          date +%s > "${_cd}"
+          echo >> ${_pthOml}
+          exit 0
+        fi
         _stop_nginx_processes
         _nginx_error_log_aside
         service nginx restart
         _nginx_quic_bpf_shed
         # Stamp cooldown after attempting recovery
         date +%s > "${_cd}"
-        _thisErrLog="$(date) Nginx Server was down, restarted"
+        # A start that passed nginx -t can still fail (a port held by another
+        # program, a missing certificate): the line says which it was.
+        local _upHow="Nginx Server was down, restarted"
+        [ -n "$(_nginx_master_pids)" ] || _upHow="Nginx Server was down, start failed"
+        _thisErrLog="$(date) ${_upHow}"
         echo "${_thisErrLog}" >> ${_pthOml}
-        _incident_email_report "Nginx Server was down, restarted"
+        _incident_email_report "${_upHow}"
         echo >> ${_pthOml}
         exit 0
       fi
     fi
   fi
+}
+
+# An account asks for a restart by leaving a file in its static/control.
+# The restart is box-wide, so each account is honoured at most once in
+# _ACCT_REQ_SECS for each service, and only for a regular file, not a link,
+# owned by one of its identities in its own real static/control. Any other
+# entry of a request's name is removed and never acted on.
+_ACCT_REQ_SECS=900
+_ACCT_REQ_DIR="/run/boa_acct_requests"
+# each account's uids, read once a pass (_acct_req_in_ctrl)
+declare -A _ACCT_REQ_U=()
+# The uids of root and of every identity of the account $1 as passwd names
+# them, comma-separated, as _acct_walk_uids gives them, with passwd cut to
+# the account's own lines first. Status 1, and nothing, unless the account
+# itself is in passwd.
+_acct_req_uids() {
+  local _a="${1}" _n _p _u _r _x="0" _self=NO
+  case "${_a}" in
+    ""|*[!a-z0-9_-]*) return 1 ;;
+  esac
+  while IFS=: read -r _n _p _u _r; do
+    [[ "${_n}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]] || continue
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    _x="${_x},${_u}"
+    [ "${_n}" = "${_a}" ] && _self=YES
+  done < <(getent passwd 2> /dev/null | grep -E "^${_a}[.:]")
+  [ "${_self}" = "YES" ] || return 1
+  echo "${_x}"
+}
+# Run "$@" with the account $1's uids last, inside its real static/control:
+# the directory the shell is in, as the kernel names it (never bash's own
+# pwd, which reads back the path cd was given), and root's or one of the
+# account's.
+_acct_req_in_ctrl() {
+  local _a="${1}" _u _want
+  shift
+  if [ -z "${_ACCT_REQ_U[${_a}]+x}" ]; then
+    _ACCT_REQ_U[${_a}]="$(_acct_req_uids "${_a}")"
+  fi
+  _u="${_ACCT_REQ_U[${_a}]}"
+  [ -n "${_u}" ] || return 1
+  _want="$(cd -P -- /data/disk 2> /dev/null && /bin/pwd -P)/${_a}/static/control"
+  ( cd -P -- "/data/disk/${_a}/static/control" 2> /dev/null \
+    && [ "$(/bin/pwd -P)" = "${_want}" ] \
+    && [[ ",${_u}," == *",$(stat -c %u . 2> /dev/null),"* ]] \
+    && "$@" "${_u}" )
+}
+# Inside the real static/control: remove ./$1, a directory only when empty.
+_acct_req_drop() {
+  if [ -d "./${1}" ] && [ ! -L "./${1}" ]; then
+    rmdir -- "./${1}" 2> /dev/null
+  else
+    rm -f -- "./${1}" 2> /dev/null
+  fi
+  return 0
+}
+# Inside the real static/control: status 0 when ./$1 is a request that
+# counts, a regular file and not a link, owned by one of the uids $2;
+# anything else of that name is removed.
+_acct_req_judge() {
+  local _o
+  if [ -f "./${1}" ] && [ ! -L "./${1}" ]; then
+    _o=$(stat -c %u -- "./${1}" 2> /dev/null)
+    [ -n "${_o}" ] && [[ ",${2}," == *",${_o},"* ]] && return 0
+  fi
+  _acct_req_drop "${1}"
+  return 1
+}
+# Fills _ACCT_REQ with the accounts whose request, under any of the names
+# $2..., counts for the service $1 this pass. A request made again inside
+# the account's allowance is removed and noted once, not acted on.
+_acct_req_scan() {
+  local _svc="${1}" _p _a _n _hit _st _ts _now
+  shift
+  _ACCT_REQ=()
+  _now=$(date +%s)
+  for _p in /data/disk/*/static/control; do
+    _a="${_p#/data/disk/}"
+    _a="${_a%%/*}"
+    [[ "${_a}" =~ ^[a-z0-9_-]+$ ]] || continue
+    _hit=NO
+    for _n in "$@"; do
+      [ -e "${_p}/${_n}" ] || [ -L "${_p}/${_n}" ] || continue
+      _acct_req_in_ctrl "${_a}" _acct_req_judge "${_n}" && _hit=YES
+    done
+    [ "${_hit}" = "YES" ] || continue
+    _st="${_ACCT_REQ_DIR}/${_svc}.${_a}"
+    _ts=$(tr -dc '0-9' 2> /dev/null < "${_st}")
+    if [[ "${_ts}" =~ ^[1-9][0-9]{0,11}$ ]] && [ $(( _now - _ts )) -ge 0 ] \
+      && [ $(( _now - _ts )) -lt "${_ACCT_REQ_SECS}" ]; then
+      for _n in "$@"; do
+        _acct_req_in_ctrl "${_a}" _acct_req_drop "${_n}"
+      done
+      if [ ! -e "${_st}.noted" ]; then
+        mkdir -p -m 0700 "${_ACCT_REQ_DIR}" 2> /dev/null
+        : > "${_st}.noted"
+        echo "$(date) INFO: ${_svc} restart asked again by ${_a} within $(( _ACCT_REQ_SECS / 60 )) minutes; request removed, not acted on" >> "${_pthOml}"
+      fi
+      continue
+    fi
+    _ACCT_REQ+=("${_a}")
+  done
+}
+# Removes the counted requests, under any of the names $2..., of every
+# account in _ACCT_REQ and starts each one's allowance for the service $1.
+_acct_req_take() {
+  local _svc="${1}" _a _n
+  shift
+  mkdir -p -m 0700 "${_ACCT_REQ_DIR}" 2> /dev/null
+  for _a in "${_ACCT_REQ[@]}"; do
+    for _n in "$@"; do
+      _acct_req_in_ctrl "${_a}" _acct_req_drop "${_n}"
+    done
+    date +%s > "${_ACCT_REQ_DIR}/${_svc}.${_a}"
+    rm -f "${_ACCT_REQ_DIR}/${_svc}.${_a}.noted"
+  done
 }
 
 _if_nginx_restart() {
@@ -546,12 +806,6 @@ _if_nginx_restart() {
   _PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
   _PrTestUltra=$(grep "ULTRA" /root/.*.octopus.cnf 2>&1)
   _PrTestMonster=$(grep "MONSTER" /root/.*.octopus.cnf 2>&1)
-  # Counted without ls: an unmatched glob stays literal and fails the -e
-  # test, so no error text ever feeds the count.
-  ReTest=0
-  for _cp in /data/disk/*/static/control/run-nginx-restart.pid; do
-    [ -e "${_cp}" ] && ReTest=$(( ReTest + 1 ))
-  done
   if [[ "${_PrTestPower}" =~ "POWER" ]] \
     || [[ "${_PrTestPhantom}" =~ "PHANTOM" ]] \
     || [[ "${_PrTestCluster}" =~ "CLUSTER" ]] \
@@ -559,10 +813,11 @@ _if_nginx_restart() {
     || [[ "${_PrTestMonster}" =~ "MONSTER" ]] \
     || [ -e "/etc/boa/.allow.nginx.restart.cnf" ] \
     || [ "${_ALLOW_NGINX_RESTART}" = "YES" ]; then
-    if [ "${ReTest}" -ge 1 ]; then
-      # The sentinel is consumed only when the restart can actually run:
+    _acct_req_scan nginx run-nginx-restart.pid
+    if [ "${#_ACCT_REQ[@]}" -ge 1 ]; then
+      # The requests are consumed only when the restart can actually run:
       # _restart_nginx now refuses inside the cooldown, and a request eaten
-      # by a refusal would simply vanish. Leave it for the next pass instead.
+      # by a refusal would simply vanish. Leave them for the next pass instead.
       _now=$(date +%s)
       if [ -s "${_cd}" ]; then
         _ts=$(cat "${_cd}" 2>/dev/null | tr -d '\n')
@@ -576,9 +831,9 @@ _if_nginx_restart() {
         echo "$(date) INFO: Nginx restart requested but a start is in flight; request kept for the next pass" >> "${_pthOml}"
         return 0
       fi
-      rm -f /data/disk/*/static/control/run-nginx-restart.pid
+      _acct_req_take nginx run-nginx-restart.pid
       _thisErrLog="$(date) Nginx Server Restart Requested"
-      echo "${_thisErrLog}" >> ${_pthOml}
+      echo "${_thisErrLog} by ${_ACCT_REQ[*]}" >> ${_pthOml}
       _restart_nginx "Nginx Server Restart Requested" requested
     fi
   fi

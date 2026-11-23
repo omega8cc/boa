@@ -19,7 +19,7 @@ _manage_single_lock() {
     # -------- legacy pgrep guard ---------
     # Exit if more than 2 instances of this script are running
     _SCRIPT=$(basename "$0")
-    _CNT=$(pgrep -fc "(^|(^| )[^ ]*bash )[^ ]*/${_SCRIPT//./\\.}( |$)")
+    _CNT=$(pgrep -u root -U root -fc "(^|(^| )[^ ]*bash )[^ ]*/${_SCRIPT//./\\.}( |$)")
     if (( _CNT > 2 )); then
       echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
       exit 0
@@ -2325,12 +2325,28 @@ fi
 # ==============================
 
 _get_ssh_ips() {
-  # Same port resolution ip_access.sh uses: sshd may serve a custom
-  # _SSH_PORT, and the declared cnf value is not always the effective one
-  # (hosted boxes and a failed sshd -t validation force 22). Match the
-  # union of 22, the cnf value (inline comments stripped, never sourced)
-  # and every port the live sshd config serves, so the logged-in shield
-  # can never go dark on a default-port box.
+  # The addresses of the logged-in SSH sessions, as ip_access.sh reads them.
+  # A bare connection to sshd (a scanner, a login still being refused) is no
+  # session: counted, anyone could shield a flood from its ban by holding one
+  # open. sshd titles a session's processes `<user>@<tty>` (`sshd:
+  # root@pts/0`, `sshd-session: root@notty`) or, once its login succeeded,
+  # `<user> [postauth]` (before OpenSSH 10.5 a login with no shell or command
+  # yet, a tunnel, is `<user>` alone); a connection before its login shows
+  # `[accepted]`, `[net]`, `[preauth]`, `<user> [priv]`, `unknown [priv]` or
+  # `sshd-auth: ...`. The sockets
+  # those session processes hold, by inode, are the established connections
+  # that count: only their descriptors are read, never every process's as
+  # `ss -p` would (this runs every few seconds). Where ss or pgrep is
+  # missing or fails, or ss gives a connection no inode, the peer counts, as
+  # every established peer did before. Same port resolution ip_access.sh
+  # uses: sshd may serve a custom _SSH_PORT, and the declared cnf value is
+  # not always the effective one (hosted boxes and a failed sshd -t
+  # validation force 22). Match the union of 22, the cnf value (inline
+  # comments stripped, never sourced) and every port the live sshd config
+  # serves, so the logged-in shield can never go dark on a default-port box.
+  # The caller's IFS is not this function's: scan_nginx.sh splits on
+  # newlines and tabs alone, which would leave every ss line unsplit.
+  local IFS=$' \t\n'
   local _p _ports="22" _cnf_port _sshd_ports
   _cnf_port=$(sed -n 's/^_SSH_PORT=//p' /root/.barracuda.cnf 2>/dev/null \
     | tail -n 1 | sed 's/[[:space:]]*#.*$//' | tr -d '" ')
@@ -2341,10 +2357,74 @@ _get_ssh_ips() {
       _ports="${_ports} ${_p}"
     fi
   done
-  netstat -tn | awk -v p=":(${_ports// /|})$" '$4 ~ p && $6 == "ESTABLISHED" { split($5, a, ":"); print a[1] }' | sort | uniq
+  local _f="" _out="" _line _peer _ino _x _pid _pids _rpids _rc _rrc
+  local _re='^sshd(-session)?: [^][:space:]@[]+(@|[[:space:]]*$| \[postauth\])'
+  local -a _fds=() _rfds=()
+  local -A _held=() _rheld=()
+  for _p in ${_ports}; do
+    _f="${_f:+${_f} or }sport = :${_p}"
+  done
+  if command -v ss > /dev/null 2>&1 && command -v pgrep > /dev/null 2>&1 \
+    && _out=$(unset COLUMNS; ss -tneH state established "( ${_f} )" 2>/dev/null); then
+    [[ -n "${_out}" ]] || return 0
+    # A session's process runs as its user before OpenSSH 10.5, so the
+    # titles are read whoever owns them; any account can title its own
+    # process so, and hold a socket on a port sshd does not serve (a cnf
+    # port sshd has not taken up yet). A connection counts only when root's
+    # own sshd, the session's privileged monitor, holds its socket too.
+    # owner-any: every user's sessions, told by the sockets root's sshd holds
+    _pids=$(pgrep -f "${_re}" 2>/dev/null)
+    _rc=$?
+    _rpids=$(pgrep -u 0 -U 0 -f '^sshd(-session)?: ' 2>/dev/null)
+    _rrc=$?
+    if (( _rc <= 1 && _rrc <= 1 )); then
+      for _pid in ${_pids}; do
+        _fds+=("/proc/${_pid}/fd")
+      done
+      for _pid in ${_rpids}; do
+        _rfds+=("/proc/${_pid}/fd")
+      done
+      if (( ${#_fds[@]} > 0 && ${#_rfds[@]} > 0 )); then
+        while IFS= read -r _x; do
+          _x="${_x#socket:[}"
+          _x="${_x%]}"
+          [[ "${_x}" =~ ^[0-9]+$ ]] && _held["${_x}"]=1
+        done < <(find "${_fds[@]}" -lname 'socket:*' -printf '%l\n' 2>/dev/null)
+        while IFS= read -r _x; do
+          _x="${_x#socket:[}"
+          _x="${_x%]}"
+          [[ "${_x}" =~ ^[0-9]+$ ]] && _rheld["${_x}"]=1
+        done < <(find "${_rfds[@]}" -lname 'socket:*' -printf '%l\n' 2>/dev/null)
+      fi
+      while IFS= read -r _line; do
+        read -r _ _ _ _peer _ <<< "${_line}"
+        _peer="${_peer%:*}"
+        _peer="${_peer#[}"
+        _peer="${_peer%]}"
+        [[ "${_peer}" =~ ^::ffff:[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] && _peer="${_peer#::ffff:}"
+        [[ -n "${_peer}" ]] || continue
+        # A loopback peer counts for nothing: any account can open one, the
+        # lists always allow 127.0.0.1 and ::1, and the abuse guard scores
+        # only public addresses.
+        case "${_peer}" in
+          127.*|::1|::ffff:127.*) continue ;;
+        esac
+        # ino:0 is a connection sshd has not accepted yet, no session; a
+        # line with no inode at all cannot be told, so it counts.
+        if [[ "${_line}" =~ [[:space:]]ino:([0-9]+) ]]; then
+          _ino="${BASH_REMATCH[1]}"
+          [[ "${_ino}" != 0 && -n "${_held[${_ino}]:-}" && -n "${_rheld[${_ino}]:-}" ]] \
+            || continue
+        fi
+        echo "${_peer}"
+      done <<< "${_out}" | sort -u
+      return 0
+    fi
+  fi
+  netstat -tn | awk -v p=":(${_ports// /|})$" '$4 ~ p && $6 == "ESTABLISHED" { split($5, a, ":"); if (a[1] !~ /^127\./) print a[1] }' | sort | uniq
 }
 
-if command -v netstat &>/dev/null; then
+if command -v ss &>/dev/null || command -v netstat &>/dev/null; then
   while IFS= read -r _logged_ip; do
     if _validate_ip "${_logged_ip}"; then
       _LOGGED_IN_IPS["${_logged_ip}"]=1
@@ -2542,15 +2622,26 @@ _check_fpm_saturation() {
   _tmp="${_posfile}.$$"
   : > "${_tmp}" 2>/dev/null || return 0
   _hits=0; _hitf=""
+  # One stat for every log: a log still at its recorded offset (an idle pass,
+  # nearly every pass) needs nothing more; one that changed is stat'ed alone
+  # right before it is read, as each log was on every pass.
+  local -A _SZ=()
+  local _l
+  while IFS= read -r _l; do
+    _SZ["${_l#* }"]="${_l%% *}"
+  done < <(stat -c '%s %n' -- ${_NGINX_FPM_ERR_GLOB} 2>/dev/null)
   for _f in ${_NGINX_FPM_ERR_GLOB}; do
     [[ -f "${_f}" ]] || continue
-    _sz="$(stat -c %s "${_f}" 2>/dev/null)"
-    [[ "${_sz}" =~ ^[0-9]+$ ]] || _sz=0
+    _sz="${_SZ["${_f}"]:-}"
     _off="${_POS["${_f}"]:-0}"
+    if [[ ! "${_sz}" =~ ^[0-9]+$ ]] || (( _sz != _off )); then
+      _sz="$(stat -c %s "${_f}" 2>/dev/null)"
+    fi
+    [[ "${_sz}" =~ ^[0-9]+$ ]] || _sz=0
     (( _sz < _off )) && _off=0
     if (( _sz > _off )); then
       _new="$(tail -c +$(( _off + 1 )) "${_f}" 2>/dev/null \
-        | grep -v -E "${_wl}" | grep -c -- "${_NGINX_FPM_SAT_PATTERN}")"
+        | LC_ALL=C grep -a -v -E "${_wl}" | LC_ALL=C grep -a -c -- "${_NGINX_FPM_SAT_PATTERN}")"
       [[ "${_new}" =~ ^[0-9]+$ ]] || _new=0
       if (( _new > 0 )); then
         _hits=$(( _hits + _new ))

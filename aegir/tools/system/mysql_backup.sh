@@ -121,7 +121,7 @@ _replica_role_gate() {
 }
 _replica_role_gate
 
-_IS_SQLBACKUP_RUNNING=$(pgrep -f '(^|(^| )[^ ]*bash )/var/xdrago/mysql_cluster_backup\.sh( |$)')
+_IS_SQLBACKUP_RUNNING=$(pgrep -u root -U root -f '(^|(^| )[^ ]*bash )/var/xdrago/mysql_cluster_backup\.sh( |$)')
 if [ ! -z "${_IS_SQLBACKUP_RUNNING}" ]; then
   exit 0
 fi
@@ -352,6 +352,93 @@ _check_dump_fs() {
   return 0
 }
 
+# The night's dumps stay uncompressed side by side until the run compresses
+# them all at its end, so its peak on the filesystem it writes to is about
+# their sum: with a large database that can fill it, and a full root stops
+# MySQL's own writes (its binary log, its temporary files) for every site
+# until space is freed. Each run records that peak in _DUMP_PEAK_FILE, with
+# its largest database, which xmass's binary log guard reads as well. When the largest of the last eight
+# nights would take the filesystem past 95%, this run compresses each
+# database right after its dump instead, so its peak is about the largest
+# one alone, and says so where its other notices go.
+_DUMP_PEAK_FILE="/etc/boa/control/mysql-backup-peak.cnf"
+_DUMP_PEAK_KB=0
+_DUMP_PEAK_MAX_KB=0
+_COMPRESS_EACH=NO
+_dump_peak_plan() {
+  local _dir="${_BACKUPDIR}" _p _mnt _sz _us _pct
+  _p="$(awk -v c="$(( $(date +%s) - 691200 ))" '$1 ~ /^[0-9]+$/ && $2 ~ /^[0-9]+$/ && $1 >= c && $2 + 0 > m + 0 { m = $2 } END { printf "%.0f\n", m }' "${_DUMP_PEAK_FILE}" 2> /dev/null)"
+  [[ "${_p}" =~ ^[1-9][0-9]*$ ]] || return 0
+  while [[ ! -d "${_dir}" && "${_dir}" == /?* ]]; do
+    _dir="${_dir%/*}"
+  done
+  [[ -n "${_dir}" ]] || _dir="/"
+  read -r _mnt _sz _us <<< "$(LC_ALL=C timeout 60 df -Pk -- "${_dir}" 2>/dev/null | awk 'NR==2 { printf "%s %.0f %.0f\n", $NF, $3 + $4, $3 }')"
+  [[ "${_sz}" =~ ^[1-9][0-9]*$ && "${_us}" =~ ^[0-9]+$ ]] || return 0
+  _pct=$(( (_us + _p) * 100 / _sz ))
+  [ "${_pct}" -gt 95 ] || return 0
+  _COMPRESS_EACH=YES
+  echo "INFO: the largest dump of the last eight nights would take ${_mnt} to ${_pct}%: each database is compressed right after its dump"
+  {
+    echo "The database backup run on ${_hName} compresses each database right"
+    echo "after its dump tonight: the largest uncompressed set of the last eight"
+    echo "nights, $(( _p / 1048576 )).$(( _p % 1048576 * 10 / 1048576 )) G, would take ${_mnt} from $(( _us * 100 / _sz ))% to ${_pct}% before"
+    echo "the compress step at the end of the run. The backup is taken all the"
+    echo "same; its peak is now about the largest database alone. Free space on"
+    echo "${_mnt} or grow it to return to the usual order."
+    echo
+  } | _backup_notice "Backup compresses as it goes on [${_hName}]: ${_mnt} would reach ${_pct}%" "dump peak ${_p} K on ${_mnt}"
+}
+
+# One database's dump compressed right after it (_COMPRESS_EACH), its
+# uncompressed size added to the night's peak once its archive is in place.
+# A dump whose archive fails stays as it is: the compress step at the end
+# tries it again and counts it then, once. $1 = the database.
+_compress_as_we_go() {
+  local _p _k _n="${_COMPRESS_FAILED_N:-0}" _d="${_COMPRESS_FAILED_DBS}"
+  if [ "${_MYQUICK_USE}" = "YES" ]; then
+    _p="${_SAVELOCATION}/$1"
+  else
+    _p="${_SAVELOCATION}/$1.sql"
+  fi
+  [ -e "${_p}" ] || return 0
+  _k="$(du -sk "${_p}" 2>/dev/null | awk '{ print $1 }')"
+  if [ "${_MYQUICK_USE}" = "YES" ]; then
+    _compress_dump_dir "${_p}"
+  else
+    _compress_dump_sql "${_p}"
+  fi
+  _COMPRESS_FAILED_N="${_n}"
+  _COMPRESS_FAILED_DBS="${_d}"
+  if [ ! -e "${_p}" ] && [[ "${_k}" =~ ^[0-9]+$ ]]; then
+    _DUMP_PEAK_KB=$(( _DUMP_PEAK_KB + _k ))
+    [ "${_k}" -le "${_DUMP_PEAK_MAX_KB}" ] || _DUMP_PEAK_MAX_KB="${_k}"
+  fi
+}
+
+# The night's uncompressed peak, read before the compress step, as
+# "<epoch> <K> <largest K>": the whole set as it stands and its largest
+# entry, or with _COMPRESS_EACH the dumps compressed on the way plus what is
+# still uncompressed. The last 30 nights are kept.
+_dump_peak_note() {
+  local _k=0 _m="${_DUMP_PEAK_MAX_KB}" _e _s
+  for _e in "${_SAVELOCATION}"/*; do
+    [ -e "${_e}" ] || continue
+    if [ "${_COMPRESS_EACH}" = "YES" ]; then
+      case "${_e}" in *.tar.zst|*.sql.gz) continue ;; esac
+    fi
+    _s="$(du -sk "${_e}" 2>/dev/null | awk '{ print $1 }')"
+    [[ "${_s}" =~ ^[0-9]+$ ]] || continue
+    _k=$(( _k + _s ))
+    [ "${_s}" -le "${_m}" ] || _m="${_s}"
+  done
+  [ "${_COMPRESS_EACH}" != "YES" ] || _k=$(( _k + _DUMP_PEAK_KB ))
+  [ "${_k}" -gt 0 ] || return 0
+  mkdir -p "${_DUMP_PEAK_FILE%/*}"
+  { tail -n 29 "${_DUMP_PEAK_FILE}" 2>/dev/null; echo "$(date +%s) ${_k} ${_m}"; } > "${_DUMP_PEAK_FILE}.tmp" \
+    && mv -f "${_DUMP_PEAK_FILE}.tmp" "${_DUMP_PEAK_FILE}"
+}
+
 # migratefs relocating /data/disk/arch holds it: /run/migratefs-arch.pid
 # names a live root process that runs migratefs, matched as executed,
 # never as a word anywhere on a command line (a pid reused after a kill -9,
@@ -416,6 +503,66 @@ if [[ -n "${_mfsPid}" ]]; then
   fi
   _arch_wait_log "mysql_backup.sh (pid $$) waited ${_mfsWait} s; /data/disk/arch is no longer held, the database backup starts"
 fi
+# A migration's database snapshot holds this box: /run/boa_xmass_snapshot.pid
+# names a live root process that runs xmass init, matched as executed (a
+# pid reused after a kill -9, by another user's process, another command or
+# another verb of the tool, never holds; root is read as the real uid in
+# /proc/<pid>/status). Prints that pid while the hold stands.
+_xmass_snap_held() {
+  local _p
+  _p=$( { tr -dc '0-9' < /run/boa_xmass_snapshot.pid; } 2> /dev/null )
+  [ -n "${_p}" ] && kill -0 "${_p}" 2> /dev/null \
+    && [ "$(awk '/^Uid:/ { print $2; exit }' "/proc/${_p}/status" 2> /dev/null)" = "0" ] \
+    && { tr '\0' ' ' < "/proc/${_p}/cmdline"; } 2> /dev/null \
+    | grep -qE '^([^ ]*/)?bash (-[^ ]+ )*([^ ]*/)?xmass init( |$)' \
+    && echo "${_p}"
+}
+# The wait for that snapshot, on the console and in a log of its own: cron
+# discards this output, and a wait that ends in a normal run is no incident
+# for the incident log.
+_snap_wait_log() {
+  echo "INFO: $*"
+  mkdir -p /var/log/boa
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] INFO: $*" >> /var/log/boa/mysql.backup.wait.log
+}
+# This run empties cache tables and, on the nights set for it, rebuilds
+# tables. Under a snapshot xtrabackup copies from the live datadir that
+# ends the snapshot on Percona 5.7 (a table rebuilt without redo logging),
+# and on 8.x each such statement waits on the snapshot's backup lock, this
+# run hanging with its run marker up for as long as the copy lasts. Checked
+# with the wait marker still in place: xmass writes its hold before it looks
+# for this run, and gives way, dropping the hold, when it sees it; so one of
+# the two always goes ahead, and a hold found here is a snapshot under way
+# or one about to give way. The hold is up from before the migration
+# restarts MySQL here (where GTID or the binary log is still off), so a
+# dump meets neither that restart nor the copy. The same wait as for the
+# relocation above: up to 3 hours, checked every 60 s, then this run is
+# skipped with a notice.
+_snapPid=$(_xmass_snap_held)
+if [[ -n "${_snapPid}" ]]; then
+  _snapWait=0
+  _snap_wait_log "mysql_backup.sh (pid $$) waits for a migration (xmass pid ${_snapPid}) to finish its database snapshot, up to 3 hours"
+  while [[ -n "${_snapPid}" ]] && [[ "${_snapWait}" -lt 10800 ]]; do
+    sleep 60
+    _snapWait=$(( _snapWait + 60 ))
+    _snapPid=$(_xmass_snap_held)
+  done
+  if [[ -n "${_snapPid}" ]]; then
+    _snap_wait_log "mysql_backup.sh (pid $$) waited ${_snapWait} s and the migration (xmass pid ${_snapPid}) has not finished its database snapshot; this run is skipped"
+    {
+      echo "The database backup run on ${_hName} did not start: a migration"
+      echo "(xmass pid ${_snapPid}) had not finished its database snapshot after"
+      echo "this run had waited 3 hours for it. No database was dumped. Once the"
+      echo "snapshot has ended, run:"
+      echo
+      echo "  bash /var/xdrago/mysql_backup.sh"
+      echo
+    } | _backup_notice "Backup SKIPPED on [${_hName}]: a migration's database snapshot is running" "xmass pid ${_snapPid} still held it after ${_snapWait} s"
+    _sql_wait_drop
+    exit 0
+  fi
+  _snap_wait_log "mysql_backup.sh (pid $$) waited ${_snapWait} s; the migration's snapshot has ended, the database backup starts"
+fi
 if ! _check_dump_fs; then
   _sql_wait_drop
   # The usage report the full run ends with writes nothing where the dumps
@@ -428,6 +575,7 @@ if ! _check_dump_fs; then
   fi
   exit 0
 fi
+_dump_peak_plan
 echo $$ > /run/boa_sql_backup.pid
 _sql_wait_drop
 ### A run that ends early (a Ctrl-C, INT, TERM or HUP during a dump ends it
@@ -584,32 +732,35 @@ EOFMYSQL
   done
 }
 
-_truncate_batch_tables() {
+# queue and batch hold work a site has not finished: a job waiting for its
+# worker, a batch a browser is still running. InnoDB never hands a file's
+# freed pages back, so these files grow far past their rows and the 1 GB file
+# test fires on bloat alone; emptying them threw away every waiting job. The
+# table is rebuilt in place instead, online, which gives the free space back
+# and keeps every row, a row written during the rebuild included. A table
+# still over 1 GB after a rebuild holds that much real work: it is left for a
+# week before the next try (the hourly mysql_cleanup.sh shares the stamp).
+_rebuild_giant_table() {
+  local _t="${1}"
+  local _ibd="/var/lib/mysql/${_DB}/${1}.ibd"
+  local _stamp="/var/log/boa/.giant-table-rebuilt.${_DB}.${1}"
+  local _before _after
   _check_running
-  _TABLES=$(mysql ${_DB} -u root -e "show tables" -s | grep ^batch$ 2>&1)
-  for B in ${_TABLES}; do
-    if ! _is_safe_ident "${B}"; then
-      echo "WARN: skipping unsafe table identifier in ${_DB}: ${B}"
-      continue
-    fi
-mysql ${_DB}<<EOFMYSQL
-TRUNCATE \`${B}\`;
-EOFMYSQL
-  done
-}
-
-_truncate_queue_tables() {
-  _check_running
-  _TABLES=$(mysql ${_DB} -u root -e "show tables" -s | grep ^queue$ 2>&1)
-  for Q in ${_TABLES}; do
-    if ! _is_safe_ident "${Q}"; then
-      echo "WARN: skipping unsafe table identifier in ${_DB}: ${Q}"
-      continue
-    fi
-mysql ${_DB}<<EOFMYSQL
-TRUNCATE \`${Q}\`;
-EOFMYSQL
-  done
+  _is_safe_ident "${_t}" || return 1
+  mysql ${_DB} -u root -e "show tables" -s | grep -qx "${_t}" || return 0
+  if [ -n "$(find "${_stamp}" -mtime -7 2>/dev/null)" ]; then
+    echo "INFO: Giant ${_t} in ${_DB} was rebuilt within a week, its rows kept as they are"
+    return 0
+  fi
+  _before=$(stat -c %s "${_ibd}" 2>/dev/null)
+  if mysql ${_DB} -e "SET SESSION lock_wait_timeout = 5; ALTER TABLE \`${_t}\` ENGINE=InnoDB, ALGORITHM=INPLACE, LOCK=NONE;"; then
+    mkdir -p /var/log/boa
+    touch "${_stamp}"
+    _after=$(stat -c %s "${_ibd}" 2>/dev/null)
+    echo "INFO: Rebuilt giant ${_t} in ${_DB}, every row kept (file ${_before:-?} to ${_after:-?} bytes)"
+  else
+    echo "WARN: Giant ${_t} in ${_DB} not rebuilt (a lock held or a long transaction open), every row kept"
+  fi
 }
 
 _truncate_views_data_export() {
@@ -716,7 +867,7 @@ _mydumper_session() {
   _MYDUMPER_PREV="$!"
   trap '_p="${_MYDUMPER_PID}"; [ -z "${_p}" ] && [ "$!" != "${_MYDUMPER_PREV}" ] && _p="$!"; [ -n "${_p}" ] && kill -9 "${_p}" 2> /dev/null; exit 130' INT TERM HUP
   ( cd -P -- "${_d}" 2> /dev/null \
-    && { [ "${_want}" = "-" ] || [ "$(pwd -P)" = "${_want}" ]; } \
+    && { [ "${_want}" = "-" ] || [ "$(/bin/pwd -P)" = "${_want}" ]; } \
     && exec setsid -w "$@" ) < /dev/null &
   _MYDUMPER_PID=$!
   wait "${_MYDUMPER_PID}"
@@ -808,17 +959,27 @@ _mydumper_lockwait_opts() {
 ### the server stored for it: a plain SET before its CREATE and the file's
 ### mode after it (myloader stops on a versioned-comment SET in the middle
 ### of a file). Mode words 8.x refuses are left out, so a 5.7 dump loads
-### there. It reads the file whole, never through a link, and replaces it
+### there. A routine's utf8mb4 parameters and return value take the loading
+### session's default_collation_for_utf8mb4, which no dump names: a routine
+### whose parameters (and return value) share one of the two defaults that
+### setting takes gets it the same way, the session's own value back after
+### it, read on any server (a 5.x or MariaDB one names utf8mb4_general_ci
+### there, which a load on MySQL 8 then keeps; a server that refuses that
+### read gives the modes alone); each is a statement prepared from one that
+### names MySQL 8, so a 5.x or MariaDB server, which has no such setting,
+### runs DO 0 in its place. It reads the file whole, never through a link, and replaces it
 ### through a new one in the same directory. Exits 1, the file as it was,
 ### when a line cannot be placed; 2 when an object had no mode to give.
 _MYDUMPER_MODES_PL='use strict; use Fcntl;
-my ($f) = @ARGV; my (%m, @o, $p, $miss);
+my ($f) = @ARGV; my (%m, %c, @o, $p, $q, $miss);
 my $gone = qr/^(?:NO_AUTO_CREATE_USER|NO_FIELD_OPTIONS|NO_KEY_OPTIONS|NO_TABLE_OPTIONS|DB2|MAXDB|MSSQL|MYSQL323|MYSQL40|ORACLE|POSTGRESQL)$/;
 for (split /\n/, (defined $ENV{_MYDUMPER_MODES} ? $ENV{_MYDUMPER_MODES} : "")) {
-  my ($t, $h, $s) = split /\t/, $_, 3;
+  my ($t, $h, $s, $k) = split /\t/, $_, 4;
   next unless defined $s && $t =~ /^(?:TRIGGER|FUNCTION|PROCEDURE|EVENT)$/
     && $h =~ /^[0-9A-Fa-f]+$/ && $s =~ /^[A-Z0-9_,]*$/;
   $m{$t . " " . lc($h)} = join(",", grep { $_ !~ $gone } split(/,/, $s));
+  $c{$t . " " . lc($h)} = $k if defined $k && $t =~ /^(?:FUNCTION|PROCEDURE)$/
+    && $k =~ /^utf8mb4_(?:general_ci|0900_ai_ci)$/;
 }
 sysopen(my $in, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit 1;
 my @st = stat($in); exit 1 unless @st && -f _;
@@ -830,17 +991,27 @@ for my $x (@l[0 .. ($#l < 9 ? $#l : 9)]) {
 exit 1 unless defined $fm;
 for my $i (0 .. $#l) {
   my $x = $l[$i];
-  if ($p && $x =~ /^SET character_set_client = \@PREV_CHARACTER_SET_CLIENT;$/) {
-    push @o, "SET SQL_MODE=\x27$fm\x27;\n"; $p = 0;
+  if (($p || $q) && $x =~ /^SET character_set_client = \@PREV_CHARACTER_SET_CLIENT;$/) {
+    push @o, "SET SQL_MODE=\x27$fm\x27;\n" if $p;
+    push @o, "SET \@BOA_UTF8MB4_SQL = IF(VERSION() LIKE \x278.%\x27, \x27SET SESSION default_collation_for_utf8mb4 = \@BOA_PREV_UTF8MB4\x27, \x27DO 0\x27);\n",
+      "PREPARE boa_utf8mb4 FROM \@BOA_UTF8MB4_SQL;\n", "EXECUTE boa_utf8mb4;\n", "DEALLOCATE PREPARE boa_utf8mb4;\n" if $q;
+    $p = 0; $q = 0;
   }
   push @o, $x;
   next unless $x =~ /^DROP (TRIGGER|FUNCTION|PROCEDURE|EVENT) IF EXISTS `((?:[^`]|``)+)`;$/;
   my ($t, $n) = ($1, $2); $n =~ s/``/`/g;
-  exit 0 if $i < $#l && $l[$i + 1] =~ /^SET SQL_MODE=/;
-  my $s = $m{$t . " " . unpack("H*", $n)};
+  exit 0 if $i < $#l && $l[$i + 1] =~ /^SET (?:SQL_MODE=|\@BOA_UTF8MB4_SQL )/;
+  my $key = $t . " " . unpack("H*", $n);
+  my $s = $m{$key};
   if (defined $s) { push @o, "SET SQL_MODE=\x27$s\x27;\n"; $p = 1; } else { $miss = 1; }
+  if (defined $c{$key}) {
+    push @o, "SET \@BOA_UTF8MB4_SQL = IF(VERSION() LIKE \x278.%\x27, \x27SET \@BOA_PREV_UTF8MB4 = \@\@SESSION.default_collation_for_utf8mb4,"
+      . " SESSION default_collation_for_utf8mb4 = \x27\x27$c{$key}\x27\x27\x27, \x27DO 0\x27);\n",
+      "PREPARE boa_utf8mb4 FROM \@BOA_UTF8MB4_SQL;\n", "EXECUTE boa_utf8mb4;\n";
+    $q = 1;
+  }
 }
-exit 1 if $p;
+exit 1 if $p || $q;
 my $w = $f . ".modes";
 sysopen(my $out, $w, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600) or exit 1;
 if (!(print {$out} @o) || !close($out) || !chmod($st[2] & 07777, $w)
@@ -854,13 +1025,21 @@ exit($miss ? 2 : 0);'
 ### mydumper wrote them), 2 when an object or a file kept the dump's mode.
 ### It never fails a dump: the caller says what was left.
 _mydumper_object_modes() {
-  local _db="${1}" _dir="${2}" _q _modes _f _rc=0
+  local _db="${1}" _dir="${2}" _q _c _modes _f _rc=0
   shift 2
   [[ "${_db}" =~ ^[A-Za-z0-9_]+$ ]] || return 2
-  _q="SELECT 'TRIGGER', HEX(TRIGGER_NAME), SQL_MODE FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = '${_db}'"
-  _q="${_q} UNION ALL SELECT ROUTINE_TYPE, HEX(ROUTINE_NAME), SQL_MODE FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA = '${_db}'"
-  _q="${_q} UNION ALL SELECT 'EVENT', HEX(EVENT_NAME), SQL_MODE FROM information_schema.EVENTS WHERE EVENT_SCHEMA = '${_db}'"
-  _modes=$("$@" -N -B -e "${_q}" 2> /dev/null) || return 1
+  _c="IFNULL((SELECT IF(COUNT(DISTINCT p.COLLATION_NAME) = 1, MIN(p.COLLATION_NAME), '') FROM information_schema.PARAMETERS p"
+  _c="${_c} WHERE p.SPECIFIC_SCHEMA = r.ROUTINE_SCHEMA AND p.SPECIFIC_NAME = r.ROUTINE_NAME AND p.ROUTINE_TYPE = r.ROUTINE_TYPE"
+  _c="${_c} AND p.COLLATION_NAME IN ('utf8mb4_general_ci', 'utf8mb4_0900_ai_ci')), '')"
+  while :; do
+    _q="SELECT 'TRIGGER', HEX(TRIGGER_NAME), SQL_MODE, '' FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = '${_db}'"
+    _q="${_q} UNION ALL SELECT r.ROUTINE_TYPE, HEX(r.ROUTINE_NAME), r.SQL_MODE, ${_c} FROM information_schema.ROUTINES r WHERE r.ROUTINE_SCHEMA = '${_db}'"
+    _q="${_q} UNION ALL SELECT 'EVENT', HEX(EVENT_NAME), SQL_MODE, '' FROM information_schema.EVENTS WHERE EVENT_SCHEMA = '${_db}'"
+    _modes=$("$@" -N -B -e "${_q}" 2> /dev/null) && break
+    [[ "${_c}" != "''" ]] || return 1
+    echo "WARN: the stored routines' utf8mb4 defaults of ${_db} could not be read: its routines load with the loading server's default" >&2
+    _c="''"
+  done
   [[ -n "${_modes}" ]] || return 0
   for _f in "${_dir}"/*-schema-post.sql "${_dir}"/*-schema-triggers.sql; do
     if [[ -L "${_f}" ]]; then
@@ -1002,9 +1181,91 @@ _mysqldump_objects_opts() {
   return 0
 }
 
+### A routine's utf8mb4 parameters and return value take the loading
+### session's default_collation_for_utf8mb4, which no dump names, so a load
+### on MySQL 8 gave a routine made under utf8mb4_general_ci the server's
+### default. mysqldump writes each routine after its DROP line, between a
+### line setting the routine's sql_mode and one putting the saved sql_mode
+### back: a routine whose parameters (and return value) share one of the two
+### defaults that setting takes gets it after the first and the session's
+### own value back after the second, as the MyQuick dumps and the panel's
+### classic dump write them, each a statement prepared from one naming
+### MySQL 8 (a 5.x or MariaDB server, which has no such setting, runs DO 0
+### in its place). Reads the dump on stdin and writes it on stdout, one line
+### at a time; _MYSQLDUMP_ROUTINES holds each routine's type, hex name and
+### default, tab-separated, one per line. Exits 1 when a write fails.
+_MYSQLDUMP_ROUTINES_PL='use strict;
+binmode(STDIN); binmode(STDOUT);
+my (%c, $p, $r);
+for (split /\n/, (defined $ENV{_MYSQLDUMP_ROUTINES} ? $ENV{_MYSQLDUMP_ROUTINES} : "")) {
+  my ($t, $h, $k) = split /\t/, $_, 3;
+  next unless defined $k && $t =~ /^(?:FUNCTION|PROCEDURE)$/ && $h =~ /^[0-9A-Fa-f]+$/
+    && $k =~ /^utf8mb4_(?:general_ci|0900_ai_ci)$/;
+  $c{$t . " " . lc($h)} = $k;
+}
+while (defined(my $x = <STDIN>)) {
+  print $x or exit 1;
+  next unless %c && substr($x, 0, 9) eq "/*!50003 ";
+  if ($x =~ /^\/\*!50003 DROP (FUNCTION|PROCEDURE) IF EXISTS `((?:[^`]|``)+)` \*\/;\n\z/) {
+    my ($t, $n) = ($1, $2); $n =~ s/``/`/g;
+    $p = $c{$t . " " . unpack("H*", $n)};
+  }
+  elsif (defined $p && $x =~ /^\/\*!50003 SET sql_mode +=[ ]+\x27[A-Z0-9_,]*\x27 \*\/ ;\n\z/) {
+    print "SET \@BOA_UTF8MB4_SQL = IF(VERSION() LIKE \x278.%\x27, \x27SET \@BOA_PREV_UTF8MB4 = \@\@SESSION.default_collation_for_utf8mb4,"
+      . " SESSION default_collation_for_utf8mb4 = \x27\x27$p\x27\x27\x27, \x27DO 0\x27);\n",
+      "PREPARE boa_utf8mb4 FROM \@BOA_UTF8MB4_SQL;\n", "EXECUTE boa_utf8mb4;\n" or exit 1;
+    undef $p; $r = 1;
+  }
+  elsif ($r && $x =~ /^\/\*!50003 SET sql_mode +=[ ]+\@saved_sql_mode \*\/ ;\n\z/) {
+    print "SET \@BOA_UTF8MB4_SQL = IF(VERSION() LIKE \x278.%\x27, \x27SET SESSION default_collation_for_utf8mb4 = \@BOA_PREV_UTF8MB4\x27, \x27DO 0\x27);\n",
+      "PREPARE boa_utf8mb4 FROM \@BOA_UTF8MB4_SQL;\n", "EXECUTE boa_utf8mb4;\n", "DEALLOCATE PREPARE boa_utf8mb4;\n" or exit 1;
+    $r = 0;
+  }
+}
+close(STDOUT) or exit 1;
+exit 0;'
+
+### Sets _MYSQLDUMP_ROUTINES for _MYSQLDUMP_ROUTINES_PL: each stored routine
+### of database $1 with the utf8mb4 default its parameters and return value
+### share (empty when they share none), read with the client command that
+### follows on any server (a 5.x or MariaDB one names utf8mb4_general_ci,
+### which a load on MySQL 8 then keeps). A refused read is said on stderr
+### and leaves it empty, so the dump is written as it always was.
+_mysqldump_routine_colls() {
+  local _db="$1" _q _r
+  shift
+  _MYSQLDUMP_ROUTINES=""
+  [[ "${_db}" =~ ^[A-Za-z0-9_]+$ ]] || return 1
+  _q="SELECT r.ROUTINE_TYPE, HEX(r.ROUTINE_NAME), IFNULL((SELECT IF(COUNT(DISTINCT p.COLLATION_NAME) = 1, MIN(p.COLLATION_NAME), '') FROM information_schema.PARAMETERS p"
+  _q="${_q} WHERE p.SPECIFIC_SCHEMA = r.ROUTINE_SCHEMA AND p.SPECIFIC_NAME = r.ROUTINE_NAME AND p.ROUTINE_TYPE = r.ROUTINE_TYPE"
+  _q="${_q} AND p.COLLATION_NAME IN ('utf8mb4_general_ci', 'utf8mb4_0900_ai_ci')), '') FROM information_schema.ROUTINES r WHERE r.ROUTINE_SCHEMA = '${_db}'"
+  if ! _r=$("$@" -N -B -e "${_q}" 2> /dev/null); then
+    echo "WARN: the stored routines' utf8mb4 defaults of ${_db} could not be read: its routines load with the loading server's default" >&2
+    return 1
+  fi
+  _MYSQLDUMP_ROUTINES="${_r}"
+  return 0
+}
+
+### A dump's routines take their own utf8mb4 default along, written as the
+### dump goes (_MYSQLDUMP_ROUTINES_PL), so no second copy of it is made; a
+### database with none passes as it is.
+_mysqldump_routine_lines() {
+  if [[ "${_MYSQLDUMP_ROUTINES}" == *$'\t'utf8mb4_* ]]; then
+    _MYSQLDUMP_ROUTINES="${_MYSQLDUMP_ROUTINES}" perl -e "${_MYSQLDUMP_ROUTINES_PL}"
+  else
+    cat
+  fi
+}
+
 _backup_this_database_with_mysqldump() {
+  local -a _ps
   _check_running
   _mysqldump_objects_opts "${_DB}" mysql
+  _MYSQLDUMP_ROUTINES=""
+  case " ${_MYSQLDUMP_OBJECTS[*]} " in
+    *" --routines "*) _mysqldump_routine_colls "${_DB}" mysql ;;
+  esac
   mysqldump \
     "${_MYSQLDUMP_GTID[@]}" \
     --single-transaction \
@@ -1014,8 +1275,12 @@ _backup_this_database_with_mysqldump() {
     --no-tablespaces \
     "${_MYSQLDUMP_OBJECTS[@]}" \
     --hex-blob ${_DB} \
-    > ${_SAVELOCATION}/${_DB}.sql 2> "${_SAVELOCATION}/${_DB}.mysqldump.log"
-  _MYSQLDUMP_RC=$?
+    2> "${_SAVELOCATION}/${_DB}.mysqldump.log" \
+    | _mysqldump_routine_lines > ${_SAVELOCATION}/${_DB}.sql
+  ### Either side failing fails the dump: the filter writes the file.
+  _ps=("${PIPESTATUS[@]}")
+  _MYSQLDUMP_RC="${_ps[0]}"
+  [ "${_MYSQLDUMP_RC}" -ne "0" ] || _MYSQLDUMP_RC="${_ps[1]}"
   ### A failed or truncated dump used to be compressed and kept as THE
   ### backup for the night: the rc was never read, and gzip turns any
   ### partial file into a valid archive. Demand rc=0 and mysqldump's own
@@ -1064,27 +1329,44 @@ _backup_mysql_schema() {
   rm -f "${_SAVELOCATION}/mysql.mysqldump.log"
 }
 
+### One mydumper directory into its archive. $1 = the directory.
+_compress_dump_dir() {
+  local DbPath="$1" DbName
+  [ -e "${DbPath}/metadata" ] || return 0
+  DbName=$(echo ${DbPath} | cut -d'/' -f7 | awk '{ print $1}' 2>&1)
+  cd ${_SAVELOCATION}
+  ### NEVER delete the dump until the archive that replaces it is
+  ### proven readable: an unchecked tar (disk full, zstd missing)
+  ### left a 0-byte .tar.zst and the rm then destroyed the only
+  ### copy of the night's backup.
+  if tar -c -p -I zstd -f ${DbName}-${_DATE}.tar.zst ${DbName} &> /dev/null \
+    && [ -s "${DbName}-${_DATE}.tar.zst" ] \
+    && tar -p -I zstd -tf ${DbName}-${_DATE}.tar.zst &> /dev/null; then
+    rm -f -r ${DbName}
+  else
+    echo "ALRT: compressing ${DbName} FAILED -- keeping the uncompressed dump directory"
+    rm -f ${DbName}-${_DATE}.tar.zst
+    _COMPRESS_FAILED_N=$(( ${_COMPRESS_FAILED_N:-0} + 1 ))
+    _COMPRESS_FAILED_DBS="${_COMPRESS_FAILED_DBS} ${DbName}"
+  fi
+}
+
+### One mysqldump file into its archive; gzip leaves a failed input
+### untouched. $1 = the .sql file.
+_compress_dump_sql() {
+  local DbSql="$1"
+  [ -e "${DbSql}" ] || return 0
+  if ! gzip "${DbSql}"; then
+    echo "ALRT: compressing $(basename "${DbSql}") FAILED -- keeping the uncompressed dump"
+    _COMPRESS_FAILED_N=$(( ${_COMPRESS_FAILED_N:-0} + 1 ))
+    _COMPRESS_FAILED_DBS="${_COMPRESS_FAILED_DBS} $(basename "${DbSql}" .sql)"
+  fi
+}
+
 _compress_backup() {
   if [ "${_MYQUICK_USE}" = "YES" ]; then
     for DbPath in `find ${_SAVELOCATION}/ -maxdepth 1 -mindepth 1 | sort`; do
-      if [ -e "${DbPath}/metadata" ]; then
-        DbName=$(echo ${DbPath} | cut -d'/' -f7 | awk '{ print $1}' 2>&1)
-        cd ${_SAVELOCATION}
-        ### NEVER delete the dump until the archive that replaces it is
-        ### proven readable: an unchecked tar (disk full, zstd missing)
-        ### left a 0-byte .tar.zst and the rm then destroyed the only
-        ### copy of the night's backup.
-        if tar -c -p -I zstd -f ${DbName}-${_DATE}.tar.zst ${DbName} &> /dev/null \
-          && [ -s "${DbName}-${_DATE}.tar.zst" ] \
-          && tar -p -I zstd -tf ${DbName}-${_DATE}.tar.zst &> /dev/null; then
-          rm -f -r ${DbName}
-        else
-          echo "ALRT: compressing ${DbName} FAILED -- keeping the uncompressed dump directory"
-          rm -f ${DbName}-${_DATE}.tar.zst
-          _COMPRESS_FAILED_N=$(( ${_COMPRESS_FAILED_N:-0} + 1 ))
-          _COMPRESS_FAILED_DBS="${_COMPRESS_FAILED_DBS} ${DbName}"
-        fi
-      fi
+      _compress_dump_dir "${DbPath}"
     done
     # mysql schema is always backed up with mysqldump regardless of _MYQUICK_USE,
     # so compress it separately alongside the mydumper zst archives
@@ -1101,14 +1383,9 @@ _compress_backup() {
     echo "INFO: Permissions fixed"
   else
     ### Per file, so one failure is counted and reported and the others
-    ### still get their archive; gzip leaves a failed input untouched.
+    ### still get their archive.
     for DbSql in ${_SAVELOCATION}/*.sql; do
-      [ -e "${DbSql}" ] || continue
-      if ! gzip "${DbSql}"; then
-        echo "ALRT: compressing $(basename "${DbSql}") FAILED -- keeping the uncompressed dump"
-        _COMPRESS_FAILED_N=$(( ${_COMPRESS_FAILED_N:-0} + 1 ))
-        _COMPRESS_FAILED_DBS="${_COMPRESS_FAILED_DBS} $(basename "${DbSql}" .sql)"
-      fi
+      _compress_dump_sql "${DbSql}"
     done
     chmod 600 ${_SAVELOCATION}/*.sql.gz
     chmod 700 ${_SAVELOCATION}
@@ -1285,8 +1562,7 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
         && ! grep -qiE "^[[:space:]]*(export[[:space:]]+)?_DISABLE_MYSQL_CLEANUP=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null; then
         _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/queue.ibd | grep "G" 2>/dev/null)
         if [[ "${_IS_GB}" =~ "queue" ]]; then
-          _truncate_queue_tables &> /dev/null
-          echo "INFO: Truncated giant queue in ${_DB}"
+          _rebuild_giant_table queue
         fi
       fi
       if [ -e "/var/lib/mysql/${_DB}/batch.ibd" ] \
@@ -1294,8 +1570,7 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
         && ! grep -qiE "^[[:space:]]*(export[[:space:]]+)?_DISABLE_MYSQL_CLEANUP=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null; then
         _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/batch.ibd | grep "G" 2>/dev/null)
         if [[ "${_IS_GB}" =~ "batch" ]]; then
-          _truncate_batch_tables &> /dev/null
-          echo "INFO: Truncated giant batch in ${_DB}"
+          _rebuild_giant_table batch
         fi
       fi
       if [ -e "/var/lib/mysql/${_DB}/watchdog.ibd" ] \
@@ -1376,6 +1651,9 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
       _DUMP_FAILED_DBS="${_DUMP_FAILED_DBS} ${_DB}"
       echo "ALRT: Backup FAILED for ${_DB} -- this run's archive will not carry it"
     fi
+    if [ "${_COMPRESS_EACH}" = "YES" ] && [ "${_DUMP_RC}" = "0" ] && [ "${_DB}" != "mysql" ]; then
+      _compress_as_we_go "${_DB}" &> /dev/null
+    fi
     echo
   fi
 done
@@ -1398,9 +1676,9 @@ if [ "${_OPTIM}" = "YES" ] \
   && [ ! -e "/run/boa_run.pid" ] \
   && [ ! -e "/run/boa_wait.pid" ] \
   && [ ! -e "/run/octopus_install_run.pid" ] \
-  && ! pgrep -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1 \
-  && ! pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/(barracuda|octopus)( |$)" > /dev/null 2>&1 \
-  && ! pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-" > /dev/null 2>&1; then
+  && ! pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1 \
+  && ! pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/(barracuda|octopus)( |$)" > /dev/null 2>&1 \
+  && ! pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-" > /dev/null 2>&1; then
   _check_running
   _check_mysql_version
   echo "INFO: Running db server restart on $(date)"
@@ -1423,6 +1701,7 @@ elif [ "${_OPTIM}" = "YES" ] \
 fi
 
 echo "INFO: Completing all dbs backups on $(date)"
+_dump_peak_note
 rm -f /run/boa_sql_backup.pid
 touch /var/log/boa/last-run-backup
 

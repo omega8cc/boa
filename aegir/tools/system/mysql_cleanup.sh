@@ -84,7 +84,7 @@ _manage_single_lock() {
     # -------- legacy pgrep guard ---------
     # Exit if more than 2 instances of this script are running
     _SCRIPT=$(basename "$0")
-    _CNT=$(pgrep -fc "(^|(^| )[^ ]*bash )[^ ]*/${_SCRIPT//./\\.}( |$)")
+    _CNT=$(pgrep -u root -U root -fc "(^|(^| )[^ ]*bash )[^ ]*/${_SCRIPT//./\\.}( |$)")
     if (( _CNT > 2 )); then
       echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
       exit 0
@@ -93,7 +93,7 @@ _manage_single_lock() {
 }
 _manage_single_lock
 
-_IS_SQLBACKUP_RUNNING=$(pgrep -f '(^|(^| )[^ ]*bash )/var/xdrago/mysql_backup\.sh( |$)')
+_IS_SQLBACKUP_RUNNING=$(pgrep -u root -U root -f '(^|(^| )[^ ]*bash )/var/xdrago/mysql_backup\.sh( |$)')
 if [ ! -z "${_IS_SQLBACKUP_RUNNING}" ]; then
   echo "Ooops, another mysql procedure/backup is running at the moment"
   exit 0
@@ -254,32 +254,35 @@ EOFMYSQL
   done
 }
 
-_truncate_batch_tables() {
+# queue and batch hold work a site has not finished: a job waiting for its
+# worker, a batch a browser is still running. InnoDB never hands a file's
+# freed pages back, so these files grow far past their rows and the 1 GB file
+# test fires on bloat alone; emptying them threw away every waiting job. The
+# table is rebuilt in place instead, online, which gives the free space back
+# and keeps every row, a row written during the rebuild included. A table
+# still over 1 GB after a rebuild holds that much real work: it is left for a
+# week before the next try, so the hourly run never copies it again and again.
+_rebuild_giant_table() {
+  local _t="${1}"
+  local _ibd="/var/lib/mysql/${_DB}/${1}.ibd"
+  local _stamp="/var/log/boa/.giant-table-rebuilt.${_DB}.${1}"
+  local _before _after
   _check_running
-  _TABLES=$(mysql ${_DB} -u root -e "show tables" -s | grep ^batch$ 2>&1)
-  for B in ${_TABLES}; do
-    if ! _is_safe_ident "${B}"; then
-      echo "WARN: skipping unsafe table identifier in ${_DB}: ${B}"
-      continue
-    fi
-mysql ${_DB}<<EOFMYSQL
-TRUNCATE \`${B}\`;
-EOFMYSQL
-  done
-}
-
-_truncate_queue_tables() {
-  _check_running
-  _TABLES=$(mysql ${_DB} -u root -e "show tables" -s | grep ^queue$ 2>&1)
-  for Q in ${_TABLES}; do
-    if ! _is_safe_ident "${Q}"; then
-      echo "WARN: skipping unsafe table identifier in ${_DB}: ${Q}"
-      continue
-    fi
-mysql ${_DB}<<EOFMYSQL
-TRUNCATE \`${Q}\`;
-EOFMYSQL
-  done
+  _is_safe_ident "${_t}" || return 1
+  mysql ${_DB} -u root -e "show tables" -s | grep -qx "${_t}" || return 0
+  if [ -n "$(find "${_stamp}" -mtime -7 2>/dev/null)" ]; then
+    echo "INFO: Giant ${_t} in ${_DB} was rebuilt within a week, its rows kept as they are"
+    return 0
+  fi
+  _before=$(stat -c %s "${_ibd}" 2>/dev/null)
+  if mysql ${_DB} -e "SET SESSION lock_wait_timeout = 5; ALTER TABLE \`${_t}\` ENGINE=InnoDB, ALGORITHM=INPLACE, LOCK=NONE;"; then
+    mkdir -p /var/log/boa
+    touch "${_stamp}"
+    _after=$(stat -c %s "${_ibd}" 2>/dev/null)
+    echo "INFO: Rebuilt giant ${_t} in ${_DB}, every row kept (file ${_before:-?} to ${_after:-?} bytes)"
+  else
+    echo "WARN: Giant ${_t} in ${_DB} not rebuilt (a lock held or a long transaction open), every row kept"
+  fi
 }
 
 _truncate_views_data_export() {
@@ -313,15 +316,13 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
       if [ -e "/var/lib/mysql/${_DB}/queue.ibd" ]; then
         _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/queue.ibd | grep "G" 2>/dev/null)
         if [[ "${_IS_GB}" =~ "queue" ]]; then
-          _truncate_queue_tables &> /dev/null
-          echo "INFO: Truncated giant queue in ${_DB}"
+          _rebuild_giant_table queue
         fi
       fi
       if [ -e "/var/lib/mysql/${_DB}/batch.ibd" ]; then
         _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/batch.ibd | grep "G" 2>/dev/null)
         if [[ "${_IS_GB}" =~ "batch" ]]; then
-          _truncate_batch_tables &> /dev/null
-          echo "INFO: Truncated giant batch in ${_DB}"
+          _rebuild_giant_table batch
         fi
       fi
       if [ -e "/var/lib/mysql/${_DB}/watchdog.ibd" ]; then

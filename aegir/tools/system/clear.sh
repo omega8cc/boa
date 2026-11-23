@@ -9,6 +9,112 @@ _aptAllow="--allow-unauthenticated"
 _aptYesUnth="-y ${_aptAllow}"
 _wgetGet="--max-redirect=3 -q --tries=9 --wait=9 --user-agent='iCab'"
 
+# Duplicity runs in flight, counted from root's processes alone: root's own
+# duplicity, and root's mybackup pass, which runs an account's queued restore
+# as the account through su. An account's own process is never counted: the
+# account's site code runs as its backend user in tasks and can give a
+# process any command line.
+_dcy_live_count() {
+  local _a _b _c
+  _a=$(pgrep -u root -U root -fc '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)' 2> /dev/null)
+  _b=$(pgrep -u root -U root -fc '^[^ ]*duplicity( |$)' 2> /dev/null)
+  _c=$(pgrep -u root -U root -fc '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*mybackup( |$)' 2> /dev/null)
+  echo $(( ${_a:-0} + ${_b:-0} + ${_c:-0} ))
+}
+
+# The duplicity in flight less what an account's own backup entry runs
+# (root's multiback backup <service> <account>, the account not global, data
+# or custom), from one snapshot of root's processes alone, read by their own
+# argument lists; root's mybackup pass counts. The same text as the backup
+# tools' own copies.
+_dcy_box_count() {
+  ps -e -ww -o pid= -o ppid= -o ruid= -o euid= -o args= 2> /dev/null | awk '
+    $3 == 0 && $4 == 0 {
+      a = $0; sub(/^ *[0-9]+ +[0-9]+ +[0-9]+ +[0-9]+ */, "", a)
+      n++; k[n] = $1; p[$1] = $2; c[$1] = a
+      if (a ~ /^([^ ]*\/)?bash \/(opt|usr)\/local\/bin\/multiback backup [^ ]+ [^ ]+$/ &&
+        a !~ / (global|data|custom)$/) e[$1] = 1
+    }
+    END {
+      for (i = 1; i <= n; i++) {
+        a = c[k[i]]
+        if (a !~ /^([^ ]*\/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*(duplicity|mybackup)( |$)/ &&
+          a !~ /^[^ ]*duplicity( |$)/) continue
+        q = p[k[i]]; d = 0
+        while ((q in p) && !(q in e) && d < 64) { q = p[q]; d++ }
+        if (!(q in e)) m++
+      }
+      print m + 0
+    }'
+}
+# Root's runs of the backup tools, one "<tool> <verb> <service> <target>" a
+# line, root's processes alone, read by their own argument lists. The same
+# text as mybackup's.
+_bup_runs() {
+  ps -e -ww -o ruid= -o euid= -o args= 2> /dev/null | awk '
+    $1 == 0 && $2 == 0 {
+      for (i = 3; i <= NF && i <= 6; i++) {
+        if ($i ~ /^\/(opt|usr)\/local\/bin\/(backboa|duobackboa|multiback)$/ &&
+          (i == 3 || $(i - 1) ~ /^([^ ]*\/)?(ba|da)?sh$/)) {
+          t = $i; sub(/.*\//, "", t)
+          print t, $(i + 1), $(i + 2), $(i + 3)
+          break
+        }
+      }
+    }'
+}
+# An account's own backup entry runs or waits. The same text as mybackup's.
+_acct_bup_first() {
+  local _a="${1}" _t="" _v="" _s="" _g="" _m="" _e=""
+  while read -r _t _v _s _g; do
+    [ "${_t}" = "multiback" ] && [ "${_g}" = "${_a}" ] && return 0
+  done <<< "$(_bup_runs)"
+  for _m in $(find /run -maxdepth 1 -name 'boa_backup_held.multiback.*' -type f -mmin -1440 2> /dev/null); do
+    _e="${_m##*/boa_backup_held.multiback.}"
+    [ "${_e#*.}" = "${_a}" ] || continue
+    grep -qxF "${_e%%.*} ${_e#*.}" /root/.remote_backups/schedule/backup_schedule.txt 2> /dev/null \
+      && return 0
+  done
+  return 1
+}
+# The installed wrapper caps the accounts' streams alone. The same text as
+# mybackup's and multiback's.
+_wrapper_caps_accounts() {
+  grep -q '^_live_account_streams()' /root/.remote_backups/run/sequential_backups.sh 2> /dev/null
+}
+# A queued restore its account's own backup does not hold: its command file,
+# a regular file reached through no link, of an account whose own backup
+# neither runs nor waits (the pass leaves such a queue for a later pass).
+_restore_queued() {
+  local _q="" _a=""
+  for _q in /data/disk/*/static/control/.run/command.txt; do
+    _a="${_q#/data/disk/}"
+    _a="${_a%%/*}"
+    [ -f "${_q}" ] || continue
+    if [ -L "${_q}" ] || [ -L "/data/disk/${_a}/static" ] \
+      || [ -L "/data/disk/${_a}/static/control" ] \
+      || [ -L "/data/disk/${_a}/static/control/.run" ]; then
+      continue
+    fi
+    _acct_bup_first "${_a}" && continue
+    return 0
+  done
+  return 1
+}
+# A queue pass has work: any account's queued restore (the pass itself
+# leaves one its account's own backup holds for a later pass), or a window
+# record a pass that died left open, which the next pass closes. A pass
+# with neither serves nothing, and while it lives every gate of the
+# server's own backup counts it as a backup in flight.
+_pass_has_work() {
+  local _q=""
+  for _q in /data/disk/*/static/control/.run/command.txt; do
+    [ -f "${_q}" ] && return 0
+  done
+  [ -n "$(find /root/.remote_backups/restore_windows -maxdepth 1 -type f \
+    \( -name '*.cred' -o -name '*.rb' \) -print -quit 2> /dev/null)" ]
+}
+
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
     # shellcheck disable=SC1091
@@ -71,13 +177,13 @@ _installer_alive() {
   # Anchored, not a bare substring: any command line merely MENTIONING the
   # wrapper -- an editor, a checksum, an operator's ssh probe -- would
   # otherwise hold installer-lock reaping off indefinitely.
-  pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/barracuda( |$)" > /dev/null 2>&1 && return 0
-  pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/octopus( |$)" > /dev/null 2>&1 && return 0
+  pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/barracuda( |$)" > /dev/null 2>&1 && return 0
+  pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/octopus( |$)" > /dev/null 2>&1 && return 0
   # Anchored: a LOCAL install only -- "ssh root@box /opt/local/bin/boa in-"
   # (xoct/xcopy driving a remote install) must not hold this box's reaping
-  pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-" > /dev/null 2>&1 && return 0
+  pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-" > /dev/null 2>&1 && return 0
   # Dual-path for the staging move -- see the same guard in BOA.sh.txt.
-  pgrep -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1 && return 0
+  pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1 && return 0
   return 1
 }
 
@@ -86,11 +192,12 @@ _installer_alive() {
 # script as well (SHELL=/bin/bash and the redirections on the crontab line
 # keep that shell alive for the whole run).
 _SQL_BACKUP_EXEC='^([^ ]*/)?bash /var/xdrago/mysql_backup\.sh( |$)'
+_SQL_CLUSTER_BACKUP_EXEC='^([^ ]*/)?bash /var/xdrago/mysql_cluster_backup\.sh( |$)'
 
 # Seconds the oldest process of the form has run; empty when none runs.
 _exec_age() {
   local _pat="$1" _p="" _e="" _max=""
-  for _p in $(pgrep -f "${_pat}" 2> /dev/null); do
+  for _p in $(pgrep -u root -U root -f "${_pat}" 2> /dev/null); do
     _e=$(ps -o etimes= -p "${_p}" 2> /dev/null | tr -dc '0-9')
     [ -z "${_e}" ] && continue
     if [ -z "${_max}" ] || [ "${_e}" -gt "${_max}" ]; then
@@ -108,14 +215,20 @@ _sql_backup_limit() {
   echo $(( _h * 3600 ))
 }
 
-# 0 while a nightly backup runs within its limit. The self-update and
-# autoupboa hold for it as for an install, so nothing is replaced, restarted
-# or reaped under a running dump; past the limit the hold lifts and
-# autoupboa's reaper ends the hanging run and reports it.
+# 0 while a nightly backup, plain or cluster, runs within its limit. The
+# self-update and autoupboa hold for it as for an install, so nothing is
+# replaced, restarted or reaped under a running dump; past the limit the hold
+# lifts and autoupboa's reaper ends the hanging run and reports it.
+# _SQL_LIVE names the script it found, for the hold log.
 _sql_backup_live() {
-  local _a=""
+  local _a="" _lim=""
+  _lim=$(_sql_backup_limit)
+  _SQL_LIVE=mysql_backup.sh
   _a=$(_exec_age "${_SQL_BACKUP_EXEC}")
-  [ -n "${_a}" ] && [ "${_a}" -le "$(_sql_backup_limit)" ]
+  [ -n "${_a}" ] && [ "${_a}" -le "${_lim}" ] && return 0
+  _SQL_LIVE=mysql_cluster_backup.sh
+  _a=$(_exec_age "${_SQL_CLUSTER_BACKUP_EXEC}")
+  [ -n "${_a}" ] && [ "${_a}" -le "${_lim}" ]
 }
 
 _ONE_HOUR=$(date --date '1 hour ago' +"%Y-%m-%d %H:%M:%S")
@@ -286,6 +399,25 @@ _find_fast_mirror_early() {
     fi
   else
     _USE_MIR="files.boa.io"
+  fi
+  # A mirror box (it holds a published tree's stamp) takes its files from
+  # files.aegir.cc, the one mirror name with no cache in front of it, when
+  # that name is not this box itself and serves that stamp; any other box,
+  # or a mirror box where it does not, keeps the pick above.
+  _mirStp=""
+  for _mirStp in /var/www/static/versions/*/boa/.update.txt; do
+    [[ -s "${_mirStp}" ]] && break
+    _mirStp=""
+  done
+  if [[ -n "${_mirStp}" ]]; then
+    _mirIp="$(getent ahostsv4 files.aegir.cc 2> /dev/null | awk '{ print $1; exit }')"
+    if [[ -n "${_mirIp}" ]] \
+      && ! ip -o addr show 2> /dev/null | grep -qF " ${_mirIp}/" \
+      && curl -s --fail --max-time 10 -A iCab \
+        "https://files.aegir.cc/${_mirStp#/var/www/static/}" 2> /dev/null \
+        | head -c 64 | grep -q '^[^<]'; then
+      _USE_MIR="files.aegir.cc"
+    fi
   fi
   _urlDev="https://${_USE_MIR}/dev"
   _urlHmr="https://${_USE_MIR}/versions/${_tRee}/boa/aegir"
@@ -466,6 +598,42 @@ _self_lock_gate() {
   done
   return 1
 }
+# Does this box carry the published tree, and does no mirror serve a newer
+# copy of it? The same test as the local read in _fetch_versioned
+# (BOA.sh.txt): the tree's own stamp, versions/<tree>/boa/.update.txt, written
+# by the publish inside it and kept with its time by every copy, against the
+# stamp of every mirror name this box uses and of files.aegir.cc, which no
+# cache fronts (a box whose tree stopped is still the origin of its own
+# name). At least one name must answer, and none may serve a stamp that
+# differs and is not older. A box with no stamp of its own asks nothing.
+_local_tree_current() {
+  local _lst="/var/www/static/versions/${_tRee}/boa/.update.txt" _got _lms _lmn
+  local _lnm=0 _lnw=""
+  [[ -s "${_lst}" ]] || return 1
+  _got="/var/opt/.boa.tree.stamp.$$"
+  _lms="$(grep -E '^[a-z0-9.-]+$' /var/backups/boa-mirrors-2026-07.txt 2> /dev/null)"
+  [[ -n "${_lms}" ]] \
+    || _lms="files.boa.io files.o8.io files.host8.biz files.aegir.biz files.aoboshi.com"
+  # files.aegir.cc as well, the one name with no cache in front of it
+  _lms="files.aegir.cc $(grep -vx 'files\.aegir\.cc' <<< "${_lms}")"
+  for _lmn in ${_lms}; do
+    rm -f "${_got}"
+    curl -L --max-redirs 3 -s --fail --max-time 10 -A iCab -R -o "${_got}" \
+      "https://${_lmn}/versions/${_tRee}/boa/.update.txt" 2> /dev/null || continue
+    [[ -s "${_got}" ]] && [[ "$(wc -c < "${_got}")" -le 512 ]] \
+      && ! grep -q '<' "${_got}" || continue
+    _lnm=$(( _lnm + 1 ))
+    cmp -s "${_lst}" "${_got}" || [[ "${_lst}" -nt "${_got}" ]] || _lnw="${_lnw} ${_lmn}"
+  done
+  rm -f "${_got}"
+  [[ "${_lnm}" -gt 0 ]] && [[ -z "${_lnw}" ]] && return 0
+  if [[ -n "${_lnw}" ]]; then
+    echo "The local versions/${_tRee}/boa tree is not read: a newer one is served at${_lnw}"
+  else
+    echo "The local versions/${_tRee}/boa tree is not read: no mirror answered with its stamp"
+  fi
+  return 1
+}
 _CLEAR_MODE="$1"
 _CLEAR_RC=0
 _SELF_LOCK_OPEN=NO
@@ -487,10 +655,27 @@ if ! _install_held && _self_lock_gate; then
   # Fetch first, require the file's own first line, and run it from stdin so the
   # invocation stays exactly what it was (BASH_SOURCE, hence the per-caller apt
   # cadence stamp, is read inside).
+  # A box carrying the published tree (a mirror, publisher or passive) runs
+  # that tree's BOA.sh.txt: every tool that run installs is copied from that
+  # same tree, and a copy fetched from another mirror can be a publish older
+  # or newer than those tools (one older pass installed the new tools under
+  # their previous serials). A tree this box does not carry, one a mirror
+  # serves newer, or a local copy that fails the same check, is fetched. The
+  # run is told which copy it is (_LCL_TREE_KEY, _LCL_TREE_OK), so the tools it
+  # installs come from the same place: the tree's copy reads the tree, a
+  # downloaded copy downloads them. _LCL_TREE_BY, this script's pid, is how the
+  # run knows the answer came from its parent.
   _boaShTmp=/var/opt/.boa.sh.txt.$$
-  if wget -q -O "${_boaShTmp}" https://${_USE_MIR}/versions/${_tRee}/boa/BOA.sh.txt \
+  _boaShLcl="/var/www/static/versions/${_tRee}/boa/BOA.sh.txt"
+  if [[ -s "${_boaShLcl}" ]] && _local_tree_current \
+    && cp -f "${_boaShLcl}" "${_boaShTmp}" 2>/dev/null \
     && grep -q "^export _tRee=" "${_boaShTmp}"; then
-    bash < "${_boaShTmp}"
+    _LCL_TREE_KEY="versions/${_tRee}/boa" _LCL_TREE_OK=YES _LCL_TREE_BY="$$" \
+      bash < "${_boaShTmp}"
+  elif wget -q -O "${_boaShTmp}" https://${_USE_MIR}/versions/${_tRee}/boa/BOA.sh.txt \
+    && grep -q "^export _tRee=" "${_boaShTmp}"; then
+    _LCL_TREE_KEY="versions/${_tRee}/boa" _LCL_TREE_OK=NO _LCL_TREE_BY="$$" \
+      bash < "${_boaShTmp}"
   else
     [ -d "/var/log/boa" ] \
       && echo "$(date) OOPS: ${_USE_MIR} served no usable BOA.sh.txt for the ${_tRee} tree" \
@@ -519,7 +704,7 @@ else
     if _installer_alive; then
       _held=" installer-alive"
     elif _sql_backup_live; then
-      _held=" mysql_backup.sh"
+      _held=" ${_SQL_LIVE:-mysql_backup.sh}"
     else
       # Another self-update is running: routine when the two schedules
       # overlap, so it is only said here; the log records a holder only once
@@ -562,15 +747,9 @@ if [ -d "/data/u" ] && [ "${_VERSION_REPORT}" != "NO" ]; then
   wait
 fi
 
-_if_fix_locked_sshd() {
-  _SSH_LOG="/var/log/auth.log"
-  if [ `tail --lines=30 ${_SSH_LOG} \
-    | grep --count "error: Bind to port 22"` -gt 0 ]; then
-    pkill -9 -f '^(sshd: )?/usr/sbin/sshd( |$)' || true
-    service ssh start
-  fi
-}
-_if_fix_locked_sshd
+# A listener left holding sshd's port is healed by system.sh's minute pass
+# alone, judged by the pidfile and the sockets: never by auth.log text, which
+# any program can write.
 
 #setprio &> /dev/null
 
@@ -585,16 +764,25 @@ if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ]; then
   # console script as the script argument, and a bare substring match
   # also deferred this arm whenever any command line merely mentioned
   # the word (an editor, a tail, an operator probe).
-  _CNT="$(pgrep -fc "^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)" 2>/dev/null)"
-  _CNT="${_CNT:-0}"
-  _CNTD="$(pgrep -fc "^[^ ]*duplicity( |$)" 2>/dev/null)"
-  _CNTD="${_CNTD:-0}"
-  if (( _CNT + _CNTD > 0 )); then
-    echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
+  # The quiet tick also rewrites the wrapper a live run reads, so it keeps
+  # the full count. Under the wrapper that caps the accounts' streams, with
+  # only accounts' own entries running, a pass starts for a queued restore
+  # its account's own backup does not hold, and serves it beside them (no
+  # restore holds another account's entry there); the server's own holds
+  # may still end that pass at once.
+  _CNT=$(_dcy_live_count)
+  if (( _CNT > 0 )); then
+    if _wrapper_caps_accounts && (( $(_dcy_box_count) == 0 )) && _restore_queued; then
+      [ -x "/usr/local/bin/mybackup" ] && nohup /usr/local/bin/mybackup > /dev/null 2>&1 &
+    else
+      echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
+    fi
   else
     [ -x "/usr/local/bin/dcysetup" ] && bash /usr/local/bin/dcysetup update &> /dev/null
     wait
-    [ -x "/usr/local/bin/mybackup" ] && nohup /usr/local/bin/mybackup > /dev/null 2>&1 &
+    if _pass_has_work; then
+      [ -x "/usr/local/bin/mybackup" ] && nohup /usr/local/bin/mybackup > /dev/null 2>&1 &
+    fi
   fi
 fi
 

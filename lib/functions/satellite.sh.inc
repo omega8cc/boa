@@ -1,6 +1,6 @@
 
 export _tRee=dev
-export _rLsn="BOA-5.88.877"
+export _rLsn="BOA-5.88.888"
 export _rlsE="${_rLsn}-${_tRee}"
 export _bRnh="5.x-${_tRee}"
 # A test, not ||: tr exits 0 on an empty /etc/hostname
@@ -423,7 +423,7 @@ _satellite_web_user_update() {
     # is the web user's (a compromised site in the pool can plant one at any
     # moment): past the link strip, root works on .lock, .drush and the stamp
     # only inside the real directories, creating files exclusively
-    _T_HR="$(cd -P -- /home 2> /dev/null && pwd -P)/${_WEB}"
+    _T_HR="$(cd -P -- /home 2> /dev/null && /bin/pwd -P)/${_WEB}"
     # held off only by a lock an update wrote: a regular root file with one
     # link at .lock younger than an hour; a name the web user planted there
     # (a hard link to a file root owns included), or a lock an interrupted
@@ -442,7 +442,7 @@ _satellite_web_user_update() {
         fi
       done
       mkdir -p /home/${_WEB}/.{tmp,drush,aws}
-      ( cd -P -- "/home/${_WEB}" 2> /dev/null && [ "$(pwd -P)" = "${_T_HR}" ] || exit 0
+      ( cd -P -- "/home/${_WEB}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_T_HR}" ] || exit 0
         rm -f -- ./.lock
         echo | dd of=./.lock conv=excl status=none 2> /dev/null )
       if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -477,7 +477,7 @@ _satellite_web_user_update() {
       # created them, _satellite_put_stdin_here), and the flag on php.ini is
       # changed through a handle (_ACCT_CHATTR_PL): a hard link the web user
       # renames over either name is never handed over or locked
-      ( cd -P -- "${_T_HD}" 2> /dev/null && [ "$(pwd -P)" = "${_T_HR}/.drush" ] || exit 0
+      ( cd -P -- "${_T_HD}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_T_HR}/.drush" ] || exit 0
         chattr -i . 2> /dev/null
         [ -f ./php.ini ] && [ ! -L ./php.ini ] \
           && perl -e "${_ACCT_CHATTR_PL}" - ./php.ini 2> /dev/null
@@ -500,18 +500,321 @@ _satellite_web_user_update() {
       # handed over as chown -R did, from inside the real home, never a
       # link or a file the web user hard-linked there (_satellite_reown_here)
       _acct_in_real_dir "/home/${_WEB}" _satellite_reown_here "${_WEB}:www-data"
-      ( cd -P -- "${_T_HD}" 2> /dev/null && [ "$(pwd -P)" = "${_T_HR}/.drush" ] || exit 0
+      ( cd -P -- "${_T_HD}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_T_HR}/.drush" ] || exit 0
         chmod 550 .
         chattr +i . 2> /dev/null
         [ -f ./php.ini ] && [ ! -L ./php.ini ] \
           && perl -e "${_ACCT_CHATTR_PL}" + ./php.ini 2> /dev/null )
-      ( cd -P -- "/home/${_WEB}" 2> /dev/null && [ "$(pwd -P)" = "${_T_HR}" ] || exit 0
+      ( cd -P -- "/home/${_WEB}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_T_HR}" ] || exit 0
         rm -f -- ./.lock )
       chattr +i /home/${_WEB}/
     fi
   fi
 }
 
+#
+# The numbers of the account's removed identities, root's alone, one a line
+# in /data/conf/acct-uids/<oN>.gone (0600). Root's readers take a file whose
+# owner no user has as the account's own only when its number is listed here
+# (_acct_walk_uids): a removed login of another account leaves files under
+# such a number too. The ltd worker and the Octopus upgrade write a number
+# before deluser frees it, and take it off every other account's list, since
+# this account holds it now.
+_acct_gone_write() {
+  local _f="${1}" _t="${1}.tmp.$$" _rc
+  rm -f -- "${_t}"
+  # grep says 1 for no line (an empty list), 2 for a failed read or write
+  ( umask 077; printf '%s\n' "${2}" | grep -E '^[1-9][0-9]*( [0-9]+)?$' > "${_t}" )
+  _rc=$?
+  if [ "${_rc}" -le 1 ] && [ -f "${_t}" ] && [ ! -L "${_t}" ]; then
+    chown root:root "${_t}" && chmod 0600 "${_t}" && mv -f -T -- "${_t}" "${_f}" && return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+_acct_gone_add() {
+  local _a="${1}" _u="${2}" _d=/data/conf/acct-uids _f _r=0
+  [[ "${_a}" =~ ^[a-z0-9-]+$ && "${_u}" =~ ^[1-9][0-9]*$ ]] || return 1
+  mkdir -p "${_d}" && chown root:root "${_d}" && chmod 0711 "${_d}" || return 1
+  for _f in "${_d}"/*.gone; do
+    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
+    [ "${_f}" = "${_d}/${_a}.gone" ] && continue
+    grep -qx -- "${_u}" "${_f}" || continue
+    _acct_gone_write "${_f}" "$(grep -vx -- "${_u}" "${_f}")"
+  done
+  _f="${_d}/${_a}.gone"
+  if ! grep -qsx -- "${_u}" "${_f}"; then
+    _acct_gone_write "${_f}" "$( { cat -- "${_f}" 2> /dev/null; echo "${_u}"; } | sort -un)" || _r=1
+  fi
+  # held back from every other account's next identity (_acct_pick_uid)
+  _acct_unswept_add "${_u}" || _r=1
+  return "${_r}"
+}
+# A number freed for an account identity is listed in
+# /data/conf/acct-uids/.unswept (root's, 0600) until the nightly sweep has
+# handed over what it still owns on the server's own filesystems (a file
+# left in another account's open folder, in /tmp). The list, when first
+# made, takes every recorded number no user has: those were freed before it
+# existed and nothing has swept them. The sweep only tidies: a walk of
+# folders other users can rename into never proves a number owns nothing,
+# so no number goes to another account because the sweep found nothing
+# (_acct_pick_uid).
+_acct_unswept_seed() {
+  local _f _u
+  for _f in /data/conf/acct-uids/*.gone; do
+    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
+    while IFS= read -r _u; do
+      [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+      getent passwd "${_u}" > /dev/null 2>&1 || echo "${_u}"
+    done < "${_f}"
+  done
+  return 0
+}
+# The list is read and written under its lock. Every add also names the
+# number in .unswept.again, which the nightly sweep empties as it starts: a
+# number freed again while the sweep walks stays listed.
+_acct_unswept_add() {
+  local _u="${1}" _d=/data/conf/acct-uids _f _c
+  [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || return 1
+  mkdir -p "${_d}" && chown root:root "${_d}" && chmod 0711 "${_d}" || return 1
+  _f="${_d}/.unswept"
+  (
+    flock -w 60 9 || exit 1
+    _c=$(cat -- "${_d}/.unswept.again" 2> /dev/null)
+    _acct_gone_write "${_d}/.unswept.again" "$(printf '%s\n%s\n' "${_c}" "${_u}" | sort -un)" || exit 1
+    if [ -f "${_f}" ] && [ ! -L "${_f}" ]; then
+      grep -qx -- "${_u}" "${_f}" && exit 0
+      _c=$(cat -- "${_f}") || exit 1
+    else
+      _c=$(_acct_unswept_seed)
+    fi
+    _acct_gone_write "${_f}" "$(printf '%s\n%s\n' "${_c}" "${_u}" | sort -un)"
+  ) 9> "${_d}/.unswept.lock"
+}
+# The records of an earlier account of the name $1, which passwd no longer
+# has (removed other than by boa cleanup purge, its name made again before
+# the ltd worker's prune saw it gone): its recorded numbers and its
+# identities' (the uid list) that no user has stay held for no account
+# (_acct_purged_add) and both records go, so a new account of the name
+# never takes what the earlier one left as its own. An account in passwd
+# (an upgrade) keeps them, and nothing goes while passwd does not answer.
+_acct_gone_retire() {
+  local _a="${1}" _d=/data/conf/acct-uids _c="" _x _u _gone=""
+  [[ "${_a}" =~ ^[a-z0-9-]+$ ]] || return 1
+  getent passwd root > /dev/null 2>&1 || return 0
+  id -u -- "${_a}" > /dev/null 2>&1 && return 0
+  if [ -f "${_d}/${_a}.gone" ] && [ ! -L "${_d}/${_a}.gone" ]; then
+    _c=$(cat -- "${_d}/${_a}.gone") || return 1
+  fi
+  if [ -f "${_d}/${_a}" ] && [ ! -L "${_d}/${_a}" ]; then
+    _x=$(tr ',' '\n' < "${_d}/${_a}") || return 1
+    _c="${_c}"$'\n'"${_x}"
+  fi
+  [ -n "${_c//[[:space:]]/}" ] || return 0
+  while IFS= read -r _u; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    getent passwd "${_u}" > /dev/null 2>&1 && continue
+    _gone="${_gone} ${_u}"
+  done <<< "${_c}"
+  # shellcheck disable=SC2086
+  _acct_purged_add ${_gone} && rm -f -- "${_d}/${_a}.gone" "${_d}/${_a}"
+}
+# The numbers of an account that is gone (boa cleanup purge, or one removed
+# some other way, which the ltd worker's prune finds by its records) are
+# listed in /data/conf/acct-uids/.purged, each with the time it joined, and
+# in .unswept: no account takes one, except as the last resort when no other
+# number is free and the nightly sweep has walked it, the oldest first
+# (_acct_pick_uid).
+_acct_purged_add() {
+  local _d=/data/conf/acct-uids _u _c _n="" _now _r=0
+  _now=$(date +%s)
+  for _u in "$@"; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    grep -qx -- "${_u}" <<< "${_n}" || _n="${_n}${_u}"$'\n'
+  done
+  [ -n "${_n}" ] || return 0
+  mkdir -p "${_d}" && chown root:root "${_d}" && chmod 0711 "${_d}" || return 1
+  (
+    flock -w 60 9 || exit 1
+    _c=$(cat -- "${_d}/.purged" 2> /dev/null)
+    # a number added again was freed again: it takes the current time
+    _acct_gone_write "${_d}/.purged" "$(while read -r _u _t; do
+        [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+        grep -qx -- "${_u}" <<< "${_n}" || echo "${_u} ${_t}"
+      done <<< "${_c}"
+      while IFS= read -r _u; do
+        [ -n "${_u}" ] && echo "${_u} ${_now}"
+      done <<< "${_n}")"
+  ) 9> "${_d}/.unswept.lock" || _r=1
+  while IFS= read -r _u; do
+    [ -n "${_u}" ] || continue
+    _acct_unswept_add "${_u}" || _r=1
+  done <<< "${_n}"
+  return "${_r}"
+}
+# The number a new identity of account $2 is made under, the highest of
+# those that fit first ($1 high, as useradd -r picks one) or the lowest ($1
+# low, as adduser --system does), among the system uids no user has and no
+# process or thread runs as (real, effective, saved or file system uid): a
+# number the account itself freed (<oN>.gone) before any other, then one no
+# account holds (in no other account's record, not waiting for the sweep in
+# .unswept, not a gone account's in .purged); only when none is left, the
+# number of a gone account the sweep has walked and no account has recorded
+# since, the oldest first, with status 2. A number freed from a live account is never given to another:
+# what it left outside the account's trees would be that account's, and no
+# walk proves it left nothing. Status 1, and nothing, when the range, the
+# users or the processes cannot be read or no number is free. A name that
+# cannot be an account's takes no number back.
+_acct_pick_uid() {
+  local IFS=$' \t\n'
+  local _w="${1}" _a="${2}" _lo="" _hi="" _um="" _k _v _u _f _t _old="" _oldt=""
+  local _d=/data/conf/acct-uids _uns=""
+  local _pso=NO
+  local -A _h=() _l=() _own=() _g=()
+  [[ "${_a}" =~ ^[a-z0-9-]+$ ]] || _a=""
+  case "${_w}" in
+    high)
+      while read -r _k _v _; do
+        _v="${_v%%#*}"
+        case "${_k}" in
+          SYS_UID_MIN) _lo="${_v}" ;;
+          SYS_UID_MAX) _hi="${_v}" ;;
+          UID_MIN) _um="${_v}" ;;
+        esac
+      done < <(grep -E '^[[:space:]]*(SYS_)?UID_M(IN|AX)[[:space:]]' /etc/login.defs 2> /dev/null)
+      [ -n "${_lo}" ] || _lo=101
+      if [ -z "${_hi}" ]; then
+        [[ "${_um}" =~ ^[1-9][0-9]*$ ]] && _hi=$(( _um - 1 )) || _hi=999
+      fi
+      ;;
+    low)
+      while IFS='=' read -r _k _v; do
+        _k="${_k//[[:space:]]/}"
+        _v="${_v%%#*}"
+        _v="${_v//[[:space:]\"\']/}"
+        case "${_k}" in
+          FIRST_SYSTEM_UID) _lo="${_v}" ;;
+          LAST_SYSTEM_UID) _hi="${_v}" ;;
+        esac
+      done < <(grep -E '^[[:space:]]*(FIRST|LAST)_SYSTEM_UID[[:space:]]*=' /etc/adduser.conf 2> /dev/null)
+      [ -n "${_lo}" ] || _lo=100
+      [ -n "${_hi}" ] || _hi=999
+      ;;
+    *) return 1 ;;
+  esac
+  [[ "${_lo}" =~ ^[1-9][0-9]*$ && "${_hi}" =~ ^[1-9][0-9]*$ ]] || return 1
+  [ "${_lo}" -le "${_hi}" ] || return 1
+  while IFS=: read -r _k _v _u _; do
+    [[ "${_u}" =~ ^[0-9]+$ ]] && _h[${_u}]=1
+  done < <(getent passwd 2> /dev/null)
+  # no passwd read, no pick: every number would look free
+  [ -n "${_h[0]:-}" ] || return 1
+  for _u in $(ps -eL -o ruid= -o euid= -o suid= -o fsuid= 2> /dev/null); do
+    [[ "${_u}" =~ ^[0-9]+$ ]] || continue
+    _h[${_u}]=1
+    [ "${_u}" = "0" ] && _pso=YES
+  done
+  # no process list read, no pick: a number something runs as would look free
+  [ "${_pso}" = "YES" ] || return 1
+  for _f in "${_d}"/*.gone; do
+    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
+    while IFS= read -r _u; do
+      [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+      _g[${_u}]=1
+      if [ -n "${_a}" ] && [ "${_f}" = "${_d}/${_a}.gone" ]; then
+        _own[${_u}]=1
+      else
+        _l[${_u}]=1
+      fi
+    done < "${_f}"
+  done
+  # (no list yet: every number it would take is in a record above)
+  if [ -f "${_d}/.unswept" ] && [ ! -L "${_d}/.unswept" ]; then
+    _uns=$(cat -- "${_d}/.unswept") || return 1
+  fi
+  while IFS= read -r _u; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    [ -n "${_own[${_u}]:-}" ] || _l[${_u}]=1
+  done <<< "${_uns}"
+  while read -r _u _t; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] && _l[${_u}]=1
+  done 2> /dev/null < "${_d}/.purged"
+  if [ "${_w}" = "high" ]; then
+    for (( _u = _hi; _u >= _lo; _u-- )); do
+      [ -n "${_own[${_u}]:-}" ] && [ -z "${_h[${_u}]:-}" ] && { echo "${_u}"; return 0; }
+    done
+    for (( _u = _hi; _u >= _lo; _u-- )); do
+      [ -n "${_h[${_u}]:-}${_l[${_u}]:-}${_own[${_u}]:-}" ] || { echo "${_u}"; return 0; }
+    done
+  else
+    for (( _u = _lo; _u <= _hi; _u++ )); do
+      [ -n "${_own[${_u}]:-}" ] && [ -z "${_h[${_u}]:-}" ] && { echo "${_u}"; return 0; }
+    done
+    for (( _u = _lo; _u <= _hi; _u++ )); do
+      [ -n "${_h[${_u}]:-}${_l[${_u}]:-}${_own[${_u}]:-}" ] || { echo "${_u}"; return 0; }
+    done
+  fi
+  # the last resort: a gone account's number the sweep has walked, never one
+  # an account has recorded since; without the list nothing counts as walked
+  [ -f "${_d}/.unswept" ] && [ ! -L "${_d}/.unswept" ] || return 1
+  while read -r _u _t; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ && "${_t}" =~ ^[0-9]+$ ]] || continue
+    [ "${_u}" -ge "${_lo}" ] && [ "${_u}" -le "${_hi}" ] || continue
+    [ -z "${_h[${_u}]:-}${_g[${_u}]:-}" ] || continue
+    grep -qx -- "${_u}" <<< "${_uns}" && continue
+    if [ -z "${_oldt}" ] || [ "${_t}" -lt "${_oldt}" ]; then
+      _old="${_u}"
+      _oldt="${_t}"
+    fi
+  done 2> /dev/null < "${_d}/.purged"
+  [ -n "${_old}" ] || return 1
+  echo "${_old}"
+  return 2
+}
+# Make an identity of account $2 under the number _acct_pick_uid gives ($1
+# high, then the rest is a useradd -r command, or low, an adduser --system
+# one), the name last. A number taken meanwhile is picked again. A gone
+# account's number given as the last resort is said in the incident log.
+# With no number to pick nothing is made, since the tool alone could take a
+# number another account freed: the incident log says so (and the ltd
+# worker mails it once a day), and the next pass tries again.
+_acct_new_identity() {
+  local _w="${1}" _a="${2}" _o _n _i _r _m _p
+  shift 2
+  case "${_w}" in
+    high) _o="-u" ;;
+    low) _o="--uid" ;;
+    *) return 1 ;;
+  esac
+  [ "$#" -ge 2 ] || return 1
+  for _i in 1 2 3; do
+    _n=$(_acct_pick_uid "${_w}" "${_a}")
+    _p=$?
+    [ "${_p}" -eq 0 ] || [ "${_p}" -eq 2 ] || break
+    "${@:1:$#-1}" "${_o}" "${_n}" "${@: -1}"
+    _r=$?
+    if [ "${_r}" -eq 0 ]; then
+      if [ "${_p}" -eq 2 ]; then
+        _m="${_a}: ${*: -1} made under ${_n}, a number of an account that is gone: no other was free"
+        mkdir -p /var/log/boa
+        echo "$(date) ${_m}" >> /var/log/boa/manage_ltd.incident.log
+      fi
+      return 0
+    fi
+    # failed for another reason than its number (refused, or made and then
+    # failed): as the tool alone would
+    _m=$(getent passwd "${_n}" 2> /dev/null) || return "${_r}"
+    [ "${_m%%:*}" = "${*: -1}" ] && return "${_r}"
+  done
+  _m="${_a}: no uid free of other accounts' removed identities for ${*: -1}, not made"
+  if declare -F _ltd_notice > /dev/null 2>&1; then
+    _ltd_notice "uid-hold-${_a}" "${_m}" "" > /dev/null
+  else
+    mkdir -p /var/log/boa
+    echo "$(date) ${_m}" >> /var/log/boa/manage_ltd.incident.log
+  fi
+  return 1
+}
 #
 # Remove web user.
 _satellite_remove_web_user() {
@@ -532,6 +835,15 @@ _satellite_remove_web_user() {
     # only this user's agent (none for a user that never existed): -f
     # matched every gpg-agent on the box
     id -u "${_WEB}" &> /dev/null && pkill -9 -u "${_WEB}" gpg-agent &> /dev/null
+    # its number stays the account's once freed (_acct_gone_add); one that
+    # could not be recorded is not freed
+    if id -u "${_WEB}" &> /dev/null \
+      && ! _acct_gone_add "${_WEB%%.*}" "$(id -u -- "${_WEB}")"; then
+      mkdir -p /var/log/boa
+      echo "$(date) ${_WEB}: its number could not be recorded, its removal left for the next pass" \
+        >> /var/log/boa/manage_ltd.incident.log
+      return 0
+    fi
     deluser --remove-home --backup-to ${_vBs}/zombie/deleted ${_WEB} &> /dev/null
     if [ -d "/home/${_WEB}/" ]; then
       rm -rf /home/${_WEB}/ &> /dev/null
@@ -559,7 +871,10 @@ _satellite_create_web_user() {
       _msg "DEBUG: ARG1 is $1 in _satellite_create_web_user C"
     fi
     _satellite_remove_web_user "clean"
-    adduser --force-badname --system --ingroup www-data --home /home/${_WEB} ${_WEB} &> /dev/null
+    # made under a number no other account's removed identity left files
+    # under (_acct_new_identity), as every identity of the account
+    _acct_new_identity low "${_WEB%%.*}" \
+      adduser --force-badname --system --ingroup www-data --home /home/${_WEB} ${_WEB} &> /dev/null
     _satellite_web_user_update "$1"
   fi
   # A pool user made anew drops every group listing: once the account holds
@@ -927,7 +1242,16 @@ _satellite_check_id() {
     || [ "${_USER}" = "barracuda" ] \
     || [ "${_USER}" = "octopus" ] \
     || [ "${_USER}" = "boa" ] \
-    || [ "${_USER}" = "all" ]; then
+    || [ "${_USER}" = "all" ] \
+    || [ "${_USER}" = "global" ] \
+    || [ "${_USER}" = "data" ] \
+    || [ "${_USER}" = "custom" ] \
+    || [ "${_USER}" = "static" ] \
+    || [ "${_USER}" = "arch" ]; then
+    # global, data and custom name the server's own backup targets, and
+    # /data/disk/static and /data/disk/arch are folders of their own that
+    # the server's backup leaves out: an account so named would be backed
+    # up under root's rules or not at all.
     _msg "ERROR: ${_USER} is a restricted username"
     _msg "ERROR: Please choose a different _USER"
     _clean_pid_exit
@@ -1262,7 +1586,7 @@ _satellite_cnf() {
       _msg "INFO: Grav and Textpattern support on by default on this hosted system"
     fi
 
-    if [ ! -e "${_ROOT}/static/control/fpm.info" ]; then
+    if ! _sat_ctrl_foreign && [ ! -e "${_ROOT}/static/control/fpm.info" ]; then
       # one version, as fpm.info is read below; any other text counts as none
       _PHP_FPM_VERSION=""
       if [ -e "${_ROOT}/log/fpm.txt" ]; then
@@ -1274,10 +1598,10 @@ _satellite_cnf() {
       _acct_put_in "${_ROOT}/static/control" fpm.info "${_PHP_FPM_VERSION}"
     fi
 
-    if [ -e "${_ROOT}/static/control/fpm.info" ]; then
+    if _sat_ctrl_has fpm.info; then
       # one version, dotted or two-digit; other text is ignored: the cnf's
       # version stays and the file is left as it is
-      _T_VRN=$(_satellite_php_vrn "$(_acct_read_in "${_ROOT}/static/control" fpm.info)")
+      _T_VRN=$(_satellite_php_vrn "$(_acct_own_read_in "${_ROOT}/static/control" fpm.info "${_USER}")")
       if [ -n "${_T_VRN}" ]; then
         _PHP_FPM_VERSION="${_T_VRN}"
         if [ "${_PHP_FPM_VERSION}" = "8.6" ] \
@@ -1378,7 +1702,7 @@ _satellite_cnf() {
       fi
     fi
 
-    if [ ! -e "${_ROOT}/static/control/cli.info" ]; then
+    if ! _sat_ctrl_foreign && [ ! -e "${_ROOT}/static/control/cli.info" ]; then
       # one version, as cli.info is read below; any other text counts as none
       _PHP_CLI_VERSION=""
       if [ -e "${_ROOT}/log/cli.txt" ]; then
@@ -1390,10 +1714,10 @@ _satellite_cnf() {
       _acct_put_in "${_ROOT}/static/control" cli.info "${_PHP_CLI_VERSION}"
     fi
 
-    if [ -e "${_ROOT}/static/control/cli.info" ]; then
+    if _sat_ctrl_has cli.info; then
       # one version, dotted or two-digit; other text is ignored: the cnf's
       # version stays and the file is left as it is
-      _T_VRN=$(_satellite_php_vrn "$(_acct_read_in "${_ROOT}/static/control" cli.info)")
+      _T_VRN=$(_satellite_php_vrn "$(_acct_own_read_in "${_ROOT}/static/control" cli.info "${_USER}")")
       if [ -n "${_T_VRN}" ]; then
         _PHP_CLI_VERSION="${_T_VRN}"
         if [ "${_PHP_CLI_VERSION}" = "8.6" ] \
@@ -1647,11 +1971,11 @@ _satellite_cnf() {
       sed -i "s|^_DOMAIN=.*|_DOMAIN=\"${_DOMAIN}\"|" ${_octCnf}
     fi
     _PRE_PLATFORMS_LIST="${_PLATFORMS_LIST}"
-    if [ -e "${_ROOT}/static/control/platforms.info" ]; then
+    if _sat_ctrl_has platforms.info; then
       ### the symbols of the account's file: blanks and line breaks made
       ### single spaces and every other character but 0-9 and A-Z dropped,
       ### by tr, never expanded as a file name pattern
-      _PLATFORMS_LIST=$(_acct_read_in "${_ROOT}/static/control" platforms.info \
+      _PLATFORMS_LIST=$(_acct_own_read_in "${_ROOT}/static/control" platforms.info "${_USER}" \
         | tr -s '[:space:]' ' ' | tr -cd ' 0-9A-Z' | tr -s ' ')
       _PLATFORMS_LIST="${_PLATFORMS_LIST# }"
       _PLATFORMS_LIST="${_PLATFORMS_LIST% }"
@@ -1952,23 +2276,32 @@ _satellite_sub_satellite_force_advanced_nginx_config() {
     if [ ! -e "/root/.local.IP.list" ]; then
       rm -f /root/.tmp.IP.list*
       rm -f /root/.local.IP.list*
-      for _IP in `hostname -I`;do echo ${_IP} >> /root/.tmp.IP.list;done
-      for _IP in `cat /root/.tmp.IP.list \
-        | sort \
-        | uniq`;do echo "${_IP} # local IP address" >> /root/.local.IP.list;done
-      rm -f /root/.tmp.IP.list*
     fi
-    _IP_IF_PRESENT=$(grep "${_CRON_IP}" /root/.local.IP.list 2>&1)
-    if [[ "${_IP_IF_PRESENT}" =~ "${_CRON_IP}" ]]; then
-      _IP_PRESENT=YES
-    else
-      _IP_PRESENT=NO
-    fi
+    ### The list is made once, and only the daily firewall run added an
+    ### address to it later, so a pass on a cloned or re-addressed box found
+    ### its own address missing and skipped the two calls below. Every
+    ### address the box holds now is added here, as that run writes it, and
+    ### an address counts as listed only as a whole entry.
+    for _IP in $(hostname -I 2> /dev/null); do
+      [[ "${_IP}" =~ ^[0-9A-Fa-f.:]+$ ]] || continue
+      if ! sed -e 's/#.*//' -e 's/[[:space:]]//g' /root/.local.IP.list 2> /dev/null \
+        | grep -qxF -- "${_IP}"; then
+        echo "${_IP} # local IP address" >> /root/.local.IP.list
+      fi
+    done
+    _IP_PRESENT=NO
     if [ ! -z "${_CRON_IP}" ] \
-      && [ "${_IP_PRESENT}" = "YES" ] \
-      && [ -e "/root/.local.IP.list" ]; then
+      && sed -e 's/#.*//' -e 's/[[:space:]]//g' /root/.local.IP.list 2> /dev/null \
+        | grep -qxF -- "${_CRON_IP}"; then
+      _IP_PRESENT=YES
+    fi
+    if [ "${_IP_PRESENT}" = "YES" ]; then
       _satellite_fix_multi_ip_cron_access
       _satellite_fix_cron_curl
+    elif [ -z "${_CRON_IP}" ]; then
+      _msg "NOTE: cron routes stay open to 127.0.0.1 only: no address is known for this box"
+    else
+      _msg "NOTE: cron routes stay open to 127.0.0.1 only: ${_CRON_IP} is not an address of this box"
     fi
   fi
 }
@@ -2015,21 +2348,21 @@ _satellite_update_local_dirs_cli() {
     [ -L "${_U_HD}" ] && rm -f "${_U_HD}"
     mkdir -p ${_U_TP}
     mkdir -p ${_U_HD}
-    _U_REAL="$(cd -P -- "${_ROOT}" 2> /dev/null && pwd -P)"
+    _U_REAL="$(cd -P -- "${_ROOT}" 2> /dev/null && /bin/pwd -P)"
     # aged out only when .tmp is the instance user's own (or the empty one just made):
     # a root-owned directory of the tree renamed onto the name is left alone.
     # Only what root or the account's own identities own is removed
     # (_satellite_aged_rm_own_here): the account can rename into .tmp what
     # another account left group-writable, which stays whole and is counted
     # on one NOTE line
-    _T_N=$( cd -P -- "${_U_TP}" 2> /dev/null && [ "$(pwd -P)" = "${_U_REAL}/.tmp" ] || exit 0
+    _T_N=$( cd -P -- "${_U_TP}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_U_REAL}/.tmp" ] || exit 0
       [ "$(stat -c %U .)" = "${_USER}" ] \
         || { [ "$(stat -c %u .)" = "0" ] && [ -z "$(ls -A . 2> /dev/null)" ]; } || exit 0
       touch . && chmod 02755 .
       _satellite_aged_rm_own_here 0 )
     _satellite_left_note "${_T_N}" "in place in ${_U_TP}"
     # the stamp is created exclusively, never through a link at the name
-    ( cd -P -- "${_U_HD}" 2> /dev/null && [ "$(pwd -P)" = "${_U_REAL}/.drush" ] || exit 0
+    ( cd -P -- "${_U_HD}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_U_REAL}/.drush" ] || exit 0
       mkdir -p ./sys ./xts ./usr
       rm -f -- ./.ctrl.php* "./.ctrl.${_tRee}.${_xSrl}.pid"
       echo | dd of="./.ctrl.${_tRee}.${_xSrl}.pid" conv=excl status=none 2> /dev/null
@@ -4316,7 +4649,17 @@ _satellite_add_user_dirs() {
         _msg "NOTE: instgrp absent or the box not ready for the per-instance group (instgrp check); ${_USER} is born on the box-wide group, the next upgrade converts it"
       fi
     fi
-    adduser --system --home ${_ROOT} --ingroup ${_ACCG} ${_USER} &> /dev/null
+    # an earlier account of this name left its records: not this one's
+    _acct_gone_retire "${_USER}" \
+      || _msg "${_STATUS} A: WARN: the records an earlier ${_USER} left in /data/conf/acct-uids could not be retired"
+    _acct_new_identity low "${_USER}" \
+      adduser --system --home ${_ROOT} --ingroup ${_ACCG} ${_USER} &> /dev/null
+    if ! id -u "${_USER}" > /dev/null 2>&1; then
+      _msg "${_STATUS} A: FATAL ERROR: ${_USER} was not made: no system uid free of other accounts' (see /var/log/boa/manage_ltd.incident.log)"
+      _msg "${_STATUS} A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
+      touch "/opt/tmp/state/.root/${_USER}/status-AegirSetupA-FAIL"
+      exit 1
+    fi
     adduser ${_USER} ${_USRG} &> /dev/null
     adduser ${_USER} ${_WEBG} &> /dev/null
     _ACCG=$(_acct_group "${_USER}")
@@ -4750,6 +5093,25 @@ _satellite_if_db_broker() {
 }
 
 #
+# An account in the box's own name mode (_THIS_DB_HOST=FQDN) once reached
+# the password step with the name already resolved, taken for a remote
+# server, so its password file was given the database root password. A file
+# that still holds exactly that password (compared here, never printed) is
+# removed with its PHP twin, never kept or moved to a backup: the step's own
+# random password replaces both. Status 0 when it was removed.
+_satellite_root_pass_leftover_drop() {
+  local _r _p
+  [ "${_THIS_DB_HOST}" = "FQDN" ] || return 1
+  _r=$(cat /root/.my.pass.txt 2> /dev/null | tr -d '\n')
+  [ -n "${_r}" ] || return 1
+  _p=$(_acct_read_in "${_ROOT}" ".${_USER}.pass.txt" | tr -d '\n')
+  [ "${_p}" = "${_r}" ] || return 1
+  _acct_in_real_dir "${_ROOT}" rm -f -- "./.${_USER}.pass.txt" "./.${_USER}.pass.php"
+  _msg "ALRT: ${_USER}: its database password file held the root password, replaced by a new random one"
+  return 0
+}
+
+#
 # Generate provision backend db_passwd.
 _provision_backend_dbpass_generate() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -4840,6 +5202,7 @@ _provision_backend_dbpass_generate() {
     _ENC_PASS="${_ESC_PASS}"
   fi
 
+  _satellite_root_pass_leftover_drop
   ### Both files are put in the account root (the instance user's) as fresh
   ### 0600 files handed to that user, never written, handed over or given a
   ### mode through a link put at the name.
@@ -5043,6 +5406,7 @@ _provision_backend_dbpass_sync() {
     _THIS_DB_PORT=3306
   fi
   _L_SYS="${_ROOT}/.${_USER}.pass.txt"
+  _satellite_root_pass_leftover_drop
   ### The account home allows traversal, so a lax mode on these backups is
   ### readable by local users by exact path; never trust the moved file's
   ### inherited mode -- set 0600 explicitly. Moved by name inside the real
@@ -5060,7 +5424,7 @@ _provision_backend_dbpass_sync() {
     "./.${_USER}.pass.php-pre-${_xSrl}-${_X_VERSION}-${_NOW}" &> /dev/null
   _provision_backend_dbpass_generate
   if [ ! -z "${_ESC_PASS}" ] || [ ! -z "${_ENC_PASS}" ]; then
-    local _pUpd
+    local _pUpd _pDbHost
     su -s /bin/bash - ${_USER} -c "${_DRUSHCMD} @hostmaster \
       sqlq \"UPDATE hosting_db_server SET db_passwd='${_ESC_PASS}' \
       WHERE db_user='${_USER}'\"" &> /dev/null
@@ -5110,9 +5474,15 @@ ALTER USER '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_ESC_PASS}';
 EOFMYSQL
     fi
     ### The aliases are the instance user's: edited inside the real .drush,
-    ### never through a link put at an alias or at .drush.
+    ### never through a link put at an alias or at .drush. The box's own
+    ### name mode keeps the name its install gave the database server.
+    _pDbHost="${_SQL_CONNECT}"
+    if [ "${_THIS_DB_HOST}" = "FQDN" ] \
+      && [ ! -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
+      _pDbHost="${_hName}"
+    fi
     _acct_in_real_dir "${_ROOT}/.drush" _satellite_edit_all_here \
-      "s/mysql:\/\/${_USER}:.*/mysql:\/\/${_USER}:${_ENC_PASS}@${_SQL_CONNECT}',/g" \
+      "s/mysql:\/\/${_USER}:.*/mysql:\/\/${_USER}:${_ENC_PASS}@${_pDbHost}',/g" \
       'server_*.alias.drushrc.php' &> /dev/null
     wait
   else
@@ -5688,7 +6058,8 @@ _satellite_run_pre_install() {
     fi
     _provision_backend_dbpass_generate
     _sudoers_safe_append /etc/sudoers \
-      "${_USER} ALL=NOPASSWD: /etc/init.d/nginx" "${_USER} ALL=NOPASSWD"
+      "${_USER} ALL=NOPASSWD: /etc/init.d/nginx reload" "${_USER} ALL=NOPASSWD"
+    _sudoers_nginx_reload_only
     _SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership fix-drupal-site-symlinks lock-local-drush-permissions)
     for _SCRIPT in ${_SCRIPTS[@]}; do
       _sudoers_safe_append /etc/sudoers.d/${_SCRIPT} \
@@ -5699,7 +6070,8 @@ _satellite_run_pre_install() {
     _dbctl_sudo_line "${_USER}"
   else
     _sudoers_safe_append /etc/sudoers \
-      "${_USER} ALL=NOPASSWD: /etc/init.d/nginx" "${_USER} ALL=NOPASSWD"
+      "${_USER} ALL=NOPASSWD: /etc/init.d/nginx reload" "${_USER} ALL=NOPASSWD"
+    _sudoers_nginx_reload_only
     _SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership fix-drupal-site-symlinks lock-local-drush-permissions)
     for _SCRIPT in ${_SCRIPTS[@]}; do
       _sudoers_safe_append /etc/sudoers.d/${_SCRIPT} \
@@ -5720,6 +6092,8 @@ _satellite_run_pre_install() {
       0) _msg "${_STATUS} A: Old panel core: error handler made safe for PHP 8" ;;
       2) _msg "${_STATUS} A: ALRT: Old panel core keeps an error handler PHP 8 cannot call" ;;
     esac
+    ### syncpass replaces the password file without reading it: check it first
+    _satellite_root_pass_leftover_drop
     _RST=$(syncpass fix ${_USER} 2>&1)
     _provision_backend_dbpass_sync
   fi
@@ -6101,6 +6475,7 @@ _satellite_run_post_install() {
           "${_USER}.nginx.conf" 0644 ""
       ln -sfn ${_ROOT}/config/${_USER}.nginx.conf \
         /var/aegir/config/server_master/nginx/platform.d/${_USER}.conf
+      _nginx_acct_store_sync
     fi
     ### the site tree is the instance user's: the group is changed from
     ### inside the real directories, through a handle, never on a link or a
@@ -6173,10 +6548,10 @@ for my $f (@ARGV) {
 # tree; anything else: the password files and the path to them only.
 _satellite_server_master_modes() {
   local _sm
-  _sm="$(cd -P -- /data/disk 2> /dev/null && pwd -P)/${_USER}/config/server_master"
+  _sm="$(cd -P -- /data/disk 2> /dev/null && /bin/pwd -P)/${_USER}/config/server_master"
   ( PATH=/usr/local/bin:/usr/bin:/bin
     cd -P -- "${_ROOT}/config/server_master" 2> /dev/null \
-      && [ "$(pwd -P)" = "${_sm}" ] || exit 1
+      && [ "$(/bin/pwd -P)" = "${_sm}" ] || exit 1
     if [ "${1}" = "all" ]; then
       find . -type d ! -path . ! -path ./nginx ! -path ./nginx/passwords.d \
         -execdir perl -e "${_SAT_FCHMOD_PL}" d 0700 "${_USER}" "${_WEBG}" {} +
@@ -6186,7 +6561,7 @@ _satellite_server_master_modes() {
     perl -e "${_SAT_FCHMOD_PL}" d 0755 "${_USER}" "${_WEBG}" . ./nginx )
   ( PATH=/usr/local/bin:/usr/bin:/bin
     cd -P -- "${_ROOT}/config/server_master/nginx" 2> /dev/null \
-      && [ "$(pwd -P)" = "${_sm}/nginx" ] || exit 1
+      && [ "$(/bin/pwd -P)" = "${_sm}/nginx" ] || exit 1
     _t=p
     if [ ! -e ./passwords.d ] && [ ! -L ./passwords.d ]; then
       mkdir -m 02710 ./passwords.d && _t=q
@@ -6194,7 +6569,7 @@ _satellite_server_master_modes() {
     perl -e "${_SAT_FCHMOD_PL}" "${_t}" 02710 "${_USER}" "${_WEBG}" ./passwords.d )
   ( PATH=/usr/local/bin:/usr/bin:/bin
     cd -P -- "${_ROOT}/config/server_master/nginx/passwords.d" 2> /dev/null \
-      && [ "$(pwd -P)" = "${_sm}/nginx/passwords.d" ] || exit 1
+      && [ "$(/bin/pwd -P)" = "${_sm}/nginx/passwords.d" ] || exit 1
     shopt -s dotglob nullglob
     set -- ./*
     [ "$#" -gt 0 ] || exit 0
@@ -6521,8 +6896,15 @@ _satellite_if_add_ftps_lshell_access() {
     find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -f {} \; &> /dev/null
     # -N leaves the primary group to /etc/default/useradd (users); name it
     # explicitly so an account carrying its per-instance group gets that one.
-    useradd -d /home/${_USERFTP} -s ${_PATH_LSHELL} -m -N -r \
+    _acct_new_identity high "${_USER}" \
+      useradd -d /home/${_USERFTP} -s ${_PATH_LSHELL} -m -N -r \
       -g ${_ACCG:-users} ${_USERFTP} &> /dev/null
+    if ! id -u "${_USERFTP}" > /dev/null 2>&1; then
+      _msg "${_STATUS} A: FATAL ERROR: ${_USERFTP} was not made: no system uid free of other accounts' (see /var/log/boa/manage_ltd.incident.log)"
+      _msg "${_STATUS} A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
+      touch "/opt/tmp/state/.root/${_USER}/status-AegirSetupA-FAIL"
+      exit 1
+    fi
     # The file which contains the password is private from the start: made
     # 0600 below as a fresh file inside the real log/ (the instance user's),
     # never through a link or a FIFO put at the name
@@ -6715,7 +7097,7 @@ _satellite_clients_clean_here() {
   _satellite_rm_own_here nocomega8cc
   for _c in ./*; do
     [ -d "${_c}" ] && [ ! -L "${_c}" ] || continue
-    _acct_in_real_dir "$(pwd -P)/${_c#./}" _satellite_rm_own_here backups
+    _acct_in_real_dir "$(/bin/pwd -P)/${_c#./}" _satellite_rm_own_here backups
   done
   find . -xdev -mindepth 1 -xtype l -delete 2> /dev/null
   return 0
@@ -7050,10 +7432,15 @@ _satellite_if_add_update_backend_user_dirs_files_clean() {
   ### and EMPTY.txt is put inside the real directory, never through a link
   ### put at static or at EMPTY.txt. A directory another user owns, renamed
   ### to static, keeps its owner and mode (_satellite_own_dir_here) and is
-  ### named on a NOTE line.
+  ### named on a NOTE line. On an account still on the box-wide group every
+  ### other account's .ftp login is in that group too: the sticky bit keeps
+  ### them from renaming or removing what the account's identities and root
+  ### put there, control/ first among them.
+  _T_SM=02775
+  [ "${_ACCG:-users}" = "${_USER}" ] || _T_SM=03775
   _T_N=$(
     _acct_in_real_dir "${_ROOT}/static" _satellite_own_dir_here \
-      "${_USER}:${_ACCG:-users}" 02775 2> /dev/null
+      "${_USER}:${_ACCG:-users}" "${_T_SM}" 2> /dev/null
   )
   _satellite_left_note "${_T_N}" "in place at ${_ROOT}/static"
   # nothing is put into a static that was left as another user's
@@ -7153,11 +7540,11 @@ _satellite_if_add_update_backend_user_dirs_files_clean() {
     # distro/<core>, never through a platform entry the account planted as a
     # link.
     local _qW
-    _qW="$(cd -P -- /data/disk 2> /dev/null && pwd -P)/${_USER}/distro/${_THIS_CORE}"
+    _qW="$(cd -P -- /data/disk 2> /dev/null && /bin/pwd -P)/${_USER}/distro/${_THIS_CORE}"
     if [ -n "${_THIS_CORE}" ]; then
       ( PATH=/usr/local/bin:/usr/bin:/bin
         cd -P -- "${_ROOT}/distro/${_THIS_CORE}" 2> /dev/null \
-          && [ "$(pwd -P)" = "${_qW}" ] || exit 0
+          && [ "$(/bin/pwd -P)" = "${_qW}" ] || exit 0
         find . -mindepth 2 -maxdepth 2 -name robots.txt ! -type d -delete ) &> /dev/null
     fi
     ### The core and the shared store are the account's during the build:
@@ -7632,7 +8019,7 @@ _satellite_make() {
     _PHP_FPM_VERSION="${_PHP_CLI_VERSION}"
   fi
 
-  export _xSrl=588877devT01
+  export _xSrl=588888devT01
   export _X_VERSION="${_X_VERSION}"
 
   echo "export _AEGIR_VERSION=\"${_AEGIR_VERSION}\""         >> ${_writeTo}
@@ -7723,6 +8110,11 @@ _satellite_make() {
   echo "export _DRUPAL11_4_D=\"${_DRUPAL11_4}-dev\""         >> ${_writeTo}
   echo "export _DRUPAL11_4_P=\"${_DRUPAL11_4}-prod\""        >> ${_writeTo}
   echo "export _DRUPAL11_4_S=\"${_DRUPAL11_4}-stage\""       >> ${_writeTo}
+
+  echo "export _DRUPAL11_5=\"${_DRUPAL11_5}\""               >> ${_writeTo}
+  echo "export _DRUPAL11_5_D=\"${_DRUPAL11_5}-dev\""         >> ${_writeTo}
+  echo "export _DRUPAL11_5_P=\"${_DRUPAL11_5}-prod\""        >> ${_writeTo}
+  echo "export _DRUPAL11_5_S=\"${_DRUPAL11_5}-stage\""       >> ${_writeTo}
 
   echo "export _DRUPAL12_0=\"${_DRUPAL12_0}\""               >> ${_writeTo}
   echo "export _DRUPAL12_0_D=\"${_DRUPAL12_0}-dev\""         >> ${_writeTo}
@@ -7846,6 +8238,7 @@ _satellite_make() {
   echo "export _SMALLCORE11_2_V=\"${_SMALLCORE11_2_V}\""     >> ${_writeTo}
   echo "export _SMALLCORE11_3_V=\"${_SMALLCORE11_3_V}\""     >> ${_writeTo}
   echo "export _SMALLCORE11_4_V=\"${_SMALLCORE11_4_V}\""     >> ${_writeTo}
+  echo "export _SMALLCORE11_5_V=\"${_SMALLCORE11_5_V}\""     >> ${_writeTo}
   echo "export _SMALLCORE12_0_V=\"${_SMALLCORE12_0_V}\""     >> ${_writeTo}
   echo "export _SMALLCORE6_V=\"${_SMALLCORE6_V}\""           >> ${_writeTo}
   echo "export _SMALLCORE7_V=\"${_SMALLCORE7_V}\""           >> ${_writeTo}
@@ -7919,7 +8312,7 @@ _satellite_make() {
     || [ ! -x "/opt/tools/drush/8/drush/drush.php" ] \
     || [ ! -x "/opt/php56/bin/php" ]; then
     for _mrkV in 56 70 71 72 73 74 80 81 82 83 84 85 86; do
-      if [ -e "${_ROOT}/static/control/php${_mrkV}.info" ] \
+      if _sat_ctrl_has "php${_mrkV}.info" \
         && [ -x "/opt/php${_mrkV}/bin/php" ]; then
         _MRK_CLI_VERSION="${_mrkV:0:1}.${_mrkV:1}"
       fi
@@ -7994,10 +8387,21 @@ _satellite_make() {
     && _a2b_import_unfinished "${_USER}"; then
     _msg "NOTE: ${_USER}: an aegir2boa db-import is unfinished; its task dispatcher stays held until the import is re-run or reverted"
   else
-    cp -af ${_bldPth}/aegir/scripts/run-xdrago /var/xdrago/run-${_USER}
-    sed -i "s/EDIT_USER/${_USER}/g" /var/xdrago/run-${_USER}
+    # A new file of root's, renamed over the old one: runner.sh runs only a
+    # dispatcher that is root's alone, and a copy written into the old file
+    # would keep any second link or open handle another user held on it.
+    # mktemp's names hold no "run-", which runner.sh would dispatch.
+    local _rxN=""
+    if _rxN=$(mktemp /var/xdrago/.xdnew.XXXXXX) \
+      && cp -f ${_bldPth}/aegir/scripts/run-xdrago "${_rxN}" \
+      && sed -i "s/EDIT_USER/${_USER}/g" "${_rxN}" \
+      && chown root:root "${_rxN}" && chmod 700 "${_rxN}"; then
+      mv -f "${_rxN}" /var/xdrago/run-${_USER}
+    else
+      rm -f ${_rxN:+"${_rxN}"}
+      _msg "WARN: ${_USER}: its task dispatcher could not be written; the previous one stays"
+    fi
     wait
-    chmod 700 /var/xdrago/run-${_USER} &> /dev/null
   fi
   # 0755 in the build tree, not 0700: the setup children are read by a su'd
   # satellite user, and read is all they need. The deployed copy above keeps
@@ -8050,7 +8454,9 @@ _satellite_make() {
     _acct_put_in "${_ROOT}/log" cli.txt "${_PHP_CLI_VERSION}"
   fi
   _acct_in_real_dir "${_ROOT}/static" _satellite_ctrl_dir_here
-  _acct_in_real_dir "${_ROOT}/static/control" _satellite_ctrl_make_here
+  # judged again here: at INIT static/ is made after the first judgement
+  _SAT_CTRL_FOR=""
+  _sat_ctrl_foreign || _acct_in_real_dir "${_ROOT}/static/control" _satellite_ctrl_make_here
 
   ### Each stamp is put as a fresh file inside the real 000/, so a link
   ### left at either name is replaced, never written through.
@@ -8072,8 +8478,9 @@ _satellite_make() {
 
   if [ -e "${_ROOT}/log/email.txt" ]; then
     _PHP_FPM_MULTI=NO
-    if [ -f "${_ROOT}/static/control/multi-fpm.info" ] \
-      && [ -d "${_ROOT}/tools/le" ]; then
+    # a control/ that is not the account's own tells nothing: its pools
+    # stay as they are
+    if _sat_ctrl_foreign || _sat_fpm_multi; then
       _PHP_FPM_MULTI=YES
     fi
     if [ "${_PHP_FPM_MULTI}" = "NO" ]; then
@@ -8277,7 +8684,8 @@ _satellite_ctrl_dir_here() {
 }
 # The control directory on install and upgrade (run inside it): fpm.info
 # and cli.info where missing (cli.info from a regular fpm.info), the README
-# and this serial's stamp on its first pass, the tree handed to the main
+# and this serial's stamp on its first pass, at install the release pass's
+# defaults where the owner has none, the tree handed to the main
 # login as _satellite_reown_own_here hands it (never a link, nor a file the
 # login hard-linked there, nor what another user owns: the login can rename
 # into it what another account left group-writable).
@@ -8299,7 +8707,34 @@ _satellite_ctrl_make_here() {
     rm -f -- ./.ctrl.*
     _acct_put_here ".ctrl.${_tRee}.${_xSrl}.pid" OK
   fi
-  _satellite_reown_own_here "${_USER}.ftp:${_ACCG:-users}" > /dev/null
+  # An account made by this pass never held the FastTrack.info that BOA
+  # wrote by default before 2024: the release pass removes that one once,
+  # where this marker is missing, and must never take a FastTrack.info
+  # the account's owner puts here.
+  if [ "${_STATUS}" = "INIT" ] && [ ! -e ./.disFastTrack.pid ]; then
+    _acct_put_here .disFastTrack.pid OK
+  fi
+  # The release pass's two defaults, by its rules (BOA.sh.txt _ctrl_seed_here):
+  # it seeds each account once per release, so an account made after it would
+  # wait for the next one, its Delete and Migrate safety copies taking the
+  # classic dump meanwhile (only MyQuick.info sends them to the fast dumps).
+  # At install only: what an existing account holds is the owner's choice.
+  if [ "${_STATUS}" = "INIT" ]; then
+    if [ ! -e ./MyQuick.info ] && [ ! -e ./MyClassic.info ]; then
+      _acct_put_here MyQuick.info ON
+    fi
+    if [ ! -e ./FastTrack.info ] && [ ! -e ./ClassicTrack.info ]; then
+      _acct_put_here ClassicTrack.info ON
+    fi
+  fi
+  # an account still on the box-wide group gets group root here, as the ltd
+  # worker gives it (_ltd_ctrl_shut): what the login makes in this
+  # set-group-ID tree is then never writable by another account's login
+  if [ "${_ACCG:-users}" = "${_USER}" ]; then
+    _satellite_reown_own_here = "${_USER}.ftp:${_ACCG}" > /dev/null
+  else
+    _satellite_reown_own_here = "${_USER}.ftp:root" > /dev/null
+  fi
 }
 
 #
@@ -8340,16 +8775,17 @@ _satellite_chmod_nofollow() {
 }
 # The uids root's walks over the account $1's trees act on, comma-separated:
 # root's own (0, what root wrote there for the account) and those of every
-# identity of the account as passwd names them: oN and oN.<name>, that is
-# its .ftp login, its client sub-accounts oN.<client> and oN.<client>-dev
-# and its PHP-FPM users oN.web and oN.<ver>.web. An account name holds no
-# dot, so the match is exact: o1 never takes o10's. Status 1, and nothing,
-# unless the account itself is in passwd. The walks also take a uid no passwd
-# entry names as the account's own: a login removed before the limited-shell
-# worker handed its files to the account at removal left those. Nothing
-# records which account a freed number served, so such an entry is taken
-# wherever it came from. A lookup that fails, rather than finding no such
-# user, leaves the entry another user's.
+# identity of the account as passwd names them: oN and oN.<name>, that is its
+# .ftp login, its client sub-accounts oN.<client> and oN.<client>-dev and its
+# PHP-FPM users oN.web and oN.<ver>.web. An account name holds no dot, so the
+# match is exact: o1 never takes o10's. Status 1, and nothing, unless the
+# account itself is in passwd. The numbers of the account's removed
+# identities that root recorded in /data/conf/acct-uids/<oN>.gone (the ltd
+# worker, before deluser frees one) are listed too while no user has them.
+# Root's check of the control folder, its reads of the control files and its
+# hand-overs into that folder take a uid no passwd entry names only when it
+# is listed: another account's removed login leaves files under such a number
+# too. Its other hand-overs, mode walks and removal walks still take any.
 _acct_walk_uids() {
   local _a="${1}" _n _p _u _r _x="0" _self=NO
   case "${_a}" in
@@ -8362,7 +8798,93 @@ _acct_walk_uids() {
     [ "${_n}" = "${_a}" ] && _self=YES
   done < <(getent passwd 2> /dev/null)
   [ "${_self}" = "YES" ] || return 1
+  # the account's removed identities, their numbers recorded by root before
+  # deluser freed them; a number a user has again is not taken
+  while IFS= read -r _u; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    getent passwd "${_u}" > /dev/null 2>&1 && continue
+    _x="${_x},${_u}"
+  done 2> /dev/null < "/data/conf/acct-uids/${_a}.gone"
   echo "${_x}"
+}
+# The account's control/ judged once a pass (_acct_ctrl_own): _sat_ctrl_has
+# is 0 when the name $1 is in it and it is the account's own, and
+# _sat_ctrl_foreign is 0 when it is not the account's own. The pass then
+# neither reads nor writes there: the cnf's PHP versions, the platforms
+# list and the pools stay as they are, and the run says why (ALRT).
+_sat_ctrl_judge() {
+  [ "${_SAT_CTRL_FOR:-}" = "${_USER}" ] && return 0
+  _SAT_CTRL_FOR="${_USER}"
+  _SAT_CTRL_OWN=YES
+  if ! _SAT_CTRL_WHY=$(_acct_ctrl_own "${_USER}"); then
+    _SAT_CTRL_OWN=NO
+    _msg "ALRT: ${_ROOT}/static/control is not ${_USER}'s own (${_SAT_CTRL_WHY}); its control files are not read"
+  fi
+  return 0
+}
+_sat_ctrl_has() {
+  _sat_ctrl_judge
+  [ "${_SAT_CTRL_OWN}" = "YES" ] && [ -e "${_ROOT}/static/control/${1}" ]
+}
+_sat_ctrl_foreign() {
+  _sat_ctrl_judge
+  [ "${_SAT_CTRL_OWN}" = "NO" ]
+}
+# Multi-FPM mode by the account's files: tools/le and multi-fpm.info. A
+# multi-fpm.info the login deleted from an account whose pools are multi-FPM
+# ones (root's /opt/php*/etc/pool.d/<acct>.<NN>.conf) is written back by the
+# ltd worker while PHP 7.4 or newer is installed, so it does not take the
+# account out of the mode: one pass left it and the next entered it again,
+# every pool and nginx reloaded twice, for a file the login cannot keep away.
+# $1 = the account's home, $2 = its name.
+_fpm_multi_files() {
+  local _e _p
+  [ -d "${1}/tools/le" ] || return 1
+  [ -f "${1}/static/control/multi-fpm.info" ] && return 0
+  [ -d "${1}/static/control" ] || return 1
+  for _p in /opt/php*/etc/pool.d/"${2}".[0-9]*.conf; do
+    [ -f "${_p}" ] || continue
+    for _e in 86 85 84 83 82 81 74; do
+      [ -x "/opt/php${_e}/bin/php" ] && return 0
+    done
+    return 1
+  done
+  return 1
+}
+# The PHP-FPM mode (multi or single) the ltd worker last made for account $1,
+# root's record; nothing without one, and nothing when root's pool files of
+# the account do not bear it out (a record an earlier account of the name
+# left, or one its removal outlived): multi needs a per-version pool of the
+# account, single the account's own pool file.
+_fpm_mode_rec() {
+  local _f="/var/backups/ltd/fpmcore/${1}.mode.applied" _r="" _p
+  [ -f "${_f}" ] && [ ! -L "${_f}" ] || return 0
+  { IFS= read -r _r < "${_f}"; } 2> /dev/null
+  case "${_r}" in
+    multi)
+      for _p in /opt/php*/etc/pool.d/"${1}".[0-9]*.conf; do
+        [ -f "${_p}" ] && { echo multi; return 0; }
+      done
+      ;;
+    single)
+      for _p in /opt/php*/etc/pool.d/"${1}".conf; do
+        [ -f "${_p}" ] && { echo single; return 0; }
+      done
+      ;;
+  esac
+  return 0
+}
+# The account's PHP-FPM mode as the ltd worker runs it: the mode it last made,
+# else the one its files give. The worker keeps an account in multi-FPM mode
+# with multi-fpm.info gone and holds a switch of the account's own for up to
+# 15 minutes, and a single pool set up here for such an account would run
+# beside its per-version ones.
+_sat_fpm_multi() {
+  local _r
+  _r="$(_fpm_mode_rec "${_USER}")"
+  [ "${_r}" = "multi" ] && return 0
+  [ "${_r}" = "single" ] && return 1
+  _fpm_multi_files "${_ROOT}" "${_USER}"
 }
 # As _SAT_NOFOLLOW_CHMOD_PL, given first the comma-separated uids it acts
 # for (_acct_walk_uids; a uid no passwd entry names counts too, sub own): a
@@ -8411,13 +8933,16 @@ exit 0;'
 # the uid and gid to hand each name to; a name another named uid owns, and
 # anything below a directory another named uid owns, keeps its owner. A gid
 # given with a + first keeps the group write of what is handed over, as the
-# ownership fixers' -W does; no caller here gives one.
+# ownership fixers' -W does; no caller here gives one. A list with '=' first
+# takes a uid no passwd entry names only when it is listed: the control
+# folder's hand-over gives one (_satellite_ctrl_make_here).
 _SAT_REOWN_OWN_PL='use Fcntl;
 my ($o, $u, $g) = (shift @ARGV, shift @ARGV, shift @ARGV);
 my $deny = $o =~ s/^-// ? 1 : 0;
+my $strict = $o =~ s/^=// ? 1 : 0;
 my $gw = $g =~ s/^\+// ? 1 : 0;
 my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, $o);
-sub own { my $u = shift; return (exists $own{$u} ? 0 : 1) if $deny; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
+sub own { my $u = shift; return (exists $own{$u} ? 0 : 1) if $deny; return (exists $own{$u} ? 1 : 0) if $strict; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
 my ($p, $ok, @d, @x) = (".", 0);
 for (1 .. 256) {
   @x = stat($p) or last;
@@ -8631,15 +9156,18 @@ _satellite_reown_here() {
 # over, and nothing below a directory another user owns. Prints dev:ino of
 # each entry left for another owner.
 _satellite_reown_own_here() {
-  local _u _g _o
+  local _u _g _o _s=""
+  # = first: only the account's identities and its recorded removed ones
+  # (_acct_walk_uids), never another number no user has (the control folder)
+  [ "${1}" = "=" ] && { _s="="; shift; }
   read -r _u _g <<< "$(_satellite_ids "${1}")"
   [ -n "${_g}" ] || return 1
   _o=$(_acct_walk_uids "${_USER}") || return 1
   shift
-  perl -e "${_SAT_REOWN_OWN_PL}" -- "${_o}" "${_u}" "${_g}" . \
+  perl -e "${_SAT_REOWN_OWN_PL}" -- "${_s}${_o}" "${_u}" "${_g}" . \
     && env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 "$@" \
       \( -type d -o -type f \) \
-      -execdir perl -e "${_SAT_REOWN_OWN_PL}" -- "${_o}" "${_u}" "${_g}" {} +
+      -execdir perl -e "${_SAT_REOWN_OWN_PL}" -- "${_s}${_o}" "${_u}" "${_g}" {} +
 }
 # The names given in the current (pinned) directory handed to $1
 # (owner[:group]) through _ACCT_REOWN_PL, as chown or chgrp handed them,
@@ -8946,7 +9474,7 @@ _satellite_in_store() {
     return
   fi
   _r="$(readlink -f -- "${_d}" 2> /dev/null)"
-  _s="$(cd -P -- /data/disk 2> /dev/null && pwd -P)/${_USER}/static/files/"
+  _s="$(cd -P -- /data/disk 2> /dev/null && /bin/pwd -P)/${_USER}/static/files/"
   # The store on attached storage is /mnt/<mount>/files/<oN>/static/files,
   # the mount itself possibly nested, as migratefs accepts it under /mnt,
   # as the nightly decides it.
@@ -8967,7 +9495,7 @@ _satellite_in_store() {
   case "${_k}:${_top}" in
     site:.*) return 1 ;;
   esac
-  ( cd -P -- "${_r}" 2> /dev/null && [ "$(pwd -P)" = "${_r}" ] && "$@" )
+  ( cd -P -- "${_r}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_r}" ] && "$@" )
 }
 # ./$1 in the current (pinned) directory made a directory where missing,
 # then "${@:2}" run inside it as _acct_in_real_dir runs it: a link put at
@@ -9348,8 +9876,8 @@ _satellite_check_php_compatibility() {
   # refuse: the reads below ignore what is not one version (text over 64
   # characters included, before any pattern substitution).
   _PHP_FPM_LEGACY_FREE=YES
-  if [ -e "${_ROOT}/static/control/fpm.info" ]; then
-    _T_FPM_VRN=$(_acct_read_in "${_ROOT}/static/control" fpm.info)
+  if _sat_ctrl_has fpm.info; then
+    _T_FPM_VRN=$(_acct_own_read_in "${_ROOT}/static/control" fpm.info "${_USER}")
     [ "${#_T_FPM_VRN}" -le 64 ] || _T_FPM_VRN=""
     _T_FPM_VRN=${_T_FPM_VRN//[^0-9.]/}
     case "${_T_FPM_VRN}" in
@@ -9357,8 +9885,8 @@ _satellite_check_php_compatibility() {
     esac
   fi
   _PHP_CLI_LEGACY_FREE=YES
-  if [ -e "${_ROOT}/static/control/cli.info" ]; then
-    _T_CLI_VRN=$(_acct_read_in "${_ROOT}/static/control" cli.info)
+  if _sat_ctrl_has cli.info; then
+    _T_CLI_VRN=$(_acct_own_read_in "${_ROOT}/static/control" cli.info "${_USER}")
     [ "${#_T_CLI_VRN}" -le 64 ] || _T_CLI_VRN=""
     _T_CLI_VRN=${_T_CLI_VRN//[^0-9.]/}
     case "${_T_CLI_VRN}" in
@@ -10187,6 +10715,69 @@ _satellite_queue_unanswered_site_verifies() {
   fi
 }
 
+### Run inside the real vhost.d: ./$1 when it is a site vhost that still tests
+### the account's http-off.pid in nginx by its path ($2 = the account's root,
+### $3 = the hostmaster's name, never judged). Only Grav and Textpattern
+### vhosts carry that test; one rendered with the gate left to PHP names no
+### such path. The file is read as _satellite_unanswered_here reads it.
+_satellite_http_off_path_here() {
+  [ -f "./${1}" ] && [ ! -L "./${1}" ] || return 1
+  case "${1}" in .*|https.*) return 1 ;; esac
+  [ "${1}" = "${3}" ] && return 1
+  case "${1}" in *[!A-Za-z0-9.-]*) return 1 ;; esac
+  _acct_read_here "${1}" | grep -qF "if (-f ${2}/static/control/http-off.pid)"
+}
+
+### Each such site printed as "<name>", for the PHP array below.
+_satellite_http_off_path_list_here() {
+  local _v _d
+  for _v in ./*; do
+    _d="${_v#./}"
+    if _satellite_http_off_path_here "${_d}" "${1}" "${2}"; then
+      printf '"%s",' "${_d}"
+    fi
+  done
+}
+
+### Grav and Textpattern sites test the migration's 503 gate in nginx by
+### path, which a control folder another account's login made holds as well
+### as the account's own. A vhost a Verify renders once BOA's gate file
+### (global-http-off.php) is there and the setup file Grav vhosts then name
+### (global-grav-gate.php) includes it leaves the gate to PHP, by the
+### own-folder rule Drupal and Backdrop sites follow;
+### nothing re-verifies such a site by itself, so queue one Verify for every
+### vhost still testing the path, once the account's provision renders the
+### PHP form. Self-limiting: a vhost rendered so is never queued again.
+_satellite_queue_http_off_site_verifies() {
+  local _vhd="${_ROOT}/config/server_master/nginx/vhost.d"
+  local _prv="${_ROOT}/.drush/sys/provision"
+  local _gl=/data/conf/global
+  local _list="" _n
+  local _hmDrush="${_DRUSHCMD:-drush8}"
+  [ -d "${_vhd}" ] || return 0
+  { [ -f "${_gl}/global-http-off.php" ] && [ ! -L "${_gl}/global-http-off.php" ]; } \
+    || return 0
+  _acct_read_in "${_gl}" global-grav-gate.php | grep -qF "${_gl}/global-http-off.php" \
+    || return 0
+  _acct_read_in "${_prv}/grav/templates" grav_locations.tpl.php \
+    | grep -qF "provision_http_off_in_php" || return 0
+  _acct_read_in "${_prv}/txp/templates" vhost_txp.tpl.php \
+    | grep -qF "provision_http_off_in_php" || return 0
+  _list="$(_acct_in_real_dir "${_vhd}" _satellite_http_off_path_list_here "${_ROOT}" "${_DOMAIN}")"
+  [ -n "${_list}" ] || return 0
+  _n=$(su -s /bin/bash - ${_USER} -c "${_hmDrush} @hostmaster php-eval '\$n = 0; foreach (array(${_list}) as \$u) { \$s = hosting_get_site_by_url(\$u); if (\$s && !empty(\$s->nid)) { \$t = hosting_add_task(\$s->nid, \"verify\"); if (is_object(\$t) && !empty(\$t->nid)) { \$n++; } } } print \"queued=\" . \$n;'" 2>/dev/null)
+  case "${_n}" in
+    *queued=*) ;;
+    *) _msg "INFO: the frontend did not answer the migration-gate Verify queueing; the next pass retries"
+       return 0 ;;
+  esac
+  _n="${_n##*queued=}"
+  _n="${_n%%[^0-9]*}"
+  if [ -n "${_n}" ] && [ "${_n}" -gt 0 ]; then
+    _msg "INFO: queued a Verify for ${_n} Grav or Textpattern site(s) whose vhost tests the migration gate by path"
+  fi
+}
+
 _satellite_post_cleanup() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _satellite_post_cleanup"
@@ -10633,7 +11224,7 @@ _satellite_normalize_scratch_owner() {
 # over, is asserted root's again the same way (_satellite_conf_root_here).
 _satellite_shared_back() {
   local _b
-  _b="$(cd -P -- "${1}" 2> /dev/null && pwd -P)"
+  _b="$(cd -P -- "${1}" 2> /dev/null && /bin/pwd -P)"
   [ -n "${_b}" ] || return 0
   if [ ! -f "${1}/permissions-fix-${_xSrl}-${_X_VERSION}-${_TODAY}.info" ]; then
     _acct_in_real_dir "${_b}" _satellite_shared_fix_here &> /dev/null
@@ -10812,12 +11403,12 @@ _satellite_batch_cleanup() {
 # path find reported.
 _satellite_static_modules_here() {
   local _s _m
-  _s="$(pwd -P)"
+  _s="$(/bin/pwd -P)"
   find . -maxdepth 5 \( -name '.?*' -prune \) \
     -o \( -path './*/*' -type d -name 'module*' -print0 \) \
-    | while IFS= read -r -d '' _m; do
+    | while LC_ALL=C IFS= read -r -d '' _m; do
       ( cd -P -- "${_m}" 2> /dev/null \
-        && [ "$(pwd -P)" = "${_s}/${_m#./}" ] && chmod 775 . )
+        && [ "$(/bin/pwd -P)" = "${_s}/${_m#./}" ] && chmod 775 . )
     done
 }
 
@@ -11236,7 +11827,10 @@ _satellite_child_b_drush_test() {
   if [ "${_BACKDROP_SUPPORT}" = "YES" ] \
     && [ -e "${_ROOT}/.drush/usr/backdrop/backdrop.drush.inc" ]; then
     drush8 cc drush &> /dev/null
-    if ${_DRUSHCMD} help 2>/dev/null | grep -q "backdrop-site-install"; then
+    # Ask for the command itself: help's command table wraps a name this long
+    # across two lines, so the full name never appears on one line there.
+    if ${_DRUSHCMD} help backdrop-site-install 2>/dev/null \
+      | grep -q "Install Backdrop"; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "${_STATUS} B: Backdrop Drush extension test result OK"
       fi
@@ -11877,7 +12471,7 @@ _satellite_export_path() {
   # Once the panel looks there: what sits at the top, or in another such folder
   (
     cd -P -- "${_d}" 2> /dev/null || exit 0
-    while IFS= read -r -d '' _f; do
+    while LC_ALL=C IFS= read -r -d '' _f; do
       mv -n -- "${_f}" "./${_t}/" 2> /dev/null
     done < <(find . -mindepth 1 -maxdepth 1 -type f -print0 2> /dev/null)
     while IFS= read -r _f; do
@@ -12005,6 +12599,7 @@ _satellite_child_b_aegir_ui_enhance() {
       "status" => "status",
       "success" => "success",
       "warning" => "warning",
+      "advisory" => "advisory",
       "backup" => "backup",
       "bootstrap" => "bootstrap",
       "command" => "command",
