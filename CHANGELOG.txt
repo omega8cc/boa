@@ -67,6 +67,10 @@
       option's own name (--uri=$uri) runs: websh took --uri= for an
       assignment to uri and refused the line.
 
+    * barracuda and octopus stop on an empty /root/.my.pass.txt and compare
+      its whole value with the password in /root/.my.cnf: an empty file, or
+      one holding only the beginning of that password, passed as in sync.
+
 ###
 ### Stable BOA-5.88.888 PRO/LTS - DRAGON EDITION
 ### Date: Mon 23 Nov 2026 13:32:57 CET in Warsaw

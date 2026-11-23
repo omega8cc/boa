@@ -319,6 +319,23 @@ _check_sql_running() {
   done
 }
 
+# A password line of /root/.my.cnf holds exactly ${_SQL_PSWD}, as MySQL reads
+# the line: blanks around it and a comment after a blank are no part of it.
+# Read here: grep took the password as a pattern, the beginning of a longer
+# one as the whole, and put it on its command line.
+_sql_pswd_synced() {
+  local _l
+  while IFS= read -r _l || [ -n "${_l}" ]; do
+    [[ "${_l}" =~ ^[[:space:]]*password=(.*)$ ]] || continue
+    _l="${BASH_REMATCH[1]}"
+    [ "${_l}" = "${_SQL_PSWD}" ] && return 0
+    _l="${_l%%[[:space:]]#*}"
+    _l="${_l%"${_l##*[![:space:]]}"}"
+    [ "${_l}" = "${_SQL_PSWD}" ] && return 0
+  done < /root/.my.cnf
+  return 1
+}
+
 _check_sql_access() {
   # A finalized PX0 proxy (xtrim) has MySQL stopped and disabled on purpose,
   # with the credential files left in place; the running check above already
@@ -327,7 +344,14 @@ _check_sql_access() {
   [ -e "/root/.proxy.cnf" ] && return 0
   if [ -e "/root/.my.pass.txt" ] && [ -e "/root/.my.cnf" ]; then
     _SQL_PSWD=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
-    _IS_SYNC_SQL_PSWD=$(grep "${_SQL_PSWD}" /root/.my.cnf 2>&1)
+    # An empty value is part of every line: it passed as in sync below
+    if [ -z "${_SQL_PSWD//[[:space:]]/}" ]; then
+      echo "ALERT: /root/.my.pass.txt is empty."
+      echo "ALERT: Please fix this before trying again, giving up."
+      echo "Bye"
+      echo " "
+      _clean_pid_exit _check_sql_access_e
+    fi
   else
     echo "ALERT: /root/.my.cnf or /root/.my.pass.txt not found."
     echo "ALERT: Please fix this before trying again, giving up."
@@ -335,8 +359,7 @@ _check_sql_access() {
     echo " "
     _clean_pid_exit _check_sql_access_a
   fi
-  if [ -z "${_IS_SYNC_SQL_PSWD}" ] \
-    || [[ ! "${_IS_SYNC_SQL_PSWD}" =~ "password=${_SQL_PSWD}" ]]; then
+  if ! _sql_pswd_synced; then
     echo "ALERT: SQL password is out of sync between"
     echo "ALERT: /root/.my.cnf and /root/.my.pass.txt"
     echo "ALERT: Please fix this before trying again, giving up."
