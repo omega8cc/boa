@@ -10,9 +10,9 @@ to provide the following argument:
 
   --backup-read: Change nothing but what a backup needs to read: in the
              site's own files and private stores, each file the account's
-             web server wrote without group read gets group read, and each
-             such directory group read and search. Owner, group and every
-             other bit stay as the web server set them.
+             web server or one of its shell users wrote without group read
+             gets group read, and each such directory group read and search.
+             Owner, group and every other bit stay as the writer set them.
 
 Usage: (sudo) ${0##*/} --site-path=PATH [--backup-read]
 Example: (sudo) ${0##*/} --site-path=/var/aegir/platforms/drupal-7.50/sites/example.com
@@ -859,23 +859,23 @@ _priv_perm_here() {
   _fwalk_own_here f "${_priv_f}" .
 }
 
-# Group read for an entry the account's web server wrote closed, set through
+# Group read for an entry one of the account's users wrote closed, set through
 # the open handle: each ./name -execdir hands over is opened without
 # following a link or blocking on a FIFO, and changed only while its group
-# is the gid $1 and its owner one of the uids in $2 (a comma list). A file
-# gets group read, a directory group read and search, and every other bit
-# stays; a regular file with more than one link is left alone, as the walks
-# above leave it. Prints how many it changed.
+# is one of the gids in $1 and its owner one of the uids in $2 (comma lists).
+# A file gets group read, a directory group read and search, and every other
+# bit stays; a regular file with more than one link is left alone, as the
+# walks above leave it. Prints how many it changed.
 _GREAD_PL='use Fcntl;
-my $g = shift @ARGV;
+my %g = map { $_ => 1 } grep { /^[1-9][0-9]*$/ } split(/,/, shift @ARGV);
 my %u = map { $_ => 1 } grep { /^[1-9][0-9]*$/ } split(/,/, shift @ARGV);
-$g =~ /^[0-9]+$/ or exit 1;
+%g or exit 1;
 my $n = 0;
 for my $f (@ARGV) {
   next unless $f =~ m{^\./[^/]+$};
   sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
   my @s = stat($h);
-  if (@s && $u{$s[4]} && $s[5] == $g) {
+  if (@s && $u{$s[4]} && $g{$s[5]}) {
     my $m = $s[2] & 07777;
     if (-d _) {
       $n++ if ($m & 0050) != 0050 && chmod($m | 0050, $h);
@@ -890,35 +890,42 @@ print "$n\n";
 exit 0;'
 
 # The store in the current (pinned) directory: every entry below it that
-# one of the account's web users ($2, uids as a comma list) owns in the web
-# group ($1, a gid) without group read (and search, for a directory), handed
-# to _GREAD_PL from -execdir, which never follows a link. Prints the count.
+# one of the account's users ($2, uids as a comma list) owns in one of the
+# groups the backend user reads through ($1, gids as a comma list) without
+# group read (and search, for a directory), handed to _GREAD_PL from
+# -execdir, which never follows a link. Prints the count.
 _backup_read_here() {
   local _u _c _tot=0
-  local -a _ids=() _who=()
+  local -a _ids=() _who=() _grp=()
   IFS=, read -r -a _ids <<< "${2}"
   for _u in "${_ids[@]}"; do
     [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
     [ "${#_who[@]}" -gt 0 ] && _who+=( -o )
     _who+=( -uid "${_u}" )
   done
-  if [ "${#_who[@]}" -eq 0 ]; then
+  IFS=, read -r -a _ids <<< "${1}"
+  for _u in "${_ids[@]}"; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    [ "${#_grp[@]}" -gt 0 ] && _grp+=( -o )
+    _grp+=( -gid "${_u}" )
+  done
+  if [ "${#_who[@]}" -eq 0 ] || [ "${#_grp[@]}" -eq 0 ]; then
     echo 0
     return 0
   fi
   while read -r _c; do
     [[ "${_c}" =~ ^[0-9]+$ ]] && _tot=$(( _tot + _c ))
-  done < <(find . -mindepth 1 -gid "${1}" \( "${_who[@]}" \) \
+  done < <(find . -mindepth 1 \( "${_grp[@]}" \) \( "${_who[@]}" \) \
     \( \( -type d ! -perm -g+rx \) -o \( -type f ! -perm -g+r \) \) \
     -execdir perl -e "${_GREAD_PL}" "${1}" "${2}" {} + 2> /dev/null)
   echo "${_tot}"
 }
 
 # --backup-read: what a backup of the site needs to read, in its own files
-# and private stores (_store_dir), and nothing else. The web group and the
-# web users are the account's own, derived on the box, never taken from argv.
+# and private stores (_store_dir), and nothing else. The groups and the users
+# are the account's own, derived on the box, never taken from argv.
 _backup_read() {
-  local _acct _wg _gid _uids _d _what _c _tot=0
+  local _acct _wg _gid _own _self _uids _d _what _c _tot=0
   case "${site_path}/" in
     /data/disk/*/*)
       _acct="${site_path#/data/disk/}"
@@ -941,12 +948,21 @@ _backup_read() {
     printf "Error: no web group for %s; refusing.\n" "${site_path//[[:cntrl:]]/?}" >&2
     return 1
   fi
-  # The account's web users as BOA names its pools' users: <account>.web
-  # and <account>.<version>.web.
-  _uids=$(getent passwd | awk -F: -v a="${_acct}" \
-    '$1 == a ".web" || $1 ~ ("^" a "\\.[0-9]+\\.web$") { if ($3 ~ /^[1-9][0-9]*$/) { printf "%s%s", s, $3; s = "," } }')
+  # The account's own group too, when it has one of its own name: what a
+  # shell user moved in from elsewhere keeps that group. Never the shared
+  # users group, which every account's identities hold.
+  if [ "$(id -gn -- "${_acct}" 2> /dev/null)" = "${_acct}" ]; then
+    _own=$(id -g -- "${_acct}" 2> /dev/null)
+    [[ "${_own}" =~ ^[1-9][0-9]*$ ]] && _gid="${_gid},${_own}"
+  fi
+  # Every identity of the account but the backend user itself, which reads
+  # its own: its web users, its shell users, and the removed ones root
+  # recorded. Root's entries are not opened here.
+  _self=$(id -u -- "${_acct}" 2> /dev/null)
+  _uids=$(_acct_walk_uids "${_acct}" | tr ',' '\n' \
+    | grep -E '^[1-9][0-9]*$' | grep -v -x -- "${_self:-0}" | paste -s -d , -)
   if [ -z "${_uids}" ]; then
-    printf "Nothing to open: %s has no web users.\n" "${_acct}"
+    printf "Nothing to open: %s has no web or shell users.\n" "${_acct}"
     return 0
   fi
   for _what in files private; do
@@ -954,7 +970,7 @@ _backup_read() {
     _c=$(_in_pinned_dir "${_d}" _backup_read_here "${_gid}" "${_uids}") || continue
     [[ "${_c}" =~ ^[0-9]+$ ]] && _tot=$(( _tot + _c ))
   done
-  printf "Group read given to %s entries the web server wrote closed in %s.\n" "${_tot}" "${site_path//[[:cntrl:]]/?}"
+  printf "Group read given to %s entries the account's users wrote closed in %s.\n" "${_tot}" "${site_path//[[:cntrl:]]/?}"
   return 0
 }
 
