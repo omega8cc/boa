@@ -19,6 +19,12 @@
       (_THIS_DB_HOST=FQDN) also removes old backups of its password file
       that hold the root password, and says how many.
 
+    * A new install in REMOTE DB SERVER MODE needs the database server's
+      root password in /root/.my.pass.txt and stops without it: there is no
+      default any more, for a remote Valkey server neither. Existing setups
+      are left as they are; one still on the old default is told so, once
+      in each barracuda or octopus run.
+
 @=> New Features
 
     * Upgrade all sites, the platform task that upgrades every Drupal 10 or
