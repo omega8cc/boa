@@ -2,63 +2,87 @@ Hello,
 
 We are pleased to inform you that your Ægir instance has been successfully upgraded to [boa.version]
 
-This is the Phoenix release, named for its answer to 21 October: when PHP published a critical security release that day, the fixed versions were on your server the same day, PHP 7.4 to 8.1 among them, and PHP 5.6 to 7.3 followed the next evening, with nothing for you to do. The rest of the release follows the same idea: when something goes wrong with a site, BOA now notices, heals what it can and records the rest. Two things you may have seen already: your control panel now runs on a PHP version of its own, chosen by the server, and each of your Drupal 10 and 11 sites started once with a cold cache, as every copy of a site now has a cache of its own. Here is the tour.
+This is the Dragon release. Its main gift sits in your control panel: a site on Drupal 10 or later can now be moved onto a newer platform with one task that keeps the way back open, so trying a new core or a new set of modules no longer means risking the site you have. Around it, the release makes tasks start sooner, serves crawlers from the cache on more sites, and lets off-site backups run side by side. This month's security releases of PHP and Nginx are already on your server.
 
 ----------------------------------------
-PATCHED PHP, WHATEVER YOUR SITES RUN ON
+UPGRADE A SITE, KEEP THE WAY BACK
 ----------------------------------------
 
-Every PHP version on your server carries PHP's October security fix, from the current releases down to the versions PHP itself no longer maintains, which BOA now builds with this year's security backports. A site whose code cannot run on the PHP version it was given, an old Drupal 7 site on PHP 8 for instance, no longer answers with an error page: BOA moves it to the nearest PHP version that runs it and writes why into your account's PHP assignment file, where you can read it, and the server's administrator is told. If a script of yours keeps hitting PHP's time limit, a daily note in your account's control folder now names it, with the time, the script and the path, so a slow import or report no longer fails silently; nothing is stopped or changed. And a site whose scheduled cron keeps failing is reported to the server's administrator once a day, so a silent cron no longer goes unseen.
+Open a Drupal 10 or later site in the panel and you will find a new task, Upgrade. Pick a newer platform from the list and the task does two things in order: it makes a copy of the site exactly as it is, switched off and kept beside the original, and then it moves the site onto the platform you chose. If the database updates do not run to their end, or the site's home or login page no longer answers as it should, the move undoes itself and the site stays where it was. The list offers only platforms the site can really move up to, and Drupal 12 is not offered as a target yet. Each Drupal 10 or later site's page gains a line, Drupal updates, that says whether an upgrade is available and onto which platform, or why none is ready, and one line in the site's or the platform's control file limits which kinds of upgrade a site accepts. The task belongs to the account's main login; team members with the client or site operator role do not see it.
 
 ----------------------------------------
-NEW IN THE CATALOGUE: CIVICRM, DRUPAL 12, SHOPS ON GRAV
+WHAT CHANGES COMPARED WITH MIGRATE
 ----------------------------------------
 
-CiviCRM is a ready platform now, for Backdrop and for Drupal 11: add a site on one of them and the panel installs CiviCRM with it and carries it through Verify, Clone, Migrate and cron. Drupal 12, still in beta, joins the catalogue for instances running PHP 8.5 or 8.6, so you can try your code on the next Drupal early. And a Grav site can now be created with a MySQL database for a KahunaCart shop, with the panel looking after the database and the shop's worker. The two CiviCRM platforms and Drupal 12 are not built through ALL: add BDC, DEC or DT0 to the platforms.info file in your account's static/control folder (ALL BDC keeps everything else as well), create an empty run-upgrade.pid beside it, and your instance upgrade starts within a few minutes; a shop needs no symbol, only a Grav site. Drupal 11 with CiviCRM, Drupal 12 and a shop all need a server on Percona 8.4, and Drupal 12 your instance's command-line and web PHP at 8.5 or 8.6; on a server still on 5.7 the build skips them and its log says why, so ask your server's administrator. The README.txt in that folder explains it, and so does https://docs.boa.io/platforms. Like every ready-made Drupal 8 and newer platform, the CiviCRM and Drupal 12 ones are for demonstration and compatibility testing; a production site belongs on a platform of your own. For a site still on Drupal 8 or 9, the mirror now carries the last cores of both, so an upgrade from such a site can be rehearsed here first.
+Until now a site reached newer code through Migrate, and Migrate stays exactly where it is. For an upgrade, though, it left the safety in your hands. The way back was a clone you had to remember to make before the move. When Drupal's database updates stopped half-way, Migrate reported a warning and the site was already on the new platform. And returning to the old one meant taking the moved site out of the way, renaming your clone into its place and setting up cron, HTTPS and aliases on it again, because a Migrate back is refused once a module's database has moved up.
+
+Upgrade does all of that for you, and adds a check Migrate never had: it opens the home page and the login page before and after the move, and undoes the move when they no longer answer the same. It also lists only platforms that are a real step up for the site. Keep Migrate for what Upgrade does not do: sites on Drupal 9 or older and on Backdrop, renames, and any upgrade you want to rehearse on a clone first, since Upgrade has no test stage and works on the live site.
 
 ----------------------------------------
-A CACHE OF ITS OWN FOR EVERY COPY OF A SITE
+GO BACK, IF YOU NEED TO
 ----------------------------------------
 
-Each copy of a Drupal 10 or 11 site now has its own Valkey cache namespace, so a Migrate that keeps the site's name no longer disturbs the live site while its copy runs a newer core, and sites stay consistent through a cache outage: the first request after it clears what the cache served from before. A Drupal 10 or 11 site whose cache connection fails serves the page from the database instead of an error, and Drupal 8, 9 and 10 sites keep their queues in their own database again; work a site had queued in the cache before the upgrade is not carried over, so queue it again if it matters. Two gifts for the sites still on Drupal 6: they install and run on PHP 8.1 and later again, and their database updates run again.
+The copy an Upgrade kept is not just a backup file. A second new task, Go back, switches the upgraded site off, sets it aside under another name and puts the copy back under the site's own name, with its aliases, redirection and HTTPS setting. The site page shows how old the copy is and how much disk it takes, so you can decide when you no longer need it. If a Go back is interrupted, running it again finishes the job from where it stopped.
 
 ----------------------------------------
-RENAMES, ALIASES AND SITES IN A FOLDER
+SEE WHAT A SITE HAS PENDING
 ----------------------------------------
 
-A site renamed while its aliases redirected to it answers on its new name right away, a www or bare alias you added by hand moves with a rename like the automatic one, and the automatic companion is never taken when another of your sites holds it. A site's own name can no longer be its alias, and the sites in a folder of a domain keep their address through a Migrate and a Backdrop Cutover, while a folder site can no longer claim the domain it lives in.
+Check available updates is a third new task, and it changes nothing: it writes into its task log the known security problems of the code a site runs, for Drupal 6 and 7 as well as for Drupal 8 and later. It replaces the old health check, which had stopped doing anything useful, and it is the quick read before you plan an Upgrade.
 
 ----------------------------------------
-COPIES AND RESTORES THAT FINISH FORWARD
+A PHP VERSION THAT BELONGS TO THE PLATFORM
 ----------------------------------------
 
-A Restore whose last step fails after the site was replaced keeps the restored copy; a Migrate or rename whose last step fails after the old database was dropped finishes forward instead of rolling back onto an empty shell; a Clone or Migrate onto a name whose files were still there no longer links the new site to the old files; and a large site a Migrate, Clone or Restore loaded is measured before it serves, so its first visitors no longer wait on full table scans. Before a copy starts, the room check now covers the number of files it will make, not only their size, so a copy can no longer run the server out of files while the disk still shows free space.
+Until now a site took its web PHP version from the account, in fpm.info, or from a line of its own in multi-fpm.info. Both follow the site, never its code: when a platform needed a newer PHP, every site you moved onto it wanted a line of its own. A platform can now carry the version itself. Add one line to ~/static/control/fpm-per-platform.info, the platform's folder and the version:
+
+  d11-prod 8.4
+
+Every site on that platform is then served by PHP 8.4, and a site that arrives there through Upgrade, Migrate or Clone switches to it in the same step. A site with its own line in multi-fpm.info keeps it, so one site can still stay behind. The file is for the web only: drush, composer and your Ægir tasks keep their own setting in cli-per-platform.info. A change takes effect within a few minutes, and a line that cannot apply is named, with the reason, in a file beside yours. It needs an account that serves its sites on more than one PHP version; the guide is at https://docs.boa.io/using/tuning/php-version
 
 ----------------------------------------
-A PANEL THAT FITS YOUR PHONE AND MOVES FASTER
+SPEED BOOSTER FOR SHOPS, AND ONE COPY PER COUNTRY
 ----------------------------------------
 
-The lists you open most are quicker: the sites, the tasks and the platforms. The panel fits a phone now, with columns that stack and tables that scroll in place, pop-ups that fit every window width, long domains trimmed with the full name on hover, and every row's status readable by a screen reader. The Add site form offers every language Drupal core knows, Drupal CMS included; the Migrate form compares Drupal 8 and newer and Backdrop versions correctly, so a newer platform is no longer greyed out; a site operator login sees the Platforms page and each site's platform; and the panel spells its name Ægir throughout.
+Speed Booster, the cache in front of your sites, learned two things. A shop, or any site that starts a session for every visitor, could not have its pages stored, so every crawler request was rendered from scratch; crawlers that send no cookie now get such pages from the cache, and your visitors notice nothing but a calmer site. And a site that prices or words its pages by country can keep one cached copy per visitor country, where one country's page used to be all the cache could hold. The per-country copies are switched on per site by whoever runs the server: ask your host, and see https://docs.boa.io/using/caching/front-cache-and-page-cache
 
 ----------------------------------------
-FASTER, STEADIER PAGES FOR YOUR VISITORS
+DRUPAL 12 AND DRUSH 15 ARE EXPECTED
 ----------------------------------------
 
-The shield against crawler networks now also catches the fleets that send one request per address on a browser string over a year old: in a replay of two servers' logs it turned away over ten times as many of their requests, and a visitor on such a browser still gets through by following a link or logging in; brand and media monitoring crawlers are turned away like the SEO crawlers, more AI agents are told apart, and an AI ads checker can no longer use up every site's share on the server. A site whose pages carry large cookies or a long security header no longer gets a 502 through the server's HTTPS front, a plain-HTTP visitor to one of your aliases reaches the HTTPS site in one hop, old file addresses of an imported or renamed site keep answering, and a payment gateway's notifications are no longer taken for a flood.
+Drush 15 no longer brings its own launcher; it runs under the command Drupal core ships, dr. BOA is ready for that on both sides. In the panel, a site on a codebase with Drush 15 installs and takes its database updates like any other; a codebase with no Drush at all installs its sites too, but the panel skips their database updates and says so in the task log. In your shell, on Drupal 11.5 and newer, run dr --url=https://your-site.example status from the folder of the codebase that holds vendor, while the platform is unlocked. Drupal 12 platforms are built with Drush 15 from Drupal 12's first release.
 
 ----------------------------------------
-IN THE SHELL
+PHP 8.6 IN FULL
 ----------------------------------------
 
-The limited shell answers prompts again, so the first connection to a new host, a key passphrase or a git password are asked as they should be; tools you install with gem or npm run again; and PHP started inside a Composer run, as a Drupal CMS project or a CiviCRM platform build does, runs for every shell account, so building such a platform in your account no longer stops. vdrush, a platform's own Drush, now also works as a one-shot command from the platform root after Unlock Local Drush, so a deployment script or a coding agent can drive it; see https://docs.boa.io/using/drush/drush-basics.
+PHP 8.6 has left its release candidates behind: the final 8.6.0 is here with the Valkey cache, upload progress and YAML modules working on it, so PHP 8.5 or 8.6 are both real choices where your server offers them.
 
 ----------------------------------------
-BACKDROP, GRAV AND TEXTPATTERN
+TASKS THAT START SOONER AND SAY MORE
 ----------------------------------------
 
-Backdrop gets CiviCRM as a ready platform, and a Backdrop Cutover onto a site in a folder keeps that address. On a Grav site, Reset login now signs out every remembered browser and, on current plugins, every API token, the admin's script and style files are cached by browsers for a year, and a shop's public routes stay reachable behind the admin IP lock. A Grav or Textpattern rename, Clone or Upgrade onto a name whose earlier holder left a stale alias no longer inherits its aliases and keys.
+A task you queued no longer waits for minutes behind a site's cron run, and a task held back by another running task says so on its own page. Building a platform from the panel now stops at the first step that fails, cleans up after itself and names the folder it could not write, where it used to carry on and leave a half-built platform behind. The Add platform form refuses a path another platform already uses, the Migrate form no longer shows dozens of upgrades between two identical platforms, and every confirm screen describes its task.
 
-Curious about the details? The full story of this release is at https://docs.boa.io/releases/boa-5-88-877
+----------------------------------------
+FEWER SURPRISES
+----------------------------------------
+
+Background batch jobs that a Drupal site starts over HTTPS run to their end instead of stopping part way, a site renamed on its own platform answers at once under the new name, and a change you make with Drush no longer leaves the web pages on an old cached copy.
+
+----------------------------------------
+BACKUPS THAT RUN SIDE BY SIDE
+----------------------------------------
+
+If you keep your own off-site backups, they no longer stand in a queue behind the server's backup, two accounts' backups now run at the same time, and a restore you queue with mybackup starts as it should. Restoring the same folder a second time puts the new copy beside the first one, and a retention you set in days or weeks is honoured, where it used to fall back to three months.
+
+----------------------------------------
+WHEN A SERVER MOVES
+----------------------------------------
+
+Should your instance ever move to new hardware, the messages you receive now say where the control panel is afterwards, where SSH and SFTP logins connect, which bucket of your own off-site backups changes its name and which address your sites' outgoing requests come from. A login on the old server tells you where the account went, in case a saved connection still points there.
+
+Curious about the details? The full story of this release is at https://docs.boa.io/releases/boa-5-88-888
 
 ----------------------------------------
 YOU CAN ACCESS YOUR UPGRADED ÆGIR INSTANCE AT THE FOLLOWING URL
