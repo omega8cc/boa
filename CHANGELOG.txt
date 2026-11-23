@@ -11,6 +11,14 @@
     * websh reads the words in front of a Drush or dr runner after the
       shell's expansions too, as it reads those up to the command word.
 
+@=> New Features
+
+    * Upgrade all sites, the platform task that upgrades every Drupal 10 or
+      later site of a platform onto a newer one, one at a time and each as
+      its own Upgrade, is granted to the account's main login roles (admin,
+      aegir account manager), not to the client, site operator or platform
+      manager roles.
+
 @=> Important Fixes
 
     * A Backup or Clone of a Drupal or Backdrop site no longer fails on a file
