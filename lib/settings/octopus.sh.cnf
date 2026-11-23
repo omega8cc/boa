@@ -437,7 +437,9 @@ _THIS_DB_HOST=localhost
 ###
 ### _THIS_DB_HOST=remote.db.server.name
 ###
-_THIS_DB_HOST=localhost
+### Set it on the one _THIS_DB_HOST line,
+### under DATABASE DEFAULT HOST above.
+###
 
 
 ###----------------------------------------###

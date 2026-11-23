@@ -1332,6 +1332,60 @@
 
 @=> Important Fixes
 
+    * An account set to its box's own database host (_THIS_DB_HOST=FQDN)
+      installs again. Its setup turned the keyword into the box's name
+      before any step read it, so each step took the name for a remote
+      database server: no login of the account's own was made and the
+      control panel's install failed. The keyword now reaches every step,
+      which reads it as the box's own server: the account's own login with
+      a random password and the box's name as its database host, kept so
+      by each upgrade. An attempted install no longer leaves the database
+      root password in the account's password file; a file an earlier
+      attempt left is replaced, with an alert. The two settings templates
+      set _THIS_DB_HOST once, where DATABASE DEFAULT HOST documents it: a
+      second line further down set it back to localhost.
+
+    * In remote database mode the Master's database login (aegir_root)
+      takes a password only from /root/.my.pass.txt. Without the file, or
+      with it empty, the upgrade's database password sync changes nothing
+      for it (the login keeps the random password the upgrade gave it
+      just before) and an install stops before the login is made, each
+      with an alert. A fixed fallback was used without the file, and an
+      empty file gave the login an empty password its panel could not use.
+
+    * A site whose database was dumped from a MySQL 5.7 or MariaDB server
+      under an sql_mode naming NO_AUTO_CREATE_USER (MariaDB's default) or
+      another word MySQL 8.x no longer has loads on Percona 8.x: the fast
+      load's store and a classic dump's stored routines, triggers and
+      events lose those words just before the load, and a 5.7 or MariaDB
+      target loads the dump as it is. Its Migrate onto an 8.x box ended at
+      the load with ERROR 1231.
+
+    * A Verify or Backup of a site whose database lives on a MariaDB
+      server finds a login lock a killed load left there and gives it
+      back. The check read a column MariaDB does not have, so every such
+      task ended with a warning, and a login left locked stayed locked,
+      its site's backups failing.
+
+    * A Drupal 8 or newer site's temporary directory is written to
+      settings.php as an absolute path, as Drupal's own settings file asks
+      for it: the site's private/temp under the codebase's root, read when
+      the file runs. The relative value was right only while the working
+      directory was the Drupal root, so a code check started from elsewhere
+      (Upgrade Status's analysis) failed for every project. A site gets the
+      new line at its next Verify; Drupal 6, Drupal 7 and Backdrop sites
+      are unchanged.
+
+    * A new account has the fast dumps on from its install. BOA writes
+      MyQuick.info into every account once per release, so an account
+      made after its server took the release had none until the next
+      one, and its Delete and Migrate safety copies took the classic
+      dump meanwhile. The Octopus install now writes it, and
+      ClassicTrack.info, by the same rules. xoct, xmass and xcopy carry
+      the account's MyQuick.info both ways, so an account that left the
+      fast dumps (MyClassic.info) stays off them after a move, where the
+      target's install would have put it back on.
+
     * The nightly permission pass keeps core's dr executable, and in a
       tenant codebase (~/static) the site-local drush.php as well: it set
       every vendor file to 0644, or 0664 under ~/static, so on a platform
@@ -1466,6 +1520,9 @@
       a real module no longer takes its place (the panel recorded a test
       copy of canvas_translate on Drupal CMS). From Drupal 11.2 on the
       type is read from the parsed .info.yml, as Drupal 11.2 reads it.
+      Drupal 7 and Backdrop platforms also leave out a name that is no
+      PHP function name, as those cores do (Backdrop's own test file
+      basis.tests.info was recorded as a theme); Drupal 6 takes any name.
 
     * On Backdrop the panel records a module or theme that an install
       profile and the root folder both hold at the root folder's copy,
@@ -3869,6 +3926,10 @@
       reach, and is there for a tenant's own, client and site operator logins.
 
 @=> Changes
+
+    * New Drupal CMS platforms are built on 2.2.10, farmOS on 4.0.12, and
+      the CiviCRM platforms for Drupal 11 and Backdrop on CiviCRM 6.20.1;
+      the Grav fallback is 2.2.33. Existing platforms keep their sites.
 
     * A barracuda upgrade no longer sends Valkey a reload signal. Valkey has
       no reload: the signal only wrote a warning to its log and changed
