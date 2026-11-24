@@ -344,10 +344,17 @@ _action_kill_long_user_procs() {
     echo "DBG: Killing procs runtime>=${_KILL_MIN_RUNTIME}s for procs=${_KILL_PROCS}"
   fi
   IFS=',' read -r -a _PROCS_ARR <<< "${_KILL_PROCS}"
+  # procps 4.0.0 to 4.0.4 give a process that starts while ps reads the
+  # table an age of 4123168608 seconds; an age above the uptime is that
+  # misreading of a fresh process, never one to kill.
   for _process in "${_PROCS_ARR[@]}"; do
     ps -eo etimes,user,pid,comm --no-headers \
-      | awk -v p="${_process}" -v min="${_KILL_MIN_RUNTIME}" '$1>=min && $4==p {print $3}' \
-      | while read -r _pid; do
+      | awk -v p="${_process}" -v min="${_KILL_MIN_RUNTIME}" '$1>=min && $4==p {print $3, $1}' \
+      | while read -r _pid _age; do
+          read -r _upS _upR 2> /dev/null < /proc/uptime
+          _upS="${_upS%%.*}"
+          [[ "${_upS}" =~ ^[0-9]+$ ]] && [[ "${_age}" =~ ^[0-9]+$ ]] \
+            && [ "${_age}" -gt "${_upS}" ] && continue
           kill -TERM "${_pid}" 2>/dev/null || true
           sleep 2
           kill -KILL "${_pid}" 2>/dev/null || true

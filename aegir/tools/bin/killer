@@ -31,16 +31,26 @@ _licence_to_kill() {
   # Root's own runs only, each judged on its own: an account's process
   # titled like one is not apt, and a second matching line made the age
   # test fail and spared the hung run.
-  local _aptPid _aptTms
+  # The command reaches awk in its environment, never in its arguments:
+  # ps lists that awk too, and with the text in its argument list the
+  # filter matched its own process on every run.
+  # procps 4.0.0 to 4.0.4 give a process that starts while ps reads the
+  # table an age of 4123168608 seconds. No process is older than the
+  # system, so an age above the uptime is that misreading, not a hung run.
+  local _aptPid _aptTms _upTms _upRest
   while read -r _aptPid _aptTms; do
     [[ "${_aptPid}" =~ ^[0-9]+$ ]] && [[ "${_aptTms}" =~ ^[0-9]+$ ]] || continue
+    read -r _upTms _upRest 2> /dev/null < /proc/uptime
+    _upTms="${_upTms%%.*}"
+    [[ "${_upTms}" =~ ^[0-9]+$ ]] && [ "${_aptTms}" -gt "${_upTms}" ] && continue
     if [ "${_aptTms}" -gt "${_maxEtime}" ]; then
       mkdir -p /var/log/boa 2>/dev/null
       echo "REASON _aptTms for ${_killCmnd} was ${_aptTms} on $(date)" >> /var/log/boa/.proc.forced.kill.exceptions.log
-      kill -9 "${_aptPid}"
+      # the run may end between the listing and this kill
+      kill -9 "${_aptPid}" 2> /dev/null
     fi
   done < <(ps -eo ruid=,euid=,pid=,etimes=,args= 2> /dev/null \
-    | awk -v c="${_killCmnd}" '$1 == 0 && $2 == 0 { a = $0; sub(/^ *[0-9]+ +[0-9]+ +[0-9]+ +[0-9]+ /, "", a); if (index(a, c)) print $3, $4 }')
+    | _killCmnd="${_killCmnd}" awk '$1 == 0 && $2 == 0 { a = $0; sub(/^ *[0-9]+ +[0-9]+ +[0-9]+ +[0-9]+ /, "", a); if (index(a, ENVIRON["_killCmnd"])) print $3, $4 }')
 }
 
 # Remove auto-update file if it exists
