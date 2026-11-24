@@ -2123,6 +2123,19 @@ _boa_php_extra_word() {
   return 1
 }
 
+### Record the install command, for root alone: autoinit launches it after the
+### OS conversion, and while the install has no Ægir Master the clean-box hint
+### and barracuda up-* system read it. "started" marks an install run here,
+### which autoinit never launches.
+_install_record_put() {
+  ( umask 077
+    rm -f "${_BOA_LOGFILE}.new"
+    echo "${_BOA_COMMAND}" > "${_BOA_LOGFILE}.new"
+    [ "${1}" = "started" ] \
+      && echo "# started by boa on $(date)" >> "${_BOA_LOGFILE}.new"
+    mv -f "${_BOA_LOGFILE}.new" "${_BOA_LOGFILE}" )
+}
+
 _init_setup() {
 
   _check_install_args
@@ -2244,7 +2257,7 @@ _init_setup() {
 
     if [ ! -e "/root/.autoinit.log" ] || [ -e "/lib/systemd/systemd" ]; then
       # Write the command to the log file
-      echo "${_BOA_COMMAND}" > ${_BOA_LOGFILE}
+      _install_record_put
       # Explain the procedure
       echo
       echo "  Since this system is not ready for BOA installation yet,"
@@ -2379,6 +2392,16 @@ _init_setup() {
   fi
 
   _init_start
+
+  # An install run here, with no autoinit on the way, keeps the same record
+  # until its Ægir Master is installed.
+  if [ "${_cmNd}" = "in-dev" ] \
+    || [ "${_cmNd}" = "in-pro" ] \
+    || [ "${_cmNd}" = "in-lts" ]; then
+    [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
+      || _install_record_put started
+  fi
+
   _check_etc_apt_preferences
 
   export _tRee="${_tRee}"

@@ -119,6 +119,12 @@
       its whole value with the password in /root/.my.cnf: an empty file, or
       one holding only the beginning of that password, passed as in sync.
 
+    * The command of an install that stops before its Ægir Master stays in
+      /root/.boa.install.command.cnf: autoinit moved it away as soon as the
+      install it had launched returned, so boa did not say how to go on and
+      barracuda up-* system could not. An install on a box already on Devuan
+      is recorded too, and autoinit launches a recorded install once.
+
     * The report mails of octopus and boa were not sent in a shell with no
       UTF-8 locale when the log held a non-ASCII character, and the launcher
       said they were: they go out as UTF-8, as barracuda's do, a failed mail
