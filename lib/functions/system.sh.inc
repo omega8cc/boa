@@ -4923,7 +4923,7 @@ _barracuda_cnf() {
       while read line; do
         case "${line}" in
           _SMTP_RELAY_PASS=|_SMTP_RELAY_PASS=\"\"|_SMTP_RELAY_PASS=\'\') echo "$line" ;;
-          _SMTP_RELAY_PASS=*) echo "_SMTP_RELAY_PASS=***" ;;
+          *_SMTP_RELAY_PASS=*) echo "_SMTP_RELAY_PASS=***" ;;
           *) echo "$line" ;;
         esac
       done < ${_barCnf}
@@ -12809,10 +12809,13 @@ _smtp_postconf_set() {
 ### The relay from _SMTP_RELAY_HOST: host, host:port, [host] or [host]:port
 ### (brackets skip the MX lookup, as a relay on port 587 or 465 needs). Set
 ### with postconf, so one relay replaces another and nothing else in main.cf
-### is touched. With _SMTP_RELAY_USER and _SMTP_RELAY_PASS also set, the
-### relay gets a login (SASL over TLS, as Amazon SES and other authenticated
+### is touched. A bare host there, the only form the setting took before,
+### keeps a relay on that same host already set by hand in brackets or with
+### a port. With _SMTP_RELAY_USER and _SMTP_RELAY_PASS also set, the relay
+### gets a login (SASL over TLS, as Amazon SES and other authenticated
 ### relays need; port 465 uses TLS from the first byte). Without them BOA
 ### turns off only a login it wrote itself, never one configured by hand.
+### Settings it cannot use change nothing at all.
 ###
 _smtp_relay_apply() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -12823,7 +12826,7 @@ _smtp_relay_apply() {
   # which differs between Postfix builds.
   local _smtpAuthFile="/etc/postfix/boa_relay_sasl"
   local _rlyRe='^(\[[a-z0-9.-]+\]|[a-z0-9.-]+)(:[0-9]{1,5})?$'
-  local _reload=NO _line _wrap=no _rly
+  local _reload=NO _line _wrap=no _rly _cur _login=NO
   [ -e "/etc/postfix/main.cf" ] || return 0
   command -v postconf > /dev/null 2>&1 || return 0
   # Cleaned here too: an upgrade pass reads the box's cnf after the early
@@ -12835,37 +12838,55 @@ _smtp_relay_apply() {
     _msg "WARN: Postfix relay left as it is"
     return 0
   fi
-  _smtp_postconf_set relayhost "${_rly}" && _reload=YES
+  # A login that cannot be written is refused before the relay is touched:
+  # a new relay with the old relay's login would send without one.
   if [ -n "${_SMTP_RELAY_USER}" ] && [ -n "${_SMTP_RELAY_PASS}" ]; then
     if [[ "${_SMTP_RELAY_USER}${_SMTP_RELAY_PASS}" =~ [[:space:]] ]] \
       || [[ "${_SMTP_RELAY_USER}" =~ : ]]; then
       _msg "WARN: _SMTP_RELAY_USER or _SMTP_RELAY_PASS holds a blank, or the user a colon"
-      _msg "WARN: Postfix relay login left as it is"
-    else
-      # PLAIN and LOGIN for the Postfix SMTP client come from this package
-      if ! _pkg_installed "libsasl2-modules"; then
-        _mrun "${_INSTAPP} libsasl2-modules"
-      fi
-      _line="${_rly} ${_SMTP_RELAY_USER}:${_SMTP_RELAY_PASS}"
-      if [ "$(cat "${_smtpAuthFile}" 2>/dev/null)" != "${_line}" ] \
-        || [ -L "${_smtpAuthFile}" ] \
-        || [ "$(stat -c '%u:%a' "${_smtpAuthFile}" 2>/dev/null)" != "0:600" ]; then
-        # written beside and moved over: Postfix never finds no file
-        rm -f "${_smtpAuthFile}.tmp"
-        ( umask 077; printf '%s\n' "${_line}" > "${_smtpAuthFile}.tmp" )
-        chown root:root "${_smtpAuthFile}.tmp"
-        chmod 600 "${_smtpAuthFile}.tmp"
-        mv -f "${_smtpAuthFile}.tmp" "${_smtpAuthFile}"
-        _reload=YES
-      fi
-      [[ "${_rly}" =~ :465$ ]] && _wrap=yes
-      _smtp_postconf_set smtp_sasl_auth_enable yes && _reload=YES
-      _smtp_postconf_set smtp_sasl_password_maps "texthash:${_smtpAuthFile}" && _reload=YES
-      _smtp_postconf_set smtp_sasl_security_options noanonymous && _reload=YES
-      _smtp_postconf_set smtp_sasl_tls_security_options noanonymous && _reload=YES
-      _smtp_postconf_set smtp_tls_security_level encrypt && _reload=YES
-      _smtp_postconf_set smtp_tls_wrappermode "${_wrap}" && _reload=YES
+      _msg "WARN: Postfix relay and its login left as they are"
+      return 0
     fi
+    _login=YES
+  fi
+  # A bare host keeps that host's [host], [host]:port or host:port set by
+  # hand: its login, also set by hand, is keyed by that exact form.
+  _cur="$(postconf -h relayhost 2>/dev/null | tr 'A-Z' 'a-z')"
+  if [[ "${_rly}" =~ ^[a-z0-9.-]+$ ]]; then
+    case "${_cur}" in
+      "[${_rly}]"|"[${_rly}]":*|"${_rly}":*)
+        [[ "${_cur}" =~ ${_rlyRe} ]] && _rly="${_cur}"
+        ;;
+    esac
+  fi
+  if [ "${_cur}" != "${_rly}" ]; then
+    postconf -e "relayhost = ${_rly}" &> /dev/null
+    _reload=YES
+  fi
+  if [ "${_login}" = "YES" ]; then
+    # PLAIN and LOGIN for the Postfix SMTP client come from this package
+    if ! _pkg_installed "libsasl2-modules"; then
+      _mrun "${_INSTAPP} libsasl2-modules"
+    fi
+    _line="${_rly} ${_SMTP_RELAY_USER}:${_SMTP_RELAY_PASS}"
+    if [ "$(cat "${_smtpAuthFile}" 2>/dev/null)" != "${_line}" ] \
+      || [ -L "${_smtpAuthFile}" ] \
+      || [ "$(stat -c '%u:%a' "${_smtpAuthFile}" 2>/dev/null)" != "0:600" ]; then
+      # written beside and moved over: Postfix never finds no file
+      rm -f "${_smtpAuthFile}.tmp"
+      ( umask 077; printf '%s\n' "${_line}" > "${_smtpAuthFile}.tmp" )
+      chown root:root "${_smtpAuthFile}.tmp"
+      chmod 600 "${_smtpAuthFile}.tmp"
+      mv -f "${_smtpAuthFile}.tmp" "${_smtpAuthFile}"
+      _reload=YES
+    fi
+    [[ "${_rly}" =~ :465$ ]] && _wrap=yes
+    _smtp_postconf_set smtp_sasl_auth_enable yes && _reload=YES
+    _smtp_postconf_set smtp_sasl_password_maps "texthash:${_smtpAuthFile}" && _reload=YES
+    _smtp_postconf_set smtp_sasl_security_options noanonymous && _reload=YES
+    _smtp_postconf_set smtp_sasl_tls_security_options noanonymous && _reload=YES
+    _smtp_postconf_set smtp_tls_security_level encrypt && _reload=YES
+    _smtp_postconf_set smtp_tls_wrappermode "${_wrap}" && _reload=YES
   else
     _smtp_relay_auth_off && _reload=YES
   fi

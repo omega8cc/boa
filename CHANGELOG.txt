@@ -68,9 +68,14 @@
 @=> Important Fixes
 
     * _SMTP_RELAY_HOST takes [host]:port, as a relay on port 587 or 465
-      needs. An upgrade wrote such a relay into Postfix again in front of
-      the one already there, and a changed relay in front of the old one,
-      either of which stopped outgoing mail; now one relay replaces another.
+      needs, and one relay replaces another. An upgrade used to write such
+      a relay into Postfix again beside the one already there, and a
+      changed relay beside the old one.
+
+    * A relay set by hand in Postfix as [host]:port keeps that form through
+      an upgrade while _SMTP_RELAY_HOST names the same host alone. An
+      upgrade used to put the bare host in front of it, so mail left for
+      port 25 without the login set up for the hand-made form.
 
     * A Delete, Migrate, Restore or forced reinstall keeps a database, and
       its login, that another site names as its own, and ends with a
