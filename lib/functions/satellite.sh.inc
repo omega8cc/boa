@@ -3279,6 +3279,8 @@ _satellite_o_contrib_seven_update_global() {
     elif [ -e "${i}/o_contrib_seven" ] \
       && [ ! -L "${i}/o_contrib_seven/redis_edge" ]; then
       _FORCE_UP_SEVEN=YES
+    elif [ -d "${i}/o_contrib_seven/adminer" ]; then
+      _FORCE_UP_SEVEN=YES
     else
       _FORCE_UP_SEVEN=NO
     fi
