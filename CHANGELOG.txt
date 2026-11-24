@@ -116,6 +116,12 @@
       said they were: they go out as UTF-8, as barracuda's do, a failed mail
       is reported, and the mail about pruned archived stores goes out too.
 
+    * A first install in REMOTE DB SERVER MODE that stops because MySQL is
+      not running here keeps the operator's /root/.my.pass.txt, and one that
+      finds the file empty stops at once and leaves it as it is. The settings
+      files say which database users to create on the remote server, in place
+      of a control file no code ever read.
+
 ###
 ### Stable BOA-5.88.888 PRO/LTS - DRAGON EDITION
 ### Date: Mon 23 Nov 2026 13:32:57 CET in Warsaw
