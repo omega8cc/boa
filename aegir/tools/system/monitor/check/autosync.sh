@@ -159,6 +159,20 @@ _normalize_incident_report() {
 }
 _normalize_incident_report
 
+# Standard input with every valid UTF-8 letter, tab and line end as it is and
+# each other byte written as \xNN: s-nail takes no mail with a byte that is
+# not UTF-8, whatever the locale, and one such byte in the log would keep every
+# mail of its last lines from going out. The names of an account's links are
+# its own text.
+_MAIL_SHOWN_PL='binmode(STDIN); binmode(STDOUT); while (defined(my $l = <STDIN>)) { $l =~ s/((?:[\t\n\x20-\x7e]++|\xc2[\xa0-\xbf]|[\xc3-\xdf][\x80-\xbf]|\xe0[\xa0-\xbf][\x80-\xbf]|[\xe1-\xec\xee\xef][\x80-\xbf]{2}|\xed[\x80-\x9f][\x80-\xbf]|\xf0[\x90-\xbf][\x80-\xbf]{2}|[\xf1-\xf3][\x80-\xbf]{3}|\xf4[\x80-\x8f][\x80-\xbf]{2})++)|(.)/defined($1) ? $1 : sprintf("\\x%02x", ord($2))/ges; print $l or exit 1 } close(STDOUT) or exit 1; exit 0'
+_mail_shown() {
+  if command -v perl > /dev/null 2>&1; then
+    perl -e "${_MAIL_SHOWN_PL}"
+  else
+    cat
+  fi
+}
+
 _incident_email_report() {
   # A failed pass means the mirror's files are ageing while its database
   # stays current — the default reporting level hears about that (MINI).
@@ -191,7 +205,7 @@ _incident_email_report() {
   fi
   _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
   echo "Sending Incident Report Email on $(date)" >> ${_pthOml}
-  s-nail -s "Incident Report: ${_subject}${_sfx} on ${_hName} at $(date)" ${_MY_EMAIL} < <(tail -n 200 "${_pthOml}")
+  s-nail -s "Incident Report: ${_subject}${_sfx} on ${_hName} at $(date)" ${_MY_EMAIL} < <(tail -n 200 "${_pthOml}" | _mail_shown)
 }
 
 # Once-a-day WARN classes, so a persistent anomaly cannot flood the incident

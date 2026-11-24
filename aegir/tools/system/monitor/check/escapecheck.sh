@@ -9,7 +9,8 @@
 # Each line is logged and mailed once, though the runs of one minute all read
 # it; a refusal of a plain command and a forbidden /dev/null stay in the lshell
 # logs only; lock.inc's ratelimit holds mails back, and a held line goes out
-# with the next mail.
+# with the next mail. A line is the login's own text: the mail shows a byte
+# that is no letter as \xNN, so no line can keep the mail from going out.
 #
 # Improvements over the Perl original:
 #   - Accepts current AND previous minute (closes cron timing race window)
@@ -132,8 +133,15 @@ _line_is_recent() {
 # back and keeps those lines for the next one, so each line is mailed once,
 # and held lines go out once the hold ends, new lines or not. With no address
 # or no usable s-nail the lines are dropped from the queue; the debug log
-# keeps every line in any case.
+# keeps every line in any case, and says when a mail was not taken.
 # -----------------------------------------------------------------------------
+
+# Standard input with every valid UTF-8 letter, tab and line end as it is and
+# each other byte, a control character's included, written as \xNN (the form
+# lshell's own log has for a control character): s-nail takes no mail with a
+# byte that is not UTF-8, whatever the locale, and no alert hands a terminal
+# an escape sequence.
+_MAIL_SHOWN_PL='binmode(STDIN); binmode(STDOUT); while (defined(my $l = <STDIN>)) { $l =~ s/((?:[\t\n\x20-\x7e]++|\xc2[\xa0-\xbf]|[\xc3-\xdf][\x80-\xbf]|\xe0[\xa0-\xbf][\x80-\xbf]|[\xe1-\xec\xee\xef][\x80-\xbf]{2}|\xed[\x80-\x9f][\x80-\xbf]|\xf0[\x90-\xbf][\x80-\xbf]{2}|[\xf1-\xf3][\x80-\xbf]{3}|\xf4[\x80-\x8f][\x80-\xbf]{2})++)|(.)/defined($1) ? $1 : sprintf("\\x%02x", ord($2))/ges; print $l or exit 1 } close(STDOUT) or exit 1; exit 0'
 
 _read_email() {
   local _line _val
@@ -174,15 +182,27 @@ _send_alert() {
     _incident_email_ratelimit "shell-escape" ${_COOL:+"${_COOL}"} || return 0
   fi
 
-  local _count _dropped _more=""
+  local _count _dropped _more="" _body="${_LOGFILE}.mail" _rc
   _count=$(grep -c '' "${_LOGFILE}")
   _dropped=$(tr -dc '0-9' 2> /dev/null < "${_DROPPED_FILE}")
   (( ${_dropped:-0} > 0 )) && _more=", ${_dropped} more in ${_DEBUG_LOG}"
-  if s-nail -s "Shell Escape Alert [${_SERVER}] ${_count} new line(s) at ${_NOW_IS}${_more}" \
-           "${_EMAIL}" \
-           < "${_LOGFILE}"; then
+  # The queue itself where its text cannot be made: an empty body must never
+  # pass for the lines.
+  perl -e "${_MAIL_SHOWN_PL}" 2> /dev/null < "${_LOGFILE}" > "${_body}" \
+    && [[ -s "${_body}" ]] || _body="${_LOGFILE}"
+  # The character set is named, so a letter needs no locale and no setting of
+  # s-nail's own.
+  s-nail -s "Shell Escape Alert [${_SERVER}] ${_count} new line(s) at ${_NOW_IS}${_more}" \
+         -S ttycharset=utf-8 -S sendcharsets=utf-8 \
+         "${_EMAIL}" \
+         < "${_body}"
+  _rc=$?
+  rm -f "${_LOGFILE}.mail"
+  if (( _rc == 0 )); then
     : > "${_LOGFILE}"
     rm -f "${_DROPPED_FILE}"
+  else
+    echo "[${_NOW_IS}]:[${_NOW_IS}]:[ALERT NOT MAILED: s-nail ended with status ${_rc}; its ${_count} line(s) wait for the next mail]" >> "${_DEBUG_LOG}"
   fi
 }
 
@@ -283,13 +303,24 @@ _is_routine() {
   [[ -z "${_after}" ]] || _is_plain_line "${_typed}"
 }
 
+# $1 as it is queued, in _QTEXT: cut to _QUEUE_LINE_MAX characters, the
+# control ones as spaces (a carriage return would let the text pose as another
+# line, owner and log in the mail). Cut first: a substitution over the whole
+# line of a login's making takes minutes on a long one. Under a UTF-8 locale,
+# since cron may give none: where bytes are counted the cut can halve a letter.
+_queue_text() {
+  local LC_ALL=C.UTF-8
+  _QTEXT="${1:0:${_QUEUE_LINE_MAX}}"
+  _QTEXT="${_QTEXT//[[:cntrl:]]/ }"
+}
+
 _makeactions() {
   mkdir -p "${_BOA_LOG_DIR}"
   umask 077
 
   _set_timestamps
 
-  local _status="CLEAN" _raw _seen_line _logname _owner _qline
+  local _status="CLEAN" _raw _seen_line _logname _owner _QTEXT
   local -A _SEEN=() _NEXT=()
 
   # A run that finds no record (the first one, or the first after a reboot
@@ -363,12 +394,8 @@ _makeactions() {
     # is the login's own, the log's name and owner are not.
     _logname="${_raw%%.log:*}"
     _logname="${_logname##*/}.log"
-    # A control character (a carriage return) would let the text pose as
-    # another line, owner and log in the mail. Cut first: a substitution over
-    # the whole line of a login's making takes minutes on a long one.
-    _qline="${_line:0:${_QUEUE_LINE_MAX}}"
-    _qline="${_qline//[[:cntrl:]]/ }"
-    echo "[${_owner//[^0-9]/}] ${_logname}: ${_qline}" >> "${_LOGFILE}"
+    _queue_text "${_line}"
+    echo "[${_owner//[^0-9]/}] ${_logname}: ${_QTEXT}" >> "${_LOGFILE}"
     echo "[${_NOW_IS}]:[${_NOW_IS}]:[${_line}]" >> "${_DEBUG_LOG}"
 
   # The logs are read by _LSH_FORBIDDEN_PL: the directory is writable by every
