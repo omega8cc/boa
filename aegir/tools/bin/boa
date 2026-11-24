@@ -1319,9 +1319,14 @@ _send_report() {
     _repSub="REPORT: ${_repSub} on ${_hName}"
     _repSub=$(echo -n ${_repSub} | fmt -su -w 2500 2>&1)
     _if_extended_report
-    cat ${_THIS_LOG} | _mail_mask_dbpass \
-      | s-nail -s "${_repSub} at ${_NOW}${_MAIL_HOLD_SFX}" ${_MAIL_HOLD_RCPT}
-    echo "${_repSub} sent to ${_MAIL_HOLD_RCPT}"
+    # Cron gives no locale, and s-nail then refuses a non-ASCII body.
+    if cat ${_THIS_LOG} | _mail_mask_dbpass \
+      | s-nail -S ttycharset=utf-8 -S sendcharsets=utf-8 \
+        -s "${_repSub} at ${_NOW}${_MAIL_HOLD_SFX}" ${_MAIL_HOLD_RCPT}; then
+      echo "${_repSub} sent to ${_MAIL_HOLD_RCPT}"
+    else
+      echo "${_repSub} could not be sent to ${_MAIL_HOLD_RCPT}"
+    fi
   fi
 }
 
@@ -1370,9 +1375,13 @@ _send_errors() {
     _repSub="REPORT: ${_repSub} on ${_hName}"
     _repSub=$(echo -n ${_repSub} | fmt -su -w 2500 2>&1)
     _if_extended_report
-    cat ${_THIS_LOG} | _mail_mask_dbpass \
-      | s-nail -s "${_repSub} at ${_NOW}${_MAIL_HOLD_SFX}" ${_MAIL_HOLD_RCPT}
-    echo "${_repSub} sent to ${_MAIL_HOLD_RCPT}"
+    if cat ${_THIS_LOG} | _mail_mask_dbpass \
+      | s-nail -S ttycharset=utf-8 -S sendcharsets=utf-8 \
+        -s "${_repSub} at ${_NOW}${_MAIL_HOLD_SFX}" ${_MAIL_HOLD_RCPT}; then
+      echo "${_repSub} sent to ${_MAIL_HOLD_RCPT}"
+    else
+      echo "${_repSub} could not be sent to ${_MAIL_HOLD_RCPT}"
+    fi
   fi
 }
 
@@ -5507,7 +5516,8 @@ _archived_heal() {
       [ -n "${_hn}" ] || _hn="$(hostname -f 2> /dev/null)"
       printf '%s\n%s\n\nThe archived site stores below (static/files/.archived, a deleted or\nrenamed site'"'"'s last copy) were removed because the filesystem holding them\nwas used above %s%%, its space or its inodes -- the automatic heal that keeps\na clone, a migrate or a backup from filling the disk. Tune the threshold in\n/data/conf/archived_heal_threshold.cnf (50..99) or disable the heal with\n/data/conf/disable_archived_heal.cnf; see /var/log/boa/archived-heal.log.\n' \
         "${_report}" "${_line}" "${_t}" \
-        | s-nail -s "Archived site stores pruned on ${_hn}: disk above ${_t}% used (space or inodes)" "${_MY_EMAIL}" &> /dev/null
+        | s-nail -S ttycharset=utf-8 -S sendcharsets=utf-8 \
+          -s "Archived site stores pruned on ${_hn}: disk above ${_t}% used (space or inodes)" "${_MY_EMAIL}" &> /dev/null
     fi
   fi
   rm -f "${_lock}"

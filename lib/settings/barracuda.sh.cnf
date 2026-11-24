@@ -656,34 +656,44 @@ _THIS_DB_HOST=localhost
 ### the special REMOTE DB SERVER MODE.
 ###
 ### This mode will work only if the remote DB
-### server has been already configured with
-### the same default dummy mysql root password
-### as your Ægir system you are about to
-### install, and if the mysql port 3306 is
-### already open for incoming and outgoing
-### TCP connections on all servers expected
-### to communicate in this mode.
+### server has been already configured, as
+### explained below, and if the mysql port
+### 3306 is already open for incoming and
+### outgoing TCP connections on all servers
+### expected to communicate in this mode.
 ###
 ### HINT: you may want to add WEB head (Ægir)
 ### IP as allowed on the DB head with standard
 ### command: 'csf -a 12.34.56.789 my web head'
 ###
-### Note that if the remote DB server defined
-### as hostname with a valid DNS entry will be
-### used, BOA will never change mysql root
-### password and also on initial install will
-### use this dummy password:
+### Before you install BOA in this mode, put
+### the mysql root password of that DB server
+### in this file:
 ###
-###   sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
+###   /root/.my.pass.txt
 ###
-### The same password will be used for the
-### Ægir special DB user 'aegir_root'.
+### BOA has no default for it and will stop
+### the install without this file. It will
+### set the same password for the mysql root
+### on the local DB server, and will create
+### /root/.my.cnf from it, so don't create
+### that other file on a new system.
 ###
-### Furthermore, BOA will not create separate
-### special DB users per Octopus instance
-### and all instances will use the same
-### 'aegir_root' DB user to manage databases
-### for hosted sites.
+### BOA will never change the mysql root
+### password on the remote DB server.
+###
+### The Ægir special DB user 'aegir_root' must
+### exist on the DB head, with the same
+### password, all privileges and the right to
+### grant them, and must be allowed to connect
+### from the WEB head. All Octopus instances
+### use it to manage databases for hosted
+### sites.
+###
+### Allow also 'root' to connect from the WEB
+### head, so that BOA can manage DB users of
+### the Octopus instances on the DB head when
+### they are upgraded.
 ###
 ### You can later change this password for
 ### both mysql 'root' and 'aegir_root' users
