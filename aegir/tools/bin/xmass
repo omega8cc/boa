@@ -7237,16 +7237,19 @@ _xmass_blg_mail() {
     done
     [ -n "${_cc}" ] && _ccw=(-c "${_cc}")
   fi
-  {
+  if {
     cat
     echo
     echo "Every run's line: /var/log/boa/xmass.binlog.guard.log"
     echo
     echo "--"
     echo "This email has been sent by the binary log guard of xmass"
-  } | s-nail "${_ccw[@]}" -s "${_sub}" ${_to}
-  echo "$(date +%s) ${_kind} ${_pct}" > "${_XMASS_BLG_MAILED}" 2> /dev/null
-  echo "binlog-guard: mailed ${_to}${_cc:+, copy to ${_cc}}: ${_sub}"
+  } | s-nail "${_ccw[@]}" -s "${_sub}" ${_to}; then
+    echo "$(date +%s) ${_kind} ${_pct}" > "${_XMASS_BLG_MAILED}" 2> /dev/null
+    echo "binlog-guard: mailed ${_to}${_cc:+, copy to ${_cc}}: ${_sub}"
+  else
+    echo "binlog-guard: could not be mailed to ${_to}${_cc:+, copy to ${_cc}}: ${_sub}"
+  fi
   return 0
 }
 
