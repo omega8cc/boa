@@ -40,6 +40,10 @@
       upgrade. A copy in the site's or the platform's own sites folder is
       not touched.
 
+    * The Shell Escape Alert and the incident mails of the system and
+      autosync monitors go out whatever bytes their lines hold: one that is
+      not UTF-8, or a control character, is shown as \xNN.
+
 @=> New Features
 
     * Upgrade all sites, the platform task that upgrades every Drupal 10 or
@@ -114,6 +118,11 @@
       a newer one included; see /var/log/boa/panel-upgrade-targets.log. Not on
       a standby, nor during an install or an upgrade.
 
+    * The Packages page of a site or a platform, and the version the panel
+      shows for a Grav site, no longer take package rows of another record
+      that carries the same number (an install profile's packages are kept
+      under a number of their own).
+
     * The Upgrade and Upgrade all sites dialogs no longer call a site Ready
       whose upgrade would be refused over what an earlier one left: a copy
       from a run cut off in its move, one the next run cannot remove, or a
@@ -176,6 +185,18 @@
       sends them all as UTF-8; a report mail whose log holds bytes that are
       not UTF-8 goes out without them, and a notice that could not be sent
       is no longer called sent.
+
+    * The per-minute kill of a hung apt-get update no longer finds its own
+      process (#1954). On Devuan Daedalus, whose procps sometimes gives a
+      process that starts while ps reads the process table an age of
+      4123168608 seconds, it took itself for a hung run several times a day,
+      and cron mailed root a kill that failed. It now takes only apt-get and
+      apt themselves, by the program's name with update among its words: a
+      shell wrapped around a run is no longer killed, and options before
+      update no longer hide one. It reads a run's age from the kernel's start
+      times, not from ps, which in a container that shows its own uptime is
+      off by the time the host ran before it. The incident snapshot's thread
+      list prints such a misread age as ?.
 
 ###
 ### Stable BOA-5.88.888 PRO/LTS - DRAGON EDITION

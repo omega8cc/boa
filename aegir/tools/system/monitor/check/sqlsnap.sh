@@ -201,10 +201,13 @@ _sql_to() {
 
 {
   # Every thread running or in uninterruptible wait, then mysqld's threads
-  # by state and kernel wait, then PHP-FPM children per pool.
+  # by state and kernel wait, then PHP-FPM children per pool. procps 4.0.0
+  # to 4.0.4 give a thread that starts while ps reads the table an age of
+  # 4123168608 seconds: an age above the uptime prints as ?, as top shows it.
   echo "### threads in R or D state: state pid tid elapsed_s wchan comm args"
   timeout -k 2 10 ps -eLo state=,pid=,tid=,etimes=,wchan:32=,comm=,args= 2>/dev/null \
-    | awk '$1 ~ /^[RD]/' | head -n 2000
+    | awk 'function up(  l, f) { l = ""; getline l < "/proc/uptime"; close("/proc/uptime"); split(l, f, " "); return int(f[1]) }
+      $1 ~ /^[RD]/ { if ($4 + 0 > u + 0) u = up(); if (u > 0 && $4 + 0 > u) $4 = "?"; print }' | head -n 2000
   _MY_PID="$(timeout -k 1 3 pgrep -xo mysqld 2>/dev/null)"
   if [ -n "${_MY_PID}" ]; then
     echo
