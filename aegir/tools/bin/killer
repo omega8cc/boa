@@ -19,28 +19,56 @@ _check_root
 _maxEtime="300"
 _cmndsList="apt-get apt"
 
+# The clock tick a process started at, counted from boot: field 22 of its
+# stat line, read after the name, which may hold spaces or parentheses.
+_start_ticks() {
+  local _s="" _f=()
+  read -r _s 2> /dev/null < "/proc/${1}/stat" || return 1
+  read -r -a _f 2> /dev/null <<< "${_s##*) }"
+  [[ "${_f[19]}" =~ ^[0-9]+$ ]] || return 1
+  echo "${_f[19]}"
+}
+
 # Function to kill long-running commands
 _licence_to_kill() {
   if [[ "${1}" =~ "apt-get" ]]; then
+    _killBin="apt-get"
     _killCmnd="apt-get update"
     _maxEtime="99"
   elif [[ "${1}" =~ "apt" ]]; then
+    _killBin="apt"
     _killCmnd="apt update"
     _maxEtime="99"
   fi
   # Root's own runs only, each judged on its own: an account's process
   # titled like one is not apt, and a second matching line made the age
   # test fail and spared the hung run.
-  local _aptPid _aptTms
-  while read -r _aptPid _aptTms; do
-    [[ "${_aptPid}" =~ ^[0-9]+$ ]] && [[ "${_aptTms}" =~ ^[0-9]+$ ]] || continue
+  # A run is apt-get (or apt) itself, by the name it was run as, with
+  # update among its words, options before it or not. A line that only
+  # holds the text is never one: a shell or other command wrapped around a
+  # run, and this script's own awk, which with the text in its arguments
+  # matched itself on every run. The name reaches awk in its environment.
+  # A run's age is how long before this script it started, from the two
+  # start ticks, never ps's own figure: procps 4.0.0 to 4.0.4 give a process
+  # that starts while ps reads the table an age of 4123168608 seconds, and in
+  # a container that shows its own uptime every ps age is off by the time
+  # the host ran before it.
+  local _aptPid _aptTms _aptT _selfT _hz
+  _hz=$(getconf CLK_TCK 2> /dev/null)
+  [[ "${_hz}" =~ ^[1-9][0-9]*$ ]] || _hz=100
+  _selfT=$(_start_ticks "$$") || return 0
+  while read -r _aptPid; do
+    [[ "${_aptPid}" =~ ^[0-9]+$ ]] || continue
+    _aptT=$(_start_ticks "${_aptPid}") || continue
+    _aptTms=$(( (_selfT - _aptT) / _hz ))
     if [ "${_aptTms}" -gt "${_maxEtime}" ]; then
       mkdir -p /var/log/boa 2>/dev/null
       echo "REASON _aptTms for ${_killCmnd} was ${_aptTms} on $(date)" >> /var/log/boa/.proc.forced.kill.exceptions.log
-      kill -9 "${_aptPid}"
+      # the run may end between the listing and this kill
+      kill -9 "${_aptPid}" 2> /dev/null
     fi
-  done < <(ps -eo ruid=,euid=,pid=,etimes=,args= 2> /dev/null \
-    | awk -v c="${_killCmnd}" '$1 == 0 && $2 == 0 { a = $0; sub(/^ *[0-9]+ +[0-9]+ +[0-9]+ +[0-9]+ /, "", a); if (index(a, c)) print $3, $4 }')
+  done < <(ps -eo ruid=,euid=,pid=,args= 2> /dev/null \
+    | _killBin="${_killBin}" awk '$1 == 0 && $2 == 0 { b = $4; sub(/.*\//, "", b); if (b != ENVIRON["_killBin"]) next; for (i = 5; i <= NF; i++) if ($i == "update") { print $3; next } }')
 }
 
 # Remove auto-update file if it exists
