@@ -72,10 +72,12 @@
       a relay into Postfix again beside the one already there, and a
       changed relay beside the old one.
 
-    * A relay set by hand in Postfix as [host]:port keeps that form through
-      an upgrade while _SMTP_RELAY_HOST names the same host alone. An
-      upgrade used to put the bare host in front of it, so mail left for
-      port 25 without the login set up for the hand-made form.
+    * An upgrade says so, in two WARN lines, when the host _SMTP_RELAY_HOST
+      names alone replaces a relay set by hand in Postfix as [host]:port:
+      mail then leaves for port 25, without the login set up for that
+      form. It used to put the bare host in front of such a relay, with the
+      same effect and no word. Write the brackets and the port in the
+      setting to keep them.
 
     * A Delete, Migrate, Restore or forced reinstall keeps a database, and
       its login, that another site names as its own, and ends with a

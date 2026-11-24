@@ -4923,7 +4923,7 @@ _barracuda_cnf() {
       while read line; do
         case "${line}" in
           _SMTP_RELAY_PASS=|_SMTP_RELAY_PASS=\"\"|_SMTP_RELAY_PASS=\'\') echo "$line" ;;
-          *_SMTP_RELAY_PASS=*) echo "_SMTP_RELAY_PASS=***" ;;
+          *_SMTP_RELAY_PASS*) echo "_SMTP_RELAY_PASS=***" ;;
           *) echo "$line" ;;
         esac
       done < ${_barCnf}
@@ -12809,13 +12809,14 @@ _smtp_postconf_set() {
 ### The relay from _SMTP_RELAY_HOST: host, host:port, [host] or [host]:port
 ### (brackets skip the MX lookup, as a relay on port 587 or 465 needs). Set
 ### with postconf, so one relay replaces another and nothing else in main.cf
-### is touched. A bare host there, the only form the setting took before,
-### keeps a relay on that same host already set by hand in brackets or with
-### a port. With _SMTP_RELAY_USER and _SMTP_RELAY_PASS also set, the relay
-### gets a login (SASL over TLS, as Amazon SES and other authenticated
-### relays need; port 465 uses TLS from the first byte). Without them BOA
-### turns off only a login it wrote itself, never one configured by hand.
-### Settings it cannot use change nothing at all.
+### is touched. The setting wins over a relay set by hand, and the pass
+### says so when it replaces the same host's [host] or port: BOA cannot tell
+### such a form from one it wrote itself from an earlier value. With
+### _SMTP_RELAY_USER and _SMTP_RELAY_PASS also set, the relay gets a login
+### (SASL over TLS, as Amazon SES and other authenticated relays need; port
+### 465 uses TLS from the first byte). Without them BOA turns off only a
+### login it wrote itself, never one configured by hand. Settings it cannot
+### use change nothing at all.
 ###
 _smtp_relay_apply() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -12849,20 +12850,19 @@ _smtp_relay_apply() {
     fi
     _login=YES
   fi
-  # A bare host keeps that host's [host], [host]:port or host:port set by
-  # hand: its login, also set by hand, is keyed by that exact form.
+  # A bare host over the same host's [host], [host]:port or host:port: mail
+  # then leaves for port 25, and a login set up by hand for the fuller form
+  # no longer applies. Said, since the fix is one edit of the setting.
   _cur="$(postconf -h relayhost 2>/dev/null | tr 'A-Z' 'a-z')"
   if [[ "${_rly}" =~ ^[a-z0-9.-]+$ ]]; then
     case "${_cur}" in
       "[${_rly}]"|"[${_rly}]":*|"${_rly}":*)
-        [[ "${_cur}" =~ ${_rlyRe} ]] && _rly="${_cur}"
+        _msg "WARN: Postfix relayhost ${_cur} is replaced by ${_rly}, as _SMTP_RELAY_HOST has it"
+        _msg "WARN: to keep the brackets or the port, write them in _SMTP_RELAY_HOST"
         ;;
     esac
   fi
-  if [ "${_cur}" != "${_rly}" ]; then
-    postconf -e "relayhost = ${_rly}" &> /dev/null
-    _reload=YES
-  fi
+  _smtp_postconf_set relayhost "${_rly}" && _reload=YES
   if [ "${_login}" = "YES" ]; then
     # PLAIN and LOGIN for the Postfix SMTP client come from this package
     if ! _pkg_installed "libsasl2-modules"; then
