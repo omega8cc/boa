@@ -52,6 +52,13 @@
       aegir account manager), not to the client, site operator or platform
       manager roles.
 
+    * An outgoing mail relay that wants a login, such as Amazon SES, is a
+      setting now: _SMTP_RELAY_USER and _SMTP_RELAY_PASS beside
+      _SMTP_RELAY_HOST in /root/.barracuda.cnf. Every barracuda upgrade
+      applies them: the login goes only over TLS, port 465 included, and
+      is kept in a file only root reads. A relay login set up by hand in
+      Postfix is left alone.
+
 @=> Improvements
 
     * websh reads a shell account's long command lines faster again: the
@@ -59,6 +66,11 @@
       very long run of redirection signs far slower.
 
 @=> Important Fixes
+
+    * _SMTP_RELAY_HOST takes [host]:port, as a relay on port 587 or 465
+      needs. An upgrade wrote such a relay into Postfix again in front of
+      the one already there, and a changed relay in front of the old one,
+      either of which stopped outgoing mail; now one relay replaces another.
 
     * A Delete, Migrate, Restore or forced reinstall keeps a database, and
       its login, that another site names as its own, and ends with a
