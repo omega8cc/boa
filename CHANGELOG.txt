@@ -79,6 +79,14 @@
       and it no longer announces one. A server's first install keeps its
       accelerated queue.
 
+    * The Upgrade, Upgrade all sites and the Drupal updates line of a site on
+      one of core's own install profiles (Standard, Minimal) no longer take
+      a distribution or another project's platform of the account for a
+      newer version of the site's codebase: a site on a plain Drupal
+      platform was called ready to be upgraded onto Drupal CMS, and others
+      were told they lack its modules. The two codebases' locks tell them
+      apart. With no newer platform, the line no longer says up to date.
+
     * The Upgrade and Upgrade all sites dialogs no longer call a site Ready
       whose upgrade would be refused over what an earlier one left: a copy
       from a run cut off in its move, one the next run cannot remove, or a
