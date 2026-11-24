@@ -118,9 +118,10 @@
 
     * A first install in REMOTE DB SERVER MODE that stops because MySQL is
       not running here keeps the operator's /root/.my.pass.txt, and one that
-      finds the file empty stops at once and leaves it as it is. The settings
-      files say which database users to create on the remote server, in place
-      of a control file no code ever read.
+      finds the file empty stops at once, leaves it as it is and, as without
+      the file, says how the install is run again. The settings files say
+      which database users to create on the remote server, in place of a
+      control file no code ever read.
 
 ###
 ### Stable BOA-5.88.888 PRO/LTS - DRAGON EDITION

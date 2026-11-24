@@ -2656,6 +2656,19 @@ EOF
 
 EOF
     fi
+    ### boa refuses the same install command once its packages are in, unless
+    ### this control file is there; the Master's install removes it.
+    if [ "${_remoteDb}" = "YES" ] && [ "${_STATUS}" = "INIT" ]; then
+      cat <<EOF
+    An install started with 'boa in-...' needs also this empty control file
+    before the same command is run again, or boa will refuse to run it:
+
+    touch /root/.force.reinstall.cnf
+
+    It is removed once the Ægir Master Instance is installed.
+
+EOF
+    fi
     _msg "EXIT on error due to not found file with your ${_DB_SERVER} root password"
     _clean_pid_exit _init_sql_root_credentials_a
   fi
