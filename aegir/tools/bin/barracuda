@@ -879,6 +879,14 @@ _mail_mask_dbpass() {
   LC_ALL=C sed -E "s#(mysqli?:(\\\\?/){2}[^:@/[:space:]'\"]*:)[^@[:space:]'\"]*(@[^@/:,[:space:]'\"]*)*@#\1***@#g" "$@"
 }
 
+# s-nail refuses a body that is not valid UTF-8, in any locale: every byte that
+# is no part of a valid letter is dropped, and nothing else is changed. Run
+# after the mask, which reads the log's own bytes, and after the line cut,
+# which can leave half a letter.
+_mail_valid_utf8() {
+  LC_ALL=C sed -E $'/[\x80-\xff]/ s/([\xc2-\xdf][\x80-\xbf]|\xe0[\xa0-\xbf][\x80-\xbf]|[\xe1-\xec\xee\xef][\x80-\xbf]{2}|\xed[\x80-\x9f][\x80-\xbf]|\xf0[\x90-\xbf][\x80-\xbf]{2}|[\xf1-\xf3][\x80-\xbf]{3}|\xf4[\x80-\x8f][\x80-\xbf]{2})|[\x80-\xff]/\\1/g'
+}
+
 # The pass log as a mail's body; when it is larger than a mail can carry
 # (one failed unpack wrote 270,000 tar errors, 59 MB, and the mail was never
 # sent), its ALRT, FATAL and ERROR lines, its first and last lines and where
@@ -900,7 +908,7 @@ _up_mail_body() {
     tail -n 300 "${_UP_LOG}" | _mail_mask_dbpass | cut -c1-2000
   else
     _mail_mask_dbpass "${_UP_LOG}" | cut -c1-2000
-  fi
+  fi | _mail_valid_utf8
 }
 
 _send_report() {
