@@ -3263,10 +3263,15 @@ _satellite_o_contrib_seven_update_global() {
     _debug_proc
   fi
 
-  _RMMODULES="session443 cookie_cache_bypass_adv agrcache speedy redis adminer"
+  _RMMODULES="session443 cookie_cache_bypass_adv agrcache speedy redis"
 
   for i in "${_D}"/*; do
     _satellite_store_dir_ok "${i}" "${i}/o_contrib_seven" || continue
+    # No longer shipped; removed whether or not the folder is due, as the
+    # refresh fetches other modules again.
+    if [ -d "${i}/o_contrib_seven/adminer" ]; then
+      rm -rf -- "${i}/o_contrib_seven/adminer"
+    fi
     if [ -e "${i}/o_contrib_seven" ] \
       && [ ! -e "${i}/o_contrib_seven/update-${_xSrl}-${_X_VERSION}.info" ]; then
       _FORCE_UP_SEVEN=YES
@@ -3278,8 +3283,6 @@ _satellite_o_contrib_seven_update_global() {
       _FORCE_UP_SEVEN=YES
     elif [ -e "${i}/o_contrib_seven" ] \
       && [ ! -L "${i}/o_contrib_seven/redis_edge" ]; then
-      _FORCE_UP_SEVEN=YES
-    elif [ -d "${i}/o_contrib_seven/adminer" ]; then
       _FORCE_UP_SEVEN=YES
     else
       _FORCE_UP_SEVEN=NO
