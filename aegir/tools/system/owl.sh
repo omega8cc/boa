@@ -707,7 +707,8 @@ if [ -e "/opt/tmp/barracuda-release.txt" ]; then
       echo "INFO: Version test result: OK"
     else
       sT="release available, upgrade now!"
-      cat <<EOF | s-nail -s "New ${_X_VERSION} ${sT}" ${_MY_OCTO_EMAIL}
+      _MAIL_SENT=NO
+      cat <<EOF | s-nail -s "New ${_X_VERSION} ${sT}" ${_MY_OCTO_EMAIL} && _MAIL_SENT=YES
 
  There is new ${_X_VERSION} release available!
 
@@ -721,7 +722,11 @@ if [ -e "/opt/tmp/barracuda-release.txt" ]; then
  This email has been sent by your BOA system release monitor
 
 EOF
-    echo "INFO: Update notice sent: OK"
+      if [ "${_MAIL_SENT}" = "YES" ]; then
+        echo "INFO: Update notice sent: OK"
+      else
+        echo "ALRT: Update notice could not be sent to ${_MY_OCTO_EMAIL}"
+      fi
     fi
   fi
 fi
