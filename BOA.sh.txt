@@ -7501,6 +7501,23 @@ _php_upload_progress_off() {
   done
 }
 
+# s-nail takes the character set of a mail from the locale. Where there is
+# none, under cron or in a daemon's environment, it refuses a subject or a
+# body with a letter outside ASCII, while BOA's mails are UTF-8 in any locale.
+# One line in its system-wide file says so for every caller. Checked on every
+# run: an OS upgrade puts the package's own file in place. Any line there that
+# names ttycharset, a comment aside, keeps what it says; a link at the name, or
+# a file that is not root's, is left alone. The empty line first closes a last
+# line with no newline, or one continued by a backslash.
+_mail_charset_utf8() {
+  local _fIle="/etc/s-nail.rc"
+  [ -f "${_fIle}" ] && [ ! -L "${_fIle}" ] && [ -O "${_fIle}" ] || return 0
+  grep -aqE '^[[:space:]]*([^#[:space:]].*[^[:alnum:]_-])?(no)?ttycharset([^[:alnum:]_-]|$)' "${_fIle}" 2> /dev/null
+  [ "$?" = "1" ] || return 0
+  printf '\n\n# Added by BOA: its mails are UTF-8 whatever the locale. BOA adds it only\n# while no line of this file sets ttycharset.\nset ttycharset=utf-8\n' \
+    2> /dev/null >> "${_fIle}"
+}
+
 # Keep catch_workers_output off in the settings of every PHP-FPM pool, for
 # every PHP version on the box. With it on, the master holds a pipe to each
 # worker's output, and its cleanup of those pipes can be turned against the
@@ -8053,6 +8070,9 @@ if [ "$(id -u)" -eq 0 ]; then
 
   # No capture of the workers' output in any PHP-FPM pool, the same way
   _php_fpm_worker_output_off
+
+  # BOA's mails go out in any locale, re-asserted every run
+  _mail_charset_utf8
 
   if ! command -v bc &> /dev/null; then
     apt-get update -qq &> /dev/null
