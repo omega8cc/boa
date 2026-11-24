@@ -1949,6 +1949,17 @@ _unlock_sendmail_for_snail() {
   chgrp allow-snail /usr/sbin/sendmail &> /dev/null
 }
 
+#
+# The install is done: move its recorded command to where autoinit keeps one,
+# so no tool reads it as the command of an unfinished install any more.
+_install_record_done() {
+  local _rec="/root/.boa.install.command.cnf"
+  [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] || return 0
+  [ -e "${_rec}" ] || return 0
+  [ -d "/var/backups" ] || mkdir -p /var/backups
+  mv -f "${_rec}" /var/backups/
+}
+
 _aegir_master_install_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _aegir_master_install_upgrade"
@@ -2375,6 +2386,7 @@ EOFMYSQL
     if [ -e "${_mtrInc}/nginx_vhost_common.conf" ]; then
       _DO_NOTHING=YES
       [ -e "/root/.force.reinstall.cnf" ] && rm -f /root/.force.reinstall.cnf
+      _install_record_done
     else
       _msg "FATAL ERROR: Something went wrong, Ægir Master Instance not installed!"
       _msg "HINT: Please check /var/log/boa/aegir_install.log for details, and then"
