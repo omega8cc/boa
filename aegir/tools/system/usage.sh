@@ -663,10 +663,12 @@ _send_notice_core() {
   _BCC_EMAIL="inbox@boa.io"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _client_mail_hold "${_CLIENT_EMAIL}" || return 1
+  _MAIL_SENT=NO
   _MAILX_TEST=$(s-nail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
   cat <<EOF | s-nail -b ${_BCC_EMAIL} \
-    -s "URGENT: Please migrate ${_Dom} site to Pressflow (LTS)${_MAIL_HOLD_SFX}" ${_MAIL_HOLD_RCPT}
+    -s "URGENT: Please migrate ${_Dom} site to Pressflow (LTS)${_MAIL_HOLD_SFX}" ${_MAIL_HOLD_RCPT} \
+    && _MAIL_SENT=YES
 Hello,
 
 Our system detected that you are using vanilla Drupal core for site ${_Dom}.
@@ -685,7 +687,11 @@ This email has been sent by your Ægir platform core monitor.
 
 EOF
   fi
-  echo "INFO: Pressflow notice sent to ${_MAIL_HOLD_RCPT}${_MAIL_HOLD_SFX} [${_THIS_U}]: OK"
+  if [ "${_MAIL_SENT}" = "YES" ]; then
+    echo "INFO: Pressflow notice sent to ${_MAIL_HOLD_RCPT}${_MAIL_HOLD_SFX} [${_THIS_U}]: OK"
+  else
+    echo "ALRT: Pressflow notice NOT sent to ${_MAIL_HOLD_RCPT}${_MAIL_HOLD_SFX} [${_THIS_U}] (s-nail unavailable or send failed)"
+  fi
 }
 
 _detect_vanilla_core() {
@@ -900,10 +906,12 @@ _send_notice_sql() {
   _TOP_SECTION=""
   [ "${_MODE}" = "LIVE" ] && _TOP_SECTION="$(_sql_top_section)"
   [ -n "${_TOP_SECTION}" ] && _TOP_SECTION="${_TOP_SECTION}"$'\n\n'
+  _MAIL_SENT=NO
   _MAILX_TEST=$(s-nail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
   cat <<EOF | s-nail -b ${_BCC_EMAIL} \
-    -s "NOTICE: Your ${_MODE} DB Usage on [${_THIS_U}] is too high: ${_SQL_NOW} MB${_MAIL_HOLD_SFX}" ${_MAIL_HOLD_RCPT}
+    -s "NOTICE: Your ${_MODE} DB Usage on [${_THIS_U}] is too high: ${_SQL_NOW} MB${_MAIL_HOLD_SFX}" ${_MAIL_HOLD_RCPT} \
+    && _MAIL_SENT=YES
 Hello,
 
 You are using more resources than allocated in your subscription. You have currently ${_CLIENT_CORES} Ægir ${_CLIENT_OPTION} ${_ENGINE_NR}.
@@ -937,8 +945,13 @@ This email has been sent by your Ægir resources usage daily monitor.
 
 EOF
   fi
-  echo "INFO: Notice sent to ${_MAIL_HOLD_RCPT}${_MAIL_HOLD_SFX} [${_THIS_U}]: OK"
-  [ "${_THIS_MODE}" = "verbose" ] && echo "INFO: Notice Your DB Usage sent to ${_MAIL_HOLD_RCPT}${_MAIL_HOLD_SFX} [${_THIS_U}]: OK" >> "${_uLogFil}"
+  if [ "${_MAIL_SENT}" = "YES" ]; then
+    echo "INFO: Notice sent to ${_MAIL_HOLD_RCPT}${_MAIL_HOLD_SFX} [${_THIS_U}]: OK"
+    [ "${_THIS_MODE}" = "verbose" ] && echo "INFO: Notice Your DB Usage sent to ${_MAIL_HOLD_RCPT}${_MAIL_HOLD_SFX} [${_THIS_U}]: OK" >> "${_uLogFil}"
+  else
+    echo "ALRT: Notice NOT sent to ${_MAIL_HOLD_RCPT}${_MAIL_HOLD_SFX} [${_THIS_U}] (s-nail unavailable or send failed)"
+    [ "${_THIS_MODE}" = "verbose" ] && echo "ALRT: Notice Your DB Usage NOT sent to ${_MAIL_HOLD_RCPT}${_MAIL_HOLD_SFX} [${_THIS_U}]" >> "${_uLogFil}"
+  fi
 }
 
 _send_notice_disk() {
@@ -948,10 +961,12 @@ _send_notice_disk() {
   _BCC_EMAIL="inbox@boa.io"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _client_mail_hold "${_CLIENT_EMAIL}" || return 1
+  _MAIL_SENT=NO
   _MAILX_TEST=$(s-nail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
   cat <<EOF | s-nail -b ${_BCC_EMAIL} \
-    -s "NOTICE: Your Disk Usage on [${_THIS_U}] is too high${_MAIL_HOLD_SFX}" ${_MAIL_HOLD_RCPT}
+    -s "NOTICE: Your Disk Usage on [${_THIS_U}] is too high${_MAIL_HOLD_SFX}" ${_MAIL_HOLD_RCPT} \
+    && _MAIL_SENT=YES
 Hello,
 
 You are using more resources than allocated in your subscription. You have currently ${_CLIENT_CORES} Ægir ${_CLIENT_OPTION} ${_ENGINE_NR}.
@@ -973,8 +988,13 @@ This email has been sent by your Ægir resources usage daily monitor.
 
 EOF
   fi
-  echo "INFO: Notice sent to ${_MAIL_HOLD_RCPT}${_MAIL_HOLD_SFX} [${_THIS_U}]: OK"
-  [ "${_THIS_MODE}" = "verbose" ] && echo "INFO: Notice Your Disk Usage sent to ${_MAIL_HOLD_RCPT}${_MAIL_HOLD_SFX} [${_THIS_U}]: OK" >> "${_uLogFil}"
+  if [ "${_MAIL_SENT}" = "YES" ]; then
+    echo "INFO: Notice sent to ${_MAIL_HOLD_RCPT}${_MAIL_HOLD_SFX} [${_THIS_U}]: OK"
+    [ "${_THIS_MODE}" = "verbose" ] && echo "INFO: Notice Your Disk Usage sent to ${_MAIL_HOLD_RCPT}${_MAIL_HOLD_SFX} [${_THIS_U}]: OK" >> "${_uLogFil}"
+  else
+    echo "ALRT: Notice NOT sent to ${_MAIL_HOLD_RCPT}${_MAIL_HOLD_SFX} [${_THIS_U}] (s-nail unavailable or send failed)"
+    [ "${_THIS_MODE}" = "verbose" ] && echo "ALRT: Notice Your Disk Usage NOT sent to ${_MAIL_HOLD_RCPT}${_MAIL_HOLD_SFX} [${_THIS_U}]" >> "${_uLogFil}"
+  fi
 }
 
 

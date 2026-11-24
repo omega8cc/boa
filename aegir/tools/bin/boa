@@ -1295,6 +1295,14 @@ _mail_mask_dbpass() {
   LC_ALL=C sed -E "s#(mysqli?:(\\\\?/){2}[^:@/[:space:]'\"]*:)[^@[:space:]'\"]*(@[^@/:,[:space:]'\"]*)*@#\1***@#g" "$@"
 }
 
+# s-nail refuses a body that is not valid UTF-8, in any locale: every byte that
+# is no part of a valid letter is dropped, and nothing else is changed. Run
+# after the mask, which reads the log's own bytes, and after the line cut,
+# which can leave half a letter.
+_mail_valid_utf8() {
+  LC_ALL=C sed -E $'/[\x80-\xff]/ s/([\xc2-\xdf][\x80-\xbf]|\xe0[\xa0-\xbf][\x80-\xbf]|[\xe1-\xec\xee\xef][\x80-\xbf]{2}|\xed[\x80-\x9f][\x80-\xbf]|\xf0[\x90-\xbf][\x80-\xbf]{2}|[\xf1-\xf3][\x80-\xbf]{3}|\xf4[\x80-\x8f][\x80-\xbf]{2})|[\x80-\xff]/\\1/g'
+}
+
 _send_report() {
   if [ -e "${_IN_BARRACUDA_LOG}" ]; then
     _THIS_LOG="${_IN_BARRACUDA_LOG}"
@@ -1320,7 +1328,7 @@ _send_report() {
     _repSub=$(echo -n ${_repSub} | fmt -su -w 2500 2>&1)
     _if_extended_report
     # Cron gives no locale, and s-nail then refuses a non-ASCII body.
-    if cat ${_THIS_LOG} | _mail_mask_dbpass \
+    if cat ${_THIS_LOG} | _mail_mask_dbpass | _mail_valid_utf8 \
       | s-nail -S ttycharset=utf-8 -S sendcharsets=utf-8 \
         -s "${_repSub} at ${_NOW}${_MAIL_HOLD_SFX}" ${_MAIL_HOLD_RCPT}; then
       echo "${_repSub} sent to ${_MAIL_HOLD_RCPT}"
@@ -1375,7 +1383,7 @@ _send_errors() {
     _repSub="REPORT: ${_repSub} on ${_hName}"
     _repSub=$(echo -n ${_repSub} | fmt -su -w 2500 2>&1)
     _if_extended_report
-    if cat ${_THIS_LOG} | _mail_mask_dbpass \
+    if cat ${_THIS_LOG} | _mail_mask_dbpass | _mail_valid_utf8 \
       | s-nail -S ttycharset=utf-8 -S sendcharsets=utf-8 \
         -s "${_repSub} at ${_NOW}${_MAIL_HOLD_SFX}" ${_MAIL_HOLD_RCPT}; then
       echo "${_repSub} sent to ${_MAIL_HOLD_RCPT}"
@@ -5538,7 +5546,7 @@ _archived_heal() {
       _hn="$(tr -d '\n' 2> /dev/null < /etc/hostname)"
       [ -n "${_hn}" ] || _hn="$(hostname -f 2> /dev/null)"
       printf '%s\n%s\n\nThe archived site stores below (static/files/.archived, a deleted or\nrenamed site'"'"'s last copy) were removed because the filesystem holding them\nwas used above %s%%, its space or its inodes -- the automatic heal that keeps\na clone, a migrate or a backup from filling the disk. Tune the threshold in\n/data/conf/archived_heal_threshold.cnf (50..99) or disable the heal with\n/data/conf/disable_archived_heal.cnf; see /var/log/boa/archived-heal.log.\n' \
-        "${_report}" "${_line}" "${_t}" \
+        "${_report}" "${_line}" "${_t}" | _mail_valid_utf8 \
         | s-nail -S ttycharset=utf-8 -S sendcharsets=utf-8 \
           -s "Archived site stores pruned on ${_hn}: disk above ${_t}% used (space or inodes)" "${_MY_EMAIL}" &> /dev/null
     fi
