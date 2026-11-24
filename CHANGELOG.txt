@@ -19,6 +19,12 @@
       (_THIS_DB_HOST=FQDN) also removes old backups of its password file
       that hold the root password, and says how many.
 
+    * A new install in REMOTE DB SERVER MODE needs the database server's
+      root password in /root/.my.pass.txt and stops without it: there is no
+      default any more, for a remote Valkey server neither. Existing setups
+      are left as they are; one still on the old default is told so, once
+      in each barracuda or octopus run.
+
 @=> New Features
 
     * Upgrade all sites, the platform task that upgrades every Drupal 10 or
@@ -34,6 +40,13 @@
       very long run of redirection signs far slower.
 
 @=> Important Fixes
+
+    * A Delete, Migrate, Restore or forced reinstall keeps a database, and
+      its login, that another site names as its own, and ends with a
+      warning that says which site. A copy whose making was cut off before
+      it had settings of its own is listed as a site by the next Verify of
+      its platform, and deleting it dropped the database of the live site
+      it was copied from.
 
     * A few uncommon lines of a shell account that the redirection reading
       had refused run again: a test bracket behind a wrapper, a redirection
@@ -97,6 +110,11 @@
     * barracuda and octopus stop on an empty /root/.my.pass.txt and compare
       its whole value with the password in /root/.my.cnf: an empty file, or
       one holding only the beginning of that password, passed as in sync.
+
+    * The report mails of octopus and boa were not sent in a shell with no
+      UTF-8 locale when the log held a non-ASCII character, and the launcher
+      said they were: they go out as UTF-8, as barracuda's do, a failed mail
+      is reported, and the mail about pruned archived stores goes out too.
 
 ###
 ### Stable BOA-5.88.888 PRO/LTS - DRAGON EDITION
