@@ -2433,10 +2433,11 @@ _hte_put_here() {
   done
   [ "$(_hte_state_here)" = "new" ]
 }
-# One line in the step's own log, once for each text.
+# One line in the step's own log: a put each time (EVENT), any other text once.
 _hte_log() {
   local _l="${_pthLog}/panel-upgrade-targets.log"
-  sed 's/^[^ ]* [^ ]* //' "${_l}" 2> /dev/null | grep -qxF -- "${1}" && return 0
+  [ "${2:-}" = "EVENT" ] \
+    || { sed 's/^[^ ]* [^ ]* //' "${_l}" 2> /dev/null | grep -qxF -- "${1}" && return 0; }
   echo "$(date '+%F %T') ${1}" >> "${_l}"
 }
 # True when the file $2 of any account directory below the account's
@@ -5502,7 +5503,7 @@ _fix_panel_upgrade_targets() {
     if _acct_in_real_dir \
       "${_root}/profiles/hostmaster/modules/aegir/hosting_tasks_extra" \
       _hte_put_here "${_tmp}/hosting_tasks_extra" "${_uid}"; then
-      _hte_log "put ${_u} panel ${_root##*/}"
+      _hte_log "put ${_u} panel ${_root##*/}" EVENT
     else
       _hte_log "could not put ${_u} panel ${_root##*/}"
       _failed=YES
