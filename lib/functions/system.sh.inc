@@ -3667,6 +3667,43 @@ _hm_cli_floor_publish() {
   mv -f /data/conf/.hm-cli-floor.txt.new /data/conf/hm-cli-floor.txt
 }
 
+#
+# A cnf made before the install: at INIT every setting the install writes into
+# a cnf of its own making, and the append pass of _barracuda_cnf does not add,
+# is added with the install's own value. What the file itself sets, in any
+# form the shell reads, stays as it is; a commented line sets nothing. Must
+# run before the append pass, where a commented line counts as held.
+_barracuda_cnf_init_complete() {
+  local _k _set
+  local _quoted="_LOCAL_NETWORK_HN _LOCAL_NETWORK_IP _MY_FRONT _MY_HOSTN _MY_OWNIP \
+    _SMTP_RELAY_HOST _XTRAS_LIST _MY_EMAIL _FORCE_GIT_MIRROR _NGINX_DOS_STOP \
+    _NGINX_EXTRA_CONF _PHP_MULTI_INSTALL"
+  local _plain="_SMTP_RELAY_TEST _THIS_DB_HOST _AUTOPILOT _DEBUG_MODE _DB_SERIES \
+    _DB_SERVER _DNS_SETUP_TEST _LOCAL_DEBIAN_MIRROR _NEWRELIC_KEY _NGINX_DOS_LINES \
+    _NGINX_DOS_LOG _NGINX_DOS_MODE _PHP_CLI_VERSION _PHP_FPM_VERSION \
+    _PHP_SINGLE_INSTALL _SSH_PORT"
+  # shellcheck disable=SC2086,SC1090
+  _set=" $( unset ${_quoted} ${_plain}
+    . "${_barCnf}" > /dev/null 2>&1
+    for _k in ${_quoted} ${_plain}; do
+      [ -n "${!_k+x}" ] && echo "${_k}"
+    done | tr '\n' ' ' ) "
+  # A run refused below for its reserved address leaves no settings behind.
+  if [[ "${_MY_EMAIL}" =~ "omega8.cc" ]] && [[ ! "${_set}" =~ " _MY_EMAIL " ]]; then
+    _if_hosted_sys
+    [ "${_hostedSys}" = "YES" ] || return 0
+  fi
+  [[ "${_set}" =~ " _PHP_MULTI_INSTALL " ]] || _php_multi_uniq
+  # The first line added must not join an unterminated last line.
+  [ -n "$(tail -c1 "${_barCnf}" 2> /dev/null)" ] && echo >> "${_barCnf}"
+  for _k in ${_quoted}; do
+    [[ "${_set}" =~ " ${_k} " ]] || echo "${_k}=\"${!_k}\"" >> "${_barCnf}"
+  done
+  for _k in ${_plain}; do
+    [[ "${_set}" =~ " ${_k} " ]] || echo "${_k}=${!_k}" >> "${_barCnf}"
+  done
+}
+
 _barracuda_cnf() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _barracuda_cnf"
@@ -4089,6 +4126,10 @@ _barracuda_cnf() {
     fi
     sed -i "s/_SPEED_VALID_MAX=300/_SPEED_VALID_MAX=3600/g" ${_barCnf}
     wait
+
+    if [ "${_STATUS}" = "INIT" ]; then
+      _barracuda_cnf_init_complete
+    fi
 
     _CUSTOM_COLLATION_SQL_TEST=$(grep _CUSTOM_COLLATION_SQL ${_barCnf} 2>&1)
     if [[ "${_CUSTOM_COLLATION_SQL_TEST}" =~ "_CUSTOM_COLLATION_SQL" ]]; then

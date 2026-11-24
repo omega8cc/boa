@@ -1218,10 +1218,18 @@ _init_cron() {
 ###
 ### Should we launch boa install?
 ###
+### The recorded command is launched once, its "# started" line says so. It
+### stays while the install has no Ægir Master: boa's hint and barracuda
+### up-* system read it then.
+###
 _if_launch_boa_install() {
   _BOA_LOGFILE="/root/.boa.install.command.cnf"
   if [[ -s "${_BOA_LOGFILE}" ]]; then
-    _BOA_COMMAND=$(cat "${_BOA_LOGFILE}")
+    if grep -q '^# started' "${_BOA_LOGFILE}"; then
+      _msg "_if_launch_boa_install ==> The install in ${_BOA_LOGFILE} was started before, not launching it again" >> "${_logInt}"
+      return 0
+    fi
+    _BOA_COMMAND=$(head -n 1 "${_BOA_LOGFILE}")
     _BOA_COMMAND=$(echo "${_BOA_COMMAND}" | sed -E "s/noscreen//g")
     if [[ "${_BOA_COMMAND}" =~ " silent" ]] \
       || [[ "${_BOA_COMMAND}" =~ " system" ]]; then
@@ -1235,10 +1243,15 @@ _if_launch_boa_install() {
       || [[ "${_BOA_COMMAND}" =~ "boa in-dev" ]] \
       || [[ "${_BOA_COMMAND}" =~ "boa in-pro" ]]; then
       _msg "_if_launch_boa_install ==> Time for ${_BOA_INSTALL_COMMAND} noscreen" >> "${_logInt}"
+      echo "# started by autoinit on $(date)" >> "${_BOA_LOGFILE}"
       eval "${_BOA_INSTALL_COMMAND} noscreen"
       wait
-      [ -d "/var/backups" ] || mkdir -p /var/backups
-      mv -f ${_BOA_LOGFILE} /var/backups/
+      if [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
+        _msg "_if_launch_boa_install ==> The install stopped before its Ægir Master, its command stays in ${_BOA_LOGFILE}" >> "${_logInt}"
+      elif [ -e "${_BOA_LOGFILE}" ]; then
+        [ -d "/var/backups" ] || mkdir -p /var/backups
+        mv -f ${_BOA_LOGFILE} /var/backups/
+      fi
     fi
   fi
 }
