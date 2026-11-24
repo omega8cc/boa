@@ -2359,14 +2359,17 @@ _hm_cron_queue_here() {
 }
 # The control panel files _fix_panel_upgrade_targets replaces, by md5: the
 # pair it puts (the module, then its upgrade include), the pairs an upgrade to
-# BOA-5.88.888 laid down before it, and the two files beside them that pair
+# BOA-5.88.888 laid down or this step put before it (A and B the release's, C
+# put by the first form of the step), and the two files beside them that pair
 # works with, which are the same in all of them.
-_HTE_MOD_NEW=82c963df2a8021ccb8c594c31ad5012e
-_HTE_INC_NEW=bc8d7e50f8683170e4aab08769f64b45
+_HTE_MOD_NEW=4d06bd6df278f20213078a330e9fbe06
+_HTE_INC_NEW=a351747c635b4c285d551d5952332700
 _HTE_MOD_A=fc49780ee7697846ddec23de9234dc25
 _HTE_INC_A=894a54ea8a267d1f4bbfce40de8185c5
 _HTE_MOD_B=cccf6c9f753a825931a8ec6bdd7f7a28
 _HTE_INC_B=8c12b56202d0cc1f644fbff42d0b4f38
+_HTE_MOD_C=82c963df2a8021ccb8c594c31ad5012e
+_HTE_INC_C=bc8d7e50f8683170e4aab08769f64b45
 _HTE_DRUSH=3f692e394c584ae73be924e00cf172a1
 _HTE_BACKEND=3bf5c7626aa532308d44c1bc23a21c42
 # The md5 of ./$1, read bounded, a regular file only, never through a link.
@@ -2375,8 +2378,9 @@ _hte_sum_here() {
   _acct_read_here "${1}" | md5sum | cut -d' ' -f1
 }
 # What the two files in the current (pinned) module directory are: new, old
-# (a pair known from the release), half (one of the two already new: a put
-# stopped in between, or a partial restore), none, or "other <md5> <md5>".
+# (a known earlier pair), half (one of the two already replaced, by this form
+# of the step or the first: a put stopped in between, or a partial restore),
+# none, or "other <md5> <md5>".
 # Anything else, a newer panel first of all, is other, and so is a known pair
 # whose companion files are not the ones it works with.
 _hte_state_here() {
@@ -2397,8 +2401,13 @@ _hte_state_here() {
   case "${_m}:${_i}" in
     "${_HTE_MOD_NEW}:${_HTE_INC_NEW}") echo new ;;
     "${_HTE_MOD_A}:${_HTE_INC_A}" | "${_HTE_MOD_B}:${_HTE_INC_B}") echo old ;;
+    "${_HTE_MOD_C}:${_HTE_INC_C}") echo old ;;
     "${_HTE_MOD_A}:${_HTE_INC_NEW}" | "${_HTE_MOD_B}:${_HTE_INC_NEW}") echo half ;;
+    "${_HTE_MOD_C}:${_HTE_INC_NEW}") echo half ;;
     "${_HTE_MOD_NEW}:${_HTE_INC_A}" | "${_HTE_MOD_NEW}:${_HTE_INC_B}") echo half ;;
+    "${_HTE_MOD_NEW}:${_HTE_INC_C}") echo half ;;
+    "${_HTE_MOD_A}:${_HTE_INC_C}" | "${_HTE_MOD_B}:${_HTE_INC_C}") echo half ;;
+    "${_HTE_MOD_C}:${_HTE_INC_A}" | "${_HTE_MOD_C}:${_HTE_INC_B}") echo half ;;
     *) echo "other ${_m} ${_i}" ;;
   esac
 }
@@ -5416,22 +5425,22 @@ _fix_hosting_le() {
 
 #
 # Hotfix for the control panels an upgrade to BOA-5.88.888 laid down: their
-# Upgrade and Drupal updates line took another codebase of the account for a
-# newer version of a site's own. The account's current hostmaster platform is
-# taken by what its two files are (_hte_state_here), not by a version, so a
-# panel with any other bytes (older, customised, or newer) is left alone and
-# named in the log once; an upgrade brings the fix to those. The files come
-# from the tree's own hosting_tasks_extra.tar.gz and are put only when their
-# md5s are the ones above. Not on a standby, whose account trees come from
-# the active, and not while an install or an upgrade runs. Done for a day,
-# then looked at again: a panel moved here from another server may carry the
-# old pair.
+# Upgrade and Drupal updates line took another codebase of the account, or a
+# pre-release, for a newer version of a site's own. The account's current
+# hostmaster platform is taken by what its two files are (_hte_state_here),
+# not by a version, so a panel with any other bytes (older, customised, or
+# newer) is left alone and named in the log once; an upgrade brings the fix to
+# those. The files come from the tree's own hosting_tasks_extra.tar.gz and are
+# put only when their md5s are the ones above. Not on a standby, whose account
+# trees come from the active, and not while an install or an upgrade runs.
+# Done for a day, then looked at again: a panel moved here from another server
+# may carry an old pair.
 _fix_panel_upgrade_targets() {
   local _ctl _mis _p _u _uid _root _st _due="" _tmp _failed=NO
   [ -d "/data/u" ] || return 0
   [ -e "/root/.standby.cnf" ] && return 0
   [ -e "/root/.standby.prep.cnf" ] && return 0
-  _ctl="${_pthLog}/panel-upgrade-targets.ctrl.f99.${_tRee}.${_xSrl}.pid"
+  _ctl="${_pthLog}/panel-upgrade-targets.ctrl.f98.${_tRee}.${_xSrl}.pid"
   _mis="${_pthLog}/panel-upgrade-targets.mismatch"
   [ -n "$(find "${_ctl}" -mmin -1440 2> /dev/null)" ] && return 0
   [ -n "$(find "${_mis}" -mmin -60 2> /dev/null)" ] && return 0
