@@ -93,12 +93,17 @@
       were told they lack its modules. The two codebases' locks tell them
       apart. With no newer platform, the line no longer says up to date.
 
-    * A control panel already upgraded to BOA-5.88.888 gets that fix without
-      another upgrade: BOA.sh.txt puts the two files in its hosting_tasks_extra
-      where they are exactly a pair that release laid down, and leaves every
-      other panel alone, a newer one included; see
-      /var/log/boa/panel-upgrade-targets.log. Not on a standby, nor during an
-      install or an upgrade.
+    * The Upgrade no longer offers a pre-release of Drupal core (an alpha,
+      beta, rc or development version) to a site on a finished release: the
+      platform is shown as not ready with the reason. A site already on a
+      pre-release goes on to newer ones as before.
+
+    * A control panel already upgraded to BOA-5.88.888 gets both these fixes
+      without another upgrade: BOA.sh.txt puts the two files in its
+      hosting_tasks_extra where they are exactly a pair that release laid down
+      or an earlier form of this step put, and leaves every other panel alone,
+      a newer one included; see /var/log/boa/panel-upgrade-targets.log. Not on
+      a standby, nor during an install or an upgrade.
 
     * The Upgrade and Upgrade all sites dialogs no longer call a site Ready
       whose upgrade would be refused over what an earlier one left: a copy
