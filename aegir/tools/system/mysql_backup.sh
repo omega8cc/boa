@@ -20,14 +20,17 @@ _backup_notice() {
   [ "${_INCIDENT_REPORT}" = "NO" ] && _INCIDENT_REPORT="OFF"
   if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" != "OFF" ] \
     && [[ "$(s-nail -V 2>&1)" =~ "built for Linux" ]]; then
-    {
+    if {
       cat
       echo "Logged to /var/log/boa/mysql.backup.incident.log"
       echo
       echo "--"
       echo "This email has been sent by your nightly database backup"
-    } | s-nail -s "${_sub}" ${_MY_EMAIL}
-    echo "INFO: Backup notice sent to ${_MY_EMAIL}: ${_sub}"
+    } | s-nail -s "${_sub}" ${_MY_EMAIL}; then
+      echo "INFO: Backup notice sent to ${_MY_EMAIL}: ${_sub}"
+    else
+      echo "ALRT: Backup notice could not be sent to ${_MY_EMAIL}: ${_sub}"
+    fi
   else
     cat > /dev/null
   fi
