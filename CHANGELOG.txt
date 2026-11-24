@@ -186,6 +186,14 @@
       not UTF-8 goes out without them, and a notice that could not be sent
       is no longer called sent.
 
+    * The per-minute kill of a hung apt-get update no longer finds its own
+      process (#1954). On Devuan Daedalus, whose procps sometimes gives a
+      process that starts while ps reads the process table an age of
+      4123168608 seconds, it took itself for a hung run several times a day,
+      and cron mailed root a kill that failed. An age above the system's
+      uptime is now that misreading, never a hung run; the incident
+      snapshot's thread list prints it as ?.
+
 ###
 ### Stable BOA-5.88.888 PRO/LTS - DRAGON EDITION
 ### Date: Mon 23 Nov 2026 13:32:57 CET in Warsaw
