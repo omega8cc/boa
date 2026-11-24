@@ -1624,8 +1624,11 @@ _normalize_ip_name_variables() {
     _MY_FRONT=$(echo -n ${_MY_FRONT} | tr A-Z a-z 2>&1)
   fi
   if [ ! -z "${_SMTP_RELAY_HOST}" ]; then
-    _SMTP_RELAY_HOST=${_SMTP_RELAY_HOST//[^a-zA-Z0-9-.]/}
-    _SMTP_RELAY_HOST=$(echo -n ${_SMTP_RELAY_HOST} | tr A-Z a-z 2>&1)
+    # [host] and :port stay: Postfix's form for a relay on another port
+    # with no MX lookup, e.g. [email-smtp.eu-west-1.amazonaws.com]:587
+    _SMTP_RELAY_HOST=${_SMTP_RELAY_HOST//[^a-zA-Z0-9.:\[\]-]/}
+    # quoted: a bare [host] is a glob pattern
+    _SMTP_RELAY_HOST=$(echo -n "${_SMTP_RELAY_HOST}" | tr A-Z a-z 2>&1)
   fi
 }
 
