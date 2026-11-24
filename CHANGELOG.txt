@@ -51,6 +51,11 @@
     * The marker of an unfinished platform build is written as a new file
       and renamed into place, never through a link standing at its name.
 
+    * In REMOTE DB SERVER MODE an account's own password files no longer
+      keep the database server's root password: its next upgrade gives them
+      a random one and says so once, and the install of a new account holds
+      it there only while the control panel is installed.
+
 @=> New Features
 
     * Upgrade all sites, the platform task that upgrades every Drupal 10 or
