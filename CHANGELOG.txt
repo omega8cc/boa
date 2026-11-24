@@ -40,6 +40,10 @@
       upgrade. A copy in the site's or the platform's own sites folder is
       not touched.
 
+    * The Shell Escape Alert and the incident mails of the system and
+      autosync monitors go out whatever bytes their lines hold: one that is
+      not UTF-8, or a control character, is shown as \xNN.
+
 @=> New Features
 
     * Upgrade all sites, the platform task that upgrades every Drupal 10 or
