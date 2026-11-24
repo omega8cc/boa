@@ -5160,49 +5160,74 @@ _fix_composer_version() {
   fi
 }
 
+# The release ./index.php names when it is a plain compiled Adminer, nothing
+# otherwise. Read without following a link or waiting on a FIFO, and never
+# more than a little: an earlier release left the folder to the web pool.
+_adminer_ver_here() {
+  local _h
+  _h="$(_acct_read_here index.php | head -c 1024 | tr -d '\0')"
+  case "${_h}" in
+    "<?php"$'\n'"/** Adminer - Compact database management"$'\n'*) ;;
+    *) return 0 ;;
+  esac
+  sed -n 's/^\* @version \([0-9][0-9.]*\)$/\1/p' <<< "${_h}" | head -n 1
+}
 # Adminer brought to the pinned release between upgrades, where it is
-# installed and older than that: a newer one an admin put there, and a file
-# that is not a plain Adminer (a wrapper of plugins), are left alone. Fetched
-# and checked in a fresh root directory, then renamed over the two files, so a
-# request meets the old file or the new one and a failed fetch changes
-# nothing. Owner and mode stay the ones of the file replaced. One attempt a
-# run: the next run is minutes away.
+# installed and older than that: a newer one an admin put there, and an
+# index.php that is not a plain compiled Adminer (a wrapper of plugins, the
+# Adminer Editor), are left alone. Fetched and checked in a fresh root
+# directory, then renamed over the two files, so a request meets the old file
+# or the new one and a failed fetch changes nothing. The owner stays the one
+# of the file replaced, and the mode with it, less what others could write.
+# One request a run (no retry), and a failure holds the next one for an hour.
 _fix_adminer_version() {
-  local _is _new _src _f _top="/var/www/adminer"
+  local _is _new _src _f _st _m _why=unpack _top="/var/www/adminer"
+  local _held="${_pthLog}/adminer-update.held"
   _ADMINER_VRN=6.3.1
   _src="${_urlDev}/src/adminer-${_ADMINER_VRN}.tar.gz"
   [ -d "${_top}" ] && [ ! -L "${_top}" ] || return 0
-  [ -f "${_top}/index.php" ] && [ ! -L "${_top}/index.php" ] || return 0
-  _is=$(head -n 10 "${_top}/index.php" 2> /dev/null \
-    | sed -n 's/^\* @version \([0-9][0-9.]*\)$/\1/p' | head -n 1)
+  _is="$(_acct_in_real_dir "${_top}" _adminer_ver_here)"
   [ -n "${_is}" ] || return 0
   dpkg --compare-versions "${_is}" lt "${_ADMINER_VRN}" || return 0
+  [ -n "$(find "${_held}" -mmin -60 -print -quit 2> /dev/null)" ] && return 0
   _install_in_flight && return 0
   _new=$(mktemp -d /var/www/.adminer.new.XXXXXX 2> /dev/null) || return 0
   if ( cd -- "${_new}" \
-      && curl ${_crlGet} --max-time 60 --max-filesize 4194304 \
+      && curl ${_crlGet} --retry 0 --max-time 60 --max-filesize 4194304 \
         "${_src}?r=$(date +%s)" -o adminer.tar.gz \
       && _extract_archive adminer.tar.gz ) &> /dev/null \
     && mv -f -T -- "${_new}/adminer/adminer-${_ADMINER_VRN}-mysql.php" \
       "${_new}/adminer/index.php" 2> /dev/null \
-    && [ ! -L "${_new}/adminer/index.php" ] \
-    && head -n 10 "${_new}/adminer/index.php" | grep -qxF "* @version ${_ADMINER_VRN}" \
+    && [ "$(_acct_in_real_dir "${_new}/adminer" _adminer_ver_here)" = "${_ADMINER_VRN}" ] \
     && [ "$(stat -c %s "${_new}/adminer/index.php")" -gt 102400 ]; then
-    for _f in adminer.css index.php; do
-      [ -f "${_new}/adminer/${_f}" ] && [ ! -L "${_new}/adminer/${_f}" ] || continue
-      [ -f "${_top}/${_f}" ] && [ ! -L "${_top}/${_f}" ] || continue
-      chown -- "$(stat -c '%u:%g' "${_top}/${_f}")" "${_new}/adminer/${_f}" \
-        && chmod -- "$(stat -c '%a' "${_top}/${_f}")" "${_new}/adminer/${_f}" \
-        && mv -f -T -- "${_new}/adminer/${_f}" "${_top}/${_f}" 2> /dev/null
+    if _install_in_flight; then
+      rm -rf -- "${_new}"
+      return 0
+    fi
+    _why=swap
+    # the page first: a design without its page is never put in place
+    for _f in index.php adminer.css; do
+      [ -f "${_new}/adminer/${_f}" ] && [ ! -L "${_new}/adminer/${_f}" ] || break
+      # type, mode and owner of one look, so a link's own are never taken
+      _st="$(stat -c '%f %u:%g' -- "${_top}/${_f}" 2> /dev/null)"
+      [ -n "${_st}" ] || break
+      _m=$(( 16#${_st%% *} ))
+      [ "$(( _m & 8#170000 ))" -eq "$(( 8#100000 ))" ] || break
+      chown -- "${_st#* }" "${_new}/adminer/${_f}" \
+        && chmod -- "$(printf '%o' "$(( _m & 8#755 ))")" "${_new}/adminer/${_f}" \
+        && mv -f -T -- "${_new}/adminer/${_f}" "${_top}/${_f}" 2> /dev/null \
+        || break
     done
   fi
   rm -rf -- "${_new}"
-  if head -n 10 "${_top}/index.php" 2> /dev/null | grep -qxF "* @version ${_ADMINER_VRN}"; then
+  if [ "$(_acct_in_real_dir "${_top}" _adminer_ver_here)" = "${_ADMINER_VRN}" ]; then
+    rm -f -- "${_held}"
     echo "Updated Adminer ${_is} to ${_ADMINER_VRN}"
     return 0
   fi
   echo "OOPS: Adminer ${_is} was not updated to ${_ADMINER_VRN}, the copy in place is kept"
-  _fetch_failed_note "adminer-${_ADMINER_VRN}.tar.gz" "${_src}" "unpack"
+  [ -d "${_pthLog}" ] && : > "${_held}"
+  _fetch_failed_note "adminer-${_ADMINER_VRN}.tar.gz" "${_src}" "${_why}"
 }
 
 _fix_sftp_server() {
