@@ -25,6 +25,12 @@
       are left as they are; one still on the old default is told so, once
       in each barracuda or octopus run.
 
+    * Adminer 6.3.1. A box that has an older one gets it within minutes,
+      without an upgrade: the files are replaced in place, with their owner
+      and mode kept, and a newer Adminer an admin put there stays. A failed
+      download keeps the copy in place, in a system pass too, which used to
+      remove it first.
+
 @=> New Features
 
     * Upgrade all sites, the platform task that upgrades every Drupal 10 or
@@ -79,6 +85,26 @@
       and it no longer announces one. A server's first install keeps its
       accelerated queue.
 
+    * The Upgrade, Upgrade all sites and the Drupal updates line of a site on
+      one of core's own install profiles (Standard, Minimal) no longer take
+      a distribution or another project's platform of the account for a
+      newer version of the site's codebase: a site on a plain Drupal
+      platform was called ready to be upgraded onto Drupal CMS, and others
+      were told they lack its modules. The two codebases' locks tell them
+      apart. With no newer platform, the line no longer says up to date.
+
+    * The Upgrade no longer offers a pre-release of Drupal core (an alpha,
+      beta, rc or development version) to a site on a finished release: the
+      platform is shown as not ready with the reason. A site already on a
+      pre-release goes on to newer ones as before.
+
+    * A control panel already upgraded to BOA-5.88.888 gets both these fixes
+      without another upgrade: BOA.sh.txt puts the two files in its
+      hosting_tasks_extra where they are exactly a pair that release laid down
+      or an earlier form of this step put, and leaves every other panel alone,
+      a newer one included; see /var/log/boa/panel-upgrade-targets.log. Not on
+      a standby, nor during an install or an upgrade.
+
     * The Upgrade and Upgrade all sites dialogs no longer call a site Ready
       whose upgrade would be refused over what an earlier one left: a copy
       from a run cut off in its move, one the next run cannot remove, or a
@@ -111,10 +137,29 @@
       its whole value with the password in /root/.my.cnf: an empty file, or
       one holding only the beginning of that password, passed as in sync.
 
+    * The command of an install that stops before its Ægir Master stays in
+      /root/.boa.install.command.cnf: autoinit moved it away as soon as the
+      install it had launched returned, so boa did not say how to go on and
+      barracuda up-* system could not. An install on a box already on Devuan
+      is recorded too, and autoinit launches a recorded install once.
+
+    * A /root/.barracuda.cnf made before the install, with a line or two in
+      it as the documentation asks, is completed with the install's own
+      settings. It was left without the e-mail address, the hostname and
+      others, so every later barracuda pass ended with errors until they
+      were added by hand. Your own lines are not changed.
+
     * The report mails of octopus and boa were not sent in a shell with no
       UTF-8 locale when the log held a non-ASCII character, and the launcher
       said they were: they go out as UTF-8, as barracuda's do, a failed mail
       is reported, and the mail about pruned archived stores goes out too.
+
+    * A first install in REMOTE DB SERVER MODE that stops because MySQL is
+      not running here keeps the operator's /root/.my.pass.txt, and one that
+      finds the file empty stops at once, leaves it as it is and, as without
+      the file, says how the install is run again. The settings files say
+      which database users to create on the remote server, in place of a
+      control file no code ever read.
 
 ###
 ### Stable BOA-5.88.888 PRO/LTS - DRAGON EDITION

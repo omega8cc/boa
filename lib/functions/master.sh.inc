@@ -1949,6 +1949,17 @@ _unlock_sendmail_for_snail() {
   chgrp allow-snail /usr/sbin/sendmail &> /dev/null
 }
 
+#
+# The install is done: move its recorded command to where autoinit keeps one,
+# so no tool reads it as the command of an unfinished install any more.
+_install_record_done() {
+  local _rec="/root/.boa.install.command.cnf"
+  [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] || return 0
+  [ -e "${_rec}" ] || return 0
+  [ -d "/var/backups" ] || mkdir -p /var/backups
+  mv -f "${_rec}" /var/backups/
+}
+
 _aegir_master_install_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _aegir_master_install_upgrade"
@@ -1965,8 +1976,17 @@ _aegir_master_install_upgrade() {
       _msg "INFO:   ${_LOG_INFO}"
       _msg "ERRR:   ${_LOG_ERRR}"
       _msg "HINT: (re)start ${_DB_SERVER} server, then run the installer again"
+      ### In remote DB mode the file is the operator's, never made here: it
+      ### stays. In the local modes the next run makes another.
+      if [ "${_THIS_DB_HOST}" = "localhost" ] \
+        || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
+        || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
+        || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
+        [ -e "/root/.my.pass.txt" ] && rm -f /root/.my.pass.txt
+      elif [ -e "/root/.my.pass.txt" ]; then
+        _msg "INFO: /root/.my.pass.txt stays, REMOTE DB SERVER MODE needs it"
+      fi
       _msg "Bye"
-      [ -e "/root/.my.pass.txt" ] && rm -f /root/.my.pass.txt
       mkdir -p /var/aegir
       _clean_pid_exit _aegir_master_install_upgrade_a
     fi
@@ -2366,6 +2386,7 @@ EOFMYSQL
     if [ -e "${_mtrInc}/nginx_vhost_common.conf" ]; then
       _DO_NOTHING=YES
       [ -e "/root/.force.reinstall.cnf" ] && rm -f /root/.force.reinstall.cnf
+      _install_record_done
     else
       _msg "FATAL ERROR: Something went wrong, Ægir Master Instance not installed!"
       _msg "HINT: Please check /var/log/boa/aegir_install.log for details, and then"
