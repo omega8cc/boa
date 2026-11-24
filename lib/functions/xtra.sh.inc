@@ -50,6 +50,47 @@ _if_install_bzr() {
   fi
 }
 
+# True when the file $1 is the compiled Adminer of the pinned release: its
+# header says so and it is a single file, not the release's source code.
+_xtra_adminer_is() {
+  [ -f "${1}" ] && [ ! -L "${1}" ] \
+    && head -n 10 -- "${1}" 2> /dev/null \
+      | grep -qxF "* @version ${_ADMINER_VRN}" \
+    && [ "$(stat -c %s -- "${1}" 2> /dev/null)" -gt 102400 ]
+}
+# The pinned Adminer put in place of what is in /var/www/adminer, unless an
+# admin put a newer one there. It is fetched and unpacked in a fresh root
+# directory beside it and checked there, and only then takes the name, with
+# the access/ cache moved over: a failed fetch, or an archive that is not the
+# installable one, keeps the copy in place (the marker is then not written,
+# so the next run tries again).
+_xtra_adminer_fetch() {
+  local _new _is _php="adminer/adminer-${_ADMINER_VRN}-mysql.php" _rc=1
+  local _arc="adminer-${_ADMINER_VRN}.tar.gz"
+  _is=$(head -n 10 /var/www/adminer/index.php 2> /dev/null \
+    | sed -n 's/^\* @version \([0-9][0-9.]*\)$/\1/p' | head -n 1)
+  if [ -n "${_is}" ] \
+    && dpkg --compare-versions "${_is}" gt "${_ADMINER_VRN}"; then
+    _msg "INFO: Adminer ${_is} is newer than ${_ADMINER_VRN}, kept"
+    return 0
+  fi
+  _new=$(mktemp -d /var/www/.adminer.new.XXXXXX 2> /dev/null) || return 1
+  if ( cd -- "${_new}" \
+      && curl ${_crlGet} --max-filesize 4194304 \
+        "${_urlDev}/src/${_arc}?r=$(date +%s)" -o "${_arc}" \
+      && ! _dl_is_page "${_arc}" && _extract_archive "${_arc}" ) &> /dev/null \
+    && _xtra_adminer_is "${_new}/${_php}" \
+    && mv -f -T -- "${_new}/${_php}" "${_new}/adminer/index.php"; then
+    if [ -d "/var/www/adminer/access" ] && [ ! -L "/var/www/adminer" ]; then
+      mv -f -T -- /var/www/adminer/access "${_new}/adminer/access" &> /dev/null
+    fi
+    rm -rf -- /var/www/adminer &> /dev/null
+    mv -f -T -- "${_new}/adminer" /var/www/adminer && _rc=0
+  fi
+  rm -rf -- "${_new}" &> /dev/null
+  return "${_rc}"
+}
+
 _if_install_adminer() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _if_install_adminer"
@@ -70,11 +111,8 @@ _if_install_adminer() {
       if _prompt_yes_no "Do you want to install Adminer Manager?" ; then
         true
         _msg "INFO: Installing Adminer Manager..."
-        cd /var/www
-        rm -rf /var/www/adminer &> /dev/null
-        _get_dev_ext "adminer-${_ADMINER_VRN}.tar.gz"
-        cd /var/www/adminer
-        mv -f adminer-${_ADMINER_VRN}-mysql.php index.php
+        local _admGot=NO
+        _xtra_adminer_fetch && _admGot=YES
         _validate_public_ip &> /dev/null
         _validate_xtras_ip &> /dev/null
         cp -af ${_locCnf}/nginx/nginx_sql_adminer.conf ${_ADMINER_VHOST}
@@ -84,8 +122,12 @@ _if_install_adminer() {
         wait
         sed -i "s/adminer_name/adminer.${_THIS_FRONT} ${_THISHTIP}/g" ${_ADMINER_VHOST}
         wait
-        touch ${_pthLog}/adminer-${_ADMINER_VRN}-sync-new-ip-access.log
-        _msg "INFO: Adminer Manager installed"
+        if [ "${_admGot}" = "YES" ]; then
+          touch ${_pthLog}/adminer-${_ADMINER_VRN}-sync-new-ip-access.log
+          _msg "INFO: Adminer Manager installed"
+        else
+          _msg "ALRT: Adminer ${_ADMINER_VRN} was not installed, the next run tries again"
+        fi
       else
         _msg "INFO: Adminer Manager installation skipped"
       fi
