@@ -2358,22 +2358,27 @@ _hm_cron_queue_here() {
     | _acct_put_mode_here hosting_cron.module "${_uid}" "${_gid}" "${_mod}"
 }
 # The control panel files _fix_panel_upgrade_targets replaces, by md5: the
-# pair it puts (the module, then its upgrade include), and the pairs an
-# upgrade to BOA-5.88.888 laid down before it.
+# pair it puts (the module, then its upgrade include), the pairs an upgrade to
+# BOA-5.88.888 laid down before it, and the two files beside them that pair
+# works with, which are the same in all of them.
 _HTE_MOD_NEW=82c963df2a8021ccb8c594c31ad5012e
 _HTE_INC_NEW=bc8d7e50f8683170e4aab08769f64b45
 _HTE_MOD_A=fc49780ee7697846ddec23de9234dc25
 _HTE_INC_A=894a54ea8a267d1f4bbfce40de8185c5
 _HTE_MOD_B=cccf6c9f753a825931a8ec6bdd7f7a28
 _HTE_INC_B=8c12b56202d0cc1f644fbff42d0b4f38
+_HTE_DRUSH=3f692e394c584ae73be924e00cf172a1
+_HTE_BACKEND=3bf5c7626aa532308d44c1bc23a21c42
 # The md5 of ./$1, read bounded, a regular file only, never through a link.
 _hte_sum_here() {
   [ -f "./${1}" ] && [ ! -L "./${1}" ] || return 1
   _acct_read_here "${1}" | md5sum | cut -d' ' -f1
 }
 # What the two files in the current (pinned) module directory are: new, old
-# (a pair known from the release), half (the new include, the module still
-# an old one: a put stopped in between), none, or "other <md5> <md5>".
+# (a pair known from the release), half (one of the two already new: a put
+# stopped in between, or a partial restore), none, or "other <md5> <md5>".
+# Anything else, a newer panel first of all, is other, and so is a known pair
+# whose companion files are not the ones it works with.
 _hte_state_here() {
   local _m _i
   _m="$(_hte_sum_here hosting_tasks_extra.module)"
@@ -2382,10 +2387,18 @@ _hte_state_here() {
     echo none
     return 0
   fi
+  if [ "$(_hte_sum_here hosting_tasks_extra.drush.inc)" != "${_HTE_DRUSH}" ] \
+    || [ -L ./drush ] \
+    || [ "$(cd -P -- ./drush 2> /dev/null \
+      && _hte_sum_here provision_tasks_extra.drush.inc)" != "${_HTE_BACKEND}" ]; then
+    echo "other ${_m} ${_i}"
+    return 0
+  fi
   case "${_m}:${_i}" in
     "${_HTE_MOD_NEW}:${_HTE_INC_NEW}") echo new ;;
     "${_HTE_MOD_A}:${_HTE_INC_A}" | "${_HTE_MOD_B}:${_HTE_INC_B}") echo old ;;
     "${_HTE_MOD_A}:${_HTE_INC_NEW}" | "${_HTE_MOD_B}:${_HTE_INC_NEW}") echo half ;;
+    "${_HTE_MOD_NEW}:${_HTE_INC_A}" | "${_HTE_MOD_NEW}:${_HTE_INC_B}") echo half ;;
     *) echo "other ${_m} ${_i}" ;;
   esac
 }
@@ -2405,8 +2418,8 @@ _hte_put_here() {
     _st="$(stat -c '%u %g %a' -- "./${_n}" 2> /dev/null)" || return 1
     read -r _uid _gid _mod <<< "${_st}"
     [ "${_uid}" = "${2}" ] || return 1
-    [[ "${_gid}" =~ ^[0-9]+$ && "${_mod}" =~ ^[0-7]{3}$ ]] || return 1
-    _acct_put_mode_here "${_n}" "${_uid}" "${_gid}" "${_mod}" \
+    [[ "${_gid}" =~ ^[0-9]+$ && "${_mod}" =~ ^[0-7]{3,4}$ ]] || return 1
+    _acct_put_mode_here "${_n}" "${_uid}" "${_gid}" "${_mod: -3}" \
       < "${1}/${_n}" || return 1
   done
   [ "$(_hte_state_here)" = "new" ]
@@ -2414,7 +2427,7 @@ _hte_put_here() {
 # One line in the step's own log, once for each text.
 _hte_log() {
   local _l="${_pthLog}/panel-upgrade-targets.log"
-  grep -qF -- " ${1}" "${_l}" 2> /dev/null && return 0
+  sed 's/^[^ ]* [^ ]* //' "${_l}" 2> /dev/null | grep -qxF -- "${1}" && return 0
   echo "$(date '+%F %T') ${1}" >> "${_l}"
 }
 # True when the file $2 of any account directory below the account's
@@ -5369,7 +5382,7 @@ _fix_hosting_le() {
 # then looked at again: a panel moved here from another server may carry the
 # old pair.
 _fix_panel_upgrade_targets() {
-  local _ctl _mis _p _u _uid _root _st _due="" _tmp _n _failed=NO
+  local _ctl _mis _p _u _uid _root _st _due="" _tmp _failed=NO
   [ -d "/data/u" ] || return 0
   [ -e "/root/.standby.cnf" ] && return 0
   [ -e "/root/.standby.prep.cnf" ] && return 0
@@ -5397,32 +5410,41 @@ _fix_panel_upgrade_targets() {
     return 0
   fi
   _tmp="$(mktemp -d /run/.panel-upgrade.XXXXXX 2> /dev/null)" || return 0
+  # a fetch that fails, a cut or wrong archive and other bytes than the pinned
+  # ones are all tried again in an hour; the mirror's edge is told not to
+  # answer from a stale copy
   if ! timeout 180 curl ${_crlGet} \
-      "${_urlDev}/${_tRee}/hosting_tasks_extra.tar.gz" -o "${_tmp}/hte.tar.gz" \
+      "${_urlDev}/${_tRee}/hosting_tasks_extra.tar.gz?r=$(date +%s)" \
+      -o "${_tmp}/hte.tar.gz" \
     || ! tar --no-same-owner -xzf "${_tmp}/hte.tar.gz" -C "${_tmp}" \
       hosting_tasks_extra/hosting_tasks_extra.module \
-      hosting_tasks_extra/hosting_tasks_extra.upgrade.inc 2> /dev/null; then
+      hosting_tasks_extra/hosting_tasks_extra.upgrade.inc \
+      hosting_tasks_extra/hosting_tasks_extra.drush.inc \
+      hosting_tasks_extra/drush/provision_tasks_extra.drush.inc 2> /dev/null; then
+    _hte_log "the mirror's hosting_tasks_extra.tar.gz could not be fetched or unpacked, nothing put"
+    touch "${_mis}"
     rm -rf -- "${_tmp}"
     return 0
   fi
-  for _n in hosting_tasks_extra.module hosting_tasks_extra.upgrade.inc; do
-    [ -f "${_tmp}/hosting_tasks_extra/${_n}" ] \
-      && [ ! -L "${_tmp}/hosting_tasks_extra/${_n}" ] || _failed=YES
-  done
-  if [ "${_failed}" = "NO" ]; then
-    _st="$(_acct_in_real_dir "${_tmp}/hosting_tasks_extra" _hte_state_here)"
-    [ "${_st}" = "new" ] || _failed=YES
-  fi
-  if [ "${_failed}" = "YES" ]; then
+  _st="$(_acct_in_real_dir "${_tmp}/hosting_tasks_extra" _hte_state_here)"
+  if [ "${_st}" != "new" ]; then
     _hte_log "the mirror's hosting_tasks_extra.tar.gz holds other files than expected, nothing put"
     touch "${_mis}"
     rm -rf -- "${_tmp}"
     return 0
   fi
+  # the fetch can take minutes
+  if _install_in_flight; then
+    rm -rf -- "${_tmp}"
+    return 0
+  fi
   for _u in ${_due}; do
     _p="/data/disk/${_u}"
-    _uid="$(id -u -- "${_u}" 2> /dev/null)" || continue
-    _root="$(_acct_hm_root "${_p}")" || continue
+    if ! _uid="$(id -u -- "${_u}" 2> /dev/null)" \
+      || ! _root="$(_acct_hm_root "${_p}")"; then
+      _failed=YES
+      continue
+    fi
     if _acct_in_real_dir \
       "${_root}/profiles/hostmaster/modules/aegir/hosting_tasks_extra" \
       _hte_put_here "${_tmp}/hosting_tasks_extra" "${_uid}"; then
