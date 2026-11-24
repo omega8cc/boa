@@ -87,6 +87,13 @@
       were told they lack its modules. The two codebases' locks tell them
       apart. With no newer platform, the line no longer says up to date.
 
+    * A control panel already upgraded to BOA-5.88.888 gets that fix without
+      another upgrade: BOA.sh.txt puts the two files in its hosting_tasks_extra
+      where they are exactly a pair that release laid down, and leaves every
+      other panel alone, a newer one included; see
+      /var/log/boa/panel-upgrade-targets.log. Not on a standby, nor during an
+      install or an upgrade.
+
     * The Upgrade and Upgrade all sites dialogs no longer call a site Ready
       whose upgrade would be refused over what an earlier one left: a copy
       from a run cut off in its move, one the next run cannot remove, or a
