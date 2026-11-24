@@ -2618,7 +2618,15 @@ _init_sql_root_credentials() {
     fi
     echo "${_ESC_PASS}" > /root/.my.pass.txt
   fi
-  if [ -e "/root/.my.pass.txt" ]; then
+  ### A blank file holds no password either: a new remote DB install stops
+  ### here the same way and the file is left as it is. Never an upgrade.
+  local _passBlank=NO
+  if [ -e "/root/.my.pass.txt" ] && [ "${_remoteDb}" = "YES" ] \
+    && [ "${_STATUS}" = "INIT" ] \
+    && [ -z "$(tr -d '[:space:]' 2> /dev/null < /root/.my.pass.txt)" ]; then
+    _passBlank=YES
+  fi
+  if [ -e "/root/.my.pass.txt" ] && [ "${_passBlank}" = "NO" ]; then
     if [ "${_STATUS}" = "INIT" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: New ${_DB_SERVER} root password in /root/.my.pass.txt"
@@ -2639,6 +2647,12 @@ EOF
       cat <<EOF
     In REMOTE DB SERVER MODE (_THIS_DB_HOST=${_THIS_DB_HOST}) the file must
     hold the root password of that database server before the first run.
+
+EOF
+    fi
+    if [ "${_passBlank}" = "YES" ]; then
+      cat <<EOF
+    The file is there, but it is empty. It has been left as it is.
 
 EOF
     fi
