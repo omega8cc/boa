@@ -114,6 +114,11 @@
       a newer one included; see /var/log/boa/panel-upgrade-targets.log. Not on
       a standby, nor during an install or an upgrade.
 
+    * The Packages page of a site or a platform, and the version the panel
+      shows for a Grav site, no longer take package rows of another record
+      that carries the same number (an install profile's packages are kept
+      under a number of their own).
+
     * The Upgrade and Upgrade all sites dialogs no longer call a site Ready
       whose upgrade would be refused over what an earlier one left: a copy
       from a run cut off in its move, one the next run cannot remove, or a
