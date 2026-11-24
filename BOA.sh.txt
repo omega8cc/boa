@@ -2357,6 +2357,66 @@ _hm_cron_queue_here() {
   sed "s/127.0.0.1/${2}/g" "${1}" \
     | _acct_put_mode_here hosting_cron.module "${_uid}" "${_gid}" "${_mod}"
 }
+# The control panel files _fix_panel_upgrade_targets replaces, by md5: the
+# pair it puts (the module, then its upgrade include), and the pairs an
+# upgrade to BOA-5.88.888 laid down before it.
+_HTE_MOD_NEW=82c963df2a8021ccb8c594c31ad5012e
+_HTE_INC_NEW=bc8d7e50f8683170e4aab08769f64b45
+_HTE_MOD_A=fc49780ee7697846ddec23de9234dc25
+_HTE_INC_A=894a54ea8a267d1f4bbfce40de8185c5
+_HTE_MOD_B=cccf6c9f753a825931a8ec6bdd7f7a28
+_HTE_INC_B=8c12b56202d0cc1f644fbff42d0b4f38
+# The md5 of ./$1, read bounded, a regular file only, never through a link.
+_hte_sum_here() {
+  [ -f "./${1}" ] && [ ! -L "./${1}" ] || return 1
+  _acct_read_here "${1}" | md5sum | cut -d' ' -f1
+}
+# What the two files in the current (pinned) module directory are: new, old
+# (a pair known from the release), half (the new include, the module still
+# an old one: a put stopped in between), none, or "other <md5> <md5>".
+_hte_state_here() {
+  local _m _i
+  _m="$(_hte_sum_here hosting_tasks_extra.module)"
+  _i="$(_hte_sum_here hosting_tasks_extra.upgrade.inc)"
+  if [ -z "${_m}" ] || [ -z "${_i}" ]; then
+    echo none
+    return 0
+  fi
+  case "${_m}:${_i}" in
+    "${_HTE_MOD_NEW}:${_HTE_INC_NEW}") echo new ;;
+    "${_HTE_MOD_A}:${_HTE_INC_A}" | "${_HTE_MOD_B}:${_HTE_INC_B}") echo old ;;
+    "${_HTE_MOD_A}:${_HTE_INC_NEW}" | "${_HTE_MOD_B}:${_HTE_INC_NEW}") echo half ;;
+    *) echo "other ${_m} ${_i}" ;;
+  esac
+}
+# The two files put from the directory $1 into the current (pinned) module
+# directory of the account with the uid $2, each as a fresh file renamed over
+# the name with the owner, group and mode of the one it replaces. The include
+# goes first: the old module runs with it, and the new module without it says
+# the panel is being updated. Nothing is put over bytes that are not known.
+_hte_put_here() {
+  local _n _st _uid _gid _mod
+  case "$(_hte_state_here)" in
+    old | half) ;;
+    *) return 1 ;;
+  esac
+  for _n in hosting_tasks_extra.upgrade.inc hosting_tasks_extra.module; do
+    [ -f "./${_n}" ] && [ ! -L "./${_n}" ] || return 1
+    _st="$(stat -c '%u %g %a' -- "./${_n}" 2> /dev/null)" || return 1
+    read -r _uid _gid _mod <<< "${_st}"
+    [ "${_uid}" = "${2}" ] || return 1
+    [[ "${_gid}" =~ ^[0-9]+$ && "${_mod}" =~ ^[0-7]{3}$ ]] || return 1
+    _acct_put_mode_here "${_n}" "${_uid}" "${_gid}" "${_mod}" \
+      < "${1}/${_n}" || return 1
+  done
+  [ "$(_hte_state_here)" = "new" ]
+}
+# One line in the step's own log, once for each text.
+_hte_log() {
+  local _l="${_pthLog}/panel-upgrade-targets.log"
+  grep -qF -- " ${1}" "${_l}" 2> /dev/null && return 0
+  echo "$(date '+%F %T') ${1}" >> "${_l}"
+}
 # True when the file $2 of any account directory below the account's
 # tools/le/accounts $1 holds the text $3: each read bounded, never through a
 # link or from a FIFO, inside its pinned real directory.
@@ -5294,6 +5354,93 @@ _fix_hosting_le() {
       rm -f "${_pthLog}/le_renewal_days_69.ctrl.${_tRee}.${_xSrl}.pid"
     fi
   fi
+}
+
+#
+# Hotfix for the control panels an upgrade to BOA-5.88.888 laid down: their
+# Upgrade and Drupal updates line took another codebase of the account for a
+# newer version of a site's own. The account's current hostmaster platform is
+# taken by what its two files are (_hte_state_here), not by a version, so a
+# panel with any other bytes (older, customised, or newer) is left alone and
+# named in the log once; an upgrade brings the fix to those. The files come
+# from the tree's own hosting_tasks_extra.tar.gz and are put only when their
+# md5s are the ones above. Not on a standby, whose account trees come from
+# the active, and not while an install or an upgrade runs. Done for a day,
+# then looked at again: a panel moved here from another server may carry the
+# old pair.
+_fix_panel_upgrade_targets() {
+  local _ctl _mis _p _u _uid _root _st _due="" _tmp _n _failed=NO
+  [ -d "/data/u" ] || return 0
+  [ -e "/root/.standby.cnf" ] && return 0
+  [ -e "/root/.standby.prep.cnf" ] && return 0
+  _ctl="${_pthLog}/panel-upgrade-targets.ctrl.f99.${_tRee}.${_xSrl}.pid"
+  _mis="${_pthLog}/panel-upgrade-targets.mismatch"
+  [ -n "$(find "${_ctl}" -mmin -1440 2> /dev/null)" ] && return 0
+  [ -n "$(find "${_mis}" -mmin -60 2> /dev/null)" ] && return 0
+  _install_in_flight && return 0
+  for _p in /data/disk/*; do
+    _u="${_p##*/}"
+    [ -d "${_p}" ] && [ ! -L "${_p}" ] && [ "${_u}" != "arch" ] || continue
+    id -u -- "${_u}" > /dev/null 2>&1 || continue
+    _root="$(_acct_hm_root "${_p}")" || continue
+    _st="$(_acct_in_real_dir \
+      "${_root}/profiles/hostmaster/modules/aegir/hosting_tasks_extra" \
+      _hte_state_here)" || continue
+    case "${_st}" in
+      old | half) _due="${_due} ${_u}" ;;
+      other*) _hte_log "left ${_u} panel ${_root##*/} as it is, ${_st}" ;;
+    esac
+  done
+  if [ -z "${_due}" ]; then
+    rm -f -- "${_mis}"
+    touch "${_ctl}"
+    return 0
+  fi
+  _tmp="$(mktemp -d /run/.panel-upgrade.XXXXXX 2> /dev/null)" || return 0
+  if ! timeout 180 curl ${_crlGet} \
+      "${_urlDev}/${_tRee}/hosting_tasks_extra.tar.gz" -o "${_tmp}/hte.tar.gz" \
+    || ! tar --no-same-owner -xzf "${_tmp}/hte.tar.gz" -C "${_tmp}" \
+      hosting_tasks_extra/hosting_tasks_extra.module \
+      hosting_tasks_extra/hosting_tasks_extra.upgrade.inc 2> /dev/null; then
+    rm -rf -- "${_tmp}"
+    return 0
+  fi
+  for _n in hosting_tasks_extra.module hosting_tasks_extra.upgrade.inc; do
+    [ -f "${_tmp}/hosting_tasks_extra/${_n}" ] \
+      && [ ! -L "${_tmp}/hosting_tasks_extra/${_n}" ] || _failed=YES
+  done
+  if [ "${_failed}" = "NO" ]; then
+    _st="$(_acct_in_real_dir "${_tmp}/hosting_tasks_extra" _hte_state_here)"
+    [ "${_st}" = "new" ] || _failed=YES
+  fi
+  if [ "${_failed}" = "YES" ]; then
+    _hte_log "the mirror's hosting_tasks_extra.tar.gz holds other files than expected, nothing put"
+    touch "${_mis}"
+    rm -rf -- "${_tmp}"
+    return 0
+  fi
+  for _u in ${_due}; do
+    _p="/data/disk/${_u}"
+    _uid="$(id -u -- "${_u}" 2> /dev/null)" || continue
+    _root="$(_acct_hm_root "${_p}")" || continue
+    if _acct_in_real_dir \
+      "${_root}/profiles/hostmaster/modules/aegir/hosting_tasks_extra" \
+      _hte_put_here "${_tmp}/hosting_tasks_extra" "${_uid}"; then
+      _hte_log "put ${_u} panel ${_root##*/}"
+    else
+      _hte_log "could not put ${_u} panel ${_root##*/}"
+      _failed=YES
+    fi
+  done
+  rm -rf -- "${_tmp}"
+  # a panel that could not be put is tried again in an hour, not every run
+  if [ "${_failed}" = "YES" ]; then
+    touch "${_mis}"
+  else
+    rm -f -- "${_mis}"
+    touch "${_ctl}"
+  fi
+  return 0
 }
 
 _fix_newrelic() {
@@ -8311,6 +8458,7 @@ if [ "$(id -u)" -eq 0 ]; then
     _fix_drupal_core_eleven
     _fix_pure_ftpd
     _fix_hosting_le
+    _fix_panel_upgrade_targets
     _fix_newrelic
     _fix_leftovers
     _fix_nginx_crawler_access
