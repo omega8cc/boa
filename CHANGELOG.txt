@@ -27,9 +27,10 @@
 
     * Adminer 6.3.1. A box that has an older one gets it within minutes,
       without an upgrade: the files are replaced in place, with their owner
-      and mode kept, and a newer Adminer an admin put there stays, as does
-      an index.php that is not a plain Adminer. A failed download keeps the
-      copy in place, in a system pass too, which used to remove it first.
+      and mode kept, and an index.php that is not a plain Adminer is left
+      alone. A system pass puts the whole tree in place anew, and no longer
+      removes the old one before the new one is there. A newer Adminer an
+      admin put there stays, and a failed download keeps the copy in place.
 
     * The Drupal 7 module Adminer is no longer in the shared modules: it
       carried Adminer 4.8.1, and its login ended the Drupal session on

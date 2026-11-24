@@ -5179,15 +5179,17 @@ _adminer_ver_here() {
 # directory, then renamed over the two files, so a request meets the old file
 # or the new one and a failed fetch changes nothing. The owner stays the one
 # of the file replaced, and the mode with it, less what others could write.
-# One request a run (no retry): the next run is minutes away.
+# One request a run (no retry), and a failure holds the next one for an hour.
 _fix_adminer_version() {
-  local _is _new _src _f _st _m _top="/var/www/adminer"
+  local _is _new _src _f _st _m _why=unpack _top="/var/www/adminer"
+  local _held="${_pthLog}/adminer-update.held"
   _ADMINER_VRN=6.3.1
   _src="${_urlDev}/src/adminer-${_ADMINER_VRN}.tar.gz"
   [ -d "${_top}" ] && [ ! -L "${_top}" ] || return 0
   _is="$(_acct_in_real_dir "${_top}" _adminer_ver_here)"
   [ -n "${_is}" ] || return 0
   dpkg --compare-versions "${_is}" lt "${_ADMINER_VRN}" || return 0
+  [ -n "$(find "${_held}" -mmin -60 -print -quit 2> /dev/null)" ] && return 0
   _install_in_flight && return 0
   _new=$(mktemp -d /var/www/.adminer.new.XXXXXX 2> /dev/null) || return 0
   if ( cd -- "${_new}" \
@@ -5197,27 +5199,35 @@ _fix_adminer_version() {
     && mv -f -T -- "${_new}/adminer/adminer-${_ADMINER_VRN}-mysql.php" \
       "${_new}/adminer/index.php" 2> /dev/null \
     && [ "$(_acct_in_real_dir "${_new}/adminer" _adminer_ver_here)" = "${_ADMINER_VRN}" ] \
-    && [ "$(stat -c %s "${_new}/adminer/index.php")" -gt 102400 ] \
-    && ! _install_in_flight; then
-    for _f in adminer.css index.php; do
-      [ -f "${_new}/adminer/${_f}" ] && [ ! -L "${_new}/adminer/${_f}" ] || continue
+    && [ "$(stat -c %s "${_new}/adminer/index.php")" -gt 102400 ]; then
+    if _install_in_flight; then
+      rm -rf -- "${_new}"
+      return 0
+    fi
+    _why=swap
+    # the page first: a design without its page is never put in place
+    for _f in index.php adminer.css; do
+      [ -f "${_new}/adminer/${_f}" ] && [ ! -L "${_new}/adminer/${_f}" ] || break
       # type, mode and owner of one look, so a link's own are never taken
       _st="$(stat -c '%f %u:%g' -- "${_top}/${_f}" 2> /dev/null)"
-      [ -n "${_st}" ] || continue
+      [ -n "${_st}" ] || break
       _m=$(( 16#${_st%% *} ))
-      [ "$(( _m & 8#170000 ))" -eq "$(( 8#100000 ))" ] || continue
+      [ "$(( _m & 8#170000 ))" -eq "$(( 8#100000 ))" ] || break
       chown -- "${_st#* }" "${_new}/adminer/${_f}" \
         && chmod -- "$(printf '%o' "$(( _m & 8#755 ))")" "${_new}/adminer/${_f}" \
-        && mv -f -T -- "${_new}/adminer/${_f}" "${_top}/${_f}" 2> /dev/null
+        && mv -f -T -- "${_new}/adminer/${_f}" "${_top}/${_f}" 2> /dev/null \
+        || break
     done
   fi
   rm -rf -- "${_new}"
   if [ "$(_acct_in_real_dir "${_top}" _adminer_ver_here)" = "${_ADMINER_VRN}" ]; then
+    rm -f -- "${_held}"
     echo "Updated Adminer ${_is} to ${_ADMINER_VRN}"
     return 0
   fi
   echo "OOPS: Adminer ${_is} was not updated to ${_ADMINER_VRN}, the copy in place is kept"
-  _fetch_failed_note "adminer-${_ADMINER_VRN}.tar.gz" "${_src}" "unpack"
+  [ -d "${_pthLog}" ] && : > "${_held}"
+  _fetch_failed_note "adminer-${_ADMINER_VRN}.tar.gz" "${_src}" "${_why}"
 }
 
 _fix_sftp_server() {

@@ -83,11 +83,12 @@ _xtra_adminer_stage() {
   done
   return 1
 }
-# The pinned Adminer put in place of what is in /var/www/adminer, unless an
-# admin put a newer one there. The whole tree is staged and checked first
-# (_xtra_adminer_stage); then the old one is renamed aside, the new one takes
-# the name and the access/ cache moves over. A step that fails puts the old
-# one back: a failed fetch, an archive that is not the installable one or a
+# The pinned Adminer put in place of what is in /var/www/adminer, unless a
+# newer plain one is there. The whole tree is staged and checked first
+# (_xtra_adminer_stage); then the two trees swap names in one rename
+# (_SAT_SWAP_PL), or, where that cannot be done, the old one is renamed aside
+# and put back when the new one cannot take the name. The access/ cache moves
+# over. So a failed fetch, an archive that is not the installable one or a
 # name that cannot be renamed keeps the copy in place (the marker is then not
 # written, so the next run tries again).
 _xtra_adminer_fetch() {
@@ -99,28 +100,35 @@ _xtra_adminer_fetch() {
     return 0
   fi
   _new=$(mktemp -d /var/www/.adminer.new.XXXXXX 2> /dev/null) || return 1
-  _old=$(mktemp -d /var/www/.adminer.old.XXXXXX 2> /dev/null)
-  if [ -n "${_old}" ] && _xtra_adminer_stage "${_new}"; then
-    if { [ ! -e "${_top}" ] && [ ! -L "${_top}" ]; } \
-      || mv -f -T -- "${_top}" "${_old}/adminer" &> /dev/null; then
-      if mv -f -T -- "${_new}/adminer" "${_top}" &> /dev/null; then
-        _rc=0
-        if [ -d "${_old}/adminer/access" ] && [ ! -L "${_old}/adminer" ] \
-          && [ ! -L "${_old}/adminer/access" ]; then
-          mv -f -T -- "${_old}/adminer/access" "${_top}/access" &> /dev/null
+  if _xtra_adminer_stage "${_new}"; then
+    if [ ! -e "${_top}" ] && [ ! -L "${_top}" ]; then
+      mv -f -T -- "${_new}/adminer" "${_top}" &> /dev/null && _rc=0
+    elif [ -n "${_SAT_SWAP_PL}" ] \
+      && perl -e "${_SAT_SWAP_PL}" -- "${_new}/adminer" "${_top}" 2> /dev/null; then
+      _rc=0
+    elif _old=$(mktemp -d /var/www/.adminer.old.XXXXXX 2> /dev/null); then
+      if mv -f -T -- "${_top}" "${_old}/adminer" &> /dev/null; then
+        if mv -f -T -- "${_new}/adminer" "${_top}" &> /dev/null; then
+          _rc=0
+          mv -f -T -- "${_old}/adminer" "${_new}/adminer" &> /dev/null
+        else
+          mv -f -T -- "${_old}/adminer" "${_top}" &> /dev/null
         fi
-        rm -rf -- "${_old}" &> /dev/null
-      elif [ -e "${_old}/adminer" ] || [ -L "${_old}/adminer" ]; then
-        mv -f -T -- "${_old}/adminer" "${_top}" &> /dev/null
       fi
+      rmdir -- "${_old}" &> /dev/null
     fi
   fi
+  # the old tree, where it was swapped out, is now at the staged name
+  if [ "${_rc}" = "0" ] && [ -d "${_new}/adminer/access" ] \
+    && [ ! -L "${_new}/adminer" ] && [ ! -L "${_new}/adminer/access" ]; then
+    mv -f -T -- "${_new}/adminer/access" "${_top}/access" &> /dev/null
+  fi
   rm -rf -- "${_new}" &> /dev/null
-  [ -n "${_old}" ] && rmdir -- "${_old}" &> /dev/null
   return "${_rc}"
 }
 
 _if_install_adminer() {
+  local _o
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _if_install_adminer"
   fi
@@ -161,6 +169,13 @@ _if_install_adminer() {
         _msg "INFO: Adminer Manager installation skipped"
       fi
     fi
+  fi
+  # A run cut off between two renames left the tree beside its name: back.
+  if [ ! -e "/var/www/adminer" ] && [ ! -L "/var/www/adminer" ]; then
+    for _o in /var/www/.adminer.old.*/adminer; do
+      [ -d "${_o}" ] && [ ! -L "${_o}" ] || continue
+      mv -f -T -- "${_o}" /var/www/adminer &> /dev/null && break
+    done
   fi
   # What an earlier top rebuild left beside the tree (an old top a pool
   # process kept alive, an interrupted run's copy) is never served or
