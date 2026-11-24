@@ -125,6 +125,12 @@
       barracuda up-* system could not. An install on a box already on Devuan
       is recorded too, and autoinit launches a recorded install once.
 
+    * A /root/.barracuda.cnf made before the install, with a line or two in
+      it as the documentation asks, is completed with the install's own
+      settings. It was left without the e-mail address, the hostname and
+      others, so every later barracuda pass ended with errors until they
+      were added by hand. Your own lines are not changed.
+
     * The report mails of octopus and boa were not sent in a shell with no
       UTF-8 locale when the log held a non-ASCII character, and the launcher
       said they were: they go out as UTF-8, as barracuda's do, a failed mail
