@@ -496,8 +496,13 @@ _send_report() {
       _repSub="Successful Octopus upgrade for ${_octUsr}"
       _repSub="REPORT: ${_repSub} on ${_hName}"
       _repSub=$(echo -n ${_repSub} | fmt -su -w 2500 2>&1)
-      _up_mail_body | s-nail -s "${_repSub} at ${_NOW}" ${_MY_EMAIL}
-      echo "${_repSub} sent to ${_MY_EMAIL}"
+      # Cron gives no locale, and s-nail then refuses a non-ASCII body.
+      if _up_mail_body | s-nail -S ttycharset=utf-8 -S sendcharsets=utf-8 \
+        -s "${_repSub} at ${_NOW}" ${_MY_EMAIL}; then
+        echo "${_repSub} sent to ${_MY_EMAIL}"
+      else
+        echo "${_repSub} could not be sent to ${_MY_EMAIL}"
+      fi
     fi
   fi
 }
@@ -511,10 +516,32 @@ _send_alert() {
     if [ ! -z "${_MY_EMAIL}" ]; then
       _repSub="ALERT: Failed Octopus upgrade for ${_octUsr} on ${_hName}"
       _repSub=$(echo -n ${_repSub} | fmt -su -w 2500 2>&1)
-      _up_mail_body | s-nail -s "${_repSub} at ${_NOW}" ${_MY_EMAIL}
-      echo "${_repSub} sent to ${_MY_EMAIL}"
+      if _up_mail_body | s-nail -S ttycharset=utf-8 -S sendcharsets=utf-8 \
+        -s "${_repSub} at ${_NOW}" ${_MY_EMAIL}; then
+        echo "${_repSub} sent to ${_MY_EMAIL}"
+      else
+        echo "${_repSub} could not be sent to ${_MY_EMAIL}"
+      fi
     fi
   fi
+}
+
+# The initial password older releases set in remote database and Valkey mode,
+# one and the same everywhere, keeps working where it is still in use, and no
+# pass changes it. A run says so once, as a NOTE: an ALRT would end every pass
+# of such a box WITH ERRORS. Only its hash stands here.
+_published_pass_note() {
+  local _f _h="d52ae6d4282623732afd1e24e8260d3693e0b1c803ac80e467e82aa82786d758"
+  for _f in my valkey; do
+    [ -f "/root/.${_f}.pass.txt" ] || continue
+    [ "$(tr -d '\n' 2> /dev/null < "/root/.${_f}.pass.txt" | sha256sum | cut -d' ' -f1)" = "${_h}" ] \
+      || continue
+    if [ "${_f}" = "my" ]; then
+      echo "NOTE: /root/.my.pass.txt holds the initial password older releases published. Rotate it on the database server (root and aegir_root), then update /root/.my.pass.txt, /root/.my.cnf and the database server record in each panel."
+    else
+      echo "NOTE: /root/.valkey.pass.txt holds the initial password older releases published. Rotate it on the Valkey server, then update /root/.valkey.pass.txt."
+    fi
+  done
 }
 
 _check_report() {
@@ -556,6 +583,10 @@ _check_report() {
   # of the last one. The logs that failed are remembered for _up_finish.
   if [ "${_SEND_ALERT}" = "YES" ]; then
     _ALERT_LOGS="${_ALERT_LOGS} ${_UP_LOG}"
+  fi
+  if [ "${_PUBLISHED_PASS_SAID}" != "YES" ]; then
+    _PUBLISHED_PASS_SAID=YES
+    _published_pass_note | tee -a ${_UP_LOG}
   fi
   if [ "${_NO_MAIL:-NO}" = "YES" ]; then
     return 0

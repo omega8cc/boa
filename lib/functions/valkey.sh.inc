@@ -103,15 +103,21 @@ _forced_valkey_password_update() {
       _ESC_RPASS=$(_sanitize_string "${_ESC_RPASS}" 2>&1)
     fi
   else
-    _msg "INFO: Managing password for remote Valkey server"
-    if [ -e "/root/.valkey.pass.txt" ] \
-      && [ -e "${_pthLog}/remote-valkey-passwd.log" ]; then
-      _ESC_RPASS=$(cat /root/.valkey.pass.txt 2>/dev/null | tr -d '\n')
-      _ESC_RPASS=$(_sanitize_string "${_ESC_RPASS}" 2>&1)
-    else
-      _ESC_RPASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
-      touch ${_pthLog}/remote-valkey-passwd.log
+    ### The file is the operator's: it holds the password of that server.
+    ### Without one nothing is written, here or in any file that follows it.
+    _ESC_RPASS=$(cat /root/.valkey.pass.txt 2>/dev/null | tr -d '\n')
+    _ESC_RPASS=$(_sanitize_string "${_ESC_RPASS}" 2>&1)
+    if [ -z "${_ESC_RPASS//[[:space:]]/}" ]; then
+      _ESC_RPASS=""
+      if [ "${_VALKEY_REMOTE_PASS_MISSING}" != "YES" ]; then
+        _VALKEY_REMOTE_PASS_MISSING=YES
+        _msg "NOTE: The remote Valkey server's password is not set here: put it in /root/.valkey.pass.txt"
+      fi
+      return 0
     fi
+    _msg "INFO: Managing password for remote Valkey server"
+    [ -e "${_pthLog}/remote-valkey-passwd.log" ] \
+      || touch ${_pthLog}/remote-valkey-passwd.log
   fi
   echo "${_ESC_RPASS}" > /root/.valkey.pass.txt
   chmod 0600 /root/.valkey.pass.txt
@@ -268,7 +274,8 @@ _valkey_password_update() {
       fi
     fi
   fi
-  if [ -e "/root/.valkey.pass.txt" ] && [ -e "/etc/valkey/valkey.conf" ]; then
+  if [ "${_VALKEY_REMOTE_PASS_MISSING}" != "YES" ] \
+    && [ -e "/root/.valkey.pass.txt" ] && [ -e "/etc/valkey/valkey.conf" ]; then
     if [ -z "${_ESC_RPASS}" ]; then
       _RPASS=$(cat /root/.valkey.pass.txt 2>/dev/null | tr -d '\n')
     else
