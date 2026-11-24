@@ -161,6 +161,13 @@
       which database users to create on the remote server, in place of a
       control file no code ever read.
 
+    * A mail of BOA's with a letter outside ASCII was refused where the locale
+      is not UTF-8, as cron has it on some systems. One line in
+      /etc/s-nail.rc, put back by BOA unless the file sets ttycharset itself,
+      sends them all as UTF-8; a report mail whose log holds bytes that are
+      not UTF-8 goes out without them, and a notice that could not be sent
+      is no longer called sent.
+
 ###
 ### Stable BOA-5.88.888 PRO/LTS - DRAGON EDITION
 ### Date: Mon 23 Nov 2026 13:32:57 CET in Warsaw
