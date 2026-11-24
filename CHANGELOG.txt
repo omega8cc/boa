@@ -27,7 +27,18 @@
       aegir account manager), not to the client, site operator or platform
       manager roles.
 
+@=> Improvements
+
+    * websh reads a shell account's long command lines faster again: the
+      redirection reading had made some of them up to twice as slow, and a
+      very long run of redirection signs far slower.
+
 @=> Important Fixes
+
+    * A few uncommon lines of a shell account that the redirection reading
+      had refused run again: a test bracket behind a wrapper, a redirection
+      glued to a NAME=value word, a blank inside ${...}. dr finds its site
+      when --url holds an empty quoted string.
 
     * A Backup or Clone of a Drupal or Backdrop site no longer fails on a file
       or folder that a shell user of the account made closed (0600, 0700) in
