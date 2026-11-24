@@ -3267,6 +3267,11 @@ _satellite_o_contrib_seven_update_global() {
 
   for i in "${_D}"/*; do
     _satellite_store_dir_ok "${i}" "${i}/o_contrib_seven" || continue
+    # No longer shipped; removed whether or not the folder is due, as the
+    # refresh fetches other modules again.
+    if [ -d "${i}/o_contrib_seven/adminer" ]; then
+      rm -rf -- "${i}/o_contrib_seven/adminer"
+    fi
     if [ -e "${i}/o_contrib_seven" ] \
       && [ ! -e "${i}/o_contrib_seven/update-${_xSrl}-${_X_VERSION}.info" ]; then
       _FORCE_UP_SEVEN=YES
@@ -3289,12 +3294,7 @@ _satellite_o_contrib_seven_update_global() {
           rm -rf ${i}/o_contrib_seven/$m
         fi
       done
-      _ADMINER_VRN=4.8.1
       cd ${i}/o_contrib_seven
-      if [ ! -e "${i}/o_contrib_seven/adminer/adminer/adminer-${_ADMINER_VRN}-mysql.php" ]; then
-        rm -rf ${i}/o_contrib_seven/adminer
-        _get_dev_contrib "adminer_bundle-7.x-1.2.tar.gz"
-      fi
       if [ ! -d "${i}/o_contrib_seven/advagg" ]; then
         _get_dev_contrib "advagg-7.x-2.36.tar.gz"
       fi
@@ -4146,15 +4146,6 @@ _satellite_download_o_contrib_seven() {
     _msg "${_STATUS} A: Downloading o_contrib_seven modules..."
   fi
   _get_dev_contrib "admin-7.x-2.0-beta3.tar.gz"
-  _get_dev_contrib "adminer_bundle-7.x-1.2.tar.gz"
-  # _get_dev_contrib "adminer-7.x-1.2.tar.gz"
-  # curl ${_crlGet} "https://github.com/vrana/adminer/releases/download/v${_ADMINER_VRN}/adminer-${_ADMINER_VRN}-mysql.php" -o "${_CORE}/${i}/o_contrib_seven/adminer/adminer/adminer-${_ADMINER_VRN}-mysql.php"
-  # curl ${_crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/designs/nette/adminer.css" -o "${_CORE}/${i}/o_contrib_seven/adminer/adminer/styles/adminer.css"
-  # curl ${_crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/plugin.php" -o "${_CORE}/${i}/o_contrib_seven/adminer/adminer/plugins/plugin.php"
-  # curl ${_crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/enum-option.php" -o "${_CORE}/${i}/o_contrib_seven/adminer/adminer/plugins/enum-option.php"
-  # curl ${_crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/edit-textarea.php" -o "${_CORE}/${i}/o_contrib_seven/adminer/adminer/plugins/edit-textarea.php"
-  # curl ${_crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/version-noverify.php" -o "${_CORE}/${i}/o_contrib_seven/adminer/adminer/plugins/version-noverify.php"
-  # curl ${_crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/frames.php" -o "${_CORE}/${i}/o_contrib_seven/adminer/adminer/plugins/frames.php"
   _get_dev_contrib "advagg-7.x-2.36.tar.gz"
   _get_dev_contrib "autoslave-7.x-1.x-dev.tar.gz"
   _get_dev_contrib "blockcache_alter-7.x-1.1.tar.gz"
