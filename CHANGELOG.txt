@@ -105,6 +105,11 @@
       its whole value with the password in /root/.my.cnf: an empty file, or
       one holding only the beginning of that password, passed as in sync.
 
+    * The report mails of octopus and boa were not sent in a shell with no
+      UTF-8 locale when the log held a non-ASCII character, and the launcher
+      said they were: they go out as UTF-8, as barracuda's do, a failed mail
+      is reported, and the mail about pruned archived stores goes out too.
+
 ###
 ### Stable BOA-5.88.888 PRO/LTS - DRAGON EDITION
 ### Date: Mon 23 Nov 2026 13:32:57 CET in Warsaw

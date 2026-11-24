@@ -496,8 +496,13 @@ _send_report() {
       _repSub="Successful Octopus upgrade for ${_octUsr}"
       _repSub="REPORT: ${_repSub} on ${_hName}"
       _repSub=$(echo -n ${_repSub} | fmt -su -w 2500 2>&1)
-      _up_mail_body | s-nail -s "${_repSub} at ${_NOW}" ${_MY_EMAIL}
-      echo "${_repSub} sent to ${_MY_EMAIL}"
+      # Cron gives no locale, and s-nail then refuses a non-ASCII body.
+      if _up_mail_body | s-nail -S ttycharset=utf-8 -S sendcharsets=utf-8 \
+        -s "${_repSub} at ${_NOW}" ${_MY_EMAIL}; then
+        echo "${_repSub} sent to ${_MY_EMAIL}"
+      else
+        echo "${_repSub} could not be sent to ${_MY_EMAIL}"
+      fi
     fi
   fi
 }
@@ -511,8 +516,12 @@ _send_alert() {
     if [ ! -z "${_MY_EMAIL}" ]; then
       _repSub="ALERT: Failed Octopus upgrade for ${_octUsr} on ${_hName}"
       _repSub=$(echo -n ${_repSub} | fmt -su -w 2500 2>&1)
-      _up_mail_body | s-nail -s "${_repSub} at ${_NOW}" ${_MY_EMAIL}
-      echo "${_repSub} sent to ${_MY_EMAIL}"
+      if _up_mail_body | s-nail -S ttycharset=utf-8 -S sendcharsets=utf-8 \
+        -s "${_repSub} at ${_NOW}" ${_MY_EMAIL}; then
+        echo "${_repSub} sent to ${_MY_EMAIL}"
+      else
+        echo "${_repSub} could not be sent to ${_MY_EMAIL}"
+      fi
     fi
   fi
 }
