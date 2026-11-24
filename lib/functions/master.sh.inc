@@ -1965,8 +1965,17 @@ _aegir_master_install_upgrade() {
       _msg "INFO:   ${_LOG_INFO}"
       _msg "ERRR:   ${_LOG_ERRR}"
       _msg "HINT: (re)start ${_DB_SERVER} server, then run the installer again"
+      ### In remote DB mode the file is the operator's, never made here: it
+      ### stays. In the local modes the next run makes another.
+      if [ "${_THIS_DB_HOST}" = "localhost" ] \
+        || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
+        || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
+        || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
+        [ -e "/root/.my.pass.txt" ] && rm -f /root/.my.pass.txt
+      elif [ -e "/root/.my.pass.txt" ]; then
+        _msg "INFO: /root/.my.pass.txt stays, REMOTE DB SERVER MODE needs it"
+      fi
       _msg "Bye"
-      [ -e "/root/.my.pass.txt" ] && rm -f /root/.my.pass.txt
       mkdir -p /var/aegir
       _clean_pid_exit _aegir_master_install_upgrade_a
     fi

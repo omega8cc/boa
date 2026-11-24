@@ -713,20 +713,20 @@ _THIS_DB_HOST=localhost
 ###   /root/.my.pass.txt
 ###   /root/.my.cnf
 ###
-### When installing BOA on a machine expected
-### to work as a remote DB server, you should
-### create a special file containing your
-### WEB head (Ægir) hostname:
+### BOA doesn't create 'aegir_root' or 'root'
+### for the WEB head. Before you install BOA
+### on the WEB head, create both on the DB
+### head, for the IP address the WEB head
+### (Ægir) connects from, for example:
 ###
-###  /root/.remote.web.head.txt
+###  CREATE USER 'aegir_root'@'12.34.56.789'
+###  IDENTIFIED BY '<password>';
+###  GRANT ALL PRIVILEGES ON *.* TO
+###  'aegir_root'@'12.34.56.789'
+###  WITH GRANT OPTION;
 ###
-### BOA will use this file to add required
-### DB GRANT for 'aegir_root' on the DB head
-### so the WEB head (Ægir) hosted on the
-### machine with hostname specified in this
-### file will be able to manage databases
-### remotely. Make sure that this file
-### is present only on the DB head, though.
+### and the same for 'root'. The password is
+### the one put in /root/.my.pass.txt above.
 ###
 ### WARNING !!!
 ###
