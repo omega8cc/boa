@@ -5150,6 +5150,51 @@ _fix_composer_version() {
   fi
 }
 
+# Adminer brought to the pinned release between upgrades, where it is
+# installed and older than that: a newer one an admin put there, and a file
+# that is not a plain Adminer (a wrapper of plugins), are left alone. Fetched
+# and checked in a fresh root directory, then renamed over the two files, so a
+# request meets the old file or the new one and a failed fetch changes
+# nothing. Owner and mode stay the ones of the file replaced. One attempt a
+# run: the next run is minutes away.
+_fix_adminer_version() {
+  local _is _new _src _f _top="/var/www/adminer"
+  _ADMINER_VRN=6.3.1
+  _src="${_urlDev}/src/adminer-${_ADMINER_VRN}.tar.gz"
+  [ -d "${_top}" ] && [ ! -L "${_top}" ] || return 0
+  [ -f "${_top}/index.php" ] && [ ! -L "${_top}/index.php" ] || return 0
+  _is=$(head -n 10 "${_top}/index.php" 2> /dev/null \
+    | sed -n 's/^\* @version \([0-9][0-9.]*\)$/\1/p' | head -n 1)
+  [ -n "${_is}" ] || return 0
+  dpkg --compare-versions "${_is}" lt "${_ADMINER_VRN}" || return 0
+  _install_in_flight && return 0
+  _new=$(mktemp -d /var/www/.adminer.new.XXXXXX 2> /dev/null) || return 0
+  if ( cd -- "${_new}" \
+      && curl ${_crlGet} --max-time 60 --max-filesize 4194304 \
+        "${_src}?r=$(date +%s)" -o adminer.tar.gz \
+      && _extract_archive adminer.tar.gz ) &> /dev/null \
+    && mv -f -T -- "${_new}/adminer/adminer-${_ADMINER_VRN}-mysql.php" \
+      "${_new}/adminer/index.php" 2> /dev/null \
+    && [ ! -L "${_new}/adminer/index.php" ] \
+    && head -n 10 "${_new}/adminer/index.php" | grep -qxF "* @version ${_ADMINER_VRN}" \
+    && [ "$(stat -c %s "${_new}/adminer/index.php")" -gt 102400 ]; then
+    for _f in adminer.css index.php; do
+      [ -f "${_new}/adminer/${_f}" ] && [ ! -L "${_new}/adminer/${_f}" ] || continue
+      [ -f "${_top}/${_f}" ] && [ ! -L "${_top}/${_f}" ] || continue
+      chown -- "$(stat -c '%u:%g' "${_top}/${_f}")" "${_new}/adminer/${_f}" \
+        && chmod -- "$(stat -c '%a' "${_top}/${_f}")" "${_new}/adminer/${_f}" \
+        && mv -f -T -- "${_new}/adminer/${_f}" "${_top}/${_f}" 2> /dev/null
+    done
+  fi
+  rm -rf -- "${_new}"
+  if head -n 10 "${_top}/index.php" 2> /dev/null | grep -qxF "* @version ${_ADMINER_VRN}"; then
+    echo "Updated Adminer ${_is} to ${_ADMINER_VRN}"
+    return 0
+  fi
+  echo "OOPS: Adminer ${_is} was not updated to ${_ADMINER_VRN}, the copy in place is kept"
+  _fetch_failed_note "adminer-${_ADMINER_VRN}.tar.gz" "${_src}" "unpack"
+}
+
 _fix_sftp_server() {
   if [ -e "/etc/ssh/sshd_config" ]; then
     _SFTP_UMASK_TEST=$(grep "sftp-server -u 0002" /etc/ssh/sshd_config 2>&1)
@@ -8471,6 +8516,7 @@ if [ "$(id -u)" -eq 0 ]; then
     _fix_console_print
     _fix_java_symlinks
     _fix_composer_version
+    _fix_adminer_version
     _fix_wkhtml
     _fix_wkhtml_perms
     _fix_eldir

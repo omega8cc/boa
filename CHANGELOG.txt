@@ -25,6 +25,12 @@
       are left as they are; one still on the old default is told so, once
       in each barracuda or octopus run.
 
+    * Adminer 6.3.1. A box that has an older one gets it within minutes,
+      without an upgrade: the files are replaced in place, with their owner
+      and mode kept, and a newer Adminer an admin put there stays. A failed
+      download keeps the copy in place, in a system pass too, which used to
+      remove it first.
+
 @=> New Features
 
     * Upgrade all sites, the platform task that upgrades every Drupal 10 or

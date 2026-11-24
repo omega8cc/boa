@@ -35,7 +35,7 @@ export SHELL=/bin/bash
 ###
 ### Software versions
 ###
-_ADMINER_VRN=4.8.1
+_ADMINER_VRN=6.3.1
 _BZR_VRN=2.6.0
 _CGP_VRN=master-22-07-2020
 _CHIVE_VRN=1.3
