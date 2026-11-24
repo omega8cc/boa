@@ -760,7 +760,24 @@ _SMTP_RELAY_TEST=YES
 ###
 ### _SMTP_RELAY_HOST="smtp.your.relay.net"
 ###
+### Also host:port, [host] or [host]:port - the
+### brackets skip the MX lookup, as a relay on
+### port 587 or 465 needs.
+###
+### For a relay which requires a login, like
+### Amazon SES, add its SMTP user and password
+### in the /root/.barracuda.cnf file:
+###
+### _SMTP_RELAY_HOST="[email-smtp.eu-west-1.amazonaws.com]:587"
+### _SMTP_RELAY_USER="your-smtp-user"
+### _SMTP_RELAY_PASS='your-smtp-password'
+###
+### The login is sent only over TLS. All three
+### are applied on every barracuda upgrade.
+###
 _SMTP_RELAY_HOST=""
+_SMTP_RELAY_USER=""
+_SMTP_RELAY_PASS=""
 
 
 ###----------------------------------------###
