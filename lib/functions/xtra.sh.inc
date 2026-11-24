@@ -50,48 +50,85 @@ _if_install_bzr() {
   fi
 }
 
-# True when the file $1 is the compiled Adminer of the pinned release: its
-# header says so and it is a single file, not the release's source code.
-_xtra_adminer_is() {
-  [ -f "${1}" ] && [ ! -L "${1}" ] \
-    && head -n 10 -- "${1}" 2> /dev/null \
-      | grep -qxF "* @version ${_ADMINER_VRN}" \
-    && [ "$(stat -c %s -- "${1}" 2> /dev/null)" -gt 102400 ]
+# The release ./index.php names when it is a plain compiled Adminer, nothing
+# otherwise. Read without following a link or waiting on a FIFO, and never
+# more than a little: an earlier release left the folder to the web pool.
+_xtra_adminer_ver_here() {
+  local _h
+  _h="$(_acct_read_here index.php | head -c 1024 | tr -d '\0')"
+  case "${_h}" in
+    "<?php"$'\n'"/** Adminer - Compact database management"$'\n'*) ;;
+    *) return 0 ;;
+  esac
+  sed -n 's/^\* @version \([0-9][0-9.]*\)$/\1/p' <<< "${_h}" | head -n 1
 }
-# The pinned Adminer put in place of what is in /var/www/adminer, unless an
-# admin put a newer one there. It is fetched and unpacked in a fresh root
-# directory beside it and checked there, and only then takes the name, with
-# the access/ cache moved over: a failed fetch, or an archive that is not the
-# installable one, keeps the copy in place (the marker is then not written,
-# so the next run tries again).
+# The pinned Adminer fetched and unpacked in the fresh root directory $1, as
+# $1/adminer/index.php: the compiled file of that release and nothing else
+# (the release's source archive has no such file). Three tries, as a fresh
+# install has no copy to keep.
+_xtra_adminer_stage() {
+  local _t _arc="adminer-${_ADMINER_VRN}.tar.gz"
+  for _t in 1 2 3; do
+    if ( cd -- "${1}" \
+        && curl ${_crlGet} --max-filesize 4194304 \
+          "${_urlDev}/src/${_arc}?r=$(date +%s)" -o "${_arc}" \
+        && ! _dl_is_page "${_arc}" && _extract_archive "${_arc}" ) &> /dev/null \
+      && mv -f -T -- "${1}/adminer/adminer-${_ADMINER_VRN}-mysql.php" \
+        "${1}/adminer/index.php" 2> /dev/null \
+      && [ "$(_acct_in_real_dir "${1}/adminer" _xtra_adminer_ver_here)" = "${_ADMINER_VRN}" ] \
+      && [ "$(stat -c %s -- "${1}/adminer/index.php")" -gt 102400 ]; then
+      return 0
+    fi
+    [ "${_t}" -lt 3 ] && sleep 9
+  done
+  return 1
+}
+# The pinned Adminer put in place of what is in /var/www/adminer, unless a
+# newer plain one is there. The whole tree is staged and checked first
+# (_xtra_adminer_stage); then the two trees swap names in one rename
+# (_SAT_SWAP_PL), or, where that cannot be done, the old one is renamed aside
+# and put back when the new one cannot take the name. The access/ cache moves
+# over. So a failed fetch, an archive that is not the installable one or a
+# name that cannot be renamed keeps the copy in place (the marker is then not
+# written, so the next run tries again).
 _xtra_adminer_fetch() {
-  local _new _is _php="adminer/adminer-${_ADMINER_VRN}-mysql.php" _rc=1
-  local _arc="adminer-${_ADMINER_VRN}.tar.gz"
-  _is=$(head -n 10 /var/www/adminer/index.php 2> /dev/null \
-    | sed -n 's/^\* @version \([0-9][0-9.]*\)$/\1/p' | head -n 1)
+  local _new _old _is _top="/var/www/adminer" _rc=1
+  _is="$(_acct_in_real_dir "${_top}" _xtra_adminer_ver_here 2> /dev/null)"
   if [ -n "${_is}" ] \
     && dpkg --compare-versions "${_is}" gt "${_ADMINER_VRN}"; then
     _msg "INFO: Adminer ${_is} is newer than ${_ADMINER_VRN}, kept"
     return 0
   fi
   _new=$(mktemp -d /var/www/.adminer.new.XXXXXX 2> /dev/null) || return 1
-  if ( cd -- "${_new}" \
-      && curl ${_crlGet} --max-filesize 4194304 \
-        "${_urlDev}/src/${_arc}?r=$(date +%s)" -o "${_arc}" \
-      && ! _dl_is_page "${_arc}" && _extract_archive "${_arc}" ) &> /dev/null \
-    && _xtra_adminer_is "${_new}/${_php}" \
-    && mv -f -T -- "${_new}/${_php}" "${_new}/adminer/index.php"; then
-    if [ -d "/var/www/adminer/access" ] && [ ! -L "/var/www/adminer" ]; then
-      mv -f -T -- /var/www/adminer/access "${_new}/adminer/access" &> /dev/null
+  if _xtra_adminer_stage "${_new}"; then
+    if [ ! -e "${_top}" ] && [ ! -L "${_top}" ]; then
+      mv -f -T -- "${_new}/adminer" "${_top}" &> /dev/null && _rc=0
+    elif [ -n "${_SAT_SWAP_PL}" ] \
+      && perl -e "${_SAT_SWAP_PL}" -- "${_new}/adminer" "${_top}" 2> /dev/null; then
+      _rc=0
+    elif _old=$(mktemp -d /var/www/.adminer.old.XXXXXX 2> /dev/null); then
+      if mv -f -T -- "${_top}" "${_old}/adminer" &> /dev/null; then
+        if mv -f -T -- "${_new}/adminer" "${_top}" &> /dev/null; then
+          _rc=0
+          mv -f -T -- "${_old}/adminer" "${_new}/adminer" &> /dev/null
+        else
+          mv -f -T -- "${_old}/adminer" "${_top}" &> /dev/null
+        fi
+      fi
+      rmdir -- "${_old}" &> /dev/null
     fi
-    rm -rf -- /var/www/adminer &> /dev/null
-    mv -f -T -- "${_new}/adminer" /var/www/adminer && _rc=0
+  fi
+  # the old tree, where it was swapped out, is now at the staged name
+  if [ "${_rc}" = "0" ] && [ -d "${_new}/adminer/access" ] \
+    && [ ! -L "${_new}/adminer" ] && [ ! -L "${_new}/adminer/access" ]; then
+    mv -f -T -- "${_new}/adminer/access" "${_top}/access" &> /dev/null
   fi
   rm -rf -- "${_new}" &> /dev/null
   return "${_rc}"
 }
 
 _if_install_adminer() {
+  local _o
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _if_install_adminer"
   fi
@@ -132,6 +169,13 @@ _if_install_adminer() {
         _msg "INFO: Adminer Manager installation skipped"
       fi
     fi
+  fi
+  # A run cut off between two renames left the tree beside its name: back.
+  if [ ! -e "/var/www/adminer" ] && [ ! -L "/var/www/adminer" ]; then
+    for _o in /var/www/.adminer.old.*/adminer; do
+      [ -d "${_o}" ] && [ ! -L "${_o}" ] || continue
+      mv -f -T -- "${_o}" /var/www/adminer &> /dev/null && break
+    done
   fi
   # What an earlier top rebuild left beside the tree (an old top a pool
   # process kept alive, an interrupted run's copy) is never served or
