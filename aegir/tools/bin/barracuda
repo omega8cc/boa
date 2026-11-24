@@ -945,6 +945,24 @@ _send_alert() {
   fi
 }
 
+# The initial password older releases set in remote database and Valkey mode,
+# one and the same everywhere, keeps working where it is still in use, and no
+# pass changes it. A run says so once, as a NOTE: an ALRT would end every pass
+# of such a box WITH ERRORS. Only its hash stands here.
+_published_pass_note() {
+  local _f _h="d52ae6d4282623732afd1e24e8260d3693e0b1c803ac80e467e82aa82786d758"
+  for _f in my valkey; do
+    [ -f "/root/.${_f}.pass.txt" ] || continue
+    [ "$(tr -d '\n' 2> /dev/null < "/root/.${_f}.pass.txt" | sha256sum | cut -d' ' -f1)" = "${_h}" ] \
+      || continue
+    if [ "${_f}" = "my" ]; then
+      echo "NOTE: /root/.my.pass.txt holds the initial password older releases published. Rotate it on the database server (root and aegir_root), then update /root/.my.pass.txt, /root/.my.cnf and the database server record in each panel."
+    else
+      echo "NOTE: /root/.valkey.pass.txt holds the initial password older releases published. Rotate it on the Valkey server, then update /root/.valkey.pass.txt."
+    fi
+  done
+}
+
 _check_report() {
   sed -i "s/^_AWS_.*//g"         ${_UP_LOG}
   wait
@@ -1037,6 +1055,10 @@ _check_report() {
     && [ "${_ONLY_REBOOT}" = "NO" ] \
     && [ "${_REBOOT_ALSO}" = "YES" ]; then
     _ALERT_MSG="${_ALERT_MSG} (new kernel, reboot required)"
+  fi
+  if [ "${_PUBLISHED_PASS_SAID}" != "YES" ]; then
+    _PUBLISHED_PASS_SAID=YES
+    _published_pass_note | tee -a ${_UP_LOG}
   fi
   if [ "${_NO_MAIL:-NO}" = "YES" ]; then
     return 0
