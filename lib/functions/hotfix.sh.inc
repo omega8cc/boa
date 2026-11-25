@@ -1,3 +1,13 @@
+# The core patch ${_saPatch} applied from inside the current (pinned)
+# platform, then stamped: a core with core/ (D8+) or with the stamp already
+# is left alone, and the stamp is a fresh file put inside the real profiles/,
+# never written through a link the account put on the way.
+_fix_core_dgd_here() {
+  [ ! -e ./core ] || return 0
+  [ ! -e "./profiles/${_saCoreS}-fix.info" ] || return 0
+  patch -p1 &> /dev/null < "${_saPatch}"
+  _acct_in_real_dir "$(/bin/pwd -P)/profiles" _acct_put_here "${_saCoreS}-fix.info" fixed
+}
 #
 # Fix for SA-CORE-2014-005
 _fix_core_dgd() {
@@ -87,16 +97,6 @@ _fix_core_dgd() {
     cd
     touch ${_pthLog}/batch-custom-${_saCoreN}-fixed-d7.log
   fi
-}
-# The core patch ${_saPatch} applied from inside the current (pinned)
-# platform, then stamped: a core with core/ (D8+) or with the stamp already
-# is left alone, and the stamp is a fresh file put inside the real profiles/,
-# never written through a link the account put on the way.
-_fix_core_dgd_here() {
-  [ ! -e ./core ] || return 0
-  [ ! -e "./profiles/${_saCoreS}-fix.info" ] || return 0
-  patch -p1 &> /dev/null < "${_saPatch}"
-  _acct_in_real_dir "$(/bin/pwd -P)/profiles" _acct_put_here "${_saCoreS}-fix.info" fixed
 }
 # Fix for Postfix configuration.
 _fix_cnf_postfix() {
