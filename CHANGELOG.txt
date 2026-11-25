@@ -221,8 +221,23 @@
       shell wrapped around a run is no longer killed, and options before
       update no longer hide one. It reads a run's age from the kernel's start
       times, not from ps, which in a container that shows its own uptime is
-      off by the time the host ran before it. The incident snapshot's thread
-      list prints such a misread age as ?.
+      off by the time the host ran before it.
+
+    * Every check that judges a process by how long it has run reads the
+      kernel's start times, not ps: the stuck SQL helper and guest-fire
+      watchdogs, the stuck backup notice, the Solr restart after an option
+      change, the nginx start guard, the idle FPM reload, xmass's dump
+      estimate, loadreport's window and the incident snapshot's thread list.
+      In an LXC container that shows its own uptime, every ps age was short by
+      the time the host ran before the container, and a process younger than
+      that read as 130 years old: the stuck SQL helper check read a nightly
+      backup or cleanup run that had just started as far past its limit, and
+      a starting nginx as stuck.
+
+    * xmass names apt-get update when it fails while setting up Percona's
+      repository for xtrabackup, and runs it a second time first: the apt
+      kill stops a refresh still running after 99 seconds, and the message
+      blamed the repository lines.
 
 ###
 ### Stable BOA-5.88.888 PRO/LTS - DRAGON EDITION
