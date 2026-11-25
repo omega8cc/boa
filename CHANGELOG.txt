@@ -159,7 +159,8 @@
       run over an SSH terminal, lists the login's history file again
       instead of emptying it. A history file the login cannot read is left
       as it is, and a session keeps writing to the file it read even after
-      the shell's configuration is reloaded (lshell 0.11.18).
+      the shell's configuration is reloaded (lshell 0.11.18, pinned as
+      0.11.19, which also fixes history on macOS's libedit).
 
     * The Drush a Composer platform's first Verify adds is resolved on the
       PHP the platform's tasks run on, a cli-per-platform.info line for its
