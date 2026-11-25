@@ -48,6 +48,9 @@
       its session handler is ready for PHP 8.6, and under strict mode a
       session cookie that names no stored session now gets a new ID.
 
+    * The marker of an unfinished platform build is written as a new file
+      and renamed into place, never through a link standing at its name.
+
 @=> New Features
 
     * Upgrade all sites, the platform task that upgrades every Drupal 10 or
@@ -55,6 +58,13 @@
       its own Upgrade, is granted to the account's main login roles (admin,
       aegir account manager), not to the client, site operator or platform
       manager roles.
+
+    * Build newer version, a platform task that builds a Composer platform
+      the control panel made again from its own recipe at the newest patch
+      or minor release of its Drupal, the next major, another version or a
+      Git branch or tag, and keeps the new platform for the sites' Upgrade
+      only when it is a newer version of the same codebase that adds no
+      security advisory; otherwise it is deleted. It is granted to no role yet.
 
     * An outgoing mail relay that wants a login, such as Amazon SES, is a
       setting now: _SMTP_RELAY_USER and _SMTP_RELAY_PASS beside
@@ -77,6 +87,10 @@
       to such a codebase has the same limit, and a stopped one is undone.
 
 @=> Important Fixes
+
+    * A Delete of a platform whose Composer build was cut off clears that
+      build's marker again, so a new build under the same name is no longer
+      refused as if the old one still ran.
 
     * _SMTP_RELAY_HOST takes [host]:port, as a relay on port 587 or 465
       needs, and one relay replaces another. An upgrade used to write such
