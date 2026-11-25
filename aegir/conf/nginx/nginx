@@ -179,6 +179,20 @@ _standby_promoted_readback() {
     return 0
 }
 
+pidof_daemon() {
+    PIDS=`pidof $PS` || true
+
+    [ -e $PIDSPATH/$PIDFILE ] && PIDS2=`cat $PIDSPATH/$PIDFILE`
+
+    for i in $PIDS; do
+        if [ "$i" = "$PIDS2" ]; then
+            return 1
+        fi
+    done
+
+    return 0
+}
+
 isRunning() {
     if [ $1 ]; then
         pidof_daemon $1
@@ -471,20 +485,6 @@ destroy() {
     killall $PS -q >> /dev/null 2>&1
     log_end_msg $SCRIPT_OK
     rc=0
-}
-
-pidof_daemon() {
-    PIDS=`pidof $PS` || true
-
-    [ -e $PIDSPATH/$PIDFILE ] && PIDS2=`cat $PIDSPATH/$PIDFILE`
-
-    for i in $PIDS; do
-        if [ "$i" = "$PIDS2" ]; then
-            return 1
-        fi
-    done
-
-    return 0
 }
 
 action="$1"

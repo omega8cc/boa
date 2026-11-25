@@ -210,24 +210,6 @@ _web_group_rb() {
   return 0
 }
 
-# The web group's drift witnesses of account $1, or of the master (aegir),
-# or of the box (--box), as instgrp webdrift reads them: an alarm goes to the
-# incident log and the operator once a day per profile, a note to this
-# pass's log only. An instgrp without the web group reads nothing.
-_ltd_wg_witness() {
-  local _l _alarm=""
-  [ -e "/opt/local/bin/instgrp" ] || return 0
-  grep -q "^_wg_drift() {" /opt/local/bin/instgrp 2> /dev/null || return 0
-  while IFS= read -r _l; do
-    case "${_l}" in
-      "ALRT "*) _alarm="${_alarm:+${_alarm}; }${_l#ALRT }" ;;
-      "NOTE "*) echo "NOTE: ${1}: web group: ${_l#NOTE }" ;;
-    esac
-  done < <(bash /opt/local/bin/instgrp webdrift "${1}" 2> /dev/null)
-  [ -n "${_alarm}" ] && _ltd_notice "wg-drift-${1#--}" "web group drift (${1#--})" "${_alarm}"
-  return 0
-}
-
 # D9: o+r on the public files of an account that holds its own web group
 # (nginx is in none of them and reads public files through the other bits),
 # limited to what changed since this account's last pass here: a root stamp
@@ -257,42 +239,6 @@ _ltd_d9_walk_here() {
     \( "${_pr[@]}" \) -prune -o \
     \( -type d ! -perm -0005 "${_c[@]}" -execdir perl -e "${_LTD_D9_PL}" d 0005 "${2}" {} + \) -o \
     \( -type f ! -perm -0004 "${_c[@]}" -execdir perl -e "${_LTD_D9_PL}" f 0004 "${2}" {} + \) 2> /dev/null
-}
-# 0 when the files store $3 (resolved) of the site dir $2 (resolved) is
-# account $1's own, as the site scripts take a store: a real child of the
-# site dir, or a link resolving strictly below the account's own real
-# static/files/ or its store on attached storage (/mnt/<m>/files/<a>/
-# static/files/, no files/ or static/ in the mount part). The account can
-# own a site dir and plant the link, so a link anywhere else in its tree is
-# not a store, nor is a dot-name right below either store root, BOA's own
-# (.backups, .backup-exports, .archived); that and a share are left alone:
-# with a notice at phase B ($4 = phaseb), where the account's pools reach
-# it without www-data; at phase A it only holds phase B back, which the
-# nightly notes in the account's log (instgrp webdrift --own night), so
-# nothing is raised here.
-_ltd_d9_own_store() {
-  local _a="${1}" _m _top=""
-  [ "${3}" = "${2}/files" ] && [ ! -L "${2}/files" ] && return 0
-  case "${3}" in
-    *[!A-Za-z0-9._/-]*) ;;
-    /data/disk/"${_a}"/static/files/?*)
-      _top="${3#/data/disk/"${_a}"/static/files/}"
-      ;;
-    /mnt/?*/files/"${_a}"/static/files/?*)
-      _m="${3%%/files/"${_a}"/static/files/*}"
-      case "${_m}" in
-        */files/*|*/static/*) ;;
-        *) _top="${3#"${_m}"/files/"${_a}"/static/files/}" ;;
-      esac
-      ;;
-  esac
-  case "${_top}" in
-    ""|.*) ;;
-    *) return 0 ;;
-  esac
-  [ "${4:-}" = "phaseb" ] || return 1
-  _ltd_notice "d9-share-${_a}" "D9 on ${_a}" "a site's files store is neither a real dir of the site nor a link into the account's own static/files (outside BOA's dot-named folders there); left alone"
-  return 1
 }
 # The rest of the public set of the site dir $1 (resolved, inside account
 # $2's tree), one resolved directory per line: a Textpattern site's
@@ -329,72 +275,6 @@ _ltd_d9_public() {
   esac
   return 0
 }
-_ltd_d9_files_here() {
-  local _a="${1}" _s _st="/var/log/boa/manage-ltd-d9.${1}.txt" _f _t _sp _rs _rf _rp
-  local _uids="" _u _uid _ok=YES _ref="" _n _pp _done="|"
-  [ -e "/root/.standby.cnf" ] && return 0
-  [ -e "/root/.standby.prep.cnf" ] && return 0
-  _s=$(_web_group_state "${_a}")
-  case "${_s%% *}" in
-    converted|phaseb) ;;
-    *) return 0 ;;
-  esac
-  [ "${_s##* }" = "wg-${_a}" ] || return 0
-  for _u in $(getent passwd | cut -d: -f1 | grep -E "^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web|\.web)?$"); do
-    _uid=$(id -u "${_u}" 2> /dev/null) || continue
-    [[ "${_uid}" =~ ^[1-9][0-9]*$ ]] && _uids="${_uids:+${_uids},}${_uid}"
-  done
-  [ -n "${_uids}" ] || return 0
-  [ -e "${_st}" ] && _ref="${_st}"
-  ( umask 077; : > "${_st}.next" ) 2> /dev/null || return 0
-  for _f in "/data/disk/${_a}"/.drush/*.alias.drushrc.php; do
-    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
-    case "${_f##*/}" in
-      server_*|platform_*) continue ;;
-    esac
-    _t=$(_ltd_read_in "/data/disk/${_a}/.drush" "${_f##*/}")
-    _sp=$(printf '%s\n' "${_t}" | sed -n "s/^[[:space:]]*'site_path' => '\([^']*\)',.*/\1/p" | head -n 1)
-    [ -n "${_sp}" ] || continue
-    _rs=$(realpath -e -- "${_sp}" 2> /dev/null) || continue
-    case "${_rs}/" in
-      *[[:cntrl:]]*) continue ;;
-      /data/disk/"${_a}"/*) ;;
-      *) continue ;;
-    esac
-    [ -e "${_rs}/drushrc.php" ] || continue
-    _rf=$(realpath -e -- "${_rs}/files" 2> /dev/null)
-    _rp=$(realpath -e -- "${_rs}/private" 2> /dev/null)
-    if [ -n "${_rf}" ] && [ -d "${_rf}" ] && [ "${_rf##*/}" = "files" ] \
-      && [ "${_rf}" != "${_rp}" ] && _ltd_d9_own_store "${_a}" "${_rs}" "${_rf}" "${_s%% *}"; then
-      ( cd -P -- "${_rf}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_rf}" ] \
-        && _ltd_d9_walk_here "${_ref}" "${_uids}" store )
-      [ "$?" = "124" ] && _ok=NO
-    fi
-    # the rest of the public set, each directory once a pass (a platform's
-    # Boost cache is every site's there)
-    while IFS= read -r _pp; do
-      [ -n "${_pp}" ] || continue
-      case "${_done}" in
-        *"|${_pp}|"*) continue ;;
-      esac
-      _done="${_done}${_pp}|"
-      ( cd -P -- "${_pp}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_pp}" ] \
-        && _ltd_d9_walk_here "${_ref}" "${_uids}" public )
-      [ "$?" = "124" ] && _ok=NO
-    done < <(_ltd_d9_public "${_rs}" "${_a}")
-  done
-  if [ "${_ok}" = "YES" ]; then
-    mv -f -- "${_st}.next" "${_st}" 2> /dev/null
-    rm -f -- "${_st}.slow"
-    return 0
-  fi
-  rm -f -- "${_st}.next"
-  _n=$(( $(head -c 8 "${_st}.slow" 2> /dev/null | tr -cd '0-9') + 1 ))
-  echo "${_n}" > "${_st}.slow"
-  [ "${_n}" -ge 3 ] && _ltd_notice "d9-slow-${_a}" "D9 on ${_a}" "the public files walk ran out of time ${_n} passes in a row; the nightly walks the public set whole and moves its stamp after its site loop, once a week while that lets no walk here finish (instgrp reclaim ${_a} does the same now)"
-  return 0
-}
-
 # An identity of an account that holds its own web group is listed in that
 # group (supplementary, verified in the group database, never by id -nG);
 # nothing to do while the account has none. $1 = the identity, $2 = the
@@ -459,6 +339,60 @@ _ltd_notice() {
   } | s-nail -s "ALERT [${_hName}]: ${_sub}" ${_mail}
 }
 
+# The web group's drift witnesses of account $1, or of the master (aegir),
+# or of the box (--box), as instgrp webdrift reads them: an alarm goes to the
+# incident log and the operator once a day per profile, a note to this
+# pass's log only. An instgrp without the web group reads nothing.
+_ltd_wg_witness() {
+  local _l _alarm=""
+  [ -e "/opt/local/bin/instgrp" ] || return 0
+  grep -q "^_wg_drift() {" /opt/local/bin/instgrp 2> /dev/null || return 0
+  while IFS= read -r _l; do
+    case "${_l}" in
+      "ALRT "*) _alarm="${_alarm:+${_alarm}; }${_l#ALRT }" ;;
+      "NOTE "*) echo "NOTE: ${1}: web group: ${_l#NOTE }" ;;
+    esac
+  done < <(bash /opt/local/bin/instgrp webdrift "${1}" 2> /dev/null)
+  [ -n "${_alarm}" ] && _ltd_notice "wg-drift-${1#--}" "web group drift (${1#--})" "${_alarm}"
+  return 0
+}
+
+# 0 when the files store $3 (resolved) of the site dir $2 (resolved) is
+# account $1's own, as the site scripts take a store: a real child of the
+# site dir, or a link resolving strictly below the account's own real
+# static/files/ or its store on attached storage (/mnt/<m>/files/<a>/
+# static/files/, no files/ or static/ in the mount part). The account can
+# own a site dir and plant the link, so a link anywhere else in its tree is
+# not a store, nor is a dot-name right below either store root, BOA's own
+# (.backups, .backup-exports, .archived); that and a share are left alone:
+# with a notice at phase B ($4 = phaseb), where the account's pools reach
+# it without www-data; at phase A it only holds phase B back, which the
+# nightly notes in the account's log (instgrp webdrift --own night), so
+# nothing is raised here.
+_ltd_d9_own_store() {
+  local _a="${1}" _m _top=""
+  [ "${3}" = "${2}/files" ] && [ ! -L "${2}/files" ] && return 0
+  case "${3}" in
+    *[!A-Za-z0-9._/-]*) ;;
+    /data/disk/"${_a}"/static/files/?*)
+      _top="${3#/data/disk/"${_a}"/static/files/}"
+      ;;
+    /mnt/?*/files/"${_a}"/static/files/?*)
+      _m="${3%%/files/"${_a}"/static/files/*}"
+      case "${_m}" in
+        */files/*|*/static/*) ;;
+        *) _top="${3#"${_m}"/files/"${_a}"/static/files/}" ;;
+      esac
+      ;;
+  esac
+  case "${_top}" in
+    ""|.*) ;;
+    *) return 0 ;;
+  esac
+  [ "${4:-}" = "phaseb" ] || return 1
+  _ltd_notice "d9-share-${_a}" "D9 on ${_a}" "a site's files store is neither a real dir of the site nor a link into the account's own static/files (outside BOA's dot-named folders there); left alone"
+  return 1
+}
 # Section headers that appear more than once in a generated lshell config.
 # lshell builds a strict ConfigParser and does not catch the duplicate-section
 # error its read() raises, so ONE repeated header refuses the WHOLE file and
@@ -659,6 +593,98 @@ _standby_ltd_hold_kept_log() {
 # sweep restores exactly the recorded users once the box reads PROMOTED.
 _LTD_STANDBY_HOLD=NO
 _LTD_STANDBY_CREATE_HELD=NO
+# Run "$@" inside the real directory $1, never one reached through a link an
+# account planted on the way. Below /home and /data/disk (root's) every name
+# on the path must be a real directory: an instance user owns everything under
+# its /data/disk/<oN> and can swap static/, log/ or config/ as easily as the
+# last name (BOA's own links there -- static/files, backups, arch -- are never
+# on a path given here). Elsewhere the last name is checked against its
+# resolved parent. Once entered, ./name stays in that directory whatever is
+# swapped.
+_ltd_in_real_dir() {
+  local _d="${1}" _a="" _want
+  shift
+  case "${_d}" in
+    /home/?*) _a=/home ;;
+    /data/disk/?*) _a=/data/disk ;;
+  esac
+  if [ -n "${_a}" ]; then
+    _want="$(cd -P -- "${_a}" 2> /dev/null && /bin/pwd -P)${_d#"${_a}"}"
+  else
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && /bin/pwd -P)/${_d##*/}"
+  fi
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] && "$@" )
+}
+_ltd_read_in() {
+  _ltd_in_real_dir "${1}" timeout 10 dd if="./${2}" iflag=nofollow,nonblock,fullblock \
+    bs=1048576 count=1 status=none 2> /dev/null
+}
+_ltd_d9_files_here() {
+  local _a="${1}" _s _st="/var/log/boa/manage-ltd-d9.${1}.txt" _f _t _sp _rs _rf _rp
+  local _uids="" _u _uid _ok=YES _ref="" _n _pp _done="|"
+  [ -e "/root/.standby.cnf" ] && return 0
+  [ -e "/root/.standby.prep.cnf" ] && return 0
+  _s=$(_web_group_state "${_a}")
+  case "${_s%% *}" in
+    converted|phaseb) ;;
+    *) return 0 ;;
+  esac
+  [ "${_s##* }" = "wg-${_a}" ] || return 0
+  for _u in $(getent passwd | cut -d: -f1 | grep -E "^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web|\.web)?$"); do
+    _uid=$(id -u "${_u}" 2> /dev/null) || continue
+    [[ "${_uid}" =~ ^[1-9][0-9]*$ ]] && _uids="${_uids:+${_uids},}${_uid}"
+  done
+  [ -n "${_uids}" ] || return 0
+  [ -e "${_st}" ] && _ref="${_st}"
+  ( umask 077; : > "${_st}.next" ) 2> /dev/null || return 0
+  for _f in "/data/disk/${_a}"/.drush/*.alias.drushrc.php; do
+    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
+    case "${_f##*/}" in
+      server_*|platform_*) continue ;;
+    esac
+    _t=$(_ltd_read_in "/data/disk/${_a}/.drush" "${_f##*/}")
+    _sp=$(printf '%s\n' "${_t}" | sed -n "s/^[[:space:]]*'site_path' => '\([^']*\)',.*/\1/p" | head -n 1)
+    [ -n "${_sp}" ] || continue
+    _rs=$(realpath -e -- "${_sp}" 2> /dev/null) || continue
+    case "${_rs}/" in
+      *[[:cntrl:]]*) continue ;;
+      /data/disk/"${_a}"/*) ;;
+      *) continue ;;
+    esac
+    [ -e "${_rs}/drushrc.php" ] || continue
+    _rf=$(realpath -e -- "${_rs}/files" 2> /dev/null)
+    _rp=$(realpath -e -- "${_rs}/private" 2> /dev/null)
+    if [ -n "${_rf}" ] && [ -d "${_rf}" ] && [ "${_rf##*/}" = "files" ] \
+      && [ "${_rf}" != "${_rp}" ] && _ltd_d9_own_store "${_a}" "${_rs}" "${_rf}" "${_s%% *}"; then
+      ( cd -P -- "${_rf}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_rf}" ] \
+        && _ltd_d9_walk_here "${_ref}" "${_uids}" store )
+      [ "$?" = "124" ] && _ok=NO
+    fi
+    # the rest of the public set, each directory once a pass (a platform's
+    # Boost cache is every site's there)
+    while IFS= read -r _pp; do
+      [ -n "${_pp}" ] || continue
+      case "${_done}" in
+        *"|${_pp}|"*) continue ;;
+      esac
+      _done="${_done}${_pp}|"
+      ( cd -P -- "${_pp}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_pp}" ] \
+        && _ltd_d9_walk_here "${_ref}" "${_uids}" public )
+      [ "$?" = "124" ] && _ok=NO
+    done < <(_ltd_d9_public "${_rs}" "${_a}")
+  done
+  if [ "${_ok}" = "YES" ]; then
+    mv -f -- "${_st}.next" "${_st}" 2> /dev/null
+    rm -f -- "${_st}.slow"
+    return 0
+  fi
+  rm -f -- "${_st}.next"
+  _n=$(( $(head -c 8 "${_st}.slow" 2> /dev/null | tr -cd '0-9') + 1 ))
+  echo "${_n}" > "${_st}.slow"
+  [ "${_n}" -ge 3 ] && _ltd_notice "d9-slow-${_a}" "D9 on ${_a}" "the public files walk ran out of time ${_n} passes in a row; the nightly walks the public set whole and moves its stamp after its site loop, once a week while that lets no walk here finish (instgrp reclaim ${_a} does the same now)"
+  return 0
+}
+
 if [ -e "/root/.standby.cnf" ]; then
   _LTD_STANDBY_HOLD=YES
   _LTD_STANDBY_CREATE_HELD=YES
@@ -818,36 +844,14 @@ _ltd_alias_same() {
   [ -f "${2}" ] && [ ! -L "${2}" ] \
     && timeout -k 5 10 diff -w -B "${2}" "${1}" > /dev/null 2>&1
 }
-_ltd_alias_put() {
-  local _to="/proc/${BASHPID}/cwd"
-  [ -d "${_to}/" ] || return 1
-  _ltd_in_real_dir "${1%/*}" _ltd_alias_put_from "${1##*/}" "${_to}/${2#./}"
-}
 _ltd_alias_put_from() {
   ( umask 0337
     cp -aT --no-preserve=mode --remove-destination "./${1}" "${2}" ) 2> /dev/null
 }
-# Run "$@" inside the real directory $1, never one reached through a link an
-# account planted on the way. Below /home and /data/disk (root's) every name
-# on the path must be a real directory: an instance user owns everything under
-# its /data/disk/<oN> and can swap static/, log/ or config/ as easily as the
-# last name (BOA's own links there -- static/files, backups, arch -- are never
-# on a path given here). Elsewhere the last name is checked against its
-# resolved parent. Once entered, ./name stays in that directory whatever is
-# swapped.
-_ltd_in_real_dir() {
-  local _d="${1}" _a="" _want
-  shift
-  case "${_d}" in
-    /home/?*) _a=/home ;;
-    /data/disk/?*) _a=/data/disk ;;
-  esac
-  if [ -n "${_a}" ]; then
-    _want="$(cd -P -- "${_a}" 2> /dev/null && /bin/pwd -P)${_d#"${_a}"}"
-  else
-    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && /bin/pwd -P)/${_d##*/}"
-  fi
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] && "$@" )
+_ltd_alias_put() {
+  local _to="/proc/${BASHPID}/cwd"
+  [ -d "${_to}/" ] || return 1
+  _ltd_in_real_dir "${1%/*}" _ltd_alias_put_from "${1##*/}" "${_to}/${2#./}"
 }
 # A root stamp in the current (pinned) directory: the name is removed and
 # created exclusively, so a link put there in between is never followed.
@@ -929,45 +933,6 @@ _ltd_drush_copies_here() {
     -print -quit 2> /dev/null) || return 1
   [[ -z "${_bad}" ]]
 }
-# The reset of an account's ~/.drush, run inside the real directory: its
-# globs expand there, and usr/ is entered the same way. The directory is
-# handed to the account and made 02755 first, from inside itself, and only
-# when it is the account's own, the empty one root has just made
-# (_ltd_mine_here) or an earlier release's root-made one of alias copies
-# (_ltd_drush_copies_here): any other root-owned directory of the home
-# renamed onto the name is neither emptied nor handed over. Done before usr/
-# is made, which would leave a new directory no longer empty. The login can
-# rename into ~/.drush, or into its usr/, what another account left
-# group-writable: every removal goes through _ACCT_RM_OWN_PL, so only what
-# root or the account's own identities own (_acct_walk_uids) is removed,
-# never anything below a directory another user owns, and one NOTE line
-# counts what was left. $1 = hosted YES|NO, $2 = owner:group, $3 = the
-# instance user.
-_ltd_drush_strip() {
-  local _o _l
-  _ltd_mine_here "${2%%:*}" || _ltd_drush_copies_here "${3}" || return 1
-  chown -h "${2}" . || return 1
-  chmod 02755 . || return 1
-  _o=$(_acct_walk_uids "${3}") || _o="0"
-  if [ "${1}" = "YES" ]; then
-    _l=$(_ltd_rm_own_all_here "${_o}")
-  else
-    _l=$(
-      perl -e "${_ACCT_RM_OWN_PL}" -- h "${_o}" - ./drush_make ./registry_rebuild \
-        ./clean_missing_modules ./drupalgeddon ./drush_ecl ./make_local \
-        ./safe_cache_form* 2> /dev/null
-      _ltd_in_real_dir ./usr _ltd_drush_strip_usr "${_o}"
-      perl -e "${_ACCT_RM_OWN_PL}" -- h "${_o}" - ./.ctrl* 2> /dev/null
-      perl -e "${_ACCT_RM_OWN_PL}" -- r "${_o}" - ./cache ./drush.ini \
-        ./*drushrc* ./*.inc 2> /dev/null
-    )
-  fi
-  _l=$(printf '%s\n' "${_l}" | grep -E '^[0-9]+:[0-9]+$' | sort -u | grep -c .)
-  if [ "${_l}" -gt 0 ]; then
-    echo "NOTE: ${3}: the ~/.drush reset left ${_l} entries owned by another user in place in $(/bin/pwd -P)"
-  fi
-  mkdir -p ./usr
-}
 # The legacy extension names in the real ~/.drush/usr (the current, pinned
 # directory) removed through _ACCT_RM_OWN_PL, only what the uids $1 own.
 _ltd_drush_strip_usr() {
@@ -984,49 +949,6 @@ _ltd_drush_strip_usr() {
 _ltd_rm_own_all_here() {
   find . -mindepth 1 -maxdepth 1 \
     -exec perl -e "${_ACCT_RM_OWN_PL}" -- r "${1}" - {} + 2> /dev/null
-  return 0
-}
-# The instance's Drush 8 extensions linked into the real ~/.drush/usr (the
-# current, pinned directory), all from inside it. The login can rename to
-# usr, or to an extension's name in it, what another account left
-# group-writable: nothing is done unless usr/ and every directory above it
-# are root's or the account's own identities' (_acct_walk_uids); a link at
-# the name is kept as before; a file there that root or the account's own
-# identities own is removed (_ACCT_RM_OWN_PL), another user's left; a
-# directory there is never removed nor written into; and the link is made
-# only where the name is then free (-T). Prints dev:ino of each entry left
-# for another owner. $1 = the instance's .drush/usr, $2 = the account.
-_ltd_drush_usr_links() {
-  local _t _o _u
-  _o=$(_acct_walk_uids "${2}") || return 0
-  perl -e "${_ACCT_RM_OWN_PL}" -- h "${_o}" - 2> /dev/null || return 0
-  for _t in registry_rebuild clean_missing_modules drupalgeddon drush_ecl \
-    safe_cache_form_clear utf8mb4_convert backdrop; do
-    [ ! -L "./${_t}" ] && [ -e "${1}/${_t}" ] || continue
-    if [ -d "./${_t}" ]; then
-      _u=$(stat -c %u -- "./${_t}" 2> /dev/null) || continue
-      if [[ ",${_o}," != *",${_u},"* ]] && getent passwd "${_u}" > /dev/null 2>&1; then
-        stat -c '%d:%i' -- "./${_t}"
-      fi
-      continue
-    fi
-    if [ -e "./${_t}" ]; then
-      perl -e "${_ACCT_RM_OWN_PL}" -- h "${_o}" - "./${_t}" 2> /dev/null
-    fi
-    ln -s -T -- "${1}/${_t}" "./${_t}" 2> /dev/null
-  done
-}
-# The release serial's stamp of an account's ~/.drush, written inside the
-# real directory: the reset above and the alias re-copy are keyed on it. No
-# CLI php.ini is kept there any more (PHP runs on its version's global ini
-# and takes its temp paths from TMPDIR), so neither are the per-version
-# stamps one was keyed on. The old stamps go through _ACCT_RM_OWN_PL: one
-# another user owns stays. $1 = the instance user.
-_ltd_drush_stamp_put() {
-  local _o
-  _o=$(_acct_walk_uids "${1}") || _o="0"
-  perl -e "${_ACCT_RM_OWN_PL}" -- h "${_o}" - ./.ctrl.php* > /dev/null 2>&1
-  _ltd_stamp_put ".ctrl.${_tRee}.${_xSrl}.pid" ""
   return 0
 }
 # A mode set on names in a directory an account owns, never through a link:
@@ -1055,17 +977,6 @@ _ltd_chmod_nofollow() {
   [ "$#" -gt 0 ] || return 0
   perl -e "${_LTD_FCHMOD_PL}" f "${_m}" "$@" 2> /dev/null
 }
-# The main login's users/ store (the current, pinned directory) handed to $2
-# (owner:group) with the uids $1, made 0700, and every regular file directly
-# in it set 0600, only what root or those uids own (_ltd_tree_own_here,
-# _ltd_chmod_own_here); nothing changes in a users/ another user owns.
-_ltd_users_store_here() (
-  shopt -s dotglob nullglob
-  _ltd_tree_own_here "${1}" "${2}" "the users/ store hand-over" || exit 0
-  chmod 700 .
-  _ltd_left_note "$(perl -e "${_SAT_CHMOD_OWN_PL}" -- "${1}" f 0600 ./* 2> /dev/null)" \
-    "the users/ store's file modes" "as they were"
-)
 # The same for every regular file directly in the current (pinned) directory:
 # the glob expands here, never in the caller's directory. $1 = mode.
 _ltd_chmod_nofollow_here() (
@@ -1249,40 +1160,6 @@ _ltd_mine_here() {
   [ "$(stat -c %U .)" = "${1}" ] && return 0
   [ "$(stat -c %u .)" = "0" ] && [ -z "$(ls -A . 2> /dev/null)" ]
 }
-# An account's own temp or dot directory, inside the real directory: handed
-# to the account, aged out when asked (entries older than a day) and given
-# its mode, only when _ltd_mine_here holds. $1 = owner:group, $2 = mode,
-# $3 = YES to age it out.
-_ltd_own_dir_here() {
-  _ltd_mine_here "${1%%:*}" || return 1
-  chown -h "${1}" . || return 1
-  if [ "${3}" = "YES" ]; then
-    touch .
-    _ltd_age_rm_here "${1%%:*}"
-  fi
-  chmod "${2}" .
-}
-# Entries older than a day aged out of an account's own temp directory, from
-# inside the real directory, and only when _ltd_mine_here holds. $1 = the
-# account.
-_ltd_age_out_here() {
-  _ltd_mine_here "${1}" || return 1
-  _ltd_age_rm_here "${1}"
-}
-# Every entry below the current (pinned) directory older than a day removed
-# as find -mindepth 1 -mtime +0 -execdir rm -rf removed it, through
-# _ACCT_RM_OWN_PL (op a): only what root, the owner $1 (a login name) or the
-# identities of its account own, never through a link, and nothing below a
-# directory another user owns, which the login can rename in from what
-# another account left group-writable.
-_ltd_age_rm_here() {
-  local _o _u
-  _u=$(id -u -- "${1}" 2> /dev/null) || return 0
-  _o=$(_acct_walk_uids "${1%%.*}") || _o=0
-  _ltd_left_note "$(perl -e "${_ACCT_RM_OWN_PL}" -- a "${_o},${_u}" 0 2> /dev/null)" \
-    "the age-out of ${1}'s temp files" "in place"
-  return 0
-}
 # The current (pinned) directory and everything below it handed to $2
 # (uid:gid numbers) through _SAT_REOWN_OWN_PL with the uids $1: only what root
 # or those uids own, nothing below a directory another named uid owns, never
@@ -1297,6 +1174,15 @@ _ltd_reown_own_here() {
     \( ! -uid "${_u}" -o ! -gid "${_g}" -o -type f \( -perm -4000 -o -perm -2000 \) \) \
     -execdir perl -e "${_SAT_REOWN_OWN_PL}" -- "${_o}" "${_u}" "${_g}" {} +
 }
+# One NOTE line, for the run's report, when the dev:ino lines $1 name any
+# entry (each counted once): "$2 left N entries owned by another user $3 in
+# <the current directory>".
+_ltd_left_note() {
+  local _n
+  _n=$(printf '%s\n' "${1}" | grep -E '^[0-9]+:[0-9]+$' | sort -u | grep -c .)
+  [ "${_n}" -gt 0 ] 2> /dev/null || return 0
+  echo "NOTE: ${2} left ${_n} entries owned by another user ${3} in $(/bin/pwd -P)"
+}
 # The names after the uids $1 and the mode $2 in the current (pinned)
 # directory given that mode (regular files only) through _SAT_CHMOD_OWN_PL:
 # another user's file at the name keeps its mode. Nothing printed.
@@ -1306,15 +1192,6 @@ _ltd_chmod_own_here() {
   _l=$(perl -e "${_SAT_CHMOD_OWN_PL}" -- "${_o}" f "${_m}" "$@" 2> /dev/null)
   _ltd_left_note "${_l}" "the key file modes" "as they were"
   return 0
-}
-# One NOTE line, for the run's report, when the dev:ino lines $1 name any
-# entry (each counted once): "$2 left N entries owned by another user $3 in
-# <the current directory>".
-_ltd_left_note() {
-  local _n
-  _n=$(printf '%s\n' "${1}" | grep -E '^[0-9]+:[0-9]+$' | sort -u | grep -c .)
-  [ "${_n}" -gt 0 ] 2> /dev/null || return 0
-  echo "NOTE: ${2} left ${_n} entries owned by another user ${3} in $(/bin/pwd -P)"
 }
 # owner:group names as uid:gid numbers, or status 1
 _ltd_num_ids() {
@@ -1362,15 +1239,17 @@ _ltd_tree_own_here() {
   _ltd_left_note "${_l}" "${3}" "in place"
   return 0
 }
-# A dot directory root seeds in a home its account owns and can change while
-# this runs: created, then handed over and given its mode only inside the
-# real directory (never by a name the account can swap meanwhile).
-# $1 = path, $2 = mode, $3 = owner:group.
-_ltd_dot_dir() {
-  [ -d "${1}" ] && return 0
-  mkdir -p "${1}"
-  _ltd_in_real_dir "${1}" _ltd_own_dir_here "${3}" "${2}" NO
-}
+# The main login's users/ store (the current, pinned directory) handed to $2
+# (owner:group) with the uids $1, made 0700, and every regular file directly
+# in it set 0600, only what root or those uids own (_ltd_tree_own_here,
+# _ltd_chmod_own_here); nothing changes in a users/ another user owns.
+_ltd_users_store_here() (
+  shopt -s dotglob nullglob
+  _ltd_tree_own_here "${1}" "${2}" "the users/ store hand-over" || exit 0
+  chmod 700 .
+  _ltd_left_note "$(perl -e "${_SAT_CHMOD_OWN_PL}" -- "${1}" f 0600 ./* 2> /dev/null)" \
+    "the users/ store's file modes" "as they were"
+)
 # ~/.lhistory, inside the real home: created exclusively at its own name
 # (never replacing one there, a link included), empty and 0644, and handed
 # over through the handle that created it, never by the name afterwards.
@@ -1434,10 +1313,6 @@ _ltd_swap_in() {
   local _d="${1}"
   shift
   _ltd_in_real_dir "${_d}" _ltd_stamp_swap "$@"
-}
-_ltd_read_in() {
-  _ltd_in_real_dir "${1}" timeout 10 dd if="./${2}" iflag=nofollow,nonblock,fullblock \
-    bs=1048576 count=1 status=none 2> /dev/null
 }
 # Root's reader of an account's plan file in log/, a copy of usage.sh's: ./$1
 # through one handle, only while it is root's regular file with one link that
@@ -1719,47 +1594,6 @@ _ltd_ctrl_rm() {
   # $1 = name or pattern (quoted), removed inside the real directory
   _ltd_rm_in "${_dscUsr}/static/control" "$@"
 }
-_ltd_ctrl_info_owner() {
-  # a regular file with one link only: a hard link the tenant made to a file
-  # of someone else's is never handed over; find's test is only a first cut,
-  # the handle is checked again when it is handed over, and only what root
-  # or the account's identities own is (_SAT_REOWN_OWN_PL): another
-  # account's file the login renamed in keeps its owner, counted
-  local _o _ids
-  _o=$(_acct_walk_uids "${_USER}") || return 0
-  _ids=$(_ltd_num_ids "${_USER}.ftp:${_ctlGroup}") || return 0
-  _ltd_left_note "$(env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 \
-    -maxdepth 1 -name '*.info' -type f -links 1 -execdir perl \
-    -e "${_SAT_REOWN_OWN_PL}" -- "=${_o}" "${_ids%%:*}" "${_ids#*:}" {} + \
-    2> /dev/null)" "the control files hand-over" "in place"
-}
-# The control directory on the first pass of a serial, inside the real
-# directory: the README put in place as a fresh 0644 file, the tree handed to
-# the main login by a walk that changes a directory or a single-link regular
-# file through its handle (_ltd_reown_here), never a hard link the main login
-# put in the tree, old stamps swept and this serial's written exclusively.
-_ltd_ctrl_init() (
-  local _o _x _rc
-  shopt -s dotglob nullglob
-  _o=$(_acct_walk_uids "${_USER}") || exit 0
-  # nothing is done in a control/ that is not root's or the account's own
-  # up to /: the 0755 goes through the owner-checked handle, which refuses
-  # (and names) such a place
-  _x=$(perl -e "${_SAT_CHMOD_OWN_PL}" -- "${_o}" d 0755 . 2> /dev/null)
-  _rc=$?
-  _ltd_left_note "${_x}" "the control directory set-up" "in place"
-  [ "${_rc}" = "0" ] || exit 0
-  if [ -e "/var/xdrago/conf/control-readme.txt" ]; then
-    ( umask 022
-      cp -T --no-preserve=mode --remove-destination \
-        /var/xdrago/conf/control-readme.txt ./README.txt ) &> /dev/null
-  fi
-  _ltd_tree_own_here "=${_o}" "${_USER}.ftp:${_ctlGroup}" \
-    "the control directory hand-over" || exit 0
-  _ltd_left_note "$(perl -e "${_ACCT_RM_OWN_PL}" -- h "${_o}" - ./.ctrl.* 2> /dev/null)" \
-    "the removal of old control stamps" "in place"
-  _ltd_stamp_put ".ctrl.${_tRee}.${_xSrl}.pid" "OK"
-)
 # The gid of the account $1's own group, or -1 when it is still on the
 # box-wide group (whose members are every other account's .ftp login too).
 _ltd_own_gid() {
@@ -1836,62 +1670,6 @@ for my $f (@ARGV) {
   close($h);
 }
 exit 0;'
-# An account still on the box-wide group shares it with every other
-# account's .ftp login, and what its own login makes in control/ is group
-# writable (sessions and uploads run with umask 002): its real static/ gets
-# the sticky bit, so no other account can rename or replace control/ or
-# anything else the account's identities and root put there, nothing in its
-# real control/ stays writable by others or by a group that is not the
-# account's own, and control/ with every folder in it is handed to group
-# root: a file or folder the login makes there later takes that group from
-# its set-group-ID parent, so no other account can write it in the minutes
-# before the next pass. On an account with a group of its own (_ltd_own_gid)
-# only write for others, or for a group that is not the account's, goes.
-# $1 = the account.
-_ltd_ctrl_shut() {
-  local _o _g
-  _o=$(_acct_walk_uids "${1}") || return 0
-  _g=$(_ltd_own_gid "${1}")
-  _ltd_in_real_dir "/data/disk/${1}/static" \
-    perl -e "${_LTD_SHUT_OWN_PL}" -- t "${_o}" "${_g}" . 2> /dev/null
-  _ltd_in_real_dir "/data/disk/${1}/static/control" \
-    perl -e "${_LTD_SHUT_OWN_PL}" -- w "${_o}" "${_g}" . 2> /dev/null
-  if [ "${_g}" = "-1" ]; then
-    _ltd_in_real_dir "/data/disk/${1}/static/control" \
-      env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 \
-      \( \( -type d \( -perm -0002 -o -perm -0020 -o ! -gid 0 -o ! -perm -2000 \) \) \
-      -o \( -type f \( -perm -0002 -o -perm -0020 \) \) \) \
-      -execdir perl -e "${_LTD_SHUT_OWN_PL}" -- w "${_o}" "${_g}" {} + 2> /dev/null
-  else
-    _ltd_in_real_dir "/data/disk/${1}/static/control" \
-      env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 \
-      \( -type d -o -type f \) \( -perm -0002 -o -perm -0020 \) \
-      -execdir perl -e "${_LTD_SHUT_OWN_PL}" -- w "${_o}" "${_g}" {} + 2> /dev/null
-  fi
-  return 0
-}
-# The uids of the account $1's identities (_acct_walk_uids) for its sites'
-# PHP, which cannot read passwd: global-mode.inc honours a 503 gate in
-# static/control only in a folder root or one of them owns and no one else
-# can write, so a control/ another account's login made or moved into
-# static/ holds none of the account's sites. Root's alone, in
-# /data/conf/acct-uids/<oN> (the folder 0711, the file 0644), rewritten
-# only when it differs; nothing for an account not in passwd.
-_ltd_acct_uids_put() {
-  local _o _d=/data/conf/acct-uids _f
-  _o=$(_acct_walk_uids "${1}") || return 0
-  _f="${_d}/${1}"
-  [ "$(cat -- "${_f}" 2> /dev/null)" = "${_o}" ] && return 0
-  mkdir -p "${_d}" && chown root:root "${_d}" && chmod 0711 "${_d}" || return 1
-  rm -f -- "${_f}.tmp"
-  if ( umask 022; printf '%s\n' "${_o}" > "${_f}.tmp" ) \
-    && chown root:root "${_f}.tmp" && chmod 0644 "${_f}.tmp" \
-    && mv -f -T -- "${_f}.tmp" "${_f}"; then
-    return 0
-  fi
-  rm -f -- "${_f}.tmp"
-  return 1
-}
 # The numbers of the account's removed identities, root's alone, one a line
 # in /data/conf/acct-uids/<oN>.gone (0600). Root's readers take a file whose
 # owner no user has as the account's own only when its number is listed here
@@ -1910,24 +1688,6 @@ _acct_gone_write() {
   fi
   rm -f -- "${_t}"
   return 1
-}
-_acct_gone_add() {
-  local _a="${1}" _u="${2}" _d=/data/conf/acct-uids _f _r=0
-  [[ "${_a}" =~ ^[a-z0-9-]+$ && "${_u}" =~ ^[1-9][0-9]*$ ]] || return 1
-  mkdir -p "${_d}" && chown root:root "${_d}" && chmod 0711 "${_d}" || return 1
-  for _f in "${_d}"/*.gone; do
-    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
-    [ "${_f}" = "${_d}/${_a}.gone" ] && continue
-    grep -qx -- "${_u}" "${_f}" || continue
-    _acct_gone_write "${_f}" "$(grep -vx -- "${_u}" "${_f}")"
-  done
-  _f="${_d}/${_a}.gone"
-  if ! grep -qsx -- "${_u}" "${_f}"; then
-    _acct_gone_write "${_f}" "$( { cat -- "${_f}" 2> /dev/null; echo "${_u}"; } | sort -un)" || _r=1
-  fi
-  # held back from every other account's next identity (_acct_pick_uid)
-  _acct_unswept_add "${_u}" || _r=1
-  return "${_r}"
 }
 # A number freed for an account identity is listed in
 # /data/conf/acct-uids/.unswept (root's, 0600) until the nightly sweep has
@@ -1969,6 +1729,24 @@ _acct_unswept_add() {
     fi
     _acct_gone_write "${_f}" "$(printf '%s\n%s\n' "${_c}" "${_u}" | sort -un)"
   ) 9> "${_d}/.unswept.lock"
+}
+_acct_gone_add() {
+  local _a="${1}" _u="${2}" _d=/data/conf/acct-uids _f _r=0
+  [[ "${_a}" =~ ^[a-z0-9-]+$ && "${_u}" =~ ^[1-9][0-9]*$ ]] || return 1
+  mkdir -p "${_d}" && chown root:root "${_d}" && chmod 0711 "${_d}" || return 1
+  for _f in "${_d}"/*.gone; do
+    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
+    [ "${_f}" = "${_d}/${_a}.gone" ] && continue
+    grep -qx -- "${_u}" "${_f}" || continue
+    _acct_gone_write "${_f}" "$(grep -vx -- "${_u}" "${_f}")"
+  done
+  _f="${_d}/${_a}.gone"
+  if ! grep -qsx -- "${_u}" "${_f}"; then
+    _acct_gone_write "${_f}" "$( { cat -- "${_f}" 2> /dev/null; echo "${_u}"; } | sort -un)" || _r=1
+  fi
+  # held back from every other account's next identity (_acct_pick_uid)
+  _acct_unswept_add "${_u}" || _r=1
+  return "${_r}"
 }
 # The numbers of an account that is gone (boa cleanup purge, or one removed
 # some other way, which the ltd worker's prune finds by its records) are
@@ -2239,29 +2017,6 @@ for my $n ("http-off.pid", "http-off-host.pid") {
   print "$n\n" if lstat($n) && unlink($n);
 }
 exit 0;'
-# The account $1's uid list for its sites (_ltd_acct_uids_put) and the gate
-# files out of a control/ a gone login left (_ACCT_GONE_GATE_PL), before any
-# walk of this pass hands that folder to the account.
-_ltd_ctrl_gate_guard() {
-  local _r
-  id -u -- "${1}" > /dev/null 2>&1 || return 0
-  [ -d "/data/disk/${1}/static" ] || return 0
-  _ltd_acct_uids_put "${1}" \
-    || echo "ALERT: could not write /data/conf/acct-uids/${1}"
-  _r=$(_ltd_in_real_dir "/data/disk/${1}/static" perl -e "${_ACCT_GONE_GATE_PL}" 2> /dev/null)
-  if [ -n "${_r}" ]; then
-    echo "ALERT: /data/disk/${1}/static/control is owned by a number no user has: its 503 gate files are removed ($(printf '%s' "${_r}" | tr '\n' ' '))"
-  fi
-  return 0
-}
-_ltd_ctrl_gate_guard_all() {
-  local _p
-  for _p in /data/disk/*; do
-    [ -d "${_p}" ] && [ ! -L "${_p}" ] || continue
-    _ltd_ctrl_gate_guard "${_p##*/}"
-  done
-  return 0
-}
 # The whole of an account's control/, judged once before a run acts on it:
 # run inside the account's real static/, it prints OK when control/ and
 # everything in it, never followed through a link, and static/ and every
@@ -2307,24 +2062,6 @@ while (my $e = shift @q) {
 }
 print "OK\n";
 exit 0;'
-# 0 when the account $1's control/ is its own as _ACCT_CTRL_OWN_PL judges it
-# (or it has none); otherwise why not on stdout, status 1. A run that acts
-# on what control/ says leaves the account as it is when it is not.
-_acct_ctrl_own() {
-  local _a="${1}" _o _r _want
-  # an account not in passwd (not made yet, or removed) has nothing to
-  # judge it by: read as before
-  _o=$(_acct_walk_uids "${_a}" 2> /dev/null) || return 0
-  [ -e "/data/disk/${_a}/static" ] || [ -L "/data/disk/${_a}/static" ] || return 0
-  _want="$(cd -P -- /data/disk 2> /dev/null && /bin/pwd -P)/${_a}/static"
-  _r=$(cd -P -- "/data/disk/${_a}/static" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] \
-    && perl -e "${_ACCT_CTRL_OWN_PL}" -- "${_o}" 2> /dev/null)
-  case "${_r}" in
-    OK|ABSENT) return 0 ;;
-  esac
-  echo "${_r:-static/ is not a real directory}"
-  return 1
-}
 # The uids root's walks over the account $1's trees act on, comma-separated:
 # root's own (0, what root wrote there for the account) and those of every
 # identity of the account as passwd names them: oN and oN.<name>, that is
@@ -2359,6 +2096,269 @@ _acct_walk_uids() {
     _x="${_x},${_u}"
   done 2> /dev/null < "/data/conf/acct-uids/${_a}.gone"
   echo "${_x}"
+}
+# The reset of an account's ~/.drush, run inside the real directory: its
+# globs expand there, and usr/ is entered the same way. The directory is
+# handed to the account and made 02755 first, from inside itself, and only
+# when it is the account's own, the empty one root has just made
+# (_ltd_mine_here) or an earlier release's root-made one of alias copies
+# (_ltd_drush_copies_here): any other root-owned directory of the home
+# renamed onto the name is neither emptied nor handed over. Done before usr/
+# is made, which would leave a new directory no longer empty. The login can
+# rename into ~/.drush, or into its usr/, what another account left
+# group-writable: every removal goes through _ACCT_RM_OWN_PL, so only what
+# root or the account's own identities own (_acct_walk_uids) is removed,
+# never anything below a directory another user owns, and one NOTE line
+# counts what was left. $1 = hosted YES|NO, $2 = owner:group, $3 = the
+# instance user.
+_ltd_drush_strip() {
+  local _o _l
+  _ltd_mine_here "${2%%:*}" || _ltd_drush_copies_here "${3}" || return 1
+  chown -h "${2}" . || return 1
+  chmod 02755 . || return 1
+  _o=$(_acct_walk_uids "${3}") || _o="0"
+  if [ "${1}" = "YES" ]; then
+    _l=$(_ltd_rm_own_all_here "${_o}")
+  else
+    _l=$(
+      perl -e "${_ACCT_RM_OWN_PL}" -- h "${_o}" - ./drush_make ./registry_rebuild \
+        ./clean_missing_modules ./drupalgeddon ./drush_ecl ./make_local \
+        ./safe_cache_form* 2> /dev/null
+      _ltd_in_real_dir ./usr _ltd_drush_strip_usr "${_o}"
+      perl -e "${_ACCT_RM_OWN_PL}" -- h "${_o}" - ./.ctrl* 2> /dev/null
+      perl -e "${_ACCT_RM_OWN_PL}" -- r "${_o}" - ./cache ./drush.ini \
+        ./*drushrc* ./*.inc 2> /dev/null
+    )
+  fi
+  _l=$(printf '%s\n' "${_l}" | grep -E '^[0-9]+:[0-9]+$' | sort -u | grep -c .)
+  if [ "${_l}" -gt 0 ]; then
+    echo "NOTE: ${3}: the ~/.drush reset left ${_l} entries owned by another user in place in $(/bin/pwd -P)"
+  fi
+  mkdir -p ./usr
+}
+# The instance's Drush 8 extensions linked into the real ~/.drush/usr (the
+# current, pinned directory), all from inside it. The login can rename to
+# usr, or to an extension's name in it, what another account left
+# group-writable: nothing is done unless usr/ and every directory above it
+# are root's or the account's own identities' (_acct_walk_uids); a link at
+# the name is kept as before; a file there that root or the account's own
+# identities own is removed (_ACCT_RM_OWN_PL), another user's left; a
+# directory there is never removed nor written into; and the link is made
+# only where the name is then free (-T). Prints dev:ino of each entry left
+# for another owner. $1 = the instance's .drush/usr, $2 = the account.
+_ltd_drush_usr_links() {
+  local _t _o _u
+  _o=$(_acct_walk_uids "${2}") || return 0
+  perl -e "${_ACCT_RM_OWN_PL}" -- h "${_o}" - 2> /dev/null || return 0
+  for _t in registry_rebuild clean_missing_modules drupalgeddon drush_ecl \
+    safe_cache_form_clear utf8mb4_convert backdrop; do
+    [ ! -L "./${_t}" ] && [ -e "${1}/${_t}" ] || continue
+    if [ -d "./${_t}" ]; then
+      _u=$(stat -c %u -- "./${_t}" 2> /dev/null) || continue
+      if [[ ",${_o}," != *",${_u},"* ]] && getent passwd "${_u}" > /dev/null 2>&1; then
+        stat -c '%d:%i' -- "./${_t}"
+      fi
+      continue
+    fi
+    if [ -e "./${_t}" ]; then
+      perl -e "${_ACCT_RM_OWN_PL}" -- h "${_o}" - "./${_t}" 2> /dev/null
+    fi
+    ln -s -T -- "${1}/${_t}" "./${_t}" 2> /dev/null
+  done
+}
+# The release serial's stamp of an account's ~/.drush, written inside the
+# real directory: the reset above and the alias re-copy are keyed on it. No
+# CLI php.ini is kept there any more (PHP runs on its version's global ini
+# and takes its temp paths from TMPDIR), so neither are the per-version
+# stamps one was keyed on. The old stamps go through _ACCT_RM_OWN_PL: one
+# another user owns stays. $1 = the instance user.
+_ltd_drush_stamp_put() {
+  local _o
+  _o=$(_acct_walk_uids "${1}") || _o="0"
+  perl -e "${_ACCT_RM_OWN_PL}" -- h "${_o}" - ./.ctrl.php* > /dev/null 2>&1
+  _ltd_stamp_put ".ctrl.${_tRee}.${_xSrl}.pid" ""
+  return 0
+}
+# Every entry below the current (pinned) directory older than a day removed
+# as find -mindepth 1 -mtime +0 -execdir rm -rf removed it, through
+# _ACCT_RM_OWN_PL (op a): only what root, the owner $1 (a login name) or the
+# identities of its account own, never through a link, and nothing below a
+# directory another user owns, which the login can rename in from what
+# another account left group-writable.
+_ltd_age_rm_here() {
+  local _o _u
+  _u=$(id -u -- "${1}" 2> /dev/null) || return 0
+  _o=$(_acct_walk_uids "${1%%.*}") || _o=0
+  _ltd_left_note "$(perl -e "${_ACCT_RM_OWN_PL}" -- a "${_o},${_u}" 0 2> /dev/null)" \
+    "the age-out of ${1}'s temp files" "in place"
+  return 0
+}
+# An account's own temp or dot directory, inside the real directory: handed
+# to the account, aged out when asked (entries older than a day) and given
+# its mode, only when _ltd_mine_here holds. $1 = owner:group, $2 = mode,
+# $3 = YES to age it out.
+_ltd_own_dir_here() {
+  _ltd_mine_here "${1%%:*}" || return 1
+  chown -h "${1}" . || return 1
+  if [ "${3}" = "YES" ]; then
+    touch .
+    _ltd_age_rm_here "${1%%:*}"
+  fi
+  chmod "${2}" .
+}
+# Entries older than a day aged out of an account's own temp directory, from
+# inside the real directory, and only when _ltd_mine_here holds. $1 = the
+# account.
+_ltd_age_out_here() {
+  _ltd_mine_here "${1}" || return 1
+  _ltd_age_rm_here "${1}"
+}
+# A dot directory root seeds in a home its account owns and can change while
+# this runs: created, then handed over and given its mode only inside the
+# real directory (never by a name the account can swap meanwhile).
+# $1 = path, $2 = mode, $3 = owner:group.
+_ltd_dot_dir() {
+  [ -d "${1}" ] && return 0
+  mkdir -p "${1}"
+  _ltd_in_real_dir "${1}" _ltd_own_dir_here "${3}" "${2}" NO
+}
+_ltd_ctrl_info_owner() {
+  # a regular file with one link only: a hard link the tenant made to a file
+  # of someone else's is never handed over; find's test is only a first cut,
+  # the handle is checked again when it is handed over, and only what root
+  # or the account's identities own is (_SAT_REOWN_OWN_PL): another
+  # account's file the login renamed in keeps its owner, counted
+  local _o _ids
+  _o=$(_acct_walk_uids "${_USER}") || return 0
+  _ids=$(_ltd_num_ids "${_USER}.ftp:${_ctlGroup}") || return 0
+  _ltd_left_note "$(env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 \
+    -maxdepth 1 -name '*.info' -type f -links 1 -execdir perl \
+    -e "${_SAT_REOWN_OWN_PL}" -- "=${_o}" "${_ids%%:*}" "${_ids#*:}" {} + \
+    2> /dev/null)" "the control files hand-over" "in place"
+}
+# The control directory on the first pass of a serial, inside the real
+# directory: the README put in place as a fresh 0644 file, the tree handed to
+# the main login by a walk that changes a directory or a single-link regular
+# file through its handle (_ltd_reown_here), never a hard link the main login
+# put in the tree, old stamps swept and this serial's written exclusively.
+_ltd_ctrl_init() (
+  local _o _x _rc
+  shopt -s dotglob nullglob
+  _o=$(_acct_walk_uids "${_USER}") || exit 0
+  # nothing is done in a control/ that is not root's or the account's own
+  # up to /: the 0755 goes through the owner-checked handle, which refuses
+  # (and names) such a place
+  _x=$(perl -e "${_SAT_CHMOD_OWN_PL}" -- "${_o}" d 0755 . 2> /dev/null)
+  _rc=$?
+  _ltd_left_note "${_x}" "the control directory set-up" "in place"
+  [ "${_rc}" = "0" ] || exit 0
+  if [ -e "/var/xdrago/conf/control-readme.txt" ]; then
+    ( umask 022
+      cp -T --no-preserve=mode --remove-destination \
+        /var/xdrago/conf/control-readme.txt ./README.txt ) &> /dev/null
+  fi
+  _ltd_tree_own_here "=${_o}" "${_USER}.ftp:${_ctlGroup}" \
+    "the control directory hand-over" || exit 0
+  _ltd_left_note "$(perl -e "${_ACCT_RM_OWN_PL}" -- h "${_o}" - ./.ctrl.* 2> /dev/null)" \
+    "the removal of old control stamps" "in place"
+  _ltd_stamp_put ".ctrl.${_tRee}.${_xSrl}.pid" "OK"
+)
+# An account still on the box-wide group shares it with every other
+# account's .ftp login, and what its own login makes in control/ is group
+# writable (sessions and uploads run with umask 002): its real static/ gets
+# the sticky bit, so no other account can rename or replace control/ or
+# anything else the account's identities and root put there, nothing in its
+# real control/ stays writable by others or by a group that is not the
+# account's own, and control/ with every folder in it is handed to group
+# root: a file or folder the login makes there later takes that group from
+# its set-group-ID parent, so no other account can write it in the minutes
+# before the next pass. On an account with a group of its own (_ltd_own_gid)
+# only write for others, or for a group that is not the account's, goes.
+# $1 = the account.
+_ltd_ctrl_shut() {
+  local _o _g
+  _o=$(_acct_walk_uids "${1}") || return 0
+  _g=$(_ltd_own_gid "${1}")
+  _ltd_in_real_dir "/data/disk/${1}/static" \
+    perl -e "${_LTD_SHUT_OWN_PL}" -- t "${_o}" "${_g}" . 2> /dev/null
+  _ltd_in_real_dir "/data/disk/${1}/static/control" \
+    perl -e "${_LTD_SHUT_OWN_PL}" -- w "${_o}" "${_g}" . 2> /dev/null
+  if [ "${_g}" = "-1" ]; then
+    _ltd_in_real_dir "/data/disk/${1}/static/control" \
+      env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 \
+      \( \( -type d \( -perm -0002 -o -perm -0020 -o ! -gid 0 -o ! -perm -2000 \) \) \
+      -o \( -type f \( -perm -0002 -o -perm -0020 \) \) \) \
+      -execdir perl -e "${_LTD_SHUT_OWN_PL}" -- w "${_o}" "${_g}" {} + 2> /dev/null
+  else
+    _ltd_in_real_dir "/data/disk/${1}/static/control" \
+      env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 \
+      \( -type d -o -type f \) \( -perm -0002 -o -perm -0020 \) \
+      -execdir perl -e "${_LTD_SHUT_OWN_PL}" -- w "${_o}" "${_g}" {} + 2> /dev/null
+  fi
+  return 0
+}
+# The uids of the account $1's identities (_acct_walk_uids) for its sites'
+# PHP, which cannot read passwd: global-mode.inc honours a 503 gate in
+# static/control only in a folder root or one of them owns and no one else
+# can write, so a control/ another account's login made or moved into
+# static/ holds none of the account's sites. Root's alone, in
+# /data/conf/acct-uids/<oN> (the folder 0711, the file 0644), rewritten
+# only when it differs; nothing for an account not in passwd.
+_ltd_acct_uids_put() {
+  local _o _d=/data/conf/acct-uids _f
+  _o=$(_acct_walk_uids "${1}") || return 0
+  _f="${_d}/${1}"
+  [ "$(cat -- "${_f}" 2> /dev/null)" = "${_o}" ] && return 0
+  mkdir -p "${_d}" && chown root:root "${_d}" && chmod 0711 "${_d}" || return 1
+  rm -f -- "${_f}.tmp"
+  if ( umask 022; printf '%s\n' "${_o}" > "${_f}.tmp" ) \
+    && chown root:root "${_f}.tmp" && chmod 0644 "${_f}.tmp" \
+    && mv -f -T -- "${_f}.tmp" "${_f}"; then
+    return 0
+  fi
+  rm -f -- "${_f}.tmp"
+  return 1
+}
+# The account $1's uid list for its sites (_ltd_acct_uids_put) and the gate
+# files out of a control/ a gone login left (_ACCT_GONE_GATE_PL), before any
+# walk of this pass hands that folder to the account.
+_ltd_ctrl_gate_guard() {
+  local _r
+  id -u -- "${1}" > /dev/null 2>&1 || return 0
+  [ -d "/data/disk/${1}/static" ] || return 0
+  _ltd_acct_uids_put "${1}" \
+    || echo "ALERT: could not write /data/conf/acct-uids/${1}"
+  _r=$(_ltd_in_real_dir "/data/disk/${1}/static" perl -e "${_ACCT_GONE_GATE_PL}" 2> /dev/null)
+  if [ -n "${_r}" ]; then
+    echo "ALERT: /data/disk/${1}/static/control is owned by a number no user has: its 503 gate files are removed ($(printf '%s' "${_r}" | tr '\n' ' '))"
+  fi
+  return 0
+}
+_ltd_ctrl_gate_guard_all() {
+  local _p
+  for _p in /data/disk/*; do
+    [ -d "${_p}" ] && [ ! -L "${_p}" ] || continue
+    _ltd_ctrl_gate_guard "${_p##*/}"
+  done
+  return 0
+}
+# 0 when the account $1's control/ is its own as _ACCT_CTRL_OWN_PL judges it
+# (or it has none); otherwise why not on stdout, status 1. A run that acts
+# on what control/ says leaves the account as it is when it is not.
+_acct_ctrl_own() {
+  local _a="${1}" _o _r _want
+  # an account not in passwd (not made yet, or removed) has nothing to
+  # judge it by: read as before
+  _o=$(_acct_walk_uids "${_a}" 2> /dev/null) || return 0
+  [ -e "/data/disk/${_a}/static" ] || [ -L "/data/disk/${_a}/static" ] || return 0
+  _want="$(cd -P -- /data/disk 2> /dev/null && /bin/pwd -P)/${_a}/static"
+  _r=$(cd -P -- "/data/disk/${_a}/static" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] \
+    && perl -e "${_ACCT_CTRL_OWN_PL}" -- "${_o}" 2> /dev/null)
+  case "${_r}" in
+    OK|ABSENT) return 0 ;;
+  esac
+  echo "${_r:-static/ is not a real directory}"
+  return 1
 }
 # Root's removals in an account's trees, run inside the directory they act
 # in: only what the uids given second own (_acct_walk_uids), or a uid no
@@ -3293,6 +3293,18 @@ _ltd_platform_refuser() {
   return 0
 }
 #
+# One refusal for the status writer: kind|root|detail, appended to the file
+# the caller named (the roots above run in a command substitution, so a
+# variable could not carry them back).
+_ltd_refused_note() {
+  [ -n "${_LTD_REFUSED_FILE}" ] || return 0
+  printf '%s|%s|%s\n' "${1}" "${2}" "${3}" >> "${_LTD_REFUSED_FILE}"
+}
+_ltd_bytes_printable() {
+  local LC_ALL=C
+  printf '%s' "${1//[^[:print:]]/?}"
+}
+#
 # The qualifying app roots of a client, one per line: every platform that
 # carries one of the client's sites, kept only when the whole platform is the
 # client's. A refused platform is reported once a day, with the directory
@@ -3356,14 +3368,6 @@ _ltd_platform_roots() {
     fi
     printf '%s\n' "${_root}"
   done
-}
-#
-# One refusal for the status writer: kind|root|detail, appended to the file
-# the caller named (the roots above run in a command substitution, so a
-# variable could not carry them back).
-_ltd_refused_note() {
-  [ -n "${_LTD_REFUSED_FILE}" ] || return 0
-  printf '%s|%s|%s\n' "${1}" "${2}" "${3}" >> "${_LTD_REFUSED_FILE}"
 }
 #
 # The Drush window. A locked platform and a running site-local Drush exclude
@@ -3502,29 +3506,6 @@ _ltd_platform_window() {
       >> /var/log/boa/manage_ltd.incident.log
   fi
 }
-#
-# The SFTP side. MySecureShell sees the home plus root-placed links only, so
-# each qualifying app root is linked under ~/platforms/<rev>-<codebase>; a
-# link whose platform stopped qualifying goes the same pass. The home is
-# immutable between passes, so it is opened and closed around the edit.
-# While it is open the account can rename ~/platforms and put a link there,
-# so everything after the mkdir runs inside the real directory: once it is
-# root:root 0755 nothing in it is the account's.
-_ltd_platform_farm() {
-  local _acct="${1}"
-  local _roots="${2}"
-  local _home="/home/${_acct}"
-  local _farm="/home/${_acct}/platforms"
-  [ -d "${_home}" ] && [ ! -L "${_home}" ] || return 0
-  chattr -i "${_home}" 2>/dev/null
-  if [ -L "${_farm}" ] || { [ -e "${_farm}" ] && [ ! -d "${_farm}" ]; }; then
-    rm -f "${_farm}"
-  fi
-  [ -d "${_farm}" ] || mkdir -p "${_farm}"
-  _ltd_in_real_dir "${_farm}" _ltd_platform_farm_fill "${_roots}" \
-    || echo "ALERT: ${_farm} not refreshed: not the real directory, or root could not take it over"
-  chattr +i "${_home}" 2>/dev/null
-}
 # The farm's links and README, inside the real ~/platforms. $1 = the roots.
 _ltd_platform_farm_fill() {
   local _root=""
@@ -3585,6 +3566,29 @@ EOF
   return 0
 }
 #
+# The SFTP side. MySecureShell sees the home plus root-placed links only, so
+# each qualifying app root is linked under ~/platforms/<rev>-<codebase>; a
+# link whose platform stopped qualifying goes the same pass. The home is
+# immutable between passes, so it is opened and closed around the edit.
+# While it is open the account can rename ~/platforms and put a link there,
+# so everything after the mkdir runs inside the real directory: once it is
+# root:root 0755 nothing in it is the account's.
+_ltd_platform_farm() {
+  local _acct="${1}"
+  local _roots="${2}"
+  local _home="/home/${_acct}"
+  local _farm="/home/${_acct}/platforms"
+  [ -d "${_home}" ] && [ ! -L "${_home}" ] || return 0
+  chattr -i "${_home}" 2>/dev/null
+  if [ -L "${_farm}" ] || { [ -e "${_farm}" ] && [ ! -d "${_farm}" ]; }; then
+    rm -f "${_farm}"
+  fi
+  [ -d "${_farm}" ] || mkdir -p "${_farm}"
+  _ltd_in_real_dir "${_farm}" _ltd_platform_farm_fill "${_roots}" \
+    || echo "ALERT: ${_farm} not refreshed: not the real directory, or root could not take it over"
+  chattr +i "${_home}" 2>/dev/null
+}
+#
 # One removal for every account this worker takes away: the reaper's zombies
 # and a retired platform account alike. The home goes to the zombie backup,
 # never to /dev/null.
@@ -3600,19 +3604,6 @@ EOF
 # that file already), while root is trusted everywhere. $1 = the login,
 # $2 = the account.
 _LTD_REOWN_FROM_PL='use Fcntl; my ($f, $u, @n) = @ARGV; for my $n (@n) { sysopen(my $h, $n, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); chown($u, -1, $h) if @s && $s[4] == $f && (-d _ || -f _); close($h); } exit 0'
-_ltd_reap_hand_over() {
-  local _gu _ou _d
-  _gu=$(id -u -- "${1}" 2> /dev/null)
-  _ou=$(id -u -- "${2}" 2> /dev/null)
-  [[ "${_gu}" =~ ^[1-9][0-9]*$ && "${_ou}" =~ ^[1-9][0-9]*$ ]] || return 0
-  [ "${_gu}" != "${_ou}" ] || return 0
-  while IFS= read -r _d; do
-    _ltd_in_real_dir "${_d}" env PATH=/usr/local/bin:/usr/bin:/bin \
-      find -P . -xdev -uid "${_gu}" \( -type d -o -type f \) \
-      -execdir perl -e "${_LTD_REOWN_FROM_PL}" "${_gu}" "${_ou}" {} + &> /dev/null
-  done < <(_ltd_account_trees "${2}")
-  return 0
-}
 #
 # What a login made in another account's control/ goes before deluser frees
 # its number. Every login keeps the box-wide group, so it can make control/
@@ -3714,6 +3705,19 @@ _ltd_account_trees() {
   esac
   return 0
 }
+_ltd_reap_hand_over() {
+  local _gu _ou _d
+  _gu=$(id -u -- "${1}" 2> /dev/null)
+  _ou=$(id -u -- "${2}" 2> /dev/null)
+  [[ "${_gu}" =~ ^[1-9][0-9]*$ && "${_ou}" =~ ^[1-9][0-9]*$ ]] || return 0
+  [ "${_gu}" != "${_ou}" ] || return 0
+  while IFS= read -r _d; do
+    _ltd_in_real_dir "${_d}" env PATH=/usr/local/bin:/usr/bin:/bin \
+      find -P . -xdev -uid "${_gu}" \( -type d -o -type f \) \
+      -execdir perl -e "${_LTD_REOWN_FROM_PL}" "${_gu}" "${_ou}" {} + &> /dev/null
+  done < <(_ltd_account_trees "${2}")
+  return 0
+}
 #
 # A login of the account removed before the worker handed its files over at
 # removal left them under a number no passwd entry names, and useradd -r gives
@@ -3769,92 +3773,6 @@ _ltd_gone_hand_over_all() {
   done
   return 0
 }
-_ltd_reap_account() {
-  local _acct="${1}"
-  local _parent="${2}"
-  local _why="${3}"
-  local _w=0
-  [ -d "/var/backups/zombie/deleted/${_NOW}" ] || mkdir -p /var/backups/zombie/deleted/${_NOW}
-  [ -d /var/log/boa ] || mkdir -p /var/log/boa
-  # The login's sessions end first, the login locked so no new one starts:
-  # userdel refuses a login a process still runs as, and the walk below
-  # would then run again on every pass while the login stayed.
-  if id -u "${_acct}" &> /dev/null; then
-    usermod -L "${_acct}" &> /dev/null
-    usermod -s /usr/sbin/nologin "${_acct}" &> /dev/null
-    # every process of the login goes, whatever root it runs under: userdel
-    # does not count one in another root (a chroot, a user namespace), which
-    # would go on writing as the freed number
-    pkill -KILL -u "${_acct}" &> /dev/null
-    pkill -KILL -U "${_acct}" &> /dev/null
-    while { _user_in_use "${_acct}" || _ltd_login_procs "${_acct}"; } && [ "${_w}" -lt 10 ]; do
-      pkill -KILL -u "${_acct}" &> /dev/null
-      pkill -KILL -U "${_acct}" &> /dev/null
-      sleep 1
-      _w=$(( _w + 1 ))
-    done
-    if _user_in_use "${_acct}" || _ltd_login_procs "${_acct}"; then
-      echo "$(date) LTD account ${_acct}: still in use, its removal left for the next pass" >> /var/log/boa/manage_ltd.incident.log
-      return 0
-    fi
-  fi
-  _disable_chattr ${_acct}
-  # only what root, the login or its account's identities own (a login
-  # this pass removes has its own number still)
-  _ltd_in_real_dir "/home/${_acct}" _ltd_rm_glob_own_here \
-    "$(_acct_walk_uids "${_acct%%.*}" || echo 0),$(id -u -- "${_acct}" 2> /dev/null || echo 0)" .gnupg
-  # its names in other accounts' control folders go first: the hand-over
-  # below changes the owner of a file it linked there from its own tree
-  _ltd_reap_foreign_ctrl "${_acct}" "${_parent}"
-  _ltd_reap_hand_over "${_acct}" "${_parent}"
-  # its number stays the account's once freed (_acct_gone_add); one that
-  # could not be recorded and held back is not freed
-  if ! _acct_gone_add "${_parent}" "$(id -u -- "${_acct}" 2> /dev/null)"; then
-    _ltd_notice "reap-record-${_acct}" \
-      "LTD account ${_acct}: its number could not be recorded for ${_parent}, its removal left for the next pass" "" > /dev/null
-    return 0
-  fi
-  # its gem and npm trees carry its number too; a login made again gets
-  # fresh copies of its own
-  # only what root, the login or its account's identities own: any account
-  # can make a name in the sticky /opt/user/gems and /opt/user/npm first
-  _ltd_in_real_dir /opt/user/gems _ltd_rm_glob_own_here \
-    "$(_acct_walk_uids "${_acct%%.*}" || echo 0),$(id -u -- "${_acct}" 2> /dev/null || echo 0)" "${_acct}"
-  _ltd_in_real_dir /opt/user/npm _ltd_rm_glob_own_here \
-    "$(_acct_walk_uids "${_acct%%.*}" || echo 0),$(id -u -- "${_acct}" 2> /dev/null || echo 0)" "${_acct}"
-  deluser \
-    --remove-home \
-    --backup-to /var/backups/zombie/deleted/${_NOW} ${_acct} &> /dev/null
-  if getent passwd "${_acct}" > /dev/null 2>&1; then
-    echo "$(date) LTD account ${_acct}: deluser refused it, its removal left for the next pass" >> /var/log/boa/manage_ltd.incident.log
-    return 0
-  fi
-  # its freed number leaves the account's list before a later identity of
-  # this pass can be given it (one of the account's own may be at once)
-  _ltd_acct_uids_put "${_parent}" > /dev/null 2>&1
-  # users/ is the main login's and can be a link by now: the store goes only
-  # from the real directory
-  _ltd_in_real_dir "/home/${_parent}.ftp/users" rm -f -- "./${_acct}"
-  rm -f "/var/backups/ltd/window/${_acct}" "/var/backups/ltd/window/${_acct}.prev"
-  rm -f "${_LTD_STATUS_DIR}/${_acct}" "/var/backups/ltd/.aliases/${_acct}.md5"
-  _ltd_cli_drop "${_acct}"
-  echo Zombie from etc.passwd ${_acct} killed
-  if [ -n "${_why}" ]; then
-    echo "$(date) LTD account ${_acct} removed: ${_why}" >> /var/log/boa/manage_ltd.incident.log
-  fi
-  echo
-}
-#
-# A platform account that left _LTD_PLATFORM_CLIENTS (or whose client
-# directory is gone) is removed on the spot: its own section would vanish
-# from the published config while the login stayed, which drops it to the
-# group policy and the default path, i.e. wider than it ever was.
-_ltd_platform_retire() {
-  local _acct="${1}"
-  local _why="${2:-not in _LTD_PLATFORM_CLIENTS of ${_USER}}"
-  _ltd_platform_window_close "${_acct}"
-  _ltd_reap_account "${_acct}" "${_USER}" "platform account retired (${_why})"
-}
 #
 # The status files checkmyperms prints. The directory is root's (0711: a
 # login reaches its own file by name, lists nothing); each file is owned by
@@ -3890,10 +3808,6 @@ _ltd_status_safe() {
   local LC_ALL=C
   local _s="${1}"
   printf '%s' "${_s//[^a-zA-Z0-9._\/@:, ()+-]/?}"
-}
-_ltd_bytes_printable() {
-  local LC_ALL=C
-  printf '%s' "${1//[^[:print:]]/?}"
 }
 # "Drupal 10.1.8", "Drupal 7.105", "Backdrop 1.34.3" from the codebase itself,
 # oN's code: each file read as _ltd_read_in reads it (never through a link,
@@ -4406,142 +4320,152 @@ _ltd_platform_cli_copies() {
   fi
   rm -f "${_src}"
 }
-_manage_sec_platform() {
-  local _client=""
-  local _cdir=""
-  local _nam=""
-  local _acct=""
-  local _roots=""
-  local _r=""
-  local _granted=""
-  local _on=""
-  local _ex=""
-  local _listed=0
-  local _nosite=""
-  local _nodir=""
-  local _ftpv=""
-  local _devv=""
-  _ltd_status_dir
-  # the main login's view: every platform account of the instance, with the
-  # names only the owner of every site may see
-  _ftpv=$(_ltd_status_tmp)
-  {
-    echo "Platform developer logins of ${_USER}, $(date '+%Y-%m-%d %H:%M %Z')"
-    echo "(the worker refreshes this every three minutes)"
-  } > "${_ftpv}"
-  for _client in ${_LTD_PLATFORM_CLIENTS}; do
-    _client=${_client//[^a-zA-Z0-9._-]/}
-    [ -n "${_client}" ] || continue
-    _listed=$(( _listed + 1 ))
-    _cdir="${_pthParentUsr}/clients/${_client}"
-    if [ ! -d "${_cdir}" ] || [ -L "${_cdir}" ]; then
-      _ltd_notice "platform-noclient-${_USER}-${_client}" \
-        "platform account for ${_USER}: no client directory ${_cdir}" \
-        "listed in _LTD_PLATFORM_CLIENTS; nothing granted"
-      {
-        echo
-        echo "Client ${_client}: enabled by your host, but no developer login exists:"
-        echo "  the client owns no Drupal or Backdrop site (or no such client)."
-      } >> "${_ftpv}"
-      _nam=$(_ltd_name_from_client_dir "${_cdir}")
-      [ -n "${_nam}" ] && _nodir="${_nodir} ${_USER}.${_nam}${_LTD_PLATFORM_SUFFIX}"
-      continue
-    fi
-    _nam=$(_ltd_name_from_client_dir "${_cdir}")
-    [ -n "${_nam}" ] || continue
-    # the reserved token: a hyphen no client directory can produce
-    # (_ltd_name_from_client_dir keeps [a-zA-Z0-9] only), inside the oN.
-    # namespace the standby hold and the reaper's shape both recognise. The
-    # duplicate-section collapse is a safety net, never a naming scheme.
-    _acct="${_USER}.${_nam}${_LTD_PLATFORM_SUFFIX}"
-    if [ "${#_acct}" -gt 32 ]; then
-      _ltd_notice "platform-toolong-${_acct}" \
-        "platform account name ${_acct} is longer than 32 characters" \
-        "shorten the client directory name; nothing granted"
-      {
-        echo
-        echo "Client ${_client}: enabled by your host, but the login name ${_acct}"
-        echo "  would be longer than 32 characters; a shorter client name is needed."
-      } >> "${_ftpv}"
-      continue
-    fi
-    _LTD_REFUSED_FILE=$(_ltd_status_tmp)
-    _roots=$(_ltd_platform_roots "${_cdir}" "${_acct}")
-    _usrLtd="${_acct}"
-    _Client="${_cdir}"
-    echo "_usrLtd is == ${_usrLtd} == at _manage_sec_platform"
-    _ALLD_NUM="0"
-    _ALLD_CTL="1"
-    _ALLD_DIR="'${_cdir}', '/opt/user/gems/${_acct}'"
-    cd ${_cdir}
-    _manage_sec_access_paths
-    _granted=""
-    for _r in ${_roots}; do
-      _ALLD_DIR="${_ALLD_DIR}, '${_r}'"
-      _granted="${_granted} ${_r}"
+# Change a sub-user's primary group without usermod's own recursive lchown of
+# the home tree (shadow chown_tree: full pathnames, stops at the first
+# immutable inode -- and these homes carry chattr +i -- with the passwd entry
+# already rewritten). The home field points at an empty root-owned staging
+# dir for that one call and is put back at once; the group on the files is
+# the alias-copy leg's business.
+# 0 while a live process (not a zombie) runs as the login $1, by its real,
+# effective or saved uid, in any root: _user_in_use counts this root's only.
+_ltd_login_procs() {
+  local _uid _p _pids=""
+  _uid=$(id -u -- "${1}" 2> /dev/null) || return 1
+  for _p in /proc/[0-9]*; do
+    _pids="${_pids} ${_p#/proc/}"
+  done
+  awk -v uid="${_uid}" -v pids="${_pids}" 'BEGIN {
+    m = split(pids, p, " ")
+    for (i = 1; i <= m; i++) {
+      f = "/proc/" p[i] "/status"
+      st = ""
+      while ((getline l < f) > 0) {
+        if (l ~ /^State:/) { split(l, s, /[ \t]+/); st = s[2] }
+        if (l ~ /^Uid:/) {
+          split(l, u, /[ \t]+/)
+          if (st != "Z" && (u[2] == uid || u[3] == uid || u[4] == uid)) { close(f); exit 0 }
+          break
+        }
+      }
+      close(f)
+    }
+    exit 1
+  }'
+}
+_user_in_use() {
+  # shadow's user_busy, the check usermod -d runs: a process in this root (a
+  # chrooted pure-ftpd session is not) whose real, effective or saved uid is
+  # the user's.
+  local _uid _p _pids=""
+  _uid=$(id -u "$1" 2>/dev/null) || return 1
+  for _p in /proc/[0-9]*; do
+    [ "${_p}/root" -ef / ] && _pids="${_pids} ${_p#/proc/}"
+  done
+  awk -v uid="${_uid}" -v pids="${_pids}" 'BEGIN {
+    m = split(pids, p, " ")
+    for (i = 1; i <= m; i++) {
+      f = "/proc/" p[i] "/status"
+      while ((getline l < f) > 0) {
+        if (l ~ /^Uid:/) {
+          split(l, u, /[ \t]+/)
+          if (u[2] == uid || u[3] == uid || u[4] == uid) { close(f); exit 0 }
+          break
+        }
+      }
+      close(f)
+    }
+    exit 1
+  }'
+}
+_ltd_reap_account() {
+  local _acct="${1}"
+  local _parent="${2}"
+  local _why="${3}"
+  local _w=0
+  [ -d "/var/backups/zombie/deleted/${_NOW}" ] || mkdir -p /var/backups/zombie/deleted/${_NOW}
+  [ -d /var/log/boa ] || mkdir -p /var/log/boa
+  # The login's sessions end first, the login locked so no new one starts:
+  # userdel refuses a login a process still runs as, and the walk below
+  # would then run again on every pass while the login stayed.
+  if id -u "${_acct}" &> /dev/null; then
+    usermod -L "${_acct}" &> /dev/null
+    usermod -s /usr/sbin/nologin "${_acct}" &> /dev/null
+    # every process of the login goes, whatever root it runs under: userdel
+    # does not count one in another root (a chroot, a user namespace), which
+    # would go on writing as the freed number
+    pkill -KILL -u "${_acct}" &> /dev/null
+    pkill -KILL -U "${_acct}" &> /dev/null
+    while { _user_in_use "${_acct}" || _ltd_login_procs "${_acct}"; } && [ "${_w}" -lt 10 ]; do
+      pkill -KILL -u "${_acct}" &> /dev/null
+      pkill -KILL -U "${_acct}" &> /dev/null
+      sleep 1
+      _w=$(( _w + 1 ))
     done
-    if [ -n "${_granted}" ]; then
-      _LTD_EXTRA_STANZA="allowed : + [${_LTD_PLATFORM_TOOLS}, ${_LTD_PLATFORM_SELF}]
-allowed_shell_escape : + [${_LTD_PLATFORM_TOOLS}]"
-    else
-      _LTD_EXTRA_STANZA="allowed : + [${_LTD_PLATFORM_SELF}]"
+    if _user_in_use "${_acct}" || _ltd_login_procs "${_acct}"; then
+      echo "$(date) LTD account ${_acct}: still in use, its removal left for the next pass" >> /var/log/boa/manage_ltd.incident.log
+      return 0
     fi
-    if [ "${_ALLD_NUM}" -ge "${_ALLD_CTL}" ]; then
-      # kept only while the client has a site to reach: an account left in
-      # place without its section would fall to the group policy
-      _on="${_on} ${_acct}"
-      _LTD_PLATFORM_ACCT=YES
-      _add_user_if_not_exists
-      _LTD_PLATFORM_ACCT=NO
-      if getent passwd "${_acct}" > /dev/null 2>&1; then
-        _ltd_platform_farm "${_acct}" "${_granted}"
-        _ltd_platform_window "${_acct}" "${_granted}"
-        _ltd_platform_cli_copies "${_acct}" "${_cdir}" "${_granted}"
-        _devv=$(_ltd_status_tmp)
-        _ltd_platform_report "${_acct}" "${_client}" "${_cdir}" "${_granted}" \
-          "${_LTD_REFUSED_FILE}" dev > "${_devv}"
-        _ltd_status_put "${_acct}" "${_devv}"
-        {
-          echo
-          _ltd_platform_report "${_acct}" "${_client}" "${_cdir}" "${_granted}" \
-            "${_LTD_REFUSED_FILE}" full | grep -v '^#'
-        } >> "${_ftpv}"
-      fi
-      echo "Done platform account ${_acct} for ${_cdir}: ${_granted:-no qualifying platform}"
-    else
-      _nosite="${_nosite} ${_acct}"
-      {
-        echo
-        echo "Client ${_client}: enabled by your host, but no developer login is kept:"
-        echo "  none of the client's sites is a Drupal or Backdrop site this pass can"
-        echo "  reach (a login that existed is retired until one is)."
-      } >> "${_ftpv}"
-    fi
-    rm -f "${_LTD_REFUSED_FILE}"
-    _LTD_REFUSED_FILE=""
-    _usrLtd=
-    _ALLD_DIR=
-    _LTD_EXTRA_STANZA=
-  done
-  for _ex in $(getent passwd | cut -d: -f1 | grep "^${_USER}\..*${_LTD_PLATFORM_SUFFIX}$"); do
-    case " ${_on} " in
-      *" ${_ex} "*) continue ;;
-    esac
-    case " ${_nosite} " in
-      *" ${_ex} "*) _ltd_platform_retire "${_ex}" "its client has no Drupal or Backdrop site this pass can reach" ;;
-      *)
-        case " ${_nodir} " in
-          *" ${_ex} "*) _ltd_platform_retire "${_ex}" "its client directory is gone or is a link" ;;
-          *) _ltd_platform_retire "${_ex}" ;;
-        esac
-        ;;
-    esac
-  done
-  if [ "${_listed}" -gt 0 ]; then
-    _ltd_status_put "${_USER}.ftp" "${_ftpv}"
-  else
-    rm -f "${_ftpv}" "${_LTD_STATUS_DIR}/${_USER}.ftp"
   fi
+  _disable_chattr ${_acct}
+  # only what root, the login or its account's identities own (a login
+  # this pass removes has its own number still)
+  _ltd_in_real_dir "/home/${_acct}" _ltd_rm_glob_own_here \
+    "$(_acct_walk_uids "${_acct%%.*}" || echo 0),$(id -u -- "${_acct}" 2> /dev/null || echo 0)" .gnupg
+  # its names in other accounts' control folders go first: the hand-over
+  # below changes the owner of a file it linked there from its own tree
+  _ltd_reap_foreign_ctrl "${_acct}" "${_parent}"
+  _ltd_reap_hand_over "${_acct}" "${_parent}"
+  # its number stays the account's once freed (_acct_gone_add); one that
+  # could not be recorded and held back is not freed
+  if ! _acct_gone_add "${_parent}" "$(id -u -- "${_acct}" 2> /dev/null)"; then
+    _ltd_notice "reap-record-${_acct}" \
+      "LTD account ${_acct}: its number could not be recorded for ${_parent}, its removal left for the next pass" "" > /dev/null
+    return 0
+  fi
+  # its gem and npm trees carry its number too; a login made again gets
+  # fresh copies of its own
+  # only what root, the login or its account's identities own: any account
+  # can make a name in the sticky /opt/user/gems and /opt/user/npm first
+  _ltd_in_real_dir /opt/user/gems _ltd_rm_glob_own_here \
+    "$(_acct_walk_uids "${_acct%%.*}" || echo 0),$(id -u -- "${_acct}" 2> /dev/null || echo 0)" "${_acct}"
+  _ltd_in_real_dir /opt/user/npm _ltd_rm_glob_own_here \
+    "$(_acct_walk_uids "${_acct%%.*}" || echo 0),$(id -u -- "${_acct}" 2> /dev/null || echo 0)" "${_acct}"
+  deluser \
+    --remove-home \
+    --backup-to /var/backups/zombie/deleted/${_NOW} ${_acct} &> /dev/null
+  if getent passwd "${_acct}" > /dev/null 2>&1; then
+    echo "$(date) LTD account ${_acct}: deluser refused it, its removal left for the next pass" >> /var/log/boa/manage_ltd.incident.log
+    return 0
+  fi
+  # its freed number leaves the account's list before a later identity of
+  # this pass can be given it (one of the account's own may be at once)
+  _ltd_acct_uids_put "${_parent}" > /dev/null 2>&1
+  # users/ is the main login's and can be a link by now: the store goes only
+  # from the real directory
+  _ltd_in_real_dir "/home/${_parent}.ftp/users" rm -f -- "./${_acct}"
+  rm -f "/var/backups/ltd/window/${_acct}" "/var/backups/ltd/window/${_acct}.prev"
+  rm -f "${_LTD_STATUS_DIR}/${_acct}" "/var/backups/ltd/.aliases/${_acct}.md5"
+  _ltd_cli_drop "${_acct}"
+  echo Zombie from etc.passwd ${_acct} killed
+  if [ -n "${_why}" ]; then
+    echo "$(date) LTD account ${_acct} removed: ${_why}" >> /var/log/boa/manage_ltd.incident.log
+  fi
+  echo
+}
+#
+# A platform account that left _LTD_PLATFORM_CLIENTS (or whose client
+# directory is gone) is removed on the spot: its own section would vanish
+# from the published config while the login stayed, which drops it to the
+# group policy and the default path, i.e. wider than it ever was.
+_ltd_platform_retire() {
+  local _acct="${1}"
+  local _why="${2:-not in _LTD_PLATFORM_CLIENTS of ${_USER}}"
+  _ltd_platform_window_close "${_acct}"
+  _ltd_reap_account "${_acct}" "${_USER}" "platform account retired (${_why})"
+}
+# the Octopus account an identity belongs to (oN, oN.ftp, oN.<sub> -> oN)
+_acct_of_identity() {
+  printf '%s\n' "${1%%.*}"
 }
 #
 # Kill zombies.
@@ -5086,67 +5010,6 @@ _ig_defer_note() {
 _ig_defer_clear() {
   rm -f "/var/log/boa/instgrp.defer.${1}"
 }
-# the Octopus account an identity belongs to (oN, oN.ftp, oN.<sub> -> oN)
-_acct_of_identity() {
-  printf '%s\n' "${1%%.*}"
-}
-# Change a sub-user's primary group without usermod's own recursive lchown of
-# the home tree (shadow chown_tree: full pathnames, stops at the first
-# immutable inode -- and these homes carry chattr +i -- with the passwd entry
-# already rewritten). The home field points at an empty root-owned staging
-# dir for that one call and is put back at once; the group on the files is
-# the alias-copy leg's business.
-# 0 while a live process (not a zombie) runs as the login $1, by its real,
-# effective or saved uid, in any root: _user_in_use counts this root's only.
-_ltd_login_procs() {
-  local _uid _p _pids=""
-  _uid=$(id -u -- "${1}" 2> /dev/null) || return 1
-  for _p in /proc/[0-9]*; do
-    _pids="${_pids} ${_p#/proc/}"
-  done
-  awk -v uid="${_uid}" -v pids="${_pids}" 'BEGIN {
-    m = split(pids, p, " ")
-    for (i = 1; i <= m; i++) {
-      f = "/proc/" p[i] "/status"
-      st = ""
-      while ((getline l < f) > 0) {
-        if (l ~ /^State:/) { split(l, s, /[ \t]+/); st = s[2] }
-        if (l ~ /^Uid:/) {
-          split(l, u, /[ \t]+/)
-          if (st != "Z" && (u[2] == uid || u[3] == uid || u[4] == uid)) { close(f); exit 0 }
-          break
-        }
-      }
-      close(f)
-    }
-    exit 1
-  }'
-}
-_user_in_use() {
-  # shadow's user_busy, the check usermod -d runs: a process in this root (a
-  # chrooted pure-ftpd session is not) whose real, effective or saved uid is
-  # the user's.
-  local _uid _p _pids=""
-  _uid=$(id -u "$1" 2>/dev/null) || return 1
-  for _p in /proc/[0-9]*; do
-    [ "${_p}/root" -ef / ] && _pids="${_pids} ${_p#/proc/}"
-  done
-  awk -v uid="${_uid}" -v pids="${_pids}" 'BEGIN {
-    m = split(pids, p, " ")
-    for (i = 1; i <= m; i++) {
-      f = "/proc/" p[i] "/status"
-      while ((getline l < f) > 0) {
-        if (l ~ /^Uid:/) {
-          split(l, u, /[ \t]+/)
-          if (u[2] == uid || u[3] == uid || u[4] == uid) { close(f); exit 0 }
-          break
-        }
-      }
-      close(f)
-    }
-    exit 1
-  }'
-}
 _set_primary_group() {
   local _u="$1" _g="$2" _h _pgUrc _stage=/var/backups/ltd/.pg-stage
   _h=$(getent passwd "${_u}" 2>/dev/null | cut -d: -f6)
@@ -5272,67 +5135,6 @@ _ok_update_user() {
   fi
 }
 #
-# Add user if not exists.
-_add_user_if_not_exists() {
-  _usrLtdTest=${_usrLtd//[^a-z0-9]/}
-  if [ ! -z "${_usrLtdTest}" ]; then
-    _ID_EXISTS=$(getent passwd ${_usrLtd} 2>&1)
-    _ID_SHELLS=$(id -nG ${_usrLtd} 2>&1)
-    echo "_ID_EXISTS is == ${_ID_EXISTS} == at _add_user_if_not_exists"
-    echo "_ID_SHELLS is == ${_ID_SHELLS} == at _add_user_if_not_exists"
-    if [ -z "${_ID_EXISTS}" ]; then
-      echo "We will create user == ${_usrLtd} =="
-      _ok_create_user
-      _manage_sec_user_drush_aliases
-      _enable_chattr ${_usrLtd}
-      _ltd_drush_store_after_reset YES
-    elif [[ "${_ID_EXISTS}" =~ "${_usrLtd}" ]] \
-      && [[ " ${_ID_SHELLS} " == *" ltd-shell "* ]]; then
-      echo "We will update user == ${_usrLtd} =="
-      _disable_chattr ${_usrLtd}
-      _ltd_in_real_dir "/home/${_usrLtd}" _ltd_rm_glob_own_here \
-        "$(_acct_walk_uids "${_usrLtd%%.*}" || echo 0),$(id -u -- "${_usrLtd}" 2> /dev/null || echo 0)" \
-        drush-backups
-      _usrTmp="/home/${_usrLtd}/.tmp"
-      _desymlink_planted "${_usrTmp}"
-      _ltd_dot_dir "${_usrTmp}" 02755 "${_usrLtd}:$(_acct_group "${_usrLtd}")"
-      _ltd_in_real_dir "${_usrTmp}" _ltd_age_out_here "${_usrLtd}"
-      _ok_update_user
-      _ltdRst=NO
-      [ ! -L "/home/${_usrLtd}/.drush" ] \
-        && [ -e "/home/${_usrLtd}/.drush/.ctrl.${_tRee}.${_xSrl}.pid" ] || _ltdRst=YES
-      _enable_chattr ${_usrLtd}
-      _ltd_drush_store_after_reset "${_ltdRst}"
-    fi
-  fi
-}
-#
-# The alias copies above are made before _enable_chattr, and on the first pass
-# of every release serial _enable_chattr resets ~/.drush (the whole directory
-# on a hosted system) -- so a new account, and every account after an update,
-# had no @alias for Drush until the next pass. $1 = YES when this pass's
-# _enable_chattr ran that reset (its own test: no stamp for this serial): the
-# copies are redone onto the reset tree, with ~/.drush opened only around the
-# write. A platform account's Drush 9+ store is checked every pass, and
-# ~/.drush is opened only when it has to be rebuilt.
-_ltd_drush_store_after_reset() {
-  local _rst="${1}"
-  local _hd="/home/${_usrLtd}/.drush"
-  [ -e "/home/${_USER}.ftp/users/${_usrLtd}" ] || return 0
-  getent passwd "${_usrLtd}" > /dev/null 2>&1 || return 0
-  [ -d "${_hd}" ] && [ ! -L "${_hd}" ] || return 0
-  # the flag from inside the real directory, never by its name (a name the
-  # login can swap for a hard link while its home is open)
-  if [ "${_rst}" = "YES" ]; then
-    _ltd_in_real_dir "${_hd}" chattr -i . 2>/dev/null
-    _manage_sec_user_drush_aliases
-    _ltd_in_real_dir "${_hd}" chattr +i . 2>/dev/null
-  fi
-  if [ "${_LTD_PLATFORM_ACCT}" = "YES" ]; then
-    _ltd_platform_alias_store "${_usrLtd}" "${_rst}"
-  fi
-}
-#
 # Drush 9+ (vdrush, drush10/11) reads site aliases only from a yml store. The
 # main login's store is converted from every alias of the instance; a platform
 # account gets its own, converted from its own alias copies -- exactly its
@@ -5390,6 +5192,67 @@ _ltd_platform_alias_store() {
     _ltd_notice "platform-aliasstore-${_acct}" \
       "Drush 9+ alias store for ${_acct} not rebuilt" \
       "$(_ltd_alias_store_why "${_rc}"); retried on the next pass"
+  fi
+}
+#
+# The alias copies above are made before _enable_chattr, and on the first pass
+# of every release serial _enable_chattr resets ~/.drush (the whole directory
+# on a hosted system) -- so a new account, and every account after an update,
+# had no @alias for Drush until the next pass. $1 = YES when this pass's
+# _enable_chattr ran that reset (its own test: no stamp for this serial): the
+# copies are redone onto the reset tree, with ~/.drush opened only around the
+# write. A platform account's Drush 9+ store is checked every pass, and
+# ~/.drush is opened only when it has to be rebuilt.
+_ltd_drush_store_after_reset() {
+  local _rst="${1}"
+  local _hd="/home/${_usrLtd}/.drush"
+  [ -e "/home/${_USER}.ftp/users/${_usrLtd}" ] || return 0
+  getent passwd "${_usrLtd}" > /dev/null 2>&1 || return 0
+  [ -d "${_hd}" ] && [ ! -L "${_hd}" ] || return 0
+  # the flag from inside the real directory, never by its name (a name the
+  # login can swap for a hard link while its home is open)
+  if [ "${_rst}" = "YES" ]; then
+    _ltd_in_real_dir "${_hd}" chattr -i . 2>/dev/null
+    _manage_sec_user_drush_aliases
+    _ltd_in_real_dir "${_hd}" chattr +i . 2>/dev/null
+  fi
+  if [ "${_LTD_PLATFORM_ACCT}" = "YES" ]; then
+    _ltd_platform_alias_store "${_usrLtd}" "${_rst}"
+  fi
+}
+#
+# Add user if not exists.
+_add_user_if_not_exists() {
+  _usrLtdTest=${_usrLtd//[^a-z0-9]/}
+  if [ ! -z "${_usrLtdTest}" ]; then
+    _ID_EXISTS=$(getent passwd ${_usrLtd} 2>&1)
+    _ID_SHELLS=$(id -nG ${_usrLtd} 2>&1)
+    echo "_ID_EXISTS is == ${_ID_EXISTS} == at _add_user_if_not_exists"
+    echo "_ID_SHELLS is == ${_ID_SHELLS} == at _add_user_if_not_exists"
+    if [ -z "${_ID_EXISTS}" ]; then
+      echo "We will create user == ${_usrLtd} =="
+      _ok_create_user
+      _manage_sec_user_drush_aliases
+      _enable_chattr ${_usrLtd}
+      _ltd_drush_store_after_reset YES
+    elif [[ "${_ID_EXISTS}" =~ "${_usrLtd}" ]] \
+      && [[ " ${_ID_SHELLS} " == *" ltd-shell "* ]]; then
+      echo "We will update user == ${_usrLtd} =="
+      _disable_chattr ${_usrLtd}
+      _ltd_in_real_dir "/home/${_usrLtd}" _ltd_rm_glob_own_here \
+        "$(_acct_walk_uids "${_usrLtd%%.*}" || echo 0),$(id -u -- "${_usrLtd}" 2> /dev/null || echo 0)" \
+        drush-backups
+      _usrTmp="/home/${_usrLtd}/.tmp"
+      _desymlink_planted "${_usrTmp}"
+      _ltd_dot_dir "${_usrTmp}" 02755 "${_usrLtd}:$(_acct_group "${_usrLtd}")"
+      _ltd_in_real_dir "${_usrTmp}" _ltd_age_out_here "${_usrLtd}"
+      _ok_update_user
+      _ltdRst=NO
+      [ ! -L "/home/${_usrLtd}/.drush" ] \
+        && [ -e "/home/${_usrLtd}/.drush/.ctrl.${_tRee}.${_xSrl}.pid" ] || _ltdRst=YES
+      _enable_chattr ${_usrLtd}
+      _ltd_drush_store_after_reset "${_ltdRst}"
+    fi
   fi
 }
 #
@@ -5461,6 +5324,143 @@ _ltd_name_from_client_dir() {
   _nam=${_nam//[^a-zA-Z0-9]/}
   _nam=$(echo -n "${_nam}" | tr A-Z a-z 2>&1)
   printf '%s\n' "${_nam}"
+}
+_manage_sec_platform() {
+  local _client=""
+  local _cdir=""
+  local _nam=""
+  local _acct=""
+  local _roots=""
+  local _r=""
+  local _granted=""
+  local _on=""
+  local _ex=""
+  local _listed=0
+  local _nosite=""
+  local _nodir=""
+  local _ftpv=""
+  local _devv=""
+  _ltd_status_dir
+  # the main login's view: every platform account of the instance, with the
+  # names only the owner of every site may see
+  _ftpv=$(_ltd_status_tmp)
+  {
+    echo "Platform developer logins of ${_USER}, $(date '+%Y-%m-%d %H:%M %Z')"
+    echo "(the worker refreshes this every three minutes)"
+  } > "${_ftpv}"
+  for _client in ${_LTD_PLATFORM_CLIENTS}; do
+    _client=${_client//[^a-zA-Z0-9._-]/}
+    [ -n "${_client}" ] || continue
+    _listed=$(( _listed + 1 ))
+    _cdir="${_pthParentUsr}/clients/${_client}"
+    if [ ! -d "${_cdir}" ] || [ -L "${_cdir}" ]; then
+      _ltd_notice "platform-noclient-${_USER}-${_client}" \
+        "platform account for ${_USER}: no client directory ${_cdir}" \
+        "listed in _LTD_PLATFORM_CLIENTS; nothing granted"
+      {
+        echo
+        echo "Client ${_client}: enabled by your host, but no developer login exists:"
+        echo "  the client owns no Drupal or Backdrop site (or no such client)."
+      } >> "${_ftpv}"
+      _nam=$(_ltd_name_from_client_dir "${_cdir}")
+      [ -n "${_nam}" ] && _nodir="${_nodir} ${_USER}.${_nam}${_LTD_PLATFORM_SUFFIX}"
+      continue
+    fi
+    _nam=$(_ltd_name_from_client_dir "${_cdir}")
+    [ -n "${_nam}" ] || continue
+    # the reserved token: a hyphen no client directory can produce
+    # (_ltd_name_from_client_dir keeps [a-zA-Z0-9] only), inside the oN.
+    # namespace the standby hold and the reaper's shape both recognise. The
+    # duplicate-section collapse is a safety net, never a naming scheme.
+    _acct="${_USER}.${_nam}${_LTD_PLATFORM_SUFFIX}"
+    if [ "${#_acct}" -gt 32 ]; then
+      _ltd_notice "platform-toolong-${_acct}" \
+        "platform account name ${_acct} is longer than 32 characters" \
+        "shorten the client directory name; nothing granted"
+      {
+        echo
+        echo "Client ${_client}: enabled by your host, but the login name ${_acct}"
+        echo "  would be longer than 32 characters; a shorter client name is needed."
+      } >> "${_ftpv}"
+      continue
+    fi
+    _LTD_REFUSED_FILE=$(_ltd_status_tmp)
+    _roots=$(_ltd_platform_roots "${_cdir}" "${_acct}")
+    _usrLtd="${_acct}"
+    _Client="${_cdir}"
+    echo "_usrLtd is == ${_usrLtd} == at _manage_sec_platform"
+    _ALLD_NUM="0"
+    _ALLD_CTL="1"
+    _ALLD_DIR="'${_cdir}', '/opt/user/gems/${_acct}'"
+    cd ${_cdir}
+    _manage_sec_access_paths
+    _granted=""
+    for _r in ${_roots}; do
+      _ALLD_DIR="${_ALLD_DIR}, '${_r}'"
+      _granted="${_granted} ${_r}"
+    done
+    if [ -n "${_granted}" ]; then
+      _LTD_EXTRA_STANZA="allowed : + [${_LTD_PLATFORM_TOOLS}, ${_LTD_PLATFORM_SELF}]
+allowed_shell_escape : + [${_LTD_PLATFORM_TOOLS}]"
+    else
+      _LTD_EXTRA_STANZA="allowed : + [${_LTD_PLATFORM_SELF}]"
+    fi
+    if [ "${_ALLD_NUM}" -ge "${_ALLD_CTL}" ]; then
+      # kept only while the client has a site to reach: an account left in
+      # place without its section would fall to the group policy
+      _on="${_on} ${_acct}"
+      _LTD_PLATFORM_ACCT=YES
+      _add_user_if_not_exists
+      _LTD_PLATFORM_ACCT=NO
+      if getent passwd "${_acct}" > /dev/null 2>&1; then
+        _ltd_platform_farm "${_acct}" "${_granted}"
+        _ltd_platform_window "${_acct}" "${_granted}"
+        _ltd_platform_cli_copies "${_acct}" "${_cdir}" "${_granted}"
+        _devv=$(_ltd_status_tmp)
+        _ltd_platform_report "${_acct}" "${_client}" "${_cdir}" "${_granted}" \
+          "${_LTD_REFUSED_FILE}" dev > "${_devv}"
+        _ltd_status_put "${_acct}" "${_devv}"
+        {
+          echo
+          _ltd_platform_report "${_acct}" "${_client}" "${_cdir}" "${_granted}" \
+            "${_LTD_REFUSED_FILE}" full | grep -v '^#'
+        } >> "${_ftpv}"
+      fi
+      echo "Done platform account ${_acct} for ${_cdir}: ${_granted:-no qualifying platform}"
+    else
+      _nosite="${_nosite} ${_acct}"
+      {
+        echo
+        echo "Client ${_client}: enabled by your host, but no developer login is kept:"
+        echo "  none of the client's sites is a Drupal or Backdrop site this pass can"
+        echo "  reach (a login that existed is retired until one is)."
+      } >> "${_ftpv}"
+    fi
+    rm -f "${_LTD_REFUSED_FILE}"
+    _LTD_REFUSED_FILE=""
+    _usrLtd=
+    _ALLD_DIR=
+    _LTD_EXTRA_STANZA=
+  done
+  for _ex in $(getent passwd | cut -d: -f1 | grep "^${_USER}\..*${_LTD_PLATFORM_SUFFIX}$"); do
+    case " ${_on} " in
+      *" ${_ex} "*) continue ;;
+    esac
+    case " ${_nosite} " in
+      *" ${_ex} "*) _ltd_platform_retire "${_ex}" "its client has no Drupal or Backdrop site this pass can reach" ;;
+      *)
+        case " ${_nodir} " in
+          *" ${_ex} "*) _ltd_platform_retire "${_ex}" "its client directory is gone or is a link" ;;
+          *) _ltd_platform_retire "${_ex}" ;;
+        esac
+        ;;
+    esac
+  done
+  if [ "${_listed}" -gt 0 ]; then
+    _ltd_status_put "${_USER}.ftp" "${_ftpv}"
+  else
+    rm -f "${_ftpv}" "${_LTD_STATUS_DIR}/${_USER}.ftp"
+  fi
 }
 #
 # Two client directories that differ only in punctuation, case or a trailing
@@ -5559,6 +5559,50 @@ _php_cli_local_dirs_update() {
     fi
   fi
 }
+# $1 = the CLI directory (/opt/phpNN/bin) the account's cli.info resolved
+# to; prints the directory the control panel's own command line (aegir.sh,
+# the dispatcher) runs on: $1 when the floor is off, when the version is
+# not below it, or when the panel still carries path_alias_cache (pinned
+# to 5.6 below, a newer CLI breaks such platforms); otherwise the lowest
+# installed version at or above the floor. The account's own pins (the
+# drush shebangs, the launcher default, cli.info) are never raised.
+_ltd_hm_cli_bin() {
+  local _d="${1}" _v _f _c
+  _f="${_HM_CLI_FLOOR:-7.4}"
+  case "${_f}" in
+    NO|no|No) echo "${_d}"; return 0 ;;
+  esac
+  _f="${_f//[^0-9]/}"
+  case "${_f}" in
+    [0-9][0-9]) ;;
+    *) echo "${_d}"; return 0 ;;
+  esac
+  _v=$(readlink -f "${_d}/php" 2>/dev/null)
+  _v="${_v#/opt/php}"
+  _v="${_v%%/*}"
+  case "${_v}" in
+    [0-9][0-9]) ;;
+    *) echo "${_d}"; return 0 ;;
+  esac
+  if [ "${_v}" -ge "${_f}" ]; then
+    echo "${_d}"
+    return 0
+  fi
+  _c=$(_ltd_read_in "${_dscUsr}/.drush" hostmaster.alias.drushrc.php 2>/dev/null \
+    | grep "'root'" | head -n 1 | cut -d"'" -f4)
+  if [ -n "${_c}" ] && [ -e "${_c}/modules/path_alias_cache" ]; then
+    echo "${_d}"
+    return 0
+  fi
+  for _c in 74 80 81 82 83 84 85 86; do
+    if [ "${_c}" -ge "${_f}" ] && [ -x "/opt/php${_c}/bin/php" ]; then
+      echo "/opt/php${_c}/bin"
+      return 0
+    fi
+  done
+  echo "${_d}"
+}
+
 #
 # Update PHP-CLI for Drush.
 _php_cli_drush_update() {
@@ -5893,6 +5937,26 @@ _satellite_tune_fpm_workers() {
 _newrelic_in_ini() {
   [ -f "/opt/php$1/etc/php$1.ini" ] \
     && grep -q "^extension=newrelic\.so[[:space:]]*$" "/opt/php$1/etc/php$1.ini"
+}
+#
+# A reload of PHP version $1 (its digits) the account's pool files are owed,
+# recorded before a pool file is put in place or removed: a pass cut off
+# between that and its reload leaves a file the running master never read,
+# and the next pass, which finds the file as it would write it, has nothing
+# else to tell it by while the pool's socket is up. Cleared by the reload
+# (_ltd_fpm_reload); one a cut-off pass left is made by the next
+# (_ltd_fpm_owed_reload).
+_ltd_fpm_owe() {
+  mkdir -p /var/backups/ltd/fpmcore && chmod 700 /var/backups/ltd/fpmcore
+  : > "/var/backups/ltd/fpmcore/${_USER}.fpm-owed.${1}"
+}
+# PHP version $1 reloaded for the account's pool files: the init script sends
+# the reload whenever the master's pid file is there, and a master that is not
+# running reads every pool file when it starts, so the owed record goes. A
+# lock the caller holds on fd 9 is never handed to the master.
+_ltd_fpm_reload() {
+  [ -e "/etc/init.d/php${1}-fpm" ] && service "php${1}-fpm" reload &> /dev/null 9>&-
+  rm -f -- "/var/backups/ltd/fpmcore/${_USER}.fpm-owed.${1}"
 }
 #
 # PHP $1 does not load New Relic: the pool's newrelic.* lines go (arguments as
@@ -6335,26 +6399,6 @@ _ltd_pool_deny_heal_skipped() {
   exec 9>&-
   return 0
 }
-#
-# A reload of PHP version $1 (its digits) the account's pool files are owed,
-# recorded before a pool file is put in place or removed: a pass cut off
-# between that and its reload leaves a file the running master never read,
-# and the next pass, which finds the file as it would write it, has nothing
-# else to tell it by while the pool's socket is up. Cleared by the reload
-# (_ltd_fpm_reload); one a cut-off pass left is made by the next
-# (_ltd_fpm_owed_reload).
-_ltd_fpm_owe() {
-  mkdir -p /var/backups/ltd/fpmcore && chmod 700 /var/backups/ltd/fpmcore
-  : > "/var/backups/ltd/fpmcore/${_USER}.fpm-owed.${1}"
-}
-# PHP version $1 reloaded for the account's pool files: the init script sends
-# the reload whenever the master's pid file is there, and a master that is not
-# running reads every pool file when it starts, so the owed record goes. A
-# lock the caller holds on fd 9 is never handed to the master.
-_ltd_fpm_reload() {
-  [ -e "/etc/init.d/php${1}-fpm" ] && service "php${1}-fpm" reload &> /dev/null 9>&-
-  rm -f -- "/var/backups/ltd/fpmcore/${_USER}.fpm-owed.${1}"
-}
 # The PHP version (its digits) whose PHP-FPM master serves the unix socket
 # $1, read from the listening process's binary; nothing when none does.
 _ltd_fpm_sock_ver() {
@@ -6459,247 +6503,6 @@ _ltd_fpm_site_prune_here() {
     rm -f -- "${_f}"
   done
 }
-#
-# Add site specific socket config include.
-_site_socket_inc_gen() {
-  _unlAeg="${_dscUsr}/static/control/unlock-aegir-php.info"
-  _mltFpm="${_dscUsr}/static/control/multi-fpm.info"
-  _preFpm="${_dscUsr}/static/control/.prev-multi-fpm.info"
-  _mltNgx="${_dscUsr}/static/control/.multi-nginx-fpm.pid"
-  _fpmPth="${_dscUsr}/config/server_master/nginx/post.d"
-  # per account: an earlier account's forced regeneration must not carry
-  # over to every account after it in the same pass
-  _mltFpmUpdateForce=NO
-
-  # log/ is oN's: read without following a link or blocking on a FIFO, and
-  # the panel name reaches the sed below as host name characters only (a
-  # slash there would end the s/// and let the rest run as sed commands)
-  _hmFront=$(_ltd_read_in "${_dscUsr}/log" domain.txt | tr -d "\n")
-  _hmFront=${_hmFront//[^a-zA-Z0-9.-]/}
-  _hmstAls="${_dscUsr}/.drush/${_hmFront}.alias.drushrc.php"
-
-  _hmstCli=$(_ltd_read_in "${_dscUsr}/log" cli.txt | tr -d "\n")
-  _hmstCli=${_hmstCli//[^0-9.]/}
-
-  # The <panel-fqdn> symlink to hostmaster.alias.drushrc.php was a crutch for
-  # accounts whose hostmaster internals an old migration had left half
-  # replaced; it also made the panel look like a site to anything that keys
-  # on <fqdn>.alias files. Purge it here, in the regular pass, so an account
-  # that still depends on it breaks visibly and is repaired BEFORE its next
-  # migration instead of carrying the defect to a new box. Matched by shape,
-  # not by the current panel name: a renamed box keeps the old-name symlink
-  # too, and it is the same crutch. A real alias file is left alone.
-  for _hmstLnk in ${_dscUsr}/.drush/*.alias.drushrc.php; do
-    [ -L "${_hmstLnk}" ] || continue
-    [ "$(readlink "${_hmstLnk}" 2>/dev/null)" = "${_dscUsr}/.drush/hostmaster.alias.drushrc.php" ] || continue
-    rm -f ${_hmstLnk}
-  done
-
-  _ltd_in_real_dir "${_dscUsr}/static/control" _desymlink_planted ./multi-fpm.info
-  # a folder at the name (never a link: rm does not follow one) goes, so the
-  # file is written back below and its pins drop like a deleted file's; left,
-  # it froze the account's includes with no file to read
-  if [ -d "${_mltFpm}" ] && [ ! -L "${_mltFpm}" ]; then
-    _ltd_in_real_dir "${_dscUsr}/static/control" rm -rf -- ./multi-fpm.info
-  fi
-  # multi-fpm.info is the main login's: read without following a link or
-  # blocking on a FIFO, edited here and put back as a fresh file (sed -i and
-  # >> would write through a link put at the name, and sed -i would put a
-  # copy of its target there, which the chown below hands to the tenant)
-  _mltFpmBody="$(_ltd_ctrl_read multi-fpm.info)"
-  _PLACEHOLDER_TEST=$(grep "place.holder.dont.remove" <<< "${_mltFpmBody}" 2>&1)
-
-  if [ ! -e "${_dscUsr}/log/no-lock-aegir-fpm.txt" ] \
-    || [[ ! "${_PLACEHOLDER_TEST}" =~ "place.holder.dont.remove" ]]; then
-    _PHP_V="86 85 84 83 82 81 74"
-    _phpFnd=NO
-    _mltFpmAdd=""
-    for e in ${_PHP_V}; do
-      if [ -x "/opt/php${e}/bin/php" ] && [ "${_phpFnd}" = "NO" ]; then
-        if [ "${e}" = 86 ]; then
-          _phpDot=8.6
-        elif [ "${e}" = 85 ]; then
-          _phpDot=8.5
-        elif [ "${e}" = 84 ]; then
-          _phpDot=8.4
-        elif [ "${e}" = 83 ]; then
-          _phpDot=8.3
-        elif [ "${e}" = 82 ]; then
-          _phpDot=8.2
-        elif [ "${e}" = 81 ]; then
-          _phpDot=8.1
-        elif [ "${e}" = 74 ]; then
-          _phpDot=7.4
-        fi
-        # static/control itself is created later in this pass (behind the
-        # ftp home's clients link); until then there is nowhere to write
-        [ -d "${_dscUsr}/static/control" ] && _mltFpmAdd="place.holder.dont.remove ${_phpDot}"
-        _phpFnd=YES
-      fi
-    done
-    # a young account has no multi-fpm.info yet (the agents pass writes it
-    # later): it stays absent when no PHP binary was found above
-    if [ -f "${_mltFpm}" ] || [ -n "${_mltFpmAdd}" ]; then
-      _mltFpmBody="$( { sed -e "s/^${_hmFront} .*//g" \
-          -e "s/^place.holder.dont.remove .*//g" <<< "${_mltFpmBody}"
-        [ -n "${_mltFpmAdd}" ] && echo "${_mltFpmAdd}"; } \
-        | sed -e "s/ *$//g" -e "/^$/d")"
-      _ltd_ctrl_put multi-fpm.info "${_mltFpmBody}"
-    fi
-    _ltd_put_in "${_dscUsr}/log" no-lock-aegir-fpm.txt ""
-    _ltd_rm_in "${_dscUsr}/log" locked-aegir-fpm.txt
-    _ltd_put_in "${_dscUsr}/log" unlocked-aegir-fpm.txt ""
-    _mltFpmUpdateForce=YES
-  fi
-
-  # A PHP version installed after the account's pools were set up is picked
-  # up by _switch_php (_ltd_fpm_new_version). The default include is never
-  # removed for it: until the next pass rewrote it, nginx sent every site not
-  # listed in multi-fpm.info to the single-mode socket, which does not exist
-  # in this mode. A pin to the new version gets its include from the check
-  # below once the version's pool is up.
-
-  if [ -f "${_mltFpm}" ]; then
-    # static/control is tenant-owned, so a symlink named <x>.info is matched by
-    # this glob; -h keeps the chown on the link instead of its target.
-    _ltd_in_real_dir "${_dscUsr}/static/control" _ltd_ctrl_info_owner
-    _mltFpmBody="$(_ltd_ctrl_read multi-fpm.info)"
-    _mltFpmUpdate=NO
-    if [ ! -f "${_preFpm}" ]; then
-      _ltd_in_real_dir "${_dscUsr}/static/control" rm -rf -- ./.prev-multi-fpm.info
-      _ltd_ctrl_put .prev-multi-fpm.info "${_mltFpmBody}"
-    fi
-    _diffFpmTest=$(diff -w -B <(printf '%s\n' "${_mltFpmBody}") \
-      <(_ltd_ctrl_read .prev-multi-fpm.info) 2>&1)
-    if [ ! -z "${_diffFpmTest}" ]; then
-      _mltFpmUpdate=YES
-    fi
-    # A pin with no include yet (its site, its PHP version or its pool socket
-    # did not exist when the includes were last built) forces one rebuild in
-    # the pass it becomes applicable: the baseline alone kept it inert until
-    # the file changed, pins from before this check included. A line that
-    # never applies (a typo) costs a few stats, no rebuild.
-    local _sN _sV _sR
-    while read -r _sN _sV _sR; do
-      # a row whose first field starts with # is a comment, as for every
-      # other reader of this file: the strip below would turn #<site> into
-      # <site> and keep the pin a tenant commented out to drop it
-      [[ "${_sN}" == \#* ]] && continue
-      _sN=${_sN//[^a-zA-Z0-9-.]/}
-      _sN=${_sN,,}
-      _sV=${_sV//[^0-9]/}
-      [ -n "${_sN}" ] && [ -n "${_sV}" ] || continue
-      [ "${_sN}" = "place.holder.dont.remove" ] && continue
-      # no include name over 255 bytes can exist (fpm_include_site_ + .inc)
-      [ "$(( ${#_sN} + 21 ))" -gt 255 ] && continue
-      [ -e "${_fpmPth}/fpm_include_site_${_sN}.inc" ] && continue
-      if [ -x "/opt/php${_sV}/bin/php" ] \
-        && [ -e "${_dscUsr}/.drush/${_sN}.alias.drushrc.php" ] \
-        && [ -e "/run/${_USER}.${_sV}.fpm.socket" ]; then
-        _mltFpmUpdateForce=YES
-      fi
-    done <<< "${_mltFpmBody}"
-    # A worker that read past the # built includes and waiting entries from
-    # comment rows (a pin dropped, or a commented line after a site's own
-    # row taking its place), and the unchanged baseline kept them until the
-    # file changed. A file that holds a comment row has its includes rebuilt
-    # once by a worker that skips them: the rebuild marks its stamp.
-    if [ "${_mltFpmUpdate}" = "NO" ] && [ "${_mltFpmUpdateForce}" = "NO" ] \
-      && [ -f "${_mltNgx}" ] \
-      && grep -q '^[[:space:]]*#' <<< "${_mltFpmBody}" \
-      && [ "$(_ltd_ctrl_read .multi-nginx-fpm.pid)" != "comments-skipped" ]; then
-      _mltFpmUpdateForce=YES
-    fi
-    # While a whole-server move's promotion window is open on this box (the
-    # standby marker plus the fresh in-flight signal), the per-site includes
-    # are left exactly as found. The rename running in that window rewrites
-    # the pin names and deliberately keeps a stale baseline, so this pass
-    # would wipe and rebuild every include of the account -- and the box may
-    # already be serving relayed visitors, for whom a pinned site dropping to
-    # the account's default PHP version for even one pass is an outage. The
-    # move runs this pass itself, once, as soon as its renames are done.
-    # Scoped to this block on purpose: the rest of the script must keep
-    # running on a standby, and a steady mirror (no fresh signal) still
-    # builds its includes as pins arrive.
-    if [ -e "/root/.standby.cnf" ] \
-      && [ -n "$(find /run/boa_xmass_init.pid /root/.standby.init.pid -mmin -2880 2>/dev/null)" ]; then
-      _mltFpmUpdate=HOLD
-    elif [ ! -f "${_mltNgx}" ] \
-      || [ "${_mltFpmUpdate}" = "YES" ] \
-      || [ "${_mltFpmUpdateForce}" = "YES" ] \
-      || [ "${1:-}" = "sys" ]; then
-      # local: a bare IFS= here stayed a newline for the rest of the pass,
-      # and every later "for x in ${list}" saw one word
-      local IFS=$'\12'
-      local _mltAct=APPLY _mltApp _n
-      # The includes the file gives, compared with post.d before anything is
-      # written: a rebuild that changes nothing nginx reads (a row that does
-      # not apply yet, a marker of root's the login removed or edited) sends
-      # no reload. A change the text root last applied does not explain is
-      # the login's own and waits whole inside its window; one it does (a
-      # pool socket up, a site gone, a PHP version installed) is the box's.
-      _ltd_fpm_site_want "${_mltFpmBody}"
-      if _ltd_fpm_site_same; then
-        _mltAct=SAME
-      elif [ "${1:-}" != "sys" ] && _mltApp=$(_ltd_applied_get mfpm); then
-        _ltd_fpm_site_want "${_mltApp}"
-        if _ltd_fpm_site_same; then
-          if _ltd_rld_held nginx; then
-            _mltAct=HOLD
-          else
-            _ltdOwnNgx=YES
-          fi
-        fi
-        _ltd_fpm_site_want "${_mltFpmBody}"
-      fi
-      if [ "${_mltAct}" = "HOLD" ]; then
-        _ltd_rld_note nginx "the multi-fpm.info change"
-      else
-        _mltFpmKeep=" "
-        if [ "${_mltAct}" = "APPLY" ]; then
-          # an include written and not read yet is owed a reload until one
-          # has read it (a pass cut off before the one below)
-          _ltd_ngx_owe
-          for _n in "${!_LTD_SITE_WANT[@]}"; do
-            _ltd_swap_in "${_fpmPth}" "${_n}" "${_LTD_SITE_WANT[${_n}]}"
-            _mltFpmKeep="${_mltFpmKeep}${_n} "
-          done
-          # only now the includes no row names: removed first, a reload in
-          # between ran every pinned site on the default pool
-          _ltd_in_real_dir "${_fpmPth}" _ltd_fpm_site_prune_here "${_mltFpmKeep}"
-        fi
-        # the skipped lines, for the tenant to see; the check above retries them
-        if [ -n "${_LTD_SITE_SKIP}" ]; then
-          _ltd_ctrl_put .multi-fpm-skipped.info "${_LTD_SITE_SKIP}"
-        else
-          _ltd_ctrl_rm .multi-fpm-skipped.info
-        fi
-        _ltd_ctrl_stamp .multi-nginx-fpm.pid "comments-skipped"
-        _ltd_in_real_dir "${_dscUsr}/static/control" rm -rf -- ./.prev-multi-fpm.info
-        _ltd_ctrl_put .prev-multi-fpm.info "${_mltFpmBody}"
-        _ltd_applied_put mfpm "${_mltFpmBody}"
-        # nginx reads them with the pass's one reload (_ltd_ngx_pass_reload),
-        # which tests the config first; the stamp above owes it
-        [ "${_mltAct}" = "APPLY" ] && _ltdNgxReloaded=
-      fi
-    elif ! _ltd_applied_get mfpm > /dev/null 2>&1; then
-      # No record yet (the file unchanged since this release, so no rebuild
-      # wrote one): the text is recorded when it gives exactly the includes
-      # in force, so the account's first change of its own opens its window
-      # like any later one. A text they do not come from is never recorded.
-      _ltd_fpm_site_want "${_mltFpmBody}"
-      _ltd_fpm_site_same && _ltd_applied_put mfpm "${_mltFpmBody}"
-    fi
-  else
-    if [ -f "${_mltNgx}" ]; then
-      _ltd_ctrl_rm .multi-nginx-fpm.pid
-    fi
-    if [ -f "${_preFpm}" ]; then
-      _ltd_ctrl_rm .prev-multi-fpm.info
-    fi
-  fi
-}
-
 #
 # The PHP-FPM version of a platform's sites: ~/static/control/
 # fpm-per-platform.info, one "<folder> <version>" per line, the folder spelt
@@ -6971,6 +6774,18 @@ _ltd_nr_decide() {
   # (a reload sent), not on a box whose PHP loads no New Relic
   _ltdNrOwn=YES
 }
+# One rule in _ltd_fpm_plat_gen's _rows, by its root: a later one takes its
+# place. $1 = the line number, $2 = NN, $3 = the root.
+_ltd_fpm_plat_row() {
+  if [ -z "${_rows[${3}]:-}" ]; then
+    if [ "${_rb}" -ge 262144 ]; then
+      _rfull=YES
+      return 0
+    fi
+    _rb=$(( _rb + ${#3} + 16 ))
+  fi
+  _rows["${3}"]="${1} ${2}"
+}
 # The box's state the account's platform include is built against, root's
 # only: the pass's FPM mode and, per PHP version, its binary, the account's
 # pool file and its socket. A change of the include while this stays as
@@ -7008,6 +6823,247 @@ _ltd_ngx_owe() {
   mkdir -p /var/backups/ltd/fpmcore && chmod 700 /var/backups/ltd/fpmcore
   : > "/var/backups/ltd/fpmcore/${_USER}.reload-owed"
 }
+#
+# Add site specific socket config include.
+_site_socket_inc_gen() {
+  _unlAeg="${_dscUsr}/static/control/unlock-aegir-php.info"
+  _mltFpm="${_dscUsr}/static/control/multi-fpm.info"
+  _preFpm="${_dscUsr}/static/control/.prev-multi-fpm.info"
+  _mltNgx="${_dscUsr}/static/control/.multi-nginx-fpm.pid"
+  _fpmPth="${_dscUsr}/config/server_master/nginx/post.d"
+  # per account: an earlier account's forced regeneration must not carry
+  # over to every account after it in the same pass
+  _mltFpmUpdateForce=NO
+
+  # log/ is oN's: read without following a link or blocking on a FIFO, and
+  # the panel name reaches the sed below as host name characters only (a
+  # slash there would end the s/// and let the rest run as sed commands)
+  _hmFront=$(_ltd_read_in "${_dscUsr}/log" domain.txt | tr -d "\n")
+  _hmFront=${_hmFront//[^a-zA-Z0-9.-]/}
+  _hmstAls="${_dscUsr}/.drush/${_hmFront}.alias.drushrc.php"
+
+  _hmstCli=$(_ltd_read_in "${_dscUsr}/log" cli.txt | tr -d "\n")
+  _hmstCli=${_hmstCli//[^0-9.]/}
+
+  # The <panel-fqdn> symlink to hostmaster.alias.drushrc.php was a crutch for
+  # accounts whose hostmaster internals an old migration had left half
+  # replaced; it also made the panel look like a site to anything that keys
+  # on <fqdn>.alias files. Purge it here, in the regular pass, so an account
+  # that still depends on it breaks visibly and is repaired BEFORE its next
+  # migration instead of carrying the defect to a new box. Matched by shape,
+  # not by the current panel name: a renamed box keeps the old-name symlink
+  # too, and it is the same crutch. A real alias file is left alone.
+  for _hmstLnk in ${_dscUsr}/.drush/*.alias.drushrc.php; do
+    [ -L "${_hmstLnk}" ] || continue
+    [ "$(readlink "${_hmstLnk}" 2>/dev/null)" = "${_dscUsr}/.drush/hostmaster.alias.drushrc.php" ] || continue
+    rm -f ${_hmstLnk}
+  done
+
+  _ltd_in_real_dir "${_dscUsr}/static/control" _desymlink_planted ./multi-fpm.info
+  # a folder at the name (never a link: rm does not follow one) goes, so the
+  # file is written back below and its pins drop like a deleted file's; left,
+  # it froze the account's includes with no file to read
+  if [ -d "${_mltFpm}" ] && [ ! -L "${_mltFpm}" ]; then
+    _ltd_in_real_dir "${_dscUsr}/static/control" rm -rf -- ./multi-fpm.info
+  fi
+  # multi-fpm.info is the main login's: read without following a link or
+  # blocking on a FIFO, edited here and put back as a fresh file (sed -i and
+  # >> would write through a link put at the name, and sed -i would put a
+  # copy of its target there, which the chown below hands to the tenant)
+  _mltFpmBody="$(_ltd_ctrl_read multi-fpm.info)"
+  _PLACEHOLDER_TEST=$(grep "place.holder.dont.remove" <<< "${_mltFpmBody}" 2>&1)
+
+  if [ ! -e "${_dscUsr}/log/no-lock-aegir-fpm.txt" ] \
+    || [[ ! "${_PLACEHOLDER_TEST}" =~ "place.holder.dont.remove" ]]; then
+    _PHP_V="86 85 84 83 82 81 74"
+    _phpFnd=NO
+    _mltFpmAdd=""
+    for e in ${_PHP_V}; do
+      if [ -x "/opt/php${e}/bin/php" ] && [ "${_phpFnd}" = "NO" ]; then
+        if [ "${e}" = 86 ]; then
+          _phpDot=8.6
+        elif [ "${e}" = 85 ]; then
+          _phpDot=8.5
+        elif [ "${e}" = 84 ]; then
+          _phpDot=8.4
+        elif [ "${e}" = 83 ]; then
+          _phpDot=8.3
+        elif [ "${e}" = 82 ]; then
+          _phpDot=8.2
+        elif [ "${e}" = 81 ]; then
+          _phpDot=8.1
+        elif [ "${e}" = 74 ]; then
+          _phpDot=7.4
+        fi
+        # static/control itself is created later in this pass (behind the
+        # ftp home's clients link); until then there is nowhere to write
+        [ -d "${_dscUsr}/static/control" ] && _mltFpmAdd="place.holder.dont.remove ${_phpDot}"
+        _phpFnd=YES
+      fi
+    done
+    # a young account has no multi-fpm.info yet (the agents pass writes it
+    # later): it stays absent when no PHP binary was found above
+    if [ -f "${_mltFpm}" ] || [ -n "${_mltFpmAdd}" ]; then
+      _mltFpmBody="$( { sed -e "s/^${_hmFront} .*//g" \
+          -e "s/^place.holder.dont.remove .*//g" <<< "${_mltFpmBody}"
+        [ -n "${_mltFpmAdd}" ] && echo "${_mltFpmAdd}"; } \
+        | sed -e "s/ *$//g" -e "/^$/d")"
+      _ltd_ctrl_put multi-fpm.info "${_mltFpmBody}"
+    fi
+    _ltd_put_in "${_dscUsr}/log" no-lock-aegir-fpm.txt ""
+    _ltd_rm_in "${_dscUsr}/log" locked-aegir-fpm.txt
+    _ltd_put_in "${_dscUsr}/log" unlocked-aegir-fpm.txt ""
+    _mltFpmUpdateForce=YES
+  fi
+
+  # A PHP version installed after the account's pools were set up is picked
+  # up by _switch_php (_ltd_fpm_new_version). The default include is never
+  # removed for it: until the next pass rewrote it, nginx sent every site not
+  # listed in multi-fpm.info to the single-mode socket, which does not exist
+  # in this mode. A pin to the new version gets its include from the check
+  # below once the version's pool is up.
+
+  if [ -f "${_mltFpm}" ]; then
+    # static/control is tenant-owned, so a symlink named <x>.info is matched by
+    # this glob; -h keeps the chown on the link instead of its target.
+    _ltd_in_real_dir "${_dscUsr}/static/control" _ltd_ctrl_info_owner
+    _mltFpmBody="$(_ltd_ctrl_read multi-fpm.info)"
+    _mltFpmUpdate=NO
+    if [ ! -f "${_preFpm}" ]; then
+      _ltd_in_real_dir "${_dscUsr}/static/control" rm -rf -- ./.prev-multi-fpm.info
+      _ltd_ctrl_put .prev-multi-fpm.info "${_mltFpmBody}"
+    fi
+    _diffFpmTest=$(diff -w -B <(printf '%s\n' "${_mltFpmBody}") \
+      <(_ltd_ctrl_read .prev-multi-fpm.info) 2>&1)
+    if [ ! -z "${_diffFpmTest}" ]; then
+      _mltFpmUpdate=YES
+    fi
+    # A pin with no include yet (its site, its PHP version or its pool socket
+    # did not exist when the includes were last built) forces one rebuild in
+    # the pass it becomes applicable: the baseline alone kept it inert until
+    # the file changed, pins from before this check included. A line that
+    # never applies (a typo) costs a few stats, no rebuild.
+    local _sN _sV _sR
+    while read -r _sN _sV _sR; do
+      # a row whose first field starts with # is a comment, as for every
+      # other reader of this file: the strip below would turn #<site> into
+      # <site> and keep the pin a tenant commented out to drop it
+      [[ "${_sN}" == \#* ]] && continue
+      _sN=${_sN//[^a-zA-Z0-9-.]/}
+      _sN=${_sN,,}
+      _sV=${_sV//[^0-9]/}
+      [ -n "${_sN}" ] && [ -n "${_sV}" ] || continue
+      [ "${_sN}" = "place.holder.dont.remove" ] && continue
+      # no include name over 255 bytes can exist (fpm_include_site_ + .inc)
+      [ "$(( ${#_sN} + 21 ))" -gt 255 ] && continue
+      [ -e "${_fpmPth}/fpm_include_site_${_sN}.inc" ] && continue
+      if [ -x "/opt/php${_sV}/bin/php" ] \
+        && [ -e "${_dscUsr}/.drush/${_sN}.alias.drushrc.php" ] \
+        && [ -e "/run/${_USER}.${_sV}.fpm.socket" ]; then
+        _mltFpmUpdateForce=YES
+      fi
+    done <<< "${_mltFpmBody}"
+    # A worker that read past the # built includes and waiting entries from
+    # comment rows (a pin dropped, or a commented line after a site's own
+    # row taking its place), and the unchanged baseline kept them until the
+    # file changed. A file that holds a comment row has its includes rebuilt
+    # once by a worker that skips them: the rebuild marks its stamp.
+    if [ "${_mltFpmUpdate}" = "NO" ] && [ "${_mltFpmUpdateForce}" = "NO" ] \
+      && [ -f "${_mltNgx}" ] \
+      && grep -q '^[[:space:]]*#' <<< "${_mltFpmBody}" \
+      && [ "$(_ltd_ctrl_read .multi-nginx-fpm.pid)" != "comments-skipped" ]; then
+      _mltFpmUpdateForce=YES
+    fi
+    # While a whole-server move's promotion window is open on this box (the
+    # standby marker plus the fresh in-flight signal), the per-site includes
+    # are left exactly as found. The rename running in that window rewrites
+    # the pin names and deliberately keeps a stale baseline, so this pass
+    # would wipe and rebuild every include of the account -- and the box may
+    # already be serving relayed visitors, for whom a pinned site dropping to
+    # the account's default PHP version for even one pass is an outage. The
+    # move runs this pass itself, once, as soon as its renames are done.
+    # Scoped to this block on purpose: the rest of the script must keep
+    # running on a standby, and a steady mirror (no fresh signal) still
+    # builds its includes as pins arrive.
+    if [ -e "/root/.standby.cnf" ] \
+      && [ -n "$(find /run/boa_xmass_init.pid /root/.standby.init.pid -mmin -2880 2>/dev/null)" ]; then
+      _mltFpmUpdate=HOLD
+    elif [ ! -f "${_mltNgx}" ] \
+      || [ "${_mltFpmUpdate}" = "YES" ] \
+      || [ "${_mltFpmUpdateForce}" = "YES" ] \
+      || [ "${1:-}" = "sys" ]; then
+      # local: a bare IFS= here stayed a newline for the rest of the pass,
+      # and every later "for x in ${list}" saw one word
+      local IFS=$'\12'
+      local _mltAct=APPLY _mltApp _n
+      # The includes the file gives, compared with post.d before anything is
+      # written: a rebuild that changes nothing nginx reads (a row that does
+      # not apply yet, a marker of root's the login removed or edited) sends
+      # no reload. A change the text root last applied does not explain is
+      # the login's own and waits whole inside its window; one it does (a
+      # pool socket up, a site gone, a PHP version installed) is the box's.
+      _ltd_fpm_site_want "${_mltFpmBody}"
+      if _ltd_fpm_site_same; then
+        _mltAct=SAME
+      elif [ "${1:-}" != "sys" ] && _mltApp=$(_ltd_applied_get mfpm); then
+        _ltd_fpm_site_want "${_mltApp}"
+        if _ltd_fpm_site_same; then
+          if _ltd_rld_held nginx; then
+            _mltAct=HOLD
+          else
+            _ltdOwnNgx=YES
+          fi
+        fi
+        _ltd_fpm_site_want "${_mltFpmBody}"
+      fi
+      if [ "${_mltAct}" = "HOLD" ]; then
+        _ltd_rld_note nginx "the multi-fpm.info change"
+      else
+        _mltFpmKeep=" "
+        if [ "${_mltAct}" = "APPLY" ]; then
+          # an include written and not read yet is owed a reload until one
+          # has read it (a pass cut off before the one below)
+          _ltd_ngx_owe
+          for _n in "${!_LTD_SITE_WANT[@]}"; do
+            _ltd_swap_in "${_fpmPth}" "${_n}" "${_LTD_SITE_WANT[${_n}]}"
+            _mltFpmKeep="${_mltFpmKeep}${_n} "
+          done
+          # only now the includes no row names: removed first, a reload in
+          # between ran every pinned site on the default pool
+          _ltd_in_real_dir "${_fpmPth}" _ltd_fpm_site_prune_here "${_mltFpmKeep}"
+        fi
+        # the skipped lines, for the tenant to see; the check above retries them
+        if [ -n "${_LTD_SITE_SKIP}" ]; then
+          _ltd_ctrl_put .multi-fpm-skipped.info "${_LTD_SITE_SKIP}"
+        else
+          _ltd_ctrl_rm .multi-fpm-skipped.info
+        fi
+        _ltd_ctrl_stamp .multi-nginx-fpm.pid "comments-skipped"
+        _ltd_in_real_dir "${_dscUsr}/static/control" rm -rf -- ./.prev-multi-fpm.info
+        _ltd_ctrl_put .prev-multi-fpm.info "${_mltFpmBody}"
+        _ltd_applied_put mfpm "${_mltFpmBody}"
+        # nginx reads them with the pass's one reload (_ltd_ngx_pass_reload),
+        # which tests the config first; the stamp above owes it
+        [ "${_mltAct}" = "APPLY" ] && _ltdNgxReloaded=
+      fi
+    elif ! _ltd_applied_get mfpm > /dev/null 2>&1; then
+      # No record yet (the file unchanged since this release, so no rebuild
+      # wrote one): the text is recorded when it gives exactly the includes
+      # in force, so the account's first change of its own opens its window
+      # like any later one. A text they do not come from is never recorded.
+      _ltd_fpm_site_want "${_mltFpmBody}"
+      _ltd_fpm_site_same && _ltd_applied_put mfpm "${_mltFpmBody}"
+    fi
+  else
+    if [ -f "${_mltNgx}" ]; then
+      _ltd_ctrl_rm .multi-nginx-fpm.pid
+    fi
+    if [ -f "${_preFpm}" ]; then
+      _ltd_ctrl_rm .prev-multi-fpm.info
+    fi
+  fi
+}
+
 # nginx has just reloaded on a config its test passed, so it read every
 # include of the account: a later reload in the same pass is owed only for
 # what changes after this.
@@ -7039,18 +7095,6 @@ _ltd_ngx_pass_reload() {
       "nginx -t FAILED after the FPM includes of ${_USER} changed -- NOT reloaded" \
       "$(nginx -t 2>&1 | tail -3 | tr '\n' ' ')"
   fi
-}
-# One rule in _ltd_fpm_plat_gen's _rows, by its root: a later one takes its
-# place. $1 = the line number, $2 = NN, $3 = the root.
-_ltd_fpm_plat_row() {
-  if [ -z "${_rows[${3}]:-}" ]; then
-    if [ "${_rb}" -ge 262144 ]; then
-      _rfull=YES
-      return 0
-    fi
-    _rb=$(( _rb + ${#3} + 16 ))
-  fi
-  _rows["${3}"]="${1} ${2}"
 }
 _ltd_fpm_plat_gen() {
   local LC_ALL=C
@@ -7362,50 +7406,6 @@ _ltd_hm_switches() {
       && chmod 0644 /data/conf/.hm-cli-floor.txt.new \
       && mv -f /data/conf/.hm-cli-floor.txt.new /data/conf/hm-cli-floor.txt
   fi
-}
-
-# $1 = the CLI directory (/opt/phpNN/bin) the account's cli.info resolved
-# to; prints the directory the control panel's own command line (aegir.sh,
-# the dispatcher) runs on: $1 when the floor is off, when the version is
-# not below it, or when the panel still carries path_alias_cache (pinned
-# to 5.6 below, a newer CLI breaks such platforms); otherwise the lowest
-# installed version at or above the floor. The account's own pins (the
-# drush shebangs, the launcher default, cli.info) are never raised.
-_ltd_hm_cli_bin() {
-  local _d="${1}" _v _f _c
-  _f="${_HM_CLI_FLOOR:-7.4}"
-  case "${_f}" in
-    NO|no|No) echo "${_d}"; return 0 ;;
-  esac
-  _f="${_f//[^0-9]/}"
-  case "${_f}" in
-    [0-9][0-9]) ;;
-    *) echo "${_d}"; return 0 ;;
-  esac
-  _v=$(readlink -f "${_d}/php" 2>/dev/null)
-  _v="${_v#/opt/php}"
-  _v="${_v%%/*}"
-  case "${_v}" in
-    [0-9][0-9]) ;;
-    *) echo "${_d}"; return 0 ;;
-  esac
-  if [ "${_v}" -ge "${_f}" ]; then
-    echo "${_d}"
-    return 0
-  fi
-  _c=$(_ltd_read_in "${_dscUsr}/.drush" hostmaster.alias.drushrc.php 2>/dev/null \
-    | grep "'root'" | head -n 1 | cut -d"'" -f4)
-  if [ -n "${_c}" ] && [ -e "${_c}/modules/path_alias_cache" ]; then
-    echo "${_d}"
-    return 0
-  fi
-  for _c in 74 80 81 82 83 84 85 86; do
-    if [ "${_c}" -ge "${_f}" ] && [ -x "/opt/php${_c}/bin/php" ]; then
-      echo "/opt/php${_c}/bin"
-      return 0
-    fi
-  done
-  echo "${_d}"
 }
 
 # nginx sent to the panel pool, or away from it: only a config that passes
@@ -8749,527 +8749,6 @@ _ltd_moved_stanzas() {
   return 0
 }
 
-_manage_user() {
-  _repair_staged_homes
-  for _pthParentUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
-    # a proxied or cancelled account is left alone below, but its pools
-    # still run PHP (its panel stays local), so their deny list is checked
-    if [ -e "${_pthParentUsr}/config/server_master/nginx/vhost.d" ] \
-      && [ -e "${_pthParentUsr}/log/fpm.txt" ] \
-      && { [ -e "${_pthParentUsr}/log/proxied.pid" ] \
-        || [ -e "${_pthParentUsr}/log/CANCELLED" ]; }; then
-      _USER="${_pthParentUsr##*/}"
-      [[ "${_USER}" =~ ^[a-z0-9-]+$ ]] && _ltd_pool_deny_heal_skipped
-      _USER=""
-    fi
-    # Decided once: the body below writes the account's own sections, and a
-    # moved account's welcome sections are written only when it does not, so
-    # no login can get two.
-    _ltdBody=NO
-    if [ -e "${_pthParentUsr}/config/server_master/nginx/vhost.d" ] \
-      && [ -e "${_pthParentUsr}/log/fpm.txt" ] \
-      && [ ! -e "${_pthParentUsr}/log/proxied.pid" ] \
-      && [ ! -e "${_pthParentUsr}/log/CANCELLED" ]; then
-      _ltdBody=YES
-    elif [[ "${_pthParentUsr##*/}" =~ ^[a-z0-9-]+$ ]]; then
-      _ltd_moved_stanzas "${_pthParentUsr##*/}"
-    fi
-    if [ "${_ltdBody}" = "YES" ]; then
-      _MNT_STATIC_FILES=""
-      _mntPoint=""
-      _USER=""
-      _USER=$(echo ${_pthParentUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
-      # The nightly's per-account pass holds this account's home unlocked for
-      # minutes and relocks it at its end; a rebuild in flight here would meet
-      # that relock half way (EPERM on every write). Leave the account to the
-      # next pass while the marker names a live pass (a dead pid is a killed
-      # pass and its marker goes) -- but its lshell stanzas are emitted from
-      # the body skipped here, and the conf built this pass replaces the live
-      # one on any difference, so carry them over from the live file as they
-      # stand or its users would drop to [default] until the hold clears.
-      if [ -e "/run/night-account-${_USER}.pid" ]; then
-        if kill -0 "$(cat /run/night-account-${_USER}.pid 2>/dev/null)" 2>/dev/null; then
-          echo "skipping ${_USER}: the nightly per-account pass holds it"
-          echo >> ${_THIS_LTD_CONF}
-          awk -v u="${_USER}" '/^\[/ { p = ($0 ~ "^\\[" u "\\.") } p' /etc/lshell.conf >> ${_THIS_LTD_CONF}
-          continue
-        fi
-        rm -f /run/night-account-${_USER}.pid
-      fi
-      # Identity heal: an account whose marker records THIS box's group but
-      # whose backend or shell identity fell back to the box-wide primary
-      # group (a hand usermod, a restored passwd) makes _acct_group fail open
-      # to 'users' and every root writer re-flatten the tree while the marker
-      # still reads converted. Move it back, 'users' listed first, as for the
-      # sub-users below.
-      # Converted = the group exists and the marker records it, or the backend
-      # or shell identity already carries it as primary (a born-converted
-      # account has no marker until its first upgrade).
-      _igMark="${_pthParentUsr}/log/instance-group.txt"
-      _igGid=$(getent group "${_USER}" 2>/dev/null | cut -d: -f3)
-      _igConv=NO
-      # A revert instgrp could not finish (an identity in use when its
-      # primary group had to move back) names the identities in this record;
-      # finish it here, one idle pass at a time, and never read such an
-      # account as converted meanwhile -- the heal below would otherwise move
-      # its other identities back ONTO the group the operator is reverting.
-      _igPend="/var/log/boa/instgrp.revert-pending.${_USER}"
-      if [ -s "${_igPend}" ]; then
-        _igLeft=""
-        for _igU in $(cat "${_igPend}" 2>/dev/null); do
-          case "${_igU}" in "${_USER}"|"${_USER}".*) ;; *) continue ;; esac
-          getent passwd "${_igU}" >/dev/null 2>&1 || continue
-          if [ "$(id -gn ${_igU} 2>/dev/null)" = "users" ]; then
-            _ig_defer_clear "${_igU}"
-            continue
-          fi
-          getent group users | cut -d: -f4 | tr ',' '\n' | grep -qxF "${_igU}" || usermod -aG users ${_igU}
-          _set_primary_group ${_igU} users
-          _pgRc=$?
-          if [ "${_pgRc}" = "2" ]; then
-            _ig_defer_note "${_igU}" users "Identity ${_igU} has processes running; its move back to primary group users (a revert instgrp could not finish) waits for an idle pass"
-            _igLeft="${_igLeft} ${_igU}"
-          elif [ "$(id -gn ${_igU} 2>/dev/null)" = "users" ]; then
-            _ig_defer_clear "${_igU}"
-            gpasswd -d ${_igU} ${_USER} >/dev/null 2>&1
-            echo "Identity ${_igU} moved back to primary group users; the revert of ${_USER} instgrp left unfinished is completed for it"
-            echo "$(date '+%Y-%m-%d %H:%M:%S') ${_USER}: ${_igU} primary group -> users (revert finished by the limited-shell worker)" >> /var/log/boa/instgrp.log
-          else
-            echo "ALERT: ${_igU} could not be moved back to primary group users; left on $(id -gn ${_igU} 2>/dev/null), retried next pass"
-            _igLeft="${_igLeft} ${_igU}"
-          fi
-        done
-        if [ -z "${_igLeft}" ]; then
-          rm -f "${_igPend}"
-          echo "$(date '+%Y-%m-%d %H:%M:%S') ${_USER}: PENDING MOVE BACK COMPLETED by the limited-shell worker (a revert, or the rollback of a failed convert); instgrp revert ${_USER} removes the group, instgrp convert ${_USER} converts again" >> /var/log/boa/instgrp.log
-          mkdir -p /var/log/boa 2>/dev/null
-          echo "$(date) LTD instgrp: every identity of ${_USER} is back on users (a revert, or the rollback of a failed convert, found it in use); instgrp revert ${_USER} removes the group, instgrp convert ${_USER} converts again" \
-            >> /var/log/boa/manage_ltd.incident.log
-        fi
-      elif [ -n "${_igGid}" ]; then
-        # log/ is oN's: the record is read without following a link or
-        # blocking on a FIFO (bounded), inside the real directory
-        if _ltd_read_in "${_igMark%/*}" "${_igMark##*/}" | grep -q " gid=${_igGid}$"; then
-          _igConv=YES
-        elif [ "$(id -gn ${_USER} 2>/dev/null)" = "${_USER}" ] || [ "$(id -gn ${_USER}.ftp 2>/dev/null)" = "${_USER}" ]; then
-          _igConv=YES
-        fi
-      fi
-      if [ "${_igConv}" = "YES" ]; then
-        for _igU in ${_USER} ${_USER}.ftp; do
-          getent passwd "${_igU}" >/dev/null 2>&1 || continue
-          if [ "$(id -gn ${_igU} 2>/dev/null)" = "${_USER}" ]; then
-            # Already there (a move instgrp or an earlier pass finished): no
-            # deferral is open for it any more.
-            _ig_defer_clear "${_igU}"
-            continue
-          fi
-          if ! getent group users | cut -d: -f4 | tr ',' '\n' | grep -qxF "${_igU}"; then
-            usermod -aG users ${_igU}
-          fi
-          if getent group users | cut -d: -f4 | tr ',' '\n' | grep -qxF "${_igU}"; then
-            _set_primary_group ${_igU} ${_USER}
-            _pgRc=$?
-            if [ "${_pgRc}" = "2" ]; then
-              _ig_defer_note "${_igU}" "${_USER}" "Identity ${_igU} has processes running; its move back to primary group ${_USER} waits for an idle pass"
-            elif [ "$(id -gn ${_igU} 2>/dev/null)" = "${_USER}" ] \
-              && id -nG ${_igU} 2>/dev/null | tr ' ' '\n' | grep -qxF users; then
-              # Listed as a member too: provision's membership test reads
-              # the group database, where a primary group never shows.
-              getent group ${_USER} | cut -d: -f4 | tr ',' '\n' | grep -qxF "${_igU}" || gpasswd -a ${_igU} ${_USER} >/dev/null 2>&1
-              _ig_defer_clear "${_igU}"
-              echo "Identity ${_igU} moved back to primary group ${_USER}"
-            elif [ "$(id -gn ${_igU} 2>/dev/null)" = "${_USER}" ]; then
-              if _set_primary_group ${_igU} users; then
-                echo "ALERT: ${_igU} lost group users on the primary move, reverted to users"
-              else
-                echo "ALERT: ${_igU} lost group users on the primary move and could not be reverted yet; retried next pass"
-              fi
-            else
-              echo "ALERT: ${_igU} could not be moved to primary group ${_USER}; left on $(id -gn ${_igU} 2>/dev/null)"
-            fi
-          fi
-        done
-      fi
-      # Group owning this account's tree, re-derived every iteration so no
-      # value carries over to the next account. Falls back to the box-wide
-      # default on an account that has no private group.
-      # While a revert is unfinished the account identity itself is usually
-      # the one still on the account's group, which _acct_group would read as
-      # converted: this pass then writes and moves with the box-wide group,
-      # as the revert intends, instead of pushing the sub-users back onto it.
-      if [ -s "${_igPend}" ]; then
-        _usrGroup=users
-      else
-        _usrGroup=$(_acct_group "${_USER}")
-      fi
-      _ctlGroup=$(_ltd_ctl_group "${_USER}" "${_usrGroup}")
-      # An account that holds its own web group, or is converted onto one an
-      # identity outside it holds too (_web_group_conv): its backend user
-      # (provision's membership test reads the group database), its SFTP user
-      # and every pool user are listed in it, healed every pass.
-      _T_WGS=$(_web_group_state "${_USER}")
-      if [ "${_T_WGS##* }" = "wg-${_USER}" ] \
-        && { [ "${_T_WGS%% *}" = "held" ] || [ -n "$(_web_group_conv "${_USER}" "${_T_WGS}")" ]; }; then
-        for _igU in ${_USER} ${_USER}.ftp $(getent passwd | cut -d: -f1 \
-          | grep -E "^${_USER}(\.[0-9]+)?\.web$"); do
-          getent passwd "${_igU}" > /dev/null 2>&1 || continue
-          _ltd_wg_grant "${_igU}" "${_T_WGS##* }" \
-            || echo "ALERT: ${_igU} could not be listed in ${_T_WGS##* }"
-        done
-      fi
-      _ltd_wg_witness "${_USER}"
-      echo "_USER is == ${_USER} == at _manage_user"
-      if getent group allow-snail >/dev/null 2>&1 && \
-        ! id -nG "${_USER}" 2>/dev/null | tr ' ' '\n' | grep -qxF "allow-snail"; then
-        usermod -aG allow-snail "${_USER}"
-      fi
-      _WEB="${_USER}.web"
-      _dscUsr="/data/disk/${_USER}"
-      _ltd_plan_stamp "${_dscUsr}"
-      _octInc="${_dscUsr}/config/includes"
-      _octTpl="${_dscUsr}/.drush/sys/provision/http/Provision/Config/Nginx"
-      if [ -e "${_dscUsr}/log/imported.pid" ] \
-        && [ -e "${_dscUsr}/log/post-merge-fix.pid" ]; then
-        # src/ and log/ are oN's: each marker is read and removed inside the
-        # real log/ and written fresh inside the real src/
-        for _mvPid in imported exported hmpathfix post-merge-fix; do
-          _ltd_in_real_dir "${_dscUsr}/src" _ltd_log_marker_to_src "${_mvPid}.pid"
-        done
-      fi
-      # Composer project leftovers at the account root, and a vendor/ directly
-      # in ~/static, can break Aegir backend tasks and the D8+ sites below
-      # them: removed unless rector.php marks a Rector workspace. Composer's
-      # own home and cache stay: Aegir tasks and builds run Composer as this
-      # user, and a pass that removed them under a running Composer failed its
-      # install.
-      if [ ! -e "${_dscUsr}/rector.php" ]; then
-        rm -f ${_dscUsr}/*.php* &> /dev/null
-        rm -f ${_dscUsr}/composer.lock &> /dev/null
-        rm -f ${_dscUsr}/composer.json &> /dev/null
-        rm -f -r ${_dscUsr}/vendor &> /dev/null
-        # oN can swap static/ itself: vendor/ goes only from the real one
-        _ltd_in_real_dir "${_dscUsr}/static" rm -f -r -- ./vendor &> /dev/null
-      fi
-      # every root write under /data/disk/<oN> refuses a path with a link on
-      # it (BOA makes none at these names): say so once a day, not silently
-      for _pinChk in static log config tools clients src; do
-        if [ -L "${_dscUsr}/${_pinChk}" ] \
-          && [ -z "$(find "/var/log/boa/manage-ltd-pinlink-${_USER}-${_pinChk}.alerted" -mmin -1440 2> /dev/null)" ]; then
-          _ltd_notice "pinlink-${_USER}-${_pinChk}" \
-            "${_dscUsr}/${_pinChk} is a link: the ltd worker writes nothing there" \
-            "BOA makes no link at this name; put the real directory back"
-        fi
-      done
-      _ltd_in_real_dir "${_dscUsr}/.drush" _ltd_drush_alias_modes &> /dev/null
-      _ltd_in_real_dir "${_dscUsr}/.drush/sites" _ltd_drush_yml_modes &> /dev/null
-      # config/ is oN's: the tree is walked from inside the real directory
-      # and every mode goes through a handle that never follows a link (a
-      # link at passwords.d/<x> would have made its target world-readable).
-      # nginx (www-data) opens the basic auth password files on every
-      # request, so the path to them and the files themselves get their
-      # final modes in one step, never 0700/0600 first.
-      _ltd_in_real_dir "${_dscUsr}/config/server_master" \
-        find . -type d ! -path . ! -path ./nginx ! -path ./nginx/passwords.d \
-        -execdir perl -e "${_LTD_FCHMOD_PL}" d 0700 {} + &> /dev/null
-      _ltd_in_real_dir "${_dscUsr}/config/server_master" \
-        find . -type f ! \( -path './nginx/passwords.d/*' ! -path './nginx/passwords.d/*/*' \) \
-        -execdir perl -e "${_LTD_FCHMOD_PL}" f 0600 {} + &> /dev/null
-      _ltd_in_real_dir "${_dscUsr}/config" \
-        perl -e "${_LTD_FCHMOD_PL}" d +0555 . &> /dev/null
-      _ltd_in_real_dir "${_dscUsr}/config/server_master" \
-        perl -e "${_LTD_FCHMOD_PL}" d 0755 . ./nginx &> /dev/null
-      _ltd_in_real_dir "${_dscUsr}/config/server_master/nginx" \
-        _ltd_basic_auth_dir_here "${_USER}"
-      _ltd_in_real_dir "${_dscUsr}/config/server_master/nginx/passwords.d" \
-        _ltd_basic_auth_modes_here "${_USER}"
-      # .tmp is oN's to swap too: a link there always takes this block, which
-      # strips it (a stamp read through the link could skip it), and every
-      # remove, mode and stamp happens inside the real directory
-      # Only root's own stamp counts: a fresh .tmp is group-writable.
-      if [ -L "${_dscUsr}/.tmp" ] \
-        || [ "$(stat -c %u -- "${_dscUsr}/.tmp/.ctrl.${_tRee}.${_xSrl}.pid" 2> /dev/null)" != "0" ]; then
-        _ltd_in_real_dir "${_dscUsr}/.drush" _ltd_drush_cache_drop "${_USER}"
-        _desymlink_planted "${_dscUsr}/.tmp"
-        mkdir -p ${_dscUsr}/.tmp
-        if _ltd_in_real_dir "${_dscUsr}/.tmp" \
-          _ltd_own_dir_here "${_USER}:${_usrGroup}" 02755 YES; then
-          _ltd_in_real_dir "${_dscUsr}/.tmp" \
-            _ltd_stamp_put ".ctrl.${_tRee}.${_xSrl}.pid" "OK"
-        else
-          echo "ALERT: ${_dscUsr}/.tmp is not ${_USER}'s own directory; left as it was"
-        fi
-      fi
-      _prune_psr_log_stash "${_dscUsr}"
-      # On an account still on the box-wide group ~/static is group `users`,
-      # which every co-tenant's .ftp login is in: it gets the sticky bit and
-      # control/ loses any write but the account's own (_ltd_ctrl_shut),
-      # before anything below reads it. Strip a plant unconditionally:
-      # gating this on a stamp INSIDE the link lets a target that already
-      # carries a matching stamp skip the guard for the whole pass. oN can
-      # swap static/ itself, so the strip and the mkdir act only inside the
-      # real static/.
-      _ltd_ctrl_gate_guard "${_USER}"
-      _ltd_ctrl_shut "${_USER}"
-      _ltd_in_real_dir "${_dscUsr}/static" _desymlink_planted ./control
-      if [ ! -e "${_dscUsr}/static/control/.ctrl.${_tRee}.${_xSrl}.pid" ] \
-        && [ -e "/home/${_USER}.ftp/clients" ]; then
-        _ltd_in_real_dir "${_dscUsr}/static" mkdir -p ./control
-        _ltd_in_real_dir "${_dscUsr}/static/control" _ltd_ctrl_init
-        # the hand-over gives the tree the control group: closed again
-        _ltd_ctrl_shut "${_USER}"
-      fi
-      # Nothing below acts on a control/ that is not the account's own
-      # (_acct_ctrl_own): the account's PHP, pools, per-site and per-platform
-      # pins, New Relic and its logins' tools stay as they are, never set as
-      # if its files were gone.
-      _ltdCtrlOwn=YES
-      if ! _ltdCtrlWhy=$(_acct_ctrl_own "${_USER}"); then
-        _ltdCtrlOwn=NO
-        echo "ALERT: ${_dscUsr}/static/control is not ${_USER}'s own (${_ltdCtrlWhy}); its control files are not read this pass"
-      fi
-      if [ "${_ltdCtrlOwn}" = "YES" ] \
-        && [ -e "${_dscUsr}/static/control/ssl-live-mode.info" ]; then
-        if [ -e "${_dscUsr}/tools/le/.ctrl/ssl-demo-mode.pid" ]; then
-          # tools/ is oN's: removed only inside the real directory
-          _ltd_rm_in "${_dscUsr}/tools/le/.ctrl" ssl-demo-mode.pid
-        fi
-      fi
-
-      # Blank the cnf-supplied values before the conditional source below:
-      # when an account has no cnf (a half-finished migration is exactly that
-      # state), the previous loop iteration's values would otherwise leak in
-      # and this account's pools would be sized and switched from a foreign
-      # account's config. The sibling night/10-account.sh blanks its trio for
-      # the same reason.
-      _PHP_FPM_VERSION=""
-      _PHP_CLI_VERSION=""
-      _PHP_FPM_WORKERS=""
-      _PHP_FPM_TIMEOUT=""
-      _PHP_FPM_MAX_CHILDREN_FORCE=""
-      _PHP_FPM_MEMORY_LIMIT_FORCE=""
-      _PHP_FPM_RAM_PCT=""
-      _PHP_FPM_CPU_FACTOR=""
-      _RESERVED_RAM=""
-      _CLIENT_EMAIL=""
-      _CLIENT_OPTION=""
-      _CLIENT_SUBSCR=""
-      _CLIENT_CORES=""
-      _STRONG_PASSWORDS=""
-      _PHP_FPM_USS_MB=""
-      _CHILD_MAX_FPM=""
-      _LTD_PLATFORM_CLIENTS=""
-      if [ ! -e "/root/.${_USER}.octopus.cnf" ]; then
-        echo "ALRT: no /root/.${_USER}.octopus.cnf for /data/disk/${_USER}"
-      fi
-      # shellcheck disable=SC1091
-      [ -e "/root/.${_USER}.octopus.cnf" ] && source /root/.${_USER}.octopus.cnf
-
-      _THIS_HM_PLR=$(_ltd_read_in "${_dscUsr}/.drush" hostmaster.alias.drushrc.php \
-        | grep "root'" \
-        | cut -d: -f2 \
-        | awk '{ print $3}' \
-        | sed "s/[\,']//g" 2>&1)
-      # oN owns its alias and could point it anywhere: only one of the
-      # account's own hostmaster platforms is looked at
-      if [[ "${_THIS_HM_PLR}" != "${_dscUsr}/aegir/distro/"* ]] \
-        || [[ ! "${_THIS_HM_PLR#"${_dscUsr}/aegir/distro/"}" =~ ^[0-9]+$ ]]; then
-        _THIS_HM_PLR=""
-      fi
-      if [ -e "${_THIS_HM_PLR}/modules/path_alias_cache" ] \
-        && [ -x "/opt/tools/drush/8/drush/drush.php" ]; then
-        if [ -x "/opt/php56/bin/php" ] && [ "${_ltdCtrlOwn}" = "YES" ]; then
-        _ltd_ctrl_put cli.info 5.6
-        fi
-      fi
-      # before the panel's pool and dispatcher move to this pass's PHP
-      _ltd_hm_core_heal "${_THIS_HM_PLR}"
-      _nrCheck=
-      _ltdNgxReloaded=
-      # per account: what the pass decided and applied for the previous
-      # account never carries over
-      _PHP_SV=
-      _ltdVrnHeld=NO
-      _ltdNrHeld=NO
-      _ltdOwnNgx=
-      _ltdOwnFpm=
-      _ltd_fpm_multi_mode
-      _ltdNrSet=
-      _ltdNrOwn=
-      _ltdNgxTestFail=
-      [ "${_ltdCtrlOwn}" = "YES" ] && _ltd_nr_decide
-      _ltdNgxFpBefore="$(_ltd_ngx_fpm_fp)"
-      [ "${_ltdCtrlOwn}" = "YES" ] && _switch_php
-      if [ "${_ltdCtrlOwn}" = "YES" ] && [ -z ${_nrCheck} ]; then
-        if [ -z ${_PHP_SV} ]; then
-          _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
-          if [ -z "${_PHP_SV}" ]; then
-            _PHP_SV=84
-          fi
-        fi
-        # the pools' own mode test: without tools/le the account runs its
-        # single pool, multi-fpm.info or not
-        if [ "${_ltdFpmMulti:-}" = "YES" ] || { [ -z "${_ltdFpmMulti:-}" ] \
-          && [ -f "${_dscUsr}/static/control/multi-fpm.info" ] && [ -d "${_dscUsr}/tools/le" ]; }; then
-          _PHP_M_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
-          for m in ${_PHP_M_V}; do
-            if [ -x "/opt/php${m}/bin/php" ] \
-              && [ -e "/opt/php${m}/etc/pool.d/${_USER}.${m}.conf" ]; then
-              _switch_newrelic ${m} ${_USER}.${m} 1
-            fi
-          done
-        else
-          if [ -x "/opt/php${_PHP_SV}/bin/php" ] \
-            && [ -e "/opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf" ]; then
-            _switch_newrelic ${_PHP_SV} ${_USER} 1
-          fi
-        fi
-        # the key in force now, unless a change of it waits
-        [ "${_ltdNrHeld}" = "YES" ] || _ltd_applied_put nr "${_ltdNrUse}"
-      fi
-      if [ "${_ltdCtrlOwn}" = "YES" ]; then
-        _site_socket_inc_gen
-        _ltd_fpm_plat_gen
-        # one reload for this pass's include changes, before the page check
-        _ltd_ngx_pass_reload
-        _ltd_fpm_core_check
-        _ltd_fpm_plat_skip_put
-        _ltd_fpm_cut_notice
-      fi
-      # what the login made in control/ during this pass, and anything the
-      # hand-overs above left writable by others or by a group that is not
-      # the account's own, is closed again
-      _ltd_ctrl_shut "${_USER}"
-      _ltd_ngx_pass_reload
-      # the window of each kind starts with a change of the account's own
-      [ "${_ltdOwnNgx}" = "YES" ] && _ltd_rld_stamp nginx
-      [ "${_ltdOwnFpm}" = "YES" ] && _ltd_rld_stamp fpm
-      if [ -e "${_pthParentUsr}/clients" ] && [ ! -z ${_USER} ]; then
-        echo Managing Users for ${_pthParentUsr} Instance
-        # clients/ is oN's: a client name there can be a link to anywhere,
-        # so the removals run inside the real directories only; what stays
-        # because another user owns it is said once per pass, each entry once
-        _ltdLeft=$(_ltd_in_real_dir "${_pthParentUsr}/clients" _ltd_clients_sweep 2> /dev/null)
-        _ltdLeft=$(printf '%s\n' "${_ltdLeft}" | grep -E '^[0-9]+:[0-9]+$' | sort -u | grep -c .)
-        if [ "${_ltdLeft}" -gt 0 ]; then
-          echo "NOTE: ${_USER}: the clients sweep left ${_ltdLeft} entries owned by another user in place below ${_pthParentUsr}/clients"
-        fi
-        # dangling links go by a walk from inside the real directory (symlinks
-        # -r rebuilds absolute paths as it walks, so a name swapped
-        # meanwhile would redirect it)
-        _ltd_in_real_dir "${_pthParentUsr}/clients" find . -xtype l -delete &> /dev/null
-        if [ -d "/home/${_USER}.ftp" ]; then
-          _disable_chattr ${_USER}.ftp
-          _ltd_in_real_dir "/home/${_USER}.ftp" find . -xtype l -delete &> /dev/null
-          # Attached files mount = the SINGLE real mountpoint under /mnt (naming-agnostic).
-          # Fail-closed: empty when NONE or when MORE THAN ONE is mounted -- multi-mount
-          # is unsupported fleet-wide and cannot be disambiguated, so refuse to guess.
-          _mntPoint=$(_pd=$(stat -c '%d' /mnt 2>/dev/null); _n=0; _hit=; for _m in /mnt/*; do
-            [ -d "${_m}" ] || continue
-            if mountpoint -q "${_m}" 2>/dev/null \
-              || { [ -n "${_pd}" ] && [ "$(stat -c '%d' "${_m}" 2>/dev/null)" != "${_pd}" ]; }; then
-              _hit="${_m}"; _n=$((_n + 1))
-            fi
-          done; [ "${_n}" -eq 1 ] && printf '%s' "${_hit}"; :) &&
-          _MNT_STATIC_FILES="${_mntPoint}/files/${_USER}/static/files"
-          [ -n "${_mntPoint}" ] && echo "_mntPoint is == ${_mntPoint} == at _manage_user"
-          [ -n "${_mntPoint}" ] && echo "_MNT_STATIC_FILES is == ${_MNT_STATIC_FILES} == at _manage_user"
-          echo >> ${_THIS_LTD_CONF}
-          echo "[${_USER}.ftp]" >> ${_THIS_LTD_CONF}
-          [ -n "${_mntPoint}" ] && echo "path : ['/opt/user/gems/${_USER}.ftp', \
-                        '/opt/user/npm/${_USER}.ftp', \
-                        '${_MNT_STATIC_FILES}', \
-                        '${_dscUsr}/distro', \
-                        '${_dscUsr}/static', \
-                        '${_dscUsr}/backups', \
-                        '${_dscUsr}/clients']" \
-                        | fmt -su -w 2500 >> ${_THIS_LTD_CONF}
-          [ -z "${_mntPoint}" ] && echo "path : ['/opt/user/gems/${_USER}.ftp', \
-                        '/opt/user/npm/${_USER}.ftp', \
-                        '${_dscUsr}/distro', \
-                        '${_dscUsr}/static', \
-                        '${_dscUsr}/backups', \
-                        '${_dscUsr}/clients']" \
-                        | fmt -su -w 2500 >> ${_THIS_LTD_CONF}
-          _ltd_env_path_line "${_USER}.ftp" YES >> ${_THIS_LTD_CONF}
-          _manage_site_drush_alias_mirror
-          _manage_sec
-          _manage_sec_platform
-          if [ -d "/home/${_USER}.ftp/users" ]; then
-            # the main login owns users/ and every name in it: the owner and
-            # the modes are set inside the real directory, each store through
-            # a handle that never follows a link put at its name, and a hard
-            # link the main login put there is never handed over or chmoded
-            # and only what root or the account's identities own: another
-            # account's entry the login renamed in keeps its owner and mode,
-            # with everything below it, and is counted
-            _ltdKeyOwn=$(_acct_walk_uids "${_USER}") || _ltdKeyOwn=0
-            _ltd_in_real_dir "/home/${_USER}.ftp/users" \
-              _ltd_users_store_here "${_ltdKeyOwn}" "${_USER}.ftp:${_usrGroup}"
-          fi
-          if [ -d "/home/${_USER}.ftp/.ssh" ]; then
-            # an authorized_keys uploaded over SFTP (umask 0002) or written in
-            # a shell session arrives group-writable, and sshd's StrictModes
-            # then refuses every key in it: the key files stay owner-only, set
-            # through handles inside the real directory, like the private keys
-            _ltdKeyOwn=$(_acct_walk_uids "${_USER}") || _ltdKeyOwn=0
-            _ltd_in_real_dir "/home/${_USER}.ftp/.ssh" \
-              _ltd_chmod_own_here "${_ltdKeyOwn}" 600 ./authorized_keys ./authorized_keys2
-          fi
-          if [ ! -L "/home/${_USER}.ftp/static" ]; then
-            rm -f /home/${_USER}.ftp/{backups,clients,static}
-            ln -sfn ${_dscUsr}/backups /home/${_USER}.ftp/backups
-            ln -sfn ${_dscUsr}/clients /home/${_USER}.ftp/clients
-            ln -sfn ${_dscUsr}/static  /home/${_USER}.ftp/static
-          fi
-          if [ ! -e "/home/${_USER}.ftp/.tmp/.ctrl.${_tRee}.${_xSrl}.pid" ]; then
-            # the main login's home is never immutable: inside ~/.drush and
-            # ~/.tmp root works only in the real directories, and removes
-            # only what root or the account's own users own
-            # (_ACCT_RM_OWN_PL): what another user put there stays
-            _ltdOwn=$(_acct_walk_uids "${_USER}") || _ltdOwn="0"
-            _ltdLeft=$(_ltd_in_real_dir "/home/${_USER}.ftp/.drush" \
-              perl -e "${_ACCT_RM_OWN_PL}" -- r "${_ltdOwn}" - ./cache 2> /dev/null)
-            if [ -L "/home/${_USER}.ftp/.tmp" ]; then
-              rm -f "/home/${_USER}.ftp/.tmp"
-            elif [ -d "/home/${_USER}.ftp/.tmp" ]; then
-              _ltdLeft="${_ltdLeft}"$'\n'"$(_ltd_in_real_dir "/home/${_USER}.ftp/.tmp" \
-                _ltd_rm_own_all_here "${_ltdOwn}")"
-            elif [ -e "/home/${_USER}.ftp/.tmp" ]; then
-              _ltdLeft="${_ltdLeft}"$'\n'"$(_ltd_in_real_dir "/home/${_USER}.ftp" \
-                perl -e "${_ACCT_RM_OWN_PL}" -- h "${_ltdOwn}" - ./.tmp 2> /dev/null)"
-            fi
-            _ltdLeft=$(printf '%s\n' "${_ltdLeft}" | grep -E '^[0-9]+:[0-9]+$' | sort -u | grep -c .)
-            if [ "${_ltdLeft}" -gt 0 ]; then
-              echo "NOTE: ${_USER}: the main login's ~/.drush/cache and ~/.tmp clean-up left ${_ltdLeft} entries owned by another user in place"
-            fi
-            mkdir -p /home/${_USER}.ftp/.tmp
-            # handed over and given its mode only when it is the main login's
-            # own or the empty one just made: a root-owned directory of the
-            # home renamed onto the name is left alone
-            if _ltd_in_real_dir "/home/${_USER}.ftp/.tmp" \
-              _ltd_own_dir_here "${_USER}.ftp:${_usrGroup}" 700 NO &> /dev/null; then
-              _ltd_in_real_dir "/home/${_USER}.ftp/.tmp" \
-                _ltd_stamp_put ".ctrl.${_tRee}.${_xSrl}.pid" "OK"
-            else
-              echo "ALERT: /home/${_USER}.ftp/.tmp is not ${_USER}.ftp's own directory; left as it was"
-            fi
-          fi
-          _enable_chattr ${_USER}.ftp
-          echo Done for ${_pthParentUsr}
-        else
-          echo Directory /home/${_USER}.ftp not available
-        fi
-        echo
-      else
-        echo Directory ${_pthParentUsr}/clients not available
-      fi
-      echo
-      _ltd_d9_files_here "${_USER}"
-    fi
-  done
-}
-
 #
 # Find correct IP.
 _find_correct_ip() {
@@ -9334,288 +8813,6 @@ _fix_php_in_lshell_access() {
   fi
 }
 
-###-------------SYSTEM-----------------###
-
-if [ ! -e "/home/.ctrl.${_tRee}.${_xSrl}.pid" ]; then
-  chattr -i /home
-  chmod 0711 /home
-  chown root:root /home
-  rm -f /home/.ctrl.*
-  while IFS=':' read -r _login _pass _uid _gid _uname _homedir _shell; do
-    if [[ "${_homedir}" = **/home/** ]]; then
-      if [ -d "${_homedir}" ]; then
-        chattr -i ${_homedir}
-        chown ${_uid}:${_gid} ${_homedir} &> /dev/null
-        # ~/.ssh and ~/.tmp are the login's (web users' included) and it can
-        # swap either name or leave a hard link in either tree: each is
-        # unlocked from inside the real directory and handed over by a walk
-        # that changes a directory or a single-link regular file through its
-        # handle, never a hard link and never through a link, and only what
-        # root, the login or its account's identities own: what the login
-        # renamed in from another account's group-writable trees, or another
-        # account's directory at either name, keeps its owner, and is counted
-        _hOwn=$(_acct_walk_uids "${_login%%.*}") || _hOwn=0
-        _hOwn="${_hOwn},${_uid}"
-        _hLeft=""
-        if [ -d "${_homedir}/.ssh" ]; then
-          _ltd_in_real_dir "${_homedir}/.ssh" chattr -i .
-          _hLeft=$(_ltd_in_real_dir "${_homedir}/.ssh" \
-            _ltd_reown_own_here "${_hOwn}" "${_uid}:${_gid}" 2> /dev/null)
-        fi
-        if [ -d "${_homedir}/.tmp" ]; then
-          _ltd_in_real_dir "${_homedir}/.tmp" chattr -i .
-          _hLeft="${_hLeft}"$'\n'"$(_ltd_in_real_dir "${_homedir}/.tmp" \
-            _ltd_reown_own_here "${_hOwn}" "${_uid}:${_gid}" 2> /dev/null)"
-        fi
-        _hLeft=$(printf '%s\n' "${_hLeft}" | grep -E '^[0-9]+:[0-9]+$' | sort -u | grep -c .)
-        # this pass runs before the run's report is opened, once per
-        # release: its line goes to the incident log under /var/log/boa,
-        # which survives the nightly sweep of /var/backups/ltd and a
-        # release's refresh of the worker
-        if [ "${_hLeft}" -gt 0 ]; then
-          mkdir -p /var/log/boa
-          echo "$(date) NOTE: ${_login}: the release's ~/.ssh and ~/.tmp hand-over left ${_hLeft} entries owned by another user in place" \
-            >> /var/log/boa/manage_ltd.incident.log
-        fi
-        if [ -d "${_homedir}/.drush" ]; then
-          # a link at ~/.drush (a main login's home is never immutable) must
-          # not aim chattr at <target>/usr: locked inside the real directory
-          _ltd_in_real_dir "${_homedir}/.drush" _ltd_drush_lock_here
-        fi
-        if [[ ! "${_login}" =~ ".ftp"($) ]] \
-          && [[ ! "${_login}" =~ ".web"($) ]]; then
-          chattr +i ${_homedir}
-        fi
-      fi
-    fi
-  done < /etc/passwd
-  touch /home/.ctrl.${_tRee}.${_xSrl}.pid
-fi
-
-if [ ! -L "/usr/bin/MySecureShell" ] && [ -x "/usr/bin/mysecureshell" ]; then
-  mv -f /usr/bin/MySecureShell /var/backups/legacy-MySecureShell-bin
-  ln -sfn /usr/bin/mysecureshell /usr/bin/MySecureShell
-fi
-
-_NOW=$(date +%y%m%d-%H%M%S)
-_NOW=${_NOW//[^0-9-]/}
-[ -d "/var/backups/ltd/conf" ] || mkdir -p /var/backups/ltd/{conf,log,old}
-[ -d "/var/backups/ltd/log" ] || mkdir -p /var/backups/ltd/{conf,log,old}
-[ -d "/var/backups/ltd/old" ] || mkdir -p /var/backups/ltd/{conf,log,old}
-[ -d "/var/backups/zombie/deleted" ] || mkdir -p /var/backups/zombie/deleted
-_THIS_LTD_CONF="/var/backups/ltd/conf/lshell.conf.${_NOW}"
-# aegir2boa's own root state for the account $1 says its db-import, or the
-# revert of one, is unfinished: the dispatcher it held aside is still there,
-# a hold xmass carried here with a failover from the box the import ran on
-# stands (failover-hold) on a box that is no standby, or on any box with $2
-# promoted (a standby's own passes never act on it; a promotion's own steps,
-# which run before its marker goes, do), a revert marked itself started
-# (revert-db.started, cleared only once the revert's dispatcher is back), or
-# a step marker of the import stands with neither its done marker nor the
-# marker of its hand-back (written right before the import returns the
-# dispatcher).
-# Root's /var/backups/a2b only: a link on the way reads as no state, and so
-# does a state recorded for another account of the name (its uid, or its
-# home's inode or birth time, not the account's now; a birth time either
-# side does not know is not compared). The record's first line is read
-# whether or not a newline ends it; an empty record, or none, is the
-# account's own. One text wherever it is defined.
-_a2b_import_unfinished() {
-  local _b="/var/backups/a2b/${1}" _m _iu="" _ii _ib _n
-  case "${1}" in
-    ""|*[!a-z0-9-]*) return 1 ;;
-  esac
-  [ -d "${_b}" ] && [ ! -L "${_b}" ] && [ ! -L /var/backups/a2b ] || return 1
-  if [ -f "${_b}/identity" ] && [ ! -L "${_b}/identity" ]; then
-    read -r _iu _ii _ib _ < "${_b}/identity"
-  fi
-  if [ -n "${_iu}" ]; then
-    _n=$(stat -c '%i %W' "/data/disk/${1}" 2> /dev/null)
-    [ "${_iu}" = "$(id -u "${1}" 2> /dev/null)" ] && [ "${_ii}" = "${_n% *}" ] || return 1
-    [ "${_ib}" = "0" ] || [ "${_n#* }" = "0" ] || [ "${_ib}" = "${_n#* }" ] || return 1
-  fi
-  [ -e "${_b}/held-run-${1}" ] && return 0
-  [ -e "${_b}/failover-hold" ] && { [ "${2:-}" = "promoted" ] \
-    || { [ ! -e /root/.standby.cnf ] && [ ! -e /root/.standby.prep.cnf ]; }; } \
-    && return 0
-  [ -d "${_b}/markers" ] && [ ! -L "${_b}/markers" ] || return 1
-  [ -e "${_b}/markers/revert-db.started" ] && return 0
-  [ -e "${_b}/markers/import.db-import.done" ] && return 1
-  [ -e "${_b}/markers/dbimport.12.done" ] && return 1
-  for _m in "${_b}"/markers/dbimport.*.done; do
-    [ -e "${_m}" ] && return 0
-  done
-  return 1
-}
-# What to do about the unfinished aegir2boa import of the account $1 (one
-# _a2b_import_unfinished holds for), by what its root state says was cut
-# off: the one way out that state allows, or either. A revert cut off part
-# way (revert-db.started) is ended by the revert alone: a re-run of the
-# import would find its step markers and report a finished import on the
-# panel the revert restored. A hold xmass carried here with a failover
-# (failover-hold), with no dump transferred here, is ended by the route run
-# again toward this box, once the site databases the replication brought
-# from the cut-off import are dropped: the dumps and the pre-import
-# snapshot stayed on the box the import ran on. An import cut off before its pre-import
-# snapshot was complete (no dbimport.1.done) is ended by its re-run alone:
-# there is nothing to revert to. Anything else by either. One sentence, its
-# commands spelled out. One text wherever it is defined.
-_a2b_import_advice() {
-  local _b="/var/backups/a2b/${1}" _c="aegir2boa-stage2 import --account ${1}"
-  if [ -e "${_b}/markers/revert-db.started" ]; then
-    echo "A revert of it was cut off part way: finish the revert with ${_c} --revert-db-import (dry first, then with --live); a re-run of the import would report it finished on the panel the revert restored"
-  elif [ -e "${_b}/failover-hold" ] && [ ! -e "${_b}/src/hostmaster.sql" ]; then
-    echo "It came here with a failover from the box it ran on, where its dumps and pre-import snapshot stayed, so neither its re-run nor its revert can run here: run the route again toward this box, a fresh aegir2boa-stage2 export and transfer on its source; once that transfer has put its manifests here (${_b}/src/manifest/*.info), drop each database they name (A2BM_DBN) that already exists here, as the replication brought them from the cut-off import (boa-dbctl drop <database> --account ${1} where the account is switched to the database broker, DROP DATABASE as root otherwise: the import refuses a database that exists, and no reset reaches them), then ${_c} --route db-import here, dry first, then with --live"
-  elif [ ! -e "${_b}/markers/dbimport.1.done" ]; then
-    echo "It was cut off before its pre-import snapshot was complete, so there is nothing to revert to: finish it with ${_c} --route db-import (dry first, then with --live)"
-  else
-    echo "Finish it with ${_c} --route db-import, or undo it with ${_c} --revert-db-import (each dry first, then with --live)"
-  fi
-}
-# The freeze route. A db-import killed in its freeze window (SIGKILL, a
-# crash, a reboot) runs no EXIT trap and leaves aegir2boa's freeze marker,
-# log/proxied.pid, which keeps the account out of every Octopus, nightly
-# and limited-shell pass and its web group from converting. On a box armed
-# for the web group that is no standby, the marker goes a day after this
-# worker first sees it with no migration running. The half-imported panel
-# stays switched off while aegir2boa's state shows the import unfinished
-# (the Octopus pass skips the account, BOA.sh.txt keeps its dispatcher held
-# and the nightly runs nothing on the panel) until the import is re-run or
-# reverted, and while that state stands with none of it running the
-# operator is told once a day, with the one way out that state allows
-# (_a2b_import_advice). Any other marker (one the account made, a relay
-# record, an earlier release's freeze, one put by hand) is left as it is
-# and named once a day after its first day, with what to do about its
-# kind; a relay record beside relay evidence is a live relay and is not
-# named.
-#
-# ./proxied.pid in the current (real) log/, read through one handle that
-# never follows a link or blocks on a FIFO, the handle proven to be the
-# entry lstat saw: "a2b <dev>:<ino>:<mtime> <lines> <verb>" for aegir2boa's
-# own freeze (root's single-link regular file reading A2B-IMPORT-FREEZE, a
-# second line verb=<db-import|revert-db> pid=<n> pgid=<g> allowed; <verb>
-# is the one it names, "-" for a one-line freeze), "relay" for a relay
-# record (COMPLETE) that is root's single-link regular file, as xmass reads
-# one (a COMPLETE the account could have written is a file), else the
-# entry's kind: link, dir, special or file. Nothing when there is none.
-# $1 = root's uid.
-_LTD_FREEZE_CLASS_PL='use Fcntl;
-my ($ru) = @ARGV;
-my $n = "./proxied.pid";
-my @l = lstat($n);
-exit 0 unless @l;
-if (-l _) { print "link\n"; exit 0 }
-if (-d _) { print "dir\n"; exit 0 }
-if (! -f _) { print "special\n"; exit 0 }
-sysopen(my $h, $n, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or do { print "file\n"; exit 0 };
-my @s = stat($h);
-unless (@s && -f _ && $s[0] == $l[0] && $s[1] == $l[1]) { print "file\n"; exit 0 }
-my $d = "";
-sysread($h, $d, 4097);
-close($h);
-my @ln = split(/\n/, $d, -1);
-pop @ln if @ln && $ln[-1] eq "";
-if (@ln && $ln[0] eq "COMPLETE" && $s[4] == $ru && $s[3] == 1) { print "relay\n"; exit 0 }
-if (length($d) <= 4096 && $s[4] == $ru && $s[3] == 1 && (@ln == 1 || @ln == 2)
-  && $ln[0] eq "A2B-IMPORT-FREEZE"
-  && (@ln == 1 || $ln[1] =~ /^verb=(db-import|revert-db) pid=[1-9][0-9]* pgid=[1-9][0-9]*$/)) {
-  print "a2b $s[0]:$s[1]:$s[9] " . scalar(@ln) . " " . (@ln == 2 ? $1 : "-") . "\n";
-  exit 0;
-}
-print "file\n";
-exit 0'
-# Unlink ./proxied.pid only while it is still the freeze classified: root's
-# single-link regular file of that dev:ino:mtime. $1 = root's uid, $2 = the
-# dev:ino:mtime.
-_LTD_FREEZE_RM_PL='my ($ru, $id) = @ARGV;
-my @l = lstat("./proxied.pid");
-exit 1 unless @l && -f _ && $l[4] == $ru && $l[3] == 1 && "$l[0]:$l[1]:$l[9]" eq $id;
-unlink("./proxied.pid") or exit 1;
-exit 0'
-# A relay record's other half in the current (real) log/: root's
-# single-link migproxy.cnf of the source role, read without following a
-# link or blocking on a FIFO. $1 = root's uid.
-_LTD_FREEZE_REC_PL='use Fcntl;
-my ($ru) = @ARGV;
-sysopen(my $h, "./migproxy.cnf", O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or exit 1;
-my @s = stat($h);
-exit 1 unless @s && -f _ && $s[3] == 1 && $s[4] == $ru;
-my $d = "";
-sysread($h, $d, 1048576);
-exit(($d =~ /^_MIG_ROLE=source$/m) ? 0 : 1)'
-# A proxy vhost in the current (real) vhost.d, by the marks xoct's proxy
-# templates carry: every regular file but a dot file (a saved original),
-# read through one handle, 1 MiB at most each, never through a link.
-_LTD_FREEZE_PROXY_PL='use Fcntl;
-opendir(my $d, ".") or exit 2;
-for my $n (readdir($d)) {
-  next if $n =~ /^\./;
-  my @l = lstat("./$n");
-  next unless @l && -f _;
-  sysopen(my $h, "./$n", O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
-  my @s = stat($h);
-  next unless @s && -f _ && $s[0] == $l[0] && $s[1] == $l[1];
-  my $c = "";
-  sysread($h, $c, 1048576);
-  close($h);
-  exit 0 if index($c, "Plain HTTP proxy (START)") >= 0 || index($c, "Secure HTTPS proxy") >= 0;
-}
-exit 1'
-# The process table, read once a pass, of the processes whose real and
-# effective uid are root's only (a tenant sets its own argv), 64 KiB of each
-# file at most: "tool <name>" for each of aegir2boa-stage2, xoct, xcopy,
-# xmass and xtrim a process runs (the name in any word of its argv, so
-# bash -x or sh -c counts), "stage2 <account>" for each account a stage 2
-# run names (--account and the next argv element, read whole and cut down
-# as stage 2 cuts down its own --account), "held <account>" for each
-# account a process holds a file or its working directory under $2
-# (/var/backups/a2b: a dump load the killed import orphaned counts). $1 =
-# the proc root.
-_LTD_FREEZE_PS_PL='my ($p, $base) = @ARGV;
-opendir(my $d, $p) or exit 2;
-my (%t, %s, %a);
-for my $n (readdir($d)) {
-  next unless $n =~ /^[0-9]+$/ && $n != $$;
-  my $st = "";
-  if (open(my $sh, "<", "$p/$n/status")) {
-    sysread($sh, $st, 65536);
-    close($sh);
-  }
-  next unless $st =~ /^Uid:\s+0\s+0\s/m;
-  if (open(my $h, "<", "$p/$n/cmdline")) {
-    my $c = "";
-    sysread($h, $c, 65536);
-    close($h);
-    my @w = grep { length } split(/[\0\s]+/, $c);
-    my $s2 = 0;
-    for my $w (@w) {
-      (my $x = $w) =~ s{.*/}{};
-      next unless $x =~ /^(aegir2boa-stage2|xoct|xcopy|xmass|xtrim)$/;
-      $t{$x} = 1;
-      $s2 = 1 if $x eq "aegir2boa-stage2";
-    }
-    my @e = split(/\0/, $c);
-    for my $i (0 .. $#e - 1) {
-      next unless $s2 && $e[$i] eq "--account";
-      (my $z = $e[$i + 1]) =~ tr/a-z0-9//cd;
-      $s{$z} = 1 if $z =~ /^[a-z]/;
-    }
-  }
-  my @f = ("$p/$n/cwd");
-  if (opendir(my $fd, "$p/$n/fd")) {
-    push @f, map { "$p/$n/fd/$_" } grep { /^[0-9]+$/ } readdir($fd);
-    closedir($fd);
-  }
-  for my $f (@f) {
-    my $r = readlink($f);
-    next unless defined $r && index($r, "$base/") == 0;
-    $a{$1} = 1 if substr($r, length($base) + 1) =~ m{^([^/]+)};
-  }
-}
-print "tool $_\n" for sort keys %t;
-print "stage2 $_\n" for sort keys %s;
-print "held $_\n" for sort keys %a;
-exit 0'
 # _ltd_notice for a standing condition: its incident line, pass log line
 # and mail all once a day under the key $1 (_ltd_notice alone mails once a
 # day but logs every call).
@@ -9626,65 +8823,6 @@ _ltd_notice_daily() {
     return 0
   fi
   _ltd_notice "$@"
-}
-# BOA's own copy of Drupal 7 from 7.79.1 to 7.92.1 (its VERSION reads 7.79 to
-# 7.92) and of Pressflow 6 at 6.59.1 and 6.60.1 declare _drupal_error_handler()
-# with a required fifth argument that PHP 8 no longer passes: on PHP 8 the first
-# warning or deprecation (on 8.4, one while a Drupal 7 core loads its phar
-# wrapper, on every request) throws an ArgumentCountError and the request
-# dies before Drupal can log it. For these cores that line is all that stands
-# between them and PHP 8. BOA's own platforms share their core from the store,
-# /data/all/000/core, so every such core there gets that argument made
-# optional ($context = NULL), as the later releases did, before any pool of
-# this pass switches PHP: a box upgraded from an older release, a core a
-# migration brought along, a site moved to PHP 8. Only that exact line
-# changes, only in a store core whose directories and file are root's, none
-# of them a link; one that is not wholly root's is left alone and reported. A
-# core older than these (Drupal 7 below 7.79, Drupal 6 below 6.58) needs more
-# than one line on PHP 8 and is not touched: the page check below names its
-# sites. A core in an account's own platform is never touched either: websh
-# refuses its drush lines on PHP 8 and says what to change. A store that is
-# not wholly root's may hold any name, so the files are read only when they
-# are regular and no link, never past the first megabyte, and time-bound.
-_ltd_store_core_head() {
-  timeout -k 2 10 dd if="${1}" iflag=nofollow,nonblock,fullblock bs="${2}" count=1 \
-    status=none 2> /dev/null
-}
-_ltd_store_core_heal() {
-  local _c _b _m _v _o _ok _why
-  _o='function _drupal_error_handler($error_level, $message, $filename, $line, $context) {'
-  for _c in /data/all/000/core/drupal-7.* /data/all/000/core/pressflow-6.*; do
-    case "${_c##*/}" in
-      drupal-7.*) _b="${_c}/includes/bootstrap.inc"; _m="${_b}" ;;
-      *)
-        _b="${_c}/includes/common.inc"; _m="${_c}/modules/system/system.module"
-        [ -f "${_m}" ] && [ ! -L "${_m}" ] && [ ! -L "${_c}/modules" ] \
-          && [ ! -L "${_c}/modules/system" ] || continue
-        ;;
-    esac
-    [ -f "${_b}" ] && [ ! -L "${_b}" ] && [ ! -L "${_c}" ] && [ ! -L "${_c}/includes" ] || continue
-    _ltd_store_core_head "${_b}" 1048576 | grep -qxF "${_o}" || continue
-    _v=$(_ltd_store_core_head "${_m}" 16384 \
-      | sed -n "s/^define('VERSION', '\([67]\.[0-9]*\)');.*/\1/p" | head -n 1)
-    case "${_c##*/}" in
-      drupal-7.*) [[ "${_v}" =~ ^7\.([0-9]+)$ ]] && [ "${BASH_REMATCH[1]}" -ge 79 ] && [ "${BASH_REMATCH[1]}" -le 92 ] || continue ;;
-      *) [[ "${_v}" =~ ^6\.(58|59|60)$ ]] || continue ;;
-    esac
-    _ok=NO
-    _why="is left alone: a directory on its path, or the file, is not root's"
-    [ "$(stat -L -c %u "${_c%/*/*}" "${_c%/*}" "${_c}" "${_c}/includes" "${_b}" 2> /dev/null | sort -u)" = "0" ] && _ok=YES
-    if [ "${_ok}" = "YES" ]; then
-      sed -i 's/^function _drupal_error_handler(\$error_level, \$message, \$filename, \$line, \$context) {$/function _drupal_error_handler($error_level, $message, $filename, $line, $context = NULL) {/' "${_b}" &> /dev/null
-      _ltd_store_core_head "${_b}" 1048576 | grep -qxF "${_o}" || {
-        echo "INFO: shared core ${_c}: error handler made safe for PHP 8"
-        continue
-      }
-      _why="cannot be rewritten (immutable or read-only?)"
-    fi
-    _ltd_notice_daily "store-core-heal-${_c##*/}" \
-      "the shared core ${_c} keeps an error handler PHP 8 cannot call" \
-      "its sites fail on PHP 8: ${_b} ${_why}"
-  done
 }
 # The same line in an account's control panel core (a panel last upgraded on
 # an older release): its pool and its dispatcher run on the box's PHP 8 from
@@ -10057,44 +9195,6 @@ _ltd_fpm_judge() {
     _t=$(_ltd_fpm_nearest "${_kr[${_k}]}" "${_kb[${_k}]}" "${_ci}")
     printf '%s\n' "~ ${_t:--} ${_kc[${_k}]} ${_k} ${_kw[${_k}]}"
   done <<< "${_ko}"
-}
-# The page check's inputs, as one sum: the account's site aliases, its FPM
-# includes, its default version ($1), the versions its sites can be moved to
-# ($3) and those installed ($4), its lasting command-line choices (what
-# cli.info and cli-per-platform.info hold: the worker writes cli.info again
-# on some accounts every pass, the same value; a link at either name, which
-# websh follows, by its target's stat), the files that decide each
-# site it judged last time ($2 = their roots, one a line), taken through a
-# link as the judge reads them, so that a change to a site's code is seen on
-# the next pass, and the check's own code (without its comments), so that a
-# new worker judges every account again on its first pass instead of a day
-# later.
-_ltd_fpm_sig() {
-  local _f _fs=()
-  while IFS= read -r _f; do
-    [[ "${_f}" == /* ]] || continue
-    _fs+=("${_f}/includes/bootstrap.inc" "${_f}/includes/common.inc" \
-      "${_f}/modules/system/system.module" "${_f}/core/lib/Drupal.php" \
-      "${_f}/core/includes/bootstrap.inc" "${_f}/vendor/composer/platform_check.php" \
-      "${_f%/*}/vendor/composer/platform_check.php")
-  done < <(head -n 1000 "${2}" 2> /dev/null)
-  {
-    stat -c '%n %i %Y %s' -- "${_dscUsr}"/.drush/*.alias.drushrc.php 2> /dev/null
-    for _f in cli.info cli-per-platform.info; do
-      if [ -L "${_dscUsr}/static/control/${_f}" ]; then
-        timeout -k 2 10 stat -L -c '%n %i %Y %s' -- "${_dscUsr}/static/control/${_f}" 2> /dev/null
-      else
-        _ltd_ctrl_read "${_f}" | head -c 65536 | md5sum
-      fi
-    done
-    _ltd_ngx_fpm_fp
-    echo "${1} ${3} ${4}"
-    [ "${#_fs[@]}" -gt 0 ] && timeout -k 2 20 stat -L -c '%n %i %Y %s' -- "${_fs[@]}" 2> /dev/null
-    declare -f _ltd_fpm_head _ltd_fpm_why _ltd_fpm_served _ltd_fpm_judge _ltd_fpm_judge_as \
-      _ltd_fpm_nearest _ltd_fpm_cli_key _ltd_cpp_key_norm _ltd_cpp_key_path _ltd_fpm_usable \
-      _ltd_fpm_prune _ltd_fpm_mrow _ltd_fpm_move_fpm _ltd_fpm_move_cli _ltd_fpm_plat_notes \
-      _ltd_fpm_core_check
-  } | md5sum | cut -d' ' -f1
 }
 # The judge, run as the account and cut off after two minutes, given the
 # versions the includes name on stdin. setpriv, not su: su starts its shell
@@ -10658,6 +9758,906 @@ _ltd_fpm_cut_notice() {
   _ltd_notice_daily "fpm-timeout-${_USER}" \
     "${_n} script(s) of ${_USER} cut at the PHP-FPM time limit repeatedly" \
     "$(printf '%s\n' "${_txt}" | head -n 5 | tr '\n' ';')"
+}
+_manage_user() {
+  _repair_staged_homes
+  for _pthParentUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
+    # a proxied or cancelled account is left alone below, but its pools
+    # still run PHP (its panel stays local), so their deny list is checked
+    if [ -e "${_pthParentUsr}/config/server_master/nginx/vhost.d" ] \
+      && [ -e "${_pthParentUsr}/log/fpm.txt" ] \
+      && { [ -e "${_pthParentUsr}/log/proxied.pid" ] \
+        || [ -e "${_pthParentUsr}/log/CANCELLED" ]; }; then
+      _USER="${_pthParentUsr##*/}"
+      [[ "${_USER}" =~ ^[a-z0-9-]+$ ]] && _ltd_pool_deny_heal_skipped
+      _USER=""
+    fi
+    # Decided once: the body below writes the account's own sections, and a
+    # moved account's welcome sections are written only when it does not, so
+    # no login can get two.
+    _ltdBody=NO
+    if [ -e "${_pthParentUsr}/config/server_master/nginx/vhost.d" ] \
+      && [ -e "${_pthParentUsr}/log/fpm.txt" ] \
+      && [ ! -e "${_pthParentUsr}/log/proxied.pid" ] \
+      && [ ! -e "${_pthParentUsr}/log/CANCELLED" ]; then
+      _ltdBody=YES
+    elif [[ "${_pthParentUsr##*/}" =~ ^[a-z0-9-]+$ ]]; then
+      _ltd_moved_stanzas "${_pthParentUsr##*/}"
+    fi
+    if [ "${_ltdBody}" = "YES" ]; then
+      _MNT_STATIC_FILES=""
+      _mntPoint=""
+      _USER=""
+      _USER=$(echo ${_pthParentUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
+      # The nightly's per-account pass holds this account's home unlocked for
+      # minutes and relocks it at its end; a rebuild in flight here would meet
+      # that relock half way (EPERM on every write). Leave the account to the
+      # next pass while the marker names a live pass (a dead pid is a killed
+      # pass and its marker goes) -- but its lshell stanzas are emitted from
+      # the body skipped here, and the conf built this pass replaces the live
+      # one on any difference, so carry them over from the live file as they
+      # stand or its users would drop to [default] until the hold clears.
+      if [ -e "/run/night-account-${_USER}.pid" ]; then
+        if kill -0 "$(cat /run/night-account-${_USER}.pid 2>/dev/null)" 2>/dev/null; then
+          echo "skipping ${_USER}: the nightly per-account pass holds it"
+          echo >> ${_THIS_LTD_CONF}
+          awk -v u="${_USER}" '/^\[/ { p = ($0 ~ "^\\[" u "\\.") } p' /etc/lshell.conf >> ${_THIS_LTD_CONF}
+          continue
+        fi
+        rm -f /run/night-account-${_USER}.pid
+      fi
+      # Identity heal: an account whose marker records THIS box's group but
+      # whose backend or shell identity fell back to the box-wide primary
+      # group (a hand usermod, a restored passwd) makes _acct_group fail open
+      # to 'users' and every root writer re-flatten the tree while the marker
+      # still reads converted. Move it back, 'users' listed first, as for the
+      # sub-users below.
+      # Converted = the group exists and the marker records it, or the backend
+      # or shell identity already carries it as primary (a born-converted
+      # account has no marker until its first upgrade).
+      _igMark="${_pthParentUsr}/log/instance-group.txt"
+      _igGid=$(getent group "${_USER}" 2>/dev/null | cut -d: -f3)
+      _igConv=NO
+      # A revert instgrp could not finish (an identity in use when its
+      # primary group had to move back) names the identities in this record;
+      # finish it here, one idle pass at a time, and never read such an
+      # account as converted meanwhile -- the heal below would otherwise move
+      # its other identities back ONTO the group the operator is reverting.
+      _igPend="/var/log/boa/instgrp.revert-pending.${_USER}"
+      if [ -s "${_igPend}" ]; then
+        _igLeft=""
+        for _igU in $(cat "${_igPend}" 2>/dev/null); do
+          case "${_igU}" in "${_USER}"|"${_USER}".*) ;; *) continue ;; esac
+          getent passwd "${_igU}" >/dev/null 2>&1 || continue
+          if [ "$(id -gn ${_igU} 2>/dev/null)" = "users" ]; then
+            _ig_defer_clear "${_igU}"
+            continue
+          fi
+          getent group users | cut -d: -f4 | tr ',' '\n' | grep -qxF "${_igU}" || usermod -aG users ${_igU}
+          _set_primary_group ${_igU} users
+          _pgRc=$?
+          if [ "${_pgRc}" = "2" ]; then
+            _ig_defer_note "${_igU}" users "Identity ${_igU} has processes running; its move back to primary group users (a revert instgrp could not finish) waits for an idle pass"
+            _igLeft="${_igLeft} ${_igU}"
+          elif [ "$(id -gn ${_igU} 2>/dev/null)" = "users" ]; then
+            _ig_defer_clear "${_igU}"
+            gpasswd -d ${_igU} ${_USER} >/dev/null 2>&1
+            echo "Identity ${_igU} moved back to primary group users; the revert of ${_USER} instgrp left unfinished is completed for it"
+            echo "$(date '+%Y-%m-%d %H:%M:%S') ${_USER}: ${_igU} primary group -> users (revert finished by the limited-shell worker)" >> /var/log/boa/instgrp.log
+          else
+            echo "ALERT: ${_igU} could not be moved back to primary group users; left on $(id -gn ${_igU} 2>/dev/null), retried next pass"
+            _igLeft="${_igLeft} ${_igU}"
+          fi
+        done
+        if [ -z "${_igLeft}" ]; then
+          rm -f "${_igPend}"
+          echo "$(date '+%Y-%m-%d %H:%M:%S') ${_USER}: PENDING MOVE BACK COMPLETED by the limited-shell worker (a revert, or the rollback of a failed convert); instgrp revert ${_USER} removes the group, instgrp convert ${_USER} converts again" >> /var/log/boa/instgrp.log
+          mkdir -p /var/log/boa 2>/dev/null
+          echo "$(date) LTD instgrp: every identity of ${_USER} is back on users (a revert, or the rollback of a failed convert, found it in use); instgrp revert ${_USER} removes the group, instgrp convert ${_USER} converts again" \
+            >> /var/log/boa/manage_ltd.incident.log
+        fi
+      elif [ -n "${_igGid}" ]; then
+        # log/ is oN's: the record is read without following a link or
+        # blocking on a FIFO (bounded), inside the real directory
+        if _ltd_read_in "${_igMark%/*}" "${_igMark##*/}" | grep -q " gid=${_igGid}$"; then
+          _igConv=YES
+        elif [ "$(id -gn ${_USER} 2>/dev/null)" = "${_USER}" ] || [ "$(id -gn ${_USER}.ftp 2>/dev/null)" = "${_USER}" ]; then
+          _igConv=YES
+        fi
+      fi
+      if [ "${_igConv}" = "YES" ]; then
+        for _igU in ${_USER} ${_USER}.ftp; do
+          getent passwd "${_igU}" >/dev/null 2>&1 || continue
+          if [ "$(id -gn ${_igU} 2>/dev/null)" = "${_USER}" ]; then
+            # Already there (a move instgrp or an earlier pass finished): no
+            # deferral is open for it any more.
+            _ig_defer_clear "${_igU}"
+            continue
+          fi
+          if ! getent group users | cut -d: -f4 | tr ',' '\n' | grep -qxF "${_igU}"; then
+            usermod -aG users ${_igU}
+          fi
+          if getent group users | cut -d: -f4 | tr ',' '\n' | grep -qxF "${_igU}"; then
+            _set_primary_group ${_igU} ${_USER}
+            _pgRc=$?
+            if [ "${_pgRc}" = "2" ]; then
+              _ig_defer_note "${_igU}" "${_USER}" "Identity ${_igU} has processes running; its move back to primary group ${_USER} waits for an idle pass"
+            elif [ "$(id -gn ${_igU} 2>/dev/null)" = "${_USER}" ] \
+              && id -nG ${_igU} 2>/dev/null | tr ' ' '\n' | grep -qxF users; then
+              # Listed as a member too: provision's membership test reads
+              # the group database, where a primary group never shows.
+              getent group ${_USER} | cut -d: -f4 | tr ',' '\n' | grep -qxF "${_igU}" || gpasswd -a ${_igU} ${_USER} >/dev/null 2>&1
+              _ig_defer_clear "${_igU}"
+              echo "Identity ${_igU} moved back to primary group ${_USER}"
+            elif [ "$(id -gn ${_igU} 2>/dev/null)" = "${_USER}" ]; then
+              if _set_primary_group ${_igU} users; then
+                echo "ALERT: ${_igU} lost group users on the primary move, reverted to users"
+              else
+                echo "ALERT: ${_igU} lost group users on the primary move and could not be reverted yet; retried next pass"
+              fi
+            else
+              echo "ALERT: ${_igU} could not be moved to primary group ${_USER}; left on $(id -gn ${_igU} 2>/dev/null)"
+            fi
+          fi
+        done
+      fi
+      # Group owning this account's tree, re-derived every iteration so no
+      # value carries over to the next account. Falls back to the box-wide
+      # default on an account that has no private group.
+      # While a revert is unfinished the account identity itself is usually
+      # the one still on the account's group, which _acct_group would read as
+      # converted: this pass then writes and moves with the box-wide group,
+      # as the revert intends, instead of pushing the sub-users back onto it.
+      if [ -s "${_igPend}" ]; then
+        _usrGroup=users
+      else
+        _usrGroup=$(_acct_group "${_USER}")
+      fi
+      _ctlGroup=$(_ltd_ctl_group "${_USER}" "${_usrGroup}")
+      # An account that holds its own web group, or is converted onto one an
+      # identity outside it holds too (_web_group_conv): its backend user
+      # (provision's membership test reads the group database), its SFTP user
+      # and every pool user are listed in it, healed every pass.
+      _T_WGS=$(_web_group_state "${_USER}")
+      if [ "${_T_WGS##* }" = "wg-${_USER}" ] \
+        && { [ "${_T_WGS%% *}" = "held" ] || [ -n "$(_web_group_conv "${_USER}" "${_T_WGS}")" ]; }; then
+        for _igU in ${_USER} ${_USER}.ftp $(getent passwd | cut -d: -f1 \
+          | grep -E "^${_USER}(\.[0-9]+)?\.web$"); do
+          getent passwd "${_igU}" > /dev/null 2>&1 || continue
+          _ltd_wg_grant "${_igU}" "${_T_WGS##* }" \
+            || echo "ALERT: ${_igU} could not be listed in ${_T_WGS##* }"
+        done
+      fi
+      _ltd_wg_witness "${_USER}"
+      echo "_USER is == ${_USER} == at _manage_user"
+      if getent group allow-snail >/dev/null 2>&1 && \
+        ! id -nG "${_USER}" 2>/dev/null | tr ' ' '\n' | grep -qxF "allow-snail"; then
+        usermod -aG allow-snail "${_USER}"
+      fi
+      _WEB="${_USER}.web"
+      _dscUsr="/data/disk/${_USER}"
+      _ltd_plan_stamp "${_dscUsr}"
+      _octInc="${_dscUsr}/config/includes"
+      _octTpl="${_dscUsr}/.drush/sys/provision/http/Provision/Config/Nginx"
+      if [ -e "${_dscUsr}/log/imported.pid" ] \
+        && [ -e "${_dscUsr}/log/post-merge-fix.pid" ]; then
+        # src/ and log/ are oN's: each marker is read and removed inside the
+        # real log/ and written fresh inside the real src/
+        for _mvPid in imported exported hmpathfix post-merge-fix; do
+          _ltd_in_real_dir "${_dscUsr}/src" _ltd_log_marker_to_src "${_mvPid}.pid"
+        done
+      fi
+      # Composer project leftovers at the account root, and a vendor/ directly
+      # in ~/static, can break Aegir backend tasks and the D8+ sites below
+      # them: removed unless rector.php marks a Rector workspace. Composer's
+      # own home and cache stay: Aegir tasks and builds run Composer as this
+      # user, and a pass that removed them under a running Composer failed its
+      # install.
+      if [ ! -e "${_dscUsr}/rector.php" ]; then
+        rm -f ${_dscUsr}/*.php* &> /dev/null
+        rm -f ${_dscUsr}/composer.lock &> /dev/null
+        rm -f ${_dscUsr}/composer.json &> /dev/null
+        rm -f -r ${_dscUsr}/vendor &> /dev/null
+        # oN can swap static/ itself: vendor/ goes only from the real one
+        _ltd_in_real_dir "${_dscUsr}/static" rm -f -r -- ./vendor &> /dev/null
+      fi
+      # every root write under /data/disk/<oN> refuses a path with a link on
+      # it (BOA makes none at these names): say so once a day, not silently
+      for _pinChk in static log config tools clients src; do
+        if [ -L "${_dscUsr}/${_pinChk}" ] \
+          && [ -z "$(find "/var/log/boa/manage-ltd-pinlink-${_USER}-${_pinChk}.alerted" -mmin -1440 2> /dev/null)" ]; then
+          _ltd_notice "pinlink-${_USER}-${_pinChk}" \
+            "${_dscUsr}/${_pinChk} is a link: the ltd worker writes nothing there" \
+            "BOA makes no link at this name; put the real directory back"
+        fi
+      done
+      _ltd_in_real_dir "${_dscUsr}/.drush" _ltd_drush_alias_modes &> /dev/null
+      _ltd_in_real_dir "${_dscUsr}/.drush/sites" _ltd_drush_yml_modes &> /dev/null
+      # config/ is oN's: the tree is walked from inside the real directory
+      # and every mode goes through a handle that never follows a link (a
+      # link at passwords.d/<x> would have made its target world-readable).
+      # nginx (www-data) opens the basic auth password files on every
+      # request, so the path to them and the files themselves get their
+      # final modes in one step, never 0700/0600 first.
+      _ltd_in_real_dir "${_dscUsr}/config/server_master" \
+        find . -type d ! -path . ! -path ./nginx ! -path ./nginx/passwords.d \
+        -execdir perl -e "${_LTD_FCHMOD_PL}" d 0700 {} + &> /dev/null
+      _ltd_in_real_dir "${_dscUsr}/config/server_master" \
+        find . -type f ! \( -path './nginx/passwords.d/*' ! -path './nginx/passwords.d/*/*' \) \
+        -execdir perl -e "${_LTD_FCHMOD_PL}" f 0600 {} + &> /dev/null
+      _ltd_in_real_dir "${_dscUsr}/config" \
+        perl -e "${_LTD_FCHMOD_PL}" d +0555 . &> /dev/null
+      _ltd_in_real_dir "${_dscUsr}/config/server_master" \
+        perl -e "${_LTD_FCHMOD_PL}" d 0755 . ./nginx &> /dev/null
+      _ltd_in_real_dir "${_dscUsr}/config/server_master/nginx" \
+        _ltd_basic_auth_dir_here "${_USER}"
+      _ltd_in_real_dir "${_dscUsr}/config/server_master/nginx/passwords.d" \
+        _ltd_basic_auth_modes_here "${_USER}"
+      # .tmp is oN's to swap too: a link there always takes this block, which
+      # strips it (a stamp read through the link could skip it), and every
+      # remove, mode and stamp happens inside the real directory
+      # Only root's own stamp counts: a fresh .tmp is group-writable.
+      if [ -L "${_dscUsr}/.tmp" ] \
+        || [ "$(stat -c %u -- "${_dscUsr}/.tmp/.ctrl.${_tRee}.${_xSrl}.pid" 2> /dev/null)" != "0" ]; then
+        _ltd_in_real_dir "${_dscUsr}/.drush" _ltd_drush_cache_drop "${_USER}"
+        _desymlink_planted "${_dscUsr}/.tmp"
+        mkdir -p ${_dscUsr}/.tmp
+        if _ltd_in_real_dir "${_dscUsr}/.tmp" \
+          _ltd_own_dir_here "${_USER}:${_usrGroup}" 02755 YES; then
+          _ltd_in_real_dir "${_dscUsr}/.tmp" \
+            _ltd_stamp_put ".ctrl.${_tRee}.${_xSrl}.pid" "OK"
+        else
+          echo "ALERT: ${_dscUsr}/.tmp is not ${_USER}'s own directory; left as it was"
+        fi
+      fi
+      _prune_psr_log_stash "${_dscUsr}"
+      # On an account still on the box-wide group ~/static is group `users`,
+      # which every co-tenant's .ftp login is in: it gets the sticky bit and
+      # control/ loses any write but the account's own (_ltd_ctrl_shut),
+      # before anything below reads it. Strip a plant unconditionally:
+      # gating this on a stamp INSIDE the link lets a target that already
+      # carries a matching stamp skip the guard for the whole pass. oN can
+      # swap static/ itself, so the strip and the mkdir act only inside the
+      # real static/.
+      _ltd_ctrl_gate_guard "${_USER}"
+      _ltd_ctrl_shut "${_USER}"
+      _ltd_in_real_dir "${_dscUsr}/static" _desymlink_planted ./control
+      if [ ! -e "${_dscUsr}/static/control/.ctrl.${_tRee}.${_xSrl}.pid" ] \
+        && [ -e "/home/${_USER}.ftp/clients" ]; then
+        _ltd_in_real_dir "${_dscUsr}/static" mkdir -p ./control
+        _ltd_in_real_dir "${_dscUsr}/static/control" _ltd_ctrl_init
+        # the hand-over gives the tree the control group: closed again
+        _ltd_ctrl_shut "${_USER}"
+      fi
+      # Nothing below acts on a control/ that is not the account's own
+      # (_acct_ctrl_own): the account's PHP, pools, per-site and per-platform
+      # pins, New Relic and its logins' tools stay as they are, never set as
+      # if its files were gone.
+      _ltdCtrlOwn=YES
+      if ! _ltdCtrlWhy=$(_acct_ctrl_own "${_USER}"); then
+        _ltdCtrlOwn=NO
+        echo "ALERT: ${_dscUsr}/static/control is not ${_USER}'s own (${_ltdCtrlWhy}); its control files are not read this pass"
+      fi
+      if [ "${_ltdCtrlOwn}" = "YES" ] \
+        && [ -e "${_dscUsr}/static/control/ssl-live-mode.info" ]; then
+        if [ -e "${_dscUsr}/tools/le/.ctrl/ssl-demo-mode.pid" ]; then
+          # tools/ is oN's: removed only inside the real directory
+          _ltd_rm_in "${_dscUsr}/tools/le/.ctrl" ssl-demo-mode.pid
+        fi
+      fi
+
+      # Blank the cnf-supplied values before the conditional source below:
+      # when an account has no cnf (a half-finished migration is exactly that
+      # state), the previous loop iteration's values would otherwise leak in
+      # and this account's pools would be sized and switched from a foreign
+      # account's config. The sibling night/10-account.sh blanks its trio for
+      # the same reason.
+      _PHP_FPM_VERSION=""
+      _PHP_CLI_VERSION=""
+      _PHP_FPM_WORKERS=""
+      _PHP_FPM_TIMEOUT=""
+      _PHP_FPM_MAX_CHILDREN_FORCE=""
+      _PHP_FPM_MEMORY_LIMIT_FORCE=""
+      _PHP_FPM_RAM_PCT=""
+      _PHP_FPM_CPU_FACTOR=""
+      _RESERVED_RAM=""
+      _CLIENT_EMAIL=""
+      _CLIENT_OPTION=""
+      _CLIENT_SUBSCR=""
+      _CLIENT_CORES=""
+      _STRONG_PASSWORDS=""
+      _PHP_FPM_USS_MB=""
+      _CHILD_MAX_FPM=""
+      _LTD_PLATFORM_CLIENTS=""
+      if [ ! -e "/root/.${_USER}.octopus.cnf" ]; then
+        echo "ALRT: no /root/.${_USER}.octopus.cnf for /data/disk/${_USER}"
+      fi
+      # shellcheck disable=SC1091
+      [ -e "/root/.${_USER}.octopus.cnf" ] && source /root/.${_USER}.octopus.cnf
+
+      _THIS_HM_PLR=$(_ltd_read_in "${_dscUsr}/.drush" hostmaster.alias.drushrc.php \
+        | grep "root'" \
+        | cut -d: -f2 \
+        | awk '{ print $3}' \
+        | sed "s/[\,']//g" 2>&1)
+      # oN owns its alias and could point it anywhere: only one of the
+      # account's own hostmaster platforms is looked at
+      if [[ "${_THIS_HM_PLR}" != "${_dscUsr}/aegir/distro/"* ]] \
+        || [[ ! "${_THIS_HM_PLR#"${_dscUsr}/aegir/distro/"}" =~ ^[0-9]+$ ]]; then
+        _THIS_HM_PLR=""
+      fi
+      if [ -e "${_THIS_HM_PLR}/modules/path_alias_cache" ] \
+        && [ -x "/opt/tools/drush/8/drush/drush.php" ]; then
+        if [ -x "/opt/php56/bin/php" ] && [ "${_ltdCtrlOwn}" = "YES" ]; then
+        _ltd_ctrl_put cli.info 5.6
+        fi
+      fi
+      # before the panel's pool and dispatcher move to this pass's PHP
+      _ltd_hm_core_heal "${_THIS_HM_PLR}"
+      _nrCheck=
+      _ltdNgxReloaded=
+      # per account: what the pass decided and applied for the previous
+      # account never carries over
+      _PHP_SV=
+      _ltdVrnHeld=NO
+      _ltdNrHeld=NO
+      _ltdOwnNgx=
+      _ltdOwnFpm=
+      _ltd_fpm_multi_mode
+      _ltdNrSet=
+      _ltdNrOwn=
+      _ltdNgxTestFail=
+      [ "${_ltdCtrlOwn}" = "YES" ] && _ltd_nr_decide
+      _ltdNgxFpBefore="$(_ltd_ngx_fpm_fp)"
+      [ "${_ltdCtrlOwn}" = "YES" ] && _switch_php
+      if [ "${_ltdCtrlOwn}" = "YES" ] && [ -z ${_nrCheck} ]; then
+        if [ -z ${_PHP_SV} ]; then
+          _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
+          if [ -z "${_PHP_SV}" ]; then
+            _PHP_SV=84
+          fi
+        fi
+        # the pools' own mode test: without tools/le the account runs its
+        # single pool, multi-fpm.info or not
+        if [ "${_ltdFpmMulti:-}" = "YES" ] || { [ -z "${_ltdFpmMulti:-}" ] \
+          && [ -f "${_dscUsr}/static/control/multi-fpm.info" ] && [ -d "${_dscUsr}/tools/le" ]; }; then
+          _PHP_M_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
+          for m in ${_PHP_M_V}; do
+            if [ -x "/opt/php${m}/bin/php" ] \
+              && [ -e "/opt/php${m}/etc/pool.d/${_USER}.${m}.conf" ]; then
+              _switch_newrelic ${m} ${_USER}.${m} 1
+            fi
+          done
+        else
+          if [ -x "/opt/php${_PHP_SV}/bin/php" ] \
+            && [ -e "/opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf" ]; then
+            _switch_newrelic ${_PHP_SV} ${_USER} 1
+          fi
+        fi
+        # the key in force now, unless a change of it waits
+        [ "${_ltdNrHeld}" = "YES" ] || _ltd_applied_put nr "${_ltdNrUse}"
+      fi
+      if [ "${_ltdCtrlOwn}" = "YES" ]; then
+        _site_socket_inc_gen
+        _ltd_fpm_plat_gen
+        # one reload for this pass's include changes, before the page check
+        _ltd_ngx_pass_reload
+        _ltd_fpm_core_check
+        _ltd_fpm_plat_skip_put
+        _ltd_fpm_cut_notice
+      fi
+      # what the login made in control/ during this pass, and anything the
+      # hand-overs above left writable by others or by a group that is not
+      # the account's own, is closed again
+      _ltd_ctrl_shut "${_USER}"
+      _ltd_ngx_pass_reload
+      # the window of each kind starts with a change of the account's own
+      [ "${_ltdOwnNgx}" = "YES" ] && _ltd_rld_stamp nginx
+      [ "${_ltdOwnFpm}" = "YES" ] && _ltd_rld_stamp fpm
+      if [ -e "${_pthParentUsr}/clients" ] && [ ! -z ${_USER} ]; then
+        echo Managing Users for ${_pthParentUsr} Instance
+        # clients/ is oN's: a client name there can be a link to anywhere,
+        # so the removals run inside the real directories only; what stays
+        # because another user owns it is said once per pass, each entry once
+        _ltdLeft=$(_ltd_in_real_dir "${_pthParentUsr}/clients" _ltd_clients_sweep 2> /dev/null)
+        _ltdLeft=$(printf '%s\n' "${_ltdLeft}" | grep -E '^[0-9]+:[0-9]+$' | sort -u | grep -c .)
+        if [ "${_ltdLeft}" -gt 0 ]; then
+          echo "NOTE: ${_USER}: the clients sweep left ${_ltdLeft} entries owned by another user in place below ${_pthParentUsr}/clients"
+        fi
+        # dangling links go by a walk from inside the real directory (symlinks
+        # -r rebuilds absolute paths as it walks, so a name swapped
+        # meanwhile would redirect it)
+        _ltd_in_real_dir "${_pthParentUsr}/clients" find . -xtype l -delete &> /dev/null
+        if [ -d "/home/${_USER}.ftp" ]; then
+          _disable_chattr ${_USER}.ftp
+          _ltd_in_real_dir "/home/${_USER}.ftp" find . -xtype l -delete &> /dev/null
+          # Attached files mount = the SINGLE real mountpoint under /mnt (naming-agnostic).
+          # Fail-closed: empty when NONE or when MORE THAN ONE is mounted -- multi-mount
+          # is unsupported fleet-wide and cannot be disambiguated, so refuse to guess.
+          _mntPoint=$(_pd=$(stat -c '%d' /mnt 2>/dev/null); _n=0; _hit=; for _m in /mnt/*; do
+            [ -d "${_m}" ] || continue
+            if mountpoint -q "${_m}" 2>/dev/null \
+              || { [ -n "${_pd}" ] && [ "$(stat -c '%d' "${_m}" 2>/dev/null)" != "${_pd}" ]; }; then
+              _hit="${_m}"; _n=$((_n + 1))
+            fi
+          done; [ "${_n}" -eq 1 ] && printf '%s' "${_hit}"; :) &&
+          _MNT_STATIC_FILES="${_mntPoint}/files/${_USER}/static/files"
+          [ -n "${_mntPoint}" ] && echo "_mntPoint is == ${_mntPoint} == at _manage_user"
+          [ -n "${_mntPoint}" ] && echo "_MNT_STATIC_FILES is == ${_MNT_STATIC_FILES} == at _manage_user"
+          echo >> ${_THIS_LTD_CONF}
+          echo "[${_USER}.ftp]" >> ${_THIS_LTD_CONF}
+          [ -n "${_mntPoint}" ] && echo "path : ['/opt/user/gems/${_USER}.ftp', \
+                        '/opt/user/npm/${_USER}.ftp', \
+                        '${_MNT_STATIC_FILES}', \
+                        '${_dscUsr}/distro', \
+                        '${_dscUsr}/static', \
+                        '${_dscUsr}/backups', \
+                        '${_dscUsr}/clients']" \
+                        | fmt -su -w 2500 >> ${_THIS_LTD_CONF}
+          [ -z "${_mntPoint}" ] && echo "path : ['/opt/user/gems/${_USER}.ftp', \
+                        '/opt/user/npm/${_USER}.ftp', \
+                        '${_dscUsr}/distro', \
+                        '${_dscUsr}/static', \
+                        '${_dscUsr}/backups', \
+                        '${_dscUsr}/clients']" \
+                        | fmt -su -w 2500 >> ${_THIS_LTD_CONF}
+          _ltd_env_path_line "${_USER}.ftp" YES >> ${_THIS_LTD_CONF}
+          _manage_site_drush_alias_mirror
+          _manage_sec
+          _manage_sec_platform
+          if [ -d "/home/${_USER}.ftp/users" ]; then
+            # the main login owns users/ and every name in it: the owner and
+            # the modes are set inside the real directory, each store through
+            # a handle that never follows a link put at its name, and a hard
+            # link the main login put there is never handed over or chmoded
+            # and only what root or the account's identities own: another
+            # account's entry the login renamed in keeps its owner and mode,
+            # with everything below it, and is counted
+            _ltdKeyOwn=$(_acct_walk_uids "${_USER}") || _ltdKeyOwn=0
+            _ltd_in_real_dir "/home/${_USER}.ftp/users" \
+              _ltd_users_store_here "${_ltdKeyOwn}" "${_USER}.ftp:${_usrGroup}"
+          fi
+          if [ -d "/home/${_USER}.ftp/.ssh" ]; then
+            # an authorized_keys uploaded over SFTP (umask 0002) or written in
+            # a shell session arrives group-writable, and sshd's StrictModes
+            # then refuses every key in it: the key files stay owner-only, set
+            # through handles inside the real directory, like the private keys
+            _ltdKeyOwn=$(_acct_walk_uids "${_USER}") || _ltdKeyOwn=0
+            _ltd_in_real_dir "/home/${_USER}.ftp/.ssh" \
+              _ltd_chmod_own_here "${_ltdKeyOwn}" 600 ./authorized_keys ./authorized_keys2
+          fi
+          if [ ! -L "/home/${_USER}.ftp/static" ]; then
+            rm -f /home/${_USER}.ftp/{backups,clients,static}
+            ln -sfn ${_dscUsr}/backups /home/${_USER}.ftp/backups
+            ln -sfn ${_dscUsr}/clients /home/${_USER}.ftp/clients
+            ln -sfn ${_dscUsr}/static  /home/${_USER}.ftp/static
+          fi
+          if [ ! -e "/home/${_USER}.ftp/.tmp/.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+            # the main login's home is never immutable: inside ~/.drush and
+            # ~/.tmp root works only in the real directories, and removes
+            # only what root or the account's own users own
+            # (_ACCT_RM_OWN_PL): what another user put there stays
+            _ltdOwn=$(_acct_walk_uids "${_USER}") || _ltdOwn="0"
+            _ltdLeft=$(_ltd_in_real_dir "/home/${_USER}.ftp/.drush" \
+              perl -e "${_ACCT_RM_OWN_PL}" -- r "${_ltdOwn}" - ./cache 2> /dev/null)
+            if [ -L "/home/${_USER}.ftp/.tmp" ]; then
+              rm -f "/home/${_USER}.ftp/.tmp"
+            elif [ -d "/home/${_USER}.ftp/.tmp" ]; then
+              _ltdLeft="${_ltdLeft}"$'\n'"$(_ltd_in_real_dir "/home/${_USER}.ftp/.tmp" \
+                _ltd_rm_own_all_here "${_ltdOwn}")"
+            elif [ -e "/home/${_USER}.ftp/.tmp" ]; then
+              _ltdLeft="${_ltdLeft}"$'\n'"$(_ltd_in_real_dir "/home/${_USER}.ftp" \
+                perl -e "${_ACCT_RM_OWN_PL}" -- h "${_ltdOwn}" - ./.tmp 2> /dev/null)"
+            fi
+            _ltdLeft=$(printf '%s\n' "${_ltdLeft}" | grep -E '^[0-9]+:[0-9]+$' | sort -u | grep -c .)
+            if [ "${_ltdLeft}" -gt 0 ]; then
+              echo "NOTE: ${_USER}: the main login's ~/.drush/cache and ~/.tmp clean-up left ${_ltdLeft} entries owned by another user in place"
+            fi
+            mkdir -p /home/${_USER}.ftp/.tmp
+            # handed over and given its mode only when it is the main login's
+            # own or the empty one just made: a root-owned directory of the
+            # home renamed onto the name is left alone
+            if _ltd_in_real_dir "/home/${_USER}.ftp/.tmp" \
+              _ltd_own_dir_here "${_USER}.ftp:${_usrGroup}" 700 NO &> /dev/null; then
+              _ltd_in_real_dir "/home/${_USER}.ftp/.tmp" \
+                _ltd_stamp_put ".ctrl.${_tRee}.${_xSrl}.pid" "OK"
+            else
+              echo "ALERT: /home/${_USER}.ftp/.tmp is not ${_USER}.ftp's own directory; left as it was"
+            fi
+          fi
+          _enable_chattr ${_USER}.ftp
+          echo Done for ${_pthParentUsr}
+        else
+          echo Directory /home/${_USER}.ftp not available
+        fi
+        echo
+      else
+        echo Directory ${_pthParentUsr}/clients not available
+      fi
+      echo
+      _ltd_d9_files_here "${_USER}"
+    fi
+  done
+}
+
+###-------------SYSTEM-----------------###
+
+if [ ! -e "/home/.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+  chattr -i /home
+  chmod 0711 /home
+  chown root:root /home
+  rm -f /home/.ctrl.*
+  while IFS=':' read -r _login _pass _uid _gid _uname _homedir _shell; do
+    if [[ "${_homedir}" = **/home/** ]]; then
+      if [ -d "${_homedir}" ]; then
+        chattr -i ${_homedir}
+        chown ${_uid}:${_gid} ${_homedir} &> /dev/null
+        # ~/.ssh and ~/.tmp are the login's (web users' included) and it can
+        # swap either name or leave a hard link in either tree: each is
+        # unlocked from inside the real directory and handed over by a walk
+        # that changes a directory or a single-link regular file through its
+        # handle, never a hard link and never through a link, and only what
+        # root, the login or its account's identities own: what the login
+        # renamed in from another account's group-writable trees, or another
+        # account's directory at either name, keeps its owner, and is counted
+        _hOwn=$(_acct_walk_uids "${_login%%.*}") || _hOwn=0
+        _hOwn="${_hOwn},${_uid}"
+        _hLeft=""
+        if [ -d "${_homedir}/.ssh" ]; then
+          _ltd_in_real_dir "${_homedir}/.ssh" chattr -i .
+          _hLeft=$(_ltd_in_real_dir "${_homedir}/.ssh" \
+            _ltd_reown_own_here "${_hOwn}" "${_uid}:${_gid}" 2> /dev/null)
+        fi
+        if [ -d "${_homedir}/.tmp" ]; then
+          _ltd_in_real_dir "${_homedir}/.tmp" chattr -i .
+          _hLeft="${_hLeft}"$'\n'"$(_ltd_in_real_dir "${_homedir}/.tmp" \
+            _ltd_reown_own_here "${_hOwn}" "${_uid}:${_gid}" 2> /dev/null)"
+        fi
+        _hLeft=$(printf '%s\n' "${_hLeft}" | grep -E '^[0-9]+:[0-9]+$' | sort -u | grep -c .)
+        # this pass runs before the run's report is opened, once per
+        # release: its line goes to the incident log under /var/log/boa,
+        # which survives the nightly sweep of /var/backups/ltd and a
+        # release's refresh of the worker
+        if [ "${_hLeft}" -gt 0 ]; then
+          mkdir -p /var/log/boa
+          echo "$(date) NOTE: ${_login}: the release's ~/.ssh and ~/.tmp hand-over left ${_hLeft} entries owned by another user in place" \
+            >> /var/log/boa/manage_ltd.incident.log
+        fi
+        if [ -d "${_homedir}/.drush" ]; then
+          # a link at ~/.drush (a main login's home is never immutable) must
+          # not aim chattr at <target>/usr: locked inside the real directory
+          _ltd_in_real_dir "${_homedir}/.drush" _ltd_drush_lock_here
+        fi
+        if [[ ! "${_login}" =~ ".ftp"($) ]] \
+          && [[ ! "${_login}" =~ ".web"($) ]]; then
+          chattr +i ${_homedir}
+        fi
+      fi
+    fi
+  done < /etc/passwd
+  touch /home/.ctrl.${_tRee}.${_xSrl}.pid
+fi
+
+if [ ! -L "/usr/bin/MySecureShell" ] && [ -x "/usr/bin/mysecureshell" ]; then
+  mv -f /usr/bin/MySecureShell /var/backups/legacy-MySecureShell-bin
+  ln -sfn /usr/bin/mysecureshell /usr/bin/MySecureShell
+fi
+
+_NOW=$(date +%y%m%d-%H%M%S)
+_NOW=${_NOW//[^0-9-]/}
+[ -d "/var/backups/ltd/conf" ] || mkdir -p /var/backups/ltd/{conf,log,old}
+[ -d "/var/backups/ltd/log" ] || mkdir -p /var/backups/ltd/{conf,log,old}
+[ -d "/var/backups/ltd/old" ] || mkdir -p /var/backups/ltd/{conf,log,old}
+[ -d "/var/backups/zombie/deleted" ] || mkdir -p /var/backups/zombie/deleted
+_THIS_LTD_CONF="/var/backups/ltd/conf/lshell.conf.${_NOW}"
+# aegir2boa's own root state for the account $1 says its db-import, or the
+# revert of one, is unfinished: the dispatcher it held aside is still there,
+# a hold xmass carried here with a failover from the box the import ran on
+# stands (failover-hold) on a box that is no standby, or on any box with $2
+# promoted (a standby's own passes never act on it; a promotion's own steps,
+# which run before its marker goes, do), a revert marked itself started
+# (revert-db.started, cleared only once the revert's dispatcher is back), or
+# a step marker of the import stands with neither its done marker nor the
+# marker of its hand-back (written right before the import returns the
+# dispatcher).
+# Root's /var/backups/a2b only: a link on the way reads as no state, and so
+# does a state recorded for another account of the name (its uid, or its
+# home's inode or birth time, not the account's now; a birth time either
+# side does not know is not compared). The record's first line is read
+# whether or not a newline ends it; an empty record, or none, is the
+# account's own. One text wherever it is defined.
+_a2b_import_unfinished() {
+  local _b="/var/backups/a2b/${1}" _m _iu="" _ii _ib _n
+  case "${1}" in
+    ""|*[!a-z0-9-]*) return 1 ;;
+  esac
+  [ -d "${_b}" ] && [ ! -L "${_b}" ] && [ ! -L /var/backups/a2b ] || return 1
+  if [ -f "${_b}/identity" ] && [ ! -L "${_b}/identity" ]; then
+    read -r _iu _ii _ib _ < "${_b}/identity"
+  fi
+  if [ -n "${_iu}" ]; then
+    _n=$(stat -c '%i %W' "/data/disk/${1}" 2> /dev/null)
+    [ "${_iu}" = "$(id -u "${1}" 2> /dev/null)" ] && [ "${_ii}" = "${_n% *}" ] || return 1
+    [ "${_ib}" = "0" ] || [ "${_n#* }" = "0" ] || [ "${_ib}" = "${_n#* }" ] || return 1
+  fi
+  [ -e "${_b}/held-run-${1}" ] && return 0
+  [ -e "${_b}/failover-hold" ] && { [ "${2:-}" = "promoted" ] \
+    || { [ ! -e /root/.standby.cnf ] && [ ! -e /root/.standby.prep.cnf ]; }; } \
+    && return 0
+  [ -d "${_b}/markers" ] && [ ! -L "${_b}/markers" ] || return 1
+  [ -e "${_b}/markers/revert-db.started" ] && return 0
+  [ -e "${_b}/markers/import.db-import.done" ] && return 1
+  [ -e "${_b}/markers/dbimport.12.done" ] && return 1
+  for _m in "${_b}"/markers/dbimport.*.done; do
+    [ -e "${_m}" ] && return 0
+  done
+  return 1
+}
+# What to do about the unfinished aegir2boa import of the account $1 (one
+# _a2b_import_unfinished holds for), by what its root state says was cut
+# off: the one way out that state allows, or either. A revert cut off part
+# way (revert-db.started) is ended by the revert alone: a re-run of the
+# import would find its step markers and report a finished import on the
+# panel the revert restored. A hold xmass carried here with a failover
+# (failover-hold), with no dump transferred here, is ended by the route run
+# again toward this box, once the site databases the replication brought
+# from the cut-off import are dropped: the dumps and the pre-import
+# snapshot stayed on the box the import ran on. An import cut off before its pre-import
+# snapshot was complete (no dbimport.1.done) is ended by its re-run alone:
+# there is nothing to revert to. Anything else by either. One sentence, its
+# commands spelled out. One text wherever it is defined.
+_a2b_import_advice() {
+  local _b="/var/backups/a2b/${1}" _c="aegir2boa-stage2 import --account ${1}"
+  if [ -e "${_b}/markers/revert-db.started" ]; then
+    echo "A revert of it was cut off part way: finish the revert with ${_c} --revert-db-import (dry first, then with --live); a re-run of the import would report it finished on the panel the revert restored"
+  elif [ -e "${_b}/failover-hold" ] && [ ! -e "${_b}/src/hostmaster.sql" ]; then
+    echo "It came here with a failover from the box it ran on, where its dumps and pre-import snapshot stayed, so neither its re-run nor its revert can run here: run the route again toward this box, a fresh aegir2boa-stage2 export and transfer on its source; once that transfer has put its manifests here (${_b}/src/manifest/*.info), drop each database they name (A2BM_DBN) that already exists here, as the replication brought them from the cut-off import (boa-dbctl drop <database> --account ${1} where the account is switched to the database broker, DROP DATABASE as root otherwise: the import refuses a database that exists, and no reset reaches them), then ${_c} --route db-import here, dry first, then with --live"
+  elif [ ! -e "${_b}/markers/dbimport.1.done" ]; then
+    echo "It was cut off before its pre-import snapshot was complete, so there is nothing to revert to: finish it with ${_c} --route db-import (dry first, then with --live)"
+  else
+    echo "Finish it with ${_c} --route db-import, or undo it with ${_c} --revert-db-import (each dry first, then with --live)"
+  fi
+}
+# The freeze route. A db-import killed in its freeze window (SIGKILL, a
+# crash, a reboot) runs no EXIT trap and leaves aegir2boa's freeze marker,
+# log/proxied.pid, which keeps the account out of every Octopus, nightly
+# and limited-shell pass and its web group from converting. On a box armed
+# for the web group that is no standby, the marker goes a day after this
+# worker first sees it with no migration running. The half-imported panel
+# stays switched off while aegir2boa's state shows the import unfinished
+# (the Octopus pass skips the account, BOA.sh.txt keeps its dispatcher held
+# and the nightly runs nothing on the panel) until the import is re-run or
+# reverted, and while that state stands with none of it running the
+# operator is told once a day, with the one way out that state allows
+# (_a2b_import_advice). Any other marker (one the account made, a relay
+# record, an earlier release's freeze, one put by hand) is left as it is
+# and named once a day after its first day, with what to do about its
+# kind; a relay record beside relay evidence is a live relay and is not
+# named.
+#
+# ./proxied.pid in the current (real) log/, read through one handle that
+# never follows a link or blocks on a FIFO, the handle proven to be the
+# entry lstat saw: "a2b <dev>:<ino>:<mtime> <lines> <verb>" for aegir2boa's
+# own freeze (root's single-link regular file reading A2B-IMPORT-FREEZE, a
+# second line verb=<db-import|revert-db> pid=<n> pgid=<g> allowed; <verb>
+# is the one it names, "-" for a one-line freeze), "relay" for a relay
+# record (COMPLETE) that is root's single-link regular file, as xmass reads
+# one (a COMPLETE the account could have written is a file), else the
+# entry's kind: link, dir, special or file. Nothing when there is none.
+# $1 = root's uid.
+_LTD_FREEZE_CLASS_PL='use Fcntl;
+my ($ru) = @ARGV;
+my $n = "./proxied.pid";
+my @l = lstat($n);
+exit 0 unless @l;
+if (-l _) { print "link\n"; exit 0 }
+if (-d _) { print "dir\n"; exit 0 }
+if (! -f _) { print "special\n"; exit 0 }
+sysopen(my $h, $n, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or do { print "file\n"; exit 0 };
+my @s = stat($h);
+unless (@s && -f _ && $s[0] == $l[0] && $s[1] == $l[1]) { print "file\n"; exit 0 }
+my $d = "";
+sysread($h, $d, 4097);
+close($h);
+my @ln = split(/\n/, $d, -1);
+pop @ln if @ln && $ln[-1] eq "";
+if (@ln && $ln[0] eq "COMPLETE" && $s[4] == $ru && $s[3] == 1) { print "relay\n"; exit 0 }
+if (length($d) <= 4096 && $s[4] == $ru && $s[3] == 1 && (@ln == 1 || @ln == 2)
+  && $ln[0] eq "A2B-IMPORT-FREEZE"
+  && (@ln == 1 || $ln[1] =~ /^verb=(db-import|revert-db) pid=[1-9][0-9]* pgid=[1-9][0-9]*$/)) {
+  print "a2b $s[0]:$s[1]:$s[9] " . scalar(@ln) . " " . (@ln == 2 ? $1 : "-") . "\n";
+  exit 0;
+}
+print "file\n";
+exit 0'
+# Unlink ./proxied.pid only while it is still the freeze classified: root's
+# single-link regular file of that dev:ino:mtime. $1 = root's uid, $2 = the
+# dev:ino:mtime.
+_LTD_FREEZE_RM_PL='my ($ru, $id) = @ARGV;
+my @l = lstat("./proxied.pid");
+exit 1 unless @l && -f _ && $l[4] == $ru && $l[3] == 1 && "$l[0]:$l[1]:$l[9]" eq $id;
+unlink("./proxied.pid") or exit 1;
+exit 0'
+# A relay record's other half in the current (real) log/: root's
+# single-link migproxy.cnf of the source role, read without following a
+# link or blocking on a FIFO. $1 = root's uid.
+_LTD_FREEZE_REC_PL='use Fcntl;
+my ($ru) = @ARGV;
+sysopen(my $h, "./migproxy.cnf", O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or exit 1;
+my @s = stat($h);
+exit 1 unless @s && -f _ && $s[3] == 1 && $s[4] == $ru;
+my $d = "";
+sysread($h, $d, 1048576);
+exit(($d =~ /^_MIG_ROLE=source$/m) ? 0 : 1)'
+# A proxy vhost in the current (real) vhost.d, by the marks xoct's proxy
+# templates carry: every regular file but a dot file (a saved original),
+# read through one handle, 1 MiB at most each, never through a link.
+_LTD_FREEZE_PROXY_PL='use Fcntl;
+opendir(my $d, ".") or exit 2;
+for my $n (readdir($d)) {
+  next if $n =~ /^\./;
+  my @l = lstat("./$n");
+  next unless @l && -f _;
+  sysopen(my $h, "./$n", O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
+  my @s = stat($h);
+  next unless @s && -f _ && $s[0] == $l[0] && $s[1] == $l[1];
+  my $c = "";
+  sysread($h, $c, 1048576);
+  close($h);
+  exit 0 if index($c, "Plain HTTP proxy (START)") >= 0 || index($c, "Secure HTTPS proxy") >= 0;
+}
+exit 1'
+# The process table, read once a pass, of the processes whose real and
+# effective uid are root's only (a tenant sets its own argv), 64 KiB of each
+# file at most: "tool <name>" for each of aegir2boa-stage2, xoct, xcopy,
+# xmass and xtrim a process runs (the name in any word of its argv, so
+# bash -x or sh -c counts), "stage2 <account>" for each account a stage 2
+# run names (--account and the next argv element, read whole and cut down
+# as stage 2 cuts down its own --account), "held <account>" for each
+# account a process holds a file or its working directory under $2
+# (/var/backups/a2b: a dump load the killed import orphaned counts). $1 =
+# the proc root.
+_LTD_FREEZE_PS_PL='my ($p, $base) = @ARGV;
+opendir(my $d, $p) or exit 2;
+my (%t, %s, %a);
+for my $n (readdir($d)) {
+  next unless $n =~ /^[0-9]+$/ && $n != $$;
+  my $st = "";
+  if (open(my $sh, "<", "$p/$n/status")) {
+    sysread($sh, $st, 65536);
+    close($sh);
+  }
+  next unless $st =~ /^Uid:\s+0\s+0\s/m;
+  if (open(my $h, "<", "$p/$n/cmdline")) {
+    my $c = "";
+    sysread($h, $c, 65536);
+    close($h);
+    my @w = grep { length } split(/[\0\s]+/, $c);
+    my $s2 = 0;
+    for my $w (@w) {
+      (my $x = $w) =~ s{.*/}{};
+      next unless $x =~ /^(aegir2boa-stage2|xoct|xcopy|xmass|xtrim)$/;
+      $t{$x} = 1;
+      $s2 = 1 if $x eq "aegir2boa-stage2";
+    }
+    my @e = split(/\0/, $c);
+    for my $i (0 .. $#e - 1) {
+      next unless $s2 && $e[$i] eq "--account";
+      (my $z = $e[$i + 1]) =~ tr/a-z0-9//cd;
+      $s{$z} = 1 if $z =~ /^[a-z]/;
+    }
+  }
+  my @f = ("$p/$n/cwd");
+  if (opendir(my $fd, "$p/$n/fd")) {
+    push @f, map { "$p/$n/fd/$_" } grep { /^[0-9]+$/ } readdir($fd);
+    closedir($fd);
+  }
+  for my $f (@f) {
+    my $r = readlink($f);
+    next unless defined $r && index($r, "$base/") == 0;
+    $a{$1} = 1 if substr($r, length($base) + 1) =~ m{^([^/]+)};
+  }
+}
+print "tool $_\n" for sort keys %t;
+print "stage2 $_\n" for sort keys %s;
+print "held $_\n" for sort keys %a;
+exit 0'
+# BOA's own copy of Drupal 7 from 7.79.1 to 7.92.1 (its VERSION reads 7.79 to
+# 7.92) and of Pressflow 6 at 6.59.1 and 6.60.1 declare _drupal_error_handler()
+# with a required fifth argument that PHP 8 no longer passes: on PHP 8 the first
+# warning or deprecation (on 8.4, one while a Drupal 7 core loads its phar
+# wrapper, on every request) throws an ArgumentCountError and the request
+# dies before Drupal can log it. For these cores that line is all that stands
+# between them and PHP 8. BOA's own platforms share their core from the store,
+# /data/all/000/core, so every such core there gets that argument made
+# optional ($context = NULL), as the later releases did, before any pool of
+# this pass switches PHP: a box upgraded from an older release, a core a
+# migration brought along, a site moved to PHP 8. Only that exact line
+# changes, only in a store core whose directories and file are root's, none
+# of them a link; one that is not wholly root's is left alone and reported. A
+# core older than these (Drupal 7 below 7.79, Drupal 6 below 6.58) needs more
+# than one line on PHP 8 and is not touched: the page check below names its
+# sites. A core in an account's own platform is never touched either: websh
+# refuses its drush lines on PHP 8 and says what to change. A store that is
+# not wholly root's may hold any name, so the files are read only when they
+# are regular and no link, never past the first megabyte, and time-bound.
+_ltd_store_core_head() {
+  timeout -k 2 10 dd if="${1}" iflag=nofollow,nonblock,fullblock bs="${2}" count=1 \
+    status=none 2> /dev/null
+}
+_ltd_store_core_heal() {
+  local _c _b _m _v _o _ok _why
+  _o='function _drupal_error_handler($error_level, $message, $filename, $line, $context) {'
+  for _c in /data/all/000/core/drupal-7.* /data/all/000/core/pressflow-6.*; do
+    case "${_c##*/}" in
+      drupal-7.*) _b="${_c}/includes/bootstrap.inc"; _m="${_b}" ;;
+      *)
+        _b="${_c}/includes/common.inc"; _m="${_c}/modules/system/system.module"
+        [ -f "${_m}" ] && [ ! -L "${_m}" ] && [ ! -L "${_c}/modules" ] \
+          && [ ! -L "${_c}/modules/system" ] || continue
+        ;;
+    esac
+    [ -f "${_b}" ] && [ ! -L "${_b}" ] && [ ! -L "${_c}" ] && [ ! -L "${_c}/includes" ] || continue
+    _ltd_store_core_head "${_b}" 1048576 | grep -qxF "${_o}" || continue
+    _v=$(_ltd_store_core_head "${_m}" 16384 \
+      | sed -n "s/^define('VERSION', '\([67]\.[0-9]*\)');.*/\1/p" | head -n 1)
+    case "${_c##*/}" in
+      drupal-7.*) [[ "${_v}" =~ ^7\.([0-9]+)$ ]] && [ "${BASH_REMATCH[1]}" -ge 79 ] && [ "${BASH_REMATCH[1]}" -le 92 ] || continue ;;
+      *) [[ "${_v}" =~ ^6\.(58|59|60)$ ]] || continue ;;
+    esac
+    _ok=NO
+    _why="is left alone: a directory on its path, or the file, is not root's"
+    [ "$(stat -L -c %u "${_c%/*/*}" "${_c%/*}" "${_c}" "${_c}/includes" "${_b}" 2> /dev/null | sort -u)" = "0" ] && _ok=YES
+    if [ "${_ok}" = "YES" ]; then
+      sed -i 's/^function _drupal_error_handler(\$error_level, \$message, \$filename, \$line, \$context) {$/function _drupal_error_handler($error_level, $message, $filename, $line, $context = NULL) {/' "${_b}" &> /dev/null
+      _ltd_store_core_head "${_b}" 1048576 | grep -qxF "${_o}" || {
+        echo "INFO: shared core ${_c}: error handler made safe for PHP 8"
+        continue
+      }
+      _why="cannot be rewritten (immutable or read-only?)"
+    fi
+    _ltd_notice_daily "store-core-heal-${_c##*/}" \
+      "the shared core ${_c} keeps an error handler PHP 8 cannot call" \
+      "its sites fail on PHP 8: ${_b} ${_why}"
+  done
+}
+# The page check's inputs, as one sum: the account's site aliases, its FPM
+# includes, its default version ($1), the versions its sites can be moved to
+# ($3) and those installed ($4), its lasting command-line choices (what
+# cli.info and cli-per-platform.info hold: the worker writes cli.info again
+# on some accounts every pass, the same value; a link at either name, which
+# websh follows, by its target's stat), the files that decide each
+# site it judged last time ($2 = their roots, one a line), taken through a
+# link as the judge reads them, so that a change to a site's code is seen on
+# the next pass, and the check's own code (without its comments), so that a
+# new worker judges every account again on its first pass instead of a day
+# later.
+_ltd_fpm_sig() {
+  local _f _fs=()
+  while IFS= read -r _f; do
+    [[ "${_f}" == /* ]] || continue
+    _fs+=("${_f}/includes/bootstrap.inc" "${_f}/includes/common.inc" \
+      "${_f}/modules/system/system.module" "${_f}/core/lib/Drupal.php" \
+      "${_f}/core/includes/bootstrap.inc" "${_f}/vendor/composer/platform_check.php" \
+      "${_f%/*}/vendor/composer/platform_check.php")
+  done < <(head -n 1000 "${2}" 2> /dev/null)
+  {
+    stat -c '%n %i %Y %s' -- "${_dscUsr}"/.drush/*.alias.drushrc.php 2> /dev/null
+    for _f in cli.info cli-per-platform.info; do
+      if [ -L "${_dscUsr}/static/control/${_f}" ]; then
+        timeout -k 2 10 stat -L -c '%n %i %Y %s' -- "${_dscUsr}/static/control/${_f}" 2> /dev/null
+      else
+        _ltd_ctrl_read "${_f}" | head -c 65536 | md5sum
+      fi
+    done
+    _ltd_ngx_fpm_fp
+    echo "${1} ${3} ${4}"
+    [ "${#_fs[@]}" -gt 0 ] && timeout -k 2 20 stat -L -c '%n %i %Y %s' -- "${_fs[@]}" 2> /dev/null
+    declare -f _ltd_fpm_head _ltd_fpm_why _ltd_fpm_served _ltd_fpm_judge _ltd_fpm_judge_as \
+      _ltd_fpm_nearest _ltd_fpm_cli_key _ltd_cpp_key_norm _ltd_cpp_key_path _ltd_fpm_usable \
+      _ltd_fpm_prune _ltd_fpm_mrow _ltd_fpm_move_fpm _ltd_fpm_move_cli _ltd_fpm_plat_notes \
+      _ltd_fpm_core_check
+  } | md5sum | cut -d' ' -f1
 }
 # The process table of this pass, read once and within a minute: a read
 # that fails or runs out of time counts as an import of every account

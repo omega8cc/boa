@@ -353,32 +353,6 @@ _oom_kill_top_offender() {
   exit 0
 }
 
-_system_oom_detection() {
-  # Pressure is judged from MemAvailable, which already counts reclaimable
-  # cache, and it must be SUSTAINED: one low sample is how a brief allocation
-  # burst that the kernel absorbs on its own used to trigger a whole-stack
-  # teardown. Stand down the moment any sample recovers.
-  local _pct_free _try
-  _check_system_ram
-  case "${_ram_usage_percent}" in ''|*[!0-9]*) return 0 ;; esac
-  _pct_free=$(( 100 - _ram_usage_percent ))
-  if [ "${_pct_free}" -le 5 ]; then
-    for _try in 1 2; do
-      sleep 5
-      _check_system_ram
-      case "${_ram_usage_percent}" in ''|*[!0-9]*) return 0 ;; esac
-      _pct_free=$(( 100 - _ram_usage_percent ))
-      [ "${_pct_free}" -gt 5 ] && return 0
-    done
-    _oom_kill_top_offender "RAM ${_pct_free}pct-free sustained"
-  elif [ "${_pct_free}" -le 10 ]; then
-    _CNT=$(pgrep -xc wkhtmltopdf)
-    if (( _CNT > 2 )); then
-      _wkhtmltopdf_php_cli_oom_kill "RAM ${_pct_free}pct-free"
-    fi
-  fi
-}
-
 # Function to calculate RAM usage percentage as an integer
 _calculate_ram_usage_percent() {
   _total_ram_kb=$1
@@ -405,6 +379,32 @@ _check_system_ram() {
 
   # Calculate RAM usage percentage
   _ram_usage_percent=$(_calculate_ram_usage_percent ${_total_ram_kb} ${_available_ram_kb})
+}
+
+_system_oom_detection() {
+  # Pressure is judged from MemAvailable, which already counts reclaimable
+  # cache, and it must be SUSTAINED: one low sample is how a brief allocation
+  # burst that the kernel absorbs on its own used to trigger a whole-stack
+  # teardown. Stand down the moment any sample recovers.
+  local _pct_free _try
+  _check_system_ram
+  case "${_ram_usage_percent}" in ''|*[!0-9]*) return 0 ;; esac
+  _pct_free=$(( 100 - _ram_usage_percent ))
+  if [ "${_pct_free}" -le 5 ]; then
+    for _try in 1 2; do
+      sleep 5
+      _check_system_ram
+      case "${_ram_usage_percent}" in ''|*[!0-9]*) return 0 ;; esac
+      _pct_free=$(( 100 - _ram_usage_percent ))
+      [ "${_pct_free}" -gt 5 ] && return 0
+    done
+    _oom_kill_top_offender "RAM ${_pct_free}pct-free sustained"
+  elif [ "${_pct_free}" -le 10 ]; then
+    _CNT=$(pgrep -xc wkhtmltopdf)
+    if (( _CNT > 2 )); then
+      _wkhtmltopdf_php_cli_oom_kill "RAM ${_pct_free}pct-free"
+    fi
+  fi
 }
 
 # (The per-minute drop_caches that lived here is gone. Evicting the box-wide
@@ -677,6 +677,29 @@ _dirmngr_too_many_instances_detection() {
   fi
 }
 
+# Every other daemon here the same way: alive when the pid its pidfile names
+# is running AND carries the daemon's process name (the kernel's comm). The
+# former process-name test read any command line mentioning the path -- an
+# editor, a grep, an ssh -c -- as the live daemon and skipped the start for
+# as long as the mention lived; a stale pidfile after a kill made that
+# permanent. The pidfile and the name are what each init script maintains.
+# The daemon runs as root or as its own service user: a recycled pid held by
+# an account's process named like the daemon is not the daemon.
+#   $1 = pidfile, $2 = process name, $3 = its service user (optional)
+_daemon_alive() {
+  local _p _u _s
+  [ -s "${1}" ] || return 1
+  _p=$(tr -dc '0-9' < "${1}")
+  [ -n "${_p}" ] || return 1
+  kill -0 "${_p}" 2>/dev/null || return 1
+  [ "$(cat "/proc/${_p}/comm" 2>/dev/null)" = "${2}" ] || return 1
+  _u=$(awk '/^Uid:/ { print $2 " " $3; exit }' "/proc/${_p}/status" 2> /dev/null)
+  [ "${_u}" = "0 0" ] && return 0
+  [ -n "${3}" ] || return 1
+  _s=$(id -u "${3}" 2> /dev/null) || return 1
+  [ "${_u}" = "${_s} ${_s}" ]
+}
+
 _ftpd_health_check_fix() {
   # A passive mirror holds FTPS down (2026-08-25 ruling: tenant denial): an
   # authenticated upload lands in the synced trees and permanently shadows
@@ -781,29 +804,6 @@ _lfd_alive() {
   # root's: a recycled pid held by an account's process titled "lfd" is not it
   [ "$(awk '/^Uid:/ { print $2 " " $3; exit }' "/proc/${_p}/status" 2> /dev/null)" = "0 0" ] || return 1
   grep -aq "lfd" "/proc/${_p}/cmdline" 2>/dev/null
-}
-
-# Every other daemon here the same way: alive when the pid its pidfile names
-# is running AND carries the daemon's process name (the kernel's comm). The
-# former process-name test read any command line mentioning the path -- an
-# editor, a grep, an ssh -c -- as the live daemon and skipped the start for
-# as long as the mention lived; a stale pidfile after a kill made that
-# permanent. The pidfile and the name are what each init script maintains.
-# The daemon runs as root or as its own service user: a recycled pid held by
-# an account's process named like the daemon is not the daemon.
-#   $1 = pidfile, $2 = process name, $3 = its service user (optional)
-_daemon_alive() {
-  local _p _u _s
-  [ -s "${1}" ] || return 1
-  _p=$(tr -dc '0-9' < "${1}")
-  [ -n "${_p}" ] || return 1
-  kill -0 "${_p}" 2>/dev/null || return 1
-  [ "$(cat "/proc/${_p}/comm" 2>/dev/null)" = "${2}" ] || return 1
-  _u=$(awk '/^Uid:/ { print $2 " " $3; exit }' "/proc/${_p}/status" 2> /dev/null)
-  [ "${_u}" = "0 0" ] && return 0
-  [ -n "${3}" ] || return 1
-  _s=$(id -u "${3}" 2> /dev/null) || return 1
-  [ "${_u}" = "${_s} ${_s}" ]
 }
 
 _lfd_health_check_fix() {

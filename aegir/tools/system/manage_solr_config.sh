@@ -198,21 +198,6 @@ _acct_put_here() {
   return 1
 }
 
-# Run "$@" inside the directory $1 as it resolves now, entered for real: $1
-# is never a link itself and resolves strictly below this account root, and
-# the resolved path is checked again once entered, so a name on the way
-# swapped for a link afterwards is no longer on the path. For the
-# alias-derived platform and site trees, which the per-site gates already
-# accept through a link on the way; the account's own log/, .drush/ and
-# config/ go through _acct_in_real_dir. Reads _usEr.
-_acct_in_resolved_dir() {
-  _in_resolved_dir acct "$@"
-}
-# The same for a site dir, which may also sit on the shared /data/all or
-# /data/disk/all store a legacy instance still hosts sites on.
-_site_in_resolved_dir() {
-  _in_resolved_dir site "$@"
-}
 _in_resolved_dir() {
   local _k="${1}" _d="${2%/}" _rd _rus
   shift 2
@@ -228,6 +213,21 @@ _in_resolved_dir() {
   ( cd -P -- "${_rd}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_rd}" ] && "$@" )
 }
 
+# Run "$@" inside the directory $1 as it resolves now, entered for real: $1
+# is never a link itself and resolves strictly below this account root, and
+# the resolved path is checked again once entered, so a name on the way
+# swapped for a link afterwards is no longer on the path. For the
+# alias-derived platform and site trees, which the per-site gates already
+# accept through a link on the way; the account's own log/, .drush/ and
+# config/ go through _acct_in_real_dir. Reads _usEr.
+_acct_in_resolved_dir() {
+  _in_resolved_dir acct "$@"
+}
+# The same for a site dir, which may also sit on the shared /data/all or
+# /data/disk/all store a legacy instance still hosts sites on.
+_site_in_resolved_dir() {
+  _in_resolved_dir site "$@"
+}
 # ./$1 in the current (pinned) directory replaced by the exact bytes $2, only
 # while ./$1 is a regular file below 1 MiB (so a bounded read saw all of it):
 # a fresh file with the owner, group and read/write bits of the file it
@@ -282,18 +282,6 @@ _ctrl_ini_add() {
   _acct_in_resolved_dir "${1%/*}" _acct_add_same_here "${1##*/}" "${2}"
 }
 
-_ctrl_in_stage_dir() {
-  # Root-only staging dir for the files root puts into an account's
-  # tenant-writable trees, on the same filesystem as those trees (they all
-  # live under the account root): ${_usEr}/.boa-ctrl, forced root:root 0700
-  # on every call, a link planted at the name removed rather than followed.
-  # oN owns the account root and can rename or replace any name in it, so
-  # the dir is made, fixed and checked only once entered for real, and "$@"
-  # runs inside it: ./name there is root's alone, whatever the account puts
-  # at .boa-ctrl meanwhile. Reads _usEr from the caller.
-  [ -n "${_usEr}" ] || return 1
-  _acct_in_real_dir "${_usEr}" _ctrl_stage_here "$@"
-}
 _ctrl_stage_here() {
   local _h _st
   _h="$(/bin/pwd -P)/.boa-ctrl"
@@ -306,6 +294,36 @@ _ctrl_stage_here() {
   [ "${_st%% *}" = "0" ] && [[ "${_st##* }" =~ ^[0-7]+$ ]] \
     && (( (8#${_st##* } & 8#077) == 0 )) || return 1
   "$@"
+}
+
+_ctrl_in_stage_dir() {
+  # Root-only staging dir for the files root puts into an account's
+  # tenant-writable trees, on the same filesystem as those trees (they all
+  # live under the account root): ${_usEr}/.boa-ctrl, forced root:root 0700
+  # on every call, a link planted at the name removed rather than followed.
+  # oN owns the account root and can rename or replace any name in it, so
+  # the dir is made, fixed and checked only once entered for real, and "$@"
+  # runs inside it: ./name there is root's alone, whatever the account puts
+  # at .boa-ctrl meanwhile. Reads _usEr from the caller.
+  [ -n "${_usEr}" ] || return 1
+  _acct_in_real_dir "${_usEr}" _ctrl_stage_here "$@"
+}
+# In the staging dir (the current one): the template ./$2 of the resolved
+# directory $1 put as a fresh file of the account's (0664), then renamed as
+# $3 into the destination directory held open on fd 9.
+_reseed_ctrl_ini_here() {
+  local _new
+  _new=$(mktemp ./ctrl.XXXXXX 2>/dev/null) || return 1
+  if ! ( cd -P -- "${1}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${1}" ] \
+    && _acct_read_plain_here "${2}" ) > "${_new}"; then
+    rm -f -- "${_new}"
+    return 1
+  fi
+  chown "${_HM_U}:${_HM_G:-users}" "${_new}" &> /dev/null
+  chmod 0664 "${_new}" &> /dev/null
+  mv -f -T -- "${_new}" "/proc/self/fd/9/${3}" &> /dev/null && return 0
+  rm -f -- "${_new}"
+  return 1
 }
 
 _reseed_ctrl_ini() {
@@ -367,47 +385,6 @@ _reseed_ctrl_ini() {
     _ctrl_in_stage_dir _reseed_ctrl_ini_here "${_rsd}" "${_src##*/}" "${_dst##*/}"
   )
 }
-# In the staging dir (the current one): the template ./$2 of the resolved
-# directory $1 put as a fresh file of the account's (0664), then renamed as
-# $3 into the destination directory held open on fd 9.
-_reseed_ctrl_ini_here() {
-  local _new
-  _new=$(mktemp ./ctrl.XXXXXX 2>/dev/null) || return 1
-  if ! ( cd -P -- "${1}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${1}" ] \
-    && _acct_read_plain_here "${2}" ) > "${_new}"; then
-    rm -f -- "${_new}"
-    return 1
-  fi
-  chown "${_HM_U}:${_HM_G:-users}" "${_new}" &> /dev/null
-  chmod 0664 "${_new}" &> /dev/null
-  mv -f -T -- "${_new}" "/proc/self/fd/9/${3}" &> /dev/null && return 0
-  rm -f -- "${_new}"
-  return 1
-}
-
-# The site's solr.php, put as _reseed_ctrl_ini puts an INI. The site dir is
-# the account's own, and the sites/ above it is group-writable on a ~/static
-# codebase, so solr.php or the site dir can be swapped for a link at any
-# time: a write by path would follow it, and the chown and chmod after it
-# would hand the target to the account. The file is made in the root-only
-# staging dir with its owner and mode set there, then renamed into the site
-# dir, entered for real and held open on fd 9, so nothing is written,
-# chowned or chmodded through a link. Reads _usEr, _HM_U and _HM_G.
-# $1 = the solr.php path, $2 = its text.
-_put_solr_info() {
-  [ -n "${_HM_U}" ] || return 1
-  case "${1}" in
-    /*/*) : ;;
-    *) return 1 ;;
-  esac
-  _acct_in_resolved_dir "${1%/*}" _put_solr_info_held "${1##*/}" "${2}"
-}
-# In the site dir (the current one, entered for real): held open on fd 9
-# while the staging dir is entered.
-_put_solr_info_held() {
-  exec 9< . || return 1
-  _ctrl_in_stage_dir _put_solr_info_here "${1}" "${2}"
-}
 # In the staging dir (the current one): the text $2 put as a fresh file of
 # the account's (0440), then renamed as $1 into the directory held open on
 # fd 9.
@@ -425,6 +402,29 @@ _put_solr_info_here() {
   return 1
 }
 
+# In the site dir (the current one, entered for real): held open on fd 9
+# while the staging dir is entered.
+_put_solr_info_held() {
+  exec 9< . || return 1
+  _ctrl_in_stage_dir _put_solr_info_here "${1}" "${2}"
+}
+# The site's solr.php, put as _reseed_ctrl_ini puts an INI. The site dir is
+# the account's own, and the sites/ above it is group-writable on a ~/static
+# codebase, so solr.php or the site dir can be swapped for a link at any
+# time: a write by path would follow it, and the chown and chmod after it
+# would hand the target to the account. The file is made in the root-only
+# staging dir with its owner and mode set there, then renamed into the site
+# dir, entered for real and held open on fd 9, so nothing is written,
+# chowned or chmodded through a link. Reads _usEr, _HM_U and _HM_G.
+# $1 = the solr.php path, $2 = its text.
+_put_solr_info() {
+  [ -n "${_HM_U}" ] || return 1
+  case "${1}" in
+    /*/*) : ;;
+    *) return 1 ;;
+  esac
+  _acct_in_resolved_dir "${1%/*}" _put_solr_info_held "${1##*/}" "${2}"
+}
 _desymlink_planted() {
   # Strip a tenant-planted symlink at a root-maintained control-INI path before
   # this iteration seeds/edits/appends it. rm -f on a symlink removes only the
@@ -488,16 +488,6 @@ _acct_down_real_here() {
   "$@"
 }
 
-# Run "$@" inside the site's upload dir, sites/<site>/files/solr, entered
-# for real: the platform root as it resolves now (_acct_in_resolved_dir),
-# then sites and the site one real directory at a time
-# (_acct_down_real_here), then files (_solr_in_files_here), then solr, a
-# real directory. Reads _Plr, _Dom and _usEr.
-_solr_in_upload_dir() {
-  [ -n "${_Plr}" ] && [ -n "${_Dom}" ] || return 1
-  _acct_in_resolved_dir "${_Plr}" _acct_down_real_here \
-    "sites/${_Dom}" _solr_in_files_here "$@"
-}
 # In the site dir (the current one, entered for real): run "$@" inside
 # ./files/solr. files is a real directory, or the link autosymlink puts
 # there into the account's files store, followed only where it resolves
@@ -540,22 +530,15 @@ _solr_in_files_here() {
   _acct_down_real_here solr "$@"
 }
 
-# The site's Solr config upload (sites/<site>/files/solr) is tenant-writable,
-# so any name in it can be a link, a hard link or a FIFO, and files/solr or
-# any directory above it can be swapped for a link. It is used only inside
-# that directory, entered for real (_solr_in_upload_dir). Every regular file
-# directly in it, the set find -maxdepth 1 -type f copied, that one of the
-# account's own identities owns (_solr_own_uids), is read bounded, through a
-# handle that checks the owner, never through a link and never blocked on a
-# FIFO, into the root-only directory $1, and only those copies are diffed
-# and published: no tenant path is ever diffed or copied by name. A hard
-# link (another file's bytes), a file of 8 MiB or more, one that changed
-# while read, more than 512 names or more than 32 MiB in all refuse the
-# whole set, so a core never gets part of one. Status 1 on a refusal. Reads
-# _Plr, _Dom and _usEr. $1 = the root-only staging dir.
-_solr_upload_stage() {
-  [ -d "${1}" ] || return 1
-  _solr_in_upload_dir _solr_upload_stage_here "${1}"
+# Run "$@" inside the site's upload dir, sites/<site>/files/solr, entered
+# for real: the platform root as it resolves now (_acct_in_resolved_dir),
+# then sites and the site one real directory at a time
+# (_acct_down_real_here), then files (_solr_in_files_here), then solr, a
+# real directory. Reads _Plr, _Dom and _usEr.
+_solr_in_upload_dir() {
+  [ -n "${_Plr}" ] && [ -n "${_Dom}" ] || return 1
+  _acct_in_resolved_dir "${_Plr}" _acct_down_real_here \
+    "sites/${_Dom}" _solr_in_files_here "$@"
 }
 # The uids of the account's own identities, comma-separated, the owners of
 # what the account puts in its upload itself, named as the web-group checks
@@ -641,15 +624,22 @@ _solr_upload_stage_here() {
   done
   return 0
 }
-# The upload, emptied once published as before (rm -f files/solr/*), but
-# only inside the real files/solr, entered as _solr_upload_stage enters it,
-# and only of the names the account's own identities own (_solr_own_uids):
-# anything else stays, as the stage of the same pass left it and said so.
-# rm unlinks a link found there and never follows one; a name swapped
-# between the owner test and rm loses only what the account can remove from
-# its own files/solr itself.
-_solr_upload_clear() {
-  _solr_in_upload_dir _solr_upload_clear_here
+# The site's Solr config upload (sites/<site>/files/solr) is tenant-writable,
+# so any name in it can be a link, a hard link or a FIFO, and files/solr or
+# any directory above it can be swapped for a link. It is used only inside
+# that directory, entered for real (_solr_in_upload_dir). Every regular file
+# directly in it, the set find -maxdepth 1 -type f copied, that one of the
+# account's own identities owns (_solr_own_uids), is read bounded, through a
+# handle that checks the owner, never through a link and never blocked on a
+# FIFO, into the root-only directory $1, and only those copies are diffed
+# and published: no tenant path is ever diffed or copied by name. A hard
+# link (another file's bytes), a file of 8 MiB or more, one that changed
+# while read, more than 512 names or more than 32 MiB in all refuse the
+# whole set, so a core never gets part of one. Status 1 on a refusal. Reads
+# _Plr, _Dom and _usEr. $1 = the root-only staging dir.
+_solr_upload_stage() {
+  [ -d "${1}" ] || return 1
+  _solr_in_upload_dir _solr_upload_stage_here "${1}"
 }
 _solr_upload_clear_here() {
   local _n _u _own
@@ -662,6 +652,16 @@ _solr_upload_clear_here() {
     esac
   done
   return 0
+}
+# The upload, emptied once published as before (rm -f files/solr/*), but
+# only inside the real files/solr, entered as _solr_upload_stage enters it,
+# and only of the names the account's own identities own (_solr_own_uids):
+# anything else stays, as the stage of the same pass left it and said so.
+# rm unlinks a link found there and never follows one; a name swapped
+# between the owner test and rm loses only what the account can remove from
+# its own files/solr itself.
+_solr_upload_clear() {
+  _solr_in_upload_dir _solr_upload_clear_here
 }
 # The first file of the staged upload $1 that is missing from the core conf
 # dir $2 or differs from its copy there by a byte, printed with anything
@@ -682,6 +682,17 @@ _solr_upload_differs() (
   done
   return 1
 )
+# The previous files, copied aside into the root-only dir $2 by
+# _solr_upload_apply, put back into the core conf dir $1 in place of the
+# files there now, modes and owners as they were. Status 1 when they could
+# not all be put back.
+_solr_upload_restore() {
+  [ -d "${1}" ] && [ -d "${2}" ] || return 1
+  rm -f "${1}"/* 2> /dev/null
+  find "${2}" -mindepth 1 -maxdepth 1 \
+    -exec cp -a -t "${1}/" -- {} + &> /dev/null
+}
+
 # The staged upload $1 put in the core conf dir $2 as one set, in place of
 # the files there (what rm -f conf/* removes, which are copied aside into
 # the root-only dir $3 first). When any staged file fails to copy, the files
@@ -702,17 +713,6 @@ _solr_upload_apply() {
   _solr_upload_restore "${_conf}" "${_old}" || return 2
   return 1
 }
-# The previous files, copied aside into the root-only dir $2 by
-# _solr_upload_apply, put back into the core conf dir $1 in place of the
-# files there now, modes and owners as they were. Status 1 when they could
-# not all be put back.
-_solr_upload_restore() {
-  [ -d "${1}" ] && [ -d "${2}" ] || return 1
-  rm -f "${1}"/* 2> /dev/null
-  find "${2}" -mindepth 1 -maxdepth 1 \
-    -exec cp -a -t "${1}/" -- {} + &> /dev/null
-}
-
 _write_solr_config() {
   # ${1} is module
   # ${2} is a path to solr.php
@@ -947,6 +947,58 @@ _drop_stock_schema_index() {
     "The core ${_core} took ${_nd} documents on Solr's stock schema before the site's own configuration was uploaded." \
     "Solr guessed the field types from them, and the uploaded schema cannot write to such an index, so the index was removed${_arch:+ (archived to ${_arch})} and the core reloaded." \
     "The site has to re-index: Search API still counts the removed items as indexed, so queue all items for reindexing there, then index."
+  return 0
+}
+
+# True when $1, a file below /data/conf/solr, is reached through real
+# directories only and is not a link itself: /data/conf is root's, but an
+# Octopus upgrade of an earlier release handed it to the account it upgraded,
+# which could have left a link there. Other paths pass as they are.
+_solr_conf_path_real() {
+  local _r _rel
+  case "${1}" in
+    /data/conf/solr/?*) ;;
+    *) return 0 ;;
+  esac
+  [ ! -L "${1}" ] || return 1
+  _r="$(cd -P -- /data/conf 2> /dev/null && /bin/pwd -P)" || return 1
+  _rel="${1#/data/conf/}"
+  [ "$(cd -P -- "${1%/*}" 2> /dev/null && /bin/pwd -P)" = "${_r}/${_rel%/*}" ]
+}
+# A core's solrcore.properties ($1) put in BOA's own form for Solr $2
+# (solr7 or solr9): unless the file already names that Solr (and on Solr 9
+# its port), the install and contrib dir lines, and on Solr 9 the
+# replication URL, give way to this server's own values. The one rewrite
+# for every core's file, the Drupal 7 template and a staged upload, so a
+# file put in this form is never rewritten again. Status 0 when the file
+# was changed, 1 when it was already in that form or is not there.
+_solr_props_boa_form() {
+  local _file="${1}"
+  [ -f "${_file}" ] || return 1
+  _solr_conf_path_real "${_file}" || return 1
+  case "${2}" in
+    solr9)
+      if grep -q "solr9" "${_file}" 2> /dev/null \
+        && grep -q "9099" "${_file}" 2> /dev/null; then
+        return 1
+      fi
+      sed -i "s/^solr\.replication\.masterUrl.*//g" "${_file}"
+      sed -i "s/^solr\.install\.dir.*//g" "${_file}"
+      sed -i "s/^solr\.contrib\.dir.*//g" "${_file}"
+      echo "solr.replication.masterUrl=http://localhost:9099" >> "${_file}"
+      echo "solr.install.dir=/opt/solr9" >> "${_file}"
+      ;;
+    solr7)
+      grep -q "solr7" "${_file}" 2> /dev/null && return 1
+      sed -i "s/^solr\.install\.dir.*//g" "${_file}"
+      sed -i "s/^solr\.contrib\.dir.*//g" "${_file}"
+      echo "solr.install.dir=/opt/solr7" >> "${_file}"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+  sed -i "/^$/d" "${_file}"
   return 0
 }
 
@@ -1214,6 +1266,40 @@ _update_solr() {
       rm -f ${2}/conf/.just-updated.pid
     fi
   fi
+}
+
+# True when Solr version $1 (solr7, solr9 or jetty9) has no service on this
+# box, with _SOLR_OFF_WHY saying why: denied, read as autoupboa reads it when
+# it parks the service (the box-wide Java deny or the version's own, as a
+# setting sourced by _load_control or as a marker file); parked, its init
+# script moved away, which autoupboa does not undo when a deny is lifted; or
+# disarmed, the script left without its exec bit. The last two are the test
+# the box-wide core steps of this pass use; its config fix and every Solr
+# start here use all three. Its CLI would only start a JVM to fail
+# on a closed port, every pass. _SOLR_OFF_PORT is the version's port.
+_solr_ver_off() {
+  local _dv _mk
+  _SOLR_OFF_WHY=""
+  case "${1}" in
+    solr7) _dv="${_DENY_SOLR7}"; _mk=/etc/boa/.deny.solr7.cnf; _SOLR_OFF_PORT=9077 ;;
+    solr9) _dv="${_DENY_SOLR9}"; _mk=/etc/boa/.deny.solr9.cnf; _SOLR_OFF_PORT=9099 ;;
+    jetty9) _dv="${_DENY_JETTY9}"; _mk=/etc/boa/.deny.jetty9.cnf; _SOLR_OFF_PORT=8099 ;;
+    *) return 1 ;;
+  esac
+  if [ "${_DENY_JAVA}" = "YES" ] || [ -e "/root/.deny.java.cnf" ] \
+    || [ "${_dv}" = "YES" ] || [ -e "${_mk}" ]; then
+    _SOLR_OFF_WHY="denied"
+    return 0
+  fi
+  if [ ! -e "/etc/init.d/${1}" ]; then
+    _SOLR_OFF_WHY="parked, with no /etc/init.d/${1}"
+    return 0
+  fi
+  if [ ! -x "/etc/init.d/${1}" ]; then
+    _SOLR_OFF_WHY="disarmed, /etc/init.d/${1} not executable"
+    return 0
+  fi
+  return 1
 }
 
 _add_solr() {
@@ -1630,40 +1716,6 @@ _reregister_solr_core() {
     touch "${_stamp}"
     echo "CORE-REREGISTER-ERROR: ${_core} on port ${_port} -- ${_resp:-no response}"
   fi
-}
-
-# True when Solr version $1 (solr7, solr9 or jetty9) has no service on this
-# box, with _SOLR_OFF_WHY saying why: denied, read as autoupboa reads it when
-# it parks the service (the box-wide Java deny or the version's own, as a
-# setting sourced by _load_control or as a marker file); parked, its init
-# script moved away, which autoupboa does not undo when a deny is lifted; or
-# disarmed, the script left without its exec bit. The last two are the test
-# the box-wide core steps of this pass use; its config fix and every Solr
-# start here use all three. Its CLI would only start a JVM to fail
-# on a closed port, every pass. _SOLR_OFF_PORT is the version's port.
-_solr_ver_off() {
-  local _dv _mk
-  _SOLR_OFF_WHY=""
-  case "${1}" in
-    solr7) _dv="${_DENY_SOLR7}"; _mk=/etc/boa/.deny.solr7.cnf; _SOLR_OFF_PORT=9077 ;;
-    solr9) _dv="${_DENY_SOLR9}"; _mk=/etc/boa/.deny.solr9.cnf; _SOLR_OFF_PORT=9099 ;;
-    jetty9) _dv="${_DENY_JETTY9}"; _mk=/etc/boa/.deny.jetty9.cnf; _SOLR_OFF_PORT=8099 ;;
-    *) return 1 ;;
-  esac
-  if [ "${_DENY_JAVA}" = "YES" ] || [ -e "/root/.deny.java.cnf" ] \
-    || [ "${_dv}" = "YES" ] || [ -e "${_mk}" ]; then
-    _SOLR_OFF_WHY="denied"
-    return 0
-  fi
-  if [ ! -e "/etc/init.d/${1}" ]; then
-    _SOLR_OFF_WHY="parked, with no /etc/init.d/${1}"
-    return 0
-  fi
-  if [ ! -x "/etc/init.d/${1}" ]; then
-    _SOLR_OFF_WHY="disarmed, /etc/init.d/${1} not executable"
-    return 0
-  fi
-  return 1
 }
 
 # The site's solr.php ($_Dir) removed when it is BOA's info file for this
@@ -2175,43 +2227,6 @@ _load_control() {
   _get_load
 }
 
-# A core's solrcore.properties ($1) put in BOA's own form for Solr $2
-# (solr7 or solr9): unless the file already names that Solr (and on Solr 9
-# its port), the install and contrib dir lines, and on Solr 9 the
-# replication URL, give way to this server's own values. The one rewrite
-# for every core's file, the Drupal 7 template and a staged upload, so a
-# file put in this form is never rewritten again. Status 0 when the file
-# was changed, 1 when it was already in that form or is not there.
-_solr_props_boa_form() {
-  local _file="${1}"
-  [ -f "${_file}" ] || return 1
-  _solr_conf_path_real "${_file}" || return 1
-  case "${2}" in
-    solr9)
-      if grep -q "solr9" "${_file}" 2> /dev/null \
-        && grep -q "9099" "${_file}" 2> /dev/null; then
-        return 1
-      fi
-      sed -i "s/^solr\.replication\.masterUrl.*//g" "${_file}"
-      sed -i "s/^solr\.install\.dir.*//g" "${_file}"
-      sed -i "s/^solr\.contrib\.dir.*//g" "${_file}"
-      echo "solr.replication.masterUrl=http://localhost:9099" >> "${_file}"
-      echo "solr.install.dir=/opt/solr9" >> "${_file}"
-      ;;
-    solr7)
-      grep -q "solr7" "${_file}" 2> /dev/null && return 1
-      sed -i "s/^solr\.install\.dir.*//g" "${_file}"
-      sed -i "s/^solr\.contrib\.dir.*//g" "${_file}"
-      echo "solr.install.dir=/opt/solr7" >> "${_file}"
-      ;;
-    *)
-      return 1
-      ;;
-  esac
-  sed -i "/^$/d" "${_file}"
-  return 0
-}
-
 # True when Solr version $1 gets no config fix and no restart from this pass:
 # off by _solr_ver_off, so a denied version is skipped as well as one whose
 # init script is gone or not executable. autoupboa parks a denied version
@@ -2276,21 +2291,6 @@ _fix_solr7_cnf() {
   fi
 }
 
-# True when $1, a file below /data/conf/solr, is reached through real
-# directories only and is not a link itself: /data/conf is root's, but an
-# Octopus upgrade of an earlier release handed it to the account it upgraded,
-# which could have left a link there. Other paths pass as they are.
-_solr_conf_path_real() {
-  local _r _rel
-  case "${1}" in
-    /data/conf/solr/?*) ;;
-    *) return 0 ;;
-  esac
-  [ ! -L "${1}" ] || return 1
-  _r="$(cd -P -- /data/conf 2> /dev/null && /bin/pwd -P)" || return 1
-  _rel="${1#/data/conf/}"
-  [ "$(cd -P -- "${1%/*}" 2> /dev/null && /bin/pwd -P)" = "${_r}/${_rel%/*}" ]
-}
 # /data/conf/solr replaced by a fresh copy of root's own Solr config store,
 # inside the real /data/conf (the current, pinned directory): a link left at
 # solr is removed, never followed, and the new tree is made by root. It is
@@ -2620,6 +2620,37 @@ _purge_orphan_cores() {
   echo "Orphan cleanup port=${_port}: archived=${_archived} fresh(kept)=${_fresh} protected=${_protected}"
 }
 
+_is_protected_run() {
+  _protectedRun=FALSE
+  _optBin="/opt/local/bin"
+  _boaBins="autoinit barracuda boa octopus"
+  for _cbn in ${_boaBins}; do
+    if [ -e "${_optBin}/${_cbn}" ]; then
+      # Anchored for every member, not just "boa": a bare path substring
+      # matches any command line that merely MENTIONS the wrapper -- an
+      # editor, a checksum, an operator's ssh probe -- and phantom-holds
+      # this guard. Same form clear.sh/runner.sh/owl.sh/java.sh use.
+      _cPat="^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/${_cbn}( |$)"
+      # Bare "boa" would match an hours-long remote install driven
+      # from this box over ssh (and every boa-info probe); anchor it
+      # to the LOCAL install form, as clear.sh/runner.sh already do
+      [ "${_cbn}" = "boa" ] && _cPat="^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-"
+      _CNT=$(pgrep -u root -U root -fc "${_cPat}")
+      if (( _CNT > 0 )); then
+        echo "The ${_cbn} is running!"
+        _protectedRun=TRUE
+      fi
+    fi
+  done
+  # The chained install's legs run as "bash /var/backups/*.sh.txt", not as
+  # the wrapper binaries swept above -- match them too
+  if pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1; then
+    _protectedRun=TRUE
+  fi
+  [ -e "/run/octopus_install_run.pid" ] && _protectedRun=TRUE
+  [ -e "/run/boa_run.pid" ] && _protectedRun=TRUE
+  [ -e "/run/boa_wait.pid" ] && _protectedRun=TRUE
+}
 _cleanup_orphan_cores() {
   # Guard: never run during a BOA install or upgrade; re-evaluate here --
   # _start_up loops every account and can outlive the top-level check, so
@@ -3018,37 +3049,6 @@ _start_up() {
   _run_optimize_if_due
 }
 
-_is_protected_run() {
-  _protectedRun=FALSE
-  _optBin="/opt/local/bin"
-  _boaBins="autoinit barracuda boa octopus"
-  for _cbn in ${_boaBins}; do
-    if [ -e "${_optBin}/${_cbn}" ]; then
-      # Anchored for every member, not just "boa": a bare path substring
-      # matches any command line that merely MENTIONS the wrapper -- an
-      # editor, a checksum, an operator's ssh probe -- and phantom-holds
-      # this guard. Same form clear.sh/runner.sh/owl.sh/java.sh use.
-      _cPat="^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/${_cbn}( |$)"
-      # Bare "boa" would match an hours-long remote install driven
-      # from this box over ssh (and every boa-info probe); anchor it
-      # to the LOCAL install form, as clear.sh/runner.sh already do
-      [ "${_cbn}" = "boa" ] && _cPat="^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-"
-      _CNT=$(pgrep -u root -U root -fc "${_cPat}")
-      if (( _CNT > 0 )); then
-        echo "The ${_cbn} is running!"
-        _protectedRun=TRUE
-      fi
-    fi
-  done
-  # The chained install's legs run as "bash /var/backups/*.sh.txt", not as
-  # the wrapper binaries swept above -- match them too
-  if pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1; then
-    _protectedRun=TRUE
-  fi
-  [ -e "/run/octopus_install_run.pid" ] && _protectedRun=TRUE
-  [ -e "/run/boa_run.pid" ] && _protectedRun=TRUE
-  [ -e "/run/boa_wait.pid" ] && _protectedRun=TRUE
-}
 _manage_single_lock() {
   # The pass now carries a write that is not idempotent (a CoreAdmin
   # CREATE: a second one for the same core is refused and takes the first

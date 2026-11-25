@@ -334,18 +334,6 @@ _validate_ctrl_dir() {
   esac
 }
 
-_ctrl_in_stage_dir() {
-  # Root-only staging dir for the files root puts into an account's
-  # tenant-writable trees, on the same filesystem as those trees (they all
-  # live under the account root): ${_usEr}/.boa-ctrl, forced root:root 0700
-  # on every call, a link planted at the name removed rather than followed.
-  # oN owns the account root and can rename or replace any name in it, so
-  # the dir is made, fixed and checked only once entered for real, and "$@"
-  # runs inside it: ./name there is root's alone, whatever the account puts
-  # at .boa-ctrl meanwhile. Reads _usEr from the caller.
-  [ -n "${_usEr}" ] || return 1
-  _acct_in_real_dir "${_usEr}" _ctrl_stage_here "$@"
-}
 _ctrl_stage_here() {
   local _h _st
   _h="$(/bin/pwd -P)/.boa-ctrl"
@@ -359,11 +347,41 @@ _ctrl_stage_here() {
     && (( (8#${_st##* } & 8#077) == 0 )) || return 1
   "$@"
 }
+_ctrl_in_stage_dir() {
+  # Root-only staging dir for the files root puts into an account's
+  # tenant-writable trees, on the same filesystem as those trees (they all
+  # live under the account root): ${_usEr}/.boa-ctrl, forced root:root 0700
+  # on every call, a link planted at the name removed rather than followed.
+  # oN owns the account root and can rename or replace any name in it, so
+  # the dir is made, fixed and checked only once entered for real, and "$@"
+  # runs inside it: ./name there is root's alone, whatever the account puts
+  # at .boa-ctrl meanwhile. Reads _usEr from the caller.
+  [ -n "${_usEr}" ] || return 1
+  _acct_in_real_dir "${_usEr}" _ctrl_stage_here "$@"
+}
 _ctrl_stage_dir() {
   # The staging dir fixed as above, its path printed for a caller that still
   # takes one.
   _ctrl_in_stage_dir true || return 1
   echo "${_usEr}/.boa-ctrl"
+}
+
+# In the staging dir (the current one): the template ./$2 of the resolved
+# directory $1 put as a fresh file of the account's (0664), then renamed as
+# $3 into the destination directory held open on fd 9.
+_reseed_ctrl_ini_here() {
+  local _new
+  _new=$(mktemp ./ctrl.XXXXXX 2>/dev/null) || return 1
+  if ! ( cd -P -- "${1}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${1}" ] \
+    && _acct_read_plain_here "${2}" ) > "${_new}"; then
+    rm -f -- "${_new}"
+    return 1
+  fi
+  chown "${_HM_U}:$(_acct_group "${_HM_U}")" "${_new}" &> /dev/null
+  chmod 0664 "${_new}" &> /dev/null
+  mv -f -T -- "${_new}" "/proc/self/fd/9/${3}" &> /dev/null && return 0
+  rm -f -- "${_new}"
+  return 1
 }
 
 _reseed_ctrl_ini() {
@@ -432,24 +450,6 @@ _reseed_ctrl_ini() {
     _ctrl_in_stage_dir _reseed_ctrl_ini_here "${_rsd}" "${_src##*/}" "${_dst##*/}"
   )
 }
-# In the staging dir (the current one): the template ./$2 of the resolved
-# directory $1 put as a fresh file of the account's (0664), then renamed as
-# $3 into the destination directory held open on fd 9.
-_reseed_ctrl_ini_here() {
-  local _new
-  _new=$(mktemp ./ctrl.XXXXXX 2>/dev/null) || return 1
-  if ! ( cd -P -- "${1}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${1}" ] \
-    && _acct_read_plain_here "${2}" ) > "${_new}"; then
-    rm -f -- "${_new}"
-    return 1
-  fi
-  chown "${_HM_U}:$(_acct_group "${_HM_U}")" "${_new}" &> /dev/null
-  chmod 0664 "${_new}" &> /dev/null
-  mv -f -T -- "${_new}" "/proc/self/fd/9/${3}" &> /dev/null && return 0
-  rm -f -- "${_new}"
-  return 1
-}
-
 _desymlink_planted() {
   # Strip a tenant-planted symlink at a root-maintained control-INI path before
   # this iteration seeds/edits/appends it. rm -f on a symlink removes only the

@@ -1109,15 +1109,6 @@ _rst_owner() {
   esac
   return 0
 }
-# Sets _RST_S to the archive path of account $1's store read from the live
-# link; empty when there is none.
-_rst_store_live() {
-  local _k="live:${1}"
-  if [ -z "${_RST_STO[${_k}]+x}" ]; then
-    _RST_STO[${_k}]="$(_acct_relocated_store "${1}")"
-  fi
-  _RST_S="${_RST_STO[${_k}]#/}"
-}
 # The deepest name at or above archive path $1 that the archive lists at the
 # restore time, after 1 when it lists anything below that name and 0 when it
 # does not; nothing when no such name is listed. Read from duplicity's
@@ -1171,6 +1162,33 @@ _rst_store_archive() {
     fi
   fi
   _RST_S="${_RST_STO[${_k}]}"
+}
+# The real path of account $1's files store when static/files is a link to
+# the account's own store in BOA's relocated layout (migratefs, xoct, xcopy
+# and xmass: <mount>/files/<oN>/static/files under /mnt, in a directory only
+# root can write, so no account made it), with a plain path only; nothing
+# else. As in multiback.
+_acct_relocated_store() {
+  local _a="${1}" _sto
+  [ -L "/data/disk/${_a}/static/files" ] || return 0
+  _sto=$(readlink -f "/data/disk/${_a}/static/files" 2> /dev/null)
+  case "${_sto}" in
+    *[!A-Za-z0-9._/-]*) return 0 ;;
+    /mnt/?*/files/"${_a}"/static/files)
+      [ -d "${_sto}" ] && _root_only "${_sto%/files}" && echo "${_sto}"
+      ;;
+  esac
+  return 0
+}
+
+# Sets _RST_S to the archive path of account $1's store read from the live
+# link; empty when there is none.
+_rst_store_live() {
+  local _k="live:${1}"
+  if [ -z "${_RST_STO[${_k}]+x}" ]; then
+    _RST_STO[${_k}]="$(_acct_relocated_store "${1}")"
+  fi
+  _RST_S="${_RST_STO[${_k}]#/}"
 }
 # Archive path $1 restored to $2 when a name above it is held as a link into
 # the same account's tree (a site's files/ or private/, the account's
@@ -1485,24 +1503,6 @@ _restore() {
     _subject="MyBackup Restore Notification [${_user}] on [$(date)]"
     _send_restore_confirmation_email "${_userEmail}" "${_subject}"
   fi
-}
-
-# The real path of account $1's files store when static/files is a link to
-# the account's own store in BOA's relocated layout (migratefs, xoct, xcopy
-# and xmass: <mount>/files/<oN>/static/files under /mnt, in a directory only
-# root can write, so no account made it), with a plain path only; nothing
-# else. As in multiback.
-_acct_relocated_store() {
-  local _a="${1}" _sto
-  [ -L "/data/disk/${_a}/static/files" ] || return 0
-  _sto=$(readlink -f "/data/disk/${_a}/static/files" 2> /dev/null)
-  case "${_sto}" in
-    *[!A-Za-z0-9._/-]*) return 0 ;;
-    /mnt/?*/files/"${_a}"/static/files)
-      [ -d "${_sto}" ] && _root_only "${_sto%/files}" && echo "${_sto}"
-      ;;
-  esac
-  return 0
 }
 
 # Function to set backup target based on service
