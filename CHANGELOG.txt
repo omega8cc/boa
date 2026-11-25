@@ -91,6 +91,14 @@
       deleted. A security advisory the build adds is named in its result. It
       is granted to no role yet.
 
+    * A nightly upgrade report for Drupal 10 and later sites, switched off
+      by default. _UPGRADE_DIGEST=YES in /root/.barracuda.cnf mails the
+      server admin, when it changed, which sites run a Drupal release that
+      no longer gets security fixes and which have an Upgrade ready.
+      _UPGRADE_CLIENT_NOTIFY=YES mails an account's client once for each
+      site whose release stops getting security fixes. Either is set for
+      every account there, or for one in /root/.<user>.octopus.cnf.
+
     * An outgoing mail relay that wants a login, such as Amazon SES, is a
       setting now: _SMTP_RELAY_USER and _SMTP_RELAY_PASS beside
       _SMTP_RELAY_HOST in /root/.barracuda.cnf. Every barracuda upgrade
