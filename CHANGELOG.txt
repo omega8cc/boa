@@ -4,6 +4,13 @@
 
 @=> Security
 
+    * The limited shell logs a refused line that holds a byte which is no
+      part of a letter, writing that byte as \xNN, and its log is UTF-8
+      in any locale. In a UTF-8 locale such a line was in no log, so
+      neither the Shell Escape Alert nor a later audit saw it, and where
+      the login's locale was en_US.UTF-8, typing such a byte ended the
+      session (lshell 0.11.17).
+
     * websh reads a redirection as dash does wherever it stands: in front
       of the command, behind a wrapper or glued to a word it is the shell's,
       and the words around it are judged by the Drush and PHP rules.
@@ -45,8 +52,9 @@
       not UTF-8, or a control character, is shown as \xNN.
 
     * Drupal 7 core 7.108.2 (D7ES) for the panel and the Drupal 7 platforms:
-      its session handler is ready for PHP 8.6, and under strict mode a
-      session cookie that names no stored session now gets a new ID.
+      its session handler is ready for PHP 8.6, and on PHP 7.0 and later,
+      under strict mode, a session cookie that names no stored session now
+      gets a new ID.
 
     * The marker of an unfinished platform build is written as a new file
       and renamed into place, never through a link standing at its name.
