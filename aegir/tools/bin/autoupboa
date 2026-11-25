@@ -1763,6 +1763,17 @@ _kguard_meta_back() {
   fi
 }
 
+# True when the newest kernel in /boot, the one GRUB's stock default
+# boots, is a broken build.
+_kguard_newest_broken() {
+  local _k _new _ver
+  _new="$(for _k in /boot/vmlinuz-*; do [ -f "${_k}" ] && echo "${_k#/boot/vmlinuz-}"; done | sort -V | tail -n 1)"
+  [ -n "${_new}" ] || return 1
+  _ver="$(dpkg-query -W -f '${Version}' "linux-image-${_new}" 2>/dev/null)"
+  [ -n "${_ver}" ] || _ver="$(dpkg-query -W -f '${Version}' "linux-image-${_new}-unsigned" 2>/dev/null)"
+  _kguard_broken "${_ver}"
+}
+
 # The guard of an earlier release pointed GRUB's default at another kernel
 # while the running one was a build it kept out (a published pattern also
 # caught the fixed 6.1.192-2), recorded the line it replaced, and asked for
@@ -1812,17 +1823,6 @@ _kguard_old_boot_back() {
     _kguard_log "an earlier guard's GRUB record dropped, GRUB's default left as it is: ${_cur:-no line}"
   fi
   rm -f "${_rec}" "${_KGUARD_DIR}/grub.before"
-}
-
-# True when the newest kernel in /boot, the one GRUB's stock default
-# boots, is a broken build.
-_kguard_newest_broken() {
-  local _k _new _ver
-  _new="$(for _k in /boot/vmlinuz-*; do [ -f "${_k}" ] && echo "${_k#/boot/vmlinuz-}"; done | sort -V | tail -n 1)"
-  [ -n "${_new}" ] || return 1
-  _ver="$(dpkg-query -W -f '${Version}' "linux-image-${_new}" 2>/dev/null)"
-  [ -n "${_ver}" ] || _ver="$(dpkg-query -W -f '${Version}' "linux-image-${_new}-unsigned" 2>/dev/null)"
-  _kguard_broken "${_ver}"
 }
 
 _kernel_guard() {

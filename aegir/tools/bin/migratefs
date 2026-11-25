@@ -474,6 +474,15 @@ _mfs_busy_why() {
 # always sees the other. Status 1, the hold dropped and the reason logged,
 # when one of them is already in. $1 = account-<oN> or arch, $2 = label.
 _MFS_HOLD=""
+# The hold goes only while it still names this run.
+_mfs_hold_drop() {
+  if [ -n "${_MFS_HOLD}" ] \
+    && [ "$( { tr -dc '0-9' < "${_MFS_HOLD}"; } 2> /dev/null )" = "$$" ]; then
+    rm -f -- "${_MFS_HOLD}"
+  fi
+  _MFS_HOLD=""
+}
+
 _mfs_hold() {
   local _h="/run/migratefs-${1}.pid" _why
   _why=$(_mfs_busy_why "${1}")
@@ -495,15 +504,6 @@ _mfs_hold() {
   _log "DEFER: ${2} ${_why}; left in place, run again after it ends"
   return 1
 }
-# The hold goes only while it still names this run.
-_mfs_hold_drop() {
-  if [ -n "${_MFS_HOLD}" ] \
-    && [ "$( { tr -dc '0-9' < "${_MFS_HOLD}"; } 2> /dev/null )" = "$$" ]; then
-    rm -f -- "${_MFS_HOLD}"
-  fi
-  _MFS_HOLD=""
-}
-
 # Single-instance lock (shared lock.inc if present; sets _LOCK_FD/_LOCK_PATH and
 # its own EXIT trap, which we override below with a combined cleanup).
 _manage_single_lock() {
@@ -651,138 +651,6 @@ _mfs_drop_copy() {
   else
     _log "WARN: ${_label} the copy in ${_dst} never went live and could not be removed; the next run renames it aside"
   fi
-}
-
-# Two-pass, non-destructive relocation of the real directory $1/$2 onto the
-# attached FS at $3, replacing it with a symlink. Precondition: caller has
-# confirmed the target is a separate FS. $4 = the real directory whose owner the
-# link takes (the store takes the owner and mode of the directory it replaces),
-# $5 = label. Always returns 0 (logs + leaves the real dir on any failure — data
-# never lost).
-_relocate_dir() {
-  local _par="$1" _name="$2" _dst="$3" _ownRef="$4" _label="$5"
-  local _src="${_par}/${_name}" _dpar="${_dst%/*}" _dname="${_dst##*/}"
-  local _szKB _avKB _ug _mode _rc _old _szIn _iTot _iFree _iHead _short
-
-  _szKB=$(_mfs_in_real_dir "${_src}" du -sk . 2>/dev/null | awk '{print $1}')
-  _avKB=$(df -Pk "$(dirname "${_dst}")" 2>/dev/null | awk 'NR==2 {print $4}')
-  [ -z "${_avKB}" ] && _avKB=$(df -Pk "${_TARGET}" 2>/dev/null | awk 'NR==2 {print $4}')
-  # Every name the copy makes takes an inode on the target: rsync -a without
-  # -H makes a file of every hard-linked name and keeps a link a link, which
-  # is what du -l --inodes counts
-  _szIn=$(_mfs_in_real_dir "${_src}" timeout 900 du -s -l --inodes . 2>/dev/null | awk '{print $1}')
-  read -r _iTot _iFree <<< "$(LC_ALL=C df -P -i -- "$(dirname "${_dst}")" 2>/dev/null | awk 'NR==2 {print $2, $4}')"
-  [[ "${_iTot}" =~ ^[0-9]+$ ]] \
-    || read -r _iTot _iFree <<< "$(LC_ALL=C df -P -i -- "${_TARGET}" 2>/dev/null | awk 'NR==2 {print $2, $4}')"
-  _log "PLAN: ${_label} move ${_src} (${_szKB:-?}K, ${_szIn:-?} files) -> ${_dst} (target avail ${_avKB:-?}K, ${_iFree:-?} inodes free) and symlink"
-  case "$(_mfs_in_real_dir "${_dpar}" _mfs_kind_here "${_dname}")" in
-    none|'') ;;
-    *) _log "PLAN: ${_label} ${_dst} is left from an earlier run: it is renamed aside and never copied into again, and it holds its space until removed" ;;
-  esac
-
-  # The room the cross-FS copy needs (a safety net, the operator owns the
-  # call): all of its bytes, and for its inodes 2% of the target's, at
-  # least 50,000, left free, the headroom the copying tasks keep. A target
-  # with no inode count (btrfs) or a source du could not count is judged on
-  # bytes alone; a figure no command gave lets the copy through with a
-  # warning, as the plan shows it with a '?'. The plan says what the apply
-  # would refuse.
-  _short=""
-  if [[ "${_szKB}" =~ ^[0-9]+$ && "${_avKB}" =~ ^[0-9]+$ ]] && [ "${_avKB}" -lt "${_szKB}" ]; then
-    _short="not enough space on ${_TARGET} (need ${_szKB}K, avail ${_avKB}K)"
-  elif [[ "${_szIn}" =~ ^[0-9]+$ && "${_iTot}" =~ ^[0-9]+$ && "${_iFree}" =~ ^[0-9]+$ ]] \
-    && [ "${_iTot}" -gt 0 ]; then
-    _iHead=$(( _iTot / 50 ))
-    [ "${_iHead}" -ge 50000 ] || _iHead=50000
-    if [ $(( _szIn + _iHead )) -gt "${_iFree}" ]; then
-      _short="not enough free inodes on ${_TARGET} (need ${_szIn} and ${_iHead} kept free, ${_iFree} free; every file takes one, df -i shows them)"
-    fi
-  fi
-
-  if [ "${_APPLY}" != "YES" ]; then
-    [ -n "${_short}" ] && _log "PLAN: ${_label} would be refused at --apply: ${_short}"
-    _mfs_plan_chain "${_dst}" "${_label}"
-    return 0
-  fi
-
-  if [ -n "${_short}" ]; then
-    _log "ERROR: ${_label} ${_short}; leaving real dir in place"
-    return 0
-  fi
-  [[ "${_szKB}" =~ ^[0-9]+$ && "${_avKB}" =~ ^[0-9]+$ ]] \
-    || _log "WARN: ${_label} the copy's size or the target's free space could not be read (${_szKB:-?}K, avail ${_avKB:-?}K); copying without the space check, as the plan showed"
-  if [[ "${_iTot}" =~ ^[0-9]+$ ]] && [ "${_iTot}" -gt 0 ] && ! [[ "${_szIn}" =~ ^[0-9]+$ ]]; then
-    _log "WARN: ${_label} the copy's files could not be counted within 15 minutes; copying without the inode check"
-  fi
-
-  # Re-check the interlock right before we start writing.
-  if _provision_running; then
-    _log "DEFER: ${_label} provision task active — left ${_src} as real dir"
-    return 0
-  fi
-  if _nightly_running; then
-    _log "DEFER: ${_label} BOA's nightly (owl.sh) is running — left ${_src} as real dir; run again after it ends"
-    return 0
-  fi
-
-  if _mfs_aside_left "${_par}" "${_name}"; then
-    _log "ERROR: ${_label} ${_par}/.${_name}.migratefs is left from an interrupted run (or ${_par} is not a real directory); left ${_src} as real dir for review"
-    return 0
-  fi
-
-  _ug=$(_mfs_in_real_dir "${_ownRef}" stat -c '%U:%G' . 2>/dev/null)
-  if ! _mfs_root_path "${_TARGET}" "${_dpar}"; then
-    _log "ERROR: ${_label} could not create ${_dst} below directories only root can change (${_MFS_REFUSED}); skipping"
-    return 0
-  fi
-
-  _MFS_WORK=$(mktemp -d /run/migratefs.XXXXXXXX 2> /dev/null) || _MFS_WORK=""
-  if [ -z "${_MFS_WORK}" ]; then
-    _log "ERROR: ${_label} could not create a work directory in /run; left ${_src} as real dir"
-    return 0
-  fi
-
-  _mode=$(_mfs_in_real_dir "${_dpar}" stat -c '%a' . 2>/dev/null)
-  # A 0700 left by an interrupted run is not the mode to open it with again.
-  case "${_mode}" in
-    ''|700) _mode=755 ;;
-  esac
-  _LOCKED_DIR="${_dpar}"
-  _LOCKED_MODE="${_mode}"
-  if ! _mfs_in_real_dir "${_dpar}" chmod 0700 . 2>/dev/null; then
-    _LOCKED_DIR=""
-    _mfs_work_drop
-    _log "ERROR: ${_label} could not close ${_dpar} for the copy; left ${_src} as real dir"
-    return 0
-  fi
-  # A store left by an earlier run was open to the account after that run
-  # ended, so a process of the account may still sit anywhere in it.
-  if [ "$(_mfs_in_real_dir "${_dpar}" _mfs_kind_here "${_dname}")" != "none" ]; then
-    _old=".${_dname}.stale.$(date +%y%m%d-%H%M%S).$$"
-    if ! _mfs_in_real_dir "${_dpar}" mv -T -- "./${_dname}" "./${_old}" 2>/dev/null; then
-      _mfs_unlock
-      _mfs_work_drop
-      _log "ERROR: ${_label} ${_dst} is left from an earlier run and could not be renamed aside; left ${_src} as real dir for review"
-      return 0
-    fi
-    _log "WARN: ${_label} ${_dst} left from an earlier run renamed to ${_dpar}/${_old}; it is never copied into again, remove it once reviewed"
-  fi
-  if ! _mfs_in_real_dir "${_dpar}" mkdir -m 0700 -- "./${_dname}" 2>/dev/null; then
-    _mfs_unlock
-    _mfs_work_drop
-    _log "ERROR: ${_label} could not create ${_dst}; left ${_src} as real dir"
-    return 0
-  fi
-  _mfs_in_real_dir "${_src}" _relocate_here "${_par}" "${_name}" "${_dst}" "${_mode}" "${_ug}" "${_label}" "${_MFS_WORK}"
-  _rc=$?
-  # 3: interrupted in the final window, the store already put back.
-  case "${_rc}" in
-    0|3) : ;;
-    *) _log "ERROR: ${_label} ${_src} is not a real directory; left for review" ;;
-  esac
-  _mfs_drop_copy "${_par}" "${_name}" "${_dst}" "${_label}"
-  _mfs_unlock
-  _mfs_work_drop
 }
 
 # Runs in the store after the live passes ($1 = destination, $2 = work
@@ -1004,6 +872,138 @@ _relocate_here() {
     fi
   fi
   _log "APPLY: ${_label} relocated ${_src} -> ${_dst} (attached filesystem)"
+}
+
+# Two-pass, non-destructive relocation of the real directory $1/$2 onto the
+# attached FS at $3, replacing it with a symlink. Precondition: caller has
+# confirmed the target is a separate FS. $4 = the real directory whose owner the
+# link takes (the store takes the owner and mode of the directory it replaces),
+# $5 = label. Always returns 0 (logs + leaves the real dir on any failure — data
+# never lost).
+_relocate_dir() {
+  local _par="$1" _name="$2" _dst="$3" _ownRef="$4" _label="$5"
+  local _src="${_par}/${_name}" _dpar="${_dst%/*}" _dname="${_dst##*/}"
+  local _szKB _avKB _ug _mode _rc _old _szIn _iTot _iFree _iHead _short
+
+  _szKB=$(_mfs_in_real_dir "${_src}" du -sk . 2>/dev/null | awk '{print $1}')
+  _avKB=$(df -Pk "$(dirname "${_dst}")" 2>/dev/null | awk 'NR==2 {print $4}')
+  [ -z "${_avKB}" ] && _avKB=$(df -Pk "${_TARGET}" 2>/dev/null | awk 'NR==2 {print $4}')
+  # Every name the copy makes takes an inode on the target: rsync -a without
+  # -H makes a file of every hard-linked name and keeps a link a link, which
+  # is what du -l --inodes counts
+  _szIn=$(_mfs_in_real_dir "${_src}" timeout 900 du -s -l --inodes . 2>/dev/null | awk '{print $1}')
+  read -r _iTot _iFree <<< "$(LC_ALL=C df -P -i -- "$(dirname "${_dst}")" 2>/dev/null | awk 'NR==2 {print $2, $4}')"
+  [[ "${_iTot}" =~ ^[0-9]+$ ]] \
+    || read -r _iTot _iFree <<< "$(LC_ALL=C df -P -i -- "${_TARGET}" 2>/dev/null | awk 'NR==2 {print $2, $4}')"
+  _log "PLAN: ${_label} move ${_src} (${_szKB:-?}K, ${_szIn:-?} files) -> ${_dst} (target avail ${_avKB:-?}K, ${_iFree:-?} inodes free) and symlink"
+  case "$(_mfs_in_real_dir "${_dpar}" _mfs_kind_here "${_dname}")" in
+    none|'') ;;
+    *) _log "PLAN: ${_label} ${_dst} is left from an earlier run: it is renamed aside and never copied into again, and it holds its space until removed" ;;
+  esac
+
+  # The room the cross-FS copy needs (a safety net, the operator owns the
+  # call): all of its bytes, and for its inodes 2% of the target's, at
+  # least 50,000, left free, the headroom the copying tasks keep. A target
+  # with no inode count (btrfs) or a source du could not count is judged on
+  # bytes alone; a figure no command gave lets the copy through with a
+  # warning, as the plan shows it with a '?'. The plan says what the apply
+  # would refuse.
+  _short=""
+  if [[ "${_szKB}" =~ ^[0-9]+$ && "${_avKB}" =~ ^[0-9]+$ ]] && [ "${_avKB}" -lt "${_szKB}" ]; then
+    _short="not enough space on ${_TARGET} (need ${_szKB}K, avail ${_avKB}K)"
+  elif [[ "${_szIn}" =~ ^[0-9]+$ && "${_iTot}" =~ ^[0-9]+$ && "${_iFree}" =~ ^[0-9]+$ ]] \
+    && [ "${_iTot}" -gt 0 ]; then
+    _iHead=$(( _iTot / 50 ))
+    [ "${_iHead}" -ge 50000 ] || _iHead=50000
+    if [ $(( _szIn + _iHead )) -gt "${_iFree}" ]; then
+      _short="not enough free inodes on ${_TARGET} (need ${_szIn} and ${_iHead} kept free, ${_iFree} free; every file takes one, df -i shows them)"
+    fi
+  fi
+
+  if [ "${_APPLY}" != "YES" ]; then
+    [ -n "${_short}" ] && _log "PLAN: ${_label} would be refused at --apply: ${_short}"
+    _mfs_plan_chain "${_dst}" "${_label}"
+    return 0
+  fi
+
+  if [ -n "${_short}" ]; then
+    _log "ERROR: ${_label} ${_short}; leaving real dir in place"
+    return 0
+  fi
+  [[ "${_szKB}" =~ ^[0-9]+$ && "${_avKB}" =~ ^[0-9]+$ ]] \
+    || _log "WARN: ${_label} the copy's size or the target's free space could not be read (${_szKB:-?}K, avail ${_avKB:-?}K); copying without the space check, as the plan showed"
+  if [[ "${_iTot}" =~ ^[0-9]+$ ]] && [ "${_iTot}" -gt 0 ] && ! [[ "${_szIn}" =~ ^[0-9]+$ ]]; then
+    _log "WARN: ${_label} the copy's files could not be counted within 15 minutes; copying without the inode check"
+  fi
+
+  # Re-check the interlock right before we start writing.
+  if _provision_running; then
+    _log "DEFER: ${_label} provision task active — left ${_src} as real dir"
+    return 0
+  fi
+  if _nightly_running; then
+    _log "DEFER: ${_label} BOA's nightly (owl.sh) is running — left ${_src} as real dir; run again after it ends"
+    return 0
+  fi
+
+  if _mfs_aside_left "${_par}" "${_name}"; then
+    _log "ERROR: ${_label} ${_par}/.${_name}.migratefs is left from an interrupted run (or ${_par} is not a real directory); left ${_src} as real dir for review"
+    return 0
+  fi
+
+  _ug=$(_mfs_in_real_dir "${_ownRef}" stat -c '%U:%G' . 2>/dev/null)
+  if ! _mfs_root_path "${_TARGET}" "${_dpar}"; then
+    _log "ERROR: ${_label} could not create ${_dst} below directories only root can change (${_MFS_REFUSED}); skipping"
+    return 0
+  fi
+
+  _MFS_WORK=$(mktemp -d /run/migratefs.XXXXXXXX 2> /dev/null) || _MFS_WORK=""
+  if [ -z "${_MFS_WORK}" ]; then
+    _log "ERROR: ${_label} could not create a work directory in /run; left ${_src} as real dir"
+    return 0
+  fi
+
+  _mode=$(_mfs_in_real_dir "${_dpar}" stat -c '%a' . 2>/dev/null)
+  # A 0700 left by an interrupted run is not the mode to open it with again.
+  case "${_mode}" in
+    ''|700) _mode=755 ;;
+  esac
+  _LOCKED_DIR="${_dpar}"
+  _LOCKED_MODE="${_mode}"
+  if ! _mfs_in_real_dir "${_dpar}" chmod 0700 . 2>/dev/null; then
+    _LOCKED_DIR=""
+    _mfs_work_drop
+    _log "ERROR: ${_label} could not close ${_dpar} for the copy; left ${_src} as real dir"
+    return 0
+  fi
+  # A store left by an earlier run was open to the account after that run
+  # ended, so a process of the account may still sit anywhere in it.
+  if [ "$(_mfs_in_real_dir "${_dpar}" _mfs_kind_here "${_dname}")" != "none" ]; then
+    _old=".${_dname}.stale.$(date +%y%m%d-%H%M%S).$$"
+    if ! _mfs_in_real_dir "${_dpar}" mv -T -- "./${_dname}" "./${_old}" 2>/dev/null; then
+      _mfs_unlock
+      _mfs_work_drop
+      _log "ERROR: ${_label} ${_dst} is left from an earlier run and could not be renamed aside; left ${_src} as real dir for review"
+      return 0
+    fi
+    _log "WARN: ${_label} ${_dst} left from an earlier run renamed to ${_dpar}/${_old}; it is never copied into again, remove it once reviewed"
+  fi
+  if ! _mfs_in_real_dir "${_dpar}" mkdir -m 0700 -- "./${_dname}" 2>/dev/null; then
+    _mfs_unlock
+    _mfs_work_drop
+    _log "ERROR: ${_label} could not create ${_dst}; left ${_src} as real dir"
+    return 0
+  fi
+  _mfs_in_real_dir "${_src}" _relocate_here "${_par}" "${_name}" "${_dst}" "${_mode}" "${_ug}" "${_label}" "${_MFS_WORK}"
+  _rc=$?
+  # 3: interrupted in the final window, the store already put back.
+  case "${_rc}" in
+    0|3) : ;;
+    *) _log "ERROR: ${_label} ${_src} is not a real directory; left for review" ;;
+  esac
+  _mfs_drop_copy "${_par}" "${_name}" "${_dst}" "${_label}"
+  _mfs_unlock
+  _mfs_work_drop
 }
 
 # Relocate one account's static/files store onto the attached filesystem.

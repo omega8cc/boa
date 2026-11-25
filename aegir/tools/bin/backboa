@@ -1143,6 +1143,32 @@ _backup_prepare() {
   fi
 }
 
+# Whether this box has a duplicity chain in the bucket lives in
+# /etc/boa/control: the archive log is the history the operator reads, and
+# the major OS upgrade's clean-up of /var/log/boa/*.log takes it, after which
+# the next run started a new FULL chain and skipped that day's retention.
+# A box whose archive log predates the marker gets it from the log here, at
+# the first read.
+_chain_put() {
+  local _c="/etc/boa/control/${_BUCKET_NAME}.chain.txt"
+  mkdir -p /etc/boa/control 2> /dev/null
+  chmod 0755 /etc/boa /etc/boa/control 2> /dev/null
+  if { echo "$(date '+%F %T') ${1}" > "${_c}.tmp.$$"; } 2> /dev/null \
+    && chmod 0644 "${_c}.tmp.$$" && mv -f "${_c}.tmp.$$" "${_c}"; then
+    return 0
+  fi
+  rm -f "${_c}.tmp.$$" 2> /dev/null
+  echo "ALERT: ${_c} cannot be written; a lost archive log would start a new full chain" >> ${_LOGFILE}
+  return 1
+}
+
+_chain_known() {
+  [ -e "/etc/boa/control/${_BUCKET_NAME}.chain.txt" ] && return 0
+  [ -e "${_LOGPTH}/${_BUCKET_NAME}.archive.log" ] || return 1
+  _chain_put "from the archive log"
+  return 0
+}
+
 _monthly_cleanup() {
   if [ -e "${_LOGPTH}/${_BUCKET_NAME}.randomize.cleanup.log" ]; then
     _RCL=$(cat ${_LOGPTH}/${_BUCKET_NAME}.randomize.cleanup.log 2>&1)
@@ -1271,32 +1297,6 @@ _collection_status() {
   echo "Running collection-status on $(date)" >> ${_LOGFILE}
   echo "Command is ${_DCY_MN_CMD} collection-status ${_NAME} ${_TARGET}"
   ${_DCY_MN_CMD} collection-status ${_NAME} ${_TARGET} >> ${_LOGFILE}
-}
-
-# Whether this box has a duplicity chain in the bucket lives in
-# /etc/boa/control: the archive log is the history the operator reads, and
-# the major OS upgrade's clean-up of /var/log/boa/*.log takes it, after which
-# the next run started a new FULL chain and skipped that day's retention.
-# A box whose archive log predates the marker gets it from the log here, at
-# the first read.
-_chain_put() {
-  local _c="/etc/boa/control/${_BUCKET_NAME}.chain.txt"
-  mkdir -p /etc/boa/control 2> /dev/null
-  chmod 0755 /etc/boa /etc/boa/control 2> /dev/null
-  if { echo "$(date '+%F %T') ${1}" > "${_c}.tmp.$$"; } 2> /dev/null \
-    && chmod 0644 "${_c}.tmp.$$" && mv -f "${_c}.tmp.$$" "${_c}"; then
-    return 0
-  fi
-  rm -f "${_c}.tmp.$$" 2> /dev/null
-  echo "ALERT: ${_c} cannot be written; a lost archive log would start a new full chain" >> ${_LOGFILE}
-  return 1
-}
-
-_chain_known() {
-  [ -e "/etc/boa/control/${_BUCKET_NAME}.chain.txt" ] && return 0
-  [ -e "${_LOGPTH}/${_BUCKET_NAME}.archive.log" ] || return 1
-  _chain_put "from the archive log"
-  return 0
 }
 
 _backup() {
@@ -1731,6 +1731,22 @@ _rst_in_pinned() {
   ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_d}" ] && "$@" )
 }
 
+# The name ./$1 is free in the current (pinned) directory: nothing at all is
+# there, not even a link.
+_rst_free_here() {
+  [ ! -e "./${1}" ] && [ ! -L "./${1}" ]
+}
+# $1 is root's, and what root makes in it no one else can rename: not
+# writable by group or others, or sticky.
+_rst_base_ok() {
+  local _s _u _m
+  _s="$(stat -c '%u %a' -- "${1}" 2> /dev/null)" || return 1
+  read -r _u _m <<< "${_s}"
+  [ "${_u}" = 0 ] || return 1
+  (( 0${_m} & 01000 )) && return 0
+  (( 0${_m} & 022 )) && return 1
+  return 0
+}
 # duplicity writes a restore by path, so a link an account puts in its own
 # tree, before or during the restore, would carry root's writes elsewhere. A
 # destination inside an account's tree (below /data/disk/<oN>, /home/<name>,
@@ -1822,22 +1838,13 @@ _restore_stage() {
   _RST_OUT="${_RST_STG}/${_RST_NAM}"
   _RST_DST="${_RST_PIN}/${_RST_NAM}"
 }
-# The name ./$1 is free in the current (pinned) directory: nothing at all is
-# there, not even a link.
-_rst_free_here() {
-  [ ! -e "./${1}" ] && [ ! -L "./${1}" ]
+# $1 renamed to ./$2 in the current (pinned) directory while the name is
+# free: a plain rename(2), which fails across filesystems instead of copying.
+_rst_rename_here() {
+  _rst_free_here "${2}" || return 1
+  perl -e 'rename($ARGV[0], $ARGV[1]) or exit 1' -- "${1}" "./${2}"
 }
-# $1 is root's, and what root makes in it no one else can rename: not
-# writable by group or others, or sticky.
-_rst_base_ok() {
-  local _s _u _m
-  _s="$(stat -c '%u %a' -- "${1}" 2> /dev/null)" || return 1
-  read -r _u _m <<< "${_s}"
-  [ "${_u}" = 0 ] || return 1
-  (( 0${_m} & 01000 )) && return 0
-  (( 0${_m} & 022 )) && return 1
-  return 0
-}
+
 # A staged restore (see _restore_stage) renamed into its pinned directory:
 # one rename on one filesystem, never a copy walked by path. Left in the
 # stage, and named, when that is not possible.
@@ -1852,13 +1859,6 @@ _restore_place() {
   rmdir -- "${_RST_STG}" 2> /dev/null
   return 0
 }
-# $1 renamed to ./$2 in the current (pinned) directory while the name is
-# free: a plain rename(2), which fails across filesystems instead of copying.
-_rst_rename_here() {
-  _rst_free_here "${2}" || return 1
-  perl -e 'rename($ARGV[0], $ARGV[1]) or exit 1' -- "${1}" "./${2}"
-}
-
 # After a root-run restore: duplicity re-applies the archived ownership, so
 # a pre-conversion archive lands files in the box-wide group inside a
 # converted account, and a foreign box's archive lands them in whatever its

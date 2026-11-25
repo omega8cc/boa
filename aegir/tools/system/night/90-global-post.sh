@@ -553,48 +553,133 @@ _global_root_only_here() {
     && [ "$(( 8#${_m##* } & 8#022 ))" = "0" ]
 }
 
-# A shared codebase no account platform links to is moved out of the store
-# (or only named, the default dry run). The store is used only as the rule
-# above allows, and each serial and codebase only as the real directory
-# found inside it, never through a link; a codebase is moved by its name in
-# its serial, into a directory of root's that no one else can write.
-# A codebase another tree in the store links into stays: a tree whose
-# profiles is a link (an account platform's tree copied into the store)
-# reaches another serial's codebase that way, and moving that codebase
-# leaves the tree's links leading nowhere. Such a tree whose profiles link
-# leads nowhere is dead, and goes the same way once no platform alias
-# names it and nothing links into it.
-_shared_codebases_cleanup() {
-  _provision_running && { echo "INFO: provision task active -- skipping shared-codebases cleanup"; return; }
-  local _gSt _sRc _aliasText _u
-  [ -L "/data/all" ] || [ -d "/data/all" ] || return 0
-  _global_store_pick
-  _sRc=$?
-  if [ "${_sRc}" = "2" ]; then
-    echo "ALRT: the shared codebases cleanup waits: $(_global_store_why)"
-    return 0
-  fi
-  [ "${_sRc}" = "0" ] || return 0
-  if [ -L "/data/all" ]; then
-    _CLD="/data/disk/codebases-cleanup"
-  else
-    _CLD="/var/backups/codebases-cleanup"
-  fi
-  # Every platform alias, the master's and the accounts', read once. Each
-  # registered platform root counts as use, so a night without all of them
-  # judges nothing.
-  _aliasText=$(mktemp) \
-    || { echo "INFO: no temporary file for the platform aliases -- skipping shared-codebases cleanup"; return; }
-  for _u in /var/aegir /data/disk/*; do
-    [ -d "${_u}/.drush" ] || continue
-    if ! _acct_in_real_dir "${_u}/.drush" _platform_aliases_text_here >> "${_aliasText}"; then
-      echo "INFO: the platform aliases in ${_u}/.drush could not be read -- skipping shared-codebases cleanup"
-      rm -f -- "${_aliasText}"
-      return
-    fi
+# Pairs on stdin, a link and its target as written. Each link is taken twice:
+# by its target's name (a relative one from where the link sits) and by
+# where it leads through every link on the way. A target in the store, $1
+# its real path, is noted under <serial>/<codebase>, or <serial> for a link
+# to a serial itself, or "/" for one to the store itself or above it, with
+# the first link found: in _cbIn for a link in the store's tree $2 (unless
+# it leads back into that tree), in _cbUse for any other link ($2 empty).
+_shared_codebases_note() {
+  local _p _l _x _t _r _k
+  while LC_ALL=C IFS= read -r -d '' _p && LC_ALL=C IFS= read -r -d '' _l; do
+    [[ "${_p}" == /* ]] || _p="${1}/${_p#./}"
+    [[ "${_l}" == /* ]] || _l="${_p%/*}/${_l}"
+    case "${_l}" in
+      */|*//*|*/./*|*/../*|*/.|*/..)
+        _l="$(realpath -m -s -- "${_l}" 2> /dev/null)" ;;
+    esac
+    _x="$(realpath -m -- "${_p}" 2> /dev/null)"
+    for _t in "${_l}" "${_x}"; do
+      [ -n "${_t}" ] || continue
+      _k=""
+      case "/data/all/" in "${_t%/}/"*) _k="/" ;; esac
+      case "${1}/" in "${_t%/}/"*) _k="/" ;; esac
+      if [ -z "${_k}" ]; then
+        case "${_t}" in
+          /data/all/?*) _r="${_t#/data/all/}" ;;
+          "${1}"/?*) _r="${_t#"${1}"/}" ;;
+          *) continue ;;
+        esac
+        _k="${_r%%/*}"
+        [ "${_r}" = "${_k}" ] || { _r="${_r#*/}"; _k="${_k}/${_r%%/*}"; }
+      fi
+      if [ -z "${2}" ]; then
+        [ -n "${_cbUse[${_k}]:-}" ] || _cbUse[${_k}]="${_p}"
+      elif [ "${_k}" != "${2}" ]; then
+        [ -n "${_cbIn[${_k}]:-}" ] || _cbIn[${_k}]="${_p}"
+      fi
+    done
   done
-  _acct_in_real_dir "${_gSt}" _shared_codebases_here "${_aliasText}"
-  rm -f -- "${_aliasText}"
+}
+# The codebase $2 of the current (pinned) serial $1, unused or dead ($3),
+# moved into the cleanup directory, or only named while the flag is off.
+_shared_codebase_move() {
+  local _cd="/data/all/${1}/${2}" _to _what _how
+  _what="Unused ${_cd}"
+  _how="no longer used ${_cd}"
+  if [ "${3}" = "dead" ]; then
+    _what="Dead ${_cd} (its profiles link leads nowhere)"
+    _how="dead ${_cd} (its profiles link leads nowhere)"
+  fi
+  if _cnf_flag_yes /root/.barracuda.cnf _SHARED_CODEBASES_CLEANUP; then
+    _to="${_CLD}/data/all/${1}/"
+    if ( umask 022; mkdir -p "${_CLD}" ) \
+      && _acct_in_real_dir "${_CLD}" _global_root_only_here \
+      && ( umask 022; mkdir -p "${_to}" ); then
+      echo "Moving ${_how} to ${_to}"
+      mv -f -- "./${2}" "${_to}"
+    else
+      echo "${_what} not moved: ${_CLD} is not a real directory of root's closed to others"
+    fi
+  else
+    echo "${_what} detected (dry-run; set _SHARED_CODEBASES_CLEANUP=YES in /root/.barracuda.cnf to move)"
+  fi
+}
+
+# The text of every platform alias in the current (pinned) .drush, one
+# after another, each read bounded and never through a link or a FIFO.
+_platform_aliases_text_here() {
+  local _a _rc=0
+  for _a in ./platform_*.alias.drushrc.php; do
+    [ -e "${_a}" ] || [ -L "${_a}" ] || continue
+    _acct_read_plain_here "${_a#./}" || _rc=1
+    echo
+  done
+  return "${_rc}"
+}
+
+# True when a registered platform alias names the tree $1: the master's
+# aliases as they always were, the accounts' ones in the text $2 holds, read
+# once per run inside each real .drush.
+_platform_alias_names() {
+  grep -qsF -e "'${1}'" -e "'${1}/" \
+    /var/aegir/.drush/platform_*.alias.drushrc.php && return 0
+  grep -qsF -e "'${1}'" -e "'${1}/" -- "${2}"
+}
+
+# The codebases of the current (pinned) serial $1, when it holds o_contrib.
+# A real directory holding a real profiles/ directory is unused when no
+# account platform and no other tree in the store links into it; one whose
+# profiles is a link leading nowhere is dead when, as well, no platform
+# alias names it ($2, the aliases' text: without it none is judged dead).
+# $3 is the store's real path.
+_shared_codebases_serial_here() {
+  local _p _CodebaseDir _kind
+  [ -d "./o_contrib" ] || return 0
+  for _p in ./*; do
+    _p="${_p#./}"
+    [ -d "./${_p}" ] && [ ! -L "./${_p}" ] || continue
+    # The names platforms link to: the store by its /data/all name.
+    _CodebaseDir="/data/all/${1}/${_p}"
+    if [ -d "./${_p}/profiles" ] && [ ! -L "./${_p}/profiles" ]; then
+      # Defensive: a tree with a detectable docroot is a real codebase of any
+      # version -- never reap it. This loop targets the legacy D6/D7 shared
+      # /data/all store (anchored on a root-level profiles/); D8+ codebases
+      # are self-contained under distro/ and are not managed here.
+      [ -n "$(_detect_real_docroot "./${_p}")" ] && continue
+      _kind=unused
+    elif [ -L "./${_p}/profiles" ] && [ ! -e "./${_p}/profiles" ] \
+      && [ -n "${2}" ]; then
+      # Its docroot can still answer through the shared core it links to,
+      # so a registered platform alias, not the docroot, says it is used.
+      _kind=dead
+    else
+      continue
+    fi
+    [ -n "${_cbUse[${1}/${_p}]:-}${_cbUse[${1}]:-}${_cbUse[/]:-}" ] && continue
+    if [ -n "${_cbIn[${1}/${_p}]:-}${_cbIn[${1}]:-}${_cbIn[/]:-}" ]; then
+      echo "Kept ${_CodebaseDir}: ${_cbIn[${1}/${_p}]:-${_cbIn[${1}]:-${_cbIn[/]}}} links into it"
+      continue
+    fi
+    if [ "${_kind}" = "dead" ] \
+      && { _platform_alias_names "${_CodebaseDir}" "${2}" \
+        || _platform_alias_names "${3}/${1}/${_p}" "${2}"; }; then
+      echo "Kept ${_CodebaseDir}: its profiles link leads nowhere, but a platform is registered on it"
+      continue
+    fi
+    _shared_codebase_move "${1}" "${_p}" "${_kind}"
+  done
 }
 # Each serial of the current (pinned) store that is a real directory, once
 # every link is read that may lead into its codebases: those in the store's
@@ -657,134 +742,49 @@ _shared_codebases_here() {
     _acct_in_real_dir "./${_s}" _shared_codebases_serial_here "${_s}" "${1}" "${_gReal}"
   done
 }
-# Pairs on stdin, a link and its target as written. Each link is taken twice:
-# by its target's name (a relative one from where the link sits) and by
-# where it leads through every link on the way. A target in the store, $1
-# its real path, is noted under <serial>/<codebase>, or <serial> for a link
-# to a serial itself, or "/" for one to the store itself or above it, with
-# the first link found: in _cbIn for a link in the store's tree $2 (unless
-# it leads back into that tree), in _cbUse for any other link ($2 empty).
-_shared_codebases_note() {
-  local _p _l _x _t _r _k
-  while LC_ALL=C IFS= read -r -d '' _p && LC_ALL=C IFS= read -r -d '' _l; do
-    [[ "${_p}" == /* ]] || _p="${1}/${_p#./}"
-    [[ "${_l}" == /* ]] || _l="${_p%/*}/${_l}"
-    case "${_l}" in
-      */|*//*|*/./*|*/../*|*/.|*/..)
-        _l="$(realpath -m -s -- "${_l}" 2> /dev/null)" ;;
-    esac
-    _x="$(realpath -m -- "${_p}" 2> /dev/null)"
-    for _t in "${_l}" "${_x}"; do
-      [ -n "${_t}" ] || continue
-      _k=""
-      case "/data/all/" in "${_t%/}/"*) _k="/" ;; esac
-      case "${1}/" in "${_t%/}/"*) _k="/" ;; esac
-      if [ -z "${_k}" ]; then
-        case "${_t}" in
-          /data/all/?*) _r="${_t#/data/all/}" ;;
-          "${1}"/?*) _r="${_t#"${1}"/}" ;;
-          *) continue ;;
-        esac
-        _k="${_r%%/*}"
-        [ "${_r}" = "${_k}" ] || { _r="${_r#*/}"; _k="${_k}/${_r%%/*}"; }
-      fi
-      if [ -z "${2}" ]; then
-        [ -n "${_cbUse[${_k}]:-}" ] || _cbUse[${_k}]="${_p}"
-      elif [ "${_k}" != "${2}" ]; then
-        [ -n "${_cbIn[${_k}]:-}" ] || _cbIn[${_k}]="${_p}"
-      fi
-    done
-  done
-}
-# The codebases of the current (pinned) serial $1, when it holds o_contrib.
-# A real directory holding a real profiles/ directory is unused when no
-# account platform and no other tree in the store links into it; one whose
-# profiles is a link leading nowhere is dead when, as well, no platform
-# alias names it ($2, the aliases' text: without it none is judged dead).
-# $3 is the store's real path.
-_shared_codebases_serial_here() {
-  local _p _CodebaseDir _kind
-  [ -d "./o_contrib" ] || return 0
-  for _p in ./*; do
-    _p="${_p#./}"
-    [ -d "./${_p}" ] && [ ! -L "./${_p}" ] || continue
-    # The names platforms link to: the store by its /data/all name.
-    _CodebaseDir="/data/all/${1}/${_p}"
-    if [ -d "./${_p}/profiles" ] && [ ! -L "./${_p}/profiles" ]; then
-      # Defensive: a tree with a detectable docroot is a real codebase of any
-      # version -- never reap it. This loop targets the legacy D6/D7 shared
-      # /data/all store (anchored on a root-level profiles/); D8+ codebases
-      # are self-contained under distro/ and are not managed here.
-      [ -n "$(_detect_real_docroot "./${_p}")" ] && continue
-      _kind=unused
-    elif [ -L "./${_p}/profiles" ] && [ ! -e "./${_p}/profiles" ] \
-      && [ -n "${2}" ]; then
-      # Its docroot can still answer through the shared core it links to,
-      # so a registered platform alias, not the docroot, says it is used.
-      _kind=dead
-    else
-      continue
-    fi
-    [ -n "${_cbUse[${1}/${_p}]:-}${_cbUse[${1}]:-}${_cbUse[/]:-}" ] && continue
-    if [ -n "${_cbIn[${1}/${_p}]:-}${_cbIn[${1}]:-}${_cbIn[/]:-}" ]; then
-      echo "Kept ${_CodebaseDir}: ${_cbIn[${1}/${_p}]:-${_cbIn[${1}]:-${_cbIn[/]}}} links into it"
-      continue
-    fi
-    if [ "${_kind}" = "dead" ] \
-      && { _platform_alias_names "${_CodebaseDir}" "${2}" \
-        || _platform_alias_names "${3}/${1}/${_p}" "${2}"; }; then
-      echo "Kept ${_CodebaseDir}: its profiles link leads nowhere, but a platform is registered on it"
-      continue
-    fi
-    _shared_codebase_move "${1}" "${_p}" "${_kind}"
-  done
-}
-# The codebase $2 of the current (pinned) serial $1, unused or dead ($3),
-# moved into the cleanup directory, or only named while the flag is off.
-_shared_codebase_move() {
-  local _cd="/data/all/${1}/${2}" _to _what _how
-  _what="Unused ${_cd}"
-  _how="no longer used ${_cd}"
-  if [ "${3}" = "dead" ]; then
-    _what="Dead ${_cd} (its profiles link leads nowhere)"
-    _how="dead ${_cd} (its profiles link leads nowhere)"
+# A shared codebase no account platform links to is moved out of the store
+# (or only named, the default dry run). The store is used only as the rule
+# above allows, and each serial and codebase only as the real directory
+# found inside it, never through a link; a codebase is moved by its name in
+# its serial, into a directory of root's that no one else can write.
+# A codebase another tree in the store links into stays: a tree whose
+# profiles is a link (an account platform's tree copied into the store)
+# reaches another serial's codebase that way, and moving that codebase
+# leaves the tree's links leading nowhere. Such a tree whose profiles link
+# leads nowhere is dead, and goes the same way once no platform alias
+# names it and nothing links into it.
+_shared_codebases_cleanup() {
+  _provision_running && { echo "INFO: provision task active -- skipping shared-codebases cleanup"; return; }
+  local _gSt _sRc _aliasText _u
+  [ -L "/data/all" ] || [ -d "/data/all" ] || return 0
+  _global_store_pick
+  _sRc=$?
+  if [ "${_sRc}" = "2" ]; then
+    echo "ALRT: the shared codebases cleanup waits: $(_global_store_why)"
+    return 0
   fi
-  if _cnf_flag_yes /root/.barracuda.cnf _SHARED_CODEBASES_CLEANUP; then
-    _to="${_CLD}/data/all/${1}/"
-    if ( umask 022; mkdir -p "${_CLD}" ) \
-      && _acct_in_real_dir "${_CLD}" _global_root_only_here \
-      && ( umask 022; mkdir -p "${_to}" ); then
-      echo "Moving ${_how} to ${_to}"
-      mv -f -- "./${2}" "${_to}"
-    else
-      echo "${_what} not moved: ${_CLD} is not a real directory of root's closed to others"
-    fi
+  [ "${_sRc}" = "0" ] || return 0
+  if [ -L "/data/all" ]; then
+    _CLD="/data/disk/codebases-cleanup"
   else
-    echo "${_what} detected (dry-run; set _SHARED_CODEBASES_CLEANUP=YES in /root/.barracuda.cnf to move)"
+    _CLD="/var/backups/codebases-cleanup"
   fi
-}
-
-# The text of every platform alias in the current (pinned) .drush, one
-# after another, each read bounded and never through a link or a FIFO.
-_platform_aliases_text_here() {
-  local _a _rc=0
-  for _a in ./platform_*.alias.drushrc.php; do
-    [ -e "${_a}" ] || [ -L "${_a}" ] || continue
-    _acct_read_plain_here "${_a#./}" || _rc=1
-    echo
+  # Every platform alias, the master's and the accounts', read once. Each
+  # registered platform root counts as use, so a night without all of them
+  # judges nothing.
+  _aliasText=$(mktemp) \
+    || { echo "INFO: no temporary file for the platform aliases -- skipping shared-codebases cleanup"; return; }
+  for _u in /var/aegir /data/disk/*; do
+    [ -d "${_u}/.drush" ] || continue
+    if ! _acct_in_real_dir "${_u}/.drush" _platform_aliases_text_here >> "${_aliasText}"; then
+      echo "INFO: the platform aliases in ${_u}/.drush could not be read -- skipping shared-codebases cleanup"
+      rm -f -- "${_aliasText}"
+      return
+    fi
   done
-  return "${_rc}"
+  _acct_in_real_dir "${_gSt}" _shared_codebases_here "${_aliasText}"
+  rm -f -- "${_aliasText}"
 }
-
-# True when a registered platform alias names the tree $1: the master's
-# aliases as they always were, the accounts' ones in the text $2 holds, read
-# once per run inside each real .drush.
-_platform_alias_names() {
-  grep -qsF -e "'${1}'" -e "'${1}/" \
-    /var/aegir/.drush/platform_*.alias.drushrc.php && return 0
-  grep -qsF -e "'${1}'" -e "'${1}/" -- "${2}"
-}
-
 _ghost_codebases_cleanup() {
   _provision_running && { echo "INFO: provision task active -- skipping ghost-codebases cleanup"; return; }
   local _aliasText _u

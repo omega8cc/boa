@@ -372,6 +372,79 @@ preflight() {
 
 ###-------------FLIP: DRY RUN----------###
 
+# root's own CLI PHP series ('7.4'), empty when it is unreadable
+_php_series_cli() {
+  local _s
+  _s="$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;' 2>/dev/null)"
+  case "${_s}" in
+    [0-9].[0-9]|[0-9].[0-9][0-9]) echo "${_s}" ;;
+  esac
+}
+
+# the FPM package matching the box's OWN PHP series. On a mixed-repo box
+# (a PPA'd legacy Ubuntu keeping D7-era PHP) the unversioned 'php-fpm'
+# meta resolves to the repo's NEWEST PHP - a different series than every
+# site runs on - so the versioned package is always tried first. Empty
+# when the CLI version is unreadable (callers fall through to the metas).
+_php_series_fpm() {
+  local _s
+  _s="$(_php_series_cli)"
+  if [[ -n "${_s}" ]]; then
+    echo "php${_s}-fpm"
+  fi
+}
+
+# the PHP series an *fpm.sock path NAMES. Empty for a pool socket whose
+# name carries no series - callers then skip the assertion, never guess.
+_socket_php_series() {
+  local _b="${1##*/}"
+  case "${_b}" in
+    php[0-9]*-fpm.sock) _b="${_b#php}"; echo "${_b%-fpm.sock}" ;;
+  esac
+}
+
+# the series behind whatever _probe_fpm_target returned (empty for a port)
+_fpm_target_series() {
+  case "$1" in
+    socket:*) _socket_php_series "${1#socket:}" ;;
+  esac
+}
+
+# the PHP series this box SERVES its sites with today, best provenance
+# first: the enabled apache php module (that IS the interpreter behind
+# every vhost right now), then a single installed mod_php package, then
+# root's CLI php. Empty when none of them is readable.
+_expected_php_series() {
+  local _f _b _p
+  for _f in /etc/apache2/mods-enabled/php*.load; do
+    [[ -e "${_f}" ]] || continue
+    _b="${_f##*/}"; _b="${_b%.load}"; _b="${_b#php}"
+    case "${_b}" in
+      [0-9]*) echo "${_b}"; return 0 ;;
+    esac
+  done
+  _p="$(dpkg -l 2>/dev/null | awk '/^ii +libapache2-mod-php[0-9]/ {print $2}' \
+    | sed -e 's/:.*//' -e 's/^libapache2-mod-php//' | sort -u)"
+  if [[ -n "${_p}" && "$(echo "${_p}" | wc -l)" -eq 1 ]]; then
+    echo "${_p}"
+    return 0
+  fi
+  _php_series_cli
+}
+
+# php5-era module and socket names carry the MAJOR only ('php5.load',
+# '/var/run/php5-fpm.sock'), so a major-only name on either side compares
+# on the major alone: '5' and '5.6' are the same interpreter family here,
+# '7.4' and '8.1' are not.
+_series_match() {
+  local _a="$1" _b="$2"
+  [[ "${_a}" = "${_b}" ]] && return 0
+  if [[ "${_a}" != *.* || "${_b}" != *.* ]]; then
+    [[ "${_a%%.*}" = "${_b%%.*}" ]] && return 0
+  fi
+  return 1
+}
+
 dryrun_flip() {
   _msg "DRY RUN: apache -> nginx flip readiness on $(hostname -f 2>/dev/null)"
   local _fail=0
@@ -625,79 +698,6 @@ _policy_guard_off() {
 # concrete versioned FPM units only - 'php-fpm' is a unit-less metapackage
 _fpm_units() {
   dpkg -l 2>/dev/null | awk '/^ii +php[0-9]+(\.[0-9]+)?-fpm/ {print $2}'
-}
-
-# root's own CLI PHP series ('7.4'), empty when it is unreadable
-_php_series_cli() {
-  local _s
-  _s="$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;' 2>/dev/null)"
-  case "${_s}" in
-    [0-9].[0-9]|[0-9].[0-9][0-9]) echo "${_s}" ;;
-  esac
-}
-
-# the FPM package matching the box's OWN PHP series. On a mixed-repo box
-# (a PPA'd legacy Ubuntu keeping D7-era PHP) the unversioned 'php-fpm'
-# meta resolves to the repo's NEWEST PHP - a different series than every
-# site runs on - so the versioned package is always tried first. Empty
-# when the CLI version is unreadable (callers fall through to the metas).
-_php_series_fpm() {
-  local _s
-  _s="$(_php_series_cli)"
-  if [[ -n "${_s}" ]]; then
-    echo "php${_s}-fpm"
-  fi
-}
-
-# the PHP series an *fpm.sock path NAMES. Empty for a pool socket whose
-# name carries no series - callers then skip the assertion, never guess.
-_socket_php_series() {
-  local _b="${1##*/}"
-  case "${_b}" in
-    php[0-9]*-fpm.sock) _b="${_b#php}"; echo "${_b%-fpm.sock}" ;;
-  esac
-}
-
-# the series behind whatever _probe_fpm_target returned (empty for a port)
-_fpm_target_series() {
-  case "$1" in
-    socket:*) _socket_php_series "${1#socket:}" ;;
-  esac
-}
-
-# the PHP series this box SERVES its sites with today, best provenance
-# first: the enabled apache php module (that IS the interpreter behind
-# every vhost right now), then a single installed mod_php package, then
-# root's CLI php. Empty when none of them is readable.
-_expected_php_series() {
-  local _f _b _p
-  for _f in /etc/apache2/mods-enabled/php*.load; do
-    [[ -e "${_f}" ]] || continue
-    _b="${_f##*/}"; _b="${_b%.load}"; _b="${_b#php}"
-    case "${_b}" in
-      [0-9]*) echo "${_b}"; return 0 ;;
-    esac
-  done
-  _p="$(dpkg -l 2>/dev/null | awk '/^ii +libapache2-mod-php[0-9]/ {print $2}' \
-    | sed -e 's/:.*//' -e 's/^libapache2-mod-php//' | sort -u)"
-  if [[ -n "${_p}" && "$(echo "${_p}" | wc -l)" -eq 1 ]]; then
-    echo "${_p}"
-    return 0
-  fi
-  _php_series_cli
-}
-
-# php5-era module and socket names carry the MAJOR only ('php5.load',
-# '/var/run/php5-fpm.sock'), so a major-only name on either side compares
-# on the major alone: '5' and '5.6' are the same interpreter family here,
-# '7.4' and '8.1' are not.
-_series_match() {
-  local _a="$1" _b="$2"
-  [[ "${_a}" = "${_b}" ]] && return 0
-  if [[ "${_a}" != *.* || "${_b}" != *.* ]]; then
-    [[ "${_a%%.*}" = "${_b%%.*}" ]] && return 0
-  fi
-  return 1
 }
 
 # Where the aegir apache include LIVES varies by install route AND era, so

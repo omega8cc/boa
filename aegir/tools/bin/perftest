@@ -1103,6 +1103,37 @@ _ensure_ioping() {
   return 1
 }
 
+# ----
+# BOA-specific grading helpers
+# ----
+_num_or_empty() {
+  printf '%s' "$1" | grep -Eo '^[0-9]+(\.[0-9]+)?' || true
+}
+
+_median_num() {
+  # Median of numeric arguments (prints empty if no valid inputs).
+  # Proper even/odd handling:
+  #  - odd  N: middle element
+  #  - even N: average of the two middle elements
+  if [ "$#" -eq 0 ]; then
+    echo ""
+    return
+  fi
+  printf '%s\n' "$@" | awk 'NF{print}' | sort -n | awk '{
+      a[NR]=$1
+    }
+    END{
+      if(NR==0){print ""; exit}
+      if(NR%2==1){
+        mid=(NR+1)/2
+        printf "%.3f", a[mid]
+      } else {
+        mid=NR/2
+        printf "%.3f", (a[mid]+a[mid+1])/2
+      }
+    }'
+}
+
 # Parse ioping "min/avg/max/mdev = ..." line and extract AVG.
 # Returns:
 #  - _parse_ioping_avg_us: numeric microseconds (rounded, empty if unknown)
@@ -1279,6 +1310,22 @@ _net_apac_zone_from_city() {
       echo "ANZ"
       ;;
   esac
+}
+
+_find_server_city() {
+  if [ -e "/root/.found_correct_city.cnf" ]; then
+    _LOC_CITY=$(cat /root/.found_correct_city.cnf 2>/dev/null | tr -d '\n')
+  else
+    if [ -e "/root/.found_correct_ipv4.cnf" ]; then
+      _LOC_IP=$(cat /root/.found_correct_ipv4.cnf 2>/dev/null | tr -d '\n')
+      _LOC_CITY=$(curl ${_crlGet} ipinfo.io/${_LOC_IP}/city 2>&1)
+      _LOC_CITY=$(echo -n ${_LOC_CITY} | tr -d "\n" 2>&1)
+    fi
+    if [ ! -z "${_LOC_CITY}" ]; then
+      _LOC_CITY=$(echo "${_LOC_CITY}" | tr ' ' '+' 2>&1)
+      echo ${_LOC_CITY} > /root/.found_correct_city.cnf
+    fi
+  fi
 }
 
 _run_ipv4_net_check() {
@@ -2221,37 +2268,6 @@ EOF
   rm -f "${_script}" >/dev/null 2>&1
 }
 
-# ----
-# BOA-specific grading helpers
-# ----
-_num_or_empty() {
-  printf '%s' "$1" | grep -Eo '^[0-9]+(\.[0-9]+)?' || true
-}
-
-_median_num() {
-  # Median of numeric arguments (prints empty if no valid inputs).
-  # Proper even/odd handling:
-  #  - odd  N: middle element
-  #  - even N: average of the two middle elements
-  if [ "$#" -eq 0 ]; then
-    echo ""
-    return
-  fi
-  printf '%s\n' "$@" | awk 'NF{print}' | sort -n | awk '{
-      a[NR]=$1
-    }
-    END{
-      if(NR==0){print ""; exit}
-      if(NR%2==1){
-        mid=(NR+1)/2
-        printf "%.3f", a[mid]
-      } else {
-        mid=NR/2
-        printf "%.3f", (a[mid]+a[mid+1])/2
-      }
-    }'
-}
-
 _max_num() {
   # Max of numeric arguments (prints empty if no valid inputs)
   if [ "$#" -eq 0 ]; then
@@ -2461,6 +2477,22 @@ _boa_grade_cpu_speed() {
     else if (eps>=1000) print "weak";
     else print "poor";
   }'
+}
+
+_guess_mysql_socket() {
+  if [ -S "/var/run/mysqld/mysqld.sock" ]; then
+    echo "/var/run/mysqld/mysqld.sock"
+    return
+  fi
+  if [ -S "/run/mysqld/mysqld.sock" ]; then
+    echo "/run/mysqld/mysqld.sock"
+    return
+  fi
+  if [ -S "/var/lib/mysql/mysql.sock" ]; then
+    echo "/var/lib/mysql/mysql.sock"
+    return
+  fi
+  echo ""
 }
 
 _detect_mysql_durability_relaxed() {
@@ -3197,22 +3229,6 @@ _print_disk_compact_section() {
   echo ""
 }
 
-_find_server_city() {
-  if [ -e "/root/.found_correct_city.cnf" ]; then
-    _LOC_CITY=$(cat /root/.found_correct_city.cnf 2>/dev/null | tr -d '\n')
-  else
-    if [ -e "/root/.found_correct_ipv4.cnf" ]; then
-      _LOC_IP=$(cat /root/.found_correct_ipv4.cnf 2>/dev/null | tr -d '\n')
-      _LOC_CITY=$(curl ${_crlGet} ipinfo.io/${_LOC_IP}/city 2>&1)
-      _LOC_CITY=$(echo -n ${_LOC_CITY} | tr -d "\n" 2>&1)
-    fi
-    if [ ! -z "${_LOC_CITY}" ]; then
-      _LOC_CITY=$(echo "${_LOC_CITY}" | tr ' ' '+' 2>&1)
-      echo ${_LOC_CITY} > /root/.found_correct_city.cnf
-    fi
-  fi
-}
-
 _print_host_info() {
   _find_server_city
   [ -n "${_LOC_CITY}" ] && _LOC_CITY="$(echo "${_LOC_CITY}" | tr '+' ' ')"
@@ -3636,22 +3652,6 @@ _read_mysql_root_pass() {
   fi
   head -n 1 /root/.my.pass.txt 2>/dev/null | tr -d '
 '
-}
-
-_guess_mysql_socket() {
-  if [ -S "/var/run/mysqld/mysqld.sock" ]; then
-    echo "/var/run/mysqld/mysqld.sock"
-    return
-  fi
-  if [ -S "/run/mysqld/mysqld.sock" ]; then
-    echo "/run/mysqld/mysqld.sock"
-    return
-  fi
-  if [ -S "/var/lib/mysql/mysql.sock" ]; then
-    echo "/var/lib/mysql/mysql.sock"
-    return
-  fi
-  echo ""
 }
 
 _sysbench_lua() {
