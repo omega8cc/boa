@@ -1873,6 +1873,31 @@ _LE_CLIENT_NOTIFY=YES
 _GHOST_CLIENT_NOTIFY=YES
 
 ###
+### The site Upgrade's nightly report, for Drupal 10 and later sites. For
+### each account in the digest or with the notice on, the nightly asks the
+### account's control panel which of its sites run a Drupal release that no
+### longer gets security fixes, and which have an Upgrade ready, and keeps
+### the answer in /var/log/boa/upgrade-due/.
+###
+### _UPGRADE_DIGEST=YES here mails the server admin (_MY_EMAIL) a digest of
+### every account's answer (sites whose release no longer gets security
+### fixes, with and without an Upgrade ready, and sites with an Upgrade
+### ready), only when it changed since the last one sent. An account whose
+### /root/.<user>.octopus.cnf says _UPGRADE_DIGEST=NO is left out of it.
+###
+### _UPGRADE_CLIENT_NOTIFY=YES mails the account's client (_CLIENT_EMAIL)
+### once for each site whose Drupal release stops getting security fixes,
+### saying that the site's page in the control panel offers Upgrade when a
+### newer platform is ready. On a server whose name ends in .aegir.cc the
+### mail carries a visible copy to admin@omega8.cc. Set it here for every
+### account, or per account in /root/.<user>.octopus.cnf, whose line wins.
+###
+### Both default to NO.
+###
+_UPGRADE_DIGEST=NO
+_UPGRADE_CLIENT_NOTIFY=NO
+
+###
 ### Max TTL for mysql process per user (seconds)
 ###
 ### This value is authoritative: the watchdog sources this file before its

@@ -2094,3 +2094,88 @@ _acct_unswept_sweep() {
   echo "acct-unswept: done, ${_all} entries handed over, numbers swept: ${_rel% }"
   return 0
 }
+
+# The site Upgrade's operator digest, after the account passes, with
+# _UPGRADE_DIGEST=YES in /root/.barracuda.cnf (default NO). It is built from
+# each account's newest whole report in /var/log/boa/upgrade-due (the
+# account pass writes one only when the panel's report came whole, so an
+# account skipped or cut off tonight keeps its last known lines), in three
+# groups: no longer supported with an Upgrade ready, no longer supported with
+# none, supported with an Upgrade ready. An account whose own _UPGRADE_DIGEST
+# is NO (its file says digest=NO), and one the nightly no longer processes
+# (gone, proxied away, cancelled, no vhosts: owl.sh's own test), drops out.
+# It goes to the operator (_MY_EMAIL) only when it differs from the
+# last one sent (upgrade-due/digest.sent holds its md5), and never empty: an
+# empty one writes its own md5 there, so a state that comes back is mailed
+# again.
+_upgrade_due_digest() {
+  local _d=/var/log/boa/upgrade-due _f _a _l _t _s _r _y _p _k _n _end _first
+  local _g1="" _g2="" _g3="" _a1 _a2 _a3 _c1 _c2 _c3 _body="" _sum _old="" _to _w
+  _cnf_flag_yes /root/.barracuda.cnf _UPGRADE_DIGEST || return 0
+  for _f in "${_d}"/*.txt; do
+    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
+    _a="${_f##*/}"
+    _a="${_a%.txt}"
+    [[ "${_a}" =~ ^[a-z][a-z0-9_]*$ ]] && [ -d "/data/disk/${_a}" ] || continue
+    [ -e "/data/disk/${_a}/config/server_master/nginx/vhost.d" ] \
+      && [ ! -e "/data/disk/${_a}/log/proxied.pid" ] \
+      && [ ! -e "/data/disk/${_a}/log/CANCELLED" ] || continue
+    _a1=""; _a2=""; _a3=""; _c1=0; _c2=0; _c3=0; _n=0; _end=""; _first=""
+    while IFS= read -r _l; do
+      [ -n "${_first}" ] || { _first="${_l}"; continue; }
+      case "${_l}" in
+        "UPGRADE-REPORT-END "*) _end="${_l#UPGRADE-REPORT-END }"; continue ;;
+        "UPGRADE-REPORT"$'\t'*) ;;
+        *) continue ;;
+      esac
+      _n=$((_n + 1))
+      IFS=$'\t' read -r _t _s _r _y _p _k <<< "${_l}"
+      _l="$(printf '%s' "${_s}: Drupal ${_r}" | LC_ALL=C tr -d '\000-\037\177')"
+      if [ "${_p}" != "-" ]; then
+        _l="${_l}; Upgrade to $(printf '%s' "${_p}: ${_k}" | LC_ALL=C tr -d '\000-\037\177')"
+      fi
+      if [ "${_y}" = "no" ] && [ "${_p}" != "-" ]; then
+        _a1="${_a1}    ${_l}"$'\n'; _c1=$((_c1 + 1))
+      elif [ "${_y}" = "no" ]; then
+        _a2="${_a2}    ${_l}"$'\n'; _c2=$((_c2 + 1))
+      elif [ "${_y}" = "yes" ] && [ "${_p}" != "-" ]; then
+        _a3="${_a3}    ${_l}"$'\n'; _c3=$((_c3 + 1))
+      fi
+    done < "${_f}"
+    # a file the account pass wrote whole, for the digest: its run line and
+    # a closing line that counts its site lines
+    [[ "${_first}" =~ ^run=[^\ ]*\ digest=YES$ && "${_end}" =~ ^[0-9]{1,9}$ ]] || continue
+    [ "$((10#${_end}))" = "${_n}" ] || continue
+    [ "${_c1}" -gt 0 ] && _g1="${_g1}  ${_a} (${_c1}):"$'\n'"${_a1}"
+    [ "${_c2}" -gt 0 ] && _g2="${_g2}  ${_a} (${_c2}):"$'\n'"${_a2}"
+    [ "${_c3}" -gt 0 ] && _g3="${_g3}  ${_a} (${_c3}):"$'\n'"${_a3}"
+  done
+  [ -n "${_g1}" ] && _body="${_body}"$'\n'"No longer gets security fixes, an Upgrade ready:"$'\n'"${_g1}"
+  [ -n "${_g2}" ] && _body="${_body}"$'\n'"No longer gets security fixes, no Upgrade ready:"$'\n'"${_g2}"
+  [ -n "${_g3}" ] && _body="${_body}"$'\n'"Gets security fixes, an Upgrade ready:"$'\n'"${_g3}"
+  _sum="$(printf '%s' "${_body}" | md5sum | cut -d' ' -f1)"
+  [ -f "${_d}/digest.sent" ] && _old="$(head -c 64 -- "${_d}/digest.sent" 2> /dev/null | tr -cd '0-9a-f')"
+  [ "${_sum}" = "${_old}" ] && return 0
+  if [ -n "${_body}" ]; then
+    _to="$(sed -n 's/^[[:space:]]*_MY_EMAIL=//p' /root/.barracuda.cnf 2> /dev/null \
+      | tail -n 1 | tr -d "\"' ")"
+    _to="${_to//\\@/@}"
+    if [[ ! "${_to}" =~ ^[^[:space:]]+$ ]]; then
+      echo "upgrade-due: no operator address (_MY_EMAIL) in /root/.barracuda.cnf; the digest is not sent"
+      return 0
+    fi
+    _w="$(hostname -f 2> /dev/null)"
+    _body="Drupal 10 and later sites on ${_w}, from each account's newest whole upgrade report (the Upgrade as the panel's first user would be offered it):"$'\n'"${_body}"
+    if ! printf '%s\n' "${_body}" | s-nail -S ttycharset=utf-8 -S sendcharsets=utf-8 \
+      -s "BOA nightly on ${_w}: Drupal upgrade report" "${_to}"; then
+      echo "upgrade-due: the digest could not be sent; it is tried again on the next night"
+      return 0
+    fi
+    echo "upgrade-due: the digest sent to ${_to}"
+  fi
+  mkdir -p "${_d}" && chmod 0700 "${_d}" || return 0
+  ( umask 077
+    printf '%s\n' "${_sum}" > "${_d}/digest.sent.new" ) 2> /dev/null \
+    && mv -f -- "${_d}/digest.sent.new" "${_d}/digest.sent"
+  return 0
+}
