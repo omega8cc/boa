@@ -1046,6 +1046,9 @@ _rdb_plan() {
 # record take it, and set back when anything fails.
 _rdb_fix() {
   local _rec="/root/.${_uname}.remote-db.txt" _jr="${_RDB_DIR}/${_uname}.apply" _old _p _l
+  # a database broker control file of such an account is named, as the
+  # broker serves it not, before anything is sent anywhere
+  _db_broker_rekey "${_uname}"
   if ! _rdb_lock 300; then
     echo "ALRT: remote database ${_uname}: a switch or a revert of it is running; nothing was changed"
     return 1

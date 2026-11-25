@@ -6491,7 +6491,10 @@ _provision_backend_dbpass_sync() {
     ### An account on a remote database server: no login there is dropped
     ### or made again, and nothing found by the account's name alone, a
     ### panel record or an alias, is changed (syncpass renews a switched
-    ### account's own login there by its record).
+    ### account's own login there by its record). A database broker
+    ### control file of such an account is named, as the broker serves it
+    ### not, before anything is sent anywhere.
+    _satellite_db_broker_rekey
     [ "${_DEBUG_MODE}" = "YES" ] && _msg "${_STATUS} A: ${_USER}: no login changed on ${_THIS_DB_HOST}"
   elif [ ! -z "${_ESC_PASS}" ] || [ ! -z "${_ENC_PASS}" ]; then
     local _pUpd _pDbHost
