@@ -5235,10 +5235,9 @@ _satellite_pass_php_put() {
 # run and the random one the password step made is put back in both files
 # (B writes the PHP one itself) right after it, whatever its end, and by the
 # EXIT trap when this run is ended meanwhile by a signal it can answer. One
-# killed outright leaves it there, and the next pass's
-# _satellite_root_pass_leftover_drop removes both files before anything else
-# of them. The PHP file goes first: cut off between the two, the other one
-# still says so.
+# killed outright leaves it there with the account half made, which no
+# upgrade reaches: the octopus launcher's next pass removes both files. The
+# PHP file goes first: cut off between the two, the other one still says so.
 _satellite_init_pass_lend() {
   local _r
   _satellite_db_remote || return 0

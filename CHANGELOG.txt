@@ -54,7 +54,8 @@
     * In REMOTE DB SERVER MODE an account's own password files no longer
       keep the database server's root password: its next upgrade gives them
       a random one and says so once, and the install of a new account holds
-      it there only while the control panel is installed.
+      it there only while the control panel is installed. If that install
+      is killed outright, the next octopus pass removes both files.
 
 @=> New Features
 
