@@ -5103,30 +5103,167 @@ _satellite_root_pass_backups_drop_here() {
 }
 
 #
-# An account in the box's own name mode (_THIS_DB_HOST=FQDN) once reached
-# the password step with the name already resolved, taken for a remote
-# server, so its password file was given the database root password. A file
-# that still holds exactly that password (compared here, never printed) is
-# removed with its PHP twin, never kept or moved to a backup: the step's own
-# random password replaces both. Upgrades of those years moved such a file
-# to a backup: one that still holds it goes too. Status 0 when the password
-# file was removed.
+# Status 0 when the account's database is on a remote server: any host but
+# the four words that keep it on this box. The box's own address, or its
+# name spelled out, counts as remote, as in every step below.
+_satellite_db_remote() {
+  case "${_THIS_DB_HOST}" in
+    localhost|127.0.0.1|PROXYSQL|FQDN) return 1 ;;
+  esac
+  return 0
+}
+
+#
+# In the current (pinned) .drush: status 0 when a server alias logs in as
+# the account $1 itself. Read bounded and never through a link.
+_satellite_alias_own_login_here() {
+  local _f
+  for _f in ./server_*.alias.drushrc.php; do
+    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
+    _acct_read_here "${_f#./}" | grep -qF "mysql://${1}:" && return 0
+  done
+  return 1
+}
+
+#
+# An account of a remote server logs in there as aegir_root, as its install
+# left it, and nothing uses the login of its own name an upgrade renews
+# there. One changed since to its own login works only while that login
+# takes the password the upgrade gives the panel and the alias, which only
+# root can give it. Status 0, asked once a run, for an account changed so
+# while root cannot do that from here: its upgrade uses the root password,
+# as before, which is then the only one such a login can be kept on.
+_satellite_own_login_kept() {
+  local _h="${_THIS_DB_HOST}" _pt=3306
+  if [ -z "${_SAT_OWN_LOGIN_KEPT}" ]; then
+    _SAT_OWN_LOGIN_KEPT=NO
+    if [ "${_STATUS}" != "INIT" ] && _satellite_db_remote \
+      && [ "${_THIS_DB_HOST}" != "${_MY_OWNIP}" ] \
+      && _acct_in_real_dir "${_ROOT}/.drush" _satellite_alias_own_login_here "${_USER}"; then
+      if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
+        _h=127.0.0.1
+        _pt=6033
+      fi
+      [ "$(mysql --silent --skip-column-names --connect-timeout=10 -u root \
+        -h"${_h}" -P"${_pt}" --protocol=tcp -e "SELECT 1 FROM mysql.user \
+        WHERE CONCAT(User,'@',Host)=CURRENT_USER() AND Create_user_priv='Y' \
+        AND Grant_priv='Y'" 2> /dev/null < /dev/null)" = "1" ] || _SAT_OWN_LOGIN_KEPT=YES
+    fi
+  fi
+  [ "${_SAT_OWN_LOGIN_KEPT}" = "YES" ]
+}
+
+#
+# The root password in an account's password file. An account in the box's
+# own name mode (_THIS_DB_HOST=FQDN) once reached the password step with the
+# name already resolved, taken for a remote server, and a remote account was
+# given that password on purpose, though nothing reads the file once its
+# panel is installed. A file that still holds exactly that password
+# (compared here, never printed) is removed with its PHP twin, never kept or
+# moved to a backup: the step's own random password replaces both. Upgrades
+# of those years moved such a file to a backup: one that still holds it goes
+# too. Status 0 when the password file was removed.
 _satellite_root_pass_leftover_drop() {
   local _r _p _n _st=1
-  [ "${_THIS_DB_HOST}" = "FQDN" ] || return 1
+  if _satellite_db_remote; then
+    _satellite_own_login_kept && return 1
+  elif [ "${_THIS_DB_HOST}" != "FQDN" ]; then
+    return 1
+  fi
   _r=$(cat /root/.my.pass.txt 2> /dev/null | tr -d '\n')
   [ -n "${_r}" ] || return 1
   _p=$(_acct_read_in "${_ROOT}" ".${_USER}.pass.txt" | tr -d '\n')
   if [ "${_p}" = "${_r}" ]; then
     _acct_in_real_dir "${_ROOT}" rm -f -- "./.${_USER}.pass.txt" "./.${_USER}.pass.php"
-    _msg "ALRT: ${_USER}: its database password file held the root password, replaced by a new random one"
     _st=0
   fi
   _n=$(_acct_in_real_dir "${_ROOT}" _satellite_root_pass_backups_drop_here "${_r}")
-  if [[ "${_n}" =~ ^[1-9][0-9]*$ ]]; then
+  [[ "${_n}" =~ ^[1-9][0-9]*$ ]] || _n=0
+  if _satellite_db_remote; then
+    if [ "${_st}" = "0" ] || [ "${_n}" != "0" ]; then
+      _msg "NOTE: ${_USER}: its database password file held the root password, replaced by a new random one (backups removed: ${_n})"
+    fi
+    return "${_st}"
+  fi
+  if [ "${_st}" = "0" ]; then
+    _msg "ALRT: ${_USER}: its database password file held the root password, replaced by a new random one"
+  fi
+  if [ "${_n}" != "0" ]; then
     _msg "ALRT: ${_USER}: backups of its database password file that held the root password removed: ${_n}"
   fi
   return "${_st}"
+}
+
+#
+# The account's two password files, put in the account root (the instance
+# user's) as fresh 0600 files handed to that user, never written, handed
+# over or given a mode through a link put at the name: $1 in .oN.pass.txt.
+_satellite_pass_txt_put() {
+  echo "${1}" | _acct_in_real_dir "${_ROOT}" _satellite_put_stdin_here \
+    ".${_USER}.pass.txt" 0600 "${_USER}:${_ACCG:-users}"
+}
+
+#
+# $1 in .oN.pass.php, put as above.
+# The install path resolves the mode before it writes this file (FQDN
+# becomes the box's own name, PROXYSQL the local proxy address); this path
+# kept the raw literal, so after the first upgrade the file named a host
+# nothing can connect to. _THIS_DB_HOST itself stays as it is: the steps
+# after this one still branch on the literal.
+_satellite_pass_php_put() {
+  _OCT_DB_HOST_W="${_THIS_DB_HOST}"
+  if [ "${_THIS_DB_HOST}" = "FQDN" ]; then
+    _OCT_DB_HOST_W="${_hName}"
+  elif [ "${_THIS_DB_HOST}" = "PROXYSQL" ]; then
+    _OCT_DB_HOST_W=127.0.0.1
+  fi
+  { echo "<?php"
+    echo "\$oct_db_user = \"${_USER}\";"
+    echo "\$oct_db_pass = \"${1}\";"
+    echo "\$oct_db_host = \"${_OCT_DB_HOST_W}\";"
+    echo "\$oct_db_port = \"${_THIS_DB_PORT}\";"
+    echo "\$oct_db_dirs = \"/data/disk/${_USER}/backups\";"
+  } | _acct_in_real_dir "${_ROOT}" _satellite_put_stdin_here \
+    ".${_USER}.pass.php" 0600 "${_USER}:${_ACCG:-users}"
+}
+
+#
+# The install of a remote account's panel (AegirSetupB) logs in to its
+# database server as aegir_root, the login all accounts there share. It runs
+# as the account, which can read nothing of root's and takes its password
+# from .oN.pass.txt alone, so that password is lent to the file for the one
+# run and the random one the password step made is put back in both files
+# (B writes the PHP one itself) right after it, whatever its end, and by the
+# EXIT trap when this run is ended meanwhile by a signal it can answer. One
+# killed outright leaves it there with the account half made, which no
+# upgrade reaches: the octopus launcher's next pass removes both files. The
+# PHP file goes first: cut off between the two, the other one still says so.
+_satellite_init_pass_lend() {
+  local _r
+  _satellite_db_remote || return 0
+  _r=$(cat /root/.my.pass.txt 2> /dev/null | tr -d '\n')
+  if [ -z "${_r}" ]; then
+    _msg "ALRT: /root/.my.pass.txt not found or empty; remote DB mode has no database password for the install of ${_USER}"
+    return 0
+  fi
+  _SAT_INIT_PASS_LENT=YES
+  trap _satellite_init_pass_back_on_exit EXIT
+  _satellite_pass_txt_put "${_r}" \
+    || _msg "ALRT: the database password for the install of ${_USER} could not be written"
+}
+_satellite_init_pass_back() {
+  [ "${_SAT_INIT_PASS_LENT}" = "YES" ] || return 0
+  if [ -z "${_ESC_PASS}" ] || ! _satellite_pass_php_put "${_ESC_PASS}" \
+    || ! _satellite_pass_txt_put "${_ESC_PASS}"; then
+    _acct_in_real_dir "${_ROOT}" rm -f -- "./.${_USER}.pass.php" "./.${_USER}.pass.txt"
+    _msg "ALRT: ${_USER}: its database password files could not be written and were removed, the next upgrade makes new ones"
+  fi
+  _SAT_INIT_PASS_LENT=NO
+  trap - EXIT
+}
+_satellite_init_pass_back_on_exit() {
+  trap '' HUP INT TERM PIPE
+  _satellite_init_pass_back
 }
 
 #
@@ -5162,10 +5299,7 @@ _provision_backend_dbpass_generate() {
   fi
   if [ "${_STRONG_PASSWORDS}" = "YES" ] \
     || [ "${_PWD_CHARS}" -gt 32 ]; then
-    if [ "${_THIS_DB_HOST}" = "localhost" ] \
-      || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
-      || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
-      || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
+    if ! _satellite_own_login_kept; then
       if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
         _ESC_PASS="$(openssl rand -base64 64 | tr -d '\n')"
       else
@@ -5179,7 +5313,7 @@ _provision_backend_dbpass_generate() {
         fi
       fi
     else
-      ### Remote DB mode takes the root password from /root/.my.pass.txt,
+      ### Such an account takes the root password from /root/.my.pass.txt,
       ### which barracuda writes and octopus refuses to run without. The
       ### fixed fallback printed in the public code is never an account's
       ### database password: without the file the password stays empty and
@@ -5201,10 +5335,7 @@ _provision_backend_dbpass_generate() {
     _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
   fi
   if [ -z "${_ESC_PASS}" ] || [ "${_LEN_PASS}" -lt 9 ]; then
-    if [ "${_THIS_DB_HOST}" = "localhost" ] \
-      || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
-      || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
-      || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
+    if ! _satellite_own_login_kept; then
       _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
       _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
       _ESC_PASS=$(_sanitize_string "${_ESC_PASS}" 2>&1)
@@ -5220,34 +5351,12 @@ _provision_backend_dbpass_generate() {
     _ENC_PASS="${_ESC_PASS}"
   fi
 
-  _satellite_root_pass_leftover_drop
-  ### Both files are put in the account root (the instance user's) as fresh
-  ### 0600 files handed to that user, never written, handed over or given a
-  ### mode through a link put at the name.
-  _L_SYS="${_ROOT}/.${_USER}.pass.txt"
-  echo "${_ESC_PASS}" | _acct_in_real_dir "${_ROOT}" _satellite_put_stdin_here \
-    ".${_USER}.pass.txt" 0600 "${_USER}:${_ACCG:-users}"
-
-  ### The install path resolves the mode before it writes this file (FQDN
-  ### becomes the box's own name, PROXYSQL the local proxy address); this
-  ### path kept the raw literal, so after the first upgrade the file named a
-  ### host nothing can connect to. _THIS_DB_HOST itself stays as it is: the
-  ### blocks below still branch on the literal.
-  _OCT_DB_HOST_W="${_THIS_DB_HOST}"
-  if [ "${_THIS_DB_HOST}" = "FQDN" ]; then
-    _OCT_DB_HOST_W="${_hName}"
-  elif [ "${_THIS_DB_HOST}" = "PROXYSQL" ]; then
-    _OCT_DB_HOST_W=127.0.0.1
+  if _satellite_own_login_kept; then
+    _msg "NOTE: ${_USER}: its server alias logs in as ${_USER} on a remote database server where root cannot manage users from here, its password stays the root password"
   fi
-  _L_SYS_PHP="${_ROOT}/.${_USER}.pass.php"
-  { echo "<?php"
-    echo "\$oct_db_user = \"${_USER}\";"
-    echo "\$oct_db_pass = \"${_ESC_PASS}\";"
-    echo "\$oct_db_host = \"${_OCT_DB_HOST_W}\";"
-    echo "\$oct_db_port = \"${_THIS_DB_PORT}\";"
-    echo "\$oct_db_dirs = \"/data/disk/${_USER}/backups\";"
-  } | _acct_in_real_dir "${_ROOT}" _satellite_put_stdin_here \
-    ".${_USER}.pass.php" 0600 "${_USER}:${_ACCG:-users}"
+  _satellite_root_pass_leftover_drop
+  _satellite_pass_txt_put "${_ESC_PASS}"
+  _satellite_pass_php_put "${_ESC_PASS}"
 
   _ESC="*.*"
 
@@ -6266,8 +6375,10 @@ _satellite_run_child_b() {
     rm -f /opt/tmp/testecho*
     chown root:${_USRG} /data/u &> /dev/null
     chmod 0771 /data/u &> /dev/null
+    _satellite_init_pass_lend
     su -s /bin/bash - ${_USER} -c "/bin/bash ${_AegirSetupB} ${_USER}"
     wait
+    _satellite_init_pass_back
     if [ -e "/opt/tmp/state/${_USER}/status-AegirSetupB-FAIL" ] \
       || [ ! -e "/opt/tmp/state/${_USER}/status-AegirSetupB-OK" ]; then
       _msg "${_STATUS} A: FATAL ERROR: AegirSetupB installer failed"

@@ -44,6 +44,19 @@
       autosync monitors go out whatever bytes their lines hold: one that is
       not UTF-8, or a control character, is shown as \xNN.
 
+    * Drupal 7 core 7.108.2 (D7ES) for the panel and the Drupal 7 platforms:
+      its session handler is ready for PHP 8.6, and under strict mode a
+      session cookie that names no stored session now gets a new ID.
+
+    * The marker of an unfinished platform build is written as a new file
+      and renamed into place, never through a link standing at its name.
+
+    * In REMOTE DB SERVER MODE an account's own password files no longer
+      keep the database server's root password: its next upgrade gives them
+      a random one and says so once, and the install of a new account holds
+      it there only while the control panel is installed. If that install
+      is killed outright, the next octopus pass removes both files.
+
 @=> New Features
 
     * Upgrade all sites, the platform task that upgrades every Drupal 10 or
@@ -51,6 +64,14 @@
       its own Upgrade, is granted to the account's main login roles (admin,
       aegir account manager), not to the client, site operator or platform
       manager roles.
+
+    * Build newer version, a platform task that builds a Composer platform
+      the control panel made again from its own recipe at the newest patch
+      or minor release of its Drupal, the next major, another version or a
+      Git branch or tag, and keeps the new platform for the sites' Upgrade
+      only when it is a newer version of the same codebase; otherwise it is
+      deleted. A security advisory the build adds is named in its result. It
+      is granted to no role yet.
 
     * An outgoing mail relay that wants a login, such as Amazon SES, is a
       setting now: _SMTP_RELAY_USER and _SMTP_RELAY_PASS beside
@@ -61,11 +82,28 @@
 
 @=> Improvements
 
+    * The Upgrade no longer refuses a newer platform that brings a security
+      advisory the site's platform does not have: its plan and its result
+      line name the advisory, and so does its dialog where both platforms'
+      advisories were read. A drupal_upgrade_modes list that asks for
+      security fixes still refuses such a move.
+
     * websh reads a shell account's long command lines faster again: the
       redirection reading had made some of them up to twice as slow, and a
       very long run of redirection signs far slower.
 
+    * A platform the control panel builds with Composer stops a build step
+      after 45 minutes, as it stops one silent for five, with everything the
+      step started, and removes what it made. A failed step says why in its
+      last lines. A Verify or a Delete of the platform while a build of it
+      still runs changes nothing and says so. The Drush a first Verify adds
+      to such a codebase has the same limit, and a stopped one is undone.
+
 @=> Important Fixes
+
+    * A Delete of a platform whose Composer build was cut off clears that
+      build's marker again, so a new build under the same name is no longer
+      refused as if the old one still ran.
 
     * _SMTP_RELAY_HOST takes [host]:port, as a relay on port 587 or 465
       needs, and one relay replaces another. An upgrade used to write such
@@ -214,8 +252,23 @@
       shell wrapped around a run is no longer killed, and options before
       update no longer hide one. It reads a run's age from the kernel's start
       times, not from ps, which in a container that shows its own uptime is
-      off by the time the host ran before it. The incident snapshot's thread
-      list prints such a misread age as ?.
+      off by the time the host ran before it.
+
+    * Every check that judges a process by how long it has run reads the
+      kernel's start times, not ps: the stuck SQL helper and guest-fire
+      watchdogs, the stuck backup notice, the Solr restart after an option
+      change, the nginx start guard, the idle FPM reload, xmass's dump
+      estimate, loadreport's window and the incident snapshot's thread list.
+      In an LXC container that shows its own uptime, every ps age was short by
+      the time the host ran before the container, and a process younger than
+      that read as 130 years old: the stuck SQL helper check read a nightly
+      backup or cleanup run that had just started as far past its limit, and
+      a starting nginx as stuck.
+
+    * xmass names apt-get update when it fails while setting up Percona's
+      repository for xtrabackup, and runs it a second time first: the apt
+      kill stops a refresh still running after 99 seconds, and the message
+      blamed the repository lines.
 
 ###
 ### Stable BOA-5.88.888 PRO/LTS - DRAGON EDITION

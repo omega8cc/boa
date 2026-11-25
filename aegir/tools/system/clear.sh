@@ -194,11 +194,34 @@ _installer_alive() {
 _SQL_BACKUP_EXEC='^([^ ]*/)?bash /var/xdrago/mysql_backup\.sh( |$)'
 _SQL_CLUSTER_BACKUP_EXEC='^([^ ]*/)?bash /var/xdrago/mysql_cluster_backup\.sh( |$)'
 
+# Seconds a process has run, from the kernel's start ticks: the process's
+# against those of a subshell made now (field 22 of each stat line, read
+# after the name, which may hold spaces or parentheses). Never ps's figure:
+# procps 4.0.0 to 4.0.4 give a process that starts while ps reads the table
+# an age of 4123168608 seconds, and in a container that shows its own
+# uptime (lxcfs) every ps age is short by the time the host ran first, or
+# wraps the same way. Prints nothing when the process is gone.
+_proc_age() {
+  local _s="" _p="" _n="" _hz="" _f=()
+  [[ "${1}" =~ ^[0-9]+$ ]] || return 1
+  read -r _s 2> /dev/null < "/proc/${1}/stat" || return 1
+  read -r -a _f 2> /dev/null <<< "${_s##*) }"
+  _p="${_f[19]}"
+  _n=$(read -r _s 2> /dev/null < /proc/self/stat || exit 1
+    read -r -a _f 2> /dev/null <<< "${_s##*) }"
+    echo "${_f[19]}")
+  [[ "${_p}" =~ ^[0-9]+$ ]] && [[ "${_n}" =~ ^[0-9]+$ ]] || return 1
+  _hz=$(getconf CLK_TCK 2> /dev/null)
+  [[ "${_hz}" =~ ^[1-9][0-9]*$ ]] || _hz=100
+  [ "${_n}" -ge "${_p}" ] || _n="${_p}"
+  echo $(( (_n - _p) / _hz ))
+}
+
 # Seconds the oldest process of the form has run; empty when none runs.
 _exec_age() {
   local _pat="$1" _p="" _e="" _max=""
   for _p in $(pgrep -u root -U root -f "${_pat}" 2> /dev/null); do
-    _e=$(ps -o etimes= -p "${_p}" 2> /dev/null | tr -dc '0-9')
+    _e=$(_proc_age "${_p}")
     [ -z "${_e}" ] && continue
     if [ -z "${_max}" ] || [ "${_e}" -gt "${_max}" ]; then
       _max="${_e}"

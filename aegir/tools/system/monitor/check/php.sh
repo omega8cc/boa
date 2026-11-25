@@ -63,6 +63,29 @@ renice ${_B_NICE} -p $$ &> /dev/null
 # act on it: each one drops worker lines before matching the master's messages.
 _FPM_WORKER_LINE=' child [0-9]+ said into std(err|out): '
 
+# Seconds a process has run, from the kernel's start ticks: the process's
+# against those of a subshell made now (field 22 of each stat line, read
+# after the name, which may hold spaces or parentheses). Never ps's figure:
+# procps 4.0.0 to 4.0.4 give a process that starts while ps reads the table
+# an age of 4123168608 seconds, and in a container that shows its own
+# uptime (lxcfs) every ps age is short by the time the host ran first, or
+# wraps the same way. Prints nothing when the process is gone.
+_proc_age() {
+  local _s="" _p="" _n="" _hz="" _f=()
+  [[ "${1}" =~ ^[0-9]+$ ]] || return 1
+  read -r _s 2> /dev/null < "/proc/${1}/stat" || return 1
+  read -r -a _f 2> /dev/null <<< "${_s##*) }"
+  _p="${_f[19]}"
+  _n=$(read -r _s 2> /dev/null < /proc/self/stat || exit 1
+    read -r -a _f 2> /dev/null <<< "${_s##*) }"
+    echo "${_f[19]}")
+  [[ "${_p}" =~ ^[0-9]+$ ]] && [[ "${_n}" =~ ^[0-9]+$ ]] || return 1
+  _hz=$(getconf CLK_TCK 2> /dev/null)
+  [[ "${_hz}" =~ ^[1-9][0-9]*$ ]] || _hz=100
+  [ "${_n}" -ge "${_p}" ] || _n="${_p}"
+  echo $(( (_n - _p) / _hz ))
+}
+
 # The last 500 lines each master wrote itself. Read from a wider tail, so a
 # burst of worker output cannot push a master message out of the window.
 _fpm_master_tail() {
@@ -255,7 +278,12 @@ _fpm_duplicate_instances_detection() {
     fi
     _thisErrLog="$(date) Duplicate master for php${e}-fpm (count=${_cnt})"
     echo "${_thisErrLog}" >> "${_pthOml}"
-    echo "$(date) INFO: php${e}-fpm masters counted: $(ps -o pid=,ppid=,etimes=,args= -p "$(_fpm_master_pids "${_pat}" | paste -sd, -)" 2> /dev/null | tr -s ' ' | tr '\n' ';')" >> "${_pthOml}"
+    # pid, ppid, seconds run (from start ticks, never ps's age) and title
+    local _mp="" _mList=""
+    for _mp in $(_fpm_master_pids "${_pat}"); do
+      _mList="${_mList} $(ps -o pid=,ppid= -p "${_mp}" 2> /dev/null | tr -s ' ' | sed 's/^ //') $(_proc_age "${_mp}") $(ps -o args= -p "${_mp}" 2> /dev/null);"
+    done
+    echo "$(date) INFO: php${e}-fpm masters counted:${_mList}" >> "${_pthOml}"
     [ -d "/var/backups/php-logs/${_NOW}" ] || mkdir -p "/var/backups/php-logs/${_NOW}/"
     mv -f "/var/log/php/php${e}-fpm-error.log" "/var/backups/php-logs/${_NOW}/" &> /dev/null
     service "php${e}-fpm" restart
