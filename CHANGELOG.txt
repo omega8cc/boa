@@ -4,6 +4,13 @@
 
 @=> Security
 
+    * The limited shell logs a refused line that holds a byte which is no
+      part of a letter, writing that byte as \xNN, and its log is UTF-8
+      in any locale. In a UTF-8 locale such a line was in no log, so
+      neither the Shell Escape Alert nor a later audit saw it, and where
+      the login's locale was en_US.UTF-8, typing such a byte ended the
+      session (lshell 0.11.17).
+
     * websh reads a redirection as dash does wherever it stands: in front
       of the command, behind a wrapper or glued to a word it is the shell's,
       and the words around it are judged by the Drush and PHP rules.
