@@ -4016,6 +4016,8 @@ _barracuda_cnf() {
     echo "_CLEAR_BOOST=${_CLEAR_BOOST}"                           >> ${_barCnf}
     echo "_LE_CLIENT_NOTIFY=${_LE_CLIENT_NOTIFY}"                 >> ${_barCnf}
     echo "_GHOST_CLIENT_NOTIFY=${_GHOST_CLIENT_NOTIFY}"           >> ${_barCnf}
+    echo "_UPGRADE_DIGEST=${_UPGRADE_DIGEST}"                     >> ${_barCnf}
+    echo "_UPGRADE_CLIENT_NOTIFY=${_UPGRADE_CLIENT_NOTIFY}"       >> ${_barCnf}
     echo "_SHARED_CODEBASES_CLEANUP=${_SHARED_CODEBASES_CLEANUP}" >> ${_barCnf}
     echo "_GHOST_CODEBASES_CLEANUP=${_GHOST_CODEBASES_CLEANUP}"   >> ${_barCnf}
     echo "_GHOST_PLATFORMS_CLEANUP=${_GHOST_PLATFORMS_CLEANUP}"   >> ${_barCnf}
@@ -4803,6 +4805,16 @@ _barracuda_cnf() {
     _GHOST_CLIENT_NOTIFY_TEST=$(grep _GHOST_CLIENT_NOTIFY ${_barCnf} 2>&1)
     if [[ ! "${_GHOST_CLIENT_NOTIFY_TEST}" =~ "_GHOST_CLIENT_NOTIFY" ]]; then
       echo "_GHOST_CLIENT_NOTIFY=${_GHOST_CLIENT_NOTIFY}" >> ${_barCnf}
+    fi
+
+    _UPGRADE_DIGEST_TEST=$(grep _UPGRADE_DIGEST ${_barCnf} 2>&1)
+    if [[ ! "${_UPGRADE_DIGEST_TEST}" =~ "_UPGRADE_DIGEST" ]]; then
+      echo "_UPGRADE_DIGEST=${_UPGRADE_DIGEST}" >> ${_barCnf}
+    fi
+
+    _UPGRADE_CLIENT_NOTIFY_TEST=$(grep _UPGRADE_CLIENT_NOTIFY ${_barCnf} 2>&1)
+    if [[ ! "${_UPGRADE_CLIENT_NOTIFY_TEST}" =~ "_UPGRADE_CLIENT_NOTIFY" ]]; then
+      echo "_UPGRADE_CLIENT_NOTIFY=${_UPGRADE_CLIENT_NOTIFY}" >> ${_barCnf}
     fi
 
     _SHARED_CODEBASES_CLEANUP_TEST=$(grep _SHARED_CODEBASES_CLEANUP ${_barCnf} 2>&1)
