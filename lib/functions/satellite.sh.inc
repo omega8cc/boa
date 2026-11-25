@@ -6083,43 +6083,33 @@ _satellite_db_remote() {
 }
 
 #
-# In the current (pinned) .drush: status 0 when a server alias logs in as
-# the account $1 itself. Read bounded and never through a link.
-_satellite_alias_own_login_here() {
-  local _f
-  for _f in ./server_*.alias.drushrc.php; do
-    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
-    _acct_read_here "${_f#./}" | grep -qF "mysql://${1}:" && return 0
-  done
-  return 1
+# Status 0 when the account's databases are on another server than this
+# box's own: a remote host, and not the box's own address, which reaches
+# this box's own server. No password step drops, makes again or renews a
+# login there: the account logs in with the login its server alias names,
+# the shared aegir_root its install left or, once switched (syncpass
+# remote), a login of its own that syncpass renews by its record.
+_satellite_db_head_remote() {
+  _satellite_db_remote && [ "${_THIS_DB_HOST}" != "${_MY_OWNIP}" ]
 }
 
 #
-# An account of a remote server logs in there as aegir_root, as its install
-# left it, and nothing uses the login of its own name an upgrade renews
-# there. One changed since to its own login works only while that login
-# takes the password the upgrade gives the panel and the alias, which only
-# root can give it. Status 0, asked once a run, for an account changed so
-# while root cannot do that from here: its upgrade uses the root password,
-# as before, which is then the only one such a login can be kept on.
-_satellite_own_login_kept() {
-  local _h="${_THIS_DB_HOST}" _pt=3306
-  if [ -z "${_SAT_OWN_LOGIN_KEPT}" ]; then
-    _SAT_OWN_LOGIN_KEPT=NO
-    if [ "${_STATUS}" != "INIT" ] && _satellite_db_remote \
-      && [ "${_THIS_DB_HOST}" != "${_MY_OWNIP}" ] \
-      && _acct_in_real_dir "${_ROOT}/.drush" _satellite_alias_own_login_here "${_USER}"; then
-      if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
-        _h=127.0.0.1
-        _pt=6033
-      fi
-      [ "$(mysql --silent --skip-column-names --connect-timeout=10 -u root \
-        -h"${_h}" -P"${_pt}" --protocol=tcp -e "SELECT 1 FROM mysql.user \
-        WHERE CONCAT(User,'@',Host)=CURRENT_USER() AND Create_user_priv='Y' \
-        AND Grant_priv='Y'" 2> /dev/null < /dev/null)" = "1" ] || _SAT_OWN_LOGIN_KEPT=YES
-    fi
-  fi
-  [ "${_SAT_OWN_LOGIN_KEPT}" = "YES" ]
+# A switched account's own password on its remote database server: the one
+# its recorded server alias holds, decoded. The record is root's
+# /root/.<oN>.remote-db.txt, a regular file of a single link, 0600, naming
+# the alias; the alias is read bounded in the real .drush, never through a
+# link. Status 1 when the account is not switched or either cannot be read.
+_satellite_remote_own_pass() {
+  local _r="/root/.${_USER}.remote-db.txt" _a _e _v
+  [ -f "${_r}" ] && [ ! -L "${_r}" ] || return 1
+  [ "$(stat -c '%u|%h|%a' -- "${_r}" 2> /dev/null)" = "0|1|600" ] || return 1
+  _a=$(grep -m 1 '^alias=' "${_r}" 2> /dev/null | cut -d= -f2-)
+  [[ "${_a}" =~ ^server_[A-Za-z0-9._-]+\.alias\.drushrc\.php$ ]] || return 1
+  _e=$(_acct_read_in "${_ROOT}/.drush" "${_a}" \
+    | sed -n "s#.*'master_db' *=> *'mysql://${_USER}:\([^@']*\)@.*#\1#p" | head -n 1)
+  [ -n "${_e}" ] || return 1
+  _v="${_e//+/ }"
+  printf '%b' "${_v//%/\\x}"
 }
 
 #
@@ -6134,9 +6124,7 @@ _satellite_own_login_kept() {
 # too. Status 0 when the password file was removed.
 _satellite_root_pass_leftover_drop() {
   local _r _p _n _st=1
-  if _satellite_db_remote; then
-    _satellite_own_login_kept && return 1
-  elif [ "${_THIS_DB_HOST}" != "FQDN" ]; then
+  if ! _satellite_db_remote && [ "${_THIS_DB_HOST}" != "FQDN" ]; then
     return 1
   fi
   _r=$(cat /root/.my.pass.txt 2> /dev/null | tr -d '\n')
@@ -6268,29 +6256,16 @@ _provision_backend_dbpass_generate() {
   fi
   if [ "${_STRONG_PASSWORDS}" = "YES" ] \
     || [ "${_PWD_CHARS}" -gt 32 ]; then
-    if ! _satellite_own_login_kept; then
-      if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
-        _ESC_PASS="$(openssl rand -base64 64 | tr -d '\n')"
-      else
-        _RANDPASS_TEST=$(randpass -V 2>&1)
-        if [[ "${_RANDPASS_TEST}" =~ "alnum" ]]; then
-          _ESC_PASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
-        else
-          _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
-          _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
-          _ESC_PASS=$(_sanitize_string "${_ESC_PASS}" 2>&1)
-        fi
-      fi
+    if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
+      _ESC_PASS="$(openssl rand -base64 64 | tr -d '\n')"
     else
-      ### Such an account takes the root password from /root/.my.pass.txt,
-      ### which barracuda writes and octopus refuses to run without. The
-      ### fixed fallback printed in the public code is never an account's
-      ### database password: without the file the password stays empty and
-      ### the sync changes no database user and no alias.
-      if [ -e "/root/.my.pass.txt" ]; then
-        _ESC_PASS=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
+      _RANDPASS_TEST=$(randpass -V 2>&1)
+      if [[ "${_RANDPASS_TEST}" =~ "alnum" ]]; then
+        _ESC_PASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
       else
-        _ESC_PASS=""
+        _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
+        _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
+        _ESC_PASS=$(_sanitize_string "${_ESC_PASS}" 2>&1)
       fi
     fi
     _isPythonTwo="$(which python2)"
@@ -6304,24 +6279,17 @@ _provision_backend_dbpass_generate() {
     _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
   fi
   if [ -z "${_ESC_PASS}" ] || [ "${_LEN_PASS}" -lt 9 ]; then
-    if ! _satellite_own_login_kept; then
-      _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
-      _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
-      _ESC_PASS=$(_sanitize_string "${_ESC_PASS}" 2>&1)
-    else
-      ### never the published fallback (see above)
-      if [ -e "/root/.my.pass.txt" ]; then
-        _ESC_PASS=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
-      else
-        _ESC_PASS=""
-        _msg "ALRT: /root/.my.pass.txt not found; remote DB mode sets no database password for ${_USER}"
-      fi
-    fi
+    _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
+    _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
+    _ESC_PASS=$(_sanitize_string "${_ESC_PASS}" 2>&1)
     _ENC_PASS="${_ESC_PASS}"
   fi
-
-  if _satellite_own_login_kept; then
-    _msg "NOTE: ${_USER}: its server alias logs in as ${_USER} on a remote database server where root cannot manage users from here, its password stays the root password"
+  ### An account switched to a login of its own on its remote database
+  ### server keeps that login's password in its files.
+  local _pOwn
+  if _satellite_db_head_remote && _pOwn=$(_satellite_remote_own_pass); then
+    _ESC_PASS="${_pOwn}"
+    _ENC_PASS="${_pOwn}"
   fi
   _satellite_root_pass_leftover_drop
   _satellite_pass_txt_put "${_ESC_PASS}"
@@ -6519,7 +6487,16 @@ _provision_backend_dbpass_sync() {
   _acct_in_real_dir "${_ROOT}" _satellite_chmod_nofollow f 0600 \
     "./.${_USER}.pass.php-pre-${_xSrl}-${_X_VERSION}-${_NOW}" &> /dev/null
   _provision_backend_dbpass_generate
-  if [ ! -z "${_ESC_PASS}" ] || [ ! -z "${_ENC_PASS}" ]; then
+  if _satellite_db_head_remote; then
+    ### An account on a remote database server: no login there is dropped
+    ### or made again, and nothing found by the account's name alone, a
+    ### panel record or an alias, is changed (syncpass renews a switched
+    ### account's own login there by its record). A database broker
+    ### control file of such an account is named, as the broker serves it
+    ### not, before anything is sent anywhere.
+    _satellite_db_broker_rekey
+    [ "${_DEBUG_MODE}" = "YES" ] && _msg "${_STATUS} A: ${_USER}: no login changed on ${_THIS_DB_HOST}"
+  elif [ ! -z "${_ESC_PASS}" ] || [ ! -z "${_ENC_PASS}" ]; then
     local _pUpd _pDbHost
     su -s /bin/bash - ${_USER} -c "${_DRUSHCMD} @hostmaster \
       sqlq \"UPDATE hosting_db_server SET db_passwd='${_ESC_PASS}' \
@@ -7224,6 +7201,13 @@ _satellite_run_pre_install() {
     ### syncpass replaces the password file without reading it: check it first
     _satellite_root_pass_leftover_drop
     _RST=$(syncpass fix ${_USER} 2>&1)
+    ### what syncpass says of an account on a remote database server
+    local _rstL
+    while IFS= read -r _rstL; do
+      case "${_rstL}" in
+        "ALRT: remote database ${_USER}: "*) _msg "${_STATUS} A: ${_rstL}" ;;
+      esac
+    done <<< "${_RST}"
     _provision_backend_dbpass_sync
   fi
   cd ${_ROOT}

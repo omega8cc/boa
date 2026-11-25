@@ -71,11 +71,26 @@
       it there only while the control panel is installed. If that install
       is killed outright, the next octopus pass removes both files.
 
+    * In REMOTE DB SERVER MODE an upgrade and syncpass no longer drop and
+      make again the logins of an account's name on the database server,
+      which nothing uses, and no longer change a panel record or a server
+      alias found by the account's name alone. syncpass acts on the
+      database server the account's own cnf names, as its upgrade does,
+      and the password files of every remote account are random.
+
     * New Grav platforms are built on Grav 2.2.35, with Grav's security
       fixes of 24 November. After the next Octopus upgrade the Upgrade Grav
       task brings an existing site to it.
 
 @=> New Features
+
+    * syncpass remote <account> plan|apply|revert|status switches an
+      account in REMOTE DB SERVER MODE from the shared aegir_root login to
+      a login of its own on the database server, where root on the web head
+      can manage users there. The new login is proven before the account's
+      server alias, its panel's server record and its password files take
+      it, anything that fails puts all back, and each later upgrade gives
+      that login a new password.
 
     * Upgrade all sites, the platform task that upgrades every Drupal 10 or
       later site of a platform onto a newer one, one at a time and each as
@@ -141,15 +156,32 @@
       the shell's configuration is reloaded (lshell 0.11.18).
 
     * The Drush a Composer platform's first Verify adds is resolved on the
-      PHP the platform's tasks run on again. With the build step's time
-      limit in front of it, the require ran on the server's default PHP, so
-      where an account's command-line PHP is older the Drush it added could
-      not start there.
+      PHP the platform's tasks run on, a cli-per-platform.info line for its
+      folder included. With the build step's time limit in front of it, the
+      require ran on the server's default PHP, so where the platform's tasks
+      run on an older PHP the Drush it added could not start there.
 
     * Lock and Unlock work on a Composer platform added with an empty
       Docroot field, which the panel records at its project folder: they
       load the code in web/ (or docroot/, html/) below it, as Verify does,
       where they stopped with "A codebase was not found".
+
+    * A Migrate onto such a platform records the moved site's own database
+      at once. It read the copy's settings back from the project folder,
+      not from web/, so the panel named the source site's database until a
+      later Verify.
+
+    * boa cleanup takes an Octopus account whose install never finished:
+      one marked log/CANCELLED that has no log/cores.txt, whose system
+      user owns /data/disk/<oN> as its home, whose /root/.<oN>.octopus.cnf
+      names it, and which serves no site but its own panel. detect lists it
+      as an install that never finished, and purge removes it as any other
+      account, so a new install of the name is possible again. An account
+      with any other vhost or site alias is refused, saying why.
+
+    * boa cleanup purge removes the account's own sudo lines from
+      /etc/sudoers and /etc/sudoers.d, each changed file checked by visudo
+      first and kept with the account's other records.
 
     * vdrush @alias updb runs on a Drupal 10 or newer codebase again after a
       Composer run that installed drush/drush (an update or a require) put
