@@ -141,10 +141,10 @@
       the shell's configuration is reloaded (lshell 0.11.18).
 
     * The Drush a Composer platform's first Verify adds is resolved on the
-      PHP the platform's tasks run on again. With the build step's time
-      limit in front of it, the require ran on the server's default PHP, so
-      where an account's command-line PHP is older the Drush it added could
-      not start there.
+      PHP the platform's tasks run on, a cli-per-platform.info line for its
+      folder included. With the build step's time limit in front of it, the
+      require ran on the server's default PHP, so where the platform's tasks
+      run on an older PHP the Drush it added could not start there.
 
     * Lock and Unlock work on a Composer platform added with an empty
       Docroot field, which the panel records at its project folder: they
