@@ -43,11 +43,34 @@ _SQL_BACKUP_EXEC='^([^ ]*/)?bash /var/xdrago/mysql_backup\.sh( |$)'
 _SQL_CLUSTER_BACKUP_EXEC='^([^ ]*/)?bash /var/xdrago/mysql_cluster_backup\.sh( |$)'
 _SQL_CLEANUP_EXEC='^([^ ]*/)?bash /var/xdrago/mysql_cleanup\.sh( |$)'
 
+# Seconds a process has run, from the kernel's start ticks: the process's
+# against those of a subshell made now (field 22 of each stat line, read
+# after the name, which may hold spaces or parentheses). Never ps's figure:
+# procps 4.0.0 to 4.0.4 give a process that starts while ps reads the table
+# an age of 4123168608 seconds, and in a container that shows its own
+# uptime (lxcfs) every ps age is short by the time the host ran first, or
+# wraps the same way. Prints nothing when the process is gone.
+_proc_age() {
+  local _s="" _p="" _n="" _hz="" _f=()
+  [[ "${1}" =~ ^[0-9]+$ ]] || return 1
+  read -r _s 2> /dev/null < "/proc/${1}/stat" || return 1
+  read -r -a _f 2> /dev/null <<< "${_s##*) }"
+  _p="${_f[19]}"
+  _n=$(read -r _s 2> /dev/null < /proc/self/stat || exit 1
+    read -r -a _f 2> /dev/null <<< "${_s##*) }"
+    echo "${_f[19]}")
+  [[ "${_p}" =~ ^[0-9]+$ ]] && [[ "${_n}" =~ ^[0-9]+$ ]] || return 1
+  _hz=$(getconf CLK_TCK 2> /dev/null)
+  [[ "${_hz}" =~ ^[1-9][0-9]*$ ]] || _hz=100
+  [ "${_n}" -ge "${_p}" ] || _n="${_p}"
+  echo $(( (_n - _p) / _hz ))
+}
+
 # Seconds the oldest process of the form has run; empty when none runs.
 _exec_age() {
   local _pat="$1" _p="" _e="" _max=""
   for _p in $(pgrep -u root -U root -f "${_pat}" 2> /dev/null); do
-    _e=$(ps -o etimes= -p "${_p}" 2> /dev/null | tr -dc '0-9')
+    _e=$(_proc_age "${_p}")
     [ -z "${_e}" ] && continue
     if [ -z "${_max}" ] || [ "${_e}" -gt "${_max}" ]; then
       _max="${_e}"
@@ -339,21 +362,14 @@ _kill_stuck_fire_external() {
   _FIRE_WATCHDOG_TIMEOUT=180  # seconds — matches guest-fire.sh's own threshold
   _FIRE_WATCHDOG_LOG="/var/log/boa/fire_stuck.log"
   _FIRE_SCRIPT="guest-fire.sh"
-  local _BOOT_TIME _PID _START_TICKS _ELAPSED _NOW _CLK_TCK
-  _NOW=$(date +%s)
-  _BOOT_TIME=$(awk '{print int($1)}' /proc/uptime 2>/dev/null)
-  _CLK_TCK=$(getconf CLK_TCK 2>/dev/null || echo 100)
+  local _PID _ELAPSED
 
   while IFS= read -r _PID; do
     [[ -z "${_PID}" ]] && continue
-    # /proc/PID/stat field 22 = process start time in clock ticks since boot
-    _START_TICKS=$(awk '{print $22}' "/proc/${_PID}/stat" 2>/dev/null)
-    [[ -z "${_START_TICKS}" ]] && continue
-    # Convert: start_seconds_since_boot = start_ticks / CLK_TCK
-    # Elapsed = now - (boot_epoch + start_seconds_since_boot)
-    _BOOT_EPOCH=$(( _NOW - _BOOT_TIME ))
-    _START_EPOCH=$(( _BOOT_EPOCH + _START_TICKS / _CLK_TCK ))
-    _ELAPSED=$(( _NOW - _START_EPOCH ))
+    # the start ticks of the run and of now, never /proc/uptime: a container
+    # shows its own uptime while start ticks count from the host's boot
+    _ELAPSED=$(_proc_age "${_PID}")
+    [[ "${_ELAPSED}" =~ ^[0-9]+$ ]] || continue
     if (( _ELAPSED > _FIRE_WATCHDOG_TIMEOUT )); then
       echo "$(date) [fire-watchdog-ext] PID ${_PID} (${_FIRE_SCRIPT}) stuck ${_ELAPSED}s > ${_FIRE_WATCHDOG_TIMEOUT}s — killing" \
         >> "${_FIRE_WATCHDOG_LOG}"

@@ -6389,7 +6389,12 @@ for _comp in ${_repo} tools; do
     echo "\${_compLine}" > "\${_compList}"
   fi
 done
-apt-get -q -y update >/dev/null 2>&1
+# BOA's apt killer stops a refresh still running after 99 seconds: one more
+# try, then say it was the refresh that did not finish, not the repo lines
+if ! apt-get -q -y update >/dev/null 2>&1 && ! apt-get -q -y update >/dev/null 2>&1; then
+  echo "ERROR: the Percona repo lines are in place, but apt-get update did not finish twice (it failed, or the apt killer stopped it after 99 seconds); run the step again" >&2
+  exit 1
+fi
 REPOEOF
 }
 
@@ -7064,6 +7069,29 @@ _xmass_blg_project() {
     }'
 }
 
+# Seconds a process has run, from the kernel's start ticks: the process's
+# against those of a subshell made now (field 22 of each stat line, read
+# after the name, which may hold spaces or parentheses). Never ps's figure:
+# procps 4.0.0 to 4.0.4 give a process that starts while ps reads the table
+# an age of 4123168608 seconds, and in a container that shows its own
+# uptime (lxcfs) every ps age is short by the time the host ran first, or
+# wraps the same way. Prints nothing when the process is gone.
+_proc_age() {
+  local _s="" _p="" _n="" _hz="" _f=()
+  [[ "${1}" =~ ^[0-9]+$ ]] || return 1
+  read -r _s 2> /dev/null < "/proc/${1}/stat" || return 1
+  read -r -a _f 2> /dev/null <<< "${_s##*) }"
+  _p="${_f[19]}"
+  _n=$(read -r _s 2> /dev/null < /proc/self/stat || exit 1
+    read -r -a _f 2> /dev/null <<< "${_s##*) }"
+    echo "${_f[19]}")
+  [[ "${_p}" =~ ^[0-9]+$ ]] && [[ "${_n}" =~ ^[0-9]+$ ]] || return 1
+  _hz=$(getconf CLK_TCK 2> /dev/null)
+  [[ "${_hz}" =~ ^[1-9][0-9]*$ ]] || _hz=100
+  [ "${_n}" -ge "${_p}" ] || _n="${_p}"
+  echo $(( (_n - _p) / _hz ))
+}
+
 # The night dump's peak on the log's filesystem $1 (its mount point), in
 # bytes: sets _BLG_DPK (the whole set uncompressed, to plan for),
 # _BLG_DPK1 (its largest database, which is about the peak of a night that
@@ -7071,7 +7099,7 @@ _xmass_blg_project() {
 # uncompressed now, while a run writes or compresses it) and _BLG_DSAYS
 # (where the figures come from). $2 = the log's base name.
 _xmass_blg_dump() {
-  local _mnt="$1" _b="$2" _dir=/data/disk/arch/sql _m _p _p1 _e _t _d _w
+  local _mnt="$1" _b="$2" _dir=/data/disk/arch/sql _m _p _p1 _e _e1 _t _d _w
   _BLG_DPK=0
   _BLG_DPK1=0
   _BLG_DDISK=0
@@ -7154,8 +7182,15 @@ _xmass_blg_dump() {
   _t="${_t} $(pgrep -u root -U root -f '^([^ ]*/)?bash /var/xdrago/mysql_backup\.sh( |$)' 2> /dev/null | tr '\n' ' ')"
   _t="$(printf '%s\n' ${_t} | tr -cd '0-9\n' | sort -u | paste -sd, -)"
   [ -n "${_t}" ] || return 0
-  # the run's start: its oldest process
-  _w="$(ps -o etimes= -p "${_t}" 2> /dev/null | tr -dc '0-9\n' | sort -n | tail -n 1)"
+  # the run's start: its oldest process, by the kernel's start ticks
+  _w=""
+  for _p in ${_t//,/ }; do
+    _e1="$(_proc_age "${_p}")"
+    [[ "${_e1}" =~ ^[0-9]+$ ]] || continue
+    if [ -z "${_w}" ] || [ "${_e1}" -gt "${_w}" ]; then
+      _w="${_e1}"
+    fi
+  done
   [[ "${_w}" =~ ^[0-9]+$ ]] || return 0
   [ "${_e}" -ge $(( $(date +%s) - _w - 120 )) ] || return 0
   _p="$(timeout 120 du -sk --exclude='*.tar.zst' --exclude='*.sql.gz' "${_d}" 2> /dev/null | awk '{ print $1 }')"

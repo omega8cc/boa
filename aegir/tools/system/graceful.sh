@@ -797,6 +797,29 @@ _fpm_shared_resident_mb() {
   echo "$(( _tot / 1048576 ))"
 }
 
+# Seconds a process has run, from the kernel's start ticks: the process's
+# against those of a subshell made now (field 22 of each stat line, read
+# after the name, which may hold spaces or parentheses). Never ps's figure:
+# procps 4.0.0 to 4.0.4 give a process that starts while ps reads the table
+# an age of 4123168608 seconds, and in a container that shows its own
+# uptime (lxcfs) every ps age is short by the time the host ran first, or
+# wraps the same way. Prints nothing when the process is gone.
+_proc_age() {
+  local _s="" _p="" _n="" _hz="" _f=()
+  [[ "${1}" =~ ^[0-9]+$ ]] || return 1
+  read -r _s 2> /dev/null < "/proc/${1}/stat" || return 1
+  read -r -a _f 2> /dev/null <<< "${_s##*) }"
+  _p="${_f[19]}"
+  _n=$(read -r _s 2> /dev/null < /proc/self/stat || exit 1
+    read -r -a _f 2> /dev/null <<< "${_s##*) }"
+    echo "${_f[19]}")
+  [[ "${_p}" =~ ^[0-9]+$ ]] && [[ "${_n}" =~ ^[0-9]+$ ]] || return 1
+  _hz=$(getconf CLK_TCK 2> /dev/null)
+  [[ "${_hz}" =~ ^[1-9][0-9]*$ ]] || _hz=100
+  [ "${_n}" -ge "${_p}" ] || _n="${_p}"
+  echo $(( (_n - _p) / _hz ))
+}
+
 # Every PHP-FPM version keeps its opcache and APCu filled to their high-water
 # mark until its master restarts, and BOA sizes each version's segments for the
 # whole PHP budget of the box. When sites move to another version, the one they
@@ -819,7 +842,7 @@ _reload_idle_fpm_versions() {
       | grep -o '/opt/php[0-9]\+/' | head -n1)
     _mVer="${_mVer//[^0-9]/}"
     [ -n "${_mVer}" ] && [ -e "/etc/init.d/php${_mVer}-fpm" ] || continue
-    _mUp=$(ps -o etimes= -p "${_mPid}" 2> /dev/null)
+    _mUp=$(_proc_age "${_mPid}")
     _mUp="${_mUp//[^0-9]/}"
     [ -n "${_mUp}" ] || continue
     _since=$(( _now - _mUp ))
