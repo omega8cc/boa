@@ -4,6 +4,12 @@
 
 @=> Security
 
+    * An account's Drush 9+ alias store (~/.drush/sites) is its backend
+      user's alone: the folder 0700 and each yml alias 0600, written so and
+      set so on every pass of the limited shell worker. The account's shell
+      login could read the yml copy of a server alias, which holds the
+      database password its drushrc alias keeps from that login.
+
     * The limited shell logs a refused line that holds a byte which is no
       part of a letter, writing that byte as \xNN, and its log is UTF-8
       in any locale. In a UTF-8 locale such a line was in no log, so
@@ -85,6 +91,14 @@
       deleted. A security advisory the build adds is named in its result. It
       is granted to no role yet.
 
+    * A nightly upgrade report for Drupal 10 and later sites, switched off
+      by default. _UPGRADE_DIGEST=YES in /root/.barracuda.cnf mails the
+      server admin, when it changed, which sites run a Drupal release that
+      no longer gets security fixes and which have an Upgrade ready.
+      _UPGRADE_CLIENT_NOTIFY=YES mails an account's client once for each
+      site whose release stops getting security fixes. Either is set for
+      every account there, or for one in /root/.<user>.octopus.cnf.
+
     * An outgoing mail relay that wants a login, such as Amazon SES, is a
       setting now: _SMTP_RELAY_USER and _SMTP_RELAY_PASS beside
       _SMTP_RELAY_HOST in /root/.barracuda.cnf. Every barracuda upgrade
@@ -119,6 +133,23 @@
       to such a codebase has the same limit, and a stopped one is undone.
 
 @=> Important Fixes
+
+    * The limited shell's history in a .lsh script, or in a single command
+      run over an SSH terminal, lists the login's history file again
+      instead of emptying it. A history file the login cannot read is left
+      as it is, and a session keeps writing to the file it read even after
+      the shell's configuration is reloaded (lshell 0.11.18).
+
+    * The Drush a Composer platform's first Verify adds is resolved on the
+      PHP the platform's tasks run on again. With the build step's time
+      limit in front of it, the require ran on the server's default PHP, so
+      where an account's command-line PHP is older the Drush it added could
+      not start there.
+
+    * Lock and Unlock work on a Composer platform added with an empty
+      Docroot field, which the panel records at its project folder: they
+      load the code in web/ (or docroot/, html/) below it, as Verify does,
+      where they stopped with "A codebase was not found".
 
     * vdrush @alias updb runs on a Drupal 10 or newer codebase again after a
       Composer run that installed drush/drush (an update or a require) put
