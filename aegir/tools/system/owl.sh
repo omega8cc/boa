@@ -513,6 +513,11 @@ _daily_action() {
   if command -v _acct_unswept_sweep > /dev/null 2>&1; then
     _acct_unswept_sweep
   fi
+  # Skew-guarded likewise: the site Upgrade's operator digest, from the
+  # reports the account passes above kept.
+  if command -v _upgrade_due_digest > /dev/null 2>&1; then
+    _upgrade_due_digest
+  fi
   _night_link_count
 }
 

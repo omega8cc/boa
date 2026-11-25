@@ -1407,6 +1407,18 @@ _ltd_drush_alias_modes() {
     ./hostmaster*.php ./platform_*.php ./server_*.php
   chmod 0710 .
 }
+# The same identity's Drush 9+ store inside its real ~/.drush/sites: the yml
+# twins of those files, a server alias's with its database DSN and the
+# hostmaster's with its keys, in a directory the shell login could enter
+# through the group. Only the owner reads its own store (websh reads the
+# caller's own HOME), so the directory is 0700 and each twin 0600, as the
+# converters now write them; owner-writable, since a converter rewrites a
+# twin in place when its alias changes.
+_ltd_drush_yml_modes() {
+  find . -maxdepth 1 -name '*.yml' -type f \
+    -exec perl -e "${_LTD_FCHMOD_PL}" f 0600 {} + 2> /dev/null
+  chmod 0700 .
+}
 # A file root keeps in a directory an account owns (static/control, oN's
 # log/ and nginx post.d/): put as a fresh file inside the real directory,
 # read without following a link or blocking on a FIFO (bounded), removed and
@@ -1610,7 +1622,9 @@ EOF
   else
     timeout -k 10 120 su -s /bin/bash - "${_u}" -c "drush10 core:init --yes" &> /dev/null
   fi
-  timeout -k 10 120 su -s /bin/bash - "${_u}" -c "drush10 site:alias-convert ~/.drush/sites/.stage --yes" &> /dev/null
+  # umask 077: the yml twins carry what their 0400 aliases keep from the
+  # group (_ltd_drush_yml_modes)
+  timeout -k 10 120 su -s /bin/bash - "${_u}" -c "umask 077; drush10 site:alias-convert ~/.drush/sites/.stage --yes" &> /dev/null
   _rc=$?
   if [ "${_rc}" -eq 0 ]; then
     _ltdStoreStep=swap
@@ -8948,6 +8962,7 @@ _manage_user() {
         fi
       done
       _ltd_in_real_dir "${_dscUsr}/.drush" _ltd_drush_alias_modes &> /dev/null
+      _ltd_in_real_dir "${_dscUsr}/.drush/sites" _ltd_drush_yml_modes &> /dev/null
       # config/ is oN's: the tree is walked from inside the real directory
       # and every mode goes through a handle that never follows a link (a
       # link at passwords.d/<x> would have made its target world-readable).
@@ -11108,6 +11123,7 @@ else
   _ltd_wg_witness aegir
   _ltd_wg_witness --box
   _ltd_in_real_dir /var/aegir/.drush _ltd_drush_alias_modes &> /dev/null
+  _ltd_in_real_dir /var/aegir/.drush/sites _ltd_drush_yml_modes &> /dev/null
   _ltd_in_real_dir /var/aegir/config/server_master \
     find . -type d -execdir perl -e "${_LTD_FCHMOD_PL}" d 0700 {} + &> /dev/null
   _ltd_in_real_dir /var/aegir/config/server_master \
