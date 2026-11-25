@@ -330,6 +330,78 @@ _sql_flap_breaker_is_open() {
   return 0
 }
 
+###
+### A stall that holds every query keeps the load low while it lasts (the
+### waiting queries sleep) and raises it only when it ends, so second.sh's load
+### tiers see it too late. Many site queries running long at once is its own
+### shape, and so is a process list that does not come back within ten
+### seconds while mysqld runs: save the state while it is still there
+### (sqlsnap.sh keeps one set per cooldown). Root's own long work, the backup
+### dumps among it, is not counted. Not gated on the web pause markers: a
+### pause is when it matters.
+###
+# True while the last snapshot of this kind is inside its cooldown, or the
+# snapshot is off or not there: nothing to start.
+_sql_snapshot_skip() {
+  local _mins
+  [ -e "/var/xdrago/monitor/check/sqlsnap.sh" ] || return 0
+  [ "${_INCIDENT_SNAPSHOT^^}" = "NO" ] && return 0
+  _mins="${_SQLSNAP_COOLDOWN_MINS//[^0-9]/}"
+  _mins="${_mins:0:4}"
+  _mins=$(( 10#${_mins:-15} ))
+  (( _mins < 1 )) && _mins=1
+  [ -e "/run/boa_sqlsnap.$1.last" ] \
+    && [ -z "$(find "/run/boa_sqlsnap.$1.last" -mmin "+${_mins}" 2>/dev/null)" ]
+}
+
+# Start a snapshot; with a second argument, wait (ten seconds at most) until
+# it has read the box, which a restart or heal right after would take away.
+_sql_snapshot_start() {
+  local _kind="sql" _ref _m _i
+  [[ "$1" == sql-down* ]] && _kind="down"
+  _ref="$(date +%s)"
+  # Without this run's lock: it would be held until the snapshot ends.
+  (
+    [[ "${_LOCK_FD:-}" =~ ^[0-9]+$ ]] && exec {_LOCK_FD}>&-
+    exec bash /var/xdrago/monitor/check/sqlsnap.sh "$1" "${_pthOml}"
+  ) > /dev/null 2>&1 &
+  [ -n "${2:-}" ] || return 0
+  for _i in $(seq 1 20); do
+    _m="$(stat -c %Y "/run/boa_sqlsnap.${_kind}.boxdone" 2>/dev/null)"
+    [[ "${_m}" =~ ^[0-9]+$ ]] && (( _m >= _ref )) && return 0
+    sleep 0.5
+  done
+}
+
+_mysql_flush_hosts() {
+  if pgrep -x mysqld >/dev/null 2>&1 \
+    && [ -e "/run/mysqld/mysqld.sock" ] \
+    && [ -e "/run/mysqld/mysqld.pid" ]; then
+    # NO_WRITE_TO_BINLOG: the host-cache flush is a LOCAL remedy. The bare form
+    # is binlogged, so under GTID it minted one errant local transaction per
+    # watchdog pass on every 5.7 replica -- a standing mirror accumulated
+    # ~1440/day of its own UUID, which a later failback can no longer fetch
+    # once binlogs rotate (1236). 8.4 removed FLUSH HOSTS; this form errors
+    # silently there exactly like the old call did.
+    mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG HOSTS" &> /dev/null
+  fi
+}
+
+_mysql_is_answering() {
+  # Authoritative liveness probe. A reply of ANY kind -- including an auth error
+  # -- proves the server is up and accepting connections. `timeout` bounds a hung
+  # server; --connect-timeout bounds a dead socket. Uses /root/.my.cnf implicitly.
+  # Root at its max_user_connections cap is refused the same way (ERROR 1203):
+  # the server answered, and calling it down would restart it under whatever
+  # holds those connections.
+  local _out
+  _out=$(timeout 5 mysqladmin -u root --connect-timeout=2 ping 2>&1)
+  case "${_out}" in
+    *"is alive"*|*"denied"*|*"Too many connections"*|*"max_user_connections"*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
 _sql_restart() {
   # Minimal-blast-radius recovery: a DB fault heals ONLY the DB. Never stop
   # nginx/php-fpm, drop caches, wipe the cache or kill php from here -- that
@@ -448,51 +520,6 @@ _sql_restart() {
   exit 0
 }
 
-_sql_busy_detection() {
-  if [ -e "/var/log/daemon.log" ]; then
-    _SQL_LOG="/var/log/daemon.log"
-  else
-    _SQL_LOG="/var/log/syslog"
-  fi
-  if [ -e "${_SQL_LOG}" ]; then
-    if [ `tail --lines=333 ${_SQL_LOG} \
-      | grep --count "Too many connections"` -gt 111 ]; then
-      if ! _provision_running; then
-        _sql_restart "BUSY MySQL"
-      fi
-    fi
-  fi
-  if [ "${_INSTANT_BUSY_MYSQL_ACTION}" = "YES" ] \
-    || [ -e "/etc/boa/.instant.busy.mysql.action.cnf" ]; then
-    # File-existence check instead of cat'ing the cleartext root password
-    # into a shell variable just to test its non-emptiness. The mysql call
-    # below uses /root/.my.cnf credentials implicitly via `mysql -u root`.
-    _IS_MYSQLD_RUNNING=$(pgrep -x mysqld)
-    if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ -s /root/.my.pass.txt ]; then
-      _MYSQL_CONN_TEST=$(mysql -u root -e "status" 2>&1)
-      if [[ "${_MYSQL_CONN_TEST}" =~ "Too many connections" ]]; then
-        # This used to call _sql_restart, which could never act: the trigger
-        # above proves the server is ANSWERING, and _mysql_is_answering counts
-        # "Too many connections" as alive, so _sql_restart returned at its first
-        # line every time. The opt-in silently did nothing.
-        #
-        # Route it to the remedies that actually relieve connection saturation.
-        # Both also run later in an ordinary pass, but the later long-query
-        # sweep is suppressed while max_load/critical_load markers exist -- which
-        # is exactly the regime that produces this saturation -- so running them
-        # here is what makes the opt-in mean something.
-        if ! _provision_running; then
-          echo "INSTANT BUSY MySQL: relieving connection saturation"
-          _mysql_flush_hosts
-          _mysql_proc_control "${_SQL_MAX_TTL}"
-        else
-          echo "INSTANT BUSY MySQL: an Aegir/Provision task is in flight -- deferring"
-        fi
-      fi
-    fi
-  fi
-}
-
 _mysql_proc_kill() {
   _xtime=${_xtime//[^0-9]/}
   echo "Monitoring process ${_each} by ${_xuser} running for ${_xtime} seconds"
@@ -590,47 +617,49 @@ _mysql_proc_control() {
   done
 }
 
-###
-### A stall that holds every query keeps the load low while it lasts (the
-### waiting queries sleep) and raises it only when it ends, so second.sh's load
-### tiers see it too late. Many site queries running long at once is its own
-### shape, and so is a process list that does not come back within ten
-### seconds while mysqld runs: save the state while it is still there
-### (sqlsnap.sh keeps one set per cooldown). Root's own long work, the backup
-### dumps among it, is not counted. Not gated on the web pause markers: a
-### pause is when it matters.
-###
-# True while the last snapshot of this kind is inside its cooldown, or the
-# snapshot is off or not there: nothing to start.
-_sql_snapshot_skip() {
-  local _mins
-  [ -e "/var/xdrago/monitor/check/sqlsnap.sh" ] || return 0
-  [ "${_INCIDENT_SNAPSHOT^^}" = "NO" ] && return 0
-  _mins="${_SQLSNAP_COOLDOWN_MINS//[^0-9]/}"
-  _mins="${_mins:0:4}"
-  _mins=$(( 10#${_mins:-15} ))
-  (( _mins < 1 )) && _mins=1
-  [ -e "/run/boa_sqlsnap.$1.last" ] \
-    && [ -z "$(find "/run/boa_sqlsnap.$1.last" -mmin "+${_mins}" 2>/dev/null)" ]
-}
-
-# Start a snapshot; with a second argument, wait (ten seconds at most) until
-# it has read the box, which a restart or heal right after would take away.
-_sql_snapshot_start() {
-  local _kind="sql" _ref _m _i
-  [[ "$1" == sql-down* ]] && _kind="down"
-  _ref="$(date +%s)"
-  # Without this run's lock: it would be held until the snapshot ends.
-  (
-    [[ "${_LOCK_FD:-}" =~ ^[0-9]+$ ]] && exec {_LOCK_FD}>&-
-    exec bash /var/xdrago/monitor/check/sqlsnap.sh "$1" "${_pthOml}"
-  ) > /dev/null 2>&1 &
-  [ -n "${2:-}" ] || return 0
-  for _i in $(seq 1 20); do
-    _m="$(stat -c %Y "/run/boa_sqlsnap.${_kind}.boxdone" 2>/dev/null)"
-    [[ "${_m}" =~ ^[0-9]+$ ]] && (( _m >= _ref )) && return 0
-    sleep 0.5
-  done
+_sql_busy_detection() {
+  if [ -e "/var/log/daemon.log" ]; then
+    _SQL_LOG="/var/log/daemon.log"
+  else
+    _SQL_LOG="/var/log/syslog"
+  fi
+  if [ -e "${_SQL_LOG}" ]; then
+    if [ `tail --lines=333 ${_SQL_LOG} \
+      | grep --count "Too many connections"` -gt 111 ]; then
+      if ! _provision_running; then
+        _sql_restart "BUSY MySQL"
+      fi
+    fi
+  fi
+  if [ "${_INSTANT_BUSY_MYSQL_ACTION}" = "YES" ] \
+    || [ -e "/etc/boa/.instant.busy.mysql.action.cnf" ]; then
+    # File-existence check instead of cat'ing the cleartext root password
+    # into a shell variable just to test its non-emptiness. The mysql call
+    # below uses /root/.my.cnf credentials implicitly via `mysql -u root`.
+    _IS_MYSQLD_RUNNING=$(pgrep -x mysqld)
+    if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ -s /root/.my.pass.txt ]; then
+      _MYSQL_CONN_TEST=$(mysql -u root -e "status" 2>&1)
+      if [[ "${_MYSQL_CONN_TEST}" =~ "Too many connections" ]]; then
+        # This used to call _sql_restart, which could never act: the trigger
+        # above proves the server is ANSWERING, and _mysql_is_answering counts
+        # "Too many connections" as alive, so _sql_restart returned at its first
+        # line every time. The opt-in silently did nothing.
+        #
+        # Route it to the remedies that actually relieve connection saturation.
+        # Both also run later in an ordinary pass, but the later long-query
+        # sweep is suppressed while max_load/critical_load markers exist -- which
+        # is exactly the regime that produces this saturation -- so running them
+        # here is what makes the opt-in mean something.
+        if ! _provision_running; then
+          echo "INSTANT BUSY MySQL: relieving connection saturation"
+          _mysql_flush_hosts
+          _mysql_proc_control "${_SQL_MAX_TTL}"
+        else
+          echo "INSTANT BUSY MySQL: an Aegir/Provision task is in flight -- deferring"
+        fi
+      fi
+    fi
+  fi
 }
 
 _sql_stall_snapshot() {
@@ -760,35 +789,6 @@ _if_mydumper_is_locked() {
       _incident_email_report "TOO MANY (${_DR_C}) drush.php required killing mydumper" "mysql-mydumper"
     fi
   fi
-}
-
-_mysql_flush_hosts() {
-  if pgrep -x mysqld >/dev/null 2>&1 \
-    && [ -e "/run/mysqld/mysqld.sock" ] \
-    && [ -e "/run/mysqld/mysqld.pid" ]; then
-    # NO_WRITE_TO_BINLOG: the host-cache flush is a LOCAL remedy. The bare form
-    # is binlogged, so under GTID it minted one errant local transaction per
-    # watchdog pass on every 5.7 replica -- a standing mirror accumulated
-    # ~1440/day of its own UUID, which a later failback can no longer fetch
-    # once binlogs rotate (1236). 8.4 removed FLUSH HOSTS; this form errors
-    # silently there exactly like the old call did.
-    mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG HOSTS" &> /dev/null
-  fi
-}
-
-_mysql_is_answering() {
-  # Authoritative liveness probe. A reply of ANY kind -- including an auth error
-  # -- proves the server is up and accepting connections. `timeout` bounds a hung
-  # server; --connect-timeout bounds a dead socket. Uses /root/.my.cnf implicitly.
-  # Root at its max_user_connections cap is refused the same way (ERROR 1203):
-  # the server answered, and calling it down would restart it under whatever
-  # holds those connections.
-  local _out
-  _out=$(timeout 5 mysqladmin -u root --connect-timeout=2 ping 2>&1)
-  case "${_out}" in
-    *"is alive"*|*"denied"*|*"Too many connections"*|*"max_user_connections"*) return 0 ;;
-    *) return 1 ;;
-  esac
 }
 
 _mysql_health_check_fix() {

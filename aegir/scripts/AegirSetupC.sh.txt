@@ -470,6 +470,31 @@ _d_platform_there() {
   return 1
 }
 
+_tb_capture() {
+  # $1 url, $2 the downloaded file (curl -R set its mtime to the remote one),
+  # $3 "bytes" to also sum the tarball's members, for the first-fetch check
+  _TB_URL="${1}"
+  _TB_LEN="$(stat -c %s "${2}" 2> /dev/null)"
+  _TB_MOD="$(stat -c %Y "${2}" 2> /dev/null)"
+  _TB_SHA="$(sha256sum "${2}" 2> /dev/null | cut -d' ' -f1)"
+  _TB_BYTES=""
+  if [ "${3:-}" = "bytes" ]; then
+    # Not the three Drush-lock dirs: a tarball can carry one closed as the
+    # lock leaves it (core/drupal-10.1.8: vendor/symfony/console/Input), the
+    # instance user cannot enter it, so _tb_record could never count it
+    _TB_BYTES="$(tar -tvzf "${2}" 2> /dev/null \
+      | awk '!/\/vendor\/(drush|symfony\/console\/(Input|Style))\// { s += $3 } END { printf "%.0f\n", s }')"
+  fi
+}
+
+_tb_rmtree() {
+  # A verified platform can carry directories without the owner's write bit
+  [ -e "${1}" ] || return 0
+  chmod -R u+rwX "${1}" &> /dev/null
+  rm -rf "${1}" &> /dev/null
+  [ ! -e "${1}" ]
+}
+
 #
 # Download and extract from core archive. A fetch that fails is counted in
 # _GET_FAILS, as _get_dev_contrib counts its own: the shared phase never
@@ -611,23 +636,6 @@ _TB_DOWN=""
 _TB_WHY=""
 _TB_CRL="-L --max-redirs 3 -s -A iCab --connect-timeout 15"
 
-_tb_capture() {
-  # $1 url, $2 the downloaded file (curl -R set its mtime to the remote one),
-  # $3 "bytes" to also sum the tarball's members, for the first-fetch check
-  _TB_URL="${1}"
-  _TB_LEN="$(stat -c %s "${2}" 2> /dev/null)"
-  _TB_MOD="$(stat -c %Y "${2}" 2> /dev/null)"
-  _TB_SHA="$(sha256sum "${2}" 2> /dev/null | cut -d' ' -f1)"
-  _TB_BYTES=""
-  if [ "${3:-}" = "bytes" ]; then
-    # Not the three Drush-lock dirs: a tarball can carry one closed as the
-    # lock leaves it (core/drupal-10.1.8: vendor/symfony/console/Input), the
-    # instance user cannot enter it, so _tb_record could never count it
-    _TB_BYTES="$(tar -tvzf "${2}" 2> /dev/null \
-      | awk '!/\/vendor\/(drush|symfony\/console\/(Input|Style))\// { s += $3 } END { printf "%.0f\n", s }')"
-  fi
-}
-
 _tb_field() {
   # $1 record file, $2 key
   grep "^${2}=" "${1}" 2> /dev/null | head -n 1 | cut -d= -f2-
@@ -667,14 +675,6 @@ _tb_record() {
   fi
   _TB_SHA=""
   _TB_BYTES=""
-}
-
-_tb_rmtree() {
-  # A verified platform can carry directories without the owner's write bit
-  [ -e "${1}" ] || return 0
-  chmod -R u+rwX "${1}" &> /dev/null
-  rm -rf "${1}" &> /dev/null
-  [ ! -e "${1}" ]
 }
 
 _tb_local() {
@@ -1057,33 +1057,6 @@ _tb_refresh() {
   fi
   _tb_retire "${_old}"
   _msg "DISTRO: ${1} fetched again (${_why}), verify queued"
-}
-
-# One core-only platform (a member of a -dev/-stage/-prod trio) with the
-# refresh in front of its create function. The D6/D7 cores are shared trees
-# under /data/all and D9 renames its profiles after the fetch: neither is
-# refreshed from here.
-_tb_create_core() {
-  # $1 dist code, $2 web dir; uses _SHRD_PLNAME like _create_drupal_core_basic
-  local _file="" _var=""
-  case "${1}" in
-    DX[0-9]) _var="_DRUPAL10_${1:2}" ;;
-    DE[0-9]) _var="_DRUPAL11_${1:2}" ;;
-    DT[0-9]) _var="_DRUPAL12_${1:2}" ;;
-    BDR) _file="backdrop-${_BACKDROP_V}" ;;
-    GRV) _file="grav-${_GRAV_V}" ;;
-    TXP) _file="textpattern-${_TXP_V}" ;;
-  esac
-  [ -n "${_var}" ] && _file="${!_var}"
-  if [ -n "${_file}" ]; then
-    _tb_refresh "${_SHRD_PLNAME}" "${2}" "https://${_USE_MIR}/core/${_file}.tar.gz"
-  fi
-  _TB_SHA=""
-  _create_drupal_core_basic "${1}"
-  if [ -n "${_file}" ]; then
-    _tb_record "${_pthDst}/${_SHRD_PLNAME}" "${_pthDst}/${_SHRD_PLNAME}${2}"
-  fi
-  _TB_SHA=""
 }
 
 #
@@ -1501,65 +1474,6 @@ _shared_done() {
 }
 
 #
-# The shared phase's catalogue loop: the codes whose platforms are built on
-# a tree in the store (DL6 and DL7 on their dev, stage and prod trees, CK1,
-# UC6, UC7), each asked for by the same list and core-count rules as the
-# account phase. A code not asked for is still visited when this run
-# rebuilds, so every such tree already there is built again whichever
-# account asked for it first. A code whose shared core is missing builds
-# nothing: its trees copy from the core.
-_shared_dist_loop() {
-  local _dist _req _core _v _n
-  local _list="${_PLATFORMS_LIST}" _all="${_ALLOW_ALL}"
-  for _dist in DL6 UC6 DL7 CK1 UC7; do
-    _req=NO
-    if [[ "${_list}" =~ ALL ]] || [[ "${_list}" =~ ${_dist} ]]; then
-      case "${_dist}" in
-        CK1|UC7) [ "${_all}" = "YES" ] && _req=YES ;;
-        *) _req=YES ;;
-      esac
-    fi
-    [ "${_req}" = "YES" ] || [ "${_SHRD_REBUILD}" = "YES" ] || continue
-    case "${_dist}" in
-      DL6|UC6) _core="${_D6_CORE_DIR}" ;;
-      *) _core="${_D7_CORE_DIR}" ;;
-    esac
-    if [ ! -d "${_core}" ]; then
-      [ "${_req}" = "YES" ] \
-        && _msg "ALRT! ${_dist}: the shared core ${_core} is missing, its shared trees not built"
-      continue
-    fi
-    _SHRD_REQ="${_req}"
-    _SHRD_CORE_OF="${_core}"
-    _REAL_PRNAME="${_distros_profiles_names[${_dist}]}"
-    case "${_dist}" in
-      DL6|DL7)
-        _v="_DRUPAL${_dist:2}"
-        for _n in "${_v}_D" "${_v}_S" "${_v}_P"; do
-          _SHRD_PLNAME="${!_n}"
-          _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
-          _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
-          _create_drupal6_or_7_basic "${_dist:2}"
-        done
-        ;;
-      *)
-        _PLATFORMS_LIST=ALL
-        _ALLOW_ALL=YES
-        _d_dist_custom_platform_install "${_dist}" \
-          "${_distros_versions[${_dist}]}" \
-          "${_distros_drupal_cores[${_dist}]}" \
-          "${_distros_names[${_dist}]} ${_distros_versions[${_dist}]} ${_distros_drupal_cores[${_dist}]} [${_THIS_CORE}]" \
-          "${_distros_profiles_paths[${_dist}]}" "${_REAL_PRNAME}" \
-          "${_distros_web_dirs[${_dist}]}" \
-          "${_distros_php_versions[${_dist}]}" "${_distros_urls[${_dist}]}"
-        _PLATFORMS_LIST="${_list}"
-        _ALLOW_ALL="${_all}"
-        ;;
-    esac
-  done
-}
-
-#
 # Remove D6 core from distro directory.
 _nocore_d6_dist_clean() {
   rm -f ${_SHRD_PLPATH}/.gitignore
@@ -1906,6 +1820,33 @@ _create_drupal_core_basic() {
       echo "Unsupported version code: $version_code"
       ;;
   esac
+}
+
+# One core-only platform (a member of a -dev/-stage/-prod trio) with the
+# refresh in front of its create function. The D6/D7 cores are shared trees
+# under /data/all and D9 renames its profiles after the fetch: neither is
+# refreshed from here.
+_tb_create_core() {
+  # $1 dist code, $2 web dir; uses _SHRD_PLNAME like _create_drupal_core_basic
+  local _file="" _var=""
+  case "${1}" in
+    DX[0-9]) _var="_DRUPAL10_${1:2}" ;;
+    DE[0-9]) _var="_DRUPAL11_${1:2}" ;;
+    DT[0-9]) _var="_DRUPAL12_${1:2}" ;;
+    BDR) _file="backdrop-${_BACKDROP_V}" ;;
+    GRV) _file="grav-${_GRAV_V}" ;;
+    TXP) _file="textpattern-${_TXP_V}" ;;
+  esac
+  [ -n "${_var}" ] && _file="${!_var}"
+  if [ -n "${_file}" ]; then
+    _tb_refresh "${_SHRD_PLNAME}" "${2}" "https://${_USE_MIR}/core/${_file}.tar.gz"
+  fi
+  _TB_SHA=""
+  _create_drupal_core_basic "${1}"
+  if [ -n "${_file}" ]; then
+    _tb_record "${_pthDst}/${_SHRD_PLNAME}" "${_pthDst}/${_SHRD_PLNAME}${2}"
+  fi
+  _TB_SHA=""
 }
 
 # Define distros names and their key-words for configuration
@@ -2566,6 +2507,65 @@ _d_dist_custom_platform_install() {
   elif [[ "${1}" == "UC7" ]]; then
     _ubercart7_install "${1}" "${2}" "${3}" "${4}" "${5}" "${6}" "${7}" "${8}" "${9}"
   fi
+}
+
+#
+# The shared phase's catalogue loop: the codes whose platforms are built on
+# a tree in the store (DL6 and DL7 on their dev, stage and prod trees, CK1,
+# UC6, UC7), each asked for by the same list and core-count rules as the
+# account phase. A code not asked for is still visited when this run
+# rebuilds, so every such tree already there is built again whichever
+# account asked for it first. A code whose shared core is missing builds
+# nothing: its trees copy from the core.
+_shared_dist_loop() {
+  local _dist _req _core _v _n
+  local _list="${_PLATFORMS_LIST}" _all="${_ALLOW_ALL}"
+  for _dist in DL6 UC6 DL7 CK1 UC7; do
+    _req=NO
+    if [[ "${_list}" =~ ALL ]] || [[ "${_list}" =~ ${_dist} ]]; then
+      case "${_dist}" in
+        CK1|UC7) [ "${_all}" = "YES" ] && _req=YES ;;
+        *) _req=YES ;;
+      esac
+    fi
+    [ "${_req}" = "YES" ] || [ "${_SHRD_REBUILD}" = "YES" ] || continue
+    case "${_dist}" in
+      DL6|UC6) _core="${_D6_CORE_DIR}" ;;
+      *) _core="${_D7_CORE_DIR}" ;;
+    esac
+    if [ ! -d "${_core}" ]; then
+      [ "${_req}" = "YES" ] \
+        && _msg "ALRT! ${_dist}: the shared core ${_core} is missing, its shared trees not built"
+      continue
+    fi
+    _SHRD_REQ="${_req}"
+    _SHRD_CORE_OF="${_core}"
+    _REAL_PRNAME="${_distros_profiles_names[${_dist}]}"
+    case "${_dist}" in
+      DL6|DL7)
+        _v="_DRUPAL${_dist:2}"
+        for _n in "${_v}_D" "${_v}_S" "${_v}_P"; do
+          _SHRD_PLNAME="${!_n}"
+          _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
+          _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
+          _create_drupal6_or_7_basic "${_dist:2}"
+        done
+        ;;
+      *)
+        _PLATFORMS_LIST=ALL
+        _ALLOW_ALL=YES
+        _d_dist_custom_platform_install "${_dist}" \
+          "${_distros_versions[${_dist}]}" \
+          "${_distros_drupal_cores[${_dist}]}" \
+          "${_distros_names[${_dist}]} ${_distros_versions[${_dist}]} ${_distros_drupal_cores[${_dist}]} [${_THIS_CORE}]" \
+          "${_distros_profiles_paths[${_dist}]}" "${_REAL_PRNAME}" \
+          "${_distros_web_dirs[${_dist}]}" \
+          "${_distros_php_versions[${_dist}]}" "${_distros_urls[${_dist}]}"
+        _PLATFORMS_LIST="${_list}"
+        _ALLOW_ALL="${_all}"
+        ;;
+    esac
+  done
 }
 
 
