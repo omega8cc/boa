@@ -127,125 +127,6 @@ _xtra_adminer_fetch() {
   return "${_rc}"
 }
 
-_if_install_adminer() {
-  local _o
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _if_install_adminer"
-  fi
-  ### Hosted systems are treated as ADM without cnf surgery: the hosted
-  ### welcome email documents /sqladmin, so the existing fleet must converge
-  ### on its routine runs, not only boxes whose cnf carries ADM.
-  _if_hosted_sys
-  if [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
-    || [[ "${_XTRAS_LIST}" =~ "ADM" ]] \
-    || [ "${_hostedSys}" = "YES" ] \
-    || [ -d "/var/www/chive" ]; then
-    _ADMINER_VHOST="${_mtrNgx}/vhost.d/adminer.${_THIS_FRONT}"
-    if [ ! -e "/var/www/adminer/index.php" ] \
-      || [ ! -f "${_ADMINER_VHOST}" ] \
-      || [ ! -f "${_pthLog}/adminer-${_ADMINER_VRN}-sync-new-ip-access.log" ]; then
-      echo " "
-      if _prompt_yes_no "Do you want to install Adminer Manager?" ; then
-        true
-        _msg "INFO: Installing Adminer Manager..."
-        local _admGot=NO
-        _xtra_adminer_fetch && _admGot=YES
-        _validate_public_ip &> /dev/null
-        _validate_xtras_ip &> /dev/null
-        cp -af ${_locCnf}/nginx/nginx_sql_adminer.conf ${_ADMINER_VHOST}
-        sed -i "s/127.0.0.1:80/${_XTRAS_THISHTIP}:80/g"               ${_ADMINER_VHOST}
-        wait
-        sed -i "s/127.0.0.1:443/${_XTRAS_THISHTIP}:443/g"             ${_ADMINER_VHOST}
-        wait
-        sed -i "s/adminer_name/adminer.${_THIS_FRONT} ${_THISHTIP}/g" ${_ADMINER_VHOST}
-        wait
-        if [ "${_admGot}" = "YES" ]; then
-          touch ${_pthLog}/adminer-${_ADMINER_VRN}-sync-new-ip-access.log
-          _msg "INFO: Adminer Manager installed"
-        else
-          _msg "ALRT: Adminer ${_ADMINER_VRN} was not installed, the next run tries again"
-        fi
-      else
-        _msg "INFO: Adminer Manager installation skipped"
-      fi
-    fi
-  fi
-  # A run cut off between two renames left the tree beside its name: back.
-  if [ ! -e "/var/www/adminer" ] && [ ! -L "/var/www/adminer" ]; then
-    for _o in /var/www/.adminer.old.*/adminer; do
-      [ -d "${_o}" ] && [ ! -L "${_o}" ] || continue
-      mv -f -T -- "${_o}" /var/www/adminer &> /dev/null && break
-    done
-  fi
-  # What an earlier top rebuild left beside the tree (an old top a pool
-  # process kept alive, an interrupted run's copy) is never served or
-  # written: removed on every run (_xtra_adminer_top_renew).
-  find /var/www -mindepth 1 -maxdepth 1 \
-    \( -name '.adminer.new.*' -o -name '.adminer.old.*' \) \
-    -exec rm -rf -- {} + &> /dev/null
-  if [ -d "/var/www/adminer" ]; then
-    local _admGrp _admOwn _admU _admG _acc="/var/www/adminer/access" _ret
-    _admGrp=$(_xtra_tool_group)
-    _admOwn="www-data:${_admGrp}"
-    if [ ! -z "${_PHP_CN}" ]; then
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        _msg "INFO: _PHP_CN set to ${_PHP_CN} for Adminer Manager"
-      fi
-      _admOwn="${_PHP_CN}:${_admGrp}"
-    else
-      _msg "NOTE: _PHP_CN not set for Adminer Manager"
-    fi
-    # The Adminer app files are the master pool's to serve (its owner), like
-    # the sibling web apps. access/ is NOT the app -- goaccess writes it as
-    # root every night -- so access/, and the tree top, stay root's: the pool
-    # must never own a name root writes through, or it could leave a link there
-    # for the nightly write to follow out of the tree. The top goes to root
-    # FIRST, so from here on the pool can add, rename or remove no name in it.
-    chown root:www-data /var/www/adminer &> /dev/null
-    chmod 0755 /var/www/adminer &> /dev/null
-    # chown and chmod never touch a default ACL, and the pool, owning the top
-    # for years, could set one: root's nightly mkdir of access/ and of each
-    # report directory would inherit it, writable by the pool again. No ACL
-    # tool is sure to be there, so a top that still carries an ACL (ls marks
-    # it) is rebuilt: a fresh root directory takes the app names and the name
-    # (_xtra_adminer_top_renew), and the old top goes, access/ with it.
-    if _xtra_has_acl /var/www/adminer; then
-      _xtra_adminer_top_renew
-    fi
-    # Earlier builds handed access/ to the pool, so it may hold a link, a FIFO,
-    # a hard link or a directory the pool still writes, anywhere. It is a cache
-    # weblogx rebuilds (and removes whole when goaccess is off), so one that is
-    # not wholly root's real directories and single-link files, with no ACL, is
-    # retired whole: moved into a fresh directory root makes in the root-owned
-    # top, where the name access can come back only as weblogx makes it (as
-    # root), then removed (rm never follows a link); removed in place if it
-    # could not be moved. A non-directory at the name goes the same way.
-    if [ -L "${_acc}" ] || { [ -e "${_acc}" ] && ! _xtra_adminer_access_clean "${_acc}"; }; then
-      _ret=$(mktemp -d /var/www/adminer/.access.retired.XXXXXX 2> /dev/null)
-      if [ -z "${_ret}" ] || ! mv -f -T -- "${_acc}" "${_ret}/access" &> /dev/null; then
-        rm -rf -- "${_acc}" &> /dev/null
-      fi
-    fi
-    find /var/www/adminer -mindepth 1 -maxdepth 1 -name '.access.retired.*' \
-      -exec rm -rf -- {} + &> /dev/null
-    # The app handed to the pool through a handle (_ACCT_REOWN_PL): a link or
-    # a hard link the pool left at a name it owned is never followed or handed
-    # over.
-    _admU=$(id -u -- "${_admOwn%%:*}" 2> /dev/null)
-    _admG=$(getent group "${_admGrp}" 2> /dev/null | cut -d: -f3)
-    if [[ "${_admU}" =~ ^[0-9]+$ && "${_admG}" =~ ^[0-9]+$ ]]; then
-      _acct_in_real_dir /var/www/adminer \
-        _xtra_adminer_app_reown_here "${_admU}" "${_admG}"
-    fi
-    # 0755 dirs / 0644 files across the tree, set through a handle that never
-    # follows a link (as the sibling apps do); index.php stays read-only, set
-    # the same way.
-    _xtra_app_modes /var/www/adminer
-    _acct_in_real_dir /var/www/adminer \
-      perl -e "${_MASTER_NOFOLLOW_CHMOD_PL}" f 0440 ./index.php &> /dev/null
-  fi
-}
-
 _master_web_group() {
   # The master's own web group, wg-aegir, the way _web_group_state reads an
   # account's: "<state> <gid> wg-aegir", "none - -" when there is none. Its
@@ -393,6 +274,125 @@ _xtra_adminer_app_reown_here() {
     \( -path ./access -o -path './.access.retired.*' \) -prune \
     -o \( -type d -o -type f \) \
     -execdir perl -e "${_ACCT_REOWN_PL}" -- "${1}" "${2}" {} + 2> /dev/null
+}
+
+_if_install_adminer() {
+  local _o
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _if_install_adminer"
+  fi
+  ### Hosted systems are treated as ADM without cnf surgery: the hosted
+  ### welcome email documents /sqladmin, so the existing fleet must converge
+  ### on its routine runs, not only boxes whose cnf carries ADM.
+  _if_hosted_sys
+  if [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
+    || [[ "${_XTRAS_LIST}" =~ "ADM" ]] \
+    || [ "${_hostedSys}" = "YES" ] \
+    || [ -d "/var/www/chive" ]; then
+    _ADMINER_VHOST="${_mtrNgx}/vhost.d/adminer.${_THIS_FRONT}"
+    if [ ! -e "/var/www/adminer/index.php" ] \
+      || [ ! -f "${_ADMINER_VHOST}" ] \
+      || [ ! -f "${_pthLog}/adminer-${_ADMINER_VRN}-sync-new-ip-access.log" ]; then
+      echo " "
+      if _prompt_yes_no "Do you want to install Adminer Manager?" ; then
+        true
+        _msg "INFO: Installing Adminer Manager..."
+        local _admGot=NO
+        _xtra_adminer_fetch && _admGot=YES
+        _validate_public_ip &> /dev/null
+        _validate_xtras_ip &> /dev/null
+        cp -af ${_locCnf}/nginx/nginx_sql_adminer.conf ${_ADMINER_VHOST}
+        sed -i "s/127.0.0.1:80/${_XTRAS_THISHTIP}:80/g"               ${_ADMINER_VHOST}
+        wait
+        sed -i "s/127.0.0.1:443/${_XTRAS_THISHTIP}:443/g"             ${_ADMINER_VHOST}
+        wait
+        sed -i "s/adminer_name/adminer.${_THIS_FRONT} ${_THISHTIP}/g" ${_ADMINER_VHOST}
+        wait
+        if [ "${_admGot}" = "YES" ]; then
+          touch ${_pthLog}/adminer-${_ADMINER_VRN}-sync-new-ip-access.log
+          _msg "INFO: Adminer Manager installed"
+        else
+          _msg "ALRT: Adminer ${_ADMINER_VRN} was not installed, the next run tries again"
+        fi
+      else
+        _msg "INFO: Adminer Manager installation skipped"
+      fi
+    fi
+  fi
+  # A run cut off between two renames left the tree beside its name: back.
+  if [ ! -e "/var/www/adminer" ] && [ ! -L "/var/www/adminer" ]; then
+    for _o in /var/www/.adminer.old.*/adminer; do
+      [ -d "${_o}" ] && [ ! -L "${_o}" ] || continue
+      mv -f -T -- "${_o}" /var/www/adminer &> /dev/null && break
+    done
+  fi
+  # What an earlier top rebuild left beside the tree (an old top a pool
+  # process kept alive, an interrupted run's copy) is never served or
+  # written: removed on every run (_xtra_adminer_top_renew).
+  find /var/www -mindepth 1 -maxdepth 1 \
+    \( -name '.adminer.new.*' -o -name '.adminer.old.*' \) \
+    -exec rm -rf -- {} + &> /dev/null
+  if [ -d "/var/www/adminer" ]; then
+    local _admGrp _admOwn _admU _admG _acc="/var/www/adminer/access" _ret
+    _admGrp=$(_xtra_tool_group)
+    _admOwn="www-data:${_admGrp}"
+    if [ ! -z "${_PHP_CN}" ]; then
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "INFO: _PHP_CN set to ${_PHP_CN} for Adminer Manager"
+      fi
+      _admOwn="${_PHP_CN}:${_admGrp}"
+    else
+      _msg "NOTE: _PHP_CN not set for Adminer Manager"
+    fi
+    # The Adminer app files are the master pool's to serve (its owner), like
+    # the sibling web apps. access/ is NOT the app -- goaccess writes it as
+    # root every night -- so access/, and the tree top, stay root's: the pool
+    # must never own a name root writes through, or it could leave a link there
+    # for the nightly write to follow out of the tree. The top goes to root
+    # FIRST, so from here on the pool can add, rename or remove no name in it.
+    chown root:www-data /var/www/adminer &> /dev/null
+    chmod 0755 /var/www/adminer &> /dev/null
+    # chown and chmod never touch a default ACL, and the pool, owning the top
+    # for years, could set one: root's nightly mkdir of access/ and of each
+    # report directory would inherit it, writable by the pool again. No ACL
+    # tool is sure to be there, so a top that still carries an ACL (ls marks
+    # it) is rebuilt: a fresh root directory takes the app names and the name
+    # (_xtra_adminer_top_renew), and the old top goes, access/ with it.
+    if _xtra_has_acl /var/www/adminer; then
+      _xtra_adminer_top_renew
+    fi
+    # Earlier builds handed access/ to the pool, so it may hold a link, a FIFO,
+    # a hard link or a directory the pool still writes, anywhere. It is a cache
+    # weblogx rebuilds (and removes whole when goaccess is off), so one that is
+    # not wholly root's real directories and single-link files, with no ACL, is
+    # retired whole: moved into a fresh directory root makes in the root-owned
+    # top, where the name access can come back only as weblogx makes it (as
+    # root), then removed (rm never follows a link); removed in place if it
+    # could not be moved. A non-directory at the name goes the same way.
+    if [ -L "${_acc}" ] || { [ -e "${_acc}" ] && ! _xtra_adminer_access_clean "${_acc}"; }; then
+      _ret=$(mktemp -d /var/www/adminer/.access.retired.XXXXXX 2> /dev/null)
+      if [ -z "${_ret}" ] || ! mv -f -T -- "${_acc}" "${_ret}/access" &> /dev/null; then
+        rm -rf -- "${_acc}" &> /dev/null
+      fi
+    fi
+    find /var/www/adminer -mindepth 1 -maxdepth 1 -name '.access.retired.*' \
+      -exec rm -rf -- {} + &> /dev/null
+    # The app handed to the pool through a handle (_ACCT_REOWN_PL): a link or
+    # a hard link the pool left at a name it owned is never followed or handed
+    # over.
+    _admU=$(id -u -- "${_admOwn%%:*}" 2> /dev/null)
+    _admG=$(getent group "${_admGrp}" 2> /dev/null | cut -d: -f3)
+    if [[ "${_admU}" =~ ^[0-9]+$ && "${_admG}" =~ ^[0-9]+$ ]]; then
+      _acct_in_real_dir /var/www/adminer \
+        _xtra_adminer_app_reown_here "${_admU}" "${_admG}"
+    fi
+    # 0755 dirs / 0644 files across the tree, set through a handle that never
+    # follows a link (as the sibling apps do); index.php stays read-only, set
+    # the same way.
+    _xtra_app_modes /var/www/adminer
+    _acct_in_real_dir /var/www/adminer \
+      perl -e "${_MASTER_NOFOLLOW_CHMOD_PL}" f 0440 ./index.php &> /dev/null
+  fi
 }
 
 _if_install_chive() {

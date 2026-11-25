@@ -685,6 +685,37 @@ _check_system_manufacturer() {
 }
 
 #
+# Put back /var/xdrago that _if_major_os_upgrade parked as /var/xdrago_wait.
+# When /var/xdrago was rebuilt meanwhile (a tools refresh run by hand, an
+# install), it keeps every name it holds, the parked tree fills in only what
+# it lacks (cron/custom.txt and the other per-box files) and goes to the
+# dragon store with the list of what it filled in: a mv onto the existing
+# name would move it inside instead.
+_xdrago_wait_restore() {
+  local _xdrArc _xdrAdd _xdrF
+  if [ ! -e "/var/xdrago_wait" ] && [ ! -L "/var/xdrago_wait" ]; then
+    return 0
+  fi
+  if [ ! -e "/var/xdrago" ] && [ ! -L "/var/xdrago" ]; then
+    mv -f /var/xdrago_wait /var/xdrago &> /dev/null
+  elif [ -d "/var/xdrago" ] && [ -d "/var/xdrago_wait" ]; then
+    _xdrArc="${_vBs}/dragon/x/xdrago_wait-$(date +%y%m%d-%H%M%S)"
+    # the names only the parked tree holds, read before the copy: cp -v
+    # lists skipped names too on some systems
+    _xdrAdd="$(cd /var/xdrago_wait 2> /dev/null && find . ! -type d 2> /dev/null \
+      | while IFS= read -r _xdrF; do
+          [ -e "/var/xdrago/${_xdrF}" ] || [ -L "/var/xdrago/${_xdrF}" ] || echo "${_xdrF#./}"
+        done)"
+    cp -an /var/xdrago_wait/. /var/xdrago/ &> /dev/null
+    mkdir -p "${_vBs}/dragon/x"
+    mv -f /var/xdrago_wait "${_xdrArc}" &> /dev/null
+    [ -d "${_xdrArc}" ] && printf '%s\n' "${_xdrAdd}" > "${_xdrArc}.added.txt"
+    _msg "INFO: /var/xdrago_wait merged into /var/xdrago ($(printf '%s' "${_xdrAdd}" | grep -c .) names it alone held added), kept as ${_xdrArc}"
+  fi
+  return 0
+}
+
+#
 # Make sure that we are root.
 _if_running_as_root_barracuda() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -1026,6 +1057,12 @@ _sys_conf_touch_here() {
   rm -f -- "${_t}"
   return 1
 }
+# The old include copies of the current (pinned) global/ moved into the
+# arch/ beside it (the glob expands here).
+_sys_conf_pre_here() {
+  mv -f ./*inc-pre* ../arch/ &> /dev/null
+  return 0
+}
 # /data/conf (the current, pinned directory): arch/log made where missing
 # and set 0755, and the old global include copies moved into arch/, each
 # directory used only as the real one (a link at arch, log or global is
@@ -1039,12 +1076,6 @@ _sys_conf_arch_here() {
     && _acct_in_real_dir ./global _sys_conf_pre_here
   mv -f ./global.inc-before* ./arch/ &> /dev/null
   mv -f ./global.inc-missing* ./arch/ &> /dev/null
-  return 0
-}
-# The old include copies of the current (pinned) global/ moved into the
-# arch/ beside it (the glob expands here).
-_sys_conf_pre_here() {
-  mv -f ./*inc-pre* ../arch/ &> /dev/null
   return 0
 }
 # Every name directly in the current (pinned) directory removed, as rm -f
@@ -3391,65 +3422,6 @@ _php_if_versions_cleanup_cnf() {
 }
 
 #
-# Cleanup for PHP versions list.
-_if_php_idle_on_off() {
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _if_php_idle_on_off"
-  fi
-  # The transient stand-down uses its own /run marker holding this run's
-  # PID -- never /root/.proxy.cnf, which is the permanent finalized-proxy
-  # ROLE marker and must not be borrowed as a mute switch (borrowing it
-  # stood down the IDS and the update channel box-wide, and a crash could
-  # strand the synthetic marker forever). Consumers clear a marker whose
-  # owner PID is dead, and /run clears itself on reboot, so a crash can
-  # strand nothing.
-  if [ "${_PHP_IDLE}" = "ON" ]; then
-    [ -e "/root/.allow-php-multi-install-cleanup.cnf" ] && rm -f /root/.allow-php-multi-install-cleanup.cnf
-    rm -f /var/log/boa/._php_libs_fix_*.pid
-    echo $$ > /run/boa_php_idle_quiesce.pid
-    pkill -9 -f '^(/bin/)?bash (-c bash )?/var/xdrago/second\.sh( |$)'
-    sleep 5
-    _php_not_used_enable_again
-    sed -i "s/^_PHP_IDLE.*//g" ${_barCnf}
-    wait
-    rm -f /run/boa_php_idle_quiesce.pid
-    _php_install_deps
-    _php_libs_fix
-    if [ "${_STATUS}" = "UPGRADE" ]; then
-      _php_ioncube_check_if_update
-      _php_check_if_rebuild
-    fi
-    _php_install_upgrade
-    _php_config_check_update
-    _php_upgrade_all
-    _if_install_php_newrelic
-    _newrelic_check_fix
-    _complete
-    exit 0
-  elif [ "${_PHP_IDLE}" = "OFF" ]; then
-    echo $$ > /run/boa_php_idle_quiesce.pid
-    pkill -9 -f '^(/bin/)?bash (-c bash )?/var/xdrago/second\.sh( |$)'
-    sleep 5
-    touch /root/.allow-php-multi-install-cleanup.cnf
-    _php_if_versions_cleanup_cnf
-    sed -i "s/^_PHP_IDLE.*//g" ${_barCnf}
-    wait
-    rm -f /run/boa_php_idle_quiesce.pid
-    if [ -e "/root/.run-to-excalibur.cnf" ] \
-      || [ -e "/root/.run-to-daedalus.cnf" ] \
-      || [ -e "/root/.run-to-chimaera.cnf" ] \
-      || [ -e "/root/.run-to-beowulf.cnf" ]; then
-      echo " "
-      _msg "Bye"
-      _clean_pid_exit
-    else
-      _complete
-      exit 0
-    fi
-  fi
-}
-
-#
 # One-shot converter for control-file markers: a marker present sets
 # the matching /root/.barracuda.cnf variable to YES. The table field is
 # a full path -- some markers live in /etc/boa (the marker copy relocated them
@@ -3702,6 +3674,73 @@ _barracuda_cnf_init_complete() {
   for _k in ${_plain}; do
     [[ "${_set}" =~ " ${_k} " ]] || echo "${_k}=${!_k}" >> "${_barCnf}"
   done
+}
+
+# $1 the setting, $2 its stage: YES is appended to the cnf when the stage
+# reaches this box (HOSTED: the hostname ends in .aegir.cc, the key the
+# nightly symlink seed uses; ALL: every box) and the cnf assigns the setting
+# nowhere. Returns 0 only when it wrote the line; a cnf that cannot be read
+# is left alone.
+_instgrp_web_seed_line() {
+  local _key="$1"
+  local _stage="$2"
+  local _rc
+  case "${_stage}" in
+    ALL) ;;
+    HOSTED) [[ "${_hName}" =~ ".aegir.cc"($) ]] || return 1 ;;
+    *) return 1 ;;
+  esac
+  [ -f "${_barCnf}" ] || return 1
+  grep -q -E "^[[:space:]]*(export[[:space:]]+)?${_key}=" "${_barCnf}" 2> /dev/null
+  _rc=$?
+  [ "${_rc}" = "1" ] || return 1
+  [ -n "$(tail -c1 "${_barCnf}" 2> /dev/null)" ] && echo >> "${_barCnf}"
+  echo "${_key}=YES" >> "${_barCnf}"
+}
+
+# The web group's defaults. A pass writes _WEB_GROUP_ARM=YES into a cnf that
+# carries no _WEB_GROUP_ARM line, and _WEB_GROUP_PHASE_B=YES likewise on a
+# box that is armed. Only a missing line is written and only as YES, so an
+# operator's own line, NO included, always stays, and a box no stage has
+# reached yet gets no line at all. Staged by release: NO writes nothing,
+# HOSTED writes on the omega8.cc-hosted fleet, ALL on every box. Nothing is
+# written in this release. Kept local so no cnf line can set them; the arm's
+# stage stays NO wherever _instgrp_web_arm_stamp's _tiReleased is NO, and
+# phase B's never runs ahead of the arm's.
+_instgrp_web_arm_seed() {
+  local _tiSeedArm=NO
+  local _tiSeedPhaseB=NO
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _instgrp_web_arm_seed"
+  fi
+  if _instgrp_web_seed_line _WEB_GROUP_ARM "${_tiSeedArm}"; then
+    _WEB_GROUP_ARM=YES
+    _msg "INFO: The account web group is armed by default: _WEB_GROUP_ARM=YES written to ${_barCnf} (NO there opts this box out)"
+  fi
+  if [ "${_WEB_GROUP_ARM}" = "YES" ] \
+    && _instgrp_web_seed_line _WEB_GROUP_PHASE_B "${_tiSeedPhaseB}"; then
+    _WEB_GROUP_PHASE_B=YES
+    _msg "INFO: The account web group goes on to phase B by default: _WEB_GROUP_PHASE_B=YES written to ${_barCnf} (NO there stops at phase A)"
+  fi
+}
+
+# The database broker's default, written the way the account web group's is
+# (_instgrp_web_seed_line): a pass writes _DB_BROKER_ARM=YES into a cnf that
+# carries no such line, so an operator's own line, NO included, always stays,
+# and a box no stage has reached yet gets no line at all. Staged by release:
+# NO writes nothing, HOSTED writes on the omega8.cc-hosted fleet, ALL on
+# every box. Nothing is written in this release. Kept local so no cnf line
+# can set it; it stays NO wherever the broker's own release switch
+# (_TI_RELEASED in boa-dbctl) is NO.
+_db_broker_arm_seed() {
+  local _dbSeedArm=NO
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _db_broker_arm_seed"
+  fi
+  if _instgrp_web_seed_line _DB_BROKER_ARM "${_dbSeedArm}"; then
+    _DB_BROKER_ARM=YES
+    _msg "INFO: The database broker is armed by default: _DB_BROKER_ARM=YES written to ${_barCnf} (NO there opts this box out)"
+  fi
 }
 
 _barracuda_cnf() {
@@ -5173,46 +5212,6 @@ _spawn_detached() {
   fi
   # If interactive shell, drop it from the job table to mimic cron behavior
   if [[ "$-" == *i* ]]; then disown; fi
-}
-
-#
-# Running apt-get full-dist-upgrade.
-_run_apt_get_dist_upgrade() {
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _run_apt_get_dist_upgrade"
-  fi
-  _msg "INFO: Running apt-get upgrade..."
-  _apt_clean_update_no_releaseinfo_change
-  _mrun "apt-get upgrade ${_dstUpArg}"
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "INFO: Running apt-get dist-upgrade..."
-  fi
-  _mrun "apt-get dist-upgrade ${_dstUpArg}"
-  _mrun "apt-get dist-upgrade ${_dstUpArg}"
-  [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
-  _mrun "apt-get dist-upgrade ${_aptYesUnth}"
-  _mrun "apt-get dist-upgrade ${_aptYesUnth}"
-  [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
-  _mrun "apt-get install lsb-release ${_dstUpArg}"
-  ### Update rsyslog configuration early
-  _rsyslog_config_update
-  ### Reload key services if needed early (Valkey has no reload: it is left
-  ### running, as a reload never changed it)
-  _mrun "service nginx reload"
-  _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
-  for e in ${_PHP_V}; do
-    if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
-      _mrun "service php${e}-fpm reload"
-    fi
-  done
-  nohup /var/xdrago/minute.sh > /dev/null 2>&1 &
-  # Service watchdogs + guards split out of the legacy proc_num_ctrl.pl.
-  for _pncw in sendmail_guard convert_guard hostname_sync \
-               bind9 proxysql droplet newrelic_daemon newrelic_sysmond \
-               collectd xinetd lsyncd; do
-    [ -e "/var/xdrago/monitor/check/${_pncw}.sh" ] \
-      && _spawn_detached "bash /var/xdrago/monitor/check/${_pncw}.sh"
-  done
 }
 
 #
@@ -7991,6 +7990,13 @@ _sbp_find_item() {
     fi
   done
 }
+_sbp_regroup() {
+  if [ -n "${3}" ]; then
+    chown "${3}:${2}" "${1}" &> /dev/null
+  else
+    chgrp "${2}" "${1}" &> /dev/null
+  fi
+}
 #
 # One file to its final group, owner (when $4 names one) and mode. Of the two
 # moves, the one after which a member of only one of the two groups still has
@@ -8036,13 +8042,6 @@ _sbp_settle() {
     chmod "$(printf '%o' $(( (8#${_sbpCm} | 8#${_sbpM}) & 8#777 )))" "${_sbpF}" &> /dev/null
     _sbp_regroup "${_sbpF}" "${_sbpG}" "${_sbpO}"
     chmod "${_sbpM}" "${_sbpF}" &> /dev/null
-  fi
-}
-_sbp_regroup() {
-  if [ -n "${3}" ]; then
-    chown "${3}:${2}" "${1}" &> /dev/null
-  else
-    chgrp "${2}" "${1}" &> /dev/null
   fi
 }
 #
@@ -9926,244 +9925,6 @@ _ensure_devuan_base_files() {
   fi
 }
 
-_if_post_major_os_upgrade() {
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _if_post_major_os_upgrade"
-  fi
-  if [ -e "/root/.run_post_major_os_upgrade.info" ] \
-    && [ ! -e "/root/.completed_post_major_os_upgrade.info" ]; then
-
-    _apt_clean_update_no_releaseinfo_change
-    _mrun "${_APT_UPDATE} ${_aptAllow} -qq"
-
-    _msg "INFO: Cleaning up any systemd remnants..."
-    _sysvinit_install
-    _systemd_remove_apt_cmd
-    _sysvinit_install
-
-    _msg "INFO: Removing any packages orphaned by the migration process..."
-    _mrun "apt-get autoremove --purge -y --purge --auto-remove -qq"
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      _msg "INFO: Running apt-get autoclean..."
-    fi
-    _mrun "apt-get autoclean -y -qq"
-    _mrun "apt-get autoremove -y --purge --auto-remove -qq"
-
-    _msg "INFO: Running dist-upgrade to complete the system upgrade..."
-    _msg "WAIT: This may take a while, please wait..."
-    _apt_run_heal_dead_security_pool "dist-upgrade ${_dstUpArg}"
-    _mrun "apt-get dist-upgrade ${_dstUpArg}"
-    [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
-    if [ -e "/root/.allow.downgrades.on.same.os.dist.upgrade.cnf" ]; then
-      _msg "INFO: dist-upgrade with --allow-downgrades option is used"
-      _mrun "apt-get dist-upgrade ${_aptYesUnth} --allow-downgrades"
-      _mrun "apt-get dist-upgrade ${_aptYesUnth} --allow-downgrades"
-      [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
-    else
-      _mrun "apt-get dist-upgrade ${_aptYesUnth}"
-      _mrun "apt-get dist-upgrade ${_aptYesUnth}"
-      [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
-    fi
-    _mrun "apt-get install lsb-release ${_dstUpArg}"
-    _mrun "apt-get ${_dstUpArg} install"
-
-    ### Update base-files on daedalus if needed
-    if [ -e "/root/.top-daedalus.cnf" ]; then
-      # Initialize the update flag to NO
-      _needsBaseFilesUpdate=NO
-      # Check if /etc/os-release mentions 'daedalus'
-      if grep -i 'daedalus' /etc/os-release &> /dev/null; then
-        _msg "The /etc/os-release already mentions daedalus"
-      else
-        _msg "The /etc/os-release doesn't mention daedalus yet"
-        _needsBaseFilesUpdate=YES
-      fi
-      # Check if apt policy for base-files mentions 'daedalus'
-      if apt policy base-files | grep -i 'daedalus' &> /dev/null; then
-        _msg "The apt policy base-files already mentions daedalus"
-      else
-        _msg "The apt policy base-files doesn't mention daedalus yet"
-        _needsBaseFilesUpdate=YES
-      fi
-      # If any of the above checks require an update, perform the upgrade
-      if [ "${_needsBaseFilesUpdate}" = "YES" ]; then
-        _msg "Upgrading base-files from Devuan repository (dynamic candidate)"
-        _ensure_devuan_base_files
-      fi
-    fi
-    _ssl_paths_sync
-
-    ### Update base-files on excalibur if needed
-    if [ -e "/root/.top-excalibur.cnf" ]; then
-      # Initialize the update flag to NO
-      _needsBaseFilesUpdate=NO
-      # Check if /etc/os-release mentions 'excalibur'
-      if grep -i 'excalibur' /etc/os-release &> /dev/null; then
-        _msg "The /etc/os-release already mentions excalibur"
-      else
-        _msg "The /etc/os-release doesn't mention excalibur yet"
-        _needsBaseFilesUpdate=YES
-      fi
-      # Check if apt policy for base-files mentions 'excalibur'
-      if apt policy base-files | grep -i 'excalibur' &> /dev/null; then
-        _msg "The apt policy base-files already mentions excalibur"
-      else
-        _msg "The apt policy base-files doesn't mention excalibur yet"
-        _needsBaseFilesUpdate=YES
-      fi
-      # If any of the above checks require an update, perform the upgrade
-      if [ "${_needsBaseFilesUpdate}" = "YES" ]; then
-        _msg "Upgrading base-files from Devuan repository (dynamic candidate)"
-        _ensure_devuan_base_files
-      fi
-    fi
-
-    ### Update rsyslog configuration early
-    _rsyslog_config_update
-    ### Reload key services if needed early (Valkey has no reload: it is left
-    ### running, as a reload never changed it)
-    _mrun "service nginx reload"
-    _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
-    for e in ${_PHP_V}; do
-      if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
-        _mrun "service php${e}-fpm reload"
-      fi
-    done
-
-    _REBUILD_SRC_ON_AUTO_NOW=YES
-    if [ -e "/root/.run-to-excalibur.cnf" ] \
-      || [ -e "/root/.run-to-daedalus.cnf" ] \
-      || [ -e "/root/.run-to-chimaera.cnf" ] \
-      || [ -e "/root/.run-to-beowulf.cnf" ]; then
-      _REBUILD_SRC_ON_AUTO_NOW=NO
-      _php_if_versions_cleanup_cnf
-    fi
-
-    if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
-      _REBUILD_SRC_ON_AUTO_NOW=YES
-    fi
-
-    if [ -e "/root/.big_hop_on_major_os_upgrade.info" ] \
-      && [ ! -e "/root/.rebuild_src_on_auto_before_reboot.info" ] \
-      && [ "${_REBUILD_SRC_ON_AUTO_NOW}" = "YES" ]; then
-      _msg "INFO: Time for re-installing services built from sources..."
-      rm -f /var/log/boa/._php_libs_fix_*.pid
-      _PURGE_MODE=OFF
-      _NGX_FORCE_REINSTALL=YES
-      _PHP_FORCE_REINSTALL=YES
-      _SSH_FORCE_REINSTALL=YES
-      _SSL_FORCE_REINSTALL=YES
-      _if_reinstall_curl_src
-      _if_ssl_install_src
-      _sync_system_ssl_certs
-      _ssl_paths_sync
-      _ssl_crypto_lib_fix
-      _curl_install_src
-      _sshd_install_src
-      _nginx_install_upgrade
-      _php_install_deps
-      _php_libs_fix
-      _php_if_versions_cleanup_cnf
-       if [ -x "/opt/php56/bin/php" ]; then
-        _PHP_VERSION="${_PHP56_VRN}"
-        _install_php_multi "56"
-      fi
-      if [ -x "/opt/php70/bin/php" ]; then
-        _PHP_VERSION="${_PHP70_VRN}"
-        _install_php_multi "70"
-      fi
-      if [ -x "/opt/php71/bin/php" ]; then
-        _PHP_VERSION="${_PHP71_VRN}"
-        _install_php_multi "71"
-      fi
-      if [ -x "/opt/php72/bin/php" ]; then
-        _PHP_VERSION="${_PHP72_VRN}"
-        _install_php_multi "72"
-      fi
-      if [ -x "/opt/php73/bin/php" ]; then
-        _PHP_VERSION="${_PHP73_VRN}"
-        _install_php_multi "73"
-      fi
-      if [ -x "/opt/php74/bin/php" ]; then
-        _PHP_VERSION="${_PHP74_VRN}"
-        _install_php_multi "74"
-      fi
-      if [ -x "/opt/php80/bin/php" ]; then
-        _PHP_VERSION="${_PHP80_VRN}"
-        _install_php_multi "80"
-      fi
-      if [ -x "/opt/php81/bin/php" ]; then
-        _PHP_VERSION="${_PHP81_VRN}"
-        _install_php_multi "81"
-      fi
-      if [ -x "/opt/php82/bin/php" ]; then
-        _PHP_VERSION="${_PHP82_VRN}"
-        _install_php_multi "82"
-      fi
-      if [ -x "/opt/php83/bin/php" ]; then
-        _PHP_VERSION="${_PHP83_VRN}"
-        _install_php_multi "83"
-      fi
-      if [ -x "/opt/php84/bin/php" ]; then
-        _PHP_VERSION="${_PHP84_VRN}"
-        _install_php_multi "84"
-      fi
-      if [ -x "/opt/php85/bin/php" ]; then
-        _PHP_VERSION="${_PHP85_VRN}"
-        _install_php_multi "85"
-      fi
-      if [ -x "/opt/php86/bin/php" ] && [ -n "${_PHP86_VRN}" ]; then
-        _PHP_VERSION="${_PHP86_VRN}"
-        _install_php_multi "86"
-        _php_rc_cli_restore
-      fi
-      _PHP_VERSION=""
-      _T_PHP_VRN=""
-      _T_PHP_PTH=""
-      _php_libs_fix
-      if [ "${_STATUS}" = "UPGRADE" ]; then
-        _php_ioncube_check_if_update
-        _php_check_if_rebuild
-      fi
-      _php_install_upgrade
-      _php_config_check_update
-      _php_upgrade_all
-      _if_install_php_newrelic
-      _newrelic_check_fix
-      _NGX_FORCE_REINSTALL=
-      _PHP_FORCE_REINSTALL=
-      _SSH_FORCE_REINSTALL=
-      _SSL_FORCE_REINSTALL=
-    fi
-    if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
-      rm -f /root/.run_post_major_os_upgrade.info
-    fi
-    # The PHP rebuild markers mean something only while that file exists. This
-    # run's record of built versions starts again here too: the steps that
-    # follow can change the libraries a build links against.
-    rm -f ${_pthLog}/re-installed-php*-on-post_major_os_upgrade.info
-    _PHP_BUILT_IN_RUN=
-    if [ -e "/root/.force.newrelic.update.cnf" ]; then
-      rm -f /root/.force.newrelic.update.cnf
-    fi
-    if [ -e "/root/.allow.downgrades.on.same.os.dist.upgrade.cnf" ]; then
-      rm -f /root/.allow.downgrades.on.same.os.dist.upgrade.cnf
-    fi
-    rm -f /var/log/boa/.*_crontab_*
-    # The hop's package moves ignore the hold on curl and put the distro
-    # binary back over the link to the BOA-built one, which then loads BOA's
-    # libcurl with a version warning on every call. Relink.
-    if [ -x "/usr/local/bin/curl" ] \
-      && [ "$(readlink -f /usr/bin/curl 2>/dev/null)" != "/usr/local/bin/curl" ]; then
-      mv -f /usr/bin/curl /usr/bin/old-curl-$(date +%y%m%d-%H%M%S)
-      ln -sfn /usr/local/bin/curl /usr/bin/curl
-      _msg "INFO: /usr/bin/curl linked to the BOA-built curl again"
-    fi
-    touch /root/.completed_post_major_os_upgrade.info
-    _msg "INFO: The post_major_os_upgrade procedure is complete"
-  fi
-}
-
 #
 # Merged /usr on a Devuan Daedalus system upgraded in place from an older
 # release. Excalibur refuses a split system (its base-files and libc6
@@ -10481,35 +10242,644 @@ _major_os_upgrade_percona_check() {
   _clean_pid_exit _major_os_upgrade_percona_check
 }
 
+_php_libs_fix() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _php_libs_fix"
+  fi
+  _if_to_do_fix
+  _LIB_NOW=$(date +%y%m%d-%H%M)
+  _LIB_NOW=${_LIB_NOW//[^0-9-]/}
+  if [ ! -L "/usr/lib/librtmp.so" ] \
+    || [ ! -e "/usr/lib/libwebpmux.so" ] \
+    || [ ! -e "/usr/lib/libonig.so" ] \
+    || [ ! -e "/usr/lib/libicuio.so" ] \
+    || [ ! -e "/usr/lib/liblber.so" ] \
+    || [ ! -e "/var/log/boa/._php_libs_fix_${_OS_CODE}_${_LIB_NOW}.pid" ] \
+    || [ ! -e "/usr/include/gmp.h" ] \
+    || [ ! -e "/usr/include/lzf.h" ]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: Fix for PHP libs in ${_OS_DIST}/${_OS_CODE}"
+    fi
+    _X86_64_TEST=$(uname -m)
+    if [ "${_X86_64_TEST}" = "x86_64" ]; then
+      if [ -e "/usr/local/lib/icu" ]; then
+        if [ -e "/usr/lib/x86_64-linux-gnu/icu" ] \
+          && [ ! -L "/usr/lib/x86_64-linux-gnu/icu" ]; then
+          rm -rf /var/backups/.prev_icu
+          mv -f /usr/lib/x86_64-linux-gnu/icu /var/backups/.prev_icu
+          ln -sfn /usr/local/lib/icu /usr/lib/x86_64-linux-gnu/icu
+        else
+          ln -sfn /usr/local/lib/icu /usr/lib/x86_64-linux-gnu/icu
+        fi
+        ln -sfn /usr/local/lib/libicudata.so /usr/lib/x86_64-linux-gnu/libicudata.so
+        ln -sfn /usr/local/lib/libicui18n.so /usr/lib/x86_64-linux-gnu/libicui18n.so
+        ln -sfn /usr/local/lib/libicuio.so   /usr/lib/x86_64-linux-gnu/libicuio.so
+        ln -sfn /usr/local/lib/libicutest.so /usr/lib/x86_64-linux-gnu/libicutest.so
+        ln -sfn /usr/local/lib/libicutu.so   /usr/lib/x86_64-linux-gnu/libicutu.so
+        ln -sfn /usr/local/lib/libicuuc.so   /usr/lib/x86_64-linux-gnu/libicuuc.so
+        ln -sfn /usr/local/lib/libicudata.so /usr/lib/libicudata.so
+        ln -sfn /usr/local/lib/libicui18n.so /usr/lib/libicui18n.so
+        ln -sfn /usr/local/lib/libicuio.so   /usr/lib/libicuio.so
+        ln -sfn /usr/local/lib/libicutest.so /usr/lib/libicutest.so
+        ln -sfn /usr/local/lib/libicutu.so   /usr/lib/libicutu.so
+        ln -sfn /usr/local/lib/libicuuc.so   /usr/lib/libicuuc.so
+      fi
+      ln -sfn /usr/lib/x86_64-linux-gnu/libgmp.so  /usr/lib/libgmp.so
+      ln -sfn /usr/lib/x86_64-linux-gnu/libgmp.so  /usr/lib/libgmp.so.3
+      ln -sfn /usr/lib/x86_64-linux-gnu/libjpeg.so /usr/lib/libjpeg.so
+      ln -sfn /usr/lib/x86_64-linux-gnu/libkrb5.so /usr/lib/libkrb5.so
+      ln -sfn /usr/lib/x86_64-linux-gnu/libldap.so /usr/lib/libldap.so
+      ln -sfn /usr/lib/x86_64-linux-gnu/libpng.so  /usr/lib/libpng.so
+      ln -sfn /usr/lib/x86_64-linux-gnu/libXpm.so  /usr/lib/libXpm.so
+      ln -sfn /usr/lib/x86_64-linux-gnu/librtmp.so /usr/lib/librtmp.so
+      ln -sfn /usr/lib/x86_64-linux-gnu/libwebpmux.so /usr/lib/libwebpmux.so
+      ln -sfn /usr/lib/x86_64-linux-gnu/libwebpmux.so /usr/lib/libwebpmux.so.2
+      ln -sfn /usr/lib/x86_64-linux-gnu/libonig.so /usr/lib/libonig.so
+      ln -sfn /usr/lib/x86_64-linux-gnu/libonig.so /usr/lib/libonig.so.4
+      ln -sfn /usr/lib/x86_64-linux-gnu/libsodium.so /usr/lib/libsodium.so
+      ln -sfn /usr/lib/x86_64-linux-gnu/libsodium.so /usr/lib/libsodium.so.18
+      if [ -e "/usr/lib/x86_64-linux-gnu/libwebp.so.7" ] \
+        && [ ! -e "/usr/lib/x86_64-linux-gnu/libwebp.so.6" ]; then
+        ln -sfn /usr/lib/x86_64-linux-gnu/libwebp.so.7 /usr/lib/x86_64-linux-gnu/libwebp.so.6
+        ln -sfn /usr/lib/x86_64-linux-gnu/libwebp.so.7 /usr/lib/x86_64-linux-gnu/libwebp.so.6.0.2
+        ln -sfn /usr/lib/x86_64-linux-gnu/libwebp.so.7 /usr/lib/libwebp.so.6
+        ln -sfn /usr/lib/x86_64-linux-gnu/libwebp.so.7 /usr/lib/libwebp.so.6.0.2
+      fi
+      if [ -e "/usr/lib/x86_64-linux-gnu/liblber.so" ]; then
+        ln -sfn /usr/lib/x86_64-linux-gnu/liblber.so /usr/lib/liblber.so
+      fi
+      if [ -e "/usr/lib/x86_64-linux-gnu/liblber.a" ]; then
+        ln -sfn /usr/lib/x86_64-linux-gnu/liblber.a /usr/lib/liblber.a
+      fi
+      if [ -e "/usr/lib/x86_64-linux-gnu/liblber-2.5.so.0" ]; then
+        ln -sfn /usr/lib/x86_64-linux-gnu/liblber-2.5.so.0 /usr/lib/liblber-2.5.so.0
+      fi
+      if [ -e "/usr/lib/x86_64-linux-gnu/liblber-2.4.so.2" ]; then
+        ln -sfn /usr/lib/x86_64-linux-gnu/liblber-2.4.so.2 /usr/lib/liblber-2.4.so.2
+      fi
+      if [ -e "/usr/lib/x86_64-linux-gnu/libHalf.so.23" ]; then
+        ln -sfn /usr/lib/x86_64-linux-gnu/libHalf.so.23 /usr/lib/libHalf.so.12
+      fi
+      if [ -e "/usr/lib/x86_64-linux-gnu/libHalf.so" ]; then
+        ln -sfn /usr/lib/x86_64-linux-gnu/libHalf.so /usr/lib/libHalf.so.12
+      fi
+      if [ -e "/usr/lib/x86_64-linux-gnu/libIlmImf-2_2.so.23" ]; then
+        ln -sfn /usr/lib/x86_64-linux-gnu/libIlmImf-2_2.so.23 /usr/lib/libIlmImf-2_2.so.22
+      fi
+      if [ -e "/usr/lib/x86_64-linux-gnu/libIlmImf.so" ]; then
+        ln -sfn /usr/lib/x86_64-linux-gnu/libIlmImf.so /usr/lib/libIlmImf-2_2.so.22
+      fi
+      if [ -e "/usr/lib/x86_64-linux-gnu/libImath-2_2.so.23" ]; then
+        ln -sfn /usr/lib/x86_64-linux-gnu/libImath-2_2.so.23 /usr/lib/libImath-2_2.so.12
+      fi
+      if [ -e "/usr/lib/x86_64-linux-gnu/libImath.so" ]; then
+        ln -sfn /usr/lib/x86_64-linux-gnu/libImath.so /usr/lib/libImath-2_2.so.12
+      fi
+      if [ -e "/usr/lib/x86_64-linux-gnu/libIex-2_2.so.23" ]; then
+        ln -sfn /usr/lib/x86_64-linux-gnu/libIex-2_2.so.23 /usr/lib/libIex-2_2.so.12
+      fi
+      if [ -e "/usr/lib/x86_64-linux-gnu/libIex.so" ]; then
+        ln -sfn /usr/lib/x86_64-linux-gnu/libIex.so /usr/lib/libIex-2_2.so.12
+      fi
+      if [ -e "/usr/lib/x86_64-linux-gnu/libIexMath.so" ]; then
+        ln -sfn /usr/lib/x86_64-linux-gnu/libIexMath.so /usr/lib/libIexMath-2_2.so.12
+      fi
+      if [ -e "/usr/lib/x86_64-linux-gnu/libIlmThread.so" ]; then
+        ln -sfn /usr/lib/x86_64-linux-gnu/libIlmThread.so /usr/lib/libIlmThread-2_2.so.12
+      fi
+      if [ ! -e "/usr/include/curl/curl.h" ] \
+        && [ -e "/usr/include/x86_64-linux-gnu/curl/curl.h" ]; then
+        ln -sfn /usr/include/x86_64-linux-gnu/curl /usr/include/curl
+      fi
+      if [ ! -e "/usr/include/gmp.h" ] \
+        && [ -e "/usr/include/x86_64-linux-gnu/gmp.h" ]; then
+        ln -sfn /usr/include/x86_64-linux-gnu/gmp.h /usr/include/gmp.h
+      fi
+      if [ ! -e "/usr/include/lzf.h" ] \
+        && [ -e "/usr/include/liblzf/lzf.h" ]; then
+        ln -sfn /usr/include/liblzf/lzf.h /usr/include/lzf.h
+      fi
+      if [ ! -e "/usr/lib/x86_64-linux-gnu/librtmp.so.0" ] \
+        && [ -e "/usr/lib/x86_64-linux-gnu/librtmp.so.1" ]; then
+        cd /usr/lib/x86_64-linux-gnu
+        ln -sfn librtmp.so.1 librtmp.so.0
+      fi
+    fi
+    touch /var/log/boa/._php_libs_fix_${_OS_CODE}_${_LIB_NOW}.pid
+    touch /var/log/boa/._php_libs_fix_${_OS_CODE}_${_LIB_NOW}.pid
+  fi
+  ldconfig 2> /dev/null
+}
+
+_newrelic_check_fix() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _newrelic_check_fix"
+  fi
+  _NR_FORCE_REINSTALL=NO
+  _NOW_NR_V=""
+  _NRS_TEST="$(which newrelic-daemon)"
+  if [ ! -z "${_NRS_TEST}" ]; then
+    _NOW_NR_V=$(newrelic-daemon --version 2>&1 \
+      | tr -d "\n" \
+      | cut -d" " -f5 \
+      | awk '{ print $1}' \
+      | cut -d"-" -f1 \
+      | awk '{ print $1}' 2>&1)
+  fi
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    if [ ! -z "${_NOW_NR_V}" ]; then
+      _msg "INFO: New Relic installed: ${_NOW_NR_V} target: ${_NEW_RELIC_VRN}"
+    else
+      _msg "INFO: New Relic not installed, target: ${_NEW_RELIC_VRN}"
+    fi
+  fi
+  if [ ! -z "${_NOW_NR_V}" ]; then
+    if [ "${_NOW_NR_V}" != "${_NEW_RELIC_VRN}" ]; then
+      _NR_FORCE_REINSTALL=YES
+    fi
+  else
+    _NR_FORCE_REINSTALL=YES
+  fi
+  if [ "${_UP_NRC}" = "YES" ] \
+    || [ "${_NR_FORCE_REINSTALL}" = "YES" ] \
+    || [ -e /root/.force.newrelic.update.cnf ]; then
+    _newrelic_update
+  fi
+  _NEWRELIC_APP_CFG="/etc/newrelic/newrelic.cfg"
+  if [ -e "${_NEWRELIC_APP_CFG}" ]; then
+    _NEWRELIC_KEY_TEST=$(grep "REPLACE_WITH_REAL_KEY" ${_NEWRELIC_APP_CFG} 2>&1)
+    if [[ "${_NEWRELIC_KEY_TEST}" =~ "REPLACE_WITH_REAL_KEY" ]] \
+      && [ ! -z "${_NEWRELIC_KEY}" ]; then
+      sed -i "s/REPLACE_WITH_REAL_KEY/${_NEWRELIC_KEY}/g" \
+        ${_NEWRELIC_APP_CFG} &> /dev/null
+      wait
+    fi
+    sed -i "s/^loglevel=.*/loglevel=error/g" ${_NEWRELIC_APP_CFG} &> /dev/null
+    wait
+    _mrun "service newrelic-daemon restart"
+  else
+    if [ -e "/etc/init.d/newrelic-daemon" ] \
+      || [ -e "/etc/init.d/newrelic-sysmond" ]; then
+      _mrun "service newrelic-daemon stop"
+      _mrun "update-rc.d -f newrelic-daemon remove"
+      _mrun "service newrelic-sysmond stop"
+      _mrun "update-rc.d -f newrelic-sysmond remove"
+      _mrun "${_RMAPP} newrelic-php5 \
+        newrelic-php5-common \
+        newrelic-daemon \
+        newrelic-sysmond"
+      mv -f /etc/newrelic \
+        ${_vBs}/nr/etc-newrelic-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
+      rm -f /etc/init.d/newrelic-sysmond
+      rm -f /etc/init.d/newrelic-daemon
+      killall -9 newrelic-daemon &> /dev/null
+      killall -9 nrsysmond &> /dev/null
+    fi
+  fi
+  _NEWRELIC_SYS_CFG="/etc/newrelic/nrsysmond.cfg"
+  if [ -e "${_NEWRELIC_SYS_CFG}" ]; then
+    _NEWRELIC_KEY_TEST=$(grep "REPLACE_WITH_REAL_KEY" ${_NEWRELIC_SYS_CFG} 2>&1)
+    if [[ "${_NEWRELIC_KEY_TEST}" =~ "REPLACE_WITH_REAL_KEY" ]] \
+      && [ ! -z "${_NEWRELIC_KEY}" ]; then
+      sed -i "s/REPLACE_WITH_REAL_KEY/${_NEWRELIC_KEY}/g" \
+        ${_NEWRELIC_SYS_CFG} &> /dev/null
+      wait
+    fi
+    sed -i "s/^loglevel=.*/loglevel=error/g" \
+      ${_NEWRELIC_SYS_CFG} &> /dev/null
+    wait
+    sed -i "s/.*pidfile=.*/pidfile=\/var\/run\/nrsysmond.pid/g" \
+      ${_NEWRELIC_SYS_CFG} &> /dev/null
+    wait
+    if [ "${_ENABLE_NEWRELIC_SYSMOND}" = "YES" ] \
+      || [ -e "/etc/boa/.enable.newrelic.sysmond.cnf" ]; then
+      _mrun "service newrelic-sysmond restart"
+    else
+      _mrun "service newrelic-sysmond stop"
+    fi
+  fi
+}
+
+_rsyslog_config_update() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _rsyslog_config_update"
+  fi
+  # Never move the live config away before its replacement is known to be
+  # here: a pass whose build tree lacked the template (a concurrent pass had
+  # purged /opt/tmp/boa under it) moved /etc/rsyslog.conf aside, failed the
+  # copy and left the box without a syslog -- and because this block only
+  # acted when the live file existed, every later pass skipped it, so the
+  # box stayed blind for days while the watchdog claimed a restart each
+  # minute (io001, 2026-09-07). Install only from a present template, and a
+  # MISSING live file is installed too, never skipped.
+  if [ -x "/etc/init.d/rsyslog" ] \
+    && [ -s "${_locCnf}/var/rsyslog.conf" ]; then
+    if [ -e "/etc/rsyslog.conf" ]; then
+      mv -f /etc/rsyslog.conf \
+        /var/backups/.etc.rsyslog.conf-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
+    fi
+    cp -af ${_locCnf}/var/rsyslog.conf /etc/rsyslog.conf
+    # The rules keep a line tagged mysqld from any sender but root and the
+    # server's own user out of the logs barracuda's SQL gate reads; with no
+    # mysql user yet only root's pass, as the server writes nothing then.
+    _rsyslogMyUid="$(id -u mysql 2>/dev/null)"
+    [[ "${_rsyslogMyUid}" =~ ^[0-9]+$ ]] || _rsyslogMyUid=0
+    sed -i "s/@MYSQL_UID@/${_rsyslogMyUid}/g" /etc/rsyslog.conf
+    # postfix's package adds a second socket in its chroot with the legacy
+    # $AddUnixListenSocket, which cannot carry the sender's uid; declared as
+    # an input it carries it as /dev/log does, so the rules apply there too.
+    if [ -e "/etc/rsyslog.d/postfix.conf" ]; then
+      sed -i -E 's@^\$AddUnixListenSocket[[:space:]]+(/var/spool/postfix/dev/log)[[:space:]]*$@input(type="imuxsock" Socket="\1" Annotate="on" ParseTrusted="on")@' \
+        /etc/rsyslog.d/postfix.conf
+    fi
+    [ -s "${_locCnf}/var/mysql-notices.conf" ] \
+      && cp -af ${_locCnf}/var/mysql-notices.conf /etc/rsyslog.d/mysql-notices.conf
+    [ -s "${_locCnf}/var/logrotate.d.rsyslog.conf" ] \
+      && cp -af ${_locCnf}/var/logrotate.d.rsyslog.conf /etc/logrotate.d/rsyslog
+    touch /var/log/mysql-notices.log
+    chmod 640 /var/log/mysql-notices.log
+    chown root:adm /var/log/mysql-notices.log
+    _mrun "service rsyslog restart"
+  elif [ -x "/etc/init.d/rsyslog" ] && [ ! -e "/etc/rsyslog.conf" ]; then
+    # no template in this tree and no live config: say so, do not destroy
+    echo "rsyslog: no template at ${_locCnf}/var/rsyslog.conf and no /etc/rsyslog.conf; left for the next pass"
+  fi
+}
+
 #
-# Put back /var/xdrago that _if_major_os_upgrade parked as /var/xdrago_wait.
-# When /var/xdrago was rebuilt meanwhile (a tools refresh run by hand, an
-# install), it keeps every name it holds, the parked tree fills in only what
-# it lacks (cron/custom.txt and the other per-box files) and goes to the
-# dragon store with the list of what it filled in: a mv onto the existing
-# name would move it inside instead.
-_xdrago_wait_restore() {
-  local _xdrArc _xdrAdd _xdrF
-  if [ ! -e "/var/xdrago_wait" ] && [ ! -L "/var/xdrago_wait" ]; then
-    return 0
+# Running apt-get full-dist-upgrade.
+_run_apt_get_dist_upgrade() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _run_apt_get_dist_upgrade"
   fi
-  if [ ! -e "/var/xdrago" ] && [ ! -L "/var/xdrago" ]; then
-    mv -f /var/xdrago_wait /var/xdrago &> /dev/null
-  elif [ -d "/var/xdrago" ] && [ -d "/var/xdrago_wait" ]; then
-    _xdrArc="${_vBs}/dragon/x/xdrago_wait-$(date +%y%m%d-%H%M%S)"
-    # the names only the parked tree holds, read before the copy: cp -v
-    # lists skipped names too on some systems
-    _xdrAdd="$(cd /var/xdrago_wait 2> /dev/null && find . ! -type d 2> /dev/null \
-      | while IFS= read -r _xdrF; do
-          [ -e "/var/xdrago/${_xdrF}" ] || [ -L "/var/xdrago/${_xdrF}" ] || echo "${_xdrF#./}"
-        done)"
-    cp -an /var/xdrago_wait/. /var/xdrago/ &> /dev/null
-    mkdir -p "${_vBs}/dragon/x"
-    mv -f /var/xdrago_wait "${_xdrArc}" &> /dev/null
-    [ -d "${_xdrArc}" ] && printf '%s\n' "${_xdrAdd}" > "${_xdrArc}.added.txt"
-    _msg "INFO: /var/xdrago_wait merged into /var/xdrago ($(printf '%s' "${_xdrAdd}" | grep -c .) names it alone held added), kept as ${_xdrArc}"
+  _msg "INFO: Running apt-get upgrade..."
+  _apt_clean_update_no_releaseinfo_change
+  _mrun "apt-get upgrade ${_dstUpArg}"
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "INFO: Running apt-get dist-upgrade..."
   fi
-  return 0
+  _mrun "apt-get dist-upgrade ${_dstUpArg}"
+  _mrun "apt-get dist-upgrade ${_dstUpArg}"
+  [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
+  _mrun "apt-get dist-upgrade ${_aptYesUnth}"
+  _mrun "apt-get dist-upgrade ${_aptYesUnth}"
+  [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
+  _mrun "apt-get install lsb-release ${_dstUpArg}"
+  ### Update rsyslog configuration early
+  _rsyslog_config_update
+  ### Reload key services if needed early (Valkey has no reload: it is left
+  ### running, as a reload never changed it)
+  _mrun "service nginx reload"
+  _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
+  for e in ${_PHP_V}; do
+    if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
+      _mrun "service php${e}-fpm reload"
+    fi
+  done
+  nohup /var/xdrago/minute.sh > /dev/null 2>&1 &
+  # Service watchdogs + guards split out of the legacy proc_num_ctrl.pl.
+  for _pncw in sendmail_guard convert_guard hostname_sync \
+               bind9 proxysql droplet newrelic_daemon newrelic_sysmond \
+               collectd xinetd lsyncd; do
+    [ -e "/var/xdrago/monitor/check/${_pncw}.sh" ] \
+      && _spawn_detached "bash /var/xdrago/monitor/check/${_pncw}.sh"
+  done
+}
+
+_if_post_major_os_upgrade() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _if_post_major_os_upgrade"
+  fi
+  if [ -e "/root/.run_post_major_os_upgrade.info" ] \
+    && [ ! -e "/root/.completed_post_major_os_upgrade.info" ]; then
+
+    _apt_clean_update_no_releaseinfo_change
+    _mrun "${_APT_UPDATE} ${_aptAllow} -qq"
+
+    _msg "INFO: Cleaning up any systemd remnants..."
+    _sysvinit_install
+    _systemd_remove_apt_cmd
+    _sysvinit_install
+
+    _msg "INFO: Removing any packages orphaned by the migration process..."
+    _mrun "apt-get autoremove --purge -y --purge --auto-remove -qq"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: Running apt-get autoclean..."
+    fi
+    _mrun "apt-get autoclean -y -qq"
+    _mrun "apt-get autoremove -y --purge --auto-remove -qq"
+
+    _msg "INFO: Running dist-upgrade to complete the system upgrade..."
+    _msg "WAIT: This may take a while, please wait..."
+    _apt_run_heal_dead_security_pool "dist-upgrade ${_dstUpArg}"
+    _mrun "apt-get dist-upgrade ${_dstUpArg}"
+    [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
+    if [ -e "/root/.allow.downgrades.on.same.os.dist.upgrade.cnf" ]; then
+      _msg "INFO: dist-upgrade with --allow-downgrades option is used"
+      _mrun "apt-get dist-upgrade ${_aptYesUnth} --allow-downgrades"
+      _mrun "apt-get dist-upgrade ${_aptYesUnth} --allow-downgrades"
+      [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
+    else
+      _mrun "apt-get dist-upgrade ${_aptYesUnth}"
+      _mrun "apt-get dist-upgrade ${_aptYesUnth}"
+      [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
+    fi
+    _mrun "apt-get install lsb-release ${_dstUpArg}"
+    _mrun "apt-get ${_dstUpArg} install"
+
+    ### Update base-files on daedalus if needed
+    if [ -e "/root/.top-daedalus.cnf" ]; then
+      # Initialize the update flag to NO
+      _needsBaseFilesUpdate=NO
+      # Check if /etc/os-release mentions 'daedalus'
+      if grep -i 'daedalus' /etc/os-release &> /dev/null; then
+        _msg "The /etc/os-release already mentions daedalus"
+      else
+        _msg "The /etc/os-release doesn't mention daedalus yet"
+        _needsBaseFilesUpdate=YES
+      fi
+      # Check if apt policy for base-files mentions 'daedalus'
+      if apt policy base-files | grep -i 'daedalus' &> /dev/null; then
+        _msg "The apt policy base-files already mentions daedalus"
+      else
+        _msg "The apt policy base-files doesn't mention daedalus yet"
+        _needsBaseFilesUpdate=YES
+      fi
+      # If any of the above checks require an update, perform the upgrade
+      if [ "${_needsBaseFilesUpdate}" = "YES" ]; then
+        _msg "Upgrading base-files from Devuan repository (dynamic candidate)"
+        _ensure_devuan_base_files
+      fi
+    fi
+    _ssl_paths_sync
+
+    ### Update base-files on excalibur if needed
+    if [ -e "/root/.top-excalibur.cnf" ]; then
+      # Initialize the update flag to NO
+      _needsBaseFilesUpdate=NO
+      # Check if /etc/os-release mentions 'excalibur'
+      if grep -i 'excalibur' /etc/os-release &> /dev/null; then
+        _msg "The /etc/os-release already mentions excalibur"
+      else
+        _msg "The /etc/os-release doesn't mention excalibur yet"
+        _needsBaseFilesUpdate=YES
+      fi
+      # Check if apt policy for base-files mentions 'excalibur'
+      if apt policy base-files | grep -i 'excalibur' &> /dev/null; then
+        _msg "The apt policy base-files already mentions excalibur"
+      else
+        _msg "The apt policy base-files doesn't mention excalibur yet"
+        _needsBaseFilesUpdate=YES
+      fi
+      # If any of the above checks require an update, perform the upgrade
+      if [ "${_needsBaseFilesUpdate}" = "YES" ]; then
+        _msg "Upgrading base-files from Devuan repository (dynamic candidate)"
+        _ensure_devuan_base_files
+      fi
+    fi
+
+    ### Update rsyslog configuration early
+    _rsyslog_config_update
+    ### Reload key services if needed early (Valkey has no reload: it is left
+    ### running, as a reload never changed it)
+    _mrun "service nginx reload"
+    _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
+    for e in ${_PHP_V}; do
+      if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
+        _mrun "service php${e}-fpm reload"
+      fi
+    done
+
+    _REBUILD_SRC_ON_AUTO_NOW=YES
+    if [ -e "/root/.run-to-excalibur.cnf" ] \
+      || [ -e "/root/.run-to-daedalus.cnf" ] \
+      || [ -e "/root/.run-to-chimaera.cnf" ] \
+      || [ -e "/root/.run-to-beowulf.cnf" ]; then
+      _REBUILD_SRC_ON_AUTO_NOW=NO
+      _php_if_versions_cleanup_cnf
+    fi
+
+    if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
+      _REBUILD_SRC_ON_AUTO_NOW=YES
+    fi
+
+    if [ -e "/root/.big_hop_on_major_os_upgrade.info" ] \
+      && [ ! -e "/root/.rebuild_src_on_auto_before_reboot.info" ] \
+      && [ "${_REBUILD_SRC_ON_AUTO_NOW}" = "YES" ]; then
+      _msg "INFO: Time for re-installing services built from sources..."
+      rm -f /var/log/boa/._php_libs_fix_*.pid
+      _PURGE_MODE=OFF
+      _NGX_FORCE_REINSTALL=YES
+      _PHP_FORCE_REINSTALL=YES
+      _SSH_FORCE_REINSTALL=YES
+      _SSL_FORCE_REINSTALL=YES
+      _if_reinstall_curl_src
+      _if_ssl_install_src
+      _sync_system_ssl_certs
+      _ssl_paths_sync
+      _ssl_crypto_lib_fix
+      _curl_install_src
+      _sshd_install_src
+      _nginx_install_upgrade
+      _php_install_deps
+      _php_libs_fix
+      _php_if_versions_cleanup_cnf
+       if [ -x "/opt/php56/bin/php" ]; then
+        _PHP_VERSION="${_PHP56_VRN}"
+        _install_php_multi "56"
+      fi
+      if [ -x "/opt/php70/bin/php" ]; then
+        _PHP_VERSION="${_PHP70_VRN}"
+        _install_php_multi "70"
+      fi
+      if [ -x "/opt/php71/bin/php" ]; then
+        _PHP_VERSION="${_PHP71_VRN}"
+        _install_php_multi "71"
+      fi
+      if [ -x "/opt/php72/bin/php" ]; then
+        _PHP_VERSION="${_PHP72_VRN}"
+        _install_php_multi "72"
+      fi
+      if [ -x "/opt/php73/bin/php" ]; then
+        _PHP_VERSION="${_PHP73_VRN}"
+        _install_php_multi "73"
+      fi
+      if [ -x "/opt/php74/bin/php" ]; then
+        _PHP_VERSION="${_PHP74_VRN}"
+        _install_php_multi "74"
+      fi
+      if [ -x "/opt/php80/bin/php" ]; then
+        _PHP_VERSION="${_PHP80_VRN}"
+        _install_php_multi "80"
+      fi
+      if [ -x "/opt/php81/bin/php" ]; then
+        _PHP_VERSION="${_PHP81_VRN}"
+        _install_php_multi "81"
+      fi
+      if [ -x "/opt/php82/bin/php" ]; then
+        _PHP_VERSION="${_PHP82_VRN}"
+        _install_php_multi "82"
+      fi
+      if [ -x "/opt/php83/bin/php" ]; then
+        _PHP_VERSION="${_PHP83_VRN}"
+        _install_php_multi "83"
+      fi
+      if [ -x "/opt/php84/bin/php" ]; then
+        _PHP_VERSION="${_PHP84_VRN}"
+        _install_php_multi "84"
+      fi
+      if [ -x "/opt/php85/bin/php" ]; then
+        _PHP_VERSION="${_PHP85_VRN}"
+        _install_php_multi "85"
+      fi
+      if [ -x "/opt/php86/bin/php" ] && [ -n "${_PHP86_VRN}" ]; then
+        _PHP_VERSION="${_PHP86_VRN}"
+        _install_php_multi "86"
+        _php_rc_cli_restore
+      fi
+      _PHP_VERSION=""
+      _T_PHP_VRN=""
+      _T_PHP_PTH=""
+      _php_libs_fix
+      if [ "${_STATUS}" = "UPGRADE" ]; then
+        _php_ioncube_check_if_update
+        _php_check_if_rebuild
+      fi
+      _php_install_upgrade
+      _php_config_check_update
+      _php_upgrade_all
+      _if_install_php_newrelic
+      _newrelic_check_fix
+      _NGX_FORCE_REINSTALL=
+      _PHP_FORCE_REINSTALL=
+      _SSH_FORCE_REINSTALL=
+      _SSL_FORCE_REINSTALL=
+    fi
+    if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
+      rm -f /root/.run_post_major_os_upgrade.info
+    fi
+    # The PHP rebuild markers mean something only while that file exists. This
+    # run's record of built versions starts again here too: the steps that
+    # follow can change the libraries a build links against.
+    rm -f ${_pthLog}/re-installed-php*-on-post_major_os_upgrade.info
+    _PHP_BUILT_IN_RUN=
+    if [ -e "/root/.force.newrelic.update.cnf" ]; then
+      rm -f /root/.force.newrelic.update.cnf
+    fi
+    if [ -e "/root/.allow.downgrades.on.same.os.dist.upgrade.cnf" ]; then
+      rm -f /root/.allow.downgrades.on.same.os.dist.upgrade.cnf
+    fi
+    rm -f /var/log/boa/.*_crontab_*
+    # The hop's package moves ignore the hold on curl and put the distro
+    # binary back over the link to the BOA-built one, which then loads BOA's
+    # libcurl with a version warning on every call. Relink.
+    if [ -x "/usr/local/bin/curl" ] \
+      && [ "$(readlink -f /usr/bin/curl 2>/dev/null)" != "/usr/local/bin/curl" ]; then
+      mv -f /usr/bin/curl /usr/bin/old-curl-$(date +%y%m%d-%H%M%S)
+      ln -sfn /usr/local/bin/curl /usr/bin/curl
+      _msg "INFO: /usr/bin/curl linked to the BOA-built curl again"
+    fi
+    touch /root/.completed_post_major_os_upgrade.info
+    _msg "INFO: The post_major_os_upgrade procedure is complete"
+  fi
+}
+
+_complete() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _complete"
+  fi
+  _fix_lfd_whitelist
+  _fix_lfd_uidignore
+  _fix_cnf_postfix
+  _re_set_default_php_cli
+  if [ -d "/data/u" ]; then
+    _composer_install_upgrade
+  fi
+  if [ "${_STATUS}" != "UPGRADE" ]; then
+    _STRICT_BIN_PERMISSIONS=NO
+  fi
+  if [ "${_STRICT_BIN_PERMISSIONS}" = "YES" ]; then
+    usermod -aG users _apt &> /dev/null
+    usermod -aG users aegir &> /dev/null
+    usermod -aG users bin &> /dev/null
+    usermod -aG users daemon &> /dev/null
+    usermod -aG users man &> /dev/null
+    usermod -aG users mysql &> /dev/null
+    usermod -aG users nobody &> /dev/null
+    usermod -aG users root &> /dev/null
+    usermod -aG users sync &> /dev/null
+    usermod -aG users sys &> /dev/null
+    if [ -x "/bin/dash" ] || [ -x "/usr/bin/dash" ]; then
+      _symlink_to_dash
+      _switch_to_dash
+    elif [ -x "/bin/bash" ] || [ -x "/usr/bin/bash" ]; then
+      _symlink_to_bash
+      _switch_to_bash
+    fi
+    _strict_bin_permissions
+    rm -f /etc/apt/apt.conf.d/00sandboxtmp
+    rm -f /etc/apt/apt.conf.d/00temp
+  fi
+  _finale
+}
+
+#
+# Cleanup for PHP versions list.
+_if_php_idle_on_off() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _if_php_idle_on_off"
+  fi
+  # The transient stand-down uses its own /run marker holding this run's
+  # PID -- never /root/.proxy.cnf, which is the permanent finalized-proxy
+  # ROLE marker and must not be borrowed as a mute switch (borrowing it
+  # stood down the IDS and the update channel box-wide, and a crash could
+  # strand the synthetic marker forever). Consumers clear a marker whose
+  # owner PID is dead, and /run clears itself on reboot, so a crash can
+  # strand nothing.
+  if [ "${_PHP_IDLE}" = "ON" ]; then
+    [ -e "/root/.allow-php-multi-install-cleanup.cnf" ] && rm -f /root/.allow-php-multi-install-cleanup.cnf
+    rm -f /var/log/boa/._php_libs_fix_*.pid
+    echo $$ > /run/boa_php_idle_quiesce.pid
+    pkill -9 -f '^(/bin/)?bash (-c bash )?/var/xdrago/second\.sh( |$)'
+    sleep 5
+    _php_not_used_enable_again
+    sed -i "s/^_PHP_IDLE.*//g" ${_barCnf}
+    wait
+    rm -f /run/boa_php_idle_quiesce.pid
+    _php_install_deps
+    _php_libs_fix
+    if [ "${_STATUS}" = "UPGRADE" ]; then
+      _php_ioncube_check_if_update
+      _php_check_if_rebuild
+    fi
+    _php_install_upgrade
+    _php_config_check_update
+    _php_upgrade_all
+    _if_install_php_newrelic
+    _newrelic_check_fix
+    _complete
+    exit 0
+  elif [ "${_PHP_IDLE}" = "OFF" ]; then
+    echo $$ > /run/boa_php_idle_quiesce.pid
+    pkill -9 -f '^(/bin/)?bash (-c bash )?/var/xdrago/second\.sh( |$)'
+    sleep 5
+    touch /root/.allow-php-multi-install-cleanup.cnf
+    _php_if_versions_cleanup_cnf
+    sed -i "s/^_PHP_IDLE.*//g" ${_barCnf}
+    wait
+    rm -f /run/boa_php_idle_quiesce.pid
+    if [ -e "/root/.run-to-excalibur.cnf" ] \
+      || [ -e "/root/.run-to-daedalus.cnf" ] \
+      || [ -e "/root/.run-to-chimaera.cnf" ] \
+      || [ -e "/root/.run-to-beowulf.cnf" ]; then
+      echo " "
+      _msg "Bye"
+      _clean_pid_exit
+    else
+      _complete
+      exit 0
+    fi
+  fi
 }
 
 _if_major_os_upgrade() {
@@ -11884,55 +12254,6 @@ _corretto_java_is_boa() {
   return 1
 }
 
-_other_sys_corretto_install() {
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _other_sys_corretto_install"
-  fi
-
-  _crtMaj="$1"
-  _debArch="$2"
-
-  # Map Debian arch -> Corretto arch tokens
-  case "${_debArch}" in
-    amd64)  _crtArch="x64" ;;
-    arm64)  _crtArch="aarch64" ;;
-    *)
-      _crtArch="x64"
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        _msg "WARN: Unsupported arch '${_debArch}', falling back to x64"
-      fi
-    ;;
-  esac
-
-  _corretto_paths "${_crtMaj}" "${_debArch}"
-  _base="amazon-corretto-${_crtMaj}-${_crtArch}-linux"
-
-  # BOA's own Java is a link to Corretto. A real directory there (a
-  # package's tree) would take the new link inside it, and every pass would
-  # download again: say so and leave it.
-  if [ -d "${_linkJvm}" ] && [ ! -L "${_linkJvm}" ]; then
-    _msg "WARN: ${_linkJvm} is a directory, not BOA's link to Corretto ${_crtMaj}: not replaced"
-    return 1
-  fi
-
-  _mrun "mkdir -p ${_optDir}"
-  _mrun "mkdir -p /usr/lib/jvm"
-
-  # The archive goes to a directory made for this run that only root can
-  # enter: under a fixed name in /tmp any account could hold or swap it.
-  _crtStage=""
-  _tmpDir="$(mktemp -d /tmp/.corretto${_crtMaj}.XXXXXX 2>/dev/null)"
-  if [ -z "${_tmpDir}" ] || [ ! -d "${_tmpDir}" ]; then
-    _msg "ERROR: Unable to make a private directory for the Corretto ${_crtMaj} download"
-    return 1
-  fi
-  _corretto_fetch_lay
-  _crtRet=$?
-  rm -rf -- "${_tmpDir}"
-  [ -n "${_crtStage}" ] && rm -rf -- "${_crtStage}"
-  return "${_crtRet}"
-}
-
 _corretto_fetch_lay() {
   # Prefer JRE tarball; fall back to JDK tarball if needed.
   _kind="jre"
@@ -12071,6 +12392,55 @@ _corretto_fetch_lay() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "DONE: Java ${_crtMaj} ${_crtVer} installed at ${_linkJvm}"
   fi
+}
+
+_other_sys_corretto_install() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _other_sys_corretto_install"
+  fi
+
+  _crtMaj="$1"
+  _debArch="$2"
+
+  # Map Debian arch -> Corretto arch tokens
+  case "${_debArch}" in
+    amd64)  _crtArch="x64" ;;
+    arm64)  _crtArch="aarch64" ;;
+    *)
+      _crtArch="x64"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "WARN: Unsupported arch '${_debArch}', falling back to x64"
+      fi
+    ;;
+  esac
+
+  _corretto_paths "${_crtMaj}" "${_debArch}"
+  _base="amazon-corretto-${_crtMaj}-${_crtArch}-linux"
+
+  # BOA's own Java is a link to Corretto. A real directory there (a
+  # package's tree) would take the new link inside it, and every pass would
+  # download again: say so and leave it.
+  if [ -d "${_linkJvm}" ] && [ ! -L "${_linkJvm}" ]; then
+    _msg "WARN: ${_linkJvm} is a directory, not BOA's link to Corretto ${_crtMaj}: not replaced"
+    return 1
+  fi
+
+  _mrun "mkdir -p ${_optDir}"
+  _mrun "mkdir -p /usr/lib/jvm"
+
+  # The archive goes to a directory made for this run that only root can
+  # enter: under a fixed name in /tmp any account could hold or swap it.
+  _crtStage=""
+  _tmpDir="$(mktemp -d /tmp/.corretto${_crtMaj}.XXXXXX 2>/dev/null)"
+  if [ -z "${_tmpDir}" ] || [ ! -d "${_tmpDir}" ]; then
+    _msg "ERROR: Unable to make a private directory for the Corretto ${_crtMaj} download"
+    return 1
+  fi
+  _corretto_fetch_lay
+  _crtRet=$?
+  rm -rf -- "${_tmpDir}"
+  [ -n "${_crtStage}" ] && rm -rf -- "${_crtStage}"
+  return "${_crtRet}"
 }
 
 _other_sys_java_install() {
@@ -12602,135 +12972,6 @@ _sys_packages_install() {
                    ${_EXTRA_PACKAGES}"
 
   _MAILSERV="postfix postfix-pcre s-nail"
-}
-
-_php_libs_fix() {
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _php_libs_fix"
-  fi
-  _if_to_do_fix
-  _LIB_NOW=$(date +%y%m%d-%H%M)
-  _LIB_NOW=${_LIB_NOW//[^0-9-]/}
-  if [ ! -L "/usr/lib/librtmp.so" ] \
-    || [ ! -e "/usr/lib/libwebpmux.so" ] \
-    || [ ! -e "/usr/lib/libonig.so" ] \
-    || [ ! -e "/usr/lib/libicuio.so" ] \
-    || [ ! -e "/usr/lib/liblber.so" ] \
-    || [ ! -e "/var/log/boa/._php_libs_fix_${_OS_CODE}_${_LIB_NOW}.pid" ] \
-    || [ ! -e "/usr/include/gmp.h" ] \
-    || [ ! -e "/usr/include/lzf.h" ]; then
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      _msg "INFO: Fix for PHP libs in ${_OS_DIST}/${_OS_CODE}"
-    fi
-    _X86_64_TEST=$(uname -m)
-    if [ "${_X86_64_TEST}" = "x86_64" ]; then
-      if [ -e "/usr/local/lib/icu" ]; then
-        if [ -e "/usr/lib/x86_64-linux-gnu/icu" ] \
-          && [ ! -L "/usr/lib/x86_64-linux-gnu/icu" ]; then
-          rm -rf /var/backups/.prev_icu
-          mv -f /usr/lib/x86_64-linux-gnu/icu /var/backups/.prev_icu
-          ln -sfn /usr/local/lib/icu /usr/lib/x86_64-linux-gnu/icu
-        else
-          ln -sfn /usr/local/lib/icu /usr/lib/x86_64-linux-gnu/icu
-        fi
-        ln -sfn /usr/local/lib/libicudata.so /usr/lib/x86_64-linux-gnu/libicudata.so
-        ln -sfn /usr/local/lib/libicui18n.so /usr/lib/x86_64-linux-gnu/libicui18n.so
-        ln -sfn /usr/local/lib/libicuio.so   /usr/lib/x86_64-linux-gnu/libicuio.so
-        ln -sfn /usr/local/lib/libicutest.so /usr/lib/x86_64-linux-gnu/libicutest.so
-        ln -sfn /usr/local/lib/libicutu.so   /usr/lib/x86_64-linux-gnu/libicutu.so
-        ln -sfn /usr/local/lib/libicuuc.so   /usr/lib/x86_64-linux-gnu/libicuuc.so
-        ln -sfn /usr/local/lib/libicudata.so /usr/lib/libicudata.so
-        ln -sfn /usr/local/lib/libicui18n.so /usr/lib/libicui18n.so
-        ln -sfn /usr/local/lib/libicuio.so   /usr/lib/libicuio.so
-        ln -sfn /usr/local/lib/libicutest.so /usr/lib/libicutest.so
-        ln -sfn /usr/local/lib/libicutu.so   /usr/lib/libicutu.so
-        ln -sfn /usr/local/lib/libicuuc.so   /usr/lib/libicuuc.so
-      fi
-      ln -sfn /usr/lib/x86_64-linux-gnu/libgmp.so  /usr/lib/libgmp.so
-      ln -sfn /usr/lib/x86_64-linux-gnu/libgmp.so  /usr/lib/libgmp.so.3
-      ln -sfn /usr/lib/x86_64-linux-gnu/libjpeg.so /usr/lib/libjpeg.so
-      ln -sfn /usr/lib/x86_64-linux-gnu/libkrb5.so /usr/lib/libkrb5.so
-      ln -sfn /usr/lib/x86_64-linux-gnu/libldap.so /usr/lib/libldap.so
-      ln -sfn /usr/lib/x86_64-linux-gnu/libpng.so  /usr/lib/libpng.so
-      ln -sfn /usr/lib/x86_64-linux-gnu/libXpm.so  /usr/lib/libXpm.so
-      ln -sfn /usr/lib/x86_64-linux-gnu/librtmp.so /usr/lib/librtmp.so
-      ln -sfn /usr/lib/x86_64-linux-gnu/libwebpmux.so /usr/lib/libwebpmux.so
-      ln -sfn /usr/lib/x86_64-linux-gnu/libwebpmux.so /usr/lib/libwebpmux.so.2
-      ln -sfn /usr/lib/x86_64-linux-gnu/libonig.so /usr/lib/libonig.so
-      ln -sfn /usr/lib/x86_64-linux-gnu/libonig.so /usr/lib/libonig.so.4
-      ln -sfn /usr/lib/x86_64-linux-gnu/libsodium.so /usr/lib/libsodium.so
-      ln -sfn /usr/lib/x86_64-linux-gnu/libsodium.so /usr/lib/libsodium.so.18
-      if [ -e "/usr/lib/x86_64-linux-gnu/libwebp.so.7" ] \
-        && [ ! -e "/usr/lib/x86_64-linux-gnu/libwebp.so.6" ]; then
-        ln -sfn /usr/lib/x86_64-linux-gnu/libwebp.so.7 /usr/lib/x86_64-linux-gnu/libwebp.so.6
-        ln -sfn /usr/lib/x86_64-linux-gnu/libwebp.so.7 /usr/lib/x86_64-linux-gnu/libwebp.so.6.0.2
-        ln -sfn /usr/lib/x86_64-linux-gnu/libwebp.so.7 /usr/lib/libwebp.so.6
-        ln -sfn /usr/lib/x86_64-linux-gnu/libwebp.so.7 /usr/lib/libwebp.so.6.0.2
-      fi
-      if [ -e "/usr/lib/x86_64-linux-gnu/liblber.so" ]; then
-        ln -sfn /usr/lib/x86_64-linux-gnu/liblber.so /usr/lib/liblber.so
-      fi
-      if [ -e "/usr/lib/x86_64-linux-gnu/liblber.a" ]; then
-        ln -sfn /usr/lib/x86_64-linux-gnu/liblber.a /usr/lib/liblber.a
-      fi
-      if [ -e "/usr/lib/x86_64-linux-gnu/liblber-2.5.so.0" ]; then
-        ln -sfn /usr/lib/x86_64-linux-gnu/liblber-2.5.so.0 /usr/lib/liblber-2.5.so.0
-      fi
-      if [ -e "/usr/lib/x86_64-linux-gnu/liblber-2.4.so.2" ]; then
-        ln -sfn /usr/lib/x86_64-linux-gnu/liblber-2.4.so.2 /usr/lib/liblber-2.4.so.2
-      fi
-      if [ -e "/usr/lib/x86_64-linux-gnu/libHalf.so.23" ]; then
-        ln -sfn /usr/lib/x86_64-linux-gnu/libHalf.so.23 /usr/lib/libHalf.so.12
-      fi
-      if [ -e "/usr/lib/x86_64-linux-gnu/libHalf.so" ]; then
-        ln -sfn /usr/lib/x86_64-linux-gnu/libHalf.so /usr/lib/libHalf.so.12
-      fi
-      if [ -e "/usr/lib/x86_64-linux-gnu/libIlmImf-2_2.so.23" ]; then
-        ln -sfn /usr/lib/x86_64-linux-gnu/libIlmImf-2_2.so.23 /usr/lib/libIlmImf-2_2.so.22
-      fi
-      if [ -e "/usr/lib/x86_64-linux-gnu/libIlmImf.so" ]; then
-        ln -sfn /usr/lib/x86_64-linux-gnu/libIlmImf.so /usr/lib/libIlmImf-2_2.so.22
-      fi
-      if [ -e "/usr/lib/x86_64-linux-gnu/libImath-2_2.so.23" ]; then
-        ln -sfn /usr/lib/x86_64-linux-gnu/libImath-2_2.so.23 /usr/lib/libImath-2_2.so.12
-      fi
-      if [ -e "/usr/lib/x86_64-linux-gnu/libImath.so" ]; then
-        ln -sfn /usr/lib/x86_64-linux-gnu/libImath.so /usr/lib/libImath-2_2.so.12
-      fi
-      if [ -e "/usr/lib/x86_64-linux-gnu/libIex-2_2.so.23" ]; then
-        ln -sfn /usr/lib/x86_64-linux-gnu/libIex-2_2.so.23 /usr/lib/libIex-2_2.so.12
-      fi
-      if [ -e "/usr/lib/x86_64-linux-gnu/libIex.so" ]; then
-        ln -sfn /usr/lib/x86_64-linux-gnu/libIex.so /usr/lib/libIex-2_2.so.12
-      fi
-      if [ -e "/usr/lib/x86_64-linux-gnu/libIexMath.so" ]; then
-        ln -sfn /usr/lib/x86_64-linux-gnu/libIexMath.so /usr/lib/libIexMath-2_2.so.12
-      fi
-      if [ -e "/usr/lib/x86_64-linux-gnu/libIlmThread.so" ]; then
-        ln -sfn /usr/lib/x86_64-linux-gnu/libIlmThread.so /usr/lib/libIlmThread-2_2.so.12
-      fi
-      if [ ! -e "/usr/include/curl/curl.h" ] \
-        && [ -e "/usr/include/x86_64-linux-gnu/curl/curl.h" ]; then
-        ln -sfn /usr/include/x86_64-linux-gnu/curl /usr/include/curl
-      fi
-      if [ ! -e "/usr/include/gmp.h" ] \
-        && [ -e "/usr/include/x86_64-linux-gnu/gmp.h" ]; then
-        ln -sfn /usr/include/x86_64-linux-gnu/gmp.h /usr/include/gmp.h
-      fi
-      if [ ! -e "/usr/include/lzf.h" ] \
-        && [ -e "/usr/include/liblzf/lzf.h" ]; then
-        ln -sfn /usr/include/liblzf/lzf.h /usr/include/lzf.h
-      fi
-      if [ ! -e "/usr/lib/x86_64-linux-gnu/librtmp.so.0" ] \
-        && [ -e "/usr/lib/x86_64-linux-gnu/librtmp.so.1" ]; then
-        cd /usr/lib/x86_64-linux-gnu
-        ln -sfn librtmp.so.1 librtmp.so.0
-      fi
-    fi
-    touch /var/log/boa/._php_libs_fix_${_OS_CODE}_${_LIB_NOW}.pid
-    touch /var/log/boa/._php_libs_fix_${_OS_CODE}_${_LIB_NOW}.pid
-  fi
-  ldconfig 2> /dev/null
 }
 
 ###
@@ -14091,73 +14332,6 @@ _instgrp_arm_stamp() {
   echo "${_st}" > /var/log/boa/instgrp-arm.ready.txt
 }
 
-# $1 the setting, $2 its stage: YES is appended to the cnf when the stage
-# reaches this box (HOSTED: the hostname ends in .aegir.cc, the key the
-# nightly symlink seed uses; ALL: every box) and the cnf assigns the setting
-# nowhere. Returns 0 only when it wrote the line; a cnf that cannot be read
-# is left alone.
-_instgrp_web_seed_line() {
-  local _key="$1"
-  local _stage="$2"
-  local _rc
-  case "${_stage}" in
-    ALL) ;;
-    HOSTED) [[ "${_hName}" =~ ".aegir.cc"($) ]] || return 1 ;;
-    *) return 1 ;;
-  esac
-  [ -f "${_barCnf}" ] || return 1
-  grep -q -E "^[[:space:]]*(export[[:space:]]+)?${_key}=" "${_barCnf}" 2> /dev/null
-  _rc=$?
-  [ "${_rc}" = "1" ] || return 1
-  [ -n "$(tail -c1 "${_barCnf}" 2> /dev/null)" ] && echo >> "${_barCnf}"
-  echo "${_key}=YES" >> "${_barCnf}"
-}
-
-# The web group's defaults. A pass writes _WEB_GROUP_ARM=YES into a cnf that
-# carries no _WEB_GROUP_ARM line, and _WEB_GROUP_PHASE_B=YES likewise on a
-# box that is armed. Only a missing line is written and only as YES, so an
-# operator's own line, NO included, always stays, and a box no stage has
-# reached yet gets no line at all. Staged by release: NO writes nothing,
-# HOSTED writes on the omega8.cc-hosted fleet, ALL on every box. Nothing is
-# written in this release. Kept local so no cnf line can set them; the arm's
-# stage stays NO wherever _instgrp_web_arm_stamp's _tiReleased is NO, and
-# phase B's never runs ahead of the arm's.
-_instgrp_web_arm_seed() {
-  local _tiSeedArm=NO
-  local _tiSeedPhaseB=NO
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _instgrp_web_arm_seed"
-  fi
-  if _instgrp_web_seed_line _WEB_GROUP_ARM "${_tiSeedArm}"; then
-    _WEB_GROUP_ARM=YES
-    _msg "INFO: The account web group is armed by default: _WEB_GROUP_ARM=YES written to ${_barCnf} (NO there opts this box out)"
-  fi
-  if [ "${_WEB_GROUP_ARM}" = "YES" ] \
-    && _instgrp_web_seed_line _WEB_GROUP_PHASE_B "${_tiSeedPhaseB}"; then
-    _WEB_GROUP_PHASE_B=YES
-    _msg "INFO: The account web group goes on to phase B by default: _WEB_GROUP_PHASE_B=YES written to ${_barCnf} (NO there stops at phase A)"
-  fi
-}
-
-# The database broker's default, written the way the account web group's is
-# (_instgrp_web_seed_line): a pass writes _DB_BROKER_ARM=YES into a cnf that
-# carries no such line, so an operator's own line, NO included, always stays,
-# and a box no stage has reached yet gets no line at all. Staged by release:
-# NO writes nothing, HOSTED writes on the omega8.cc-hosted fleet, ALL on
-# every box. Nothing is written in this release. Kept local so no cnf line
-# can set it; it stays NO wherever the broker's own release switch
-# (_TI_RELEASED in boa-dbctl) is NO.
-_db_broker_arm_seed() {
-  local _dbSeedArm=NO
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _db_broker_arm_seed"
-  fi
-  if _instgrp_web_seed_line _DB_BROKER_ARM "${_dbSeedArm}"; then
-    _DB_BROKER_ARM=YES
-    _msg "INFO: The database broker is armed by default: _DB_BROKER_ARM=YES written to ${_barCnf} (NO there opts this box out)"
-  fi
-}
-
 # The web group's arm (instgrp webconvert) takes no account's first
 # conversion without this stamp. Written at the tail of every barracuda pass
 # while _WEB_GROUP_ARM=YES, removed otherwise, so the setting alone arms and
@@ -14437,95 +14611,6 @@ _if_install_ftpd() {
       fi
       cd /var/opt
       touch ${_pthLog}/pure-ftpd-build-${_PURE_FTPD_VRN}-${_xSrl}-${_X_VERSION}.log
-    fi
-  fi
-}
-
-_newrelic_check_fix() {
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _newrelic_check_fix"
-  fi
-  _NR_FORCE_REINSTALL=NO
-  _NOW_NR_V=""
-  _NRS_TEST="$(which newrelic-daemon)"
-  if [ ! -z "${_NRS_TEST}" ]; then
-    _NOW_NR_V=$(newrelic-daemon --version 2>&1 \
-      | tr -d "\n" \
-      | cut -d" " -f5 \
-      | awk '{ print $1}' \
-      | cut -d"-" -f1 \
-      | awk '{ print $1}' 2>&1)
-  fi
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    if [ ! -z "${_NOW_NR_V}" ]; then
-      _msg "INFO: New Relic installed: ${_NOW_NR_V} target: ${_NEW_RELIC_VRN}"
-    else
-      _msg "INFO: New Relic not installed, target: ${_NEW_RELIC_VRN}"
-    fi
-  fi
-  if [ ! -z "${_NOW_NR_V}" ]; then
-    if [ "${_NOW_NR_V}" != "${_NEW_RELIC_VRN}" ]; then
-      _NR_FORCE_REINSTALL=YES
-    fi
-  else
-    _NR_FORCE_REINSTALL=YES
-  fi
-  if [ "${_UP_NRC}" = "YES" ] \
-    || [ "${_NR_FORCE_REINSTALL}" = "YES" ] \
-    || [ -e /root/.force.newrelic.update.cnf ]; then
-    _newrelic_update
-  fi
-  _NEWRELIC_APP_CFG="/etc/newrelic/newrelic.cfg"
-  if [ -e "${_NEWRELIC_APP_CFG}" ]; then
-    _NEWRELIC_KEY_TEST=$(grep "REPLACE_WITH_REAL_KEY" ${_NEWRELIC_APP_CFG} 2>&1)
-    if [[ "${_NEWRELIC_KEY_TEST}" =~ "REPLACE_WITH_REAL_KEY" ]] \
-      && [ ! -z "${_NEWRELIC_KEY}" ]; then
-      sed -i "s/REPLACE_WITH_REAL_KEY/${_NEWRELIC_KEY}/g" \
-        ${_NEWRELIC_APP_CFG} &> /dev/null
-      wait
-    fi
-    sed -i "s/^loglevel=.*/loglevel=error/g" ${_NEWRELIC_APP_CFG} &> /dev/null
-    wait
-    _mrun "service newrelic-daemon restart"
-  else
-    if [ -e "/etc/init.d/newrelic-daemon" ] \
-      || [ -e "/etc/init.d/newrelic-sysmond" ]; then
-      _mrun "service newrelic-daemon stop"
-      _mrun "update-rc.d -f newrelic-daemon remove"
-      _mrun "service newrelic-sysmond stop"
-      _mrun "update-rc.d -f newrelic-sysmond remove"
-      _mrun "${_RMAPP} newrelic-php5 \
-        newrelic-php5-common \
-        newrelic-daemon \
-        newrelic-sysmond"
-      mv -f /etc/newrelic \
-        ${_vBs}/nr/etc-newrelic-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
-      rm -f /etc/init.d/newrelic-sysmond
-      rm -f /etc/init.d/newrelic-daemon
-      killall -9 newrelic-daemon &> /dev/null
-      killall -9 nrsysmond &> /dev/null
-    fi
-  fi
-  _NEWRELIC_SYS_CFG="/etc/newrelic/nrsysmond.cfg"
-  if [ -e "${_NEWRELIC_SYS_CFG}" ]; then
-    _NEWRELIC_KEY_TEST=$(grep "REPLACE_WITH_REAL_KEY" ${_NEWRELIC_SYS_CFG} 2>&1)
-    if [[ "${_NEWRELIC_KEY_TEST}" =~ "REPLACE_WITH_REAL_KEY" ]] \
-      && [ ! -z "${_NEWRELIC_KEY}" ]; then
-      sed -i "s/REPLACE_WITH_REAL_KEY/${_NEWRELIC_KEY}/g" \
-        ${_NEWRELIC_SYS_CFG} &> /dev/null
-      wait
-    fi
-    sed -i "s/^loglevel=.*/loglevel=error/g" \
-      ${_NEWRELIC_SYS_CFG} &> /dev/null
-    wait
-    sed -i "s/.*pidfile=.*/pidfile=\/var\/run\/nrsysmond.pid/g" \
-      ${_NEWRELIC_SYS_CFG} &> /dev/null
-    wait
-    if [ "${_ENABLE_NEWRELIC_SYSMOND}" = "YES" ] \
-      || [ -e "/etc/boa/.enable.newrelic.sysmond.cnf" ]; then
-      _mrun "service newrelic-sysmond restart"
-    else
-      _mrun "service newrelic-sysmond stop"
     fi
   fi
 }
@@ -15470,89 +15555,4 @@ _apticron_update() {
       wait
     sed -i "s/barracuda up-${_tRee}.*/barracuda up-${_barUpv} system/g" /usr/sbin/apticron
   fi
-}
-
-_rsyslog_config_update() {
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _rsyslog_config_update"
-  fi
-  # Never move the live config away before its replacement is known to be
-  # here: a pass whose build tree lacked the template (a concurrent pass had
-  # purged /opt/tmp/boa under it) moved /etc/rsyslog.conf aside, failed the
-  # copy and left the box without a syslog -- and because this block only
-  # acted when the live file existed, every later pass skipped it, so the
-  # box stayed blind for days while the watchdog claimed a restart each
-  # minute (io001, 2026-09-07). Install only from a present template, and a
-  # MISSING live file is installed too, never skipped.
-  if [ -x "/etc/init.d/rsyslog" ] \
-    && [ -s "${_locCnf}/var/rsyslog.conf" ]; then
-    if [ -e "/etc/rsyslog.conf" ]; then
-      mv -f /etc/rsyslog.conf \
-        /var/backups/.etc.rsyslog.conf-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
-    fi
-    cp -af ${_locCnf}/var/rsyslog.conf /etc/rsyslog.conf
-    # The rules keep a line tagged mysqld from any sender but root and the
-    # server's own user out of the logs barracuda's SQL gate reads; with no
-    # mysql user yet only root's pass, as the server writes nothing then.
-    _rsyslogMyUid="$(id -u mysql 2>/dev/null)"
-    [[ "${_rsyslogMyUid}" =~ ^[0-9]+$ ]] || _rsyslogMyUid=0
-    sed -i "s/@MYSQL_UID@/${_rsyslogMyUid}/g" /etc/rsyslog.conf
-    # postfix's package adds a second socket in its chroot with the legacy
-    # $AddUnixListenSocket, which cannot carry the sender's uid; declared as
-    # an input it carries it as /dev/log does, so the rules apply there too.
-    if [ -e "/etc/rsyslog.d/postfix.conf" ]; then
-      sed -i -E 's@^\$AddUnixListenSocket[[:space:]]+(/var/spool/postfix/dev/log)[[:space:]]*$@input(type="imuxsock" Socket="\1" Annotate="on" ParseTrusted="on")@' \
-        /etc/rsyslog.d/postfix.conf
-    fi
-    [ -s "${_locCnf}/var/mysql-notices.conf" ] \
-      && cp -af ${_locCnf}/var/mysql-notices.conf /etc/rsyslog.d/mysql-notices.conf
-    [ -s "${_locCnf}/var/logrotate.d.rsyslog.conf" ] \
-      && cp -af ${_locCnf}/var/logrotate.d.rsyslog.conf /etc/logrotate.d/rsyslog
-    touch /var/log/mysql-notices.log
-    chmod 640 /var/log/mysql-notices.log
-    chown root:adm /var/log/mysql-notices.log
-    _mrun "service rsyslog restart"
-  elif [ -x "/etc/init.d/rsyslog" ] && [ ! -e "/etc/rsyslog.conf" ]; then
-    # no template in this tree and no live config: say so, do not destroy
-    echo "rsyslog: no template at ${_locCnf}/var/rsyslog.conf and no /etc/rsyslog.conf; left for the next pass"
-  fi
-}
-
-_complete() {
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _complete"
-  fi
-  _fix_lfd_whitelist
-  _fix_lfd_uidignore
-  _fix_cnf_postfix
-  _re_set_default_php_cli
-  if [ -d "/data/u" ]; then
-    _composer_install_upgrade
-  fi
-  if [ "${_STATUS}" != "UPGRADE" ]; then
-    _STRICT_BIN_PERMISSIONS=NO
-  fi
-  if [ "${_STRICT_BIN_PERMISSIONS}" = "YES" ]; then
-    usermod -aG users _apt &> /dev/null
-    usermod -aG users aegir &> /dev/null
-    usermod -aG users bin &> /dev/null
-    usermod -aG users daemon &> /dev/null
-    usermod -aG users man &> /dev/null
-    usermod -aG users mysql &> /dev/null
-    usermod -aG users nobody &> /dev/null
-    usermod -aG users root &> /dev/null
-    usermod -aG users sync &> /dev/null
-    usermod -aG users sys &> /dev/null
-    if [ -x "/bin/dash" ] || [ -x "/usr/bin/dash" ]; then
-      _symlink_to_dash
-      _switch_to_dash
-    elif [ -x "/bin/bash" ] || [ -x "/usr/bin/bash" ]; then
-      _symlink_to_bash
-      _switch_to_bash
-    fi
-    _strict_bin_permissions
-    rm -f /etc/apt/apt.conf.d/00sandboxtmp
-    rm -f /etc/apt/apt.conf.d/00temp
-  fi
-  _finale
 }

@@ -73,6 +73,26 @@ _sub_force_advanced_nginx_config() {
 }
 
 #
+# The file $1 (root's own) put as ./$2 in the current (pinned) directory with
+# the owner and group of $1 and the mode $3, as cp -a and a chmod by name put
+# it, but through one handle (_ACCT_PUT_PL, helper.sh.inc) and renamed over
+# the name: a run of an earlier release handed /data/conf to the account it
+# upgraded, so a link put at the name is replaced, never written through,
+# and nothing is chmoded by name there.
+_nginx_conf_put_here() {
+  local _t="./.${2}.put.$$.${RANDOM}" _o
+  _o="$(stat -c '%u:%g' -- "${1}" 2> /dev/null)"
+  [[ "${_o}" =~ ^[0-9]+:[0-9]+$ ]] || return 1
+  rm -f -- "${_t}"
+  if perl -e "${_ACCT_PUT_PL}" "${_t}" "${_o%%:*}" "${_o#*:}" "${3}" \
+    < "${1}" && mv -f -T -- "${_t}" "./${2}"; then
+    return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+
+#
 # Force advanced Nginx configuration.
 _force_advanced_nginx_config() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -218,26 +238,6 @@ _force_advanced_nginx_config() {
 }
 
 #
-# The file $1 (root's own) put as ./$2 in the current (pinned) directory with
-# the owner and group of $1 and the mode $3, as cp -a and a chmod by name put
-# it, but through one handle (_ACCT_PUT_PL, helper.sh.inc) and renamed over
-# the name: a run of an earlier release handed /data/conf to the account it
-# upgraded, so a link put at the name is replaced, never written through,
-# and nothing is chmoded by name there.
-_nginx_conf_put_here() {
-  local _t="./.${2}.put.$$.${RANDOM}" _o
-  _o="$(stat -c '%u:%g' -- "${1}" 2> /dev/null)"
-  [[ "${_o}" =~ ^[0-9]+:[0-9]+$ ]] || return 1
-  rm -f -- "${_t}"
-  if perl -e "${_ACCT_PUT_PL}" "${_t}" "${_o%%:*}" "${_o#*:}" "${3}" \
-    < "${1}" && mv -f -T -- "${_t}" "./${2}"; then
-    return 0
-  fi
-  rm -f -- "${_t}"
-  return 1
-}
-
-#
 # Check for Linux/Cdorked.A malware and delete if discovered.
 _detect_cdorked_malware() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -268,22 +268,15 @@ _detect_cdorked_malware() {
   fi
 }
 
-#
-# An account's config/ and .drush/ belong to its users, so any name there can
-# be a link or a FIFO, and any directory on the way can itself be a link. Root
-# reads, edits and removes those files only through these, inside the real
-# directory (_acct_in_real_dir and _acct_read_here, helper.sh.inc).
-#
-# The real directories /data/disk/<oN>/$1 of every account, one per line. A
-# name in $1 holding a glob (server_*) expands only inside the real directory
-# above it, and only to real directories with plain names; each directory is
-# entered again with _acct_in_real_dir before anything is done there.
-_nginx_acct_dirs() {
-  local _u
-  for _u in /data/disk/*; do
-    [[ "${_u##*/}" =~ ^[A-Za-z0-9._-]+$ ]] || continue
-    [ -d "${_u}" ] && [ ! -L "${_u}" ] || continue
-    _nginx_acct_dirs_below "${_u}" "${1}"
+# Names of the real directories matching the glob $1 in the current (pinned)
+# directory, plain names only, one per line.
+_nginx_dir_names_here() {
+  local _m
+  # shellcheck disable=SC2086
+  for _m in ./${1}; do
+    _m="${_m#./}"
+    [[ "${_m}" =~ ^[A-Za-z0-9._-]+$ ]] || continue
+    [ -d "./${_m}" ] && [ ! -L "./${_m}" ] && echo "${_m}"
   done
 }
 # The same below the single directory $1, for the relative path $2.
@@ -304,15 +297,22 @@ _nginx_acct_dirs_below() {
     *) _nginx_acct_dirs_below "${_d}/${_n}" "${_r}" ;;
   esac
 }
-# Names of the real directories matching the glob $1 in the current (pinned)
-# directory, plain names only, one per line.
-_nginx_dir_names_here() {
-  local _m
-  # shellcheck disable=SC2086
-  for _m in ./${1}; do
-    _m="${_m#./}"
-    [[ "${_m}" =~ ^[A-Za-z0-9._-]+$ ]] || continue
-    [ -d "./${_m}" ] && [ ! -L "./${_m}" ] && echo "${_m}"
+#
+# An account's config/ and .drush/ belong to its users, so any name there can
+# be a link or a FIFO, and any directory on the way can itself be a link. Root
+# reads, edits and removes those files only through these, inside the real
+# directory (_acct_in_real_dir and _acct_read_here, helper.sh.inc).
+#
+# The real directories /data/disk/<oN>/$1 of every account, one per line. A
+# name in $1 holding a glob (server_*) expands only inside the real directory
+# above it, and only to real directories with plain names; each directory is
+# entered again with _acct_in_real_dir before anything is done there.
+_nginx_acct_dirs() {
+  local _u
+  for _u in /data/disk/*; do
+    [[ "${_u##*/}" =~ ^[A-Za-z0-9._-]+$ ]] || continue
+    [ -d "${_u}" ] && [ ! -L "${_u}" ] || continue
+    _nginx_acct_dirs_below "${_u}" "${1}"
   done
 }
 # ./$1 in the current (pinned) directory edited by sed "${@:2}", as sed -i
@@ -438,6 +438,9 @@ _nginx_acct_sed_if() {
     _acct_in_real_dir "${_d}" _nginx_sed_if_here "$@"
   done 9< <(_nginx_acct_dirs "${_rel}")
 }
+_nginx_drop_if_here() {
+  _acct_read_here "${1}" | grep -q -- "${2}" && rm -f -- "./${1}"
+}
 # Every regular file below the real directory $1 whose text holds $2, removed:
 # the tree is listed from inside $1, each file's directory is entered again
 # for real, and the file is read as _acct_read_here reads it and removed by
@@ -452,9 +455,6 @@ _nginx_drop_marked() {
     esac
     _acct_in_real_dir "${_top}${_sub}" _nginx_drop_if_here "${_f##*/}" "${2}"
   done 9< <(_acct_in_real_dir "${_top}" find . -type f -print0 2> /dev/null)
-}
-_nginx_drop_if_here() {
-  _acct_read_here "${1}" | grep -q -- "${2}" && rm -f -- "./${1}"
 }
 # Every name directly in the current (pinned) directory removed, as rm -f
 # dir/* removed them; the glob expands here only.
@@ -1926,14 +1926,6 @@ _nginx_ssl_proxy_extra_names() {
   rm -rf "${_bak}"
 }
 
-_nginx_ssl_proxy_backend_drop() {
-  ### The host behind an HTTPS proxy in pre.d (a control panel's, or a moved
-  ### instance's) and behind a moved instance's plain proxy refuses a request
-  ### by closing the connection, which a proxy written before its template
-  ### dropped it too answers with its own 502.
-  _nginx_pre_d_backend_drop ssl_proxy.conf
-  _nginx_pre_d_backend_drop pln_proxy.conf
-}
 _nginx_pln_proxy_ban_guard() {
   ### A moved instance's plain proxy in pre.d written before its template
   ### checked the IDS bans lets a banned visitor through whenever csf sees
@@ -2046,6 +2038,30 @@ _nginx_ssl_proxy_header_buffer() {
   fi
   rm -rf "${_bak}"
 }
+# The drop's two parts of the template $1 into the dir $2: top (the lines at
+# the top of `location /`, through its error_page line) and loc (the named
+# location). False when either part is not what the drop needs.
+_nginx_backend_drop_parts() {
+  awk '/^  location \/ [{]$/ { p = 1; next }
+    p { print }
+    p && /error_page .*@boa_drop;/ { exit }' "${1}" > "${2}/top"
+  awk '/^  location @boa_drop [{]$/ { p = 1 }
+    p { print }
+    p && /^  }$/ { exit }' "${1}" > "${2}/loc"
+  grep -q "error_page .*502 = @boa_drop;" "${2}/top" \
+    && grep -q "upstream_bytes_sent" "${2}/loc" \
+    && grep -q "return 444;" "${2}/loc" \
+    && grep -q "^  }$" "${2}/loc"
+}
+# Standard input with the parts in the dir $1 inserted: top after the
+# `location /` line, loc before the server's closing brace.
+_nginx_backend_drop_insert() {
+  awk -v top="${1}/top" -v loc="${1}/loc" '
+    /^}$/ { while ((getline _l < loc) > 0) print _l }
+    { print }
+    /^  location \/ [{]$/ { while ((getline _l < top) > 0) print _l }'
+}
+
 # Every regular file in pre.d named *$1 that lacks the drop gets the two parts
 # of the template $1, taken from this pass's build tree: the error_page lines
 # at the top of its `location /` and the named location before the server's
@@ -2078,57 +2094,13 @@ _nginx_pre_d_backend_drop() {
   fi
   rm -rf "${_bak}"
 }
-# The drop's two parts of the template $1 into the dir $2: top (the lines at
-# the top of `location /`, through its error_page line) and loc (the named
-# location). False when either part is not what the drop needs.
-_nginx_backend_drop_parts() {
-  awk '/^  location \/ [{]$/ { p = 1; next }
-    p { print }
-    p && /error_page .*@boa_drop;/ { exit }' "${1}" > "${2}/top"
-  awk '/^  location @boa_drop [{]$/ { p = 1 }
-    p { print }
-    p && /^  }$/ { exit }' "${1}" > "${2}/loc"
-  grep -q "error_page .*502 = @boa_drop;" "${2}/top" \
-    && grep -q "upstream_bytes_sent" "${2}/loc" \
-    && grep -q "return 444;" "${2}/loc" \
-    && grep -q "^  }$" "${2}/loc"
-}
-# Standard input with the parts in the dir $1 inserted: top after the
-# `location /` line, loc before the server's closing brace.
-_nginx_backend_drop_insert() {
-  awk -v top="${1}/top" -v loc="${1}/loc" '
-    /^}$/ { while ((getline _l < loc) > 0) print _l }
-    { print }
-    /^  location \/ [{]$/ { while ((getline _l < top) > 0) print _l }'
-}
-
-_nginx_migration_proxy_backend_drop() {
-  ### A site proxy that xoct or xcopy wrote (plain or HTTPS) before its
-  ### template dropped what the new host drops answers 502 where the new host
-  ### closed the connection on purpose. It gets the template's parts, taken
-  ### from this pass's build tree (_nginx_backend_drop_parts). The vhost dirs
-  ### belong to the instance users, so each vhost is read and rewritten only
-  ### inside its real directory, as _nginx_migration_proxy_client does it;
-  ### every change is undone when the config no longer tests clean.
-  local _src="${_bldPth}/aegir/tools/system/conf/proxy.conf"
-  local _d _v _k _p
-  grep -q upstream_bytes_sent "${_src}" 2>/dev/null || return 0
-  _d=$(mktemp -d /var/backups/.boa-mig-drop.XXXXXX 2>/dev/null) || return 0
-  if ! _nginx_backend_drop_parts "${_src}" "${_d}"; then
-    rm -rf "${_d}"
-    return 0
-  fi
-  while IFS= read -r -u 9 _v; do
-    _acct_in_real_dir "${_v}" _nginx_migration_proxy_backend_drop_here "${_d}" "${_v}"
-  done 9< <(_nginx_acct_dirs config/server_master/nginx/vhost.d)
-  if ls "${_d}"/*.path > /dev/null 2>&1 && ! nginx -t > /dev/null 2>&1; then
-    for _k in "${_d}"/*.path; do
-      _p=$(cat "${_k}")
-      _acct_in_real_dir "${_p%/*}" \
-        _nginx_sed_here "${_p##*/}" -e "1r ${_k%.path}.orig" -e d
-    done
-  fi
-  rm -rf "${_d}"
+_nginx_ssl_proxy_backend_drop() {
+  ### The host behind an HTTPS proxy in pre.d (a control panel's, or a moved
+  ### instance's) and behind a moved instance's plain proxy refuses a request
+  ### by closing the connection, which a proxy written before its template
+  ### dropped it too answers with its own 502.
+  _nginx_pre_d_backend_drop ssl_proxy.conf
+  _nginx_pre_d_backend_drop pln_proxy.conf
 }
 # Every site proxy vhost of the current (pinned) vhost.d $2 that still lacks
 # the drop, read as _acct_read_here reads it into the root-only dir $1,
@@ -2156,31 +2128,24 @@ _nginx_migration_proxy_backend_drop_here() {
   done < <(_nginx_names_with_here "*" -F -e "Plain HTTP proxy (START)" -e "Secure HTTPS proxy for ")
 }
 
-_nginx_migration_proxy_client() {
-  ### A site proxy that xoct or xcopy wrote before its template handed on
-  ### the wildcard SSL front's visitor still gives the new host 127.0.0.1
-  ### for every HTTPS request that came through the front. It gets the
-  ### template's block, taken from this pass's build tree, and its client
-  ### headers point at that block's variable. The vhost dirs belong to the
-  ### instance users, so each vhost is read and rewritten only inside its
-  ### real directory: a link or a FIFO at a name is skipped, never followed,
-  ### the text is judged and staged in a root-only dir, and the new file
-  ### lands as _nginx_sed_here puts it; every change is undone when the
-  ### config no longer tests clean.
+_nginx_migration_proxy_backend_drop() {
+  ### A site proxy that xoct or xcopy wrote (plain or HTTPS) before its
+  ### template dropped what the new host drops answers 502 where the new host
+  ### closed the connection on purpose. It gets the template's parts, taken
+  ### from this pass's build tree (_nginx_backend_drop_parts). The vhost dirs
+  ### belong to the instance users, so each vhost is read and rewritten only
+  ### inside its real directory, as _nginx_migration_proxy_client does it;
+  ### every change is undone when the config no longer tests clean.
   local _src="${_bldPth}/aegir/tools/system/conf/proxy.conf"
   local _d _v _k _p
-  grep -q boa_mig_client "${_src}" 2>/dev/null || return 0
-  _d=$(mktemp -d /var/backups/.boa-mig-proxy.XXXXXX 2>/dev/null) || return 0
-  awk '/### HTTPS for a site without its own certificate reaches this vhost/ { p = 1; print "  ###" }
-    p { print }
-    p && /^  }$/ { exit }' "${_src}" > "${_d}/block"
-  if ! grep -q 'set $boa_mig_client $remote_addr;' "${_d}/block" \
-    || ! grep -q 'set $boa_mig_client $http_x_real_ip;' "${_d}/block"; then
+  grep -q upstream_bytes_sent "${_src}" 2>/dev/null || return 0
+  _d=$(mktemp -d /var/backups/.boa-mig-drop.XXXXXX 2>/dev/null) || return 0
+  if ! _nginx_backend_drop_parts "${_src}" "${_d}"; then
     rm -rf "${_d}"
     return 0
   fi
   while IFS= read -r -u 9 _v; do
-    _acct_in_real_dir "${_v}" _nginx_migration_proxy_client_here "${_d}" "${_v}"
+    _acct_in_real_dir "${_v}" _nginx_migration_proxy_backend_drop_here "${_d}" "${_v}"
   done 9< <(_nginx_acct_dirs config/server_master/nginx/vhost.d)
   if ls "${_d}"/*.path > /dev/null 2>&1 && ! nginx -t > /dev/null 2>&1; then
     for _k in "${_d}"/*.path; do
@@ -2221,6 +2186,41 @@ _nginx_migration_proxy_client_here() {
   done < <(_nginx_names_with_here "*" -F -e "Plain HTTP proxy (START)")
 }
 
+_nginx_migration_proxy_client() {
+  ### A site proxy that xoct or xcopy wrote before its template handed on
+  ### the wildcard SSL front's visitor still gives the new host 127.0.0.1
+  ### for every HTTPS request that came through the front. It gets the
+  ### template's block, taken from this pass's build tree, and its client
+  ### headers point at that block's variable. The vhost dirs belong to the
+  ### instance users, so each vhost is read and rewritten only inside its
+  ### real directory: a link or a FIFO at a name is skipped, never followed,
+  ### the text is judged and staged in a root-only dir, and the new file
+  ### lands as _nginx_sed_here puts it; every change is undone when the
+  ### config no longer tests clean.
+  local _src="${_bldPth}/aegir/tools/system/conf/proxy.conf"
+  local _d _v _k _p
+  grep -q boa_mig_client "${_src}" 2>/dev/null || return 0
+  _d=$(mktemp -d /var/backups/.boa-mig-proxy.XXXXXX 2>/dev/null) || return 0
+  awk '/### HTTPS for a site without its own certificate reaches this vhost/ { p = 1; print "  ###" }
+    p { print }
+    p && /^  }$/ { exit }' "${_src}" > "${_d}/block"
+  if ! grep -q 'set $boa_mig_client $remote_addr;' "${_d}/block" \
+    || ! grep -q 'set $boa_mig_client $http_x_real_ip;' "${_d}/block"; then
+    rm -rf "${_d}"
+    return 0
+  fi
+  while IFS= read -r -u 9 _v; do
+    _acct_in_real_dir "${_v}" _nginx_migration_proxy_client_here "${_d}" "${_v}"
+  done 9< <(_nginx_acct_dirs config/server_master/nginx/vhost.d)
+  if ls "${_d}"/*.path > /dev/null 2>&1 && ! nginx -t > /dev/null 2>&1; then
+    for _k in "${_d}"/*.path; do
+      _p=$(cat "${_k}")
+      _acct_in_real_dir "${_p%/*}" \
+        _nginx_sed_here "${_p##*/}" -e "1r ${_k%.path}.orig" -e d
+    done
+  fi
+  rm -rf "${_d}"
+}
 _nginx_config_update_fix() {
   local _tplDir _tpl _incDir _vhDir _preF
   if [ "${_DEBUG_MODE}" = "YES" ]; then
