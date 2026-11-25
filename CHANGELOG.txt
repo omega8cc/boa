@@ -57,6 +57,10 @@
       it there only while the control panel is installed. If that install
       is killed outright, the next octopus pass removes both files.
 
+    * New Grav platforms are built on Grav 2.2.35, with Grav's security
+      fixes of 24 November. After the next Octopus upgrade the Upgrade Grav
+      task brings an existing site to it.
+
 @=> New Features
 
     * Upgrade all sites, the platform task that upgrades every Drupal 10 or

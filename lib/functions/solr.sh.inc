@@ -248,43 +248,6 @@ _solr_svc_denied() {
 }
 
 #
-# Solr 9, Solr 7 and Solr 4 (Jetty 9) started again near the end of a system
-# pass, each only while its init script is in place and it is not denied. A
-# denied one also loses any boot links, whatever registered them (an install
-# or upgrade earlier in the pass, or the box before the deny), so a reboot
-# does not start it either.
-_initd_solr_start() {
-  local _svc
-  for _svc in solr9 solr7 jetty9; do
-    if _solr_svc_denied "${_svc}" \
-      && ls /etc/rc?.d/[SK][0-9][0-9]"${_svc}" > /dev/null 2>&1; then
-      _mrun "update-rc.d -f ${_svc} remove"
-    fi
-  done
-  if [ -x "/etc/init.d/solr9" ] && [ -e "/etc/default/solr9.in.sh" ] \
-    && ! _solr_svc_denied solr9; then
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      _msg "INFO: Restarting Solr 9"
-    fi
-    _solr_restart solr9
-  fi
-  if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ] \
-    && ! _solr_svc_denied solr7; then
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      _msg "INFO: Restarting Solr 7"
-    fi
-    _solr_restart solr7
-  fi
-  if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ] \
-    && ! _solr_svc_denied jetty9; then
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      _msg "INFO: Restarting Jetty 9"
-    fi
-    _jetty9_restart
-  fi
-}
-
-#
 # Kill Solr 9 or Solr 7 and start it again. Solr's own start refuses while
 # the process its pid file names still exists, and a JVM killed with -9 is
 # there for a moment longer, more so on a loaded box or with a large heap.
@@ -329,6 +292,43 @@ _jetty9_restart() {
   find /tmp -mindepth 1 -maxdepth 1 -user jetty9 -exec rm -rf -- {} + 2> /dev/null
   rm -f /opt/jetty9/jetty9.state
   _mrun "service jetty9 start"
+}
+
+#
+# Solr 9, Solr 7 and Solr 4 (Jetty 9) started again near the end of a system
+# pass, each only while its init script is in place and it is not denied. A
+# denied one also loses any boot links, whatever registered them (an install
+# or upgrade earlier in the pass, or the box before the deny), so a reboot
+# does not start it either.
+_initd_solr_start() {
+  local _svc
+  for _svc in solr9 solr7 jetty9; do
+    if _solr_svc_denied "${_svc}" \
+      && ls /etc/rc?.d/[SK][0-9][0-9]"${_svc}" > /dev/null 2>&1; then
+      _mrun "update-rc.d -f ${_svc} remove"
+    fi
+  done
+  if [ -x "/etc/init.d/solr9" ] && [ -e "/etc/default/solr9.in.sh" ] \
+    && ! _solr_svc_denied solr9; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: Restarting Solr 9"
+    fi
+    _solr_restart solr9
+  fi
+  if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ] \
+    && ! _solr_svc_denied solr7; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: Restarting Solr 7"
+    fi
+    _solr_restart solr7
+  fi
+  if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ] \
+    && ! _solr_svc_denied jetty9; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: Restarting Jetty 9"
+    fi
+    _jetty9_restart
+  fi
 }
 
 _if_solr_four() {
