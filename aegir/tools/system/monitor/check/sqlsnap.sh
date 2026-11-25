@@ -201,13 +201,28 @@ _sql_to() {
 
 {
   # Every thread running or in uninterruptible wait, then mysqld's threads
-  # by state and kernel wait, then PHP-FPM children per pool. procps 4.0.0
-  # to 4.0.4 give a thread that starts while ps reads the table an age of
-  # 4123168608 seconds: an age above the uptime prints as ?, as top shows it.
+  # by state and kernel wait, then PHP-FPM children per pool. A thread's
+  # age is its start tick (field 22 of its stat line, read after the name)
+  # against the start tick of a subshell made just before the listing, never
+  # ps's figure: procps 4.0.0 to 4.0.4 give a thread that starts while ps
+  # reads the table an age of 4123168608 seconds, and in a container that
+  # shows its own uptime (lxcfs) every ps age is short by the time the host
+  # ran first. A thread gone by then prints ?, as top shows an unknown age.
   echo "### threads in R or D state: state pid tid elapsed_s wchan comm args"
+  _SNAP_NOW=$(read -r _s 2> /dev/null < /proc/self/stat || exit 1
+    read -r -a _s 2> /dev/null <<< "${_s##*) }"; echo "${_s[19]}")
+  _SNAP_HZ=$(getconf CLK_TCK 2> /dev/null)
+  [[ "${_SNAP_HZ}" =~ ^[1-9][0-9]*$ ]] || _SNAP_HZ=100
   timeout -k 2 10 ps -eLo state=,pid=,tid=,etimes=,wchan:32=,comm=,args= 2>/dev/null \
-    | awk 'function up(  l, f) { l = ""; getline l < "/proc/uptime"; close("/proc/uptime"); split(l, f, " "); return int(f[1]) }
-      $1 ~ /^[RD]/ { if ($4 + 0 > u + 0) u = up(); if (u > 0 && $4 + 0 > u) $4 = "?"; print }' | head -n 2000
+    | awk -v now="${_SNAP_NOW}" -v hz="${_SNAP_HZ}" '
+      function age(p, t,   f, l, r, a) {
+        f = "/proc/" p "/task/" t "/stat"; l = ""
+        if ((getline l < f) <= 0) { close(f); return "?" }
+        close(f); r = l; sub(/.*\) /, "", r); split(r, a, " ")
+        if (a[20] !~ /^[0-9]+$/ || now !~ /^[0-9]+$/) return "?"
+        return (now + 0 > a[20] + 0) ? int((now - a[20]) / hz) : 0
+      }
+      $1 ~ /^[RD]/ { $4 = age($2, $3); print }' | head -n 2000
   _MY_PID="$(timeout -k 1 3 pgrep -xo mysqld 2>/dev/null)"
   if [ -n "${_MY_PID}" ]; then
     echo

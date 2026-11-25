@@ -1951,6 +1951,29 @@ _runner_parked() {
   [[ ! -e "/var/xdrago/${1}" ]] && [[ -e "/var/xdrago/.${1}.off" ]]
 }
 
+# Seconds a process has run, from the kernel's start ticks: the process's
+# against those of a subshell made now (field 22 of each stat line, read
+# after the name, which may hold spaces or parentheses). Never ps's figure:
+# procps 4.0.0 to 4.0.4 give a process that starts while ps reads the table
+# an age of 4123168608 seconds, and in a container that shows its own
+# uptime (lxcfs) every ps age is short by the time the host ran first, or
+# wraps the same way. Prints nothing when the process is gone.
+_proc_age() {
+  local _s="" _p="" _n="" _hz="" _f=()
+  [[ "${1}" =~ ^[0-9]+$ ]] || return 1
+  read -r _s 2> /dev/null < "/proc/${1}/stat" || return 1
+  read -r -a _f 2> /dev/null <<< "${_s##*) }"
+  _p="${_f[19]}"
+  _n=$(read -r _s 2> /dev/null < /proc/self/stat || exit 1
+    read -r -a _f 2> /dev/null <<< "${_s##*) }"
+    echo "${_f[19]}")
+  [[ "${_p}" =~ ^[0-9]+$ ]] && [[ "${_n}" =~ ^[0-9]+$ ]] || return 1
+  _hz=$(getconf CLK_TCK 2> /dev/null)
+  [[ "${_hz}" =~ ^[1-9][0-9]*$ ]] || _hz=100
+  [ "${_n}" -ge "${_p}" ] || _n="${_p}"
+  echo $(( (_n - _p) / _hz ))
+}
+
 # A copy fetched by _fetch_versioned ($1) whose bytes a later step puts or
 # edits elsewhere. The step is due once the copy carries a marker of this
 # tree and release (none yet while the fetcher holds a serial move for a
@@ -3033,12 +3056,12 @@ _update_agents() {
     _fetch_versioned /var/xdrago/monitor/check/scan_nginx.sh "${_urlHmr}/tools/system/monitor/check/scan_nginx.sh" f27
     _fetch_versioned /var/xdrago/monitor/check/java.sh "${_urlHmr}/tools/system/monitor/check/java.sh" f74
     _fetch_versioned /var/xdrago/monitor/check/mysql.sh "${_urlHmr}/tools/system/monitor/check/mysql.sh" f45
-    _fetch_versioned /var/xdrago/monitor/check/nginx.sh "${_urlHmr}/tools/system/monitor/check/nginx.sh" f53
+    _fetch_versioned /var/xdrago/monitor/check/nginx.sh "${_urlHmr}/tools/system/monitor/check/nginx.sh" f52
     _fetch_versioned /var/xdrago/monitor/check/nginx_guard.sh "${_urlHmr}/tools/system/monitor/check/nginx_guard.sh" f90
-    _fetch_versioned /var/xdrago/monitor/check/php.sh "${_urlHmr}/tools/system/monitor/check/php.sh" f49
+    _fetch_versioned /var/xdrago/monitor/check/php.sh "${_urlHmr}/tools/system/monitor/check/php.sh" f48
     _fetch_versioned /var/xdrago/monitor/check/fpm_tune.sh "${_urlHmr}/tools/system/monitor/check/fpm_tune.sh" f93
     _fetch_versioned /var/xdrago/monitor/check/sqlprobe.sh "${_urlHmr}/tools/system/monitor/check/sqlprobe.sh" f84
-    _fetch_versioned /var/xdrago/monitor/check/sqlsnap.sh "${_urlHmr}/tools/system/monitor/check/sqlsnap.sh" f96
+    _fetch_versioned /var/xdrago/monitor/check/sqlsnap.sh "${_urlHmr}/tools/system/monitor/check/sqlsnap.sh" f95
     _fetch_versioned /var/xdrago/monitor/check/xdr9000.sh "${_urlHmr}/tools/system/monitor/check/xdr9000.sh" f83
     _fetch_versioned /var/xdrago/monitor/check/batch_guard.sh "${_urlHmr}/tools/system/monitor/check/batch_guard.sh" f89
     _fetch_versioned /var/xdrago/monitor/check/task_guard.sh "${_urlHmr}/tools/system/monitor/check/task_guard.sh" f95
@@ -3155,7 +3178,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/mysql_repair.sh "${_urlHmr}/tools/system/mysql_repair.sh" f88
     _fetch_versioned /var/xdrago/purge_binlogs.sh "${_urlHmr}/tools/system/purge_binlogs.sh" f87
     _fetch_versioned /var/xdrago/checksql.sh "${_urlHmr}/tools/system/checksql.sh" f92
-    _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f53
+    _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f52
     _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f41
     _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f89
     _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f15
@@ -3185,7 +3208,7 @@ _update_agents() {
       rm -f ${_pthLog}/daily.sh.ctrl.*.pid
     fi
     _runner_parked graceful.sh \
-      || _fetch_versioned /var/xdrago/graceful.sh "${_urlHmr}/tools/system/graceful.sh" f69
+      || _fetch_versioned /var/xdrago/graceful.sh "${_urlHmr}/tools/system/graceful.sh" f68
     _runner_parked usage.sh \
       || _fetch_versioned /var/xdrago/usage.sh "${_urlHmr}/tools/system/usage.sh" f43
   fi
@@ -4907,7 +4930,7 @@ _restart_stale_solr_jvm() {
   if [ -z "${_why}" ] && [ -n "${_xopt}" ] \
     && grep '^SOLR_OPTS=' "${_inc}" 2> /dev/null | tail -n 1 | grep -q -e " ${_xopt}\"$" \
     && ! tr '\0' '\n' 2> /dev/null < "/proc/${_pid}/cmdline" | grep -q -x -e "${_xopt}"; then
-    _age="$(ps -o etimes= -p "${_pid}" 2> /dev/null | tr -dc '0-9')"
+    _age="$(_proc_age "${_pid}")"
     _mt="$(stat -c %Y "${_inc}" 2> /dev/null)"
     if [ -n "${_age}" ] && [ -n "${_mt}" ] && [ "$(( $(date +%s) - _age ))" -le "${_mt}" ]; then
       _why="a JVM started without ${_xopt}"
@@ -6494,7 +6517,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/${_tBn}/autobeowulf" f79 --guard /local/bin/autobeowulf
     _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/${_tBn}/autoexcalibur" f78 --guard /local/bin/autoexcalibur
     _fetch_versioned ${_optBin}/autosymlink "${_urlHmr}/${_tBn}/autosymlink" f33 --guard /local/bin/autosymlink
-    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/${_tBn}/autoupboa" f03 --guard /local/bin/autoupboa
+    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/${_tBn}/autoupboa" f02 --guard /local/bin/autoupboa
     # Backup family: guard on duplicity itself -- never replace a backup tool
     # while a backup run is in flight.
     _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f39 --guard duplicity
@@ -6528,7 +6551,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/floodreport "${_urlHmr}/${_tBn}/floodreport" f99 --symlink ${_usrBin}/floodreport --guard /local/bin/floodreport
     _fetch_versioned ${_optBin}/fpmreport "${_urlHmr}/${_tBn}/fpmreport" f98 --symlink ${_usrBin}/fpmreport --guard /local/bin/fpmreport
     _fetch_versioned ${_optBin}/heavyslots "${_urlHmr}/${_tBn}/heavyslots" f01 --symlink ${_usrBin}/heavyslots --guard /local/bin/heavyslots
-    _fetch_versioned ${_optBin}/loadreport "${_urlHmr}/${_tBn}/loadreport" f91 --symlink ${_usrBin}/loadreport --guard /local/bin/loadreport
+    _fetch_versioned ${_optBin}/loadreport "${_urlHmr}/${_tBn}/loadreport" f90 --symlink ${_usrBin}/loadreport --guard /local/bin/loadreport
     _fetch_versioned ${_optBin}/lock.inc "${_urlHmr}/${_tBn}/lock.inc" f84 --guard /local/bin/lock.inc
     _fetch_versioned ${_optBin}/multiback "${_urlHmr}/${_tBn}/multiback" f70 --guard duplicity
     _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/${_tBn}/mybackup" f85 --mode 755 --guard duplicity
@@ -6548,7 +6571,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/synproxy_status "${_urlHmr}/${_tBn}/synproxy_status" f99 --guard /local/bin/synproxy_status
     _fetch_versioned ${_optBin}/webserver "${_urlHmr}/${_tBn}/webserver" f91 --guard /local/bin/webserver
     _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f93 --guard /local/bin/xcopy
-    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f71 --guard /local/bin/xmass
+    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f70 --guard /local/bin/xmass
     _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f68 --guard /local/bin/xoct
     _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f15 --guard /local/bin/xtrim
     # The migration-proxy trust and realip tools ride here with xoct and xmass,
@@ -8255,7 +8278,7 @@ if [ "$(id -u)" -eq 0 ]; then
       # long as such a run hangs.
       for _bupProcP in $(pgrep -u root -U root -f "${_bupPat}" 2>/dev/null); do
         _bupLiveAny=YES
-        _bupProcS=$(ps -o etimes= -p "${_bupProcP}" 2>/dev/null | tr -dc '0-9')
+        _bupProcS=$(_proc_age "${_bupProcP}")
         _bupProcH=$(( ${_bupProcS:-0} / 3600 ))
         # a process stands in for a stream only when no lock named one
         # (backboa and duobackboa lock under their own names)
