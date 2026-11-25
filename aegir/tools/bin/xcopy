@@ -1217,53 +1217,10 @@ _xcopy_chattr_all_here() {
   perl -e "${_XCOPY_CHATTR_PL}" -- "${1}" . ./* 2> /dev/null
 }
 
-_enable_chattr() {
-  _isTest="$1"
-  _isTest=${_isTest//[^a-z0-9]/}
-  if [ ! -z "${_isTest}" ] && [ -d "/home/$1/" ]; then
-    # each directory entered as the real one (every name below /home a real
-    # directory), the flag changed on "." there
-    if [ "$1" != "${_THIS_HM_USER}.ftp" ]; then
-      _xcopy_in_real_dir "/home/$1" _xcopy_chattr_here + .
-    else
-      _xcopy_in_real_dir "/home/$1/platforms" _xcopy_chattr_all_here +
-    fi
-    _xcopy_in_real_dir "/home/$1/.drush" _xcopy_chattr_here + .
-    _xcopy_in_real_dir "/home/$1/.drush/usr" _xcopy_chattr_here + .
-    _xcopy_in_real_dir "/home/$1/.bazaar" _xcopy_chattr_here + .
-  fi
-}
-
 # The .ftp home is locked again when the run that unlocked it ends, on every
 # exit the shell can trap: a refused or failed verb must not leave it
 # unlocked until the next worker pass, which stays parked during a move.
 _XCOPY_CHATTR_OFF=""
-_xcopy_chattr_back() {
-  [ "${_XCOPY_CHATTR_OFF}" = "YES" ] || return 0
-  _XCOPY_CHATTR_OFF=""
-  _enable_chattr "${_THIS_HM_USER}.ftp" &> /dev/null
-  return 0
-}
-
-_disable_chattr() {
-  _isTest="$1"
-  _isTest=${_isTest//[^a-z0-9]/}
-  if [ ! -z "${_isTest}" ] && [ -d "/home/$1/" ]; then
-    # each directory entered as the real one (every name below /home a real
-    # directory), the flag changed on "." there
-    if [ "$1" != "${_THIS_HM_USER}.ftp" ]; then
-      _xcopy_in_real_dir "/home/$1" _xcopy_chattr_here - .
-    else
-      _xcopy_in_real_dir "/home/$1/platforms" _xcopy_chattr_all_here -
-    fi
-    _xcopy_in_real_dir "/home/$1/.drush" _xcopy_chattr_here - .
-    _xcopy_in_real_dir "/home/$1/.drush/usr" _xcopy_chattr_here - .
-    # a CLI php.ini an earlier release left, for the ltd worker to remove
-    _xcopy_in_real_dir "/home/$1/.drush" _xcopy_chattr_here - ./php.ini
-    _xcopy_in_real_dir "/home/$1/.bazaar" _xcopy_chattr_here - .
-  fi
-}
-
 ### A copy keeps the names its source serves, and public DNS keeps them on
 ### the source: an order this box made for one could only fail, under the
 ### account's Let's Encrypt registration that travelled with tools/le, whose
@@ -1289,65 +1246,6 @@ _xcopy_le_mark_here() {
   fi
   rm -f -- "${_t}"
   return 1
-}
-### The name $1 added to log/xcopy_le_kept.txt (one name a line, sorted).
-_xcopy_le_list_add() {
-  { _xcopy_read_in "${_USR}/log" xcopy_le_kept.txt
-    echo
-    printf '%s\n' "${1}"; } | grep -E '^[A-Za-z0-9][A-Za-z0-9.-]*$' | sort -u \
-    | _xcopy_in_real_dir "${_USR}/log" _xcopy_write_here xcopy_le_kept.txt
-}
-_xcopy_le_keep() {
-  local _u _g _rc
-  [[ "${1}" =~ ^[A-Za-z0-9][A-Za-z0-9.-]*$ ]] || return 1
-  case " ${_XCOPY_LE_KEPT} " in
-    *" ${1} "*) return 0 ;;
-  esac
-  if [ -n "${_hName}" ]; then
-    case "${1}" in
-      "${_hName}"|*".${_hName}") return 0 ;;
-    esac
-  fi
-  _xcopy_in_real_dir "${_USR}/tools/le/.ctrl" true || return 0
-  _u=$(id -u -- "${_THIS_HM_USER}" 2> /dev/null)
-  _g=$(id -g -- "${_THIS_HM_USER}" 2> /dev/null)
-  [[ "${_u}" =~ ^[0-9]+$ ]] && [[ "${_g}" =~ ^[0-9]+$ ]] || return 1
-  _xcopy_in_real_dir "${_USR}/tools/le/.ctrl" \
-    _xcopy_le_mark_here "dont-overwrite-${1}.pid" "${_u}" "${_g}"
-  _rc=$?
-  if [ "${_rc}" -eq 0 ]; then
-    _XCOPY_LE_KEPT="${_XCOPY_LE_KEPT} ${1}"
-    _xcopy_le_list_add "${1}" \
-      || echo "ALRT: site ${1} on ${_oct}: its stop marker is put but could not be listed in ${_USR}/log/xcopy_le_kept.txt"
-  elif [ "${_rc}" -ne 2 ]; then
-    echo "ALRT: site ${1} on ${_oct}: its Let's Encrypt stop marker could not be put; its verify can order a certificate for the source's name"
-  fi
-  _xcopy_le_order_named "${1}" || return 0
-  if ! _xcopy_in_real_dir "${_USR}/tools/le/certs/${1}" true \
-    && _xcopy_read_in "${_USR}/.drush" "${1}.alias.drushrc.php" \
-      | grep -qE "'ssl_enabled' => '?[12]'?"; then
-    echo "WARN: site ${1} on ${_oct}: no certificate travelled for it, so its verify here can still order one for the source's name, which fails while DNS points at the source"
-  fi
-  return 0
-}
-### Whether hosting_le's verify orders for the site $1 at all: it names the
-### site's redirect target when there is one, and leaves out the service
-### domains and the .nodns. names, and the .temp., .tmp., .test., .dev. kind
-### unless the account's ssl-yes-dev flag names it.
-_xcopy_le_order_named() {
-  local _m="${1}" _r
-  _r=$(_xcopy_read_in "${_USR}/.drush" "${1}.alias.drushrc.php" \
-    | sed -n "s/^.*'redirection' => '\([A-Za-z0-9][A-Za-z0-9.-]*\)'.*$/\1/p" | head -1)
-  [ -n "${_r}" ] && _m="${_r}"
-  case "${_m}" in
-    *.host8.biz|*.host8.io|*.host8.cc|*.boa.biz|*.boa.io|*.boa.cc) return 1 ;;
-    *.aegir.biz|*.aegir.io|*.aegir.cc|*.o8.biz|*.o8.io|*.o8.cc|*.nodns.*) return 1 ;;
-  esac
-  [ -e "${_USR}/static/control/ssl-yes-dev-${_m}.info" ] && return 0
-  case "${_m}" in
-    *.temp.*|*.tmp.*|*.temporary.*|*.test.*|*.testing.*|*.dev.*|*.devel.*) return 1 ;;
-  esac
-  return 0
 }
 ### What this import put, said once at its end.
 _xcopy_le_kept_put() {
@@ -1376,14 +1274,6 @@ _xcopy_verify_last() {
   mysql --silent -u root -N -B "${_XCOPY_VERIFY_DB}" -e "SELECT t.nid, t.task_status, tn.changed FROM hosting_task t JOIN node tn ON tn.nid = t.nid AND tn.vid = t.vid JOIN node s ON s.nid = t.rid JOIN hosting_site hs ON hs.vid = s.vid WHERE s.type = 'site' AND s.title = '${1}' AND hs.status <> -2 AND t.task_type = 'verify' ORDER BY t.nid DESC LIMIT 1" 2> /dev/null \
     | head -1 | tr '\t' ' ' | tr -cd '0-9 -'
 }
-_xcopy_verify_before() {
-  _XCOPY_VERIFY_PRE=""
-  _XCOPY_VERIFY_AT=$(date +%s)
-  [[ "${1}" =~ ^[A-Za-z0-9][A-Za-z0-9.-]*$ ]] || return 0
-  [ -n "${_XCOPY_VERIFY_DB}" ] \
-    || _XCOPY_VERIFY_DB=$(_xcopy_read_in "${_USR}/log" panel_db.txt | tr -cd 'A-Za-z0-9_')
-  _XCOPY_VERIFY_PRE=$(_xcopy_verify_last "${1}")
-}
 _xcopy_verify_note() {
   local _nid=0 _n _s _c _pn _ps _pc
   [[ "${1}" =~ ^[A-Za-z0-9][A-Za-z0-9.-]*$ ]] || return 0
@@ -1403,17 +1293,6 @@ _xcopy_verify_note() {
     && echo "ALRT: site ${1} on ${_oct}: the panel holds no verify of it from this import; post-mig reports it as not found"
   return 0
 }
-### A list an earlier import left (or one that travelled in log/) is
-### replaced, or removed when this import scheduled no verify.
-_xcopy_verify_list_put() {
-  if [ -z "${_XCOPY_VERIFY_SITES}" ] || [ -z "${_XCOPY_VERIFY_DB}" ]; then
-    _xcopy_in_real_dir "${_USR}/log" rm -f -- ./import_verifies.txt
-    return 0
-  fi
-  { echo "db=${_XCOPY_VERIFY_DB}"
-    printf '%s\n' ${_XCOPY_VERIFY_SITES} | sed 's/^\(.*\):\([0-9]*\)$/site=\1 \2/'; } \
-    | _xcopy_in_real_dir "${_USR}/log" _xcopy_write_here import_verifies.txt
-}
 ### The first error line of the task $2's current run in the panel database
 ### $1, as the panel's task log shows it: the client's escapes undone (a line
 ### break or tab read as a space), tags and anything not printable taken out,
@@ -1427,6 +1306,485 @@ _xcopy_verify_first_error() {
     | sed -e 's/\\\\/\x1f/g' -e 's/\\[ntr0]/ /g' -e 's/\x1f/\\/g' -e 's/<[^>]*>//g' \
     | tr -c '[:print:]' ' ' | tr -s ' ' | cut -c1-300 | sed 's/^ *//; s/ *$//'
 }
+### Where the directory $1 resolves when every name on its path below
+### /data/disk, /home or /opt/user (the client toolchain trees) is a real
+### directory; elsewhere, its last name inside its resolved parent.
+_xcopy_real_want() {
+  local _d="${1}" _a=""
+  case "${_d}" in
+    /home/?*) _a=/home ;;
+    /data/disk/?*) _a=/data/disk ;;
+    /opt/user/?*) _a=/opt/user ;;
+  esac
+  if [ -n "${_a}" ]; then
+    printf '%s' "$(cd -P -- "${_a}" 2> /dev/null && /bin/pwd -P)${_d#"${_a}"}"
+  else
+    printf '%s' "$(cd -P -- "${_d%/*}" 2> /dev/null && /bin/pwd -P)/${_d##*/}"
+  fi
+}
+# An account's static/control is its main login's, and oN owns the rest of
+# /data/disk/oN (log/, .drush): either can put a link or a FIFO at any name
+# there, or at the directory itself. Root reads and writes those names only
+# through these. Run "$@" inside the real directory $1: below /data/disk and
+# /home every name on the path must be a real directory; once entered,
+# ./name stays there whatever is swapped.
+_xcopy_in_real_dir() {
+  local _d="${1}" _want
+  shift
+  _want="$(_xcopy_real_want "${_d}")"
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] && "$@" )
+}
+_enable_chattr() {
+  _isTest="$1"
+  _isTest=${_isTest//[^a-z0-9]/}
+  if [ ! -z "${_isTest}" ] && [ -d "/home/$1/" ]; then
+    # each directory entered as the real one (every name below /home a real
+    # directory), the flag changed on "." there
+    if [ "$1" != "${_THIS_HM_USER}.ftp" ]; then
+      _xcopy_in_real_dir "/home/$1" _xcopy_chattr_here + .
+    else
+      _xcopy_in_real_dir "/home/$1/platforms" _xcopy_chattr_all_here +
+    fi
+    _xcopy_in_real_dir "/home/$1/.drush" _xcopy_chattr_here + .
+    _xcopy_in_real_dir "/home/$1/.drush/usr" _xcopy_chattr_here + .
+    _xcopy_in_real_dir "/home/$1/.bazaar" _xcopy_chattr_here + .
+  fi
+}
+
+_xcopy_chattr_back() {
+  [ "${_XCOPY_CHATTR_OFF}" = "YES" ] || return 0
+  _XCOPY_CHATTR_OFF=""
+  _enable_chattr "${_THIS_HM_USER}.ftp" &> /dev/null
+  return 0
+}
+
+_disable_chattr() {
+  _isTest="$1"
+  _isTest=${_isTest//[^a-z0-9]/}
+  if [ ! -z "${_isTest}" ] && [ -d "/home/$1/" ]; then
+    # each directory entered as the real one (every name below /home a real
+    # directory), the flag changed on "." there
+    if [ "$1" != "${_THIS_HM_USER}.ftp" ]; then
+      _xcopy_in_real_dir "/home/$1" _xcopy_chattr_here - .
+    else
+      _xcopy_in_real_dir "/home/$1/platforms" _xcopy_chattr_all_here -
+    fi
+    _xcopy_in_real_dir "/home/$1/.drush" _xcopy_chattr_here - .
+    _xcopy_in_real_dir "/home/$1/.drush/usr" _xcopy_chattr_here - .
+    # a CLI php.ini an earlier release left, for the ltd worker to remove
+    _xcopy_in_real_dir "/home/$1/.drush" _xcopy_chattr_here - ./php.ini
+    _xcopy_in_real_dir "/home/$1/.bazaar" _xcopy_chattr_here - .
+  fi
+}
+
+# ./$1 in the current (pinned) directory, printed only when it is a regular
+# file owned by root with one link, checked on the one handle that reads it
+# (at most 1 MiB): an account can put a file of its own at a name in a
+# directory it owns.
+_xcopy_read_root_here() {
+  perl -e 'use Fcntl; sysopen(my $h, $ARGV[0], O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit 1; my @s = stat($h) or exit 1; exit 1 unless -f _ && $s[4] == 0 && $s[3] == 1; my $d = ""; defined(read($h, $d, 1048576)) or exit 1; print $d; exit 0' -- "./${1}"
+}
+# The words of $1 that are host names (letters, digits, dots, dashes, a
+# leading wildcard), space-separated; anything else is dropped. The words
+# are split without file name expansion, so a wildcard name stays as is.
+_xcopy_host_words() {
+  local _w _o=""
+  local -a _ws
+  IFS=$' \t\n' read -r -d '' -a _ws <<< "${1}"
+  for _w in "${_ws[@]}"; do
+    [[ "${_w}" =~ ^[A-Za-z0-9*][A-Za-z0-9.*-]*$ ]] || continue
+    [ "${#_w}" -le 253 ] || continue
+    _o="${_o} ${_w}"
+  done
+  printf '%s' "${_o# }"
+}
+# ./$1 in the current (pinned) directory with exactly the bytes read from
+# stdin (0644): a fresh file created exclusively, then renamed over the name,
+# so a link or FIFO put there is replaced, never followed or opened.
+_xcopy_write_here() {
+  local _t="./.${1}.put.$$.${RANDOM}"
+  rm -f -- "${_t}"
+  ( umask 022
+    dd of="${_t}" conv=excl status=none 2> /dev/null ) \
+    && mv -f -T -- "${_t}" "./${1}" && return 0
+  rm -f -- "${_t}"
+  return 1
+}
+### A list an earlier import left (or one that travelled in log/) is
+### replaced, or removed when this import scheduled no verify.
+_xcopy_verify_list_put() {
+  if [ -z "${_XCOPY_VERIFY_SITES}" ] || [ -z "${_XCOPY_VERIFY_DB}" ]; then
+    _xcopy_in_real_dir "${_USR}/log" rm -f -- ./import_verifies.txt
+    return 0
+  fi
+  { echo "db=${_XCOPY_VERIFY_DB}"
+    printf '%s\n' ${_XCOPY_VERIFY_SITES} | sed 's/^\(.*\):\([0-9]*\)$/site=\1 \2/'; } \
+    | _xcopy_in_real_dir "${_USR}/log" _xcopy_write_here import_verifies.txt
+}
+# ./$1 in the current (pinned) directory as an empty marker, put the same way.
+_xcopy_touch_here() {
+  _xcopy_write_here "${1}" < /dev/null
+}
+
+### True when the glob $1 names an entry of the current directory, or is
+### empty (the directory's contents). A glob that names nothing copies
+### nothing: rsync would be handed the pattern itself and print an error
+### for a folder that is only empty.
+_xcopy_glob_names() {
+  local _m
+  [ -n "${1}" ] || return 0
+  # shellcheck disable=SC2086
+  for _m in ./${1}; do
+    { [ -e "${_m}" ] || [ -L "${_m}" ]; } && return 0
+  done
+  return 1
+}
+# As _xcopy_rsync_path_in, but the last name of $1 is made a real directory
+# first (a link the account put there is removed, a missing directory made):
+# for a leg whose target directory the install does not create.
+_xcopy_rsync_path_mk_in() {
+  local _d="${1}" _a=/data/disk _p _n _m _c
+  case "${_d}" in
+    /home/?*) _a=/home ;;
+    /opt/user/?*) _a=/opt/user ;;
+  esac
+  _p="${_d%/*}"
+  _n="${_d##*/}"
+  # The client toolchain trees' parents are shared and BOA's own: root's,
+  # sticky and world-writable, as the ltd worker makes them. A target where
+  # Ruby or Node was never set up has none, and the account's tree would not
+  # travel: the parent is made there first (never through a link). Any
+  # account there can make the login's name in them first, so the copy goes
+  # only into a tree root or one of the account's own identities (the
+  # account, <account>.<name>) owns, read from inside it.
+  _m=""
+  _c=""
+  case "${_p}" in
+    /opt/user/*/*) ;;
+    /opt/user/?*)
+      _m="[ -L /opt/user ] || [ -d /opt/user ] || mkdir -m 755 /opt/user; [ -L '${_p}' ] || [ -d '${_p}' ] || { mkdir -m 1777 '${_p}' && chown root:root '${_p}'; }; "
+      _c="case \"\$(stat -c %U .)\" in root|'${_n%%.*}'|'${_n%%.*}'.*) ;; *) echo \"${_d} is owned by \$(stat -c %U .), not by ${_n%%.*} or root: not entered\" >&2; false ;; esac && "
+      ;;
+  esac
+  printf '%s' "${_m}_a=\"\$(cd -P ${_a} && /bin/pwd -P)\"; cd -P -- '${_p}' && [ \"\$(/bin/pwd -P)\" = \"\${_a}${_p#"${_a}"}\" ] && { [ -L './${_n}' ] && rm -f './${_n}'; [ -d './${_n}' ] || mkdir './${_n}'; } && cd -P -- './${_n}' && [ \"\$(/bin/pwd -P)\" = \"\${_a}${_d#"${_a}"}\" ] && ${_c}rsync"
+}
+# Mode-aware rsync: performs the transfer in LIVE, only reports it in DRY.
+_xcopy_rsync() {
+  if [ "${_MODE}" = "LIVE" ]; then
+    # Trailing (after "$@") is deliberate: callers pass -a/-aEAX which implies
+    # -D; rsync honours the LAST matching option, so these must follow -a to
+    # actually drop device/fifo/socket nodes. Never transfer specials.
+    # _XCOPY_GMAP maps the account's own group and its web group (see
+    # _xcopy_acct_gmap, _xcopy_webgroup_gate); _XCOPY_UMAP its identities
+    # (see _xcopy_acct_umap).
+    # A leg that reads a status 23 itself names a file in _XCOPY_RSYNC_ERR:
+    # the errors go there, and the leg prints them (_xcopy_leg_rc)
+    if [ -n "${_XCOPY_RSYNC_ERR:-}" ]; then
+      rsync "$@" ${_XCOPY_GMAP:+"--groupmap=${_XCOPY_GMAP}"} ${_XCOPY_UMAP:+"--usermap=${_XCOPY_UMAP}"} $(_xcopy_map_setid_off) --no-devices --no-specials 2>> "${_XCOPY_RSYNC_ERR}"
+      return
+    fi
+    rsync "$@" ${_XCOPY_GMAP:+"--groupmap=${_XCOPY_GMAP}"} ${_XCOPY_UMAP:+"--usermap=${_XCOPY_UMAP}"} $(_xcopy_map_setid_off) --no-devices --no-specials
+  else
+    echo "[DRY-PLAN] would rsync: $*"
+  fi
+}
+
+# The entries of the current (pinned) directory the glob $3 names copied into
+# the real directory $2 on the target $1, the target directory created when
+# missing (a link there removed first).
+_xcopy_copy_mk_here() {
+  local _h="${1}" _d="${2}" _g="${3}"
+  shift 3
+  _xcopy_glob_names "${_g}" || return 0
+  # shellcheck disable=SC2086
+  _xcopy_rsync "$@" --rsync-path="$(_xcopy_rsync_path_mk_in "${_d}")" -e ssh \
+    ./${_g} "root@${_h}:./"
+}
+### A table a load has just written can read as empty to the query optimiser
+### until InnoDB measures it in the background, and once nothing new wakes
+### that queue it takes about one table every ten seconds: a large site
+### loaded among a run of others went live with its pages planned as full
+### table scans, and the database server ran out of CPU before the queue
+### reached its tables. ANALYZE TABLE measures every InnoDB table of the
+### database right after its load, 100 at a time, waiting at most 30 seconds
+### for a table another session holds, as provision does after its own
+### imports. It goes to the binary log as the load does, so a replica of this
+### box measures the same tables; a standby takes its tables from replication
+### and is never measured here. A table left unmeasured only warns: the data
+### is in place, and InnoDB or the per-minute SQL check measures it later.
+### $1 is the database, the rest the client options the load connected with
+### (a --defaults-file first, as the client requires).
+_measure_loaded_tables() {
+  local _db="$1" _t0="${SECONDS}" _bq='`' _names _tb _list _out _i _ok=0 _skip=0 _err=""
+  local -a _tbls=()
+  shift
+  [ -e "/root/.standby.cnf" ] && return 0
+  if [[ ! "${_db}" =~ ^[A-Za-z0-9_]+$ ]]; then
+    echo "ALRT: the optimizer statistics of ${_db} were not measured: not a plain database name"
+    return 1
+  fi
+  if ! _names=$(mysql "$@" --silent -N -B -e "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA='${_db}' AND TABLE_TYPE='BASE TABLE' AND ENGINE='InnoDB'" 2>/dev/null); then
+    echo "ALRT: the optimizer statistics of ${_db} were not measured: its tables could not be listed"
+    return 1
+  fi
+  while IFS= read -r _tb; do
+    [ -n "${_tb}" ] || continue
+    ### -B prints a backslash, tab or newline in a name as an escape: a name
+    ### with one, or with a backtick, is never spliced into a statement.
+    case "${_tb}" in
+      *\\*|*"${_bq}"*) _skip=$(( _skip + 1 )); continue ;;
+    esac
+    _tbls+=("${_bq}${_db}${_bq}.${_bq}${_tb}${_bq}")
+  done <<< "${_names}"
+  for (( _i = 0; _i < ${#_tbls[@]}; _i += 100 )); do
+    _list=$(IFS=,; printf '%s' "${_tbls[*]:_i:100}")
+    _out=$(timeout 300 mysql "$@" --silent -N -B -e "SET SESSION lock_wait_timeout = 30; ANALYZE TABLE ${_list}" 2>&1)
+    ### The outcome, not the exit code: each table answers with its own OK.
+    _ok=$(( _ok + $(grep -c $'\tanalyze\tstatus\tOK$' <<< "${_out}") ))
+    [ -n "${_err}" ] || _err=$(grep -i -m 1 -E 'error|timeout|denied' <<< "${_out}" | tr '\t' ' ')
+  done
+  if [ "${_ok}" -eq "${#_tbls[@]}" ] && [ "${_skip}" -eq 0 ]; then
+    [ "${_ok}" -gt 0 ] && echo "INFO: measured the optimizer statistics of ${_ok} tables in ${_db} in $(( SECONDS - _t0 )) s"
+    return 0
+  fi
+  echo "ALRT: measured the optimizer statistics of ${_ok} of $(( ${#_tbls[@]} + _skip )) tables in ${_db}${_err:+ (${_err:0:200})}; InnoDB measures the rest later on its own"
+  return 1
+}
+### mydumper 1.x counts every failed query it logs into its exit status,
+### its own retried table flush included. Before the global read lock it
+### sends FLUSH NO_WRITE_TO_BINLOG TABLES, which waits behind any long
+### query on the server; after --ftwrl-max-wait-time (60 s) it kills that
+### flush, logs "Flush tables failed, we are continuing anyways - ERROR
+### 1317" and sends it again, then takes the read lock and dumps as usual,
+### so the run exits 1 with a whole dump (0.x exits 0). Waiting longer is
+### no fix: a pending flush stalls every new query on the tables it waits
+### for. A run stopped by SIGTERM skips what is left yet still writes its
+### metadata and exits 0 (1 after such a retry); it says so only at Message
+### level, so callers run mydumper at --verbose=3. Returns 0 when exit
+### status $1, with the run's output in file $2 (no file, no pass), is a
+### whole run: nothing says it was cancelled (0.19.3 spells it "cacelled"),
+### and the status is 0, or 1 with at least one such retry, every counted
+### error a retry (a failed query is logged as a WARNING with " - ERROR
+### <n>: ", any other error as CRITICAL) and nothing CRITICAL or ERROR. The
+### caller still requires metadata.
+_mydumper_run_ok() {
+  local _rc="${1}" _log="${2}"
+  [[ -n "${_log}" && -f "${_log}" && ! -L "${_log}" ]] || return 1
+  grep -q -E '^\*\* Message: ([0-9:.]+: )?(Shutting down gracefully|Thread [0-9]+: Process has been can?celled)$' \
+    "${_log}" && return 1
+  [[ "${_rc}" == "0" ]] && return 0
+  [[ "${_rc}" == "1" ]] || return 1
+  awk '
+    /\): (CRITICAL|ERROR) [*][*]/ { _bad = 1 }
+    /\): WARNING [*][*]: .* - ERROR [0-9]+: / {
+      if ($0 ~ /\): WARNING [*][*]: ([0-9:.]+: )?Flush tables failed, we are continuing anyways - ERROR 1317: /) _ok = 1
+      else _bad = 1
+    }
+    END { exit (_bad || !_ok) }
+  ' "${_log}"
+}
+### Runs a mydumper command line ($3 on) in a session of its own and waits
+### for it. mydumper 1.x takes SIGINT as a question: it pauses every worker
+### and asks on its output whether to cancel, which nobody sees with that
+### output in a log, and a pause that comes as it takes the global read
+### lock keeps every write on the server waiting until someone answers. In
+### its own session a Ctrl-C at the terminal never reaches it; this
+### script's own INT, TERM or HUP ends it at once by SIGKILL (a SIGTERM can
+### hang it the same way) and the script exits 130. It runs in directory
+### $1, which must resolve to exactly $2 unless $2 is "-"; stdin is
+### /dev/null, its output goes where the caller sends this function's.
+### A signal that lands between the fork and the pid's assignment finds
+### $! moved past its value before the fork and ends that child.
+### Returns mydumper's status, or 1 when the directory check fails.
+_mydumper_session() {
+  local _d="${1}" _want="${2}" _old _rc
+  shift 2
+  _old="$(trap -p INT TERM HUP)"
+  _MYDUMPER_PID=""
+  _MYDUMPER_PREV="$!"
+  trap '_p="${_MYDUMPER_PID}"; [ -z "${_p}" ] && [ "$!" != "${_MYDUMPER_PREV}" ] && _p="$!"; [ -n "${_p}" ] && kill -9 "${_p}" 2> /dev/null; exit 130' INT TERM HUP
+  ( cd -P -- "${_d}" 2> /dev/null \
+    && { [ "${_want}" = "-" ] || [ "$(/bin/pwd -P)" = "${_want}" ]; } \
+    && exec setsid -w "$@" ) < /dev/null &
+  _MYDUMPER_PID=$!
+  wait "${_MYDUMPER_PID}"
+  _rc=$?
+  _MYDUMPER_PID=""
+  trap - INT TERM HUP
+  [ -n "${_old}" ] && eval "${_old}"
+  return "${_rc}"
+}
+### On Percona 5.7 mydumper's default lock mode syncs its threads with FLUSH
+### TABLES WITH READ LOCK (FTWRL) and also takes Percona's backup lock (LOCK
+### TABLES FOR BACKUP), keeping it until the dump ends, past the FTWRL
+### release. A write to a MyISAM table waits for that lock with its table
+### open, and the event scheduler writes one at every event run (mysql.event
+### is MyISAM on 5.7): the flush ahead of FTWRL then waits for that table, or
+### FTWRL for the writer, and neither side gives way. The server sees no
+### deadlock, so the export stalls there and every write on the box queues
+### behind it. FTWRL alone still gives the dump its consistent point. Sets
+### _MYDUMPER_BACKUP_LOCKS to --no-backup-locks when the local mydumper
+### lists it, so a build without it gets its arguments as before.
+_mydumper_backup_locks_opts() {
+  local _h
+  _MYDUMPER_BACKUP_LOCKS=()
+  _h=$(mydumper --help 2>&1)
+  if printf '%s\n' "${_h}" | grep -qE -- "^[[:space:]]+(-[[:alpha:]],[[:space:]]+)?--no-backup-locks([[:space:]]|=|$)"; then
+    _MYDUMPER_BACKUP_LOCKS=(--no-backup-locks)
+  fi
+  return 0
+}
+### A site's triggers, stored routines and events travel with its tables.
+### mydumper writes none of them unless asked, so a site that kept them (a
+### logging trigger, a function its queries call, a scheduled event) lost
+### them on every copy. Each keeps its DEFINER, the site's own database
+### user: the import loads as root, and the target has that user under the
+### same name before the load, so they run there with the site's rights, as
+### here. Sets _MYDUMPER_OBJECTS to those of the three options the local
+### mydumper lists, so a build without one gets its arguments as before.
+_mydumper_objects_opts() {
+  local _h _o
+  _MYDUMPER_OBJECTS=()
+  _h=$(mydumper --help 2>&1)
+  for _o in --triggers --routines --events; do
+    if printf '%s\n' "${_h}" | grep -qE -- "^[[:space:]]+(-[[:alpha:]],[[:space:]]+)?${_o}([[:space:]]|=|$)"; then
+      _MYDUMPER_OBJECTS+=("${_o}")
+    fi
+  done
+  return 0
+}
+### mydumper's own sessions give up a lock wait after 90 s, through an option
+### file merged into its options with --defaults-extra-file (the connection
+### keeps the credentials --defaults-file gave it). A FLUSH TABLES WITH READ
+### LOCK whose mydumper is killed while it waits behind a long query stays on
+### the server and holds the global read lock, every write on the server
+### waiting, until that query ends; bounded, it ends 90 s after it began. A
+### live run never meets the bound at its flushes: its own monitor ends a
+### flush that waits 60 s (--ftwrl-max-wait-time), so the option goes only to
+### a mydumper that has that monitor. A table read that waits 90 s for a lock
+### fails the dump instead of holding it, and every query queued behind it,
+### open. Writes the file when it is missing or differs; sets
+### _MYDUMPER_LOCKWAIT to the option, or to nothing.
+_mydumper_lockwait_opts() {
+  local _f=/etc/boa/mydumper-extra.cnf _want _tmp _h _o
+  _MYDUMPER_LOCKWAIT=()
+  _h=$(mydumper --help 2>&1)
+  for _o in --defaults-extra-file --ftwrl-max-wait-time; do
+    printf '%s\n' "${_h}" | grep -qE -- "^[[:space:]]+${_o}([[:space:]]|=|$)" || return 0
+  done
+  [[ -d "${_f}" ]] && return 0
+  _want=$'[mydumper_session_variables]\nLOCK_WAIT_TIMEOUT = 90'
+  if [[ ! -f "${_f}" || -L "${_f}" || "$(cat "${_f}" 2> /dev/null)" != "${_want}" ]]; then
+    mkdir -p "${_f%/*}" 2> /dev/null
+    _tmp=$(mktemp "${_f}.XXXXXX" 2> /dev/null) || return 0
+    if ! { printf '%s\n' "${_want}" > "${_tmp}" && chmod 644 "${_tmp}" && mv -f "${_tmp}" "${_f}"; }; then
+      rm -f "${_tmp}"
+      return 0
+    fi
+  fi
+  _MYDUMPER_LOCKWAIT=(--defaults-extra-file="${_f}")
+  return 0
+}
+### mydumper writes every trigger, routine and event of a database under one
+### file-wide sql_mode, so an object made under another one (Drupal's own
+### connections use ANSI_QUOTES and PIPES_AS_CONCAT) fails its load, or
+### loads and then behaves otherwise. This gives each object back the mode
+### the server stored for it: a plain SET before its CREATE and the file's
+### mode after it (myloader stops on a versioned-comment SET in the middle
+### of a file). Mode words 8.x refuses are left out, so a 5.7 dump loads
+### there. A routine's utf8mb4 parameters and return value take the loading
+### session's default_collation_for_utf8mb4, which no dump names: a routine
+### whose parameters (and return value) share one of the two defaults that
+### setting takes gets it the same way, the session's own value back after
+### it, read on any server (a 5.x or MariaDB one names utf8mb4_general_ci
+### there, which a load on MySQL 8 then keeps; a server that refuses that
+### read gives the modes alone); each is a statement prepared from one that
+### names MySQL 8, so a 5.x or MariaDB server, which has no such setting,
+### runs DO 0 in its place. It reads the file whole, never through a link, and replaces it
+### through a new one in the same directory. Exits 1, the file as it was,
+### when a line cannot be placed; 2 when an object had no mode to give.
+_MYDUMPER_MODES_PL='use strict; use Fcntl;
+my ($f) = @ARGV; my (%m, %c, @o, $p, $q, $miss);
+my $gone = qr/^(?:NO_AUTO_CREATE_USER|NO_FIELD_OPTIONS|NO_KEY_OPTIONS|NO_TABLE_OPTIONS|DB2|MAXDB|MSSQL|MYSQL323|MYSQL40|ORACLE|POSTGRESQL)$/;
+for (split /\n/, (defined $ENV{_MYDUMPER_MODES} ? $ENV{_MYDUMPER_MODES} : "")) {
+  my ($t, $h, $s, $k) = split /\t/, $_, 4;
+  next unless defined $s && $t =~ /^(?:TRIGGER|FUNCTION|PROCEDURE|EVENT)$/
+    && $h =~ /^[0-9A-Fa-f]+$/ && $s =~ /^[A-Z0-9_,]*$/;
+  $m{$t . " " . lc($h)} = join(",", grep { $_ !~ $gone } split(/,/, $s));
+  $c{$t . " " . lc($h)} = $k if defined $k && $t =~ /^(?:FUNCTION|PROCEDURE)$/
+    && $k =~ /^utf8mb4_(?:general_ci|0900_ai_ci)$/;
+}
+sysopen(my $in, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit 1;
+my @st = stat($in); exit 1 unless @st && -f _;
+my @l = <$in>; close($in);
+my $fm;
+for my $x (@l[0 .. ($#l < 9 ? $#l : 9)]) {
+  $fm = $1 if !defined $fm && $x =~ /^\/\*!40101 SET SQL_MODE=\x27([A-Z0-9_,]*)\x27\*\/;$/;
+}
+exit 1 unless defined $fm;
+for my $i (0 .. $#l) {
+  my $x = $l[$i];
+  if (($p || $q) && $x =~ /^SET character_set_client = \@PREV_CHARACTER_SET_CLIENT;$/) {
+    push @o, "SET SQL_MODE=\x27$fm\x27;\n" if $p;
+    push @o, "SET \@BOA_UTF8MB4_SQL = IF(VERSION() LIKE \x278.%\x27, \x27SET SESSION default_collation_for_utf8mb4 = \@BOA_PREV_UTF8MB4\x27, \x27DO 0\x27);\n",
+      "PREPARE boa_utf8mb4 FROM \@BOA_UTF8MB4_SQL;\n", "EXECUTE boa_utf8mb4;\n", "DEALLOCATE PREPARE boa_utf8mb4;\n" if $q;
+    $p = 0; $q = 0;
+  }
+  push @o, $x;
+  next unless $x =~ /^DROP (TRIGGER|FUNCTION|PROCEDURE|EVENT) IF EXISTS `((?:[^`]|``)+)`;$/;
+  my ($t, $n) = ($1, $2); $n =~ s/``/`/g;
+  exit 0 if $i < $#l && $l[$i + 1] =~ /^SET (?:SQL_MODE=|\@BOA_UTF8MB4_SQL )/;
+  my $key = $t . " " . unpack("H*", $n);
+  my $s = $m{$key};
+  if (defined $s) { push @o, "SET SQL_MODE=\x27$s\x27;\n"; $p = 1; } else { $miss = 1; }
+  if (defined $c{$key}) {
+    push @o, "SET \@BOA_UTF8MB4_SQL = IF(VERSION() LIKE \x278.%\x27, \x27SET \@BOA_PREV_UTF8MB4 = \@\@SESSION.default_collation_for_utf8mb4,"
+      . " SESSION default_collation_for_utf8mb4 = \x27\x27$c{$key}\x27\x27\x27, \x27DO 0\x27);\n",
+      "PREPARE boa_utf8mb4 FROM \@BOA_UTF8MB4_SQL;\n", "EXECUTE boa_utf8mb4;\n";
+    $q = 1;
+  }
+}
+exit 1 if $p || $q;
+my $w = $f . ".modes";
+sysopen(my $out, $w, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600) or exit 1;
+if (!(print {$out} @o) || !close($out) || !chmod($st[2] & 07777, $w)
+  || ($> == 0 && !chown($st[4], $st[5], $w)) || !rename($w, $f)) { unlink($w); exit 1; }
+exit($miss ? 2 : 0);'
+
+### Gives every stored object of database $1, dumped by mydumper into the
+### directory $2, its own sql_mode back (see _MYDUMPER_MODES_PL), read with
+### the client command that follows. Returns 0 when done or when there is
+### nothing to do, 1 when the modes could not be read (the files as
+### mydumper wrote them), 2 when an object or a file kept the dump's mode.
+### It never fails a dump: the caller says what was left.
+_mydumper_object_modes() {
+  local _db="${1}" _dir="${2}" _q _c _modes _f _rc=0
+  shift 2
+  [[ "${_db}" =~ ^[A-Za-z0-9_]+$ ]] || return 2
+  _c="IFNULL((SELECT IF(COUNT(DISTINCT p.COLLATION_NAME) = 1, MIN(p.COLLATION_NAME), '') FROM information_schema.PARAMETERS p"
+  _c="${_c} WHERE p.SPECIFIC_SCHEMA = r.ROUTINE_SCHEMA AND p.SPECIFIC_NAME = r.ROUTINE_NAME AND p.ROUTINE_TYPE = r.ROUTINE_TYPE"
+  _c="${_c} AND p.COLLATION_NAME IN ('utf8mb4_general_ci', 'utf8mb4_0900_ai_ci')), '')"
+  while :; do
+    _q="SELECT 'TRIGGER', HEX(TRIGGER_NAME), SQL_MODE, '' FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = '${_db}'"
+    _q="${_q} UNION ALL SELECT r.ROUTINE_TYPE, HEX(r.ROUTINE_NAME), r.SQL_MODE, ${_c} FROM information_schema.ROUTINES r WHERE r.ROUTINE_SCHEMA = '${_db}'"
+    _q="${_q} UNION ALL SELECT 'EVENT', HEX(EVENT_NAME), SQL_MODE, '' FROM information_schema.EVENTS WHERE EVENT_SCHEMA = '${_db}'"
+    _modes=$("$@" -N -B -e "${_q}" 2> /dev/null) && break
+    [[ "${_c}" != "''" ]] || return 1
+    echo "WARN: the stored routines' utf8mb4 defaults of ${_db} could not be read: its routines load with the loading server's default" >&2
+    _c="''"
+  done
+  [[ -n "${_modes}" ]] || return 0
+  for _f in "${_dir}"/*-schema-post.sql "${_dir}"/*-schema-triggers.sql; do
+    if [[ -L "${_f}" ]]; then
+      _rc=2
+      continue
+    fi
+    [[ -f "${_f}" ]] || continue
+    _MYDUMPER_MODES="${_modes}" perl -e "${_MYDUMPER_MODES_PL}" -- "${_f}" || _rc=2
+  done
+  return "${_rc}"
+}
+
 ### Run by post-mig on the target: each copied site's verify that an import
 ### scheduled, waited for up to 30 minutes once cron runs again (not at all
 ### when cron is down: the verifies cannot run), and its result printed and
@@ -1580,6 +1938,475 @@ _xcopy_flush_caches_target() {
   done
 }
 
+# ./$1 in the current (pinned) directory: never through a link, never
+# blocked on a FIFO, at most 1 MiB; empty for anything else.
+_xcopy_read_here() {
+  timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
+    bs=1048576 count=1 status=none 2> /dev/null
+}
+# $2 in the real directory $1, read as _xcopy_read_here reads it.
+_xcopy_read_in() {
+  _xcopy_in_real_dir "${1}" _xcopy_read_here "${2}"
+}
+### The name $1 added to log/xcopy_le_kept.txt (one name a line, sorted).
+_xcopy_le_list_add() {
+  { _xcopy_read_in "${_USR}/log" xcopy_le_kept.txt
+    echo
+    printf '%s\n' "${1}"; } | grep -E '^[A-Za-z0-9][A-Za-z0-9.-]*$' | sort -u \
+    | _xcopy_in_real_dir "${_USR}/log" _xcopy_write_here xcopy_le_kept.txt
+}
+### Whether hosting_le's verify orders for the site $1 at all: it names the
+### site's redirect target when there is one, and leaves out the service
+### domains and the .nodns. names, and the .temp., .tmp., .test., .dev. kind
+### unless the account's ssl-yes-dev flag names it.
+_xcopy_le_order_named() {
+  local _m="${1}" _r
+  _r=$(_xcopy_read_in "${_USR}/.drush" "${1}.alias.drushrc.php" \
+    | sed -n "s/^.*'redirection' => '\([A-Za-z0-9][A-Za-z0-9.-]*\)'.*$/\1/p" | head -1)
+  [ -n "${_r}" ] && _m="${_r}"
+  case "${_m}" in
+    *.host8.biz|*.host8.io|*.host8.cc|*.boa.biz|*.boa.io|*.boa.cc) return 1 ;;
+    *.aegir.biz|*.aegir.io|*.aegir.cc|*.o8.biz|*.o8.io|*.o8.cc|*.nodns.*) return 1 ;;
+  esac
+  [ -e "${_USR}/static/control/ssl-yes-dev-${_m}.info" ] && return 0
+  case "${_m}" in
+    *.temp.*|*.tmp.*|*.temporary.*|*.test.*|*.testing.*|*.dev.*|*.devel.*) return 1 ;;
+  esac
+  return 0
+}
+_xcopy_le_keep() {
+  local _u _g _rc
+  [[ "${1}" =~ ^[A-Za-z0-9][A-Za-z0-9.-]*$ ]] || return 1
+  case " ${_XCOPY_LE_KEPT} " in
+    *" ${1} "*) return 0 ;;
+  esac
+  if [ -n "${_hName}" ]; then
+    case "${1}" in
+      "${_hName}"|*".${_hName}") return 0 ;;
+    esac
+  fi
+  _xcopy_in_real_dir "${_USR}/tools/le/.ctrl" true || return 0
+  _u=$(id -u -- "${_THIS_HM_USER}" 2> /dev/null)
+  _g=$(id -g -- "${_THIS_HM_USER}" 2> /dev/null)
+  [[ "${_u}" =~ ^[0-9]+$ ]] && [[ "${_g}" =~ ^[0-9]+$ ]] || return 1
+  _xcopy_in_real_dir "${_USR}/tools/le/.ctrl" \
+    _xcopy_le_mark_here "dont-overwrite-${1}.pid" "${_u}" "${_g}"
+  _rc=$?
+  if [ "${_rc}" -eq 0 ]; then
+    _XCOPY_LE_KEPT="${_XCOPY_LE_KEPT} ${1}"
+    _xcopy_le_list_add "${1}" \
+      || echo "ALRT: site ${1} on ${_oct}: its stop marker is put but could not be listed in ${_USR}/log/xcopy_le_kept.txt"
+  elif [ "${_rc}" -ne 2 ]; then
+    echo "ALRT: site ${1} on ${_oct}: its Let's Encrypt stop marker could not be put; its verify can order a certificate for the source's name"
+  fi
+  _xcopy_le_order_named "${1}" || return 0
+  if ! _xcopy_in_real_dir "${_USR}/tools/le/certs/${1}" true \
+    && _xcopy_read_in "${_USR}/.drush" "${1}.alias.drushrc.php" \
+      | grep -qE "'ssl_enabled' => '?[12]'?"; then
+    echo "WARN: site ${1} on ${_oct}: no certificate travelled for it, so its verify here can still order one for the source's name, which fails while DNS points at the source"
+  fi
+  return 0
+}
+_xcopy_verify_before() {
+  _XCOPY_VERIFY_PRE=""
+  _XCOPY_VERIFY_AT=$(date +%s)
+  [[ "${1}" =~ ^[A-Za-z0-9][A-Za-z0-9.-]*$ ]] || return 0
+  [ -n "${_XCOPY_VERIFY_DB}" ] \
+    || _XCOPY_VERIFY_DB=$(_xcopy_read_in "${_USR}/log" panel_db.txt | tr -cd 'A-Za-z0-9_')
+  _XCOPY_VERIFY_PRE=$(_xcopy_verify_last "${1}")
+}
+# A database this tool makes, or a site's own one it loads over, for an
+# account switched to the database broker (root's
+# /data/conf/<account>_db_broker.txt) is entered in the broker's registry
+# as that account's, and the account's own grant on it given, as the
+# broker's own create does: otherwise every later task of the site is
+# refused as not the account's. An account not switched, or one whose
+# control file the broker finds not valid (its tasks take the direct
+# path), is left as it was. Same text in xoct and xcopy.
+_xcopy_dbreg() {   # 1 account here 2 database
+  local _f="/data/conf/${1}_db_broker.txt" _out _rc
+  [ -e "${_f}" ] || [ -L "${_f}" ] || return 0
+  if [ ! -x /usr/local/bin/boa-dbctl ]; then
+    echo "ALRT: ${1} is switched to the database broker, which is not installed here:"
+    echo "ALRT: database ${2} is not entered as ${1}'s in its registry"
+    return 1
+  fi
+  _out=$(/usr/local/bin/boa-dbctl register "${2}" --account "${1}" --via xcopy 2>&1)
+  _rc=$?
+  if [ "${_rc}" = "8" ]; then
+    echo "ALRT: ${_f} is not valid: database ${2} is left out of the broker's registry,"
+    echo "ALRT: and ${1}'s tasks take the direct path"
+    return 0
+  fi
+  if [ "${_rc}" = "0" ]; then
+    if _out=$(/usr/local/bin/boa-dbctl regrant --account "${1}" 2>&1); then
+      echo "INFO: database ${2} entered as ${1}'s in the database broker's registry"
+      return 0
+    fi
+    echo "ALRT: database ${2} is ${1}'s in the database broker's registry, but its grant failed: ${_out##*$'\n'}"
+    echo "ALRT: run: boa-dbctl regrant --account ${1}"
+    return 1
+  fi
+  echo "ALRT: database ${2} is not entered as ${1}'s in the database broker's registry: ${_out##*$'\n'}"
+  echo "ALRT: its site's tasks are refused until: boa-dbctl register ${2} --account ${1} --via xcopy; boa-dbctl regrant --account ${1}"
+  return 1
+}
+
+# The file ./$1 (never there before) created with the bytes read from stdin,
+# the owner $2:$3 (numeric; -1 keeps root's) and the read/write bits of the
+# mode $4, all through the one handle that created it, opened
+# O_EXCL|O_NOFOLLOW: nothing is ever chowned or chmodded by name in a
+# directory the account can write (a hard link renamed over the name before a
+# chown by name would hand another file to that owner).
+_XCOPY_PUT_PL='use Fcntl; my ($n, $u, $g, $m) = @ARGV; local $/; my $d = <STDIN>; sysopen(my $h, $n, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600) or exit 1; (print {$h} $d) or exit 1; chown($u, $g, $h) or exit 1; chmod(oct($m) & 0666, $h) or exit 1; close($h) or exit 1; exit 0'
+# The owner $1:$2 (numeric; -1 leaves it) and the mode $3 (none when empty)
+# re-asserted on each existing name ./$5 ... through one handle opened
+# O_NOFOLLOW|O_NONBLOCK, and only when that handle is a regular file with one
+# link whose owner is already $1 or one of the uids in the comma-separated
+# $4: a link, a FIFO, a hard link to another file, or a file of some other
+# identity (root's included: a root-only file renamed onto the name is never
+# handed over) is left as it is, never handed to the account or chmodded.
+# What root puts for the account is created with its final owner instead.
+_XCOPY_REASSERT_PL='use Fcntl; my ($u, $g, $m, $x, @f) = @ARGV; my %ok = map { $_ => 1 } ($u, split(/,/, $x)); for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); if (@s && -f _ && $s[3] == 1 && $ok{$s[4]}) { chown($u, $g, $h) if $u >= 0; chmod(oct($m), $h) if length $m; } close($h); } exit 0'
+# ./$1 in the current (pinned) directory put at ./$2 through sed "${@:3}".
+# The source is read through one handle opened O_NOFOLLOW|O_NONBLOCK that
+# must be a regular file with one link under 1 MiB; the owner, group and mode
+# are taken from that same handle (the first line the reader prints), never
+# from a stat by name, so a name swapped between the look and the read never
+# lends its bytes another file's owner. The result is a fresh file with that
+# numeric owner and the read/write bits of that mode, put through
+# _XCOPY_PUT_PL (one handle creates, writes, owns and modes it), renamed over
+# ./$2: nothing is chowned or chmodded by name. The reader text stays in the
+# function, as in the copies that are shipped to the other box. For a plain
+# file this is what sed -i (and cp -a, empty program) wrote, without their
+# reach through a link put at the name.
+_xcopy_sed_to() {
+  local _s="${1}" _n="${2}" _t _u _g _m _h
+  local _rd='use Fcntl; my ($n) = @ARGV; sysopen(my $h, $n, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit 1; my @s = stat($h); exit 1 unless @s && -f _ && $s[3] == 1 && $s[7] < 1048576; my ($d, $r) = (""); while ($r = sysread($h, my $c, 65536)) { $d .= $c; exit 1 if length($d) >= 1048576; } exit 1 unless defined $r; close($h); binmode(STDOUT); printf("%d %d %o\n", $s[4], $s[5], $s[2] & 07777) or exit 1; (print $d) or exit 1; exit 0'
+  shift 2
+  _t="./.${_n}.sed.$$.${RANDOM}"
+  rm -f -- "${_t}"
+  if ( set -o pipefail
+    perl -e "${_rd}" "./${_s}" 2> /dev/null | {
+      _h=""
+      IFS=' ' read -r _u _g _m _h || exit 1
+      [[ "${_u}" =~ ^[0-9]+$ ]] && [[ "${_g}" =~ ^[0-9]+$ ]] \
+        && [[ "${_m}" =~ ^[0-7]+$ ]] && [ -z "${_h}" ] || exit 1
+      sed "$@" | perl -e "${_XCOPY_PUT_PL}" "${_t}" "${_u}" "${_g}" "${_m}"
+    } ) && mv -f -T -- "${_t}" "./${_n}"; then
+    return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+# ./$1 rewritten in place by sed "${@:2}", as _xcopy_sed_to does it.
+_xcopy_sed_here() {
+  local _n="${1}"
+  shift
+  _xcopy_sed_to "${_n}" "${_n}" "$@"
+}
+# The numeric uid and gid of owner:group $1 as "uid gid"; status 1, and
+# nothing, when either does not resolve.
+_xcopy_owner_ids() {
+  local _u _g
+  _u="$(id -u -- "${1%%:*}" 2> /dev/null)"
+  _g="$(getent group "${1#*:}" 2> /dev/null | cut -d: -f3)"
+  [[ "${_u}" =~ ^[0-9]+$ ]] && [[ "${_g}" =~ ^[0-9]+$ ]] || return 1
+  printf '%s %s\n' "${_u}" "${_g}"
+}
+# ./$2 built from the template file $1 (absolute, root-owned) piped through
+# sed "${@:4}" into a fresh file put through _XCOPY_PUT_PL, 0600 and owned by
+# $3 (owner:group; root's when it does not resolve) from the start, renamed
+# over the name: a link put at the destination is replaced, never written
+# through, and nothing is chowned by name afterwards.
+_xcopy_tpl_to_here() {
+  local _tpl="${1}" _n="${2}" _ids _t
+  _ids="$(_xcopy_owner_ids "${3}")" || _ids="-1 -1"
+  shift 3
+  _t="./.${_n}.put.$$.${RANDOM}"
+  rm -f -- "${_t}"
+  if ( set -o pipefail
+    sed "$@" -- "${_tpl}" \
+      | perl -e "${_XCOPY_PUT_PL}" "${_t}" "${_ids% *}" "${_ids#* }" 600 ); then
+    mv -f -T -- "${_t}" "./${_n}" && return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+# chmod $1 on the regular files ./$2 ... of the current (pinned) directory
+# WITHOUT following a link, and only on a file with one link, so a hard link
+# to another file put at a name is skipped too.
+_XCOPY_FCHMOD_PL='use Fcntl;
+my $m = shift @ARGV;
+for my $f (@ARGV) {
+  sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
+  my @s = stat($h);
+  chmod(oct($m), $h) if @s && -f _ && $s[3] == 1;
+  close($h);
+}'
+_xcopy_fchmod_here() {
+  local _m="${1}"
+  shift
+  [ "$#" -gt 0 ] || return 0
+  perl -e "${_XCOPY_FCHMOD_PL}" "${_m}" "$@" 2> /dev/null
+}
+# Re-assert owner:group $1 and mode $2 on the regular file ./$3 of the current
+# (pinned) directory through _XCOPY_REASSERT_PL: only a regular file with one
+# link, owned already by $1, is changed, through the handle that checked it,
+# so a link, a hard link to another file or another identity's file (root's
+# too) the account put at the name is never handed to the account or
+# chmodded. An owner that does not resolve changes nothing.
+_xcopy_reassert_here() {
+  local _own="${1}" _m="${2}" _n="${3}" _ids
+  _ids="$(_xcopy_owner_ids "${_own}")" || _ids="-1 -1"
+  perl -e "${_XCOPY_REASSERT_PL}" -- "${_ids% *}" "${_ids#* }" "${_m}" "" \
+    "./${_n}" 2> /dev/null
+  return 0
+}
+# The same, run inside the real vhost.d directory $1. $2 owner:group, $3 the
+# vhost name, $4 the mode (default 600).
+_xcopy_vhd_reassert() {
+  _xcopy_in_real_dir "${1}" _xcopy_reassert_here "${2}" "${4:-600}" "${3}"
+}
+# The account proves it owns a database by logging in as its own user and
+# using it (BOA sets db_user == db_name). $1 = db (== user), $2 = password.
+_xcopy_cred_ok() {
+  [ -n "$1" ] && [ -n "$2" ] \
+    && mysql -u"$1" -p"$2" -h"${_SQL_CONNECT:-localhost}" \
+      -P"${_THIS_DB_PORT:-3306}" --protocol=tcp -N -B \
+      -e "USE \`$1\`" > /dev/null 2>&1
+}
+# A grant ON a database reads _ and % in its name as wildcards: `a_b`.* also
+# covers aXb, with ALL there. A site user is granted its own name escaped,
+# as provisioning grants it (grant_privileges); names reach here as
+# [a-zA-Z0-9_] only, so _ is all there is to escape.
+_xcopy_db_grant_name() {
+  printf '%s' "${1//_/\\_}"
+}
+# Once the exact grant is in place, a wildcard grant an earlier run left on
+# the same name ($1, also the user) at the host $2 goes, as provisioning
+# converges it (revoke_wildcard_db_grant): only when SHOW GRANTS lists it,
+# and revoked as it is stored, its grant option too (a db-level REVOKE takes
+# ALL and GRANT OPTION only as two statements; the second fails harmlessly
+# where there was none).
+_xcopy_db_revoke_wildcard() {
+  local _g
+  [[ "${1}" == *_* ]] || return 0
+  _g=$(mysql --silent -u root -h"${_SQL_CONNECT}" -P"${_THIS_DB_PORT}" --protocol=tcp \
+    -N -B -e "SHOW GRANTS FOR '${1}'@'${2}'" 2> /dev/null)
+  printf '%s\n' "${_g}" | grep -qF "ON \`${1}\`.* TO " || return 0
+  mysql --silent -u root -h"${_SQL_CONNECT}" -P"${_THIS_DB_PORT}" --protocol=tcp \
+    -e "REVOKE ALL PRIVILEGES ON \`${1}\`.* FROM '${1}'@'${2}'; \
+        REVOKE GRANT OPTION ON \`${1}\`.* FROM '${1}'@'${2}';" &> /dev/null
+}
+# ./$1 made a real directory in the current (pinned) parent: a link the account
+# put at the name is removed, a missing directory created.
+_xcopy_realdir_here() {
+  [ -L "./${1}" ] && rm -f -- "./${1}"
+  [ -d "./${1}" ] || mkdir -p -- "./${1}"
+}
+# The whole regular file ./$1 of the current (pinned) directory streamed to
+# stdout without following a link (unbounded, for a DB dump): a link put at the
+# name yields nothing, a FIFO never blocks past the read.
+_xcopy_cat_here() {
+  dd if="./${1}" iflag=nofollow,nonblock status=none 2> /dev/null
+}
+# The hostmaster dump the command "$@" writes on stdout, captured into the
+# current (pinned) src/ directory as a fresh exclusive file renamed over
+# ./prev_hostmaster.sql: the command's exit code survives the pipe, a link the
+# account put at the name is replaced, and a zero-byte result is refused.
+_xcopy_dump_hm_here() {
+  local _t="./.prev_hostmaster.sql.put.$$.${RANDOM}"
+  rm -f -- "${_t}"
+  if ( set -o pipefail
+    umask 077
+    "$@" | dd of="${_t}" conv=excl status=none 2> /dev/null ) \
+    && [ -s "${_t}" ]; then
+    mv -f -T -- "${_t}" ./prev_hostmaster.sql && return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+# The hostmaster dump never carries the dumping server's GTID state. By
+# default (--set-gtid-purged=AUTO) a dump taken while GTID is on (every
+# box an xmass run touched: BOA's my.cnf leaves it off, xmass_gtid.cnf
+# turns it on) opens with SET @@SESSION.SQL_LOG_BIN=0 and sets
+# @@GLOBAL.GTID_PURGED. Its import then fails on a box that shares that
+# history (a move back, a failback, a chained move: ERROR 3546 on 8.x),
+# and where it passes it stays out of that box's binary log, so a replica
+# of the box never gets the panel. OFF writes neither. Sets _MYSQLDUMP_GTID
+# to the option when the local mysqldump takes it: one that does not
+# (MariaDB's) would refuse it and writes neither anyway, so it is asked,
+# never assumed.
+_mysqldump_gtid_opts() {
+  _MYSQLDUMP_GTID=()
+  if mysqldump --help 2> /dev/null | grep -q -- '--set-gtid-purged'; then
+    _MYSQLDUMP_GTID=(--set-gtid-purged=OFF)
+  fi
+  return 0
+}
+### A site's database load is written to the binary log. myloader opens
+### every session with SET SQL_LOG_BIN=0 unless told otherwise, so on a box
+### running with the binary log on (every box an xmass run touched: BOA's
+### my.cnf leaves it off, xmass_gtid.cnf turns it on) the load never
+### reached a replica of the box, whose applier then stopped at the first
+### replicated write to the tables it never got. --ignore-set=SQL_LOG_BIN
+### drops that one session variable wherever it comes from (myloader's own
+### default, or the packaged /etc/mydumper.cnf for a call without an option
+### file); --enable-binlog is no substitute: that file sets it again, and
+### the 0.19.3 line refuses the option. With the binary log off it changes
+### nothing. Sets _MYLOADER_BINLOG to the option when the local myloader
+### lists it, so a build without it gets its arguments as before.
+_myloader_binlog_opts() {
+  _MYLOADER_BINLOG=()
+  if myloader --help 2>&1 | grep -qE -- '^[[:space:]]+--ignore-set([[:space:]]|=)'; then
+    _MYLOADER_BINLOG=(--ignore-set=SQL_LOG_BIN)
+  fi
+  return 0
+}
+### A Percona 5.7 dump names a utf8mb4 table's character set and no
+### collation (utf8mb4_general_ci was that set's default there). Loaded on
+### 8.0 or later, such a table and every column of it took that server's
+### default, utf8mb4_0900_ai_ci: the copy no longer matched its source, nor
+### what an in-place upgrade of the source keeps, and a join on columns of
+### two collations fails (error 1267). A dump made on 8.0 or later names the
+### collation of every utf8mb4 table and column, so the old default changes
+### nothing for them. No dump names one for a stored routine's parameters
+### and return type: they take the loading session's default, the old one
+### here, which is what a server upgraded in place from 5.7 still holds for
+### its older routines; one made on 8.x with 8.x's default comes back with
+### the old one. The old default is given only where the server takes it for
+### a session (_mig_utf8mb4_takes): 8.4 warns the setting is deprecated and
+### will become read-only, and a session that cannot set it would fail the
+### whole load. _MYLOADER_UTF8MB4 is then the option file that adds the old
+### default to myloader's own session settings (it replaces none of them;
+### written when missing or different); otherwise it stays empty. Worked out
+### once per run, and a myloader that cannot be given the file is named once.
+### A client load asks its own server (_mig_utf8mb4_client_opt).
+_MIG_UTF8MB4_DONE=""
+_MYLOADER_UTF8MB4=()
+### Whether the server the client options "$@" name takes the old default
+### for a session (0), or not (1, with a warning unless it is a 5.x server,
+### whose own default it is).
+_mig_utf8mb4_takes() {
+  local _v
+  _v=$(mysql --silent "$@" -N -B -e "SET SESSION default_collation_for_utf8mb4 = utf8mb4_general_ci; SELECT @@SESSION.default_collation_for_utf8mb4" 2> /dev/null)
+  [ "${_v}" = "utf8mb4_general_ci" ] && return 0
+  _v=$(mysql --silent "$@" -N -B -e "SELECT VERSION()" 2> /dev/null)
+  case "${_v}" in
+    5.*) ;;
+    *) echo "WARN: the database server here does not take default_collation_for_utf8mb4 for a session: a utf8mb4 table a Percona 5.7 dump names no collation for loads with this server's default, not utf8mb4_general_ci" ;;
+  esac
+  return 1
+}
+_myloader_utf8mb4_opts() {
+  local _f=/etc/boa/myloader-utf8mb4.cnf _want _tmp
+  [ -n "${_MIG_UTF8MB4_DONE}" ] && return 0
+  _MIG_UTF8MB4_DONE=YES
+  _MYLOADER_UTF8MB4=()
+  _mig_utf8mb4_takes -u root || return 0
+  _want=$'[myloader_session_variables]\ndefault_collation_for_utf8mb4 = utf8mb4_general_ci'
+  if myloader --help 2>&1 | grep -qE -- '^[[:space:]]+--defaults-extra-file([[:space:]]|=|$)' \
+    && [[ ! -d "${_f}" ]]; then
+    if [[ ! -f "${_f}" || -L "${_f}" || "$(cat "${_f}" 2> /dev/null)" != "${_want}" ]]; then
+      mkdir -p "${_f%/*}" 2> /dev/null
+      _tmp=$(mktemp "${_f}.XXXXXX" 2> /dev/null)
+      if [ -n "${_tmp}" ] \
+        && printf '%s\n' "${_want}" > "${_tmp}" && chmod 644 "${_tmp}" && mv -f "${_tmp}" "${_f}"; then
+        _MYLOADER_UTF8MB4=(--defaults-extra-file="${_f}")
+      else
+        rm -f "${_tmp}"
+      fi
+    else
+      _MYLOADER_UTF8MB4=(--defaults-extra-file="${_f}")
+    fi
+  fi
+  if [ "${#_MYLOADER_UTF8MB4[@]}" -eq 0 ]; then
+    echo "WARN: myloader here cannot be given ${_f}: a utf8mb4 table a Percona 5.7 dump names no collation for loads as utf8mb4_0900_ai_ci"
+  fi
+  return 0
+}
+_XCOPY_LOCK_FILE="/run/xcopy.verb.pid"
+
+# export dumps and import loads databases: mysqldump/mysql for the panel,
+# mydumper/myloader for every site. While /run/boa_sql_maintenance.pid exists
+# the mysql.sh watchdog stands down entirely, so it cannot restart MySQL or
+# kill mydumper in the middle of a dump or a load.
+#
+# The marker carries this run's PID, so the launchers read a killed run's
+# marker as released. The EXIT trap removes it on every exit the shell can
+# trap, and only while it still carries this PID; a kill -9 leaves it to the
+# watchdog's 240-minute staleness limit. A marker another operation holds --
+# a live PID that is not ours, or a fresh empty one -- is left to its owner.
+# Re-asserted after the wait for a running BOA job, before each site and before
+# the rename, so a marker its owner released mid-run is taken over at the next
+# of those; a background beat refreshes ours every 20
+# minutes, so one dump or load longer than the staleness limit stays paused.
+# The traps are armed before the marker is written and the flag is cleared
+# after it is removed, so no signal can land between the two.
+#
+# Kept in step with xoct's _xoct_sql_maint_hold -- mirror any fix there.
+_XCOPY_SQL_MAINT=""
+_XCOPY_SQL_MAINT_BEAT=""
+_xcopy_sql_maint_release() {
+  if [ -n "${_XCOPY_SQL_MAINT_BEAT}" ]; then
+    kill "${_XCOPY_SQL_MAINT_BEAT}" 2>/dev/null
+    _XCOPY_SQL_MAINT_BEAT=""
+  fi
+  [ "${_XCOPY_SQL_MAINT}" = "YES" ] || return 0
+  if [ "$(tr -dc '0-9' 2>/dev/null < /run/boa_sql_maintenance.pid)" = "$$" ]; then
+    rm -f /run/boa_sql_maintenance.pid
+  fi
+  _XCOPY_SQL_MAINT=""
+  return 0
+}
+
+_xcopy_sql_maint_hold() {
+  local _mf=/run/boa_sql_maintenance.pid _mPid _pp=$$ _pst
+  # Start time of this run: a recycled PID must not keep a dead run's marker fresh.
+  _pst=$(cut -d' ' -f22 /proc/$$/stat 2>/dev/null)
+  if [ -e "${_mf}" ] && [ -z "$(find "${_mf}" -mmin +240 2>/dev/null)" ]; then
+    _mPid=$(tr -dc '0-9' 2>/dev/null < "${_mf}")
+    if [ -z "${_mPid}" ] \
+      || { [ "${_mPid}" != "$$" ] && kill -0 "${_mPid}" 2>/dev/null; }; then
+      [ "${_XCOPY_SQL_MAINT}" = "OTHER" ] \
+        || echo "INFO: ${_mf} is held by another operation (pid ${_mPid:-none}); left to its owner"
+      _XCOPY_SQL_MAINT=OTHER
+      return 0
+    fi
+  fi
+  if [ "${_XCOPY_SQL_MAINT}" != "YES" ]; then
+    _XCOPY_SQL_MAINT=YES
+    # Signals masked first: one landing in here would run the exit below inside
+    # this trap and skip the release, pausing the watchdog for hours. The release
+    # goes before the chattr step, the one part that can block on a sick disk.
+    trap 'trap "" INT TERM HUP; _xcopy_sql_maint_release; _xcopy_chattr_back; [ -n "${_XCOPY_RSYNC_ERR:-}" ] && rm -f -- "${_XCOPY_RSYNC_ERR}"; rm -f "${_XCOPY_LOCK_FILE}"' EXIT
+    trap 'exit 130' INT TERM HUP
+    if [ -z "${_XCOPY_SQL_MAINT_BEAT}" ] || ! kill -0 "${_XCOPY_SQL_MAINT_BEAT}" 2>/dev/null; then
+      # Detached, not a child of this shell: the bare `wait` calls in this
+      # tool must never wait on it. Ends on its own when this run is gone
+      # (kill -9, OOM): an orphaned beat would keep the watchdog paused.
+      _XCOPY_SQL_MAINT_BEAT=$(
+        (
+          # The sleep goes with the beat, so a stopped beat leaves no process;
+          # jobs -p also covers a TERM landing before $! is read, and the second
+          # kill a sleep the first reached between its fork and its exec.
+          trap 'kill $(jobs -p) 2>/dev/null; sleep 0.2; kill $(jobs -p) 2>/dev/null; exit 0' TERM
+          while :; do
+            sleep 1200 & _bs=$!
+            wait "${_bs}"
+            [ -z "${_pst}" ] || [ "$(cut -d' ' -f22 "/proc/${_pp}/stat" 2>/dev/null)" = "${_pst}" ] || exit 0
+            kill -0 "${_pp}" 2>/dev/null || exit 0
+            [ "$(tr -dc '0-9' 2>/dev/null < "${_mf}")" = "${_pp}" ] && touch -c "${_mf}"
+          done
+        ) > /dev/null 2>&1 < /dev/null &
+        echo "$!"
+      )
+    fi
+    echo "INFO: SQL watchdog paused for the ${_cmd} database work (${_mf})"
+  fi
+  echo "$$" > "${_mf}"
+}
 _migrate_sites() {
   # Account tree group, derived once for this run's account.
   _octGrp=$(_acct_group "${_oct}")
@@ -2406,43 +3233,6 @@ _xcopy_wait_boa_quiet() {
   return 0
 }
 
-# A database this tool makes, or a site's own one it loads over, for an
-# account switched to the database broker (root's
-# /data/conf/<account>_db_broker.txt) is entered in the broker's registry
-# as that account's, and the account's own grant on it given, as the
-# broker's own create does: otherwise every later task of the site is
-# refused as not the account's. An account not switched, or one whose
-# control file the broker finds not valid (its tasks take the direct
-# path), is left as it was. Same text in xoct and xcopy.
-_xcopy_dbreg() {   # 1 account here 2 database
-  local _f="/data/conf/${1}_db_broker.txt" _out _rc
-  [ -e "${_f}" ] || [ -L "${_f}" ] || return 0
-  if [ ! -x /usr/local/bin/boa-dbctl ]; then
-    echo "ALRT: ${1} is switched to the database broker, which is not installed here:"
-    echo "ALRT: database ${2} is not entered as ${1}'s in its registry"
-    return 1
-  fi
-  _out=$(/usr/local/bin/boa-dbctl register "${2}" --account "${1}" --via xcopy 2>&1)
-  _rc=$?
-  if [ "${_rc}" = "8" ]; then
-    echo "ALRT: ${_f} is not valid: database ${2} is left out of the broker's registry,"
-    echo "ALRT: and ${1}'s tasks take the direct path"
-    return 0
-  fi
-  if [ "${_rc}" = "0" ]; then
-    if _out=$(/usr/local/bin/boa-dbctl regrant --account "${1}" 2>&1); then
-      echo "INFO: database ${2} entered as ${1}'s in the database broker's registry"
-      return 0
-    fi
-    echo "ALRT: database ${2} is ${1}'s in the database broker's registry, but its grant failed: ${_out##*$'\n'}"
-    echo "ALRT: run: boa-dbctl regrant --account ${1}"
-    return 1
-  fi
-  echo "ALRT: database ${2} is not entered as ${1}'s in the database broker's registry: ${_out##*$'\n'}"
-  echo "ALRT: its site's tasks are refused until: boa-dbctl register ${2} --account ${1} --via xcopy; boa-dbctl regrant --account ${1}"
-  return 1
-}
-
 # The poured panel carries the source's login for its database server row;
 # this box's instance user keeps its own password, so every server verify
 # (the rename's queue first) failed until the next Octopus pass re-synced it.
@@ -2466,6 +3256,101 @@ _xcopy_sync_panel_db_pass() {   # 1 account root 2 account here 3 source account
   mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp "${4}" \
     -e "UPDATE hosting_db_server SET ${_set} WHERE db_user IN ('${2}','${3}')" 2> /dev/null \
     && [ -n "${_p}" ]
+}
+
+### The name this account's next upgrade registers on its panel platform:
+### the platform its own hostmaster alias here references (platform_hostmaster
+### until the panel's first upgrade, platform_<NNN> after it), when that
+### platform's alias names the live panel dir $2; else platform_<NNN> of $2.
+### $1 is the account root. Its hostmaster alias is the target's own (xcopy
+### keeps it); a platform alias there can be the source's copy, so its root
+### must name $2.
+_xcopy_panel_platform_name() {
+  local _ref _root
+  _ref=$(_xcopy_read_in "${1}/.drush" hostmaster.alias.drushrc.php \
+    | sed -n "s/.*'platform' => '@\([^']*\)'.*/\1/p" | head -1)
+  case "${_ref}" in
+    platform_*) ;;
+    *) _ref="" ;;
+  esac
+  case "${_ref}" in *[!A-Za-z0-9_]*) _ref="" ;; esac
+  if [ -n "${_ref}" ]; then
+    _root=$(_xcopy_read_in "${1}/.drush" "${_ref}.alias.drushrc.php" \
+      | sed -n "s/.*'root' => '\([^']*\)'.*/\1/p" | head -1)
+    if [ "${_root%/}" = "${2}" ]; then
+      echo "${_ref}"
+      return 0
+    fi
+  fi
+  echo "platform_$(basename "${2}")"
+}
+
+### The repointed panel platform takes the context name this account's
+### hostmaster alias here references for its panel platform (platform_<NNN>,
+### or platform_hostmaster while the panel is still on its install platform:
+### _xcopy_panel_platform_name), the one the panel's next upgrade registers on
+### it in its resume. An aged source panel can hold that name on a platform
+### it deleted long ago: a deleted node keeps its context row. The panel's
+### register releases such a holder itself when another node needs the name
+### (a gone node, a deleted site, server or platform no live site runs on),
+### and the resume moves the panel's site record whatever happens to the
+### name; a holder that is live keeps the name, the new platform keeps the
+### one the panel gave it, and the resume reports the naming error. The row
+### is still dropped here, so the first upgrade on this box starts clean.
+### Mirror of xmass's panel repoint (kept separate by design): a deleted
+### holder's leftover context is dropped and the live platform takes the
+### name; a holder that is not a deleted platform keeps it, the live
+### platform keeps its own, and an ALRT says what the next upgrade does, as
+### one does for a write that fails.
+_xcopy_panel_context_name() {
+  local _hdb="$1" _name="$2" _pn _holder _hst
+  case "${_name}" in
+    platform_*) ;;
+    *) return 0 ;;
+  esac
+  case "${_name}" in *[!A-Za-z0-9_]*) return 0 ;; esac
+  _pn=$(mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} \
+    --protocol=tcp -N -B ${_hdb} -e "SELECT s.platform FROM hosting_context c \
+    JOIN hosting_site s ON s.nid=c.nid JOIN node n ON n.nid=s.nid AND n.vid=s.vid \
+    WHERE c.name='hostmaster' LIMIT 1" 2>/dev/null)
+  case "${_pn}" in
+    ''|*[!0-9]*)
+      echo "ALRT: cannot read the hostmaster site's platform in ${_hdb}: its context name left as it is"
+      return 0
+      ;;
+  esac
+  _holder=$(mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} \
+    --protocol=tcp -N -B ${_hdb} -e "SELECT nid FROM hosting_context \
+    WHERE name='${_name}' AND nid<>${_pn} LIMIT 1" 2>/dev/null)
+  case "${_holder}" in *[!0-9]*) _holder="" ;; esac
+  if [ -n "${_holder}" ]; then
+    _hst=$(mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} \
+      --protocol=tcp -N -B ${_hdb} -e "SELECT p.status FROM hosting_platform p \
+      JOIN node n ON n.nid=p.nid AND n.vid=p.vid WHERE p.nid=${_holder} LIMIT 1" 2>/dev/null)
+    if [ "${_hst}" = "-2" ]; then
+      if mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} \
+        --protocol=tcp ${_hdb} -e "DELETE FROM hosting_context \
+        WHERE nid=${_holder} AND name='${_name}'" 2>/dev/null; then
+        echo "PANEL-NOTE: dropped leftover context ${_name} of deleted platform ${_holder}"
+        _holder=""
+      else
+        echo "ALRT: the leftover context ${_name} of deleted platform ${_holder} could not be dropped in ${_hdb}: the account's next Octopus upgrade releases it itself, if its panel carries the current hosting"
+        return 0
+      fi
+    fi
+  fi
+  if [ -n "${_holder}" ]; then
+    echo "ALRT: context name ${_name} is held by platform ${_holder}, which is not a deleted platform: platform ${_pn} keeps its own name, and the account's next Octopus upgrade keeps the panel on the name it gives the new platform and reports the clash"
+    return 0
+  fi
+  if mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} \
+    --protocol=tcp ${_hdb} -e "UPDATE hosting_context SET name='${_name}' \
+    WHERE nid=${_pn}" 2>/dev/null; then
+    echo "PANEL-NOTE: platform ${_pn} context renamed to ${_name}"
+  else
+    echo "ALRT: platform ${_pn} could not take the context name ${_name} in ${_hdb}: if a live platform holds that name, the account's next Octopus upgrade keeps the panel on the name it gives the new platform and reports the clash"
+  fi
+  return 0
 }
 
 _xcopy_reconcile_panel_platform() {
@@ -2608,101 +3493,6 @@ _xcopy_reconcile_panel_platform() {
   fi
   echo "ALRT: panel platform repoint matched ${_nup:-no} row(s) in ${_hdb} -- the panel would 404 after the rename"
   return 1
-}
-
-### The name this account's next upgrade registers on its panel platform:
-### the platform its own hostmaster alias here references (platform_hostmaster
-### until the panel's first upgrade, platform_<NNN> after it), when that
-### platform's alias names the live panel dir $2; else platform_<NNN> of $2.
-### $1 is the account root. Its hostmaster alias is the target's own (xcopy
-### keeps it); a platform alias there can be the source's copy, so its root
-### must name $2.
-_xcopy_panel_platform_name() {
-  local _ref _root
-  _ref=$(_xcopy_read_in "${1}/.drush" hostmaster.alias.drushrc.php \
-    | sed -n "s/.*'platform' => '@\([^']*\)'.*/\1/p" | head -1)
-  case "${_ref}" in
-    platform_*) ;;
-    *) _ref="" ;;
-  esac
-  case "${_ref}" in *[!A-Za-z0-9_]*) _ref="" ;; esac
-  if [ -n "${_ref}" ]; then
-    _root=$(_xcopy_read_in "${1}/.drush" "${_ref}.alias.drushrc.php" \
-      | sed -n "s/.*'root' => '\([^']*\)'.*/\1/p" | head -1)
-    if [ "${_root%/}" = "${2}" ]; then
-      echo "${_ref}"
-      return 0
-    fi
-  fi
-  echo "platform_$(basename "${2}")"
-}
-
-### The repointed panel platform takes the context name this account's
-### hostmaster alias here references for its panel platform (platform_<NNN>,
-### or platform_hostmaster while the panel is still on its install platform:
-### _xcopy_panel_platform_name), the one the panel's next upgrade registers on
-### it in its resume. An aged source panel can hold that name on a platform
-### it deleted long ago: a deleted node keeps its context row. The panel's
-### register releases such a holder itself when another node needs the name
-### (a gone node, a deleted site, server or platform no live site runs on),
-### and the resume moves the panel's site record whatever happens to the
-### name; a holder that is live keeps the name, the new platform keeps the
-### one the panel gave it, and the resume reports the naming error. The row
-### is still dropped here, so the first upgrade on this box starts clean.
-### Mirror of xmass's panel repoint (kept separate by design): a deleted
-### holder's leftover context is dropped and the live platform takes the
-### name; a holder that is not a deleted platform keeps it, the live
-### platform keeps its own, and an ALRT says what the next upgrade does, as
-### one does for a write that fails.
-_xcopy_panel_context_name() {
-  local _hdb="$1" _name="$2" _pn _holder _hst
-  case "${_name}" in
-    platform_*) ;;
-    *) return 0 ;;
-  esac
-  case "${_name}" in *[!A-Za-z0-9_]*) return 0 ;; esac
-  _pn=$(mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} \
-    --protocol=tcp -N -B ${_hdb} -e "SELECT s.platform FROM hosting_context c \
-    JOIN hosting_site s ON s.nid=c.nid JOIN node n ON n.nid=s.nid AND n.vid=s.vid \
-    WHERE c.name='hostmaster' LIMIT 1" 2>/dev/null)
-  case "${_pn}" in
-    ''|*[!0-9]*)
-      echo "ALRT: cannot read the hostmaster site's platform in ${_hdb}: its context name left as it is"
-      return 0
-      ;;
-  esac
-  _holder=$(mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} \
-    --protocol=tcp -N -B ${_hdb} -e "SELECT nid FROM hosting_context \
-    WHERE name='${_name}' AND nid<>${_pn} LIMIT 1" 2>/dev/null)
-  case "${_holder}" in *[!0-9]*) _holder="" ;; esac
-  if [ -n "${_holder}" ]; then
-    _hst=$(mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} \
-      --protocol=tcp -N -B ${_hdb} -e "SELECT p.status FROM hosting_platform p \
-      JOIN node n ON n.nid=p.nid AND n.vid=p.vid WHERE p.nid=${_holder} LIMIT 1" 2>/dev/null)
-    if [ "${_hst}" = "-2" ]; then
-      if mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} \
-        --protocol=tcp ${_hdb} -e "DELETE FROM hosting_context \
-        WHERE nid=${_holder} AND name='${_name}'" 2>/dev/null; then
-        echo "PANEL-NOTE: dropped leftover context ${_name} of deleted platform ${_holder}"
-        _holder=""
-      else
-        echo "ALRT: the leftover context ${_name} of deleted platform ${_holder} could not be dropped in ${_hdb}: the account's next Octopus upgrade releases it itself, if its panel carries the current hosting"
-        return 0
-      fi
-    fi
-  fi
-  if [ -n "${_holder}" ]; then
-    echo "ALRT: context name ${_name} is held by platform ${_holder}, which is not a deleted platform: platform ${_pn} keeps its own name, and the account's next Octopus upgrade keeps the panel on the name it gives the new platform and reports the clash"
-    return 0
-  fi
-  if mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} \
-    --protocol=tcp ${_hdb} -e "UPDATE hosting_context SET name='${_name}' \
-    WHERE nid=${_pn}" 2>/dev/null; then
-    echo "PANEL-NOTE: platform ${_pn} context renamed to ${_name}"
-  else
-    echo "ALRT: platform ${_pn} could not take the context name ${_name} in ${_hdb}: if a live platform holds that name, the account's next Octopus upgrade keeps the panel on the name it gives the new platform and reports the clash"
-  fi
-  return 0
 }
 
 # This server's name as export records it in log/sourcefqdn.txt: the account's
@@ -3499,62 +4289,6 @@ _xcopy_php_inert_report() {
   done <<< "${_rows}"
 }
 
-### Verify every needed PHP version is installed on the target -- the same
-### /opt/phpNN/bin/php probe BOA's own fallback ladders use. A missing version
-### is fatal by default, because served-on-the-wrong-PHP is the silent failure
-### this whole step exists to prevent. With --fix-php the missing versions are
-### appended to the target's _PHP_MULTI_INSTALL and one barracuda system run
-### is driven remotely to build them (a full system pass: a few minutes).
-### --fix-php is a create option, so only create offers it.
-_xcopy_php_coverage_gate() {
-  local _u="$1" _t="$2" _need _v _sv _miss="" _why
-  ### a control folder another account made holds no PHP choice of this
-  ### account's: its PHP would not be known on the target
-  if ! _why="$(_acct_ctrl_own "${_u##*/}")"; then
-    echo "ERROR: ${_u}/static/control is not $(basename "${_u}")'s own (${_why}): its PHP choices are not read"
-    echo "ERROR: remove what another account made there (the ltd worker's ALERT names it), then run this again"
-    return 1
-  fi
-  _need="$(_mig_php_versions_needed "${_u}")"
-  if [ -z "${_need// /}" ]; then
-    _xcopy_php_inert_report "${_u}" "${_t}" alrt
-    return 0
-  fi
-  echo "INFO: PHP versions required by $(basename "${_u}"): ${_need}"
-  for _v in ${_need}; do
-    _sv=${_v//[^0-9]/}
-    if ! ssh root@"${_t}" "[ -x /opt/php${_sv}/bin/php ]" 2>/dev/null; then
-      _miss="${_miss} ${_v}"
-    fi
-  done
-  _miss="${_miss## }"
-  if [ "${_XCOPY_FIX_PHP}" = "YES" ]; then
-    _xcopy_php_inert_report "${_u}" "${_t}" alrt "${_miss}"
-  else
-    _xcopy_php_inert_report "${_u}" "${_t}" alrt
-  fi
-  [ -z "${_miss}" ] && return 0
-  echo "ALRT: target ${_t} lacks PHP version(s) required by $(basename "${_u}"): ${_miss}"
-  if [ "${_XCOPY_FIX_PHP}" = "YES" ]; then
-    _mig_fix_target_php "${_t}" "${_miss}" || return 1
-    for _v in ${_miss}; do
-      _sv=${_v//[^0-9]/}
-      if ! ssh root@"${_t}" "[ -x /opt/php${_sv}/bin/php ]" 2>/dev/null; then
-        echo "ERROR: PHP ${_v} still missing on ${_t} after the fix run"
-        return 1
-      fi
-    done
-    return 0
-  fi
-  echo "ERROR: a pinned PHP version missing on the target means every affected site"
-  echo "ERROR: silently falls back to a different PHP after migration."
-  echo "ERROR: Fix on the target: add '${_miss}' to _PHP_MULTI_INSTALL in /root/.barracuda.cnf"
-  echo "ERROR: and run: barracuda up-<tree> system noscreen"
-  [ "${_cmd:-}" = "create" ] \
-    && echo "ERROR: Or re-run this command with --fix-php to do both automatically."
-  return 1
-}
-
 ### Extend the target's _PHP_MULTI_INSTALL with the missing versions and run
 ### one barracuda system pass there to build them. Idempotent: versions
 ### already listed are not repeated, and barracuda itself is safe to re-run.
@@ -3621,6 +4355,62 @@ _mig_fix_target_php() {
   return 0
 }
 
+### Verify every needed PHP version is installed on the target -- the same
+### /opt/phpNN/bin/php probe BOA's own fallback ladders use. A missing version
+### is fatal by default, because served-on-the-wrong-PHP is the silent failure
+### this whole step exists to prevent. With --fix-php the missing versions are
+### appended to the target's _PHP_MULTI_INSTALL and one barracuda system run
+### is driven remotely to build them (a full system pass: a few minutes).
+### --fix-php is a create option, so only create offers it.
+_xcopy_php_coverage_gate() {
+  local _u="$1" _t="$2" _need _v _sv _miss="" _why
+  ### a control folder another account made holds no PHP choice of this
+  ### account's: its PHP would not be known on the target
+  if ! _why="$(_acct_ctrl_own "${_u##*/}")"; then
+    echo "ERROR: ${_u}/static/control is not $(basename "${_u}")'s own (${_why}): its PHP choices are not read"
+    echo "ERROR: remove what another account made there (the ltd worker's ALERT names it), then run this again"
+    return 1
+  fi
+  _need="$(_mig_php_versions_needed "${_u}")"
+  if [ -z "${_need// /}" ]; then
+    _xcopy_php_inert_report "${_u}" "${_t}" alrt
+    return 0
+  fi
+  echo "INFO: PHP versions required by $(basename "${_u}"): ${_need}"
+  for _v in ${_need}; do
+    _sv=${_v//[^0-9]/}
+    if ! ssh root@"${_t}" "[ -x /opt/php${_sv}/bin/php ]" 2>/dev/null; then
+      _miss="${_miss} ${_v}"
+    fi
+  done
+  _miss="${_miss## }"
+  if [ "${_XCOPY_FIX_PHP}" = "YES" ]; then
+    _xcopy_php_inert_report "${_u}" "${_t}" alrt "${_miss}"
+  else
+    _xcopy_php_inert_report "${_u}" "${_t}" alrt
+  fi
+  [ -z "${_miss}" ] && return 0
+  echo "ALRT: target ${_t} lacks PHP version(s) required by $(basename "${_u}"): ${_miss}"
+  if [ "${_XCOPY_FIX_PHP}" = "YES" ]; then
+    _mig_fix_target_php "${_t}" "${_miss}" || return 1
+    for _v in ${_miss}; do
+      _sv=${_v//[^0-9]/}
+      if ! ssh root@"${_t}" "[ -x /opt/php${_sv}/bin/php ]" 2>/dev/null; then
+        echo "ERROR: PHP ${_v} still missing on ${_t} after the fix run"
+        return 1
+      fi
+    done
+    return 0
+  fi
+  echo "ERROR: a pinned PHP version missing on the target means every affected site"
+  echo "ERROR: silently falls back to a different PHP after migration."
+  echo "ERROR: Fix on the target: add '${_miss}' to _PHP_MULTI_INSTALL in /root/.barracuda.cnf"
+  echo "ERROR: and run: barracuda up-<tree> system noscreen"
+  [ "${_cmd:-}" = "create" ] \
+    && echo "ERROR: Or re-run this command with --fix-php to do both automatically."
+  return 1
+}
+
 ###-------------SHELL CREDENTIALS----###
 ###
 ### Mirrored from xoct (bodies identical with the prefixes swapped).
@@ -3636,17 +4426,6 @@ _xcopy_landed_uids_sh() {
   _i="$(id -u -- "${_n}" 2> /dev/null)"
   [[ "${_i}" =~ ^[0-9]+$ ]] || return 0
   printf '%s' "\$(id -u -- ${_n} 2> /dev/null || echo ${_i})"
-}
-### The regular file ./$1 of the current (pinned) directory copied, forced
-### (no -u), to the same name in the real directory $3 on the target $2, $4
-### the caller's rsync error option. A link is never carried and neither end
-### resolves a name on its path through a link the account put there. Nothing
-### travels when ./$1 is not a regular file.
-_xcopy_put_file_remote_here() {
-  [ -f "./${1}" ] && [ ! -L "./${1}" ] || return 0
-  _xcopy_rsync -aEAX --no-links ${4} \
-    --rsync-path="$(_xcopy_rsync_path_in "${3}")" -e ssh \
-    "./${1}" "root@${2}:./${1}"
 }
 ### The regular files of the current (pinned) sub-account password store of
 ### the account $1, each put under the name it takes for the account $2
@@ -3679,6 +4458,55 @@ _xcopy_subuser_ssh_ok() {
   _xcopy_in_real_dir "/home/${1}/.ssh" true && return 0
   echo "ALRT: /home/${1}/.ssh is not a real directory -- not followed; its keys not carried"
   return 1
+}
+# An --rsync-path that starts the receiving rsync on the target inside the
+# real directory $1, so the destination is given as ./ and never resolves
+# through a link the account put there; the copy fails when $1 is not that
+# directory.
+_xcopy_rsync_path_in() {
+  local _a=/data/disk
+  case "${1}" in
+    /home/?*) _a=/home ;;
+    /opt/user/?*) _a=/opt/user ;;
+  esac
+  printf '%s' "cd -P -- '${1}' && [ \"\$(/bin/pwd -P)\" = \"\$(cd -P ${_a} && /bin/pwd -P)${1#"${_a}"}\" ] && rsync"
+}
+### The regular file ./$1 of the current (pinned) directory copied, forced
+### (no -u), to the same name in the real directory $3 on the target $2, $4
+### the caller's rsync error option. A link is never carried and neither end
+### resolves a name on its path through a link the account put there. Nothing
+### travels when ./$1 is not a regular file.
+_xcopy_put_file_remote_here() {
+  [ -f "./${1}" ] && [ ! -L "./${1}" ] || return 0
+  _xcopy_rsync -aEAX --no-links ${4} \
+    --rsync-path="$(_xcopy_rsync_path_in "${3}")" -e ssh \
+    "./${1}" "root@${2}:./${1}"
+}
+# The same rule on the target box: the commands $3 run on the target $1
+# inside the real directory $2 (below /data/disk or /home every name on the
+# path a real directory), where _rr reads a name without following a link or
+# blocking on a FIFO, _rp puts one as a fresh file through _XCOPY_PUT_PL,
+# renamed over the name (empty when no content is given; $3 the owner:group
+# it is created with, root's when empty or when it does not resolve), and _ro
+# re-asserts owner:group $1 and mode $2 on names through _XCOPY_REASSERT_PL
+# ($3 the further uids the names may carry). The target account is the
+# tenant's once its identity has travelled. Both perl texts are spliced in
+# unquoted here, so each lands on the target inside single quotes: both are
+# set above this line (as in xoct).
+_XCOPY_REMOTE_CTRL_FN='_rr() { timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock bs=1048576 count=1 status=none 2> /dev/null; }
+_rid() { local _u _g; _u="$(id -u -- "${1%%:*}" 2> /dev/null)"; _g="$(getent group "${1#*:}" 2> /dev/null | cut -d: -f3)"; case "${_u}:${_g}" in :*|*:|*[!0-9:]*) _u=-1; _g=-1 ;; esac; printf "%s %s\n" "${_u}" "${_g}"; }
+_rp() { local _t="./.${1}.put.$$.${RANDOM}" _i="-1 -1"; [ -n "${3}" ] && _i="$(_rid "${3}")"; rm -f -- "${_t}"; if { [ -n "${2}" ] && printf "%s\n" "${2}"; true; } | perl -e '"'${_XCOPY_PUT_PL}'"' "${_t}" "${_i% *}" "${_i#* }" 644 && mv -f -T -- "${_t}" "./${1}"; then return 0; fi; rm -f -- "${_t}"; return 1; }
+_ro() { local _i; _i="$(_rid "${1}")"; shift; perl -e '"'${_XCOPY_REASSERT_PL}'"' -- "${_i% *}" "${_i#* }" "$@" 2> /dev/null; }'
+_xcopy_remote_in() {
+  local _a=/data/disk
+  case "${2}" in /home/?*) _a=/home ;; esac
+  ssh root@"${1}" "${_XCOPY_REMOTE_CTRL_FN}
+_w=\"\$(cd -P ${_a} 2> /dev/null && /bin/pwd -P)${2#"${_a}"}\"
+cd -P -- \"${2}\" 2> /dev/null && [ \"\$(/bin/pwd -P)\" = \"\${_w}\" ] && { ${3}; }"
+}
+# The commands $3 inside the real static/control of the account $2 there.
+_xcopy_remote_ctrl() {
+  _xcopy_remote_in "${1}" "/data/disk/${2}/static/control" "${3}"
 }
 ### Carry the client shell identity, so the copy keeps the client's own
 ### logins: the main <acct>.ftp shadow hash and log/pass.txt (kept consistent
@@ -3783,6 +4611,71 @@ _xcopy_sync_shell_credentials() {
   return 0
 }
 
+# The real (non-link) subdirectory names of the current (pinned) directory.
+_xcopy_real_subdirs_here() {
+  local _e
+  for _e in ./*; do
+    [ -d "${_e}" ] && [ ! -L "${_e}" ] && printf '%s\n' "${_e#./}"
+  done
+}
+# clients/ ($1) is oN's: enter only real client subdirectories, remove only
+# their own ./backups, then prune dangling links from inside the real dir --
+# never rm -rf or symlinks -dr through a link at clients or a client name.
+_xcopy_clean_clients() {
+  local _cd="${1}" _c
+  _xcopy_in_real_dir "${_cd}" true || return 0
+  _xcopy_in_real_dir "${_cd}" _xcopy_real_subdirs_here | while IFS= read -r _c; do
+    [ -n "${_c}" ] || continue
+    _xcopy_in_real_dir "${_cd}/${_c}" rm -rf -- ./backups
+  done
+  _xcopy_in_real_dir "${_cd}" symlinks -dr .
+}
+# The per-site dump folders in the current (pinned) src/ directory removed: a
+# real directory holding mydumper's metadata file. The transfer adds to the
+# target's folders and never removes from them, and the import loads every
+# file there, so a folder left from an earlier copy would load that copy's
+# tables and chunks with the new ones. A link is never followed.
+_xcopy_rm_site_dumps_here() {
+  local _e
+  for _e in ./*/; do
+    _e="${_e%/}"
+    [ -L "${_e}" ] && continue
+    if [ -d "${_e}" ] && [ -f "${_e}/metadata" ] && [ ! -L "${_e}/metadata" ]; then
+      rm -rf -- "${_e}"
+    fi
+  done
+}
+# The names among "$@" still in the current (pinned) directory, each after a
+# space; a *.sql argument stands for every dump there, a site-dumps argument
+# for every per-site dump folder.
+_xcopy_names_left_here() {
+  local _n _f
+  for _n in "$@"; do
+    if [ "${_n}" = "*.sql" ]; then
+      for _f in ./*.sql; do
+        if [ -e "${_f}" ] || [ -L "${_f}" ]; then
+          printf ' %s' "${_f#./}"
+        fi
+      done
+    elif [ "${_n}" = "site-dumps" ]; then
+      for _f in ./*/; do
+        _f="${_f%/}"
+        [ -L "${_f}" ] && continue
+        if [ -d "${_f}" ] && [ -f "${_f}/metadata" ] && [ ! -L "${_f}/metadata" ]; then
+          printf ' %s/' "${_f#./}"
+        fi
+      done
+    elif [ -e "./${_n}" ] || [ -L "./${_n}" ]; then
+      printf ' %s' "${_n}"
+    fi
+  done
+}
+_mig_utf8mb4_client_opt() {
+  _MYSQL_UTF8MB4=()
+  _mig_utf8mb4_takes "$@" || return 0
+  _MYSQL_UTF8MB4=(--init-command="SET SESSION default_collation_for_utf8mb4 = utf8mb4_general_ci")
+  return 0
+}
 _migrate_prepare() {
   # The watchdog stands down for the database verbs (_xcopy_sql_maint_hold);
   # released at the end of this function, or by the EXIT trap.
@@ -4646,120 +5539,6 @@ _xcopy_finalize_dry() {   # 1 oct 2 tgt
     _xcopy_write_state "$1" "$2" "NOT_CLEAN" "DRY"
   fi
 }
-# An account's static/control is its main login's, and oN owns the rest of
-# /data/disk/oN (log/, .drush): either can put a link or a FIFO at any name
-# there, or at the directory itself. Root reads and writes those names only
-# through these. Run "$@" inside the real directory $1: below /data/disk and
-# /home every name on the path must be a real directory; once entered,
-# ./name stays there whatever is swapped.
-_xcopy_in_real_dir() {
-  local _d="${1}" _want
-  shift
-  _want="$(_xcopy_real_want "${_d}")"
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] && "$@" )
-}
-# ./$1 in the current (pinned) directory: never through a link, never
-# blocked on a FIFO, at most 1 MiB; empty for anything else.
-_xcopy_read_here() {
-  timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
-    bs=1048576 count=1 status=none 2> /dev/null
-}
-# ./$1 in the current (pinned) directory, printed only when it is a regular
-# file owned by root with one link, checked on the one handle that reads it
-# (at most 1 MiB): an account can put a file of its own at a name in a
-# directory it owns.
-_xcopy_read_root_here() {
-  perl -e 'use Fcntl; sysopen(my $h, $ARGV[0], O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit 1; my @s = stat($h) or exit 1; exit 1 unless -f _ && $s[4] == 0 && $s[3] == 1; my $d = ""; defined(read($h, $d, 1048576)) or exit 1; print $d; exit 0' -- "./${1}"
-}
-# The words of $1 that are host names (letters, digits, dots, dashes, a
-# leading wildcard), space-separated; anything else is dropped. The words
-# are split without file name expansion, so a wildcard name stays as is.
-_xcopy_host_words() {
-  local _w _o=""
-  local -a _ws
-  IFS=$' \t\n' read -r -d '' -a _ws <<< "${1}"
-  for _w in "${_ws[@]}"; do
-    [[ "${_w}" =~ ^[A-Za-z0-9*][A-Za-z0-9.*-]*$ ]] || continue
-    [ "${#_w}" -le 253 ] || continue
-    _o="${_o} ${_w}"
-  done
-  printf '%s' "${_o# }"
-}
-# $2 in the real directory $1, read as _xcopy_read_here reads it.
-_xcopy_read_in() {
-  _xcopy_in_real_dir "${1}" _xcopy_read_here "${2}"
-}
-# ./$1 in the current (pinned) directory with exactly the bytes read from
-# stdin (0644): a fresh file created exclusively, then renamed over the name,
-# so a link or FIFO put there is replaced, never followed or opened.
-_xcopy_write_here() {
-  local _t="./.${1}.put.$$.${RANDOM}"
-  rm -f -- "${_t}"
-  ( umask 022
-    dd of="${_t}" conv=excl status=none 2> /dev/null ) \
-    && mv -f -T -- "${_t}" "./${1}" && return 0
-  rm -f -- "${_t}"
-  return 1
-}
-# ./$1 in the current (pinned) directory as an empty marker, put the same way.
-_xcopy_touch_here() {
-  _xcopy_write_here "${1}" < /dev/null
-}
-
-# The file ./$1 (never there before) created with the bytes read from stdin,
-# the owner $2:$3 (numeric; -1 keeps root's) and the read/write bits of the
-# mode $4, all through the one handle that created it, opened
-# O_EXCL|O_NOFOLLOW: nothing is ever chowned or chmodded by name in a
-# directory the account can write (a hard link renamed over the name before a
-# chown by name would hand another file to that owner).
-_XCOPY_PUT_PL='use Fcntl; my ($n, $u, $g, $m) = @ARGV; local $/; my $d = <STDIN>; sysopen(my $h, $n, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600) or exit 1; (print {$h} $d) or exit 1; chown($u, $g, $h) or exit 1; chmod(oct($m) & 0666, $h) or exit 1; close($h) or exit 1; exit 0'
-# The owner $1:$2 (numeric; -1 leaves it) and the mode $3 (none when empty)
-# re-asserted on each existing name ./$5 ... through one handle opened
-# O_NOFOLLOW|O_NONBLOCK, and only when that handle is a regular file with one
-# link whose owner is already $1 or one of the uids in the comma-separated
-# $4: a link, a FIFO, a hard link to another file, or a file of some other
-# identity (root's included: a root-only file renamed onto the name is never
-# handed over) is left as it is, never handed to the account or chmodded.
-# What root puts for the account is created with its final owner instead.
-_XCOPY_REASSERT_PL='use Fcntl; my ($u, $g, $m, $x, @f) = @ARGV; my %ok = map { $_ => 1 } ($u, split(/,/, $x)); for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); if (@s && -f _ && $s[3] == 1 && $ok{$s[4]}) { chown($u, $g, $h) if $u >= 0; chmod(oct($m), $h) if length $m; } close($h); } exit 0'
-# The same rule on the target box: the commands $3 run on the target $1
-# inside the real directory $2 (below /data/disk or /home every name on the
-# path a real directory), where _rr reads a name without following a link or
-# blocking on a FIFO, _rp puts one as a fresh file through _XCOPY_PUT_PL,
-# renamed over the name (empty when no content is given; $3 the owner:group
-# it is created with, root's when empty or when it does not resolve), and _ro
-# re-asserts owner:group $1 and mode $2 on names through _XCOPY_REASSERT_PL
-# ($3 the further uids the names may carry). The target account is the
-# tenant's once its identity has travelled. Both perl texts are spliced in
-# unquoted here, so each lands on the target inside single quotes: both are
-# set above this line (as in xoct).
-_XCOPY_REMOTE_CTRL_FN='_rr() { timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock bs=1048576 count=1 status=none 2> /dev/null; }
-_rid() { local _u _g; _u="$(id -u -- "${1%%:*}" 2> /dev/null)"; _g="$(getent group "${1#*:}" 2> /dev/null | cut -d: -f3)"; case "${_u}:${_g}" in :*|*:|*[!0-9:]*) _u=-1; _g=-1 ;; esac; printf "%s %s\n" "${_u}" "${_g}"; }
-_rp() { local _t="./.${1}.put.$$.${RANDOM}" _i="-1 -1"; [ -n "${3}" ] && _i="$(_rid "${3}")"; rm -f -- "${_t}"; if { [ -n "${2}" ] && printf "%s\n" "${2}"; true; } | perl -e '"'${_XCOPY_PUT_PL}'"' "${_t}" "${_i% *}" "${_i#* }" 644 && mv -f -T -- "${_t}" "./${1}"; then return 0; fi; rm -f -- "${_t}"; return 1; }
-_ro() { local _i; _i="$(_rid "${1}")"; shift; perl -e '"'${_XCOPY_REASSERT_PL}'"' -- "${_i% *}" "${_i#* }" "$@" 2> /dev/null; }'
-_xcopy_remote_in() {
-  local _a=/data/disk
-  case "${2}" in /home/?*) _a=/home ;; esac
-  ssh root@"${1}" "${_XCOPY_REMOTE_CTRL_FN}
-_w=\"\$(cd -P ${_a} 2> /dev/null && /bin/pwd -P)${2#"${_a}"}\"
-cd -P -- \"${2}\" 2> /dev/null && [ \"\$(/bin/pwd -P)\" = \"\${_w}\" ] && { ${3}; }"
-}
-# The commands $3 inside the real static/control of the account $2 there.
-_xcopy_remote_ctrl() {
-  _xcopy_remote_in "${1}" "/data/disk/${2}/static/control" "${3}"
-}
-# An --rsync-path that starts the receiving rsync on the target inside the
-# real directory $1, so the destination is given as ./ and never resolves
-# through a link the account put there; the copy fails when $1 is not that
-# directory.
-_xcopy_rsync_path_in() {
-  local _a=/data/disk
-  case "${1}" in
-    /home/?*) _a=/home ;;
-    /opt/user/?*) _a=/opt/user ;;
-  esac
-  printf '%s' "cd -P -- '${1}' && [ \"\$(/bin/pwd -P)\" = \"\$(cd -P ${_a} && /bin/pwd -P)${1#"${_a}"}\" ] && rsync"
-}
 # The entries of the current (pinned) directory the glob $3 names (empty:
 # the directory's contents), expanded here, copied with the rsync options
 # that follow into the real directory $2 on the target $1: neither end
@@ -4772,75 +5551,6 @@ _xcopy_copy_here() {
   _xcopy_rsync "$@" --rsync-path="$(_xcopy_rsync_path_in "${_d}")" -e ssh \
     ./${_g} "root@${_h}:./"
 }
-### True when the glob $1 names an entry of the current directory, or is
-### empty (the directory's contents). A glob that names nothing copies
-### nothing: rsync would be handed the pattern itself and print an error
-### for a folder that is only empty.
-_xcopy_glob_names() {
-  local _m
-  [ -n "${1}" ] || return 0
-  # shellcheck disable=SC2086
-  for _m in ./${1}; do
-    { [ -e "${_m}" ] || [ -L "${_m}" ]; } && return 0
-  done
-  return 1
-}
-# As _xcopy_rsync_path_in, but the last name of $1 is made a real directory
-# first (a link the account put there is removed, a missing directory made):
-# for a leg whose target directory the install does not create.
-_xcopy_rsync_path_mk_in() {
-  local _d="${1}" _a=/data/disk _p _n _m _c
-  case "${_d}" in
-    /home/?*) _a=/home ;;
-    /opt/user/?*) _a=/opt/user ;;
-  esac
-  _p="${_d%/*}"
-  _n="${_d##*/}"
-  # The client toolchain trees' parents are shared and BOA's own: root's,
-  # sticky and world-writable, as the ltd worker makes them. A target where
-  # Ruby or Node was never set up has none, and the account's tree would not
-  # travel: the parent is made there first (never through a link). Any
-  # account there can make the login's name in them first, so the copy goes
-  # only into a tree root or one of the account's own identities (the
-  # account, <account>.<name>) owns, read from inside it.
-  _m=""
-  _c=""
-  case "${_p}" in
-    /opt/user/*/*) ;;
-    /opt/user/?*)
-      _m="[ -L /opt/user ] || [ -d /opt/user ] || mkdir -m 755 /opt/user; [ -L '${_p}' ] || [ -d '${_p}' ] || { mkdir -m 1777 '${_p}' && chown root:root '${_p}'; }; "
-      _c="case \"\$(stat -c %U .)\" in root|'${_n%%.*}'|'${_n%%.*}'.*) ;; *) echo \"${_d} is owned by \$(stat -c %U .), not by ${_n%%.*} or root: not entered\" >&2; false ;; esac && "
-      ;;
-  esac
-  printf '%s' "${_m}_a=\"\$(cd -P ${_a} && /bin/pwd -P)\"; cd -P -- '${_p}' && [ \"\$(/bin/pwd -P)\" = \"\${_a}${_p#"${_a}"}\" ] && { [ -L './${_n}' ] && rm -f './${_n}'; [ -d './${_n}' ] || mkdir './${_n}'; } && cd -P -- './${_n}' && [ \"\$(/bin/pwd -P)\" = \"\${_a}${_d#"${_a}"}\" ] && ${_c}rsync"
-}
-# The entries of the current (pinned) directory the glob $3 names copied into
-# the real directory $2 on the target $1, the target directory created when
-# missing (a link there removed first).
-_xcopy_copy_mk_here() {
-  local _h="${1}" _d="${2}" _g="${3}"
-  shift 3
-  _xcopy_glob_names "${_g}" || return 0
-  # shellcheck disable=SC2086
-  _xcopy_rsync "$@" --rsync-path="$(_xcopy_rsync_path_mk_in "${_d}")" -e ssh \
-    ./${_g} "root@${_h}:./"
-}
-### Where the directory $1 resolves when every name on its path below
-### /data/disk, /home or /opt/user (the client toolchain trees) is a real
-### directory; elsewhere, its last name inside its resolved parent.
-_xcopy_real_want() {
-  local _d="${1}" _a=""
-  case "${_d}" in
-    /home/?*) _a=/home ;;
-    /data/disk/?*) _a=/data/disk ;;
-    /opt/user/?*) _a=/opt/user ;;
-  esac
-  if [ -n "${_a}" ]; then
-    printf '%s' "$(cd -P -- "${_a}" 2> /dev/null && /bin/pwd -P)${_d#"${_a}"}"
-  else
-    printf '%s' "$(cd -P -- "${_d%/*}" 2> /dev/null && /bin/pwd -P)/${_d##*/}"
-  fi
-}
 ### "$@" run inside the canonical directory $1, only once pwd -P lands
 ### exactly there.
 _xcopy_in_canon_dir() {
@@ -4852,6 +5562,10 @@ _xcopy_in_canon_dir() {
   esac
   ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_d}" ] && "$@" )
 }
+# Single-quote-escape a value for safe embedding in a remote 'single-quoted' ssh arg
+# (covers a legacy path that might contain a quote).
+_shq() { printf "%s" "$1" | sed "s/'/'\\\\''/g"; }
+
 ### The --rsync-path that starts the receiver inside the canonical directory
 ### $1 on the target, and only once pwd -P says it is there.
 _xcopy_canon_rpath() {
@@ -5133,6 +5847,68 @@ _xcopy_leg_ok() {
   [ "${_MODE}" = "LIVE" ] && _XCOPY_STORE_RC=1
   return 1
 }
+### rsync exit 23 ("some files/attrs were not transferred") is the same
+### benign event as 24 when every error rsync printed is a sender-side ENOENT:
+### a file that vanished after rsync listed it is reported through whichever
+### call met it first (the xattr or ACL read, the lstat, the open, the
+### opendir) and the run exits 23, not 24. A client's own gem or npm run, or a
+### backup rotated during the copy, does exactly that. link_stat is a source
+### argument gone before the copy read it: the backups leg passes its glob's
+### names with --ignore-missing-args, so a backup rotated before the read is
+### skipped there; anywhere else it is no vanished file. Any receiver-side
+### error and any other errno keep 23 as the failure it is. xmass reads its
+### copies the same way (_xmass_rsync_vanished_only).
+### $1 = the captured rsync stderr; returns 0 when 23 may be read as 24.
+_xcopy_rsync_vanished_only() {
+  local _err="$1" _bad
+  [ -s "${_err}" ] || return 1
+  grep -q 'No such file or directory' "${_err}" || return 1
+  grep -qE 'rsync: (\[sender\] )?link_stat ' "${_err}" && return 1
+  # Every line must be one of these, or 23 stays a failure: a sender ENOENT
+  # (rsync before 3.2.3, a legacy source, prints no [sender] role tag, so the
+  # untagged form is accepted only for the sender's own listing calls), the
+  # vanished file or directory warning, rsync's closing lines, ssh's notes on
+  # a host key it added and on a key exchange that is not post-quantum (an
+  # older or armoured peer, OpenSSH 10.1 and later), an empty line. The
+  # receiver reports some failures without an rsync prefix (a file that failed
+  # verification, a name too long to make): such a line is no vanished file.
+  # ssh ends each line it writes to stderr with a carriage return as well.
+  _bad=$(tr -d '\r' < "${_err}" | grep -vE '^rsync: \[sender\] .*No such file or directory \(2\)$' \
+    | grep -vE '^rsync: (get_xattr_names|get_xattr_data|get_acl|readlink_stat|send_files|opendir)[ :(].*No such file or directory \(2\)$' \
+    | grep -vE '^(rsync: (\[sender\] )?)?(file|directory) has vanished: ' \
+    | grep -vE '^rsync error: some files/attrs were not transferred \(see previous errors\) \(code 23\)' \
+    | grep -vE '^rsync warning: some files vanished before they could be transferred \(code 24\)' \
+    | grep -vE '^Warning: Permanently added ' \
+    | grep -vE '^\*\* (WARNING: connection is not using a post-quantum key exchange algorithm\.|This session may be vulnerable to "store now, decrypt later" attacks\.|The server may need to be upgraded\. See https://openssh\.com/pq\.html)$' \
+    | grep -vE '^[[:space:]]*$' \
+    | head -1)
+  [ -z "${_bad}" ]
+}
+### The status a leg's copy counts as. $1 = the copy's status; the errors
+### the leg kept in _XCOPY_RSYNC_ERR are printed (on stderr, as rsync printed
+### them) and the file removed. A 23 that only vanished files caused is 24.
+### Prints the status, and nothing else on stdout.
+_xcopy_leg_rc() {
+  local _rc="${1}"
+  if [ -n "${_XCOPY_RSYNC_ERR:-}" ]; then
+    [ -s "${_XCOPY_RSYNC_ERR}" ] && cat "${_XCOPY_RSYNC_ERR}" >&2
+    if [ "${_rc}" = "23" ] && _xcopy_rsync_vanished_only "${_XCOPY_RSYNC_ERR}"; then
+      _rc=24
+      echo "INFO: rsync rc=23 carried only vanished-file errors (a file gone between listing and read), read as rc=24" >&2
+    fi
+    rm -f -- "${_XCOPY_RSYNC_ERR}"
+  fi
+  echo "${_rc}"
+}
+### As _xcopy_copy_here, but the receiver starts in the canonical directory $2
+### the target reported (see _xcopy_tgt_place).
+_xcopy_copy_canon_here() {
+  local _h="${1}" _d="${2}" _g="${3}"
+  shift 3
+  # shellcheck disable=SC2086
+  _xcopy_rsync "$@" --rsync-path="$(_xcopy_canon_rpath "${_d}")" -e ssh \
+    ./${_g} "root@${_h}:./"
+}
 ### backups/ or backup-exports/ ($5) of the account tree $1 carried to the
 ### account tree $2 on the target $3 ($4 the rsync error option). On a box
 ### whose files store sits on its own device the nightly moves both into
@@ -5210,59 +5986,6 @@ _xcopy_backups_leg() {
   fi
   return 0
 }
-### rsync exit 23 ("some files/attrs were not transferred") is the same
-### benign event as 24 when every error rsync printed is a sender-side ENOENT:
-### a file that vanished after rsync listed it is reported through whichever
-### call met it first (the xattr or ACL read, the lstat, the open, the
-### opendir) and the run exits 23, not 24. A client's own gem or npm run, or a
-### backup rotated during the copy, does exactly that. link_stat is a source
-### argument gone before the copy read it: the backups leg passes its glob's
-### names with --ignore-missing-args, so a backup rotated before the read is
-### skipped there; anywhere else it is no vanished file. Any receiver-side
-### error and any other errno keep 23 as the failure it is. xmass reads its
-### copies the same way (_xmass_rsync_vanished_only).
-### $1 = the captured rsync stderr; returns 0 when 23 may be read as 24.
-_xcopy_rsync_vanished_only() {
-  local _err="$1" _bad
-  [ -s "${_err}" ] || return 1
-  grep -q 'No such file or directory' "${_err}" || return 1
-  grep -qE 'rsync: (\[sender\] )?link_stat ' "${_err}" && return 1
-  # Every line must be one of these, or 23 stays a failure: a sender ENOENT
-  # (rsync before 3.2.3, a legacy source, prints no [sender] role tag, so the
-  # untagged form is accepted only for the sender's own listing calls), the
-  # vanished file or directory warning, rsync's closing lines, ssh's notes on
-  # a host key it added and on a key exchange that is not post-quantum (an
-  # older or armoured peer, OpenSSH 10.1 and later), an empty line. The
-  # receiver reports some failures without an rsync prefix (a file that failed
-  # verification, a name too long to make): such a line is no vanished file.
-  # ssh ends each line it writes to stderr with a carriage return as well.
-  _bad=$(tr -d '\r' < "${_err}" | grep -vE '^rsync: \[sender\] .*No such file or directory \(2\)$' \
-    | grep -vE '^rsync: (get_xattr_names|get_xattr_data|get_acl|readlink_stat|send_files|opendir)[ :(].*No such file or directory \(2\)$' \
-    | grep -vE '^(rsync: (\[sender\] )?)?(file|directory) has vanished: ' \
-    | grep -vE '^rsync error: some files/attrs were not transferred \(see previous errors\) \(code 23\)' \
-    | grep -vE '^rsync warning: some files vanished before they could be transferred \(code 24\)' \
-    | grep -vE '^Warning: Permanently added ' \
-    | grep -vE '^\*\* (WARNING: connection is not using a post-quantum key exchange algorithm\.|This session may be vulnerable to "store now, decrypt later" attacks\.|The server may need to be upgraded\. See https://openssh\.com/pq\.html)$' \
-    | grep -vE '^[[:space:]]*$' \
-    | head -1)
-  [ -z "${_bad}" ]
-}
-### The status a leg's copy counts as. $1 = the copy's status; the errors
-### the leg kept in _XCOPY_RSYNC_ERR are printed (on stderr, as rsync printed
-### them) and the file removed. A 23 that only vanished files caused is 24.
-### Prints the status, and nothing else on stdout.
-_xcopy_leg_rc() {
-  local _rc="${1}"
-  if [ -n "${_XCOPY_RSYNC_ERR:-}" ]; then
-    [ -s "${_XCOPY_RSYNC_ERR}" ] && cat "${_XCOPY_RSYNC_ERR}" >&2
-    if [ "${_rc}" = "23" ] && _xcopy_rsync_vanished_only "${_XCOPY_RSYNC_ERR}"; then
-      _rc=24
-      echo "INFO: rsync rc=23 carried only vanished-file errors (a file gone between listing and read), read as rc=24" >&2
-    fi
-    rm -f -- "${_XCOPY_RSYNC_ERR}"
-  fi
-  echo "${_rc}"
-}
 ### The client toolchain tree $2 (/opt/user/<tree>/<login>) on the target
 ### $1, read before its leg, dry or live. Its parent is sticky and
 ### world-writable, so another account there can make the login's name
@@ -5338,71 +6061,6 @@ _xcopy_toolchain_leg() {   # 1 = target  2 = rsync error option  3 = tree here  
   fi
   return 0
 }
-### As _xcopy_copy_here, but the receiver starts in the canonical directory $2
-### the target reported (see _xcopy_tgt_place).
-_xcopy_copy_canon_here() {
-  local _h="${1}" _d="${2}" _g="${3}"
-  shift 3
-  # shellcheck disable=SC2086
-  _xcopy_rsync "$@" --rsync-path="$(_xcopy_canon_rpath "${_d}")" -e ssh \
-    ./${_g} "root@${_h}:./"
-}
-# ./$1 in the current (pinned) directory put at ./$2 through sed "${@:3}".
-# The source is read through one handle opened O_NOFOLLOW|O_NONBLOCK that
-# must be a regular file with one link under 1 MiB; the owner, group and mode
-# are taken from that same handle (the first line the reader prints), never
-# from a stat by name, so a name swapped between the look and the read never
-# lends its bytes another file's owner. The result is a fresh file with that
-# numeric owner and the read/write bits of that mode, put through
-# _XCOPY_PUT_PL (one handle creates, writes, owns and modes it), renamed over
-# ./$2: nothing is chowned or chmodded by name. The reader text stays in the
-# function, as in the copies that are shipped to the other box. For a plain
-# file this is what sed -i (and cp -a, empty program) wrote, without their
-# reach through a link put at the name.
-_xcopy_sed_to() {
-  local _s="${1}" _n="${2}" _t _u _g _m _h
-  local _rd='use Fcntl; my ($n) = @ARGV; sysopen(my $h, $n, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit 1; my @s = stat($h); exit 1 unless @s && -f _ && $s[3] == 1 && $s[7] < 1048576; my ($d, $r) = (""); while ($r = sysread($h, my $c, 65536)) { $d .= $c; exit 1 if length($d) >= 1048576; } exit 1 unless defined $r; close($h); binmode(STDOUT); printf("%d %d %o\n", $s[4], $s[5], $s[2] & 07777) or exit 1; (print $d) or exit 1; exit 0'
-  shift 2
-  _t="./.${_n}.sed.$$.${RANDOM}"
-  rm -f -- "${_t}"
-  if ( set -o pipefail
-    perl -e "${_rd}" "./${_s}" 2> /dev/null | {
-      _h=""
-      IFS=' ' read -r _u _g _m _h || exit 1
-      [[ "${_u}" =~ ^[0-9]+$ ]] && [[ "${_g}" =~ ^[0-9]+$ ]] \
-        && [[ "${_m}" =~ ^[0-7]+$ ]] && [ -z "${_h}" ] || exit 1
-      sed "$@" | perl -e "${_XCOPY_PUT_PL}" "${_t}" "${_u}" "${_g}" "${_m}"
-    } ) && mv -f -T -- "${_t}" "./${_n}"; then
-    return 0
-  fi
-  rm -f -- "${_t}"
-  return 1
-}
-# ./$1 rewritten in place by sed "${@:2}", as _xcopy_sed_to does it.
-_xcopy_sed_here() {
-  local _n="${1}"
-  shift
-  _xcopy_sed_to "${_n}" "${_n}" "$@"
-}
-# ./$2 built from the template file $1 (absolute, root-owned) piped through
-# sed "${@:4}" into a fresh file put through _XCOPY_PUT_PL, 0600 and owned by
-# $3 (owner:group; root's when it does not resolve) from the start, renamed
-# over the name: a link put at the destination is replaced, never written
-# through, and nothing is chowned by name afterwards.
-_xcopy_tpl_to_here() {
-  local _tpl="${1}" _n="${2}" _ids _t
-  _ids="$(_xcopy_owner_ids "${3}")" || _ids="-1 -1"
-  shift 3
-  _t="./.${_n}.put.$$.${RANDOM}"
-  rm -f -- "${_t}"
-  if ( set -o pipefail
-    sed "$@" -- "${_tpl}" \
-      | perl -e "${_XCOPY_PUT_PL}" "${_t}" "${_ids% *}" "${_ids#* }" 600 ); then
-    mv -f -T -- "${_t}" "./${_n}" && return 0
-  fi
-  rm -f -- "${_t}"
-  return 1
-}
 # $1 as the directory root works in: itself when it is a real directory;
 # when it is a link, the real directory it leads to, only when every link
 # on the way is root's and every directory on the way, the last one
@@ -5423,151 +6081,11 @@ _ROOT_REAL_PATH_PL='my ($p, $k) = @ARGV; if (!-l $p) { print $p if -d _; exit(-d
 # (satellite.sh.inc, BOA.sh.txt, xoct, xcopy, manage_solr_config.sh,
 # night.inc.sh).
 _SAT_STORE_TARGET_PL='my @t = lstat(defined $ARGV[0] ? $ARGV[0] : ""); my @a = lstat("/data/disk/all"); exit((@t && @a && -d _ && $t[0] == $a[0] && $t[1] == $a[1]) ? 0 : 1)'
-# chmod $1 on the regular files ./$2 ... of the current (pinned) directory
-# WITHOUT following a link, and only on a file with one link, so a hard link
-# to another file put at a name is skipped too.
-_XCOPY_FCHMOD_PL='use Fcntl;
-my $m = shift @ARGV;
-for my $f (@ARGV) {
-  sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
-  my @s = stat($h);
-  chmod(oct($m), $h) if @s && -f _ && $s[3] == 1;
-  close($h);
-}'
-_xcopy_fchmod_here() {
-  local _m="${1}"
-  shift
-  [ "$#" -gt 0 ] || return 0
-  perl -e "${_XCOPY_FCHMOD_PL}" "${_m}" "$@" 2> /dev/null
-}
-# The numeric uid and gid of owner:group $1 as "uid gid"; status 1, and
-# nothing, when either does not resolve.
-_xcopy_owner_ids() {
-  local _u _g
-  _u="$(id -u -- "${1%%:*}" 2> /dev/null)"
-  _g="$(getent group "${1#*:}" 2> /dev/null | cut -d: -f3)"
-  [[ "${_u}" =~ ^[0-9]+$ ]] && [[ "${_g}" =~ ^[0-9]+$ ]] || return 1
-  printf '%s %s\n' "${_u}" "${_g}"
-}
-# Re-assert owner:group $1 and mode $2 on the regular file ./$3 of the current
-# (pinned) directory through _XCOPY_REASSERT_PL: only a regular file with one
-# link, owned already by $1, is changed, through the handle that checked it,
-# so a link, a hard link to another file or another identity's file (root's
-# too) the account put at the name is never handed to the account or
-# chmodded. An owner that does not resolve changes nothing.
-_xcopy_reassert_here() {
-  local _own="${1}" _m="${2}" _n="${3}" _ids
-  _ids="$(_xcopy_owner_ids "${_own}")" || _ids="-1 -1"
-  perl -e "${_XCOPY_REASSERT_PL}" -- "${_ids% *}" "${_ids#* }" "${_m}" "" \
-    "./${_n}" 2> /dev/null
-  return 0
-}
-# The same, run inside the real vhost.d directory $1. $2 owner:group, $3 the
-# vhost name, $4 the mode (default 600).
-_xcopy_vhd_reassert() {
-  _xcopy_in_real_dir "${1}" _xcopy_reassert_here "${2}" "${4:-600}" "${3}"
-}
-# The account proves it owns a database by logging in as its own user and
-# using it (BOA sets db_user == db_name). $1 = db (== user), $2 = password.
-_xcopy_cred_ok() {
-  [ -n "$1" ] && [ -n "$2" ] \
-    && mysql -u"$1" -p"$2" -h"${_SQL_CONNECT:-localhost}" \
-      -P"${_THIS_DB_PORT:-3306}" --protocol=tcp -N -B \
-      -e "USE \`$1\`" > /dev/null 2>&1
-}
-# A grant ON a database reads _ and % in its name as wildcards: `a_b`.* also
-# covers aXb, with ALL there. A site user is granted its own name escaped,
-# as provisioning grants it (grant_privileges); names reach here as
-# [a-zA-Z0-9_] only, so _ is all there is to escape.
-_xcopy_db_grant_name() {
-  printf '%s' "${1//_/\\_}"
-}
-# Once the exact grant is in place, a wildcard grant an earlier run left on
-# the same name ($1, also the user) at the host $2 goes, as provisioning
-# converges it (revoke_wildcard_db_grant): only when SHOW GRANTS lists it,
-# and revoked as it is stored, its grant option too (a db-level REVOKE takes
-# ALL and GRANT OPTION only as two statements; the second fails harmlessly
-# where there was none).
-_xcopy_db_revoke_wildcard() {
-  local _g
-  [[ "${1}" == *_* ]] || return 0
-  _g=$(mysql --silent -u root -h"${_SQL_CONNECT}" -P"${_THIS_DB_PORT}" --protocol=tcp \
-    -N -B -e "SHOW GRANTS FOR '${1}'@'${2}'" 2> /dev/null)
-  printf '%s\n' "${_g}" | grep -qF "ON \`${1}\`.* TO " || return 0
-  mysql --silent -u root -h"${_SQL_CONNECT}" -P"${_THIS_DB_PORT}" --protocol=tcp \
-    -e "REVOKE ALL PRIVILEGES ON \`${1}\`.* FROM '${1}'@'${2}'; \
-        REVOKE GRANT OPTION ON \`${1}\`.* FROM '${1}'@'${2}';" &> /dev/null
-}
-# The real (non-link) subdirectory names of the current (pinned) directory.
-_xcopy_real_subdirs_here() {
-  local _e
-  for _e in ./*; do
-    [ -d "${_e}" ] && [ ! -L "${_e}" ] && printf '%s\n' "${_e#./}"
-  done
-}
-# clients/ ($1) is oN's: enter only real client subdirectories, remove only
-# their own ./backups, then prune dangling links from inside the real dir --
-# never rm -rf or symlinks -dr through a link at clients or a client name.
-_xcopy_clean_clients() {
-  local _cd="${1}" _c
-  _xcopy_in_real_dir "${_cd}" true || return 0
-  _xcopy_in_real_dir "${_cd}" _xcopy_real_subdirs_here | while IFS= read -r _c; do
-    [ -n "${_c}" ] || continue
-    _xcopy_in_real_dir "${_cd}/${_c}" rm -rf -- ./backups
-  done
-  _xcopy_in_real_dir "${_cd}" symlinks -dr .
-}
-# ./$1 made a real directory in the current (pinned) parent: a link the account
-# put at the name is removed, a missing directory created.
-_xcopy_realdir_here() {
-  [ -L "./${1}" ] && rm -f -- "./${1}"
-  [ -d "./${1}" ] || mkdir -p -- "./${1}"
-}
 # The dumps in the current (pinned) src/ directory removed, whatever stands at
 # each name: the glob expands here, never in a directory a link put in its
 # place names, and rm -r removes a link as a link.
 _xcopy_rm_sql_dumps_here() {
   rm -rf -- ./*.sql
-}
-# The per-site dump folders in the current (pinned) src/ directory removed: a
-# real directory holding mydumper's metadata file. The transfer adds to the
-# target's folders and never removes from them, and the import loads every
-# file there, so a folder left from an earlier copy would load that copy's
-# tables and chunks with the new ones. A link is never followed.
-_xcopy_rm_site_dumps_here() {
-  local _e
-  for _e in ./*/; do
-    _e="${_e%/}"
-    [ -L "${_e}" ] && continue
-    if [ -d "${_e}" ] && [ -f "${_e}/metadata" ] && [ ! -L "${_e}/metadata" ]; then
-      rm -rf -- "${_e}"
-    fi
-  done
-}
-# The names among "$@" still in the current (pinned) directory, each after a
-# space; a *.sql argument stands for every dump there, a site-dumps argument
-# for every per-site dump folder.
-_xcopy_names_left_here() {
-  local _n _f
-  for _n in "$@"; do
-    if [ "${_n}" = "*.sql" ]; then
-      for _f in ./*.sql; do
-        if [ -e "${_f}" ] || [ -L "${_f}" ]; then
-          printf ' %s' "${_f#./}"
-        fi
-      done
-    elif [ "${_n}" = "site-dumps" ]; then
-      for _f in ./*/; do
-        _f="${_f%/}"
-        [ -L "${_f}" ] && continue
-        if [ -d "${_f}" ] && [ -f "${_f}/metadata" ] && [ ! -L "${_f}/metadata" ]; then
-          printf ' %s/' "${_f#./}"
-        fi
-      done
-    elif [ -e "./${_n}" ] || [ -L "./${_n}" ]; then
-      printf ' %s' "${_n}"
-    fi
-  done
 }
 # The per-site dump folders in the current (pinned) src/ directory, one name
 # a line, each a name of letters, digits, dot, dash and underscore only: a
@@ -5757,458 +6275,25 @@ _xcopy_source_done() {
   fi
   echo "INFO: the copy of ${_oct} ended here: its export and transfer stamps and its dumps in src/ are cleared"
 }
-# The whole regular file ./$1 of the current (pinned) directory streamed to
-# stdout without following a link (unbounded, for a DB dump): a link put at the
-# name yields nothing, a FIFO never blocks past the read.
-_xcopy_cat_here() {
-  dd if="./${1}" iflag=nofollow,nonblock status=none 2> /dev/null
-}
-# The hostmaster dump the command "$@" writes on stdout, captured into the
-# current (pinned) src/ directory as a fresh exclusive file renamed over
-# ./prev_hostmaster.sql: the command's exit code survives the pipe, a link the
-# account put at the name is replaced, and a zero-byte result is refused.
-_xcopy_dump_hm_here() {
-  local _t="./.prev_hostmaster.sql.put.$$.${RANDOM}"
-  rm -f -- "${_t}"
-  if ( set -o pipefail
-    umask 077
-    "$@" | dd of="${_t}" conv=excl status=none 2> /dev/null ) \
-    && [ -s "${_t}" ]; then
-    mv -f -T -- "${_t}" ./prev_hostmaster.sql && return 0
-  fi
-  rm -f -- "${_t}"
-  return 1
-}
-# The hostmaster dump never carries the dumping server's GTID state. By
-# default (--set-gtid-purged=AUTO) a dump taken while GTID is on (every
-# box an xmass run touched: BOA's my.cnf leaves it off, xmass_gtid.cnf
-# turns it on) opens with SET @@SESSION.SQL_LOG_BIN=0 and sets
-# @@GLOBAL.GTID_PURGED. Its import then fails on a box that shares that
-# history (a move back, a failback, a chained move: ERROR 3546 on 8.x),
-# and where it passes it stays out of that box's binary log, so a replica
-# of the box never gets the panel. OFF writes neither. Sets _MYSQLDUMP_GTID
-# to the option when the local mysqldump takes it: one that does not
-# (MariaDB's) would refuse it and writes neither anyway, so it is asked,
-# never assumed.
-_mysqldump_gtid_opts() {
-  _MYSQLDUMP_GTID=()
-  if mysqldump --help 2> /dev/null | grep -q -- '--set-gtid-purged'; then
-    _MYSQLDUMP_GTID=(--set-gtid-purged=OFF)
-  fi
-  return 0
-}
-### A site's database load is written to the binary log. myloader opens
-### every session with SET SQL_LOG_BIN=0 unless told otherwise, so on a box
-### running with the binary log on (every box an xmass run touched: BOA's
-### my.cnf leaves it off, xmass_gtid.cnf turns it on) the load never
-### reached a replica of the box, whose applier then stopped at the first
-### replicated write to the tables it never got. --ignore-set=SQL_LOG_BIN
-### drops that one session variable wherever it comes from (myloader's own
-### default, or the packaged /etc/mydumper.cnf for a call without an option
-### file); --enable-binlog is no substitute: that file sets it again, and
-### the 0.19.3 line refuses the option. With the binary log off it changes
-### nothing. Sets _MYLOADER_BINLOG to the option when the local myloader
-### lists it, so a build without it gets its arguments as before.
-_myloader_binlog_opts() {
-  _MYLOADER_BINLOG=()
-  if myloader --help 2>&1 | grep -qE -- '^[[:space:]]+--ignore-set([[:space:]]|=)'; then
-    _MYLOADER_BINLOG=(--ignore-set=SQL_LOG_BIN)
-  fi
-  return 0
-}
-### A Percona 5.7 dump names a utf8mb4 table's character set and no
-### collation (utf8mb4_general_ci was that set's default there). Loaded on
-### 8.0 or later, such a table and every column of it took that server's
-### default, utf8mb4_0900_ai_ci: the copy no longer matched its source, nor
-### what an in-place upgrade of the source keeps, and a join on columns of
-### two collations fails (error 1267). A dump made on 8.0 or later names the
-### collation of every utf8mb4 table and column, so the old default changes
-### nothing for them. No dump names one for a stored routine's parameters
-### and return type: they take the loading session's default, the old one
-### here, which is what a server upgraded in place from 5.7 still holds for
-### its older routines; one made on 8.x with 8.x's default comes back with
-### the old one. The old default is given only where the server takes it for
-### a session (_mig_utf8mb4_takes): 8.4 warns the setting is deprecated and
-### will become read-only, and a session that cannot set it would fail the
-### whole load. _MYLOADER_UTF8MB4 is then the option file that adds the old
-### default to myloader's own session settings (it replaces none of them;
-### written when missing or different); otherwise it stays empty. Worked out
-### once per run, and a myloader that cannot be given the file is named once.
-### A client load asks its own server (_mig_utf8mb4_client_opt).
-_MIG_UTF8MB4_DONE=""
-_MYLOADER_UTF8MB4=()
-### Whether the server the client options "$@" name takes the old default
-### for a session (0), or not (1, with a warning unless it is a 5.x server,
-### whose own default it is).
-_mig_utf8mb4_takes() {
-  local _v
-  _v=$(mysql --silent "$@" -N -B -e "SET SESSION default_collation_for_utf8mb4 = utf8mb4_general_ci; SELECT @@SESSION.default_collation_for_utf8mb4" 2> /dev/null)
-  [ "${_v}" = "utf8mb4_general_ci" ] && return 0
-  _v=$(mysql --silent "$@" -N -B -e "SELECT VERSION()" 2> /dev/null)
-  case "${_v}" in
-    5.*) ;;
-    *) echo "WARN: the database server here does not take default_collation_for_utf8mb4 for a session: a utf8mb4 table a Percona 5.7 dump names no collation for loads with this server's default, not utf8mb4_general_ci" ;;
-  esac
-  return 1
-}
-_myloader_utf8mb4_opts() {
-  local _f=/etc/boa/myloader-utf8mb4.cnf _want _tmp
-  [ -n "${_MIG_UTF8MB4_DONE}" ] && return 0
-  _MIG_UTF8MB4_DONE=YES
-  _MYLOADER_UTF8MB4=()
-  _mig_utf8mb4_takes -u root || return 0
-  _want=$'[myloader_session_variables]\ndefault_collation_for_utf8mb4 = utf8mb4_general_ci'
-  if myloader --help 2>&1 | grep -qE -- '^[[:space:]]+--defaults-extra-file([[:space:]]|=|$)' \
-    && [[ ! -d "${_f}" ]]; then
-    if [[ ! -f "${_f}" || -L "${_f}" || "$(cat "${_f}" 2> /dev/null)" != "${_want}" ]]; then
-      mkdir -p "${_f%/*}" 2> /dev/null
-      _tmp=$(mktemp "${_f}.XXXXXX" 2> /dev/null)
-      if [ -n "${_tmp}" ] \
-        && printf '%s\n' "${_want}" > "${_tmp}" && chmod 644 "${_tmp}" && mv -f "${_tmp}" "${_f}"; then
-        _MYLOADER_UTF8MB4=(--defaults-extra-file="${_f}")
-      else
-        rm -f "${_tmp}"
-      fi
-    else
-      _MYLOADER_UTF8MB4=(--defaults-extra-file="${_f}")
-    fi
-  fi
-  if [ "${#_MYLOADER_UTF8MB4[@]}" -eq 0 ]; then
-    echo "WARN: myloader here cannot be given ${_f}: a utf8mb4 table a Percona 5.7 dump names no collation for loads as utf8mb4_0900_ai_ci"
-  fi
-  return 0
-}
 ### The same for a client load into the server named by the client options
 ### "$@": sets _MYSQL_UTF8MB4 to the --init-command that gives the session the
 ### old default when that server takes it, to nothing otherwise, so the
 ### option never reaches a server that would refuse the connection.
 _MYSQL_UTF8MB4=()
-_mig_utf8mb4_client_opt() {
-  _MYSQL_UTF8MB4=()
-  _mig_utf8mb4_takes "$@" || return 0
-  _MYSQL_UTF8MB4=(--init-command="SET SESSION default_collation_for_utf8mb4 = utf8mb4_general_ci")
-  return 0
-}
-### A table a load has just written can read as empty to the query optimiser
-### until InnoDB measures it in the background, and once nothing new wakes
-### that queue it takes about one table every ten seconds: a large site
-### loaded among a run of others went live with its pages planned as full
-### table scans, and the database server ran out of CPU before the queue
-### reached its tables. ANALYZE TABLE measures every InnoDB table of the
-### database right after its load, 100 at a time, waiting at most 30 seconds
-### for a table another session holds, as provision does after its own
-### imports. It goes to the binary log as the load does, so a replica of this
-### box measures the same tables; a standby takes its tables from replication
-### and is never measured here. A table left unmeasured only warns: the data
-### is in place, and InnoDB or the per-minute SQL check measures it later.
-### $1 is the database, the rest the client options the load connected with
-### (a --defaults-file first, as the client requires).
-_measure_loaded_tables() {
-  local _db="$1" _t0="${SECONDS}" _bq='`' _names _tb _list _out _i _ok=0 _skip=0 _err=""
-  local -a _tbls=()
-  shift
-  [ -e "/root/.standby.cnf" ] && return 0
-  if [[ ! "${_db}" =~ ^[A-Za-z0-9_]+$ ]]; then
-    echo "ALRT: the optimizer statistics of ${_db} were not measured: not a plain database name"
-    return 1
-  fi
-  if ! _names=$(mysql "$@" --silent -N -B -e "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA='${_db}' AND TABLE_TYPE='BASE TABLE' AND ENGINE='InnoDB'" 2>/dev/null); then
-    echo "ALRT: the optimizer statistics of ${_db} were not measured: its tables could not be listed"
-    return 1
-  fi
-  while IFS= read -r _tb; do
-    [ -n "${_tb}" ] || continue
-    ### -B prints a backslash, tab or newline in a name as an escape: a name
-    ### with one, or with a backtick, is never spliced into a statement.
-    case "${_tb}" in
-      *\\*|*"${_bq}"*) _skip=$(( _skip + 1 )); continue ;;
-    esac
-    _tbls+=("${_bq}${_db}${_bq}.${_bq}${_tb}${_bq}")
-  done <<< "${_names}"
-  for (( _i = 0; _i < ${#_tbls[@]}; _i += 100 )); do
-    _list=$(IFS=,; printf '%s' "${_tbls[*]:_i:100}")
-    _out=$(timeout 300 mysql "$@" --silent -N -B -e "SET SESSION lock_wait_timeout = 30; ANALYZE TABLE ${_list}" 2>&1)
-    ### The outcome, not the exit code: each table answers with its own OK.
-    _ok=$(( _ok + $(grep -c $'\tanalyze\tstatus\tOK$' <<< "${_out}") ))
-    [ -n "${_err}" ] || _err=$(grep -i -m 1 -E 'error|timeout|denied' <<< "${_out}" | tr '\t' ' ')
-  done
-  if [ "${_ok}" -eq "${#_tbls[@]}" ] && [ "${_skip}" -eq 0 ]; then
-    [ "${_ok}" -gt 0 ] && echo "INFO: measured the optimizer statistics of ${_ok} tables in ${_db} in $(( SECONDS - _t0 )) s"
-    return 0
-  fi
-  echo "ALRT: measured the optimizer statistics of ${_ok} of $(( ${#_tbls[@]} + _skip )) tables in ${_db}${_err:+ (${_err:0:200})}; InnoDB measures the rest later on its own"
-  return 1
-}
-### mydumper 1.x counts every failed query it logs into its exit status,
-### its own retried table flush included. Before the global read lock it
-### sends FLUSH NO_WRITE_TO_BINLOG TABLES, which waits behind any long
-### query on the server; after --ftwrl-max-wait-time (60 s) it kills that
-### flush, logs "Flush tables failed, we are continuing anyways - ERROR
-### 1317" and sends it again, then takes the read lock and dumps as usual,
-### so the run exits 1 with a whole dump (0.x exits 0). Waiting longer is
-### no fix: a pending flush stalls every new query on the tables it waits
-### for. A run stopped by SIGTERM skips what is left yet still writes its
-### metadata and exits 0 (1 after such a retry); it says so only at Message
-### level, so callers run mydumper at --verbose=3. Returns 0 when exit
-### status $1, with the run's output in file $2 (no file, no pass), is a
-### whole run: nothing says it was cancelled (0.19.3 spells it "cacelled"),
-### and the status is 0, or 1 with at least one such retry, every counted
-### error a retry (a failed query is logged as a WARNING with " - ERROR
-### <n>: ", any other error as CRITICAL) and nothing CRITICAL or ERROR. The
-### caller still requires metadata.
-_mydumper_run_ok() {
-  local _rc="${1}" _log="${2}"
-  [[ -n "${_log}" && -f "${_log}" && ! -L "${_log}" ]] || return 1
-  grep -q -E '^\*\* Message: ([0-9:.]+: )?(Shutting down gracefully|Thread [0-9]+: Process has been can?celled)$' \
-    "${_log}" && return 1
-  [[ "${_rc}" == "0" ]] && return 0
-  [[ "${_rc}" == "1" ]] || return 1
-  awk '
-    /\): (CRITICAL|ERROR) [*][*]/ { _bad = 1 }
-    /\): WARNING [*][*]: .* - ERROR [0-9]+: / {
-      if ($0 ~ /\): WARNING [*][*]: ([0-9:.]+: )?Flush tables failed, we are continuing anyways - ERROR 1317: /) _ok = 1
-      else _bad = 1
-    }
-    END { exit (_bad || !_ok) }
-  ' "${_log}"
-}
-### Runs a mydumper command line ($3 on) in a session of its own and waits
-### for it. mydumper 1.x takes SIGINT as a question: it pauses every worker
-### and asks on its output whether to cancel, which nobody sees with that
-### output in a log, and a pause that comes as it takes the global read
-### lock keeps every write on the server waiting until someone answers. In
-### its own session a Ctrl-C at the terminal never reaches it; this
-### script's own INT, TERM or HUP ends it at once by SIGKILL (a SIGTERM can
-### hang it the same way) and the script exits 130. It runs in directory
-### $1, which must resolve to exactly $2 unless $2 is "-"; stdin is
-### /dev/null, its output goes where the caller sends this function's.
-### A signal that lands between the fork and the pid's assignment finds
-### $! moved past its value before the fork and ends that child.
-### Returns mydumper's status, or 1 when the directory check fails.
-_mydumper_session() {
-  local _d="${1}" _want="${2}" _old _rc
-  shift 2
-  _old="$(trap -p INT TERM HUP)"
-  _MYDUMPER_PID=""
-  _MYDUMPER_PREV="$!"
-  trap '_p="${_MYDUMPER_PID}"; [ -z "${_p}" ] && [ "$!" != "${_MYDUMPER_PREV}" ] && _p="$!"; [ -n "${_p}" ] && kill -9 "${_p}" 2> /dev/null; exit 130' INT TERM HUP
-  ( cd -P -- "${_d}" 2> /dev/null \
-    && { [ "${_want}" = "-" ] || [ "$(/bin/pwd -P)" = "${_want}" ]; } \
-    && exec setsid -w "$@" ) < /dev/null &
-  _MYDUMPER_PID=$!
-  wait "${_MYDUMPER_PID}"
-  _rc=$?
-  _MYDUMPER_PID=""
-  trap - INT TERM HUP
-  [ -n "${_old}" ] && eval "${_old}"
-  return "${_rc}"
-}
-### On Percona 5.7 mydumper's default lock mode syncs its threads with FLUSH
-### TABLES WITH READ LOCK (FTWRL) and also takes Percona's backup lock (LOCK
-### TABLES FOR BACKUP), keeping it until the dump ends, past the FTWRL
-### release. A write to a MyISAM table waits for that lock with its table
-### open, and the event scheduler writes one at every event run (mysql.event
-### is MyISAM on 5.7): the flush ahead of FTWRL then waits for that table, or
-### FTWRL for the writer, and neither side gives way. The server sees no
-### deadlock, so the export stalls there and every write on the box queues
-### behind it. FTWRL alone still gives the dump its consistent point. Sets
-### _MYDUMPER_BACKUP_LOCKS to --no-backup-locks when the local mydumper
-### lists it, so a build without it gets its arguments as before.
-_mydumper_backup_locks_opts() {
-  local _h
-  _MYDUMPER_BACKUP_LOCKS=()
-  _h=$(mydumper --help 2>&1)
-  if printf '%s\n' "${_h}" | grep -qE -- "^[[:space:]]+(-[[:alpha:]],[[:space:]]+)?--no-backup-locks([[:space:]]|=|$)"; then
-    _MYDUMPER_BACKUP_LOCKS=(--no-backup-locks)
-  fi
-  return 0
-}
-### A site's triggers, stored routines and events travel with its tables.
-### mydumper writes none of them unless asked, so a site that kept them (a
-### logging trigger, a function its queries call, a scheduled event) lost
-### them on every copy. Each keeps its DEFINER, the site's own database
-### user: the import loads as root, and the target has that user under the
-### same name before the load, so they run there with the site's rights, as
-### here. Sets _MYDUMPER_OBJECTS to those of the three options the local
-### mydumper lists, so a build without one gets its arguments as before.
-_mydumper_objects_opts() {
-  local _h _o
-  _MYDUMPER_OBJECTS=()
-  _h=$(mydumper --help 2>&1)
-  for _o in --triggers --routines --events; do
-    if printf '%s\n' "${_h}" | grep -qE -- "^[[:space:]]+(-[[:alpha:]],[[:space:]]+)?${_o}([[:space:]]|=|$)"; then
-      _MYDUMPER_OBJECTS+=("${_o}")
-    fi
-  done
-  return 0
-}
-### mydumper's own sessions give up a lock wait after 90 s, through an option
-### file merged into its options with --defaults-extra-file (the connection
-### keeps the credentials --defaults-file gave it). A FLUSH TABLES WITH READ
-### LOCK whose mydumper is killed while it waits behind a long query stays on
-### the server and holds the global read lock, every write on the server
-### waiting, until that query ends; bounded, it ends 90 s after it began. A
-### live run never meets the bound at its flushes: its own monitor ends a
-### flush that waits 60 s (--ftwrl-max-wait-time), so the option goes only to
-### a mydumper that has that monitor. A table read that waits 90 s for a lock
-### fails the dump instead of holding it, and every query queued behind it,
-### open. Writes the file when it is missing or differs; sets
-### _MYDUMPER_LOCKWAIT to the option, or to nothing.
-_mydumper_lockwait_opts() {
-  local _f=/etc/boa/mydumper-extra.cnf _want _tmp _h _o
-  _MYDUMPER_LOCKWAIT=()
-  _h=$(mydumper --help 2>&1)
-  for _o in --defaults-extra-file --ftwrl-max-wait-time; do
-    printf '%s\n' "${_h}" | grep -qE -- "^[[:space:]]+${_o}([[:space:]]|=|$)" || return 0
-  done
-  [[ -d "${_f}" ]] && return 0
-  _want=$'[mydumper_session_variables]\nLOCK_WAIT_TIMEOUT = 90'
-  if [[ ! -f "${_f}" || -L "${_f}" || "$(cat "${_f}" 2> /dev/null)" != "${_want}" ]]; then
-    mkdir -p "${_f%/*}" 2> /dev/null
-    _tmp=$(mktemp "${_f}.XXXXXX" 2> /dev/null) || return 0
-    if ! { printf '%s\n' "${_want}" > "${_tmp}" && chmod 644 "${_tmp}" && mv -f "${_tmp}" "${_f}"; }; then
-      rm -f "${_tmp}"
-      return 0
-    fi
-  fi
-  _MYDUMPER_LOCKWAIT=(--defaults-extra-file="${_f}")
-  return 0
-}
-### mydumper writes every trigger, routine and event of a database under one
-### file-wide sql_mode, so an object made under another one (Drupal's own
-### connections use ANSI_QUOTES and PIPES_AS_CONCAT) fails its load, or
-### loads and then behaves otherwise. This gives each object back the mode
-### the server stored for it: a plain SET before its CREATE and the file's
-### mode after it (myloader stops on a versioned-comment SET in the middle
-### of a file). Mode words 8.x refuses are left out, so a 5.7 dump loads
-### there. A routine's utf8mb4 parameters and return value take the loading
-### session's default_collation_for_utf8mb4, which no dump names: a routine
-### whose parameters (and return value) share one of the two defaults that
-### setting takes gets it the same way, the session's own value back after
-### it, read on any server (a 5.x or MariaDB one names utf8mb4_general_ci
-### there, which a load on MySQL 8 then keeps; a server that refuses that
-### read gives the modes alone); each is a statement prepared from one that
-### names MySQL 8, so a 5.x or MariaDB server, which has no such setting,
-### runs DO 0 in its place. It reads the file whole, never through a link, and replaces it
-### through a new one in the same directory. Exits 1, the file as it was,
-### when a line cannot be placed; 2 when an object had no mode to give.
-_MYDUMPER_MODES_PL='use strict; use Fcntl;
-my ($f) = @ARGV; my (%m, %c, @o, $p, $q, $miss);
-my $gone = qr/^(?:NO_AUTO_CREATE_USER|NO_FIELD_OPTIONS|NO_KEY_OPTIONS|NO_TABLE_OPTIONS|DB2|MAXDB|MSSQL|MYSQL323|MYSQL40|ORACLE|POSTGRESQL)$/;
-for (split /\n/, (defined $ENV{_MYDUMPER_MODES} ? $ENV{_MYDUMPER_MODES} : "")) {
-  my ($t, $h, $s, $k) = split /\t/, $_, 4;
-  next unless defined $s && $t =~ /^(?:TRIGGER|FUNCTION|PROCEDURE|EVENT)$/
-    && $h =~ /^[0-9A-Fa-f]+$/ && $s =~ /^[A-Z0-9_,]*$/;
-  $m{$t . " " . lc($h)} = join(",", grep { $_ !~ $gone } split(/,/, $s));
-  $c{$t . " " . lc($h)} = $k if defined $k && $t =~ /^(?:FUNCTION|PROCEDURE)$/
-    && $k =~ /^utf8mb4_(?:general_ci|0900_ai_ci)$/;
-}
-sysopen(my $in, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit 1;
-my @st = stat($in); exit 1 unless @st && -f _;
-my @l = <$in>; close($in);
-my $fm;
-for my $x (@l[0 .. ($#l < 9 ? $#l : 9)]) {
-  $fm = $1 if !defined $fm && $x =~ /^\/\*!40101 SET SQL_MODE=\x27([A-Z0-9_,]*)\x27\*\/;$/;
-}
-exit 1 unless defined $fm;
-for my $i (0 .. $#l) {
-  my $x = $l[$i];
-  if (($p || $q) && $x =~ /^SET character_set_client = \@PREV_CHARACTER_SET_CLIENT;$/) {
-    push @o, "SET SQL_MODE=\x27$fm\x27;\n" if $p;
-    push @o, "SET \@BOA_UTF8MB4_SQL = IF(VERSION() LIKE \x278.%\x27, \x27SET SESSION default_collation_for_utf8mb4 = \@BOA_PREV_UTF8MB4\x27, \x27DO 0\x27);\n",
-      "PREPARE boa_utf8mb4 FROM \@BOA_UTF8MB4_SQL;\n", "EXECUTE boa_utf8mb4;\n", "DEALLOCATE PREPARE boa_utf8mb4;\n" if $q;
-    $p = 0; $q = 0;
-  }
-  push @o, $x;
-  next unless $x =~ /^DROP (TRIGGER|FUNCTION|PROCEDURE|EVENT) IF EXISTS `((?:[^`]|``)+)`;$/;
-  my ($t, $n) = ($1, $2); $n =~ s/``/`/g;
-  exit 0 if $i < $#l && $l[$i + 1] =~ /^SET (?:SQL_MODE=|\@BOA_UTF8MB4_SQL )/;
-  my $key = $t . " " . unpack("H*", $n);
-  my $s = $m{$key};
-  if (defined $s) { push @o, "SET SQL_MODE=\x27$s\x27;\n"; $p = 1; } else { $miss = 1; }
-  if (defined $c{$key}) {
-    push @o, "SET \@BOA_UTF8MB4_SQL = IF(VERSION() LIKE \x278.%\x27, \x27SET \@BOA_PREV_UTF8MB4 = \@\@SESSION.default_collation_for_utf8mb4,"
-      . " SESSION default_collation_for_utf8mb4 = \x27\x27$c{$key}\x27\x27\x27, \x27DO 0\x27);\n",
-      "PREPARE boa_utf8mb4 FROM \@BOA_UTF8MB4_SQL;\n", "EXECUTE boa_utf8mb4;\n";
-    $q = 1;
-  }
-}
-exit 1 if $p || $q;
-my $w = $f . ".modes";
-sysopen(my $out, $w, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600) or exit 1;
-if (!(print {$out} @o) || !close($out) || !chmod($st[2] & 07777, $w)
-  || ($> == 0 && !chown($st[4], $st[5], $w)) || !rename($w, $f)) { unlink($w); exit 1; }
-exit($miss ? 2 : 0);'
-
-### Gives every stored object of database $1, dumped by mydumper into the
-### directory $2, its own sql_mode back (see _MYDUMPER_MODES_PL), read with
-### the client command that follows. Returns 0 when done or when there is
-### nothing to do, 1 when the modes could not be read (the files as
-### mydumper wrote them), 2 when an object or a file kept the dump's mode.
-### It never fails a dump: the caller says what was left.
-_mydumper_object_modes() {
-  local _db="${1}" _dir="${2}" _q _c _modes _f _rc=0
-  shift 2
-  [[ "${_db}" =~ ^[A-Za-z0-9_]+$ ]] || return 2
-  _c="IFNULL((SELECT IF(COUNT(DISTINCT p.COLLATION_NAME) = 1, MIN(p.COLLATION_NAME), '') FROM information_schema.PARAMETERS p"
-  _c="${_c} WHERE p.SPECIFIC_SCHEMA = r.ROUTINE_SCHEMA AND p.SPECIFIC_NAME = r.ROUTINE_NAME AND p.ROUTINE_TYPE = r.ROUTINE_TYPE"
-  _c="${_c} AND p.COLLATION_NAME IN ('utf8mb4_general_ci', 'utf8mb4_0900_ai_ci')), '')"
-  while :; do
-    _q="SELECT 'TRIGGER', HEX(TRIGGER_NAME), SQL_MODE, '' FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = '${_db}'"
-    _q="${_q} UNION ALL SELECT r.ROUTINE_TYPE, HEX(r.ROUTINE_NAME), r.SQL_MODE, ${_c} FROM information_schema.ROUTINES r WHERE r.ROUTINE_SCHEMA = '${_db}'"
-    _q="${_q} UNION ALL SELECT 'EVENT', HEX(EVENT_NAME), SQL_MODE, '' FROM information_schema.EVENTS WHERE EVENT_SCHEMA = '${_db}'"
-    _modes=$("$@" -N -B -e "${_q}" 2> /dev/null) && break
-    [[ "${_c}" != "''" ]] || return 1
-    echo "WARN: the stored routines' utf8mb4 defaults of ${_db} could not be read: its routines load with the loading server's default" >&2
-    _c="''"
-  done
-  [[ -n "${_modes}" ]] || return 0
-  for _f in "${_dir}"/*-schema-post.sql "${_dir}"/*-schema-triggers.sql; do
-    if [[ -L "${_f}" ]]; then
-      _rc=2
-      continue
-    fi
-    [[ -f "${_f}" ]] || continue
-    _MYDUMPER_MODES="${_modes}" perl -e "${_MYDUMPER_MODES_PL}" -- "${_f}" || _rc=2
-  done
-  return "${_rc}"
+### The names a copy of the tree $1 makes (one per name, du -l), into
+### _XCOPY_NAMES (empty when the count failed or took over 15 minutes). The
+### last tree's count is kept, so a store tried at the mount and then at
+### the root is walked once. It sets globals: never call it inside $(...).
+_xcopy_names_of() {
+  [ "${_XCOPY_NAMES_OF:-}" = "$1" ] && return 0
+  _XCOPY_NAMES_OF="$1"
+  _XCOPY_NAMES="$(timeout 900 du -s -l -H --inodes -- "$1" 2>/dev/null | awk 'NR==1 {print $1}')"
 }
 
-# Mode-aware rsync: performs the transfer in LIVE, only reports it in DRY.
-_xcopy_rsync() {
-  if [ "${_MODE}" = "LIVE" ]; then
-    # Trailing (after "$@") is deliberate: callers pass -a/-aEAX which implies
-    # -D; rsync honours the LAST matching option, so these must follow -a to
-    # actually drop device/fifo/socket nodes. Never transfer specials.
-    # _XCOPY_GMAP maps the account's own group and its web group (see
-    # _xcopy_acct_gmap, _xcopy_webgroup_gate); _XCOPY_UMAP its identities
-    # (see _xcopy_acct_umap).
-    # A leg that reads a status 23 itself names a file in _XCOPY_RSYNC_ERR:
-    # the errors go there, and the leg prints them (_xcopy_leg_rc)
-    if [ -n "${_XCOPY_RSYNC_ERR:-}" ]; then
-      rsync "$@" ${_XCOPY_GMAP:+"--groupmap=${_XCOPY_GMAP}"} ${_XCOPY_UMAP:+"--usermap=${_XCOPY_UMAP}"} $(_xcopy_map_setid_off) --no-devices --no-specials 2>> "${_XCOPY_RSYNC_ERR}"
-      return
-    fi
-    rsync "$@" ${_XCOPY_GMAP:+"--groupmap=${_XCOPY_GMAP}"} ${_XCOPY_UMAP:+"--usermap=${_XCOPY_UMAP}"} $(_xcopy_map_setid_off) --no-devices --no-specials
-  else
-    echo "[DRY-PLAN] would rsync: $*"
-  fi
-}
-
-# Solr indices can be large; fold them into the disk-space gate. Checks that <src>
-# fits at its target destination dir (which follows the target's /var/solrN symlink
-# onto a mount, or lands on root). Returns 0 if it fits (or src absent), 1 + DENY +
-# NOT_CLEAN otherwise. Placement is unchanged (data-only rsync) — this only gates.
-_xcopy_solr_check() {   # 1 src  2 target-dest-dir  3 label  4 the copy's own destination
-  local _sz
-  [ -e "$1" ] || return 0
-  # -L: a symlink operand (e.g. a backups dir relocated into the store)
-  # measures 0 with plain du, which waves the fit gate through unmeasured.
-  _sz="$(du -skL "$1" 2>/dev/null | awk '{print $1}')"
-  _xcopy_target_fits "${_tgt}" "$2" "${_sz}" "" "$1" "${4:-$2/${1##*/}}" && return 0
-  echo "DENY: $3: ${_sz:-?}K does not fit at target $2${_XCOPY_FIT_WHY:+ (${_XCOPY_FIT_WHY})} — free space and retry"
-  _XCOPY_NOT_CLEAN=YES
-  return 1
+### A figure the fit check could not read: the copy goes on without that
+### side of the check, as the plan shows.
+_xcopy_fit_warn() {   # 1 = side (space|inodes|count)  2 = dest  3 = message
+  echo "WARN: $2 on the target: $3"
 }
 
 ### Whether a copy fits at <probe> ($2) on the target box ($1): its bytes
@@ -6286,20 +6371,20 @@ _xcopy_target_fits() {
   return 1
 }
 
-### The names a copy of the tree $1 makes (one per name, du -l), into
-### _XCOPY_NAMES (empty when the count failed or took over 15 minutes). The
-### last tree's count is kept, so a store tried at the mount and then at
-### the root is walked once. It sets globals: never call it inside $(...).
-_xcopy_names_of() {
-  [ "${_XCOPY_NAMES_OF:-}" = "$1" ] && return 0
-  _XCOPY_NAMES_OF="$1"
-  _XCOPY_NAMES="$(timeout 900 du -s -l -H --inodes -- "$1" 2>/dev/null | awk 'NR==1 {print $1}')"
-}
-
-### A figure the fit check could not read: the copy goes on without that
-### side of the check, as the plan shows.
-_xcopy_fit_warn() {   # 1 = side (space|inodes|count)  2 = dest  3 = message
-  echo "WARN: $2 on the target: $3"
+# Solr indices can be large; fold them into the disk-space gate. Checks that <src>
+# fits at its target destination dir (which follows the target's /var/solrN symlink
+# onto a mount, or lands on root). Returns 0 if it fits (or src absent), 1 + DENY +
+# NOT_CLEAN otherwise. Placement is unchanged (data-only rsync) — this only gates.
+_xcopy_solr_check() {   # 1 src  2 target-dest-dir  3 label  4 the copy's own destination
+  local _sz
+  [ -e "$1" ] || return 0
+  # -L: a symlink operand (e.g. a backups dir relocated into the store)
+  # measures 0 with plain du, which waves the fit gate through unmeasured.
+  _sz="$(du -skL "$1" 2>/dev/null | awk '{print $1}')"
+  _xcopy_target_fits "${_tgt}" "$2" "${_sz}" "" "$1" "${4:-$2/${1##*/}}" && return 0
+  echo "DENY: $3: ${_sz:-?}K does not fit at target $2${_XCOPY_FIT_WHY:+ (${_XCOPY_FIT_WHY})} — free space and retry"
+  _XCOPY_NOT_CLEAN=YES
+  return 1
 }
 
 ### Where a store sits on the target now, read at its destination there
@@ -6313,10 +6398,6 @@ _xcopy_tgt_kind() {
   ssh -n root@"$1" "d='${_qd}'; m='${_qm}'; k=N; if [ -L \"\$d\" ]; then k=L; r=\$(cd -P \"\$d\" 2>/dev/null && /bin/pwd -P); [ -n \"\$m\" ] && [ -n \"\$r\" ] && [ \"\$r\" = \"\$(cd -P \"\$m\" 2>/dev/null && /bin/pwd -P)\" ] && k=M; elif [ -d \"\$d\" ]; then k=D; fi; echo \"XCKIND \$k\"" 2>/dev/null \
     | grep -m1 '^XCKIND ' | awk '{print $2}'
 }
-
-# Single-quote-escape a value for safe embedding in a remote 'single-quoted' ssh arg
-# (covers a legacy path that might contain a quote).
-_shq() { printf "%s" "$1" | sed "s/'/'\\\\''/g"; }
 
 # De-reference: real dir at <dstRoot> on the target root; rsync the contents in.
 # Returns non-zero if the copy fails (caller denies). The copy leaves from
@@ -8348,8 +8429,6 @@ esac
 # The refusal is loud and NON-ZERO on purpose: a quiet exit 0 would let a
 # harness read "another run holds it" as success.
 
-_XCOPY_LOCK_FILE="/run/xcopy.verb.pid"
-
 # Acquisition is atomic (noclobber): the old check-then-write let two verbs
 # started in the same instant both proceed. A dead or foreign owner's file is
 # removed and the create retried; the loser of any race re-examines a LIVE
@@ -8408,85 +8487,6 @@ _take_verb_lock() {
 }
 
 ###-------------SQL WATCHDOG PAUSE-------###
-
-# export dumps and import loads databases: mysqldump/mysql for the panel,
-# mydumper/myloader for every site. While /run/boa_sql_maintenance.pid exists
-# the mysql.sh watchdog stands down entirely, so it cannot restart MySQL or
-# kill mydumper in the middle of a dump or a load.
-#
-# The marker carries this run's PID, so the launchers read a killed run's
-# marker as released. The EXIT trap removes it on every exit the shell can
-# trap, and only while it still carries this PID; a kill -9 leaves it to the
-# watchdog's 240-minute staleness limit. A marker another operation holds --
-# a live PID that is not ours, or a fresh empty one -- is left to its owner.
-# Re-asserted after the wait for a running BOA job, before each site and before
-# the rename, so a marker its owner released mid-run is taken over at the next
-# of those; a background beat refreshes ours every 20
-# minutes, so one dump or load longer than the staleness limit stays paused.
-# The traps are armed before the marker is written and the flag is cleared
-# after it is removed, so no signal can land between the two.
-#
-# Kept in step with xoct's _xoct_sql_maint_hold -- mirror any fix there.
-_XCOPY_SQL_MAINT=""
-_XCOPY_SQL_MAINT_BEAT=""
-_xcopy_sql_maint_hold() {
-  local _mf=/run/boa_sql_maintenance.pid _mPid _pp=$$ _pst
-  # Start time of this run: a recycled PID must not keep a dead run's marker fresh.
-  _pst=$(cut -d' ' -f22 /proc/$$/stat 2>/dev/null)
-  if [ -e "${_mf}" ] && [ -z "$(find "${_mf}" -mmin +240 2>/dev/null)" ]; then
-    _mPid=$(tr -dc '0-9' 2>/dev/null < "${_mf}")
-    if [ -z "${_mPid}" ] \
-      || { [ "${_mPid}" != "$$" ] && kill -0 "${_mPid}" 2>/dev/null; }; then
-      [ "${_XCOPY_SQL_MAINT}" = "OTHER" ] \
-        || echo "INFO: ${_mf} is held by another operation (pid ${_mPid:-none}); left to its owner"
-      _XCOPY_SQL_MAINT=OTHER
-      return 0
-    fi
-  fi
-  if [ "${_XCOPY_SQL_MAINT}" != "YES" ]; then
-    _XCOPY_SQL_MAINT=YES
-    # Signals masked first: one landing in here would run the exit below inside
-    # this trap and skip the release, pausing the watchdog for hours. The release
-    # goes before the chattr step, the one part that can block on a sick disk.
-    trap 'trap "" INT TERM HUP; _xcopy_sql_maint_release; _xcopy_chattr_back; [ -n "${_XCOPY_RSYNC_ERR:-}" ] && rm -f -- "${_XCOPY_RSYNC_ERR}"; rm -f "${_XCOPY_LOCK_FILE}"' EXIT
-    trap 'exit 130' INT TERM HUP
-    if [ -z "${_XCOPY_SQL_MAINT_BEAT}" ] || ! kill -0 "${_XCOPY_SQL_MAINT_BEAT}" 2>/dev/null; then
-      # Detached, not a child of this shell: the bare `wait` calls in this
-      # tool must never wait on it. Ends on its own when this run is gone
-      # (kill -9, OOM): an orphaned beat would keep the watchdog paused.
-      _XCOPY_SQL_MAINT_BEAT=$(
-        (
-          # The sleep goes with the beat, so a stopped beat leaves no process;
-          # jobs -p also covers a TERM landing before $! is read, and the second
-          # kill a sleep the first reached between its fork and its exec.
-          trap 'kill $(jobs -p) 2>/dev/null; sleep 0.2; kill $(jobs -p) 2>/dev/null; exit 0' TERM
-          while :; do
-            sleep 1200 & _bs=$!
-            wait "${_bs}"
-            [ -z "${_pst}" ] || [ "$(cut -d' ' -f22 "/proc/${_pp}/stat" 2>/dev/null)" = "${_pst}" ] || exit 0
-            kill -0 "${_pp}" 2>/dev/null || exit 0
-            [ "$(tr -dc '0-9' 2>/dev/null < "${_mf}")" = "${_pp}" ] && touch -c "${_mf}"
-          done
-        ) > /dev/null 2>&1 < /dev/null &
-        echo "$!"
-      )
-    fi
-    echo "INFO: SQL watchdog paused for the ${_cmd} database work (${_mf})"
-  fi
-  echo "$$" > "${_mf}"
-}
-_xcopy_sql_maint_release() {
-  if [ -n "${_XCOPY_SQL_MAINT_BEAT}" ]; then
-    kill "${_XCOPY_SQL_MAINT_BEAT}" 2>/dev/null
-    _XCOPY_SQL_MAINT_BEAT=""
-  fi
-  [ "${_XCOPY_SQL_MAINT}" = "YES" ] || return 0
-  if [ "$(tr -dc '0-9' 2>/dev/null < /run/boa_sql_maintenance.pid)" = "$$" ]; then
-    rm -f /run/boa_sql_maintenance.pid
-  fi
-  _XCOPY_SQL_MAINT=""
-  return 0
-}
 
 case "$1" in
   export|create|import|pretransfer|transfer|noproxy|reset-state|pre-mig|post-mig|ssl-gen)
