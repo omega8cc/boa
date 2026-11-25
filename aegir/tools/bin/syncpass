@@ -7,6 +7,7 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 _NOW=$(date +%y%m%d-%H%M%S)
 _NOW=${_NOW//[^0-9-]/}
 _vBs="/var/backups"
+_RDB_DIR="/var/backups/boa/remote-db"
 _THIS_DB_PORT=3306
 _crlGet="-L --max-redirs 3 -s --fail --retry 9 --retry-delay 9 -A iCab"
 _wgetGet="--max-redirect=3 -q --tries=9 --wait=9 --user-agent='iCab'"
@@ -96,6 +97,28 @@ _put_pass() {
       "${_L_SYS_OWN}" && return 0
   echo "ERROR: Could not write ${_L_SYS}"
   exit 1
+}
+# The account's PHP password file with the password in _ESC_PASS, put in the
+# account root as a fresh 0600 file handed to the account (_put_secret_here),
+# never written, handed over or given a mode through a link put at the name.
+# The database host as the install path writes it: FQDN becomes the box's
+# own name, PROXYSQL the local proxy address; any other value is written as
+# it is.
+_put_pass_php() {
+  _OCT_DB_HOST_W="${_THIS_DB_HOST}"
+  if [ "${_THIS_DB_HOST}" = "FQDN" ]; then
+    _OCT_DB_HOST_W="${_hName}"
+  elif [ "${_THIS_DB_HOST}" = "PROXYSQL" ]; then
+    _OCT_DB_HOST_W=127.0.0.1
+  fi
+  { echo "<?php"
+    echo "\$oct_db_user = \"${_uname}\";"
+    echo "\$oct_db_pass = \"${_ESC_PASS}\";"
+    echo "\$oct_db_host = \"${_OCT_DB_HOST_W}\";"
+    echo "\$oct_db_port = \"${_THIS_DB_PORT}\";"
+    echo "\$oct_db_dirs = \"/data/disk/${_uname}/backups\";"
+  } | _acct_in_real_dir "/data/disk/${_uname}" _put_secret_here \
+    ".${_uname}.pass.php" "${_uname}:${_grp}"
 }
 # The alias ./$2 of the real directory $1 kept as the root copy $3, as cp kept
 # it (the same bytes and read/write bits, root's): read bounded, never through
@@ -377,6 +400,738 @@ _a2b_import_advice() {
   fi
 }
 
+# The last value of the setting $2 in the account $1's own cnf, as its
+# Octopus pass reads it; empty where the cnf names none.
+_acct_cnf_value() {
+  grep -s "^${2}=" "/root/.${1}.octopus.cnf" | tail -n 1 \
+    | cut -d= -f2 | tr -d "\"' "
+}
+
+# Remote database server mode, per account. An account's databases are on a
+# remote server when its own cnf names a host other than the four words that
+# keep them on this box and other than the box's own address. Its install
+# left it logging in there with the shared aegir_root login its server alias
+# and its panel's server record name, and no password sync changes anything
+# there: the login of its own name a sync once made again there is used by
+# nothing. "syncpass remote <oN> apply" switches it to a login of its own
+# there, at this web head's address, where root from here can manage users;
+# the switch is recorded in root's /root/.<oN>.remote-db.txt, and each later
+# "syncpass fix <oN>" gives that one login a new password, found by the
+# record and never by a name. What a switch saved, and the journal of one
+# cut off, are root's, under /var/backups/boa/remote-db.
+_rdb_remote() {
+  case "${_THIS_DB_HOST}" in
+    ""|localhost|127.0.0.1|PROXYSQL|FQDN) return 1 ;;
+  esac
+  [ "${_THIS_DB_HOST}" != "${_MY_OWNIP}" ]
+}
+
+# SQL on stdin as root on the account's database server, as the password
+# sync reaches it (root's /root/.my.cnf): rows tab separated, no names.
+_rdb_sql() {
+  mysql --connect-timeout=10 -u root -h"${_SQL_CONNECT}" -P"${_THIS_DB_PORT}" \
+    --protocol=tcp -BN mysql 2> /dev/null
+}
+
+# $1 quoted for a single-quoted SQL string.
+_rdb_q() {
+  local _v="${1//\\/\\\\}"
+  printf '%s' "${_v//\'/\'\'}"
+}
+
+# Status 0 when root from here can create users and grant there.
+_rdb_root_manages() {
+  [ "$(echo "SELECT 1 FROM mysql.user WHERE CONCAT(User,'@',Host)=CURRENT_USER() AND Create_user_priv='Y' AND Grant_priv='Y';" \
+    | _rdb_sql)" = "1" ]
+}
+
+# A login there as $1 with the password $2: prints the account row it lands
+# on (CURRENT_USER()). The password goes through a root-only option file
+# removed right after, never through the command line.
+_rdb_login() {
+  local _f _o _rc _p="${2//\\/\\\\}"
+  _f=$(mktemp /root/.syncpass.rdb.XXXXXX) || return 1
+  printf '[client]\nuser="%s"\npassword="%s"\nhost="%s"\nport=%s\nprotocol=tcp\nconnect-timeout=10\n' \
+    "${1}" "${_p}" "${_SQL_CONNECT}" "${_THIS_DB_PORT}" > "${_f}"
+  _o=$(mysql --defaults-file="${_f}" -BN -e "SELECT CURRENT_USER()" 2> /dev/null < /dev/null)
+  _rc=$?
+  rm -f -- "${_f}"
+  printf '%s' "${_o}"
+  return "${_rc}"
+}
+
+# A new password of letters and digits, as long as _STRONG_PASSWORDS asks
+# (32 to 128): nothing in it needs encoding in a server alias.
+_rdb_newpass() {
+  local _n=32 _s _p=""
+  case "${_STRONG_PASSWORDS}" in
+    YES) _n=64 ;;
+    NO) _n=32 ;;
+    *)
+      _s="${_STRONG_PASSWORDS//[^0-9]/}"
+      if [ -n "${_s}" ] && [ "${_s}" -gt 32 ]; then
+        _n="${_s}"
+      fi
+      [ "${_n}" -gt 128 ] && _n=128
+      ;;
+  esac
+  if [[ "$(randpass -V 2>&1)" =~ alnum ]]; then
+    _p=$(randpass "${_n}" alnum 2> /dev/null)
+  fi
+  if [[ ! "${_p}" =~ ^[A-Za-z0-9]{32,128}$ ]]; then
+    _p=$(openssl rand -base64 384 2> /dev/null | tr -dc 'A-Za-z0-9' | head -c "${_n}")
+  fi
+  [[ "${_p}" =~ ^[A-Za-z0-9]{32,128}$ ]] || return 1
+  printf '%s' "${_p}"
+}
+
+# The password of a server alias's master_db, decoded as provision and the
+# panel decode it (urldecode).
+_rdb_urldecode() {
+  local _v="${1//+/ }"
+  printf '%b' "${_v//%/\\x}"
+}
+
+# The password the server alias $2 (in the account's real .drush, read
+# bounded, never through a link) gives the login $1, decoded.
+_rdb_alias_pass() {
+  local _e
+  _e=$(_acct_read_in "/data/disk/${_uname}/.drush" "${2}" \
+    | sed -n "s#.*'master_db' *=> *'mysql://${1}:\([^@']*\)@.*#\1#p" | head -n 1)
+  [ -n "${_e}" ] || return 1
+  _rdb_urldecode "${_e}"
+}
+
+# In the current (pinned) .drush: each server alias whose master_db logs in
+# as $1 on the host $2, a name a line.
+_rdb_aliases_here() {
+  local _f
+  for _f in ./server_*.alias.drushrc.php; do
+    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
+    _acct_read_here "${_f#./}" \
+      | grep -q "'master_db' *=> *'mysql://${1}:[^@']*@${2//./\\.}[:'/]" \
+      && printf '%s\n' "${_f#./}"
+  done
+}
+
+# The server alias $1 in the account's real .drush given the login $2 with
+# the password $3 (letters and digits) on its master_db line, the host and
+# everything else kept; read back. Status 0 when the alias then holds it.
+_rdb_alias_set() {
+  local _c _n
+  _c=$(_acct_read_in "/data/disk/${_uname}/.drush" "${1}" && echo x) || return 1
+  _n=$(printf '%s' "${_c%x}" \
+    | sed -E "/'master_db' *=>/ s#mysql://(aegir_root|${_uname}):[^@']*@#mysql://${2}:${3}@#"; echo x)
+  [ "${_n}" != "${_c}" ] || [ "$(_rdb_alias_pass "${2}" "${1}")" = "${3}" ] || return 1
+  _acct_in_real_dir "/data/disk/${_uname}/.drush" _acct_put_same_here "${1}" "${_n%x}" \
+    || return 1
+  [ "$(_rdb_alias_pass "${2}" "${1}")" = "${3}" ]
+}
+
+# SQL on stdin in the account's own panel database, as the panel's own
+# tasks reach it; only the lines that start with RDB| are printed, without
+# it, so neither column names nor the client's escaping reach the reader.
+_rdb_panel() {
+  su -s /bin/bash - "${_uname}" -c "drush8 @hostmaster sql-cli" 2> /dev/null 8>&- \
+    | sed -n 's/^RDB|//p'
+}
+
+# The panel's database server records of the node $1, as lines
+# vid|nid|user|password, the two values in hex.
+_rdb_rows_read() {
+  echo "SELECT CONCAT('RDB|', vid, '|', nid, '|', HEX(db_user), '|', HEX(db_passwd)) FROM hosting_db_server WHERE nid = ${1} ORDER BY vid;" \
+    | _rdb_panel
+}
+
+# The records saved in the file $1 put back, each by its revision; status 0
+# when the node's records then read exactly as saved.
+_rdb_rows_restore() {
+  local _v _n _u _p _sql="" _nid=""
+  while IFS='|' read -r _v _n _u _p; do
+    [[ "${_v}" =~ ^[0-9]+$ && "${_n}" =~ ^[0-9]+$ && "${_u}" =~ ^[0-9A-F]*$ && "${_p}" =~ ^[0-9A-F]*$ ]] \
+      || return 1
+    _nid="${_n}"
+    _sql="${_sql}UPDATE hosting_db_server SET db_user = UNHEX('${_u}'), db_passwd = UNHEX('${_p}') WHERE vid = ${_v} AND nid = ${_n};"$'\n'
+  done < "${1}"
+  [ -n "${_nid}" ] || return 1
+  printf '%s' "${_sql}" | _rdb_panel > /dev/null
+  [ "$(_rdb_rows_read "${_nid}")" = "$(cat "${1}")" ]
+}
+
+# The account's two password files given $1, without stopping the run.
+_rdb_files_put() {
+  _ESC_PASS="${1}"
+  printf '%s\n' "${_ESC_PASS}" \
+    | _acct_in_real_dir "${_L_SYS%/*}" _put_secret_here "${_L_SYS##*/}" \
+      "${_L_SYS_OWN}" \
+    && _put_pass_php && return 0
+  echo "ALRT: remote database ${_uname}: its password files could not be written"
+  return 1
+}
+
+# The record $1 (root's, a regular file of a single link, 0600) read: sets
+# the _R_* values, status 0 when each has its form.
+_rdb_rec_read() {
+  local _k _v
+  _R_ALIAS=""
+  _R_SERVER=""
+  _R_DBHOST=""
+  _R_PORT=""
+  _R_ROW=""
+  _R_NODE=""
+  _R_SAVED=""
+  _R_SINCE=""
+  [ -f "${1}" ] && [ ! -L "${1}" ] || return 1
+  [ "$(stat -c '%u|%h|%a' -- "${1}" 2> /dev/null)" = "0|1|600" ] || return 1
+  while IFS='=' read -r _k _v; do
+    case "${_k}" in
+      alias) _R_ALIAS="${_v}" ;;
+      server) _R_SERVER="${_v}" ;;
+      dbhost) _R_DBHOST="${_v}" ;;
+      port) _R_PORT="${_v}" ;;
+      row) _R_ROW="${_v}" ;;
+      node) _R_NODE="${_v}" ;;
+      saved) _R_SAVED="${_v}" ;;
+      since) _R_SINCE="${_v}" ;;
+    esac
+  done < <(head -c 4096 -- "${1}" 2> /dev/null)
+  [[ "${_R_ALIAS}" =~ ^server_[A-Za-z0-9._-]+\.alias\.drushrc\.php$ ]] \
+    && [[ "${_R_SERVER}" =~ ^server_[A-Za-z0-9._-]+$ ]] \
+    && [[ "${_R_DBHOST}" =~ ^[A-Za-z0-9._:-]+$ ]] \
+    && [[ "${_R_PORT}" =~ ^[0-9]{1,5}$ ]] \
+    && [[ "${_R_ROW}" =~ ^[0-9A-Fa-f.:]+$ ]] \
+    && [[ "${_R_NODE}" =~ ^[1-9][0-9]*$ ]] \
+    && [[ "${_R_SAVED}" =~ ^${_RDB_DIR}/${_uname}-[0-9-]+$ ]]
+}
+
+# The record or the journal $1 written whole from the _R_* values, root's
+# 0600, beside its name and moved over it.
+_rdb_rec_write() {
+  rm -f -- "${1}.new"
+  ( umask 077
+    printf 'alias=%s\nserver=%s\ndbhost=%s\nport=%s\nrow=%s\nnode=%s\nsaved=%s\nsince=%s\n' \
+      "${_R_ALIAS}" "${_R_SERVER}" "${_R_DBHOST}" "${_R_PORT}" "${_R_ROW}" \
+      "${_R_NODE}" "${_R_SAVED}" "${_R_SINCE}" > "${1}.new" ) || return 1
+  chmod 0600 "${1}.new" && mv -f -T -- "${1}.new" "${1}"
+}
+
+# The account's own switch lock: one switch, rotation or revert at a time.
+# fd 8 is closed on each command a run starts.
+_rdb_lock() {
+  exec 8> "/run/boa-remote-db.${_uname}.lock" || return 1
+  flock -w "${1}" 8
+}
+
+# The task queue released, when this run holds it.
+_rdb_release() {
+  if [ "${_RDB_QHELD}" = "YES" ] \
+    && [ "$( { tr -dc '0-9' < /run/boa_queue_stop.pid; } 2> /dev/null )" = "$$" ]; then
+    rm -f -- /run/boa_queue_stop.pid
+  fi
+  _RDB_QHELD=NO
+}
+
+# The task queue held as a maintenance move holds it (the pause file with
+# this run's pid; one whose owner is gone is cleared, never obeyed), then
+# the account's own running tasks waited out. Refused during a BOA run.
+_rdb_hold() {
+  local _p _w=0
+  if [ -e /run/boa_run.pid ] || [ -e /run/octopus_install_run.pid ]; then
+    echo "ERROR: ${_uname}: a BOA run is in progress; nothing was changed, run this again once it ends"
+    return 1
+  fi
+  if [ -e /run/boa_queue_stop.pid ] || [ -L /run/boa_queue_stop.pid ]; then
+    _p=$( { tr -dc '0-9' < /run/boa_queue_stop.pid; } 2> /dev/null )
+    if [ -n "${_p}" ] && kill -0 "${_p}" 2> /dev/null; then
+      echo "ERROR: ${_uname}: the task queue is held by another run; nothing was changed"
+      return 1
+    fi
+    rm -f -- /run/boa_queue_stop.pid
+  fi
+  if ! ( set -C; echo "$$" > /run/boa_queue_stop.pid ) 2> /dev/null; then
+    echo "ERROR: ${_uname}: the task queue could not be held; nothing was changed"
+    return 1
+  fi
+  _RDB_QHELD=YES
+  trap '_rdb_release' EXIT
+  while pgrep -u "${_uname}" -f '(^| )provision-[a-z0-9-]+( |$)|hosting-task( |$)' > /dev/null 2>&1; do
+    _w=$(( _w + 1 ))
+    if [ "${_w}" -gt 60 ]; then
+      echo "ERROR: ${_uname}: its tasks still run after ten minutes; nothing was changed"
+      return 1
+    fi
+    sleep 10
+  done
+  return 0
+}
+
+# This web head's address as the database server sees it, from root's own
+# connection: the client address, else the address root's matching row
+# names; never a name or a pattern, so the login made for it can never be
+# one the server shares with another web head or its own accounts.
+_rdb_web_row() {
+  local _o _h
+  _o=$(echo "SELECT USER(), CURRENT_USER();" | _rdb_sql) || return 1
+  for _h in "$(printf '%s' "${_o}" | cut -f1)" "$(printf '%s' "${_o}" | cut -f2)"; do
+    _h="${_h##*@}"
+    if [[ "${_h}" =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]] \
+      || [[ "${_h}" =~ ^[0-9A-Fa-f]*:[0-9A-Fa-f:.]+$ ]]; then
+      printf '%s' "${_h}"
+      return 0
+    fi
+  done
+  return 1
+}
+
+# The account's password file backups that hold the value $1 (compared in
+# memory, never printed), removed with their PHP twins inside the real
+# account home; prints how many.
+_rdb_pre_drop_here() {
+  local _f _n=0
+  for _f in "./.${_uname}.pass.txt-pre-"*; do
+    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
+    [ "$(stat -c %h -- "${_f}" 2> /dev/null)" = "1" ] || continue
+    [ "$(_acct_read_here "${_f#./}" | tr -d '\n')" = "${1}" ] || continue
+    rm -f -- "${_f}" \
+      "./.${_uname}.pass.php-pre-${_f#"./.${_uname}.pass.txt-pre-"}" 2> /dev/null
+    _n=$(( _n + 1 ))
+  done
+  echo "${_n}"
+}
+
+# Why the account cannot be switched here, or nothing. Status 2 for a
+# database server where root from here cannot manage users: a NOTE, not an
+# error. With $1 "resume", the alias and the node come from the journal.
+# Sets _A_ALIAS, _A_SERVER, _A_NODE, _A_ROW and _A_PLUGIN.
+_rdb_check() {
+  local _p _l _c
+  _A_ALIAS=""
+  _A_SERVER=""
+  _A_NODE=""
+  _A_ROW=""
+  _A_PLUGIN=""
+  if [ ! -d "/data/disk/${_uname}/.drush" ] || [ ! -e "/root/.${_uname}.octopus.cnf" ]; then
+    echo "ERROR: ${_uname} is not an Octopus account on this box"
+    return 1
+  fi
+  if ! _rdb_remote; then
+    echo "ERROR: ${_uname}'s databases are on this box's own server (${_THIS_DB_HOST}): nothing to switch"
+    return 1
+  fi
+  if [ -e /root/.standby.cnf ] || [ -e /root/.standby.prep.cnf ]; then
+    echo "ERROR: ${_uname}: this box is a standby: a login of its own there is made on the active web head"
+    return 1
+  fi
+  _p=$(grep -s -m 1 '^_XMASS_PHASE=' /data/conf/xmass_state.cnf | cut -d= -f2- | tr -cd 'a-z-')
+  case "${_p}" in
+    init|syncing|cutover|rename-failed)
+      echo "ERROR: ${_uname}: this box is the active of a standing pair or a move: a login of its own there would be bound to this web head's address alone"
+      return 1
+      ;;
+  esac
+  if [ -e "/data/conf/${_uname}_use_proxysql.txt" ] || [ -e /root/.my.cluster_root_pwd.txt ]; then
+    echo "ERROR: ${_uname}: ProxySQL or a cluster stands between this box and its database server"
+    return 1
+  fi
+  if _a2b_import_unfinished "${_uname}"; then
+    echo "ERROR: ${_uname}: its aegir2boa db-import is unfinished; nothing was changed. $(_a2b_import_advice "${_uname}")"
+    return 1
+  fi
+  if ! _rdb_root_manages; then
+    echo "NOTE: ${_uname}: root from this web head cannot manage users on ${_THIS_DB_HOST}: it keeps the shared aegir_root login; allow root from this web head there, with CREATE USER and GRANT OPTION, to switch it"
+    return 2
+  fi
+  if [ "${1}" = "resume" ]; then
+    _A_ALIAS="${_R_ALIAS}"
+    _A_SERVER="${_R_SERVER}"
+    _A_NODE="${_R_NODE}"
+  else
+    _l=$(_acct_in_real_dir "/data/disk/${_uname}/.drush" _rdb_aliases_here aegir_root "${_THIS_DB_HOST}")
+    if [ -z "${_l}" ] || [ "$(printf '%s\n' "${_l}" | wc -l)" != "1" ]; then
+      echo "ERROR: ${_uname}: not exactly one server alias logs in as aegir_root on ${_THIS_DB_HOST}"
+      return 1
+    fi
+    _A_ALIAS="${_l}"
+    _A_SERVER=$(_acct_read_in "/data/disk/${_uname}/.drush" "${_A_ALIAS}" \
+      | sed -n "s/^\$aliases\['\([^']*\)'\].*/\1/p" | head -n 1)
+    _l=$(echo "SELECT CONCAT('RDB|', n.nid) FROM node n JOIN hosting_db_server d ON d.vid = n.vid WHERE n.type = 'server' AND n.title = '${_THIS_DB_HOST}' AND d.db_user = 'aegir_root';" \
+      | _rdb_panel)
+    if [[ ! "${_l}" =~ ^[1-9][0-9]*$ ]]; then
+      echo "ERROR: ${_uname}: not exactly one server of its panel named ${_THIS_DB_HOST} logs in as aegir_root"
+      return 1
+    fi
+    _A_NODE="${_l}"
+  fi
+  if [[ ! "${_A_SERVER}" =~ ^server_[A-Za-z0-9._-]+$ ]]; then
+    echo "ERROR: ${_uname}: the server alias ${_A_ALIAS} names no server"
+    return 1
+  fi
+  if ! _A_ROW=$(_rdb_web_row); then
+    echo "ERROR: ${_uname}: ${_THIS_DB_HOST} does not see this web head by an address"
+    return 1
+  fi
+  if [ "${1}" = "resume" ] && [ "${_A_ROW}" != "${_R_ROW}" ]; then
+    echo "ERROR: ${_uname}: ${_THIS_DB_HOST} now sees this web head as ${_A_ROW}, the switch began for ${_R_ROW}"
+    return 1
+  fi
+  _c=$(echo "SELECT COUNT(*) FROM mysql.user WHERE User = '${_uname}' AND Host = '${_A_ROW}';" | _rdb_sql)
+  if [ "${_c}" != "0" ] && [ "${1}" != "resume" ]; then
+    echo "ERROR: ${_uname}: ${_THIS_DB_HOST} already has the login '${_uname}'@'${_A_ROW}', which this web head did not make"
+    return 1
+  fi
+  if [ "${1}" = "resume" ]; then
+    _l=$(_acct_read_in "${_R_SAVED}" alias \
+      | sed -n "s#.*'master_db' *=> *'mysql://aegir_root:\([^@']*\)@.*#\1#p" | head -n 1)
+    _A_OLD=$(_rdb_urldecode "${_l}")
+  else
+    _A_OLD=$(_rdb_alias_pass aegir_root "${_A_ALIAS}")
+  fi
+  _l=$(_rdb_login aegir_root "${_A_OLD}")
+  if [[ ! "${_l}" =~ ^aegir_root@ ]]; then
+    echo "ERROR: ${_uname}: its aegir_root login there does not work now; nothing to switch from"
+    return 1
+  fi
+  _A_PLUGIN=$(echo "SELECT plugin FROM mysql.user WHERE CONCAT(User, '@', Host) = '$(_rdb_q "${_l}")';" | _rdb_sql)
+  if [[ ! "${_A_PLUGIN}" =~ ^[a-z0-9_]+$ ]]; then
+    echo "ERROR: ${_uname}: the login plugin of ${_l} could not be read"
+    return 1
+  fi
+  return 0
+}
+
+# Everything an apply changed put back from what it saved (the panel's
+# records, the server alias), the account's own login there dropped, the
+# journal and the record removed and the password files made random. The
+# saved copy stays.
+_rdb_undo() {
+  local _c
+  _rdb_rows_restore "${_R_SAVED}/rows" \
+    || echo "ALRT: remote database ${_uname}: its panel's server records could not be put back from ${_R_SAVED}/rows"
+  _c=$(cat -- "${_R_SAVED}/alias" && echo x)
+  if [ "${_c}" = "x" ] || ! _acct_in_real_dir "/data/disk/${_uname}/.drush" \
+    _acct_put_same_here "${_R_ALIAS}" "${_c%x}"; then
+    echo "ALRT: remote database ${_uname}: its server alias could not be put back from ${_R_SAVED}/alias"
+  fi
+  su -s /bin/bash - "${_uname}" -c "drush8 cc drush" > /dev/null 2>&1 8>&-
+  echo "DROP USER IF EXISTS '${_uname}'@'${_R_ROW}';" | _rdb_sql > /dev/null
+  rm -f -- "/root/.${_uname}.remote-db.txt" "${_RDB_DIR}/${_uname}.apply"
+  _rdb_files_put "$(_rdb_newpass)" > /dev/null
+}
+
+# The account's server alias, as it now stands, verified by provision as
+# the account (the backend verify, not queued, so it cannot race the task
+# queue), then a read of its panel's own database.
+_rdb_verify() {
+  su -s /bin/bash - "${_uname}" -c "drush8 cc drush" > /dev/null 2>&1 8>&-
+  su -s /bin/bash - "${_uname}" -c "drush8 @${_R_SERVER} provision-verify" \
+    > /dev/null 2>&1 8>&- || return 1
+  [ "$(echo "SELECT CONCAT('RDB|', 1);" | _rdb_panel)" = "1" ]
+}
+
+# syncpass remote <oN> apply: the switch (see above). A switch cut off is
+# taken up again from its journal. Changes nothing where root from here
+# cannot manage users there (a NOTE), or the account is already switched.
+_rdb_apply() {
+  local _rec="/root/.${_uname}.remote-db.txt" _jr="${_RDB_DIR}/${_uname}.apply"
+  local _mode="" _rc _p _l _c _n _r _sql
+  if ! _rdb_lock 300; then
+    echo "ERROR: ${_uname}: another switch, revert or password sync of it is running; nothing was changed"
+    return 1
+  fi
+  if [ -e "${_jr}" ] || [ -L "${_jr}" ]; then
+    if ! _rdb_rec_read "${_jr}" || [ ! -s "${_R_SAVED}/alias" ] || [ ! -s "${_R_SAVED}/rows" ]; then
+      echo "ERROR: ${_uname}: the journal ${_jr} or what it saved is not valid; nothing was changed"
+      return 1
+    fi
+    if [ "${_R_DBHOST}" != "${_THIS_DB_HOST}" ]; then
+      echo "ERROR: ${_uname}: the journal names ${_R_DBHOST}, its cnf ${_THIS_DB_HOST}; nothing was changed"
+      return 1
+    fi
+    _THIS_DB_PORT="${_R_PORT}"
+    _mode=resume
+    echo "INFO: ${_uname}: taking up the switch that began ${_R_SINCE}"
+  elif [ -e "${_rec}" ] || [ -L "${_rec}" ]; then
+    if ! _rdb_rec_read "${_rec}"; then
+      echo "ERROR: ${_uname}: its record ${_rec} is not valid; nothing was changed"
+      return 1
+    fi
+    _SQL_CONNECT="${_R_DBHOST}"
+    _THIS_DB_PORT="${_R_PORT}"
+    _p=$(_rdb_alias_pass "${_uname}" "${_R_ALIAS}")
+    if [ -n "${_p}" ] && [ "$(_rdb_login "${_uname}" "${_p}")" = "${_uname}@${_R_ROW}" ]; then
+      echo "INFO: ${_uname} already logs in to ${_R_DBHOST} as '${_uname}'@'${_R_ROW}': nothing to do"
+      return 0
+    fi
+    echo "ERROR: ${_uname} is switched to '${_uname}'@'${_R_ROW}' on ${_R_DBHOST}, and that login fails now: run syncpass remote ${_uname} revert"
+    return 1
+  fi
+  _rdb_hold || return 1
+  _rdb_check "${_mode}"
+  _rc=$?
+  [ "${_rc}" = "2" ] && return 0
+  [ "${_rc}" = "0" ] || return 1
+  if [ "${_mode}" != "resume" ]; then
+    _R_ALIAS="${_A_ALIAS}"
+    _R_SERVER="${_A_SERVER}"
+    _R_DBHOST="${_THIS_DB_HOST}"
+    _R_PORT="${_THIS_DB_PORT}"
+    _R_ROW="${_A_ROW}"
+    _R_NODE="${_A_NODE}"
+    _R_SAVED="${_RDB_DIR}/${_uname}-${_NOW}"
+    _R_SINCE="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+    if ! mkdir -p "${_RDB_DIR}" || ! chmod 0700 "${_RDB_DIR}" \
+      || [ -L "${_RDB_DIR}" ] || ! mkdir -m 0700 "${_R_SAVED}"; then
+      echo "ERROR: ${_uname}: ${_R_SAVED} could not be made; nothing was changed"
+      return 1
+    fi
+    _c=$(_acct_read_in "/data/disk/${_uname}/.drush" "${_R_ALIAS}" && echo x)
+    _l=$(_rdb_rows_read "${_R_NODE}")
+    if [ "${_c}" = "x" ] || [ -z "${_c}" ] || [ -z "${_l}" ] \
+      || ! ( umask 077; printf '%s' "${_c%x}" > "${_R_SAVED}/alias" \
+        && printf '%s\n' "${_l}" > "${_R_SAVED}/rows" ) \
+      || ! _rdb_rec_write "${_jr}"; then
+      echo "ERROR: ${_uname}: its server alias and its panel's records could not be saved; nothing was changed"
+      return 1
+    fi
+  fi
+  if ! _p=$(_rdb_newpass); then
+    echo "ALRT: remote database ${_uname}: no new password could be made; nothing was changed"
+    _rdb_undo
+    return 1
+  fi
+  _c=$(echo "SELECT COUNT(*) FROM mysql.user WHERE User = '${_uname}' AND Host = '${_R_ROW}';" | _rdb_sql)
+  if [ "${_c}" = "0" ]; then
+    _sql="CREATE USER '${_uname}'@'${_R_ROW}' IDENTIFIED WITH ${_A_PLUGIN} BY '${_p}';"
+  else
+    _sql="ALTER USER '${_uname}'@'${_R_ROW}' IDENTIFIED WITH ${_A_PLUGIN} BY '${_p}';"
+  fi
+  _sql="${_sql}"$'\n'"GRANT ALL ON *.* TO '${_uname}'@'${_R_ROW}' WITH GRANT OPTION;"
+  _l=$(printf '%s\n' "${_sql}" "SELECT CONCAT(Create_user_priv, Grant_priv) FROM mysql.user WHERE User = '${_uname}' AND Host = '${_R_ROW}';" \
+    | _rdb_sql)
+  if [ "${_l}" != "YY" ] || [ "$(_rdb_login "${_uname}" "${_p}")" != "${_uname}@${_R_ROW}" ]; then
+    echo "ALRT: remote database ${_uname}: its own login '${_uname}'@'${_R_ROW}' on ${_R_DBHOST} could not be made and proven; nothing was switched"
+    _rdb_undo
+    return 1
+  fi
+  echo "UPDATE hosting_db_server SET db_user = '${_uname}', db_passwd = '${_p}' WHERE nid = ${_R_NODE} AND db_user IN ('aegir_root', '${_uname}');" \
+    | _rdb_panel > /dev/null
+  _l=$(echo "SELECT CONCAT('RDB|', IFNULL(SUM(db_user = '${_uname}' AND db_passwd = '${_p}'), 0), '|', IFNULL(SUM(db_user = 'aegir_root'), 0)) FROM hosting_db_server WHERE nid = ${_R_NODE};" \
+    | _rdb_panel)
+  if [ "${_l%%|*}" = "0" ] || [ "${_l#*|}" != "0" ] \
+    || ! _rdb_alias_set "${_R_ALIAS}" "${_uname}" "${_p}"; then
+    echo "ALRT: remote database ${_uname}: its panel's server records or its server alias could not be switched; all put back"
+    _rdb_undo
+    return 1
+  fi
+  _rdb_files_put "${_p}" > /dev/null
+  if ! _rdb_verify; then
+    echo "ALRT: remote database ${_uname}: the verify of @${_R_SERVER} failed on its own login; all put back on aegir_root"
+    _rdb_undo
+    return 1
+  fi
+  _R_SINCE="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+  if ! _rdb_rec_write "${_rec}"; then
+    echo "ALRT: remote database ${_uname}: switched, but its record ${_rec} could not be written; run this again"
+    return 1
+  fi
+  rm -f -- "${_jr}"
+  _n=$(_acct_in_real_dir "/data/disk/${_uname}" _rdb_pre_drop_here "${_A_OLD}")
+  _r=$(cat /root/.my.pass.txt 2> /dev/null | tr -d '\n')
+  if [ -n "${_r}" ] && [ "${_r}" != "${_A_OLD}" ]; then
+    _c=$(_acct_in_real_dir "/data/disk/${_uname}" _rdb_pre_drop_here "${_r}")
+    [[ "${_c}" =~ ^[0-9]+$ ]] && _n=$(( ${_n:-0} + _c ))
+  fi
+  echo "INFO: ${_uname} now logs in to ${_R_DBHOST} as '${_uname}'@'${_R_ROW}': its server alias ${_R_ALIAS}, its panel's server records and its password files hold that login's own password (record ${_rec}; saved ${_R_SAVED})"
+  echo "INFO: ${_uname}: password file backups that held the shared password, removed: ${_n:-0}"
+  _l=$(echo "SELECT Host FROM mysql.user WHERE User = '${_uname}' AND Host <> '${_R_ROW}' ORDER BY Host;" | _rdb_sql | tr '\n' ' ')
+  if [ -n "${_l}" ]; then
+    echo "NOTE: ${_uname}: other logins of its name on ${_R_DBHOST}, kept, not used by it: ${_l% }"
+  fi
+  echo "NOTE: ${_uname}: its panel backups made before the switch still hold the shared aegir_root password"
+  return 0
+}
+
+# syncpass remote <oN> revert: the account back on the shared aegir_root
+# login from what the switch saved, verified there, and only then its own
+# login dropped. A revert whose verify fails keeps that login and leaves a
+# journal, so apply or revert can be run again.
+_rdb_revert() {
+  local _rec="/root/.${_uname}.remote-db.txt" _jr="${_RDB_DIR}/${_uname}.apply" _src="" _c
+  if ! _rdb_lock 300; then
+    echo "ERROR: ${_uname}: another switch, revert or password sync of it is running; nothing was changed"
+    return 1
+  fi
+  if _rdb_rec_read "${_jr}"; then
+    _src="${_jr}"
+  elif _rdb_rec_read "${_rec}"; then
+    _src="${_rec}"
+  else
+    echo "INFO: ${_uname} is not switched here (no valid record or journal): nothing to revert"
+    return 0
+  fi
+  if [ ! -s "${_R_SAVED}/alias" ] || [ ! -s "${_R_SAVED}/rows" ]; then
+    echo "ERROR: ${_uname}: what the switch saved (${_R_SAVED}) is missing; nothing was changed"
+    return 1
+  fi
+  _rdb_hold || return 1
+  _SQL_CONNECT="${_R_DBHOST}"
+  _THIS_DB_PORT="${_R_PORT}"
+  _c=$(cat -- "${_R_SAVED}/alias" && echo x)
+  if ! _rdb_rows_restore "${_R_SAVED}/rows" \
+    || ! _acct_in_real_dir "/data/disk/${_uname}/.drush" _acct_put_same_here "${_R_ALIAS}" "${_c%x}" \
+    || ! _rdb_verify; then
+    [ "${_src}" = "${_rec}" ] && mv -f -T -- "${_rec}" "${_jr}"
+    echo "ALRT: remote database ${_uname}: put back on aegir_root from ${_R_SAVED}, but that did not verify; its own login '${_uname}'@'${_R_ROW}' is kept: run syncpass remote ${_uname} apply or revert again"
+    return 1
+  fi
+  echo "DROP USER IF EXISTS '${_uname}'@'${_R_ROW}';" | _rdb_sql > /dev/null
+  rm -f -- "${_rec}" "${_jr}"
+  _rdb_files_put "$(_rdb_newpass)" > /dev/null
+  echo "INFO: ${_uname} logs in to ${_R_DBHOST} with the shared aegir_root login again; '${_uname}'@'${_R_ROW}' dropped there"
+  return 0
+}
+
+# syncpass remote <oN> status: the record and a login with it, or what
+# stands in the way of a switch. Changes nothing.
+_rdb_status() {
+  local _p _l
+  if _rdb_rec_read "${_RDB_DIR}/${_uname}.apply"; then
+    echo "STATUS ${_uname}: a switch to '${_uname}'@'${_R_ROW}' on ${_R_DBHOST} was cut off (began ${_R_SINCE}): run syncpass remote ${_uname} apply, or revert"
+    return 0
+  fi
+  if _rdb_rec_read "/root/.${_uname}.remote-db.txt"; then
+    _SQL_CONNECT="${_R_DBHOST}"
+    _THIS_DB_PORT="${_R_PORT}"
+    _p=$(_rdb_alias_pass "${_uname}" "${_R_ALIAS}")
+    _l="FAILED"
+    [ -n "${_p}" ] && [ "$(_rdb_login "${_uname}" "${_p}")" = "${_uname}@${_R_ROW}" ] && _l="OK"
+    echo "STATUS ${_uname}: switched since ${_R_SINCE}: '${_uname}'@'${_R_ROW}' on ${_R_DBHOST}:${_R_PORT}, alias ${_R_ALIAS} (@${_R_SERVER}), server node ${_R_NODE}, saved ${_R_SAVED}; login ${_l}"
+    [ "${_l}" = "OK" ]
+    return $?
+  fi
+  if ! _rdb_remote; then
+    echo "STATUS ${_uname}: its databases are on this box's own server (${_THIS_DB_HOST})"
+  elif _rdb_root_manages; then
+    echo "STATUS ${_uname}: not switched: it logs in to ${_THIS_DB_HOST} with the login its server alias names; root from here can manage users there"
+  else
+    echo "STATUS ${_uname}: not switched: it logs in to ${_THIS_DB_HOST} with the login its server alias names; root from here cannot manage users there"
+  fi
+  return 0
+}
+
+# syncpass remote <oN> plan: what apply would do. Changes nothing.
+_rdb_plan() {
+  local _rc
+  if _rdb_rec_read "${_RDB_DIR}/${_uname}.apply"; then
+    echo "PLAN ${_uname}: a switch was cut off (began ${_R_SINCE}): apply takes it up, revert undoes it"
+    return 0
+  fi
+  if _rdb_rec_read "/root/.${_uname}.remote-db.txt"; then
+    echo "PLAN ${_uname}: already switched to '${_uname}'@'${_R_ROW}' on ${_R_DBHOST}: nothing to do"
+    return 0
+  fi
+  _rdb_check
+  _rc=$?
+  [ "${_rc}" = "2" ] && return 0
+  [ "${_rc}" = "0" ] || return 1
+  echo "PLAN ${_uname}: make '${_uname}'@'${_A_ROW}' on ${_THIS_DB_HOST} (${_A_PLUGIN}, all privileges with grant option, as aegir_root has them), prove its login, save ${_A_ALIAS} and the records of its panel's server node ${_A_NODE} under ${_RDB_DIR}, switch them and its password files to that login, verify @${_A_SERVER}, record it in /root/.${_uname}.remote-db.txt; on any failure all is put back. Nothing was changed"
+  return 0
+}
+
+# syncpass fix <oN> for an account on a remote database server: no login of
+# its name there is dropped or made again, and nothing found by its name
+# alone is changed. Not switched: its password files get a new random
+# password, which nothing reads after its install. Switched: its own login
+# there gets a new password, proven before the record's alias and panel
+# record take it, and set back when anything fails.
+_rdb_fix() {
+  local _rec="/root/.${_uname}.remote-db.txt" _jr="${_RDB_DIR}/${_uname}.apply" _old _p _l
+  if ! _rdb_lock 300; then
+    echo "ALRT: remote database ${_uname}: a switch or a revert of it is running; nothing was changed"
+    return 1
+  fi
+  if [ -e "${_jr}" ] || [ -L "${_jr}" ]; then
+    echo "ALRT: remote database ${_uname}: a switch to its own login was cut off: run syncpass remote ${_uname} apply, or revert; nothing was changed"
+    return 1
+  fi
+  if [ ! -e "${_rec}" ] && [ ! -L "${_rec}" ]; then
+    if ! _p=$(_rdb_newpass) || ! _rdb_files_put "${_p}"; then
+      echo "ERROR: Could not write ${_L_SYS}"
+      return 1
+    fi
+    echo "INFO: ${_uname} logs in to ${_THIS_DB_HOST} with the login its server alias names; nothing was changed there, its password files are new"
+    return 0
+  fi
+  if ! _rdb_rec_read "${_rec}"; then
+    echo "ALRT: remote database ${_uname}: its record ${_rec} is not valid; nothing was changed"
+    return 1
+  fi
+  if [ "${_R_DBHOST}" != "${_THIS_DB_HOST}" ]; then
+    echo "ALRT: remote database ${_uname}: its record names ${_R_DBHOST}, its cnf ${_THIS_DB_HOST}; nothing was changed"
+    return 1
+  fi
+  _SQL_CONNECT="${_R_DBHOST}"
+  _THIS_DB_PORT="${_R_PORT}"
+  _old=$(_rdb_alias_pass "${_uname}" "${_R_ALIAS}")
+  if [ -z "${_old}" ]; then
+    echo "ALRT: remote database ${_uname}: its server alias ${_R_ALIAS} does not log in as ${_uname}; nothing was changed"
+    return 1
+  fi
+  if ! _p=$(_rdb_newpass); then
+    echo "ALRT: remote database ${_uname}: no new password could be made; nothing was changed"
+    return 1
+  fi
+  echo "ALTER USER '${_uname}'@'${_R_ROW}' IDENTIFIED BY '${_p}';" | _rdb_sql > /dev/null
+  if [ "$(_rdb_login "${_uname}" "${_p}")" != "${_uname}@${_R_ROW}" ]; then
+    echo "ALTER USER '${_uname}'@'${_R_ROW}' IDENTIFIED BY '$(_rdb_q "${_old}")';" | _rdb_sql > /dev/null
+    echo "ALRT: remote database ${_uname}: its own login '${_uname}'@'${_R_ROW}' on ${_R_DBHOST} could not take a new password; it keeps the one it has"
+    _rdb_files_put "${_old}" > /dev/null
+    return 1
+  fi
+  echo "UPDATE hosting_db_server SET db_passwd = '${_p}' WHERE nid = ${_R_NODE} AND db_user = '${_uname}';" \
+    | _rdb_panel > /dev/null
+  _l=$(echo "SELECT CONCAT('RDB|', COUNT(*), '|', IFNULL(SUM(db_passwd = '${_p}'), 0)) FROM hosting_db_server WHERE nid = ${_R_NODE} AND db_user = '${_uname}';" \
+    | _rdb_panel)
+  if [ "${_l%%|*}" = "0" ] || [ "${_l%%|*}" != "${_l#*|}" ] \
+    || ! _rdb_alias_set "${_R_ALIAS}" "${_uname}" "${_p}"; then
+    echo "UPDATE hosting_db_server SET db_passwd = '$(_rdb_q "${_old}")' WHERE nid = ${_R_NODE} AND db_user = '${_uname}';" \
+      | _rdb_panel > /dev/null
+    [[ "${_old}" =~ ^[A-Za-z0-9]+$ ]] && _rdb_alias_set "${_R_ALIAS}" "${_uname}" "${_old}"
+    echo "ALTER USER '${_uname}'@'${_R_ROW}' IDENTIFIED BY '$(_rdb_q "${_old}")';" | _rdb_sql > /dev/null
+    echo "ALRT: remote database ${_uname}: its panel's server record or its server alias could not take the new password; all set back to the one it has"
+    _rdb_files_put "${_old}" > /dev/null
+    return 1
+  fi
+  _rdb_files_put "${_p}" > /dev/null
+  su -s /bin/bash - "${_uname}" -c "drush8 cc drush" > /dev/null 2>&1 8>&-
+  echo "INFO: ${_uname}'s own login '${_uname}'@'${_R_ROW}' on ${_R_DBHOST} has a new password, in its server alias, its panel's server record and its password files"
+  return 0
+}
+
+# syncpass remote <oN> plan|apply|revert|status
+_rdb_main() {
+  case "${_uname}" in
+    ""|aegir|*[!a-z0-9]*)
+      echo "Usage: syncpass remote <oN> {plan|apply|revert|status}"
+      exit 1
+      ;;
+  esac
+  _grp=$(_acct_group "${_uname}")
+  _L_SYS="/data/disk/${_uname}/.${_uname}.pass.txt"
+  _L_SYS_OWN="${_uname}:${_grp}"
+  case "${_rdb_verb}" in
+    plan) _rdb_plan ;;
+    apply) _rdb_apply ;;
+    revert) _rdb_revert ;;
+    status) _rdb_status ;;
+    *)
+      echo "Usage: syncpass remote <oN> {plan|apply|revert|status}"
+      exit 1
+      ;;
+  esac
+  exit $?
+}
+
 _do_syncpass() {
   if [ ! -z "${_uname}" ]; then
     _find_correct_ip
@@ -473,6 +1228,14 @@ EOFMYSQL
           "${_vBs}/server_localhost.alias.drushrc.php.${_uname}-${_NOW}" &> /dev/null
         _keep_alias_copy "/data/disk/${_uname}/.drush" server_master.alias.drushrc.php \
           "${_vBs}/server_master.alias.drushrc.php.${_uname}-${_NOW}" &> /dev/null
+        if _rdb_remote; then
+          _rdb_fix
+          _rc=$?
+          echo "INFO: Fixed Ægir Satellite Instance system user=${_uname}"
+          echo "INFO: With Satellite oct_db_host=${_THIS_DB_HOST}"
+          echo "BYE!"
+          exit "${_rc}"
+        fi
         _check_generate
         if [ ! -z "${_ESC_PASS}" ] && [ ! -z "${_ENC_PASS}" ]; then
           if [ -e "/data/conf/${_uname}_use_proxysql.txt" ]; then
@@ -538,28 +1301,8 @@ EOFMYSQL
           echo "ERROR: did not work as expected, please try again"
           exit 1
         fi
-        ### The database host as the install path writes it: FQDN becomes
-        ### the box's own name, PROXYSQL the local proxy address; any other
-        ### value is written as it is.
-        _OCT_DB_HOST_W="${_THIS_DB_HOST}"
-        if [ "${_THIS_DB_HOST}" = "FQDN" ]; then
-          _OCT_DB_HOST_W="${_hName}"
-        elif [ "${_THIS_DB_HOST}" = "PROXYSQL" ]; then
-          _OCT_DB_HOST_W=127.0.0.1
-        fi
-        ### Put in the account root as a fresh 0600 file handed to the
-        ### account, never written, handed over or given a mode through a
-        ### link put at the name.
         _L_SYS_PHP="/data/disk/${_uname}/.${_uname}.pass.php"
-        { echo "<?php"
-          echo "\$oct_db_user = \"${_uname}\";"
-          echo "\$oct_db_pass = \"${_ESC_PASS}\";"
-          echo "\$oct_db_host = \"${_OCT_DB_HOST_W}\";"
-          echo "\$oct_db_port = \"${_THIS_DB_PORT}\";"
-          echo "\$oct_db_dirs = \"/data/disk/${_uname}/backups\";"
-        } | _acct_in_real_dir "/data/disk/${_uname}" _put_secret_here \
-          ".${_uname}.pass.php" "${_uname}:${_grp}" \
-          || echo "ERROR: Could not write ${_L_SYS_PHP}"
+        _put_pass_php || echo "ERROR: Could not write ${_L_SYS_PHP}"
         echo "INFO: Fixed Ægir Satellite Instance system user=${_uname}"
         echo "INFO: New system password=${_ESC_PASS} encoded=${_ENC_PASS}"
         echo "INFO: With Satellite oct_db_host=${_OCT_DB_HOST_W}"
@@ -583,6 +1326,12 @@ _check_root() {
     chmod a+w /dev/null
     # shellcheck disable=SC1091
     [ -e "/root/.barracuda.cnf" ] && source /root/.barracuda.cnf
+    ### An account's databases are where its own cnf says, as its Octopus
+    ### pass reads it; the box's value only where the cnf names none.
+    if [ -n "${_uname}" ] && [ "${_uname}" != "aegir" ]; then
+      _aDbH=$(_acct_cnf_value "${_uname}" _THIS_DB_HOST)
+      [ -n "${_aDbH}" ] && _THIS_DB_HOST="${_aDbH}"
+    fi
     if [ "${_THIS_DB_HOST}" = "localhost" ] \
       || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
       _SQL_CONNECT=localhost
@@ -622,7 +1371,13 @@ case "$1" in
        _check_root
        _do_syncpass
   ;;
+  remote) _uname="$2"
+       _rdb_verb="$3"
+       _check_root
+       _rdb_main
+  ;;
   *)   echo "Usage: syncpass fix {aegir|o1}"
+       echo "       syncpass remote <oN> {plan|apply|revert|status}"
        exit 1
   ;;
 esac

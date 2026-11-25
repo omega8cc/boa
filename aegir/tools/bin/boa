@@ -4000,7 +4000,7 @@ _boa_purge_a2b_park() {
 # Sets _PURGE_DBU (the proven names) and _PURGE_DBU_KEPT (each name or gap
 # with why it stays) for the account $1, and the server they live on.
 _purge_db_users_find() {
-  local _u="${1}" _a="/data/disk/${1}" _m _sp _p _du _dn _dbh _dbo
+  local _u="${1}" _a="/data/disk/${1}" _m _sp _p _du _dn _dbh _dbo _dbr
   _PURGE_DBU=()
   _PURGE_DBU_KEPT=()
   _PURGE_SQL_C=localhost
@@ -4058,6 +4058,12 @@ _purge_db_users_find() {
         _PURGE_DBU_KEPT+=( "${_du} (on the database server ${_dbh}: drop it there)" )
       done
       _PURGE_DBU=()
+      # the account's own login there, made by its switch (syncpass
+      # remote), at the address its record names
+      _dbr=$(grep -s -m 1 '^row=' "/root/.${_u}.remote-db.txt" | cut -d= -f2-)
+      if [[ "${_dbr}" =~ ^[0-9A-Fa-f.:]+$ ]]; then
+        _PURGE_DBU_KEPT+=( "'${_u}'@'${_dbr}' (its own login on the database server ${_dbh}: drop it there)" )
+      fi
       ;;
   esac
 }
@@ -4500,9 +4506,13 @@ _octopus_cleanup() {
         # (/root/.<oN>.migproxy.*): a record ends when its account ends. The
         # glob cannot reach another account's files: ".o1.migproxy." is not a
         # prefix of ".o10.".
+        # Its record of a switch to a login of its own on a remote
+        # database server too, which a later account of the name would
+        # take for its own.
         for _rootCnf in /root/.${_usEr}.octopus.cnf /root/.${_usEr}.rc \
           /root/.${_usEr}.migration-create.txt /root/.${_usEr}.dbctl-seed.txt \
-          /data/conf/${_usEr}_db_broker.txt /root/.${_usEr}.migproxy.*; do
+          /data/conf/${_usEr}_db_broker.txt /root/.${_usEr}.migproxy.* \
+          /root/.${_usEr}.remote-db.txt; do
           [ -e "${_rootCnf}" ] && mv -f "${_rootCnf}" ${_zombie_dir}root/
         done
         # So does the list of its identities' uids the sites' PHP reads (the
