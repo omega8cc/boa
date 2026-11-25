@@ -151,6 +151,11 @@
       load the code in web/ (or docroot/, html/) below it, as Verify does,
       where they stopped with "A codebase was not found".
 
+    * A Migrate onto such a platform records the moved site's own database
+      at once. It read the copy's settings back from the project folder,
+      not from web/, so the panel named the source site's database until a
+      later Verify.
+
     * vdrush @alias updb runs on a Drupal 10 or newer codebase again after a
       Composer run that installed drush/drush (an update or a require) put
       vendor/bin/drush back. Drush starts its update check through that
