@@ -80,6 +80,13 @@
       is kept in a file only root reads. A relay login set up by hand in
       Postfix is left alone.
 
+    * _SMTP_RELAY_SITES=YES in /root/.barracuda.cnf keeps the relay named
+      in _SMTP_RELAY_HOST where local sendmail is allowed for hosted sites
+      (_ALLOW_SENDMAIL=YES), so the sites' mail goes through the relay too.
+      Without it such a box still delivers directly and every upgrade
+      clears the relay, as before. For a relay that keeps each sender's
+      own address, like Amazon SES.
+
 @=> Improvements
 
     * The Upgrade no longer refuses a newer platform that brings a security
@@ -116,6 +123,12 @@
       form. It used to put the bare host in front of such a relay, with the
       same effect and no word. Write the brackets and the port in the
       setting to keep them.
+
+    * Solr 9 and Solr 7 could stay down after a barracuda upgrade until
+      the Java monitor found them, listed as not running with a stale PID
+      file in the upgrade's closing service report: the upgrade started
+      Solr while its killed JVM was still exiting, and Solr's own start
+      refuses then. It now waits until the killed process is gone.
 
     * A Delete, Migrate, Restore or forced reinstall keeps a database, and
       its login, that another site names as its own, and ends with a
