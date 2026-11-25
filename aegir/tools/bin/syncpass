@@ -770,7 +770,7 @@ _rdb_check() {
     _A_ALIAS="${_l}"
     # the form its record and journal must hold, or a revert could not read them
     if [[ ! "${_A_ALIAS}" =~ ^server_[A-Za-z0-9._-]+\.alias\.drushrc\.php$ ]]; then
-      echo "ERROR: ${_uname}: its server alias ${_A_ALIAS} has a name a record cannot hold; nothing was changed"
+      echo "ERROR: ${_uname}: its server alias ${_A_ALIAS//[^A-Za-z0-9._-]/?} has a name a record cannot hold; nothing was changed"
       return 1
     fi
     _A_SERVER=$(_acct_read_in "/data/disk/${_uname}/.drush" "${_A_ALIAS}" \
@@ -840,7 +840,7 @@ _rdb_undo() {
   fi
   su -s /bin/bash - "${_uname}" -c "drush8 cc drush" > /dev/null 2>&1 8>&-
   if [ "${_ok}" != "YES" ]; then
-    echo "ALRT: remote database ${_uname}: its own login '${_uname}'@'${_R_ROW}' and the journal are kept: run syncpass remote ${_uname} revert"
+    echo "ALRT: remote database ${_uname}: the journal, and its own login '${_uname}'@'${_R_ROW}' where it was made, are kept: run syncpass remote ${_uname} revert"
     return 1
   fi
   echo "DROP USER IF EXISTS '${_uname}'@'${_R_ROW}';" | _rdb_sql > /dev/null
@@ -1128,7 +1128,7 @@ _rdb_fix() {
     echo "ALTER USER '${_uname}'@'${_R_ROW}' IDENTIFIED BY '$(_rdb_q "${_old}")';" | _rdb_sql > /dev/null
     _l="it keeps the one it has"
     [ "$(_rdb_login "${_uname}" "${_old}")" = "${_uname}@${_R_ROW}" ] \
-      || _l="and the one it had did not log in after the set-back: the next syncpass fix of it sets a new one"
+      || _l="and the one it had could not be proven after the set-back: the next syncpass fix of it sets a new one"
     echo "ALRT: remote database ${_uname}: its own login '${_uname}'@'${_R_ROW}' on ${_R_DBHOST} could not take a new password; ${_l}"
     _rdb_files_put "${_old}" > /dev/null
     return 1
@@ -1147,7 +1147,7 @@ _rdb_fix() {
     echo "ALTER USER '${_uname}'@'${_R_ROW}' IDENTIFIED BY '$(_rdb_q "${_old}")';" | _rdb_sql > /dev/null
     _l="all set back to the one it has"
     [ "$(_rdb_login "${_uname}" "${_old}")" = "${_uname}@${_R_ROW}" ] \
-      || _l="set back, but the one it had did not log in after the set-back: the next syncpass fix of it sets a new one"
+      || _l="set back, but the one it had could not be proven after the set-back: the next syncpass fix of it sets a new one"
     echo "ALRT: remote database ${_uname}: its panel's server record or its server alias could not take the new password; ${_l}"
     _rdb_files_put "${_old}" > /dev/null
     return 1

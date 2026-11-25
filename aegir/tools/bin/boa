@@ -4630,12 +4630,13 @@ _octopus_cleanup() {
         # Its record of a switch to a login of its own on a remote
         # database server too, which a later account of the name would
         # take for its own, with the journal of a switch cut off and what
-        # each switch saved (".o1." and "o1-" are no prefix of o10's).
+        # each switch saved, named <account>-YYMMDD-HHMMSS: matched by that
+        # whole shape, since a name may hold a hyphen ("o1-" begins o1-x's).
         for _rootCnf in /root/.${_usEr}.octopus.cnf /root/.${_usEr}.rc \
           /root/.${_usEr}.migration-create.txt /root/.${_usEr}.dbctl-seed.txt \
           /data/conf/${_usEr}_db_broker.txt /root/.${_usEr}.migproxy.* \
           /root/.${_usEr}.remote-db.txt /var/backups/boa/remote-db/${_usEr}.apply \
-          /var/backups/boa/remote-db/${_usEr}-*; do
+          /var/backups/boa/remote-db/${_usEr}-[0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9]; do
           [ -e "${_rootCnf}" ] && mv -f "${_rootCnf}" ${_zombie_dir}root/
         done
         # And its sudo lines: a later account of the name gets its own at
