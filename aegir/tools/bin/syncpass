@@ -1113,12 +1113,11 @@ _rdb_fix() {
 
 # syncpass remote <oN> plan|apply|revert|status
 _rdb_main() {
-  case "${_uname}" in
-    ""|aegir|*[!a-z0-9]*)
-      echo "Usage: syncpass remote <oN> {plan|apply|revert|status}"
-      exit 1
-      ;;
-  esac
+  # a plain database user name, as the purge takes an account's
+  if [[ ! "${_uname}" =~ ^[A-Za-z0-9_-]{1,32}$ ]] || [ "${_uname}" = "aegir" ]; then
+    echo "Usage: syncpass remote <oN> {plan|apply|revert|status}"
+    exit 1
+  fi
   _grp=$(_acct_group "${_uname}")
   _L_SYS="/data/disk/${_uname}/.${_uname}.pass.txt"
   _L_SYS_OWN="${_uname}:${_grp}"
