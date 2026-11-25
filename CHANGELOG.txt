@@ -120,6 +120,16 @@
 
 @=> Important Fixes
 
+    * vdrush @alias updb runs on a Drupal 10 or newer codebase again after a
+      Composer run that installed drush/drush (an update or a require) put
+      vendor/bin/drush back. Drush starts its update check through that
+      script, which the shell refused for an account with no word, so updb
+      stopped at "Exit Code: 1" in SiteProcess.php. A line naming the script
+      now runs the same tree's drush.php, as vdrush does, under the same rules.
+
+    * A script an account runs through sh is still refused, and now says so
+      on one line naming it; it used to end with exit 1 and nothing shown.
+
     * A Delete of a platform whose Composer build was cut off clears that
       build's marker again, so a new build under the same name is no longer
       refused as if the old one still ran.

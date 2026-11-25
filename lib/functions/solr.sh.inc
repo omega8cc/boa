@@ -30,6 +30,26 @@ _if_fix_solr7_permissions() {
   [ -e "/var/solr7" ] && chmod 750 /var/solr7
 }
 
+#
+# True when Solr version $1 (solr9, solr7 or jetty9) is denied on this box,
+# read as autoupboa reads it when it parks the service: the box-wide Java
+# deny or the version's own, as a setting or as a marker file. A pass still
+# installs and upgrades a version its own deny names, but starts none that
+# is denied and leaves it no boot links: autoupboa parks it again at its
+# first run after the pass, and where _SKYNET_MODE=OFF stops autoupboa
+# before its deny arms, a started one would run for good.
+_solr_svc_denied() {
+  local _dv=""
+  case "${1}" in
+    solr9) _dv="${_DENY_SOLR9}" ;;
+    solr7) _dv="${_DENY_SOLR7}" ;;
+    jetty9) _dv="${_DENY_JETTY9}" ;;
+    *) return 1 ;;
+  esac
+  [ "${_DENY_JAVA}" = "YES" ] || [ -e "/root/.deny.java.cnf" ] \
+    || [ "${_dv}" = "YES" ] || [ -e "/etc/boa/.deny.${1}.cnf" ]
+}
+
 _if_solr_nine() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _if_solr_nine"
@@ -225,26 +245,6 @@ _if_solr_seven() {
     _mrun "service ${_N_SOLR} restart"
     _msg "INFO: Solr 7 restart completed"
   fi
-}
-
-#
-# True when Solr version $1 (solr9, solr7 or jetty9) is denied on this box,
-# read as autoupboa reads it when it parks the service: the box-wide Java
-# deny or the version's own, as a setting or as a marker file. A pass still
-# installs and upgrades a version its own deny names, but starts none that
-# is denied and leaves it no boot links: autoupboa parks it again at its
-# first run after the pass, and where _SKYNET_MODE=OFF stops autoupboa
-# before its deny arms, a started one would run for good.
-_solr_svc_denied() {
-  local _dv=""
-  case "${1}" in
-    solr9) _dv="${_DENY_SOLR9}" ;;
-    solr7) _dv="${_DENY_SOLR7}" ;;
-    jetty9) _dv="${_DENY_JETTY9}" ;;
-    *) return 1 ;;
-  esac
-  [ "${_DENY_JAVA}" = "YES" ] || [ -e "/root/.deny.java.cnf" ] \
-    || [ "${_dv}" = "YES" ] || [ -e "/etc/boa/.deny.${1}.cnf" ]
 }
 
 #

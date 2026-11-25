@@ -224,45 +224,6 @@ _apt_lock_wait() {
   return 0
 }
 
-# Devuan's merged <suite>-security hands the Debian-built packages to
-# deb.debian.org, which stops serving a pool once the matching Debian LTS ends
-# while the index still lists the files; apt then aborts the whole upgrade on
-# the 404s and a codename hop upgrades nothing. Run the apt-get verb once with
-# its output kept; when it died on such a pool, drop that stanza from
-# sources.list, refresh and say so. The callers' usual _mrun passes follow.
-_apt_run_heal_dead_security_pool() {
-  local _verb_args="$*" _outf="/var/opt/apt-hop-run.out" _dead
-  _apt_lock_wait
-  if bash -c -- "apt-get ${_verb_args}" > "${_outf}" 2>&1; then
-    rm -f "${_outf}"
-    return 0
-  fi
-  [ -n "${_LOG_INFO}" ] && cat "${_outf}" >> "${_LOG_INFO}"
-  _dead=""
-  if grep -q '404' "${_outf}"; then
-    _dead=$(grep -oE '^Err:[0-9]+ [^ ]+ [a-z]+-security' "${_outf}" | awk '{print $3}' | sort -u | head -1)
-  fi
-  rm -f "${_outf}"
-  [ -n "${_dead}" ] || return 0
-  _msg "NOTE: the ${_dead} pool is not served any more; the upgrade continues without it"
-  sed -i "/ ${_dead} /d" /etc/apt/sources.list
-  _mrun "apt-get update --allow-insecure-repositories"
-  return 0
-}
-
-# Dev-server tracing used by both the master and the satellite paths; it lived
-# in the satellite include only, which the master never sources.
-_debug_proc() {
-  if [ -e "/root/.dev.server.cnf" ]; then
-    _msg "DBLS: `ls -la /usr/bin/sh`"
-    _msg "DBLS: `ls -la /bin/sh`"
-    _msg "DBLS: `ls -la /run/octopus_install_run.pid`"
-    # the account's own .tmp/cache: listed only inside the real directory
-    [ -e "/data/disk/${_USER}/.tmp/cache" ] \
-      && _msg "DBLS: $(_acct_in_real_dir "/data/disk/${_USER}/.tmp/cache" ls -la .)"
-  fi
-}
-
 _mrun() {
   # Accept everything as one shell command string:
   #      _mrun "${_INSTAPP} xfonts-75dpi xfonts-base"
@@ -286,6 +247,32 @@ _mrun() {
     # silent output + no logging
     bash -c -- "${_cmd}" &> /dev/null
   fi
+  return 0
+}
+
+# Devuan's merged <suite>-security hands the Debian-built packages to
+# deb.debian.org, which stops serving a pool once the matching Debian LTS ends
+# while the index still lists the files; apt then aborts the whole upgrade on
+# the 404s and a codename hop upgrades nothing. Run the apt-get verb once with
+# its output kept; when it died on such a pool, drop that stanza from
+# sources.list, refresh and say so. The callers' usual _mrun passes follow.
+_apt_run_heal_dead_security_pool() {
+  local _verb_args="$*" _outf="/var/opt/apt-hop-run.out" _dead
+  _apt_lock_wait
+  if bash -c -- "apt-get ${_verb_args}" > "${_outf}" 2>&1; then
+    rm -f "${_outf}"
+    return 0
+  fi
+  [ -n "${_LOG_INFO}" ] && cat "${_outf}" >> "${_LOG_INFO}"
+  _dead=""
+  if grep -q '404' "${_outf}"; then
+    _dead=$(grep -oE '^Err:[0-9]+ [^ ]+ [a-z]+-security' "${_outf}" | awk '{print $3}' | sort -u | head -1)
+  fi
+  rm -f "${_outf}"
+  [ -n "${_dead}" ] || return 0
+  _msg "NOTE: the ${_dead} pool is not served any more; the upgrade continues without it"
+  sed -i "/ ${_dead} /d" /etc/apt/sources.list
+  _mrun "apt-get update --allow-insecure-repositories"
   return 0
 }
 
@@ -586,6 +573,19 @@ _acct_in_real_dir() {
   fi
   ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] && "$@" )
 }
+# Dev-server tracing used by both the master and the satellite paths; it lived
+# in the satellite include only, which the master never sources.
+_debug_proc() {
+  if [ -e "/root/.dev.server.cnf" ]; then
+    _msg "DBLS: `ls -la /usr/bin/sh`"
+    _msg "DBLS: `ls -la /bin/sh`"
+    _msg "DBLS: `ls -la /run/octopus_install_run.pid`"
+    # the account's own .tmp/cache: listed only inside the real directory
+    [ -e "/data/disk/${_USER}/.tmp/cache" ] \
+      && _msg "DBLS: $(_acct_in_real_dir "/data/disk/${_USER}/.tmp/cache" ls -la .)"
+  fi
+}
+
 # ./$1 in the current (pinned) directory: never through a link, never blocked
 # on a FIFO, at most 1 MiB. Empty for anything else.
 _acct_read_here() {
@@ -1261,6 +1261,10 @@ _get_dev_arch() {
   fi
 }
 
+_apt_clean_update() {
+  _mrun "${_APT_UPDATE} -qq"
+}
+
 #
 # Fetch a prebuilt boa-* .deb with its sha256 sidecar from the dev mirror and
 # install it with dpkg. Generalizes the mydumper prebuilt-deb precedent for the
@@ -1647,6 +1651,35 @@ _dedup_xtras_list() {
       fi
     fi
   fi
+}
+
+# Validate a candidate sudoers file with visudo(8) and, only if it passes,
+# install it over the live target as mode 0440 root:root using an atomic
+# rename. On failure the live target is left untouched and the candidate is
+# discarded, so a malformed rule can never lock sudo out of the machine.
+# The candidate must live in the same directory as the target (same
+# filesystem) so the rename is atomic; the ".sudoers.boa." prefix and the
+# embedded dot make sudo's #includedir skip it should a crash leave one
+# behind. Used by _sudoers_safe_append and by the in-place removal paths.
+#
+# Usage: _sudoers_commit <target> <candidate>
+# Returns 0 if committed, 1 if rejected or on error.
+_sudoers_commit() {
+  local _target="${1}"
+  local _cand="${2}"
+  if [ -z "${_target}" ] || [ ! -e "${_cand}" ]; then
+    [ -n "${_cand}" ] && rm -f "${_cand}" 2>/dev/null
+    return 1
+  fi
+  if visudo -cf "${_cand}" >/dev/null 2>&1; then
+    chown root:root "${_cand}" 2>/dev/null
+    chmod 0440 "${_cand}" 2>/dev/null
+    mv -f "${_cand}" "${_target}" 2>/dev/null
+    return 0
+  fi
+  _msg "OOPS: Refusing to write invalid sudoers content to ${_target}"
+  rm -f "${_cand}" 2>/dev/null
+  return 1
 }
 
 _mode_detection() {
@@ -2199,10 +2232,6 @@ _os_detection_minimal() {
   done
 }
 
-_apt_clean_update() {
-  _mrun "${_APT_UPDATE} -qq"
-}
-
 _apt_clean_update_no_releaseinfo_change() {
   _mrun "apt-get update -qq"
 }
@@ -2591,35 +2620,6 @@ CLUSTER_CNF
   return 0
 }
 
-# Validate a candidate sudoers file with visudo(8) and, only if it passes,
-# install it over the live target as mode 0440 root:root using an atomic
-# rename. On failure the live target is left untouched and the candidate is
-# discarded, so a malformed rule can never lock sudo out of the machine.
-# The candidate must live in the same directory as the target (same
-# filesystem) so the rename is atomic; the ".sudoers.boa." prefix and the
-# embedded dot make sudo's #includedir skip it should a crash leave one
-# behind. Used by _sudoers_safe_append and by the in-place removal paths.
-#
-# Usage: _sudoers_commit <target> <candidate>
-# Returns 0 if committed, 1 if rejected or on error.
-_sudoers_commit() {
-  local _target="${1}"
-  local _cand="${2}"
-  if [ -z "${_target}" ] || [ ! -e "${_cand}" ]; then
-    [ -n "${_cand}" ] && rm -f "${_cand}" 2>/dev/null
-    return 1
-  fi
-  if visudo -cf "${_cand}" >/dev/null 2>&1; then
-    chown root:root "${_cand}" 2>/dev/null
-    chmod 0440 "${_cand}" 2>/dev/null
-    mv -f "${_cand}" "${_target}" 2>/dev/null
-    return 0
-  fi
-  _msg "OOPS: Refusing to write invalid sudoers content to ${_target}"
-  rm -f "${_cand}" 2>/dev/null
-  return 1
-}
-
 # Idempotently append a line to a sudoers file, validating the resulting
 # file with visudo(8) before it goes live (via _sudoers_commit). The
 # presence check makes a repeated call a no-op, which also prevents the
@@ -2973,6 +2973,46 @@ _apparmor_drop_learning_children() {
 }
 
 #
+# Turn AppArmor back on after octopus, in the mode barracuda keeps: the run
+# above left every profile file in complain mode, so without this the box stayed
+# there until the next barracuda pass. Barracuda's exit handler calls it too.
+_turn_on_apparmor_after_octopus() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _turn_on_apparmor_after_octopus"
+  fi
+  if [ "${_aaOffInThisRun}" = "YES" ] && _apparmor_mode_chosen; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "ARMR: Turning AppArmor back on..."
+    fi
+    _apparmor_boot_links
+    rm -rf /var/cache/apparmor/* &> /dev/null
+    if [ -x "/etc/init.d/apparmor" ]; then
+      service apparmor start &> /dev/null
+    fi
+    if [ -x "/etc/init.d/auditd" ]; then
+      service auditd start &> /dev/null
+    fi
+    apparmor_parser -r /etc/apparmor.d/* &> /dev/null
+    if [ -e "/root/.activate.apparmor.cnf" ]; then
+      _apparmor_set_mode complain
+    else
+      _apparmor_set_mode enforce && _apparmor_drop_learning_children
+    fi
+    rm -f /root/.turn_off_apparmor_in_octopus.cnf
+  fi
+  # Called at the end of the run and again by the EXIT trap: once is enough.
+  _aaOffInThisRun=NO
+}
+
+#
+# The EXIT trap of a run that switched AppArmor off. Losing its output may be
+# what stopped the run, and a debug line would then end this as well.
+_apparmor_back_on_exit() {
+  trap '' HUP INT TERM PIPE
+  _turn_on_apparmor_after_octopus
+}
+
+#
 # Turn Off AppArmor In Octopus.
 _turn_off_apparmor_in_octopus() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -3011,46 +3051,6 @@ _turn_off_apparmor_in_octopus() {
     fi
     touch /root/.turn_off_apparmor_in_octopus.cnf
   fi
-}
-
-#
-# Turn AppArmor back on after octopus, in the mode barracuda keeps: the run
-# above left every profile file in complain mode, so without this the box stayed
-# there until the next barracuda pass. Barracuda's exit handler calls it too.
-_turn_on_apparmor_after_octopus() {
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _turn_on_apparmor_after_octopus"
-  fi
-  if [ "${_aaOffInThisRun}" = "YES" ] && _apparmor_mode_chosen; then
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      _msg "ARMR: Turning AppArmor back on..."
-    fi
-    _apparmor_boot_links
-    rm -rf /var/cache/apparmor/* &> /dev/null
-    if [ -x "/etc/init.d/apparmor" ]; then
-      service apparmor start &> /dev/null
-    fi
-    if [ -x "/etc/init.d/auditd" ]; then
-      service auditd start &> /dev/null
-    fi
-    apparmor_parser -r /etc/apparmor.d/* &> /dev/null
-    if [ -e "/root/.activate.apparmor.cnf" ]; then
-      _apparmor_set_mode complain
-    else
-      _apparmor_set_mode enforce && _apparmor_drop_learning_children
-    fi
-    rm -f /root/.turn_off_apparmor_in_octopus.cnf
-  fi
-  # Called at the end of the run and again by the EXIT trap: once is enough.
-  _aaOffInThisRun=NO
-}
-
-#
-# The EXIT trap of a run that switched AppArmor off. Losing its output may be
-# what stopped the run, and a debug line would then end this as well.
-_apparmor_back_on_exit() {
-  trap '' HUP INT TERM PIPE
-  _turn_on_apparmor_after_octopus
 }
 
 #
