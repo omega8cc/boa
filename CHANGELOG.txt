@@ -4,6 +4,12 @@
 
 @=> Security
 
+    * An account's Drush 9+ alias store (~/.drush/sites) is its backend
+      user's alone: the folder 0700 and each yml alias 0600, written so and
+      set so on every pass of the limited shell worker. The account's shell
+      login could read the yml copy of a server alias, which holds the
+      database password its drushrc alias keeps from that login.
+
     * The limited shell logs a refused line that holds a byte which is no
       part of a letter, writing that byte as \xNN, and its log is UTF-8
       in any locale. In a UTF-8 locale such a line was in no log, so
