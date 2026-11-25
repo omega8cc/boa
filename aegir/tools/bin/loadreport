@@ -258,13 +258,20 @@ _run_live() {
 
   read -r _ld1 _rest < "${_PROC}/loadavg"
   # Boot-relative window start, in clock ticks, so _sample_pass can tell which
-  # processes were born during the window (charge full CPU) vs pre-existing.
+  # processes were born during the window (charge full CPU) vs pre-existing:
+  # the start tick of a subshell made now, counted as every process's own is.
+  # /proc/uptime only when that cannot be read: a container shows its own
+  # uptime there (lxcfs) while start ticks count from the host's boot.
   local _up
-  read -r _up _rest < "${_PROC}/uptime"
-  # whole, never %d: the box's awk (mawk) caps %d at 2^31, which ticks pass
-  # after some 248 days of uptime at 100 Hz
-  _START_TICKS="$(awk -v u="${_up}" -v hz="${_HZ}" 'BEGIN{printf "%.0f", u*hz}')"
-  [[ "${_START_TICKS}" =~ ^[0-9]+$ ]] || _START_TICKS=0
+  _START_TICKS="$(read -r _up 2> /dev/null < "${_PROC}/self/stat" || exit 1
+    read -r -a _up 2> /dev/null <<< "${_up##*) }"; echo "${_up[19]}")"
+  if ! [[ "${_START_TICKS}" =~ ^[0-9]+$ ]]; then
+    read -r _up _rest < "${_PROC}/uptime"
+    # whole, never %d: the box's awk (mawk) caps %d at 2^31, which ticks pass
+    # after some 248 days of uptime at 100 Hz
+    _START_TICKS="$(awk -v u="${_up}" -v hz="${_HZ}" 'BEGIN{printf "%.0f", u*hz}')"
+    [[ "${_START_TICKS}" =~ ^[0-9]+$ ]] || _START_TICKS=0
+  fi
   _read_stat_counters; _fk1=$_FORKS; _cx1=$_CTXT
   _compute_throttle_state
   _TS_START="$(date +%s 2>/dev/null)"
