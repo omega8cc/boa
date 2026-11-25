@@ -2101,8 +2101,10 @@ _acct_unswept_sweep() {
 # account pass writes one only when the panel's report came whole, so an
 # account skipped or cut off tonight keeps its last known lines), in three
 # groups: no longer supported with an Upgrade ready, no longer supported with
-# none, supported with an Upgrade ready. An account no longer on the server
-# drops out. It goes to the operator (_MY_EMAIL) only when it differs from the
+# none, supported with an Upgrade ready. An account whose own _UPGRADE_DIGEST
+# is NO (its file says digest=NO), and one the nightly no longer processes
+# (gone, proxied away, cancelled, no vhosts: owl.sh's own test), drops out.
+# It goes to the operator (_MY_EMAIL) only when it differs from the
 # last one sent (upgrade-due/digest.sent holds its md5), and never empty: an
 # empty one writes its own md5 there, so a state that comes back is mailed
 # again.
@@ -2115,6 +2117,9 @@ _upgrade_due_digest() {
     _a="${_f##*/}"
     _a="${_a%.txt}"
     [[ "${_a}" =~ ^[a-z][a-z0-9_]*$ ]] && [ -d "/data/disk/${_a}" ] || continue
+    [ -e "/data/disk/${_a}/config/server_master/nginx/vhost.d" ] \
+      && [ ! -e "/data/disk/${_a}/log/proxied.pid" ] \
+      && [ ! -e "/data/disk/${_a}/log/CANCELLED" ] || continue
     _a1=""; _a2=""; _a3=""; _c1=0; _c2=0; _c3=0; _n=0; _end=""; _first=""
     while IFS= read -r _l; do
       [ -n "${_first}" ] || { _first="${_l}"; continue; }
@@ -2137,9 +2142,9 @@ _upgrade_due_digest() {
         _a3="${_a3}    ${_l}"$'\n'; _c3=$((_c3 + 1))
       fi
     done < "${_f}"
-    # a file the account pass wrote whole: its run line and a closing line
-    # that counts its site lines
-    [[ "${_first}" == run=* && "${_end}" =~ ^[0-9]{1,9}$ ]] || continue
+    # a file the account pass wrote whole, for the digest: its run line and
+    # a closing line that counts its site lines
+    [[ "${_first}" =~ ^run=[^\ ]*\ digest=YES$ && "${_end}" =~ ^[0-9]{1,9}$ ]] || continue
     [ "$((10#${_end}))" = "${_n}" ] || continue
     [ "${_c1}" -gt 0 ] && _g1="${_g1}  ${_a} (${_c1}):"$'\n'"${_a1}"
     [ "${_c2}" -gt 0 ] && _g2="${_g2}  ${_a} (${_c2}):"$'\n'"${_a2}"

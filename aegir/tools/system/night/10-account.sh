@@ -1451,24 +1451,33 @@ _upgrade_flag_on() {
   [ "${_v}" = "YES" ]
 }
 ### True when $1 is a line of the report's shape: UPGRADE-REPORT, a host
-### name, a release, yes, no or unknown, a platform's title and the kind of
-### move ('-' for none), tab-separated.
+### name, a release (digits first, then letters, digits, dots and one
+### hyphen), yes, no or unknown, a platform's title and the kind of move
+### ('-' for none), tab-separated.
 _upgrade_due_line_ok() {
   local _t _s _r _y _p _k _x
   IFS=$'\t' read -r _t _s _r _y _p _k _x <<< "${1}"
   [ "${_t}" = "UPGRADE-REPORT" ] && [ -n "${_p}" ] && [ -n "${_k}" ] \
     && [ -z "${_x}" ] && _night_host_ok "${_s}" \
-    && [[ "${_r}" =~ ^[0-9]+\.[0-9]+ ]] && [[ "${_y}" =~ ^(yes|no|unknown)$ ]]
+    && [[ "${_r}" =~ ^[0-9]+(\.[0-9A-Za-z]+){0,3}(-[0-9A-Za-z.]+)?$ ]] \
+    && [[ "${_y}" =~ ^(yes|no|unknown)$ ]]
 }
 ### The account's upgrade report from its control panel
 ### (hosting-drupal-upgrade-report), run as the account as every panel read
-### of this pass is, never on a half-made aegir2boa panel, for at most 300 s.
+### of this pass is, never on a half-made aegir2boa panel, for at most 300 s
+### and 1 MiB of output (the account's Drush runs the account's own code).
 ### Only a whole report counts: the command ended with status 0 and its
 ### closing line counts the site lines before it. Sets _UPGRADE_DUE_REP to
 ### its site lines and a closing line counting them (a line of another shape
 ### is left out, with a NOTE), or _UPGRADE_DUE_WHY and status 1.
 _upgrade_due_read() {
   local _out _rc _l _n=0 _kept=0 _end=""
+  # at most 1 MiB and a byte, each block written as soon as it is read, so
+  # what came before a stop of the copier is kept; status 3 once it reached
+  # that byte (the captured text cannot tell: the shell strips its trailing
+  # line breaks)
+  # shellcheck disable=SC2016
+  local _cap='my ($n, $r) = (0); while ($r = sysread(STDIN, my $b, 65536)) { $b = substr($b, 0, 1048577 - $n) if $n + $r > 1048577; $n += length($b); my $o = 0; while ($o < length($b)) { my $w = syswrite(STDOUT, $b, length($b) - $o, $o); defined($w) or exit 1; $o += $w; } exit 3 if $n >= 1048577; } exit 0'
   _UPGRADE_DUE_REP=""
   _UPGRADE_DUE_WHY=""
   if [ -s /etc/boa/control/instgrp-web-arm.ready.txt ] \
@@ -1476,10 +1485,19 @@ _upgrade_due_read() {
     _UPGRADE_DUE_WHY="an aegir2boa db-import is unfinished"
     return 1
   fi
+  # the copier has a limit of its own: a process the account's code leaves
+  # behind holding the output open would keep it reading after Drush ended
   _out=$(su -s /bin/bash - "${_HM_U}" \
     -c "timeout -k 10 300 drush8 @hostmaster hosting-drupal-upgrade-report" \
-    2> /dev/null < /dev/null)
+    2> /dev/null < /dev/null | timeout -k 5 330 perl -e "${_cap}"
+    _ps=("${PIPESTATUS[@]}")
+    [ "${_ps[1]}" = "3" ] && exit 250
+    exit "${_ps[0]}")
   _rc=$?
+  if [ "${_rc}" = "250" ]; then
+    _UPGRADE_DUE_WHY="it printed more than 1 MiB"
+    return 1
+  fi
   if [ "${_rc}" = "124" ] || [ "${_rc}" = "137" ]; then
     _UPGRADE_DUE_WHY="it ran past 300 s and was stopped"
     return 1
@@ -1524,17 +1542,31 @@ _upgrade_due_read() {
   return 0
 }
 ### A whole report $1 as /var/log/boa/upgrade-due/<oN>.txt, root's alone, its
-### first line run=<this run>: written beside it, then moved over it.
+### first line run=<this run> digest=<$2: YES when the account is in the
+### operator digest, else NO>: written beside it, then moved over it.
 _upgrade_due_put() {
   local _d=/var/log/boa/upgrade-due _f
   mkdir -p "${_d}" && chmod 0700 "${_d}" || return 1
   _f="${_d}/${_HM_U}.txt"
   rm -f -- "${_f}.new"
   ( umask 077
-    { printf 'run=%s\n' "${_NOW}"; printf '%s' "${1}"; } > "${_f}.new" ) \
+    { printf 'run=%s digest=%s\n' "${_NOW}" "${2}"; printf '%s' "${1}"; } > "${_f}.new" ) \
     && mv -f -- "${_f}.new" "${_f}" && return 0
   rm -f -- "${_f}.new"
   return 1
+}
+### In the current (pinned) log/ctrl: true when the marker name $1 can be put
+### as _acct_mark_here puts one: short enough for its temporary name, and no
+### folder at it (its rename replaces a file, a link or a FIFO there, never
+### a folder). The markers are the account's, so they move with it, as the
+### LE and ghost notices' are: an account that removes its own is named
+### again, at most once a night.
+_upgrade_told_free_here() {
+  [ "${#1}" -le 200 ] || return 1
+  if [ -d "./${1}" ] && [ ! -L "./${1}" ]; then
+    return 1
+  fi
+  return 0
 }
 ### In the current (pinned) log/ctrl: the site of each told marker
 ### (upgrade-told.<site>.info), one per line.
@@ -1577,10 +1609,17 @@ _upgrade_due_notice() {
   if [ -z "${_CLIENT_EMAIL}" ] || [ "${_CLIENT_EMAIL}" = "root" ]; then
     return 0
   fi
+  _acct_in_real_dir "${_usEr}/log" mkdir -p ./ctrl 2> /dev/null
   while IFS= read -r _site; do
     [ -n "${_site}" ] || continue
     [ -n "$(_acct_in_real_dir "${_usEr}/log/ctrl" _night_mtime_here "upgrade-told.${_site}.info")" ] \
       && continue
+    # a site whose marker could not be put is not named: it would be named
+    # again every night
+    if ! _acct_in_real_dir "${_usEr}/log/ctrl" _upgrade_told_free_here "upgrade-told.${_site}.info"; then
+      echo "NOTE: upgrade notice of ${_HM_U}: ${_site} is not named, its marker cannot be put in ${_usEr}/log/ctrl"
+      continue
+    fi
     _upList="${_upList}"$'\n'"  - ${_site} (Drupal ${_no[${_site}]})"
     _told+=("${_site}")
   done < <(printf '%s\n' "${!_no[@]}" | LC_ALL=C sort)
@@ -1616,32 +1655,57 @@ _upgrade_due_notice() {
   _subj="Drupal security fixes have ended for one or more of your sites${_MAIL_HOLD_SFX}"
   echo "Sending upgrade notice for ${_HM_U} to ${_MAIL_HOLD_RCPT}${_MAIL_HOLD_SFX} on $(date)"
   if printf '%s\n' "${_clBody}" | s-nail "${_args[@]}" -s "${_subj}" "${_MAIL_HOLD_RCPT}"; then
-    _acct_in_real_dir "${_usEr}/log" mkdir -p ./ctrl 2> /dev/null
     for _site in "${_told[@]}"; do
-      _log_ctrl_mark "upgrade-told.${_site}.info"
+      _log_ctrl_mark "upgrade-told.${_site}.info" \
+        || echo "ALRT: upgrade notice of ${_HM_U}: ${_site} was named but could not be marked told in ${_usEr}/log/ctrl; a later night names it again once its marker can be put"
     done
   else
     echo "ALRT: the upgrade notice for ${_HM_U} was not sent; no site is marked told, it goes on a later night"
   fi
   return 0
 }
-### This account's upgrade report, when either switch is YES for it: a whole
-### report replaces its file and the notice is sent from it; anything else
-### keeps the last whole file, sends nothing and says why in one line. With
-### both switches off for the account its file goes, so the digest drops it.
+### The kept file's digest flag set to $1 (YES or NO), its report as it is:
+### the account's digest switch counts from tonight even when its report is
+### not taken.
+_upgrade_due_flag() {
+  local _f="/var/log/boa/upgrade-due/${_HM_U}.txt" _l _run _was
+  [ -f "${_f}" ] && [ ! -L "${_f}" ] || return 0
+  _l="$(head -n 1 -- "${_f}")"
+  [[ "${_l}" =~ ^(run=[^\ ]*)\ digest=(YES|NO)$ ]] || return 0
+  _run="${BASH_REMATCH[1]}"
+  _was="${BASH_REMATCH[2]}"
+  [ "${_was}" = "${1}" ] && return 0
+  rm -f -- "${_f}.new"
+  ( umask 077
+    { printf '%s digest=%s\n' "${_run}" "${1}"; tail -n +2 -- "${_f}"; } > "${_f}.new" ) \
+    && mv -f -- "${_f}.new" "${_f}" && return 0
+  rm -f -- "${_f}.new"
+  return 1
+}
+### This account's upgrade report, when it is in the operator digest (the
+### digest is on in /root/.barracuda.cnf and _UPGRADE_DIGEST is YES for the
+### account) or its notice is on: a whole report replaces its file and the
+### notice is sent from it; anything else keeps the last whole file, sends
+### nothing and says why in one line. With neither, its file goes, so the
+### digest drops it.
 _upgrade_due_account() {
-  local _f="/var/log/boa/upgrade-due/${_HM_U}.txt"
-  if ! _upgrade_flag_on "${_UPGRADE_DIGEST}" \
-    && ! _upgrade_flag_on "${_UPGRADE_CLIENT_NOTIFY}"; then
+  local _f="/var/log/boa/upgrade-due/${_HM_U}.txt" _dig=NO
+  if _upgrade_flag_on "${_UPGRADE_DIGEST}" \
+    && _cnf_flag_yes /root/.barracuda.cnf _UPGRADE_DIGEST; then
+    _dig=YES
+  fi
+  if [ "${_dig}" = "NO" ] && ! _upgrade_flag_on "${_UPGRADE_CLIENT_NOTIFY}"; then
     [ -e "${_f}" ] && rm -f -- "${_f}" \
-      && echo "upgrade report of ${_HM_U}: both switches are off, its last file removed"
+      && echo "upgrade report of ${_HM_U}: neither the digest nor the notice is on for it, its last file removed"
     return 0
   fi
+  _upgrade_due_flag "${_dig}" \
+    || echo "NOTE: upgrade report of ${_HM_U}: its kept file's digest flag could not be set to ${_dig}"
   if ! _upgrade_due_read; then
     echo "NOTE: upgrade report of ${_HM_U} not taken tonight (${_UPGRADE_DUE_WHY}); its last whole report is kept and no upgrade notice is sent"
     return 0
   fi
-  if ! _upgrade_due_put "${_UPGRADE_DUE_REP}"; then
+  if ! _upgrade_due_put "${_UPGRADE_DUE_REP}" "${_dig}"; then
     echo "NOTE: upgrade report of ${_HM_U} could not be written to /var/log/boa/upgrade-due; no upgrade notice is sent tonight"
     return 0
   fi
