@@ -12733,71 +12733,6 @@ _php_libs_fix() {
   ldconfig 2> /dev/null
 }
 
-_smtp_check() {
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _smtp_check"
-  fi
-  ###
-  ### Diagnostic only: when no relay host is configured, test whether outgoing
-  ### port 25 works and warn if it doesn't. _SMTP_RELAY_TEST=NO skips it. This
-  ### must NOT enclose the relayhost logic below -- it never runs when a relay
-  ### is set, which would leave _SMTP_RELAY_HOST unapplied.
-  ###
-  if [ -z "${_SMTP_RELAY_HOST}" ] && [ "${_SMTP_RELAY_TEST}" = "YES" ]; then
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      _msg "INFO: Checking SMTP connections..."
-    fi
-    if ! command nc -w 10 -z smtp.gmail.com 25 >/dev/null 2>&1 ; then
-      cat <<EOF
-
-      Your outgoing SMTP port 25 doesn't work
-      as expected, so your server can't send out
-      any emails directly.
-
-      Your SMTP relay host, if available, should be added as
-        _SMTP_RELAY_HOST="smtp.your.relay.server"
-      in the /root/.barracuda.cnf file.
-
-      For now we will continue the installation anyway,
-      but you will have to find the welcome email with all
-      initial access credentials in the file located in:
-
-        /data/disk/o1/log/setupmail.txt
-
-EOF
-    fi
-  fi
-  ###
-  ### Apply the configured SMTP relay to Postfix, independent of the port-25
-  ### diagnostic above and of _SMTP_RELAY_TEST. Gate: if local sendmail is
-  ### enabled for hosted sites (/etc/boa/.allow.sendmail.cnf present), stay in
-  ### no-relay/direct mode -- routing through the relay would re-stamp the
-  ### sites' own mail to the relay's single sending domain. Self-correcting
-  ### both ways: enabling the allow file reverts an already-active relayhost
-  ### back to direct. _SMTP_RELAY_SITES=YES lifts the gate, for a relay that
-  ### keeps each sender's own address: the sites' mail goes through it too.
-  ###
-  if [ ! -z "${_SMTP_RELAY_HOST}" ] \
-    && [ "${_ALLOW_SENDMAIL}" != "YES" ] \
-    && [ ! -e "/etc/boa/.allow.sendmail.cnf" ]; then
-    _smtp_relay_apply
-  elif [ ! -z "${_SMTP_RELAY_HOST}" ] \
-    && [ "${_SMTP_RELAY_SITES}" = "YES" ]; then
-    _smtp_relay_apply
-  elif [ "${_ALLOW_SENDMAIL}" = "YES" ] \
-    || [ -e "/etc/boa/.allow.sendmail.cnf" ]; then
-    local _smtpReload=NO
-    if grep -qE "^relayhost = ." /etc/postfix/main.cf 2>/dev/null; then
-      sed -i "s/^relayhost = .*/relayhost =/g" /etc/postfix/main.cf &> /dev/null
-      wait
-      _smtpReload=YES
-    fi
-    _smtp_relay_auth_off && _smtpReload=YES
-    [ "${_smtpReload}" = "YES" ] && postfix reload &> /dev/null
-  fi
-  _smtp_spf_check
-}
-
 ###
 ### Sets one main.cf parameter when its value differs; true when it did.
 ###
@@ -12807,6 +12742,28 @@ _smtp_postconf_set() {
     return 0
   fi
   return 1
+}
+
+###
+### Turns off the relay login BOA wrote (its file, or main.cf pointing at
+### it); true when it changed anything. TLS goes back to opportunistic.
+###
+_smtp_relay_auth_off() {
+  local _smtpAuthFile="/etc/postfix/boa_relay_sasl"
+  local _done=1
+  command -v postconf > /dev/null 2>&1 || return 1
+  if [ "$(postconf -h smtp_sasl_password_maps 2>/dev/null)" = "texthash:${_smtpAuthFile}" ]; then
+    postconf -e "smtp_sasl_auth_enable = no" &> /dev/null
+    postconf -X smtp_sasl_password_maps smtp_sasl_security_options \
+      smtp_sasl_tls_security_options smtp_tls_wrappermode &> /dev/null
+    postconf -e "smtp_tls_security_level = may" &> /dev/null
+    _done=0
+  fi
+  if [ -e "${_smtpAuthFile}" ] || [ -L "${_smtpAuthFile}" ]; then
+    rm -f "${_smtpAuthFile}"
+    _done=0
+  fi
+  return "${_done}"
 }
 
 ###
@@ -12896,28 +12853,6 @@ _smtp_relay_apply() {
   fi
   [ "${_reload}" = "YES" ] && postfix reload &> /dev/null
   return 0
-}
-
-###
-### Turns off the relay login BOA wrote (its file, or main.cf pointing at
-### it); true when it changed anything. TLS goes back to opportunistic.
-###
-_smtp_relay_auth_off() {
-  local _smtpAuthFile="/etc/postfix/boa_relay_sasl"
-  local _done=1
-  command -v postconf > /dev/null 2>&1 || return 1
-  if [ "$(postconf -h smtp_sasl_password_maps 2>/dev/null)" = "texthash:${_smtpAuthFile}" ]; then
-    postconf -e "smtp_sasl_auth_enable = no" &> /dev/null
-    postconf -X smtp_sasl_password_maps smtp_sasl_security_options \
-      smtp_sasl_tls_security_options smtp_tls_wrappermode &> /dev/null
-    postconf -e "smtp_tls_security_level = may" &> /dev/null
-    _done=0
-  fi
-  if [ -e "${_smtpAuthFile}" ] || [ -L "${_smtpAuthFile}" ]; then
-    rm -f "${_smtpAuthFile}"
-    _done=0
-  fi
-  return "${_done}"
 }
 
 ###
@@ -13068,6 +13003,71 @@ _smtp_spf_check() {
     _msg "WARN: the SPF record of ${_spfName} does not name ${_spfIp}, the address this box sends from, so receivers such as Gmail may refuse its mail: ${_spfRecs}"
   fi
   return 0
+}
+
+_smtp_check() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _smtp_check"
+  fi
+  ###
+  ### Diagnostic only: when no relay host is configured, test whether outgoing
+  ### port 25 works and warn if it doesn't. _SMTP_RELAY_TEST=NO skips it. This
+  ### must NOT enclose the relayhost logic below -- it never runs when a relay
+  ### is set, which would leave _SMTP_RELAY_HOST unapplied.
+  ###
+  if [ -z "${_SMTP_RELAY_HOST}" ] && [ "${_SMTP_RELAY_TEST}" = "YES" ]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: Checking SMTP connections..."
+    fi
+    if ! command nc -w 10 -z smtp.gmail.com 25 >/dev/null 2>&1 ; then
+      cat <<EOF
+
+      Your outgoing SMTP port 25 doesn't work
+      as expected, so your server can't send out
+      any emails directly.
+
+      Your SMTP relay host, if available, should be added as
+        _SMTP_RELAY_HOST="smtp.your.relay.server"
+      in the /root/.barracuda.cnf file.
+
+      For now we will continue the installation anyway,
+      but you will have to find the welcome email with all
+      initial access credentials in the file located in:
+
+        /data/disk/o1/log/setupmail.txt
+
+EOF
+    fi
+  fi
+  ###
+  ### Apply the configured SMTP relay to Postfix, independent of the port-25
+  ### diagnostic above and of _SMTP_RELAY_TEST. Gate: if local sendmail is
+  ### enabled for hosted sites (/etc/boa/.allow.sendmail.cnf present), stay in
+  ### no-relay/direct mode -- routing through the relay would re-stamp the
+  ### sites' own mail to the relay's single sending domain. Self-correcting
+  ### both ways: enabling the allow file reverts an already-active relayhost
+  ### back to direct. _SMTP_RELAY_SITES=YES lifts the gate, for a relay that
+  ### keeps each sender's own address: the sites' mail goes through it too.
+  ###
+  if [ ! -z "${_SMTP_RELAY_HOST}" ] \
+    && [ "${_ALLOW_SENDMAIL}" != "YES" ] \
+    && [ ! -e "/etc/boa/.allow.sendmail.cnf" ]; then
+    _smtp_relay_apply
+  elif [ ! -z "${_SMTP_RELAY_HOST}" ] \
+    && [ "${_SMTP_RELAY_SITES}" = "YES" ]; then
+    _smtp_relay_apply
+  elif [ "${_ALLOW_SENDMAIL}" = "YES" ] \
+    || [ -e "/etc/boa/.allow.sendmail.cnf" ]; then
+    local _smtpReload=NO
+    if grep -qE "^relayhost = ." /etc/postfix/main.cf 2>/dev/null; then
+      sed -i "s/^relayhost = .*/relayhost =/g" /etc/postfix/main.cf &> /dev/null
+      wait
+      _smtpReload=YES
+    fi
+    _smtp_relay_auth_off && _smtpReload=YES
+    [ "${_smtpReload}" = "YES" ] && postfix reload &> /dev/null
+  fi
+  _smtp_spf_check
 }
 
 _if_install_vnstat() {
