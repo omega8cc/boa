@@ -132,6 +132,17 @@
       as it is, and a session keeps writing to the file it read even after
       the shell's configuration is reloaded (lshell 0.11.18).
 
+    * The Drush a Composer platform's first Verify adds is resolved on the
+      PHP the platform's tasks run on again. With the build step's time
+      limit in front of it, the require ran on the server's default PHP, so
+      where an account's command-line PHP is older the Drush it added could
+      not start there.
+
+    * Lock and Unlock work on a Composer platform added with an empty
+      Docroot field, which the panel records at its project folder: they
+      load the code in web/ (or docroot/, html/) below it, as Verify does,
+      where they stopped with "A codebase was not found".
+
     * vdrush @alias updb runs on a Drupal 10 or newer codebase again after a
       Composer run that installed drush/drush (an update or a require) put
       vendor/bin/drush back. Drush starts its update check through that
