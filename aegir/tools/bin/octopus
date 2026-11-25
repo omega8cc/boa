@@ -969,6 +969,30 @@ _a2b_import_advice() {
   fi
 }
 
+# The install of a remote-mode account lends the root password to the
+# account's password file for its control panel's install alone and puts a
+# random one back right after it, unless the install was killed outright.
+# Such an account is left half made (no log/cores.txt), and no pass or new
+# install reaches it again, so the pass that meets it removes both files
+# while the first still holds exactly that password (compared, never
+# printed). The run markers this launcher holds keep any install out of
+# that window meanwhile; a run chained from an install leaves it to the
+# next pass. Status 0 when the files were removed.
+_oct_half_made_root_pass_drop() {
+  local _d="${1}" _u="${1##*/}" _r _p
+  [ "${_OCTOPUS_CHAINED}" = "YES" ] && return 1
+  [ -d "${_d}/config/server_master/nginx/vhost.d" ] \
+    && [ -e "${_d}/log/cores.txt" ] && return 1
+  _r=$(cat /root/.my.pass.txt 2> /dev/null | tr -d '\n')
+  [ -n "${_r}" ] || return 1
+  _p=$(_oct_in_real_dir "${_d}" _oct_read_tail_here ".${_u}.pass.txt" | tr -d '\n')
+  [ "${_p}" = "${_r}" ] || return 1
+  _oct_in_real_dir "${_d}" rm -f -- "./.${_u}.pass.php" "./.${_u}.pass.txt" \
+    || return 1
+  echo "ALRT: ${_d}: its database password files held the root password, left by an install that was ended outright, and were removed"
+  return 0
+}
+
 _up_action_all() {
   for _usEr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
     _count_cpu
@@ -1086,6 +1110,8 @@ _up_action_all() {
         echo "ALRT: skipping ${_usEr}: load too high - nothing was upgraded"
         _LOAD_SKIPPED="${_LOAD_SKIPPED} $(basename "${_usEr}")"
       fi
+    elif _oct_half_made_root_pass_drop "${_usEr}"; then
+      _PASS_DROPPED="${_PASS_DROPPED} ${_usEr##*/}"
     fi
   done
 }
@@ -1203,6 +1229,8 @@ _up_action_one() {
     else
       echo "ALRT: skipping ${_usEr}: not an Octopus instance (no vhost.d or no log/cores.txt) - nothing was upgraded"
     fi
+    _oct_half_made_root_pass_drop "${_usEr}" \
+      && _PASS_DROPPED="${_PASS_DROPPED} ${_sCnd}"
     _SEND_ALERT=YES
   fi
 }
@@ -1362,6 +1390,10 @@ _up_finish() {
   if [ -n "${_MFS_SKIPPED}" ]; then
     [ -n "${_upWhy}" ] && _upWhy="${_upWhy}; "
     _upWhy="${_upWhy}not upgraded while migratefs relocates its files store:${_MFS_SKIPPED}"
+  fi
+  if [ -n "${_PASS_DROPPED}" ]; then
+    [ -n "${_upWhy}" ] && _upWhy="${_upWhy}; "
+    _upWhy="${_upWhy}half made, the root password removed from its password files:${_PASS_DROPPED}"
   fi
   if [ -n "${_upWhy}" ]; then
     _upDone="OCTOPUS upgrade completed WITH ERRORS -- ${_upWhy}"
@@ -1916,6 +1948,7 @@ _up_proceed() {
   _ALERT_LOGS=""
   _LOAD_SKIPPED=""
   _MFS_SKIPPED=""
+  _PASS_DROPPED=""
   if [ "${_sCnd}" = "all" ]; then
     _up_action_all
   else
