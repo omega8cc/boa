@@ -4,6 +4,11 @@
 
 @=> Security
 
+    * syncpass remote never logs in with a password from an account's
+      server alias that holds a control character or a double quote. Such
+      a value went into the option file of root's database client, where
+      it could add options of the account's choosing.
+
     * An account's Drush 9+ alias store (~/.drush/sites) is its backend
       user's alone: the folder 0700 and each yml alias 0600, written so and
       set so on every pass of the limited shell worker. The account's shell
@@ -154,6 +159,13 @@
       to such a codebase has the same limit, and a stopped one is undone.
 
 @=> Important Fixes
+
+    * syncpass remote keeps an account it cannot fully put back on a path
+      a revert can finish: a switch whose put-back fails keeps the new
+      login and its journal, a revert first proves the saved aegir_root
+      password still logs in, and the password sync of a switched account
+      takes a panel it could not read as a failure and sets everything
+      back. A purge also takes a cut-off switch's journal and saved copies.
 
     * The limited shell's history in a .lsh script, or in a single command
       run over an SSH terminal, lists the login's history file again

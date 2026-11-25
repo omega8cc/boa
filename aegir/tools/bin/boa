@@ -4159,8 +4159,11 @@ _purge_db_users_find() {
       done
       _PURGE_DBU=()
       # the account's own login there, made by its switch (syncpass
-      # remote), at the address its record names
+      # remote), at the address its record names, or the journal of a
+      # switch that was cut off
       _dbr=$(grep -s -m 1 '^row=' "/root/.${_u}.remote-db.txt" | cut -d= -f2-)
+      [ -n "${_dbr}" ] || _dbr=$(grep -s -m 1 '^row=' \
+        "/var/backups/boa/remote-db/${_u}.apply" | cut -d= -f2-)
       if [[ "${_dbr}" =~ ^[0-9A-Fa-f.:]+$ ]]; then
         _PURGE_DBU_KEPT+=( "'${_u}'@'${_dbr}' (its own login on the database server ${_dbh}: drop it there)" )
       fi
@@ -4626,11 +4629,13 @@ _octopus_cleanup() {
         # prefix of ".o10.".
         # Its record of a switch to a login of its own on a remote
         # database server too, which a later account of the name would
-        # take for its own.
+        # take for its own, with the journal of a switch cut off and what
+        # each switch saved (".o1." and "o1-" are no prefix of o10's).
         for _rootCnf in /root/.${_usEr}.octopus.cnf /root/.${_usEr}.rc \
           /root/.${_usEr}.migration-create.txt /root/.${_usEr}.dbctl-seed.txt \
           /data/conf/${_usEr}_db_broker.txt /root/.${_usEr}.migproxy.* \
-          /root/.${_usEr}.remote-db.txt; do
+          /root/.${_usEr}.remote-db.txt /var/backups/boa/remote-db/${_usEr}.apply \
+          /var/backups/boa/remote-db/${_usEr}-*; do
           [ -e "${_rootCnf}" ] && mv -f "${_rootCnf}" ${_zombie_dir}root/
         done
         # And its sudo lines: a later account of the name gets its own at
