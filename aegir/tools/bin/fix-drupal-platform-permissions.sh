@@ -555,17 +555,6 @@ _off_drush_here() {
   mv -f -T -- ./drush ./.off-drush
 }
 
-# Each Grav capsule in the current (pinned) sites/, entered for real.
-# Nothing is done in a capsule that is, or is below, a directory another
-# user owns.
-_grav_capsules_perm_here() {
-  local _c _here
-  _here="$(/bin/pwd -P)"
-  for _c in ./*/; do
-    _c="${_c#./}"
-    _in_pinned_dir "${_here}/${_c%/}" _grav_capsule_perm_here
-  done
-}
 _grav_capsule_perm_here() {
   local _wd _sd _here _ov
   local -a _keep=()
@@ -622,6 +611,17 @@ _grav_capsule_perm_here() {
   done
 }
 
+# Each Grav capsule in the current (pinned) sites/, entered for real.
+# Nothing is done in a capsule that is, or is below, a directory another
+# user owns.
+_grav_capsules_perm_here() {
+  local _c _here
+  _here="$(/bin/pwd -P)"
+  for _c in ./*/; do
+    _c="${_c#./}"
+    _in_pinned_dir "${_here}/${_c%/}" _grav_capsule_perm_here
+  done
+}
 _SCOPE_ROOT=""
 _APP_ROOT=NO
 drupal_root=${1%/}

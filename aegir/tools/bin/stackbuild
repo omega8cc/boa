@@ -165,14 +165,14 @@ _PUBLISH_LOST=0
 _msg()  { printf '%s\n' "$*"; }
 _info() { printf '\033[0;32m%s\033[0m\n' "$*"; }
 _alrt() { printf '\033[0;33m%s\033[0m\n' "$*" >&2; }
-_die()  { printf '\033[0;31mFATAL ERROR: %s\033[0m\n' "$*" >&2; _cleanup; exit 1; }
-
 _cleanup() {
   if [[ "${_LOCK_HELD}" == "1" ]]; then
     rmdir "${_LOCK}" 2>/dev/null
     _LOCK_HELD=0
   fi
 }
+
+_die()  { printf '\033[0;31mFATAL ERROR: %s\033[0m\n' "$*" >&2; _cleanup; exit 1; }
 
 _acquire_lock() {
   if ! mkdir "${_LOCK}" 2>/dev/null; then

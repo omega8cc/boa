@@ -387,6 +387,25 @@ _iface_has_onlink_default_helpers() {
 _cidr_prefix() { printf '%s\n' "${1#*/}"; }
 _rfc1918() { case "$1" in 10.*|192.168.*|172.1[6-9].*|172.2[0-9].*|172.3[0-1].*) printf YES;; *) printf NO;; esac; }
 
+_is_dir_netdev() { _IF="$1"; [ -d "/sys/class/net/${_IF}" ] && ip -o link show dev "${_IF}" >/dev/null 2>&1; }
+
+_is_pseudo_if() {
+  case "$1" in
+    lo|bonding_masters|*:*|docker*|veth*|br*|virbr*|tun*|tap*|wg*|tailscale*|zt*|nlmon*|ifb*|gre*|gretap*|erspan*|sit*|ip6tnl*|tunl*) return 0 ;;
+    bond*) return 0 ;;  # treat as pseudo unless it already has live IPv4 (writer handles)
+  esac
+  return 1
+}
+
+_list_ifaces() {
+  for _IF in $(ls -1 /sys/class/net 2>/dev/null); do
+    [ "$_IF" = "lo" ] && continue
+    _is_dir_netdev "$_IF" || continue
+    _is_pseudo_if "$_IF" && continue
+    printf '%s\n' "$_IF"
+  done
+}
+
 _is_nat_only_setup() {
   # Returns 0 (true) if ALL interfaces with IPv4 have only RFC1918 (private) IPs.
   # This indicates a NAT scenario (e.g., LunaNode) where the public IP is outside the VM.
@@ -668,25 +687,6 @@ EOF
 }
 
 # ----------------------------- Interface filters -------------------------------
-
-_is_dir_netdev() { _IF="$1"; [ -d "/sys/class/net/${_IF}" ] && ip -o link show dev "${_IF}" >/dev/null 2>&1; }
-
-_is_pseudo_if() {
-  case "$1" in
-    lo|bonding_masters|*:*|docker*|veth*|br*|virbr*|tun*|tap*|wg*|tailscale*|zt*|nlmon*|ifb*|gre*|gretap*|erspan*|sit*|ip6tnl*|tunl*) return 0 ;;
-    bond*) return 0 ;;  # treat as pseudo unless it already has live IPv4 (writer handles)
-  esac
-  return 1
-}
-
-_list_ifaces() {
-  for _IF in $(ls -1 /sys/class/net 2>/dev/null); do
-    [ "$_IF" = "lo" ] && continue
-    _is_dir_netdev "$_IF" || continue
-    _is_pseudo_if "$_IF" && continue
-    printf '%s\n' "$_IF"
-  done
-}
 
 _iface_v6_list() { ip -o -6 addr show dev "$1" scope global 2>/dev/null | awk '{print $4}'; }
 

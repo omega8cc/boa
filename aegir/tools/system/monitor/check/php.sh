@@ -253,75 +253,12 @@ _fpm_master_pids() {
   done
 }
 
-_fpm_duplicate_instances_detection() {
-  _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
-  for e in ${_PHP_V}; do
-    # Count masters for this exact conf path
-    _pat="^php-fpm: master process.*/opt/php${e}/etc/php${e}-fpm.conf"
-    _cnt=$(_fpm_master_pids "${_pat}" | grep -c .)
-    (( _cnt > 1 )) || continue
-    # Asked again after a grace and gated like the health check: this
-    # restarts the whole version, cutting every request of every pool on it,
-    # and one sample under a stall is not evidence of a second master.
-    sleep 3
-    _cnt=$(_fpm_master_pids "${_pat}" | grep -c .)
-    (( _cnt > 1 )) || continue
-    _sql_mutation_began && return 0
-    _cd="/run/php${e}-fpm.cooldown"
-    _now=$(date +%s)
-    _ts=
-    [ -s "${_cd}" ] && _ts=$(tr -dc '0-9' 2> /dev/null < "${_cd}")
-    if [ -n "${_ts}" ] && [ $(( _now - _ts )) -ge 0 ] \
-      && [ $(( _now - _ts )) -lt "${_FPM_COOLDOWN_SECS}" ]; then
-      echo "$(date) INFO: php${e}-fpm duplicate master but in cooldown; skipping restart" >> "${_pthOml}"
-      continue
-    fi
-    _thisErrLog="$(date) Duplicate master for php${e}-fpm (count=${_cnt})"
-    echo "${_thisErrLog}" >> "${_pthOml}"
-    # pid, ppid, seconds run (from start ticks, never ps's age) and title
-    local _mp="" _mList=""
-    for _mp in $(_fpm_master_pids "${_pat}"); do
-      _mList="${_mList} $(ps -o pid=,ppid= -p "${_mp}" 2> /dev/null | tr -s ' ' | sed 's/^ //') $(_proc_age "${_mp}") $(ps -o args= -p "${_mp}" 2> /dev/null);"
-    done
-    echo "$(date) INFO: php${e}-fpm masters counted:${_mList}" >> "${_pthOml}"
-    [ -d "/var/backups/php-logs/${_NOW}" ] || mkdir -p "/var/backups/php-logs/${_NOW}/"
-    mv -f "/var/log/php/php${e}-fpm-error.log" "/var/backups/php-logs/${_NOW}/" &> /dev/null
-    service "php${e}-fpm" restart
-    wait
-    date +%s > "${_cd}"
-  done
-}
-
 _fpm_giant_log_detection() {
   _PHPLOG_SIZE_TEST=$(du -s -h /var/log/php 2>/dev/null)
   if echo "${_PHPLOG_SIZE_TEST}" | grep -q "G"; then
     _thisErrLog="$(date) Too big PHP error logs detected: ${_PHPLOG_SIZE_TEST}"
     echo ${_thisErrLog} >> ${_pthOml}
     # No restart here; health checks will react if needed.
-  fi
-}
-
-_fpm_listen_conflict_detection() {
-  if [ -e "/var/log/php" ]; then
-    _hit=$(_fpm_master_hits "already listen on")
-    if [ "${_hit}" -gt 0 ]; then
-      sleep 2
-      _hit2=$(_fpm_master_hits "already listen on")
-      if [ "${_hit2}" -gt 0 ]; then
-        _sql_mutation_began && return 0
-        [ -d "/var/backups/php-logs/${_NOW}" ] || mkdir -p /var/backups/php-logs/${_NOW}/
-        mv -f /var/log/php/php*-fpm-error.log /var/backups/php-logs/${_NOW}/ &> /dev/null
-        _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
-        for e in ${_PHP_V}; do
-          if [ ! -S "/run/www${e}.fpm.socket" ]; then
-            _thisErrLog="$(date) FPM listen conflict for php${e}, restarting"
-            echo ${_thisErrLog} >> ${_pthOml}
-            service "php${e}-fpm" restart
-            wait
-          fi
-        done
-      fi
-    fi
   fi
 }
 
@@ -643,28 +580,6 @@ _fpm_timeout_detection() {
   rm -f "${_cut}"
 }
 
-_fpm_sockets_healing() {
-  _hit=$(_fpm_master_hits "Address already in use")
-  if [ "${_hit}" -gt 0 ]; then
-    sleep 2
-    _hit2=$(_fpm_master_hits "Address already in use")
-    if [ "${_hit2}" -gt 0 ]; then
-      _sql_mutation_began && return 0
-      [ -d "/var/backups/php-logs/${_NOW}" ] || mkdir -p /var/backups/php-logs/${_NOW}/
-      mv -f /var/log/php/php*-fpm-error.log /var/backups/php-logs/${_NOW}/ &> /dev/null
-      _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
-      for e in ${_PHP_V}; do
-        if [ ! -S "/run/www${e}.fpm.socket" ]; then
-          _thisErrLog="$(date) FPM socket conflict sustained for php${e}; restarting"
-          echo ${_thisErrLog} >> ${_pthOml}
-          service "php${e}-fpm" restart
-          wait
-        fi
-      done
-    fi
-  fi
-}
-
 _fpm_fastcgi_temp() {
   _FASTCGI_SIZE_TEST=$(du -s -h /usr/fastcgi_temp/*/*/* 2>/dev/null | grep G)
   if [ -n "${_FASTCGI_SIZE_TEST}" ]; then
@@ -694,114 +609,6 @@ _fpm_health_ok() {
   [ -S "/run/www${1}.fpm.socket" ] || return 1
   [ -s "/run/php${1}-fpm.pid" ] || return 1
   return 0
-}
-
-_fpm_health_check_fix() {
-  _thisErrLog=
-  _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
-  # The versions the sites and the panel run come first: when a database
-  # restart stops every version at once, Nginx is back within seconds and
-  # sends requests to them while versions nobody uses would still be healing.
-  _ORD=""
-  for e in "${_PHP_FPM_VERSION//[^0-9]/}" "${_HM_FPM_VERSION//[^0-9]/}"; do
-    if [ -n "${e}" ] && [[ " ${_PHP_V} " == *" ${e} "* ]] \
-      && [[ " ${_ORD} " != *" ${e} "* ]]; then
-      _ORD="${_ORD} ${e}"
-    fi
-  done
-  for e in ${_PHP_V}; do
-    [[ " ${_ORD} " == *" ${e} "* ]] || _ORD="${_ORD} ${e}"
-  done
-  _PHP_V="${_ORD}"
-  # One grace for reloads, shared by every version found down: a grace per
-  # version makes each one wait for every version listed before it.
-  _DOWN_V=""
-  # Every version is read from one list of the masters; a version that reads
-  # as down is asked again by its own pgrep after the grace below.
-  _FPM_MASTERS="$(pgrep -u root -U root -af '^php-fpm: master process' 2> /dev/null)"
-  _FPM_MASTERS_SET=YES
-  for e in ${_PHP_V}; do
-    if [ -e "/etc/init.d/php${e}-fpm" ] && [ -x "/opt/php${e}/bin/php" ]; then
-      _fpm_health_ok "${e}" || _DOWN_V="${_DOWN_V} ${e}"
-    fi
-  done
-  _FPM_MASTERS_SET=""
-  [ -n "${_DOWN_V}" ] || return 0
-  sleep 2
-  for e in ${_DOWN_V}; do
-    if [ -e "/etc/init.d/php${e}-fpm" ] && [ -x "/opt/php${e}/bin/php" ]; then
-      _pat="^php-fpm: master process.*/opt/php${e}/etc/php${e}-fpm.conf"
-
-      _ok_master=false; _ok_socket=false; _ok_pid=false
-      pgrep -u root -U root -f "${_pat}" >/dev/null 2>&1 && _ok_master=true
-      [ -S "/run/www${e}.fpm.socket" ] && _ok_socket=true
-      [ -s "/run/php${e}-fpm.pid" ] && _ok_pid=true
-
-      if ! ${_ok_master} || ! ${_ok_socket} || ! ${_ok_pid}; then
-        _sql_mutation_began && break
-        # Per-version cooldown: /run/php<ver>-fpm.cooldown, gated by
-        # _FPM_COOLDOWN_SECS
-        _cd="/run/php${e}-fpm.cooldown"
-        _now=$(date +%s)
-        if [ -s "${_cd}" ]; then
-          _ts=$(cat "${_cd}" 2>/dev/null | tr -d '\n')
-          if [ -n "${_ts}" ]; then
-            _delta=$(( _now - _ts ))
-            if [ "${_delta}" -lt "${_FPM_COOLDOWN_SECS}" ]; then
-              echo "$(date) INFO: php${e}-fpm unhealthy but in cooldown (${_delta}s < ${_FPM_COOLDOWN_SECS}s); skipping restart" >> ${_pthOml}
-              continue
-            fi
-          fi
-        fi
-
-        : > /run/fmp_wait.pid
-        : > /run/restarting_fmp_wait.pid
-
-        echo "$(date) php${e}-fpm health failed (master=${_ok_master} socket=${_ok_socket} pid=${_ok_pid}) — restart" >> ${_pthOml}
-        [ -d "/var/backups/php-logs/${_NOW}" ] || mkdir -p /var/backups/php-logs/${_NOW}/
-        mv -f /var/log/php/php${e}-fpm-error.log /var/backups/php-logs/${_NOW}/ &> /dev/null
-        service "php${e}-fpm" restart
-
-        # Readiness poll, bounded: a master that just restarted can take a
-        # few seconds to bind its socket under load, and one second of
-        # patience escalated to a needless stop/start.
-        _w=0
-        _ok_master=false; _ok_socket=false; _ok_pid=false
-        while [ "${_w}" -lt 10 ]; do
-          sleep 1
-          _ok_master=false; _ok_socket=false; _ok_pid=false
-          pgrep -u root -U root -f "${_pat}" >/dev/null 2>&1 && _ok_master=true
-          [ -S "/run/www${e}.fpm.socket" ] && _ok_socket=true
-          [ -s "/run/php${e}-fpm.pid" ] && _ok_pid=true
-          if ${_ok_master} && ${_ok_socket} && ${_ok_pid}; then
-            break
-          fi
-          _w=$(( _w + 1 ))
-        done
-
-        if ${_ok_master} && ${_ok_socket} && ${_ok_pid}; then
-          _thisErrLog="$(date) PHP-FPM ${e} was down, restarted"
-          echo ${_thisErrLog} >> ${_pthOml}
-          date +%s > "${_cd}"
-        else
-          # As last resort: stop/start for only this version
-          echo "$(date) php${e}-fpm still unhealthy after restart; stop/start" >> ${_pthOml}
-          service "php${e}-fpm" stop
-          sleep 1
-          [ -d "/var/backups/php-logs/${_NOW}" ] || mkdir -p /var/backups/php-logs/${_NOW}/
-          mv -f /var/log/php/php${e}-fpm-error.log /var/backups/php-logs/${_NOW}/ &> /dev/null
-          service "php${e}-fpm" start
-          date +%s > "${_cd}"
-        fi
-
-        rm -f /run/fmp_wait.pid /run/restarting_fmp_wait.pid
-      fi
-    fi
-  done
-  if [ -n "${_thisErrLog}" ]; then
-    _incident_email_report "PHP-FPM was down, restarted"
-    echo >> ${_pthOml}
-  fi
 }
 
 # Fire-and-forget launcher, cron-safe and interactive-safe
@@ -1114,14 +921,6 @@ _fpm_tmp_enforce() {
     fi
   )
 }
-_fpm_tmp_enforce
-
-###
-### Stand down while the database is being deliberately restarted
-###
-export _SQL_MUTATION_MAX_MINS=${_SQL_MUTATION_MAX_MINS//[^0-9]/}
-: "${_SQL_MUTATION_MAX_MINS:=15}"
-
 _sql_mutation_in_flight() {
   # move_sql.sh stops Nginx and every PHP-FPM pool to restart the database, and
   # it never brings them back: these watchdogs are the intended recovery. That
@@ -1161,6 +960,207 @@ _sql_mutation_began() {
   _FPM_SQL_MUT=YES
   return 0
 }
+
+_fpm_duplicate_instances_detection() {
+  _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
+  for e in ${_PHP_V}; do
+    # Count masters for this exact conf path
+    _pat="^php-fpm: master process.*/opt/php${e}/etc/php${e}-fpm.conf"
+    _cnt=$(_fpm_master_pids "${_pat}" | grep -c .)
+    (( _cnt > 1 )) || continue
+    # Asked again after a grace and gated like the health check: this
+    # restarts the whole version, cutting every request of every pool on it,
+    # and one sample under a stall is not evidence of a second master.
+    sleep 3
+    _cnt=$(_fpm_master_pids "${_pat}" | grep -c .)
+    (( _cnt > 1 )) || continue
+    _sql_mutation_began && return 0
+    _cd="/run/php${e}-fpm.cooldown"
+    _now=$(date +%s)
+    _ts=
+    [ -s "${_cd}" ] && _ts=$(tr -dc '0-9' 2> /dev/null < "${_cd}")
+    if [ -n "${_ts}" ] && [ $(( _now - _ts )) -ge 0 ] \
+      && [ $(( _now - _ts )) -lt "${_FPM_COOLDOWN_SECS}" ]; then
+      echo "$(date) INFO: php${e}-fpm duplicate master but in cooldown; skipping restart" >> "${_pthOml}"
+      continue
+    fi
+    _thisErrLog="$(date) Duplicate master for php${e}-fpm (count=${_cnt})"
+    echo "${_thisErrLog}" >> "${_pthOml}"
+    # pid, ppid, seconds run (from start ticks, never ps's age) and title
+    local _mp="" _mList=""
+    for _mp in $(_fpm_master_pids "${_pat}"); do
+      _mList="${_mList} $(ps -o pid=,ppid= -p "${_mp}" 2> /dev/null | tr -s ' ' | sed 's/^ //') $(_proc_age "${_mp}") $(ps -o args= -p "${_mp}" 2> /dev/null);"
+    done
+    echo "$(date) INFO: php${e}-fpm masters counted:${_mList}" >> "${_pthOml}"
+    [ -d "/var/backups/php-logs/${_NOW}" ] || mkdir -p "/var/backups/php-logs/${_NOW}/"
+    mv -f "/var/log/php/php${e}-fpm-error.log" "/var/backups/php-logs/${_NOW}/" &> /dev/null
+    service "php${e}-fpm" restart
+    wait
+    date +%s > "${_cd}"
+  done
+}
+
+_fpm_listen_conflict_detection() {
+  if [ -e "/var/log/php" ]; then
+    _hit=$(_fpm_master_hits "already listen on")
+    if [ "${_hit}" -gt 0 ]; then
+      sleep 2
+      _hit2=$(_fpm_master_hits "already listen on")
+      if [ "${_hit2}" -gt 0 ]; then
+        _sql_mutation_began && return 0
+        [ -d "/var/backups/php-logs/${_NOW}" ] || mkdir -p /var/backups/php-logs/${_NOW}/
+        mv -f /var/log/php/php*-fpm-error.log /var/backups/php-logs/${_NOW}/ &> /dev/null
+        _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
+        for e in ${_PHP_V}; do
+          if [ ! -S "/run/www${e}.fpm.socket" ]; then
+            _thisErrLog="$(date) FPM listen conflict for php${e}, restarting"
+            echo ${_thisErrLog} >> ${_pthOml}
+            service "php${e}-fpm" restart
+            wait
+          fi
+        done
+      fi
+    fi
+  fi
+}
+
+_fpm_sockets_healing() {
+  _hit=$(_fpm_master_hits "Address already in use")
+  if [ "${_hit}" -gt 0 ]; then
+    sleep 2
+    _hit2=$(_fpm_master_hits "Address already in use")
+    if [ "${_hit2}" -gt 0 ]; then
+      _sql_mutation_began && return 0
+      [ -d "/var/backups/php-logs/${_NOW}" ] || mkdir -p /var/backups/php-logs/${_NOW}/
+      mv -f /var/log/php/php*-fpm-error.log /var/backups/php-logs/${_NOW}/ &> /dev/null
+      _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
+      for e in ${_PHP_V}; do
+        if [ ! -S "/run/www${e}.fpm.socket" ]; then
+          _thisErrLog="$(date) FPM socket conflict sustained for php${e}; restarting"
+          echo ${_thisErrLog} >> ${_pthOml}
+          service "php${e}-fpm" restart
+          wait
+        fi
+      done
+    fi
+  fi
+}
+
+_fpm_health_check_fix() {
+  _thisErrLog=
+  _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
+  # The versions the sites and the panel run come first: when a database
+  # restart stops every version at once, Nginx is back within seconds and
+  # sends requests to them while versions nobody uses would still be healing.
+  _ORD=""
+  for e in "${_PHP_FPM_VERSION//[^0-9]/}" "${_HM_FPM_VERSION//[^0-9]/}"; do
+    if [ -n "${e}" ] && [[ " ${_PHP_V} " == *" ${e} "* ]] \
+      && [[ " ${_ORD} " != *" ${e} "* ]]; then
+      _ORD="${_ORD} ${e}"
+    fi
+  done
+  for e in ${_PHP_V}; do
+    [[ " ${_ORD} " == *" ${e} "* ]] || _ORD="${_ORD} ${e}"
+  done
+  _PHP_V="${_ORD}"
+  # One grace for reloads, shared by every version found down: a grace per
+  # version makes each one wait for every version listed before it.
+  _DOWN_V=""
+  # Every version is read from one list of the masters; a version that reads
+  # as down is asked again by its own pgrep after the grace below.
+  _FPM_MASTERS="$(pgrep -u root -U root -af '^php-fpm: master process' 2> /dev/null)"
+  _FPM_MASTERS_SET=YES
+  for e in ${_PHP_V}; do
+    if [ -e "/etc/init.d/php${e}-fpm" ] && [ -x "/opt/php${e}/bin/php" ]; then
+      _fpm_health_ok "${e}" || _DOWN_V="${_DOWN_V} ${e}"
+    fi
+  done
+  _FPM_MASTERS_SET=""
+  [ -n "${_DOWN_V}" ] || return 0
+  sleep 2
+  for e in ${_DOWN_V}; do
+    if [ -e "/etc/init.d/php${e}-fpm" ] && [ -x "/opt/php${e}/bin/php" ]; then
+      _pat="^php-fpm: master process.*/opt/php${e}/etc/php${e}-fpm.conf"
+
+      _ok_master=false; _ok_socket=false; _ok_pid=false
+      pgrep -u root -U root -f "${_pat}" >/dev/null 2>&1 && _ok_master=true
+      [ -S "/run/www${e}.fpm.socket" ] && _ok_socket=true
+      [ -s "/run/php${e}-fpm.pid" ] && _ok_pid=true
+
+      if ! ${_ok_master} || ! ${_ok_socket} || ! ${_ok_pid}; then
+        _sql_mutation_began && break
+        # Per-version cooldown: /run/php<ver>-fpm.cooldown, gated by
+        # _FPM_COOLDOWN_SECS
+        _cd="/run/php${e}-fpm.cooldown"
+        _now=$(date +%s)
+        if [ -s "${_cd}" ]; then
+          _ts=$(cat "${_cd}" 2>/dev/null | tr -d '\n')
+          if [ -n "${_ts}" ]; then
+            _delta=$(( _now - _ts ))
+            if [ "${_delta}" -lt "${_FPM_COOLDOWN_SECS}" ]; then
+              echo "$(date) INFO: php${e}-fpm unhealthy but in cooldown (${_delta}s < ${_FPM_COOLDOWN_SECS}s); skipping restart" >> ${_pthOml}
+              continue
+            fi
+          fi
+        fi
+
+        : > /run/fmp_wait.pid
+        : > /run/restarting_fmp_wait.pid
+
+        echo "$(date) php${e}-fpm health failed (master=${_ok_master} socket=${_ok_socket} pid=${_ok_pid}) — restart" >> ${_pthOml}
+        [ -d "/var/backups/php-logs/${_NOW}" ] || mkdir -p /var/backups/php-logs/${_NOW}/
+        mv -f /var/log/php/php${e}-fpm-error.log /var/backups/php-logs/${_NOW}/ &> /dev/null
+        service "php${e}-fpm" restart
+
+        # Readiness poll, bounded: a master that just restarted can take a
+        # few seconds to bind its socket under load, and one second of
+        # patience escalated to a needless stop/start.
+        _w=0
+        _ok_master=false; _ok_socket=false; _ok_pid=false
+        while [ "${_w}" -lt 10 ]; do
+          sleep 1
+          _ok_master=false; _ok_socket=false; _ok_pid=false
+          pgrep -u root -U root -f "${_pat}" >/dev/null 2>&1 && _ok_master=true
+          [ -S "/run/www${e}.fpm.socket" ] && _ok_socket=true
+          [ -s "/run/php${e}-fpm.pid" ] && _ok_pid=true
+          if ${_ok_master} && ${_ok_socket} && ${_ok_pid}; then
+            break
+          fi
+          _w=$(( _w + 1 ))
+        done
+
+        if ${_ok_master} && ${_ok_socket} && ${_ok_pid}; then
+          _thisErrLog="$(date) PHP-FPM ${e} was down, restarted"
+          echo ${_thisErrLog} >> ${_pthOml}
+          date +%s > "${_cd}"
+        else
+          # As last resort: stop/start for only this version
+          echo "$(date) php${e}-fpm still unhealthy after restart; stop/start" >> ${_pthOml}
+          service "php${e}-fpm" stop
+          sleep 1
+          [ -d "/var/backups/php-logs/${_NOW}" ] || mkdir -p /var/backups/php-logs/${_NOW}/
+          mv -f /var/log/php/php${e}-fpm-error.log /var/backups/php-logs/${_NOW}/ &> /dev/null
+          service "php${e}-fpm" start
+          date +%s > "${_cd}"
+        fi
+
+        rm -f /run/fmp_wait.pid /run/restarting_fmp_wait.pid
+      fi
+    fi
+  done
+  if [ -n "${_thisErrLog}" ]; then
+    _incident_email_report "PHP-FPM was down, restarted"
+    echo >> ${_pthOml}
+  fi
+}
+
+_fpm_tmp_enforce
+
+###
+### Stand down while the database is being deliberately restarted
+###
+export _SQL_MUTATION_MAX_MINS=${_SQL_MUTATION_MAX_MINS//[^0-9]/}
+: "${_SQL_MUTATION_MAX_MINS:=15}"
 
 if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ] \
   && ! _sql_mutation_in_flight; then

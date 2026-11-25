@@ -44,8 +44,8 @@
 export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
-export _tRee=pro
-export _xSrl=588888proT01
+export _tRee=dev
+export _xSrl=588888devT01
 export _rLsn="BOA-5.88.888"
 
 ###
@@ -999,82 +999,6 @@ _get_dev_contrib() {
   fi
 }
 
-#
-# Replace one shared module under ${_Dir} from the dev/contrib mirror. It is
-# fetched and unpacked in a directory of this run's own, stamped there, and
-# swapped in only when the unpack finished: a copy cut short (an archive
-# another run was replacing, a broken download) never replaces the one in
-# place, is reported in the fetch-failure line and is fetched again on the
-# next run, where the old code stamped it as deployed. The new copy and the
-# one in place swap names in one rename (_SAT_SWAP_PL), so a site loading the
-# module through a bundle's link finds the old copy or the new one, never
-# none; where one rename cannot do it (nothing in place yet, or no renameat2
-# on the box), the copy in place is moved aside first and put back when the
-# new one cannot go in.
-# Two stamps: the gates read the ".full" one, which only this path writes, so
-# a copy the old code stamped is replaced once; the plain one keeps an
-# Octopus not yet upgraded from fetching it again the old way. Owner "root"
-# re-owns the copy, whatever the archive recorded. Every step runs from
-# inside the real ${_Dir}, each of its last three names entered as the real
-# directory (outside /home and /data/disk _acct_in_real_dir checks only the
-# last name, and a link an earlier release let an account leave at
-# /data/all/000 must never be followed), and names the unpack directory
-# relative to it, never by the store's path; that directory is this run's
-# own (mktemp, root's, 0700), so chown -R there hands over only what the
-# archive holds. The store's modes are then set through handles opened
-# without following a link, a regular file only while it has a single link,
-# so a link or a hard link left in the store is never followed or re-moded.
-# Nothing is fetched on a replication standby: its store comes from the
-# active with every sync, so a copy put here would be a local write into a
-# synced tree, and two boxes on different trees would replace each other's
-# modules every few minutes. The first agents pass after the promotion
-# fetches whatever is stale then.
-_shared_module_update() {
-  local _url="${_urlDev}/${_tRee}/contrib/${1}-${2}.tar.gz" _up="${_Dir%/*}"
-  local _st
-  [ -e "/root/.standby.cnf" ] && return 0
-  # made where missing, each name from inside its real parent (the store
-  # in root's /data, or /data/disk/all when a link of root's there leads
-  # to it through root's own directories only, _ROOT_REAL_PATH_PL and
-  # _SAT_STORE_TARGET_PL; any other link the pin refuses), so a link at
-  # the last two names is never followed
-  mkdir -p "${_up%/*}" &> /dev/null
-  _st="$(perl -e "${_ROOT_REAL_PATH_PL}" -- "${_up%/*}" 2> /dev/null)"
-  perl -e "${_SAT_STORE_TARGET_PL}" -- "${_st}" &> /dev/null || _st=""
-  _st="${_st:-${_up%/*}}"
-  _acct_in_real_dir "${_st}" mkdir -p -m 0755 -- "./${_up##*/}" &> /dev/null
-  _acct_in_real_dir "${_st}" _acct_in_real_dir "./${_up##*/}" \
-    mkdir -p -m 0755 -- "./${_Dir##*/}" &> /dev/null
-  _acct_in_real_dir "${_st}" _acct_in_real_dir "./${_up##*/}" \
-    _acct_in_real_dir "./${_Dir##*/}" _shared_module_update_here "$@"
-  case $? in
-    0) ;;
-    2)
-      echo "OOPS: ${1}-${2} was not updated (the new copy could not be put in place); $(_shared_module_kept "${1}")"
-      _fetch_failed_note "${1}" "${_url}" "swap"
-      ;;
-    3)
-      echo "OOPS: ${1}-${2} was not updated (download or unpack failed); $(_shared_module_kept "${1}")"
-      _fetch_failed_note "${1}" "${_url}" "unpack"
-      ;;
-    4)
-      echo "OOPS: ${1}-${2} was not updated; the copy in place, flagged, was taken out of use"
-      _fetch_failed_note "${1}" "${_url}" "sealed"
-      ;;
-    5)
-      echo "OOPS: ${1}-${2} was not updated; the copy in place, flagged, could not be set aside"
-      _fetch_failed_note "${1}" "${_url}" "flagged"
-      ;;
-    *)
-      echo "OOPS: ${1}-${2} was not updated (no unpack directory in the real ${_Dir}); $(_shared_module_kept "${1}")"
-      _fetch_failed_note "${1}" "${_url}" "store"
-      # nothing can be set aside where the store is not the real one; a
-      # flagged module there is said all the same
-      _st="$(_shared_module_flagged "${1}")"
-      [ -n "${_st}" ] && _shared_module_alarm "${1}" "${_st}" NO
-      ;;
-  esac
-}
 # The first entry of the module $1 under ${_Dir} (or of ./$1, the module in
 # the current directory, when ${_Dir} is empty), the name itself included,
 # that is a link, is not root's or is writable by its group or others,
@@ -1927,6 +1851,82 @@ _fetch_failed_note() {
   _FETCH_FAIL_COD="$3"
 }
 
+#
+# Replace one shared module under ${_Dir} from the dev/contrib mirror. It is
+# fetched and unpacked in a directory of this run's own, stamped there, and
+# swapped in only when the unpack finished: a copy cut short (an archive
+# another run was replacing, a broken download) never replaces the one in
+# place, is reported in the fetch-failure line and is fetched again on the
+# next run, where the old code stamped it as deployed. The new copy and the
+# one in place swap names in one rename (_SAT_SWAP_PL), so a site loading the
+# module through a bundle's link finds the old copy or the new one, never
+# none; where one rename cannot do it (nothing in place yet, or no renameat2
+# on the box), the copy in place is moved aside first and put back when the
+# new one cannot go in.
+# Two stamps: the gates read the ".full" one, which only this path writes, so
+# a copy the old code stamped is replaced once; the plain one keeps an
+# Octopus not yet upgraded from fetching it again the old way. Owner "root"
+# re-owns the copy, whatever the archive recorded. Every step runs from
+# inside the real ${_Dir}, each of its last three names entered as the real
+# directory (outside /home and /data/disk _acct_in_real_dir checks only the
+# last name, and a link an earlier release let an account leave at
+# /data/all/000 must never be followed), and names the unpack directory
+# relative to it, never by the store's path; that directory is this run's
+# own (mktemp, root's, 0700), so chown -R there hands over only what the
+# archive holds. The store's modes are then set through handles opened
+# without following a link, a regular file only while it has a single link,
+# so a link or a hard link left in the store is never followed or re-moded.
+# Nothing is fetched on a replication standby: its store comes from the
+# active with every sync, so a copy put here would be a local write into a
+# synced tree, and two boxes on different trees would replace each other's
+# modules every few minutes. The first agents pass after the promotion
+# fetches whatever is stale then.
+_shared_module_update() {
+  local _url="${_urlDev}/${_tRee}/contrib/${1}-${2}.tar.gz" _up="${_Dir%/*}"
+  local _st
+  [ -e "/root/.standby.cnf" ] && return 0
+  # made where missing, each name from inside its real parent (the store
+  # in root's /data, or /data/disk/all when a link of root's there leads
+  # to it through root's own directories only, _ROOT_REAL_PATH_PL and
+  # _SAT_STORE_TARGET_PL; any other link the pin refuses), so a link at
+  # the last two names is never followed
+  mkdir -p "${_up%/*}" &> /dev/null
+  _st="$(perl -e "${_ROOT_REAL_PATH_PL}" -- "${_up%/*}" 2> /dev/null)"
+  perl -e "${_SAT_STORE_TARGET_PL}" -- "${_st}" &> /dev/null || _st=""
+  _st="${_st:-${_up%/*}}"
+  _acct_in_real_dir "${_st}" mkdir -p -m 0755 -- "./${_up##*/}" &> /dev/null
+  _acct_in_real_dir "${_st}" _acct_in_real_dir "./${_up##*/}" \
+    mkdir -p -m 0755 -- "./${_Dir##*/}" &> /dev/null
+  _acct_in_real_dir "${_st}" _acct_in_real_dir "./${_up##*/}" \
+    _acct_in_real_dir "./${_Dir##*/}" _shared_module_update_here "$@"
+  case $? in
+    0) ;;
+    2)
+      echo "OOPS: ${1}-${2} was not updated (the new copy could not be put in place); $(_shared_module_kept "${1}")"
+      _fetch_failed_note "${1}" "${_url}" "swap"
+      ;;
+    3)
+      echo "OOPS: ${1}-${2} was not updated (download or unpack failed); $(_shared_module_kept "${1}")"
+      _fetch_failed_note "${1}" "${_url}" "unpack"
+      ;;
+    4)
+      echo "OOPS: ${1}-${2} was not updated; the copy in place, flagged, was taken out of use"
+      _fetch_failed_note "${1}" "${_url}" "sealed"
+      ;;
+    5)
+      echo "OOPS: ${1}-${2} was not updated; the copy in place, flagged, could not be set aside"
+      _fetch_failed_note "${1}" "${_url}" "flagged"
+      ;;
+    *)
+      echo "OOPS: ${1}-${2} was not updated (no unpack directory in the real ${_Dir}); $(_shared_module_kept "${1}")"
+      _fetch_failed_note "${1}" "${_url}" "store"
+      # nothing can be set aside where the store is not the real one; a
+      # flagged module there is said all the same
+      _st="$(_shared_module_flagged "${1}")"
+      [ -n "${_st}" ] && _shared_module_alarm "${1}" "${_st}" NO
+      ;;
+  esac
+}
 _fetch_failed_report() {
   local _ctx="$1" _msg
   [ "${_FETCH_FAIL_CNT:-0}" -gt 0 ] 2> /dev/null || return 0
@@ -3011,8 +3011,8 @@ _update_agents() {
   # existing build user (o8 unless -u says otherwise) and never guesses one
   # from /data/disk.
   if [ -e "/root/.stackbuild.cnf" ]; then
-    _fetch_versioned ${_optBin}/staticbuild "${_urlHmr}/tools/bin/staticbuild" f10 --mode 755 --symlink ${_usrBin}/staticbuild --guard /local/bin/staticbuild
-    _fetch_versioned ${_optBin}/stackbuild "${_urlHmr}/tools/bin/stackbuild" f87 --mode 755 --symlink ${_usrBin}/stackbuild --guard /local/bin/stackbuild
+    _fetch_versioned ${_optBin}/staticbuild "${_urlHmr}/tools/bin/staticbuild" f09 --mode 755 --symlink ${_usrBin}/staticbuild --guard /local/bin/staticbuild
+    _fetch_versioned ${_optBin}/stackbuild "${_urlHmr}/tools/bin/stackbuild" f86 --mode 755 --symlink ${_usrBin}/stackbuild --guard /local/bin/stackbuild
   else
     # A box that is not a build box carries no copy of either. Boxes that had
     # fetched staticbuild before this gate existed kept an unmanaged copy the
@@ -3055,10 +3055,10 @@ _update_agents() {
   if [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     _fetch_versioned /var/xdrago/monitor/check/scan_nginx.sh "${_urlHmr}/tools/system/monitor/check/scan_nginx.sh" f27
     _fetch_versioned /var/xdrago/monitor/check/java.sh "${_urlHmr}/tools/system/monitor/check/java.sh" f74
-    _fetch_versioned /var/xdrago/monitor/check/mysql.sh "${_urlHmr}/tools/system/monitor/check/mysql.sh" f45
-    _fetch_versioned /var/xdrago/monitor/check/nginx.sh "${_urlHmr}/tools/system/monitor/check/nginx.sh" f52
+    _fetch_versioned /var/xdrago/monitor/check/mysql.sh "${_urlHmr}/tools/system/monitor/check/mysql.sh" f44
+    _fetch_versioned /var/xdrago/monitor/check/nginx.sh "${_urlHmr}/tools/system/monitor/check/nginx.sh" f51
     _fetch_versioned /var/xdrago/monitor/check/nginx_guard.sh "${_urlHmr}/tools/system/monitor/check/nginx_guard.sh" f90
-    _fetch_versioned /var/xdrago/monitor/check/php.sh "${_urlHmr}/tools/system/monitor/check/php.sh" f48
+    _fetch_versioned /var/xdrago/monitor/check/php.sh "${_urlHmr}/tools/system/monitor/check/php.sh" f47
     _fetch_versioned /var/xdrago/monitor/check/fpm_tune.sh "${_urlHmr}/tools/system/monitor/check/fpm_tune.sh" f93
     _fetch_versioned /var/xdrago/monitor/check/sqlprobe.sh "${_urlHmr}/tools/system/monitor/check/sqlprobe.sh" f84
     _fetch_versioned /var/xdrago/monitor/check/sqlsnap.sh "${_urlHmr}/tools/system/monitor/check/sqlsnap.sh" f95
@@ -3069,7 +3069,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/monitor/check/container_guard.sh "${_urlHmr}/tools/system/monitor/check/container_guard.sh" f93
     _fetch_versioned /var/xdrago/monitor/check/autosync.sh "${_urlHmr}/tools/system/monitor/check/autosync.sh" f96
     _fetch_versioned /var/xdrago/monitor/check/valkey.sh "${_urlHmr}/tools/system/monitor/check/valkey.sh" f71
-    _fetch_versioned /var/xdrago/monitor/check/system.sh "${_urlHmr}/tools/system/monitor/check/system.sh" f57
+    _fetch_versioned /var/xdrago/monitor/check/system.sh "${_urlHmr}/tools/system/monitor/check/system.sh" f56
     _fetch_versioned /var/xdrago/monitor/check/unbound.sh "${_urlHmr}/tools/system/monitor/check/unbound.sh" f77
     _fetch_versioned /var/xdrago/monitor/check/escapecheck.sh "${_urlHmr}/tools/system/monitor/check/escapecheck.sh" f89
     _fetch_versioned /var/xdrago/monitor/check/hackcheck.sh "${_urlHmr}/tools/system/monitor/check/hackcheck.sh" f86
@@ -3092,16 +3092,16 @@ _update_agents() {
     _fetch_versioned /var/xdrago/monitor/check/convert_guard.sh "${_urlHmr}/tools/system/monitor/check/convert_guard.sh" f99
     _fetch_versioned /var/xdrago/monitor/check/hostname_sync.sh "${_urlHmr}/tools/system/monitor/check/hostname_sync.sh" f00
     _fetch_versioned /etc/init.d/clean-boa-env "${_urlHmr}/conf/var/clean-boa-env" f93
-    _fetch_versioned /var/xdrago/mysql_backup.sh "${_urlHmr}/tools/system/mysql_backup.sh" f48 --guard mysql_backup.sh
+    _fetch_versioned /var/xdrago/mysql_backup.sh "${_urlHmr}/tools/system/mysql_backup.sh" f47 --guard mysql_backup.sh
     _fetch_versioned /usr/libexec/unbound-helper "${_urlHmr}/conf/dns/unbound-helper" f95 --mode 755
     _fetch_versioned /var/xdrago/mysql_cleanup.sh "${_urlHmr}/tools/system/mysql_cleanup.sh" f82
     _fetch_versioned /var/xdrago/mysql_cluster_backup.sh "${_urlHmr}/tools/system/mysql_cluster_backup.sh" f56 --guard mysql_cluster_backup.sh
     _runner_parked runner.sh \
-      || _fetch_versioned /var/xdrago/runner.sh "${_urlHmr}/tools/system/runner.sh" f53
+      || _fetch_versioned /var/xdrago/runner.sh "${_urlHmr}/tools/system/runner.sh" f52
     _fetch_versioned /var/xdrago/minute.sh "${_urlHmr}/tools/system/minute.sh" f65
-    _fetch_versioned /var/xdrago/second.sh "${_urlHmr}/tools/system/second.sh" f56
-    _fetch_versioned /var/xdrago/ip_access.sh "${_urlHmr}/tools/system/ip_access.sh" f59
-    _fetch_versioned /var/xdrago/user_admin_access.sh "${_urlHmr}/tools/system/user_admin_access.sh" f65
+    _fetch_versioned /var/xdrago/second.sh "${_urlHmr}/tools/system/second.sh" f55
+    _fetch_versioned /var/xdrago/ip_access.sh "${_urlHmr}/tools/system/ip_access.sh" f58
+    _fetch_versioned /var/xdrago/user_admin_access.sh "${_urlHmr}/tools/system/user_admin_access.sh" f64
     _fetch_versioned /var/xdrago/cloudflare_realip.sh "${_urlHmr}/tools/system/cloudflare_realip.sh" f92
     # Activate Cloudflare realip immediately by writing the set_real_ip_from
     # ranges include now, so a fresh/updated box does not wait for the daily
@@ -3112,7 +3112,7 @@ _update_agents() {
     [ -e "/var/xdrago/cloudflare_realip.sh" ] \
       && [ ! -s "/data/conf/nginx_cloudflare_real_ip.conf" ] \
       && bash /var/xdrago/cloudflare_realip.sh >/dev/null 2>&1
-    _fetch_versioned /var/xdrago/ai_policy.sh "${_urlHmr}/tools/system/ai_policy.sh" f83
+    _fetch_versioned /var/xdrago/ai_policy.sh "${_urlHmr}/tools/system/ai_policy.sh" f82
     _fetch_versioned /var/xdrago/nginx_deny.sh "${_urlHmr}/tools/system/nginx_deny.sh" f92
     _fetch_versioned /var/xdrago/nginx_deny6.sh "${_urlHmr}/tools/system/nginx_deny6.sh" f92
     _fetch_versioned /var/xdrago/nginx_fleet.sh "${_urlHmr}/tools/system/nginx_fleet.sh" f88
@@ -3179,10 +3179,10 @@ _update_agents() {
     _fetch_versioned /var/xdrago/purge_binlogs.sh "${_urlHmr}/tools/system/purge_binlogs.sh" f87
     _fetch_versioned /var/xdrago/checksql.sh "${_urlHmr}/tools/system/checksql.sh" f92
     _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f52
-    _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f40
-    _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f89
-    _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f13
-    _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f34
+    _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f39
+    _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f88
+    _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f12
+    _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f33
     _runner_parked owl.sh \
       || _fetch_versioned /var/xdrago/owl.sh "${_urlHmr}/tools/system/owl.sh" f60
     ###
@@ -3208,7 +3208,7 @@ _update_agents() {
       rm -f ${_pthLog}/daily.sh.ctrl.*.pid
     fi
     _runner_parked graceful.sh \
-      || _fetch_versioned /var/xdrago/graceful.sh "${_urlHmr}/tools/system/graceful.sh" f68
+      || _fetch_versioned /var/xdrago/graceful.sh "${_urlHmr}/tools/system/graceful.sh" f67
     _runner_parked usage.sh \
       || _fetch_versioned /var/xdrago/usage.sh "${_urlHmr}/tools/system/usage.sh" f43
   fi
@@ -3254,7 +3254,7 @@ _update_agents() {
     # post-install steps run only when the file actually changed.
     if ! _runner_parked manage_ltd_users.sh; then
       _ltdSum="$(md5sum /var/xdrago/manage_ltd_users.sh 2>/dev/null | cut -d' ' -f1)"
-      _fetch_versioned /var/xdrago/manage_ltd_users.sh "${_urlHmr}/tools/system/manage_ltd_users.sh" f89 --guard /xdrago/manage_ltd_users.sh
+      _fetch_versioned /var/xdrago/manage_ltd_users.sh "${_urlHmr}/tools/system/manage_ltd_users.sh" f88 --guard /xdrago/manage_ltd_users.sh
       if [ -s "/var/xdrago/manage_ltd_users.sh" ] \
         && [ "$(md5sum /var/xdrago/manage_ltd_users.sh 2>/dev/null | cut -d' ' -f1)" != "${_ltdSum}" ]; then
         [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
@@ -3271,7 +3271,7 @@ _update_agents() {
     # not caught up kept the previous tool under the new marker for good.
     # The post-install step runs only when the file actually changed.
     _slrSum="$(md5sum /var/xdrago/manage_solr_config.sh 2>/dev/null | cut -d' ' -f1)"
-    _fetch_versioned /var/xdrago/manage_solr_config.sh "${_urlHmr}/tools/system/manage_solr_config.sh" f39
+    _fetch_versioned /var/xdrago/manage_solr_config.sh "${_urlHmr}/tools/system/manage_solr_config.sh" f38
     if [ -s "/var/xdrago/manage_solr_config.sh" ] \
       && [ "$(md5sum /var/xdrago/manage_solr_config.sh 2>/dev/null | cut -d' ' -f1)" != "${_slrSum}" ]; then
       rm -f /run/manage_solr_config.pid
@@ -4507,7 +4507,7 @@ _if_fix_lshell() {
     [ ! -d "/usr/local/etc" ] && mkdir -p /usr/local/etc
     ln -sfn /etc/lshell.conf /usr/local/etc/lshell.conf
   fi
-  _LSHELL_VRN=0.11.18
+  _LSHELL_VRN=0.11.19
   # 0.11.x needs Python 3.10+; a box whose python3 is older (chimaera 3.9,
   # beowulf 3.7) keeps 0.10, which stays installable there so a broken shell
   # on a legacy box still heals instead of failing the 0.11 build every pass.
@@ -4653,6 +4653,41 @@ _if_fix_lshell() {
       ln -sfn ${_usrBin}/lshell /usr/bin/lshell &> /dev/null
     fi
   fi
+}
+
+#
+# TRUE while any BOA install or upgrade may be consuming /opt/tmp/boa: the
+# chained install drops boa_run/boa_wait mid-chain by design and its octopus
+# leg runs as "bash /var/backups/OCTOPUS.sh.txt", so the lock pids alone are
+# not enough -- sweep the marker AND the live process forms. This gate is
+# self-contained on purpose: BOA.sh.txt reaches every box on the next cron
+# fetch, ahead of any fNN-pinned tool update.
+#
+_install_in_flight() {
+  [ -e "/run/boa_run.pid" ] && return 0
+  [ -e "/run/boa_wait.pid" ] && return 0
+  [ -e "/run/octopus_install_run.pid" ] && return 0
+  # Anchored, not a bare substring: a command line that merely MENTIONS the
+  # wrapper -- an editor, a checksum, an operator's ssh probe -- must not read
+  # as an install in flight and defer the agent indefinitely.
+  pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/barracuda( |$)" > /dev/null 2>&1 && return 0
+  pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/octopus( |$)" > /dev/null 2>&1 && return 0
+  # Anchored: a LOCAL install only -- "ssh root@box /opt/local/bin/boa in-"
+  # (a remote install driven from this box) must not defer this box
+  pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-" > /dev/null 2>&1 && return 0
+  # Dual-path for the staging move: match both the old /var/backups home and
+  # the root-only /var/opt/boa-dist one, because tools arrive per file and a
+  # box runs whatever mix it has converged on. A watcher that knows only one
+  # path would read a box as idle in the middle of an install. Anchored on
+  # the executor for the same reason as the wrapper arms above; left open at
+  # the tail because the octopus leg runs as "OCTOPUS.sh.txt.oN".
+  pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1 && return 0
+  # The Ægir setup children ("su - oN -c bash .../AegirSetupC.sh.txt") match
+  # none of the forms above and are the phase that consumes /opt/tmp/boa the
+  # longest. Anchored on the executor so a remotely driven install cannot
+  # defer this box; the [ABC] class keeps it from matching its own pgrep
+  pgrep -u root -U root -f "^(/[^ ]*/)?(bash|sh|su) .*/aegir/scripts/AegirSetup[ABC]\.sh\.txt" > /dev/null 2>&1 && return 0
+  return 1
 }
 
 ###
@@ -5363,6 +5398,11 @@ _data_conf_keep() {
   _acct_in_real_dir /data/conf _data_conf_keep_here &> /dev/null
 }
 
+# Every name directly in the current (pinned) directory removed, as rm -f
+# dir/* removed them (the glob expands here).
+_acct_rm_all_here() {
+  rm -f -- ./*
+}
 # /data/conf/patches holds the patches every account's Drupal 10 and 11
 # platforms are patched from. A run of an earlier release handed /data/conf
 # to the Octopus account it upgraded, so a name there can still be a link
@@ -5382,11 +5422,6 @@ _if_drupal_patches_update() {
         _acct_touch_here "ctrl.f96.${_tRee}.${_xSrl}.pid"
     fi
   fi
-}
-# Every name directly in the current (pinned) directory removed, as rm -f
-# dir/* removed them (the glob expands here).
-_acct_rm_all_here() {
-  rm -f -- ./*
 }
 # The patch $1 fetched as /var/xdrago/conf/$1 (root's tree) through
 # _fetch_versioned with the serial $2, which holds a new serial while the
@@ -5633,13 +5668,6 @@ _fix_leftovers() {
 # never beside the file, with its owner, group and mode in a .own file.
 #
 _crwPrev="/var/backups/crawler-fix-prev"
-# $1 copied to ${_crwWrk}/src when it is a single-link regular file under
-# 1 MiB; prints its numeric owner, group and mode.
-_crawler_copy() {
-  [ -n "${_crwWrk}" ] && [ -d "${_crwWrk}" ] || return 1
-  rm -f -- "${_crwWrk}/src" "${_crwWrk}/new"
-  _acct_in_real_dir "${1%/*}" _crawler_copy_here "${1##*/}" "${_crwWrk}/src"
-}
 # ./$1 of the current (pinned) directory read into the root-only file $2, as
 # _crawler_copy describes; leftovers of the older in-place writer dropped.
 _crawler_copy_here() {
@@ -5657,6 +5685,13 @@ _crawler_copy_here() {
   _acct_read_here "${1}" > "${2}" || return 1
   [ "$(stat -c %s -- "${2}" 2> /dev/null)" = "${_sz}" ] || return 1
   echo "${_uid} ${_gid} ${_mod}"
+}
+# $1 copied to ${_crwWrk}/src when it is a single-link regular file under
+# 1 MiB; prints its numeric owner, group and mode.
+_crawler_copy() {
+  [ -n "${_crwWrk}" ] && [ -d "${_crwWrk}" ] || return 1
+  rm -f -- "${_crwWrk}/src" "${_crwWrk}/new"
+  _acct_in_real_dir "${1%/*}" _crawler_copy_here "${1##*/}" "${_crwWrk}/src"
 }
 # ${_crwWrk}/new put as $1 with the owner, group and mode $2 (as
 # _crawler_copy printed them). ${_crwWrk}/src, the file as it was, is kept
@@ -5940,41 +5975,6 @@ _fix_nginx_crawler_access() {
   fi
   rm -rf -- "${_crwWrk}"
   )
-}
-
-#
-# TRUE while any BOA install or upgrade may be consuming /opt/tmp/boa: the
-# chained install drops boa_run/boa_wait mid-chain by design and its octopus
-# leg runs as "bash /var/backups/OCTOPUS.sh.txt", so the lock pids alone are
-# not enough -- sweep the marker AND the live process forms. This gate is
-# self-contained on purpose: BOA.sh.txt reaches every box on the next cron
-# fetch, ahead of any fNN-pinned tool update.
-#
-_install_in_flight() {
-  [ -e "/run/boa_run.pid" ] && return 0
-  [ -e "/run/boa_wait.pid" ] && return 0
-  [ -e "/run/octopus_install_run.pid" ] && return 0
-  # Anchored, not a bare substring: a command line that merely MENTIONS the
-  # wrapper -- an editor, a checksum, an operator's ssh probe -- must not read
-  # as an install in flight and defer the agent indefinitely.
-  pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/barracuda( |$)" > /dev/null 2>&1 && return 0
-  pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/octopus( |$)" > /dev/null 2>&1 && return 0
-  # Anchored: a LOCAL install only -- "ssh root@box /opt/local/bin/boa in-"
-  # (a remote install driven from this box) must not defer this box
-  pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-" > /dev/null 2>&1 && return 0
-  # Dual-path for the staging move: match both the old /var/backups home and
-  # the root-only /var/opt/boa-dist one, because tools arrive per file and a
-  # box runs whatever mix it has converged on. A watcher that knows only one
-  # path would read a box as idle in the middle of an install. Anchored on
-  # the executor for the same reason as the wrapper arms above; left open at
-  # the tail because the octopus leg runs as "OCTOPUS.sh.txt.oN".
-  pgrep -u root -U root -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1 && return 0
-  # The Ægir setup children ("su - oN -c bash .../AegirSetupC.sh.txt") match
-  # none of the forms above and are the phase that consumes /opt/tmp/boa the
-  # longest. Anchored on the executor so a remotely driven install cannot
-  # defer this box; the [ABC] class keeps it from matching its own pgrep
-  pgrep -u root -U root -f "^(/[^ ]*/)?(bash|sh|su) .*/aegir/scripts/AegirSetup[ABC]\.sh\.txt" > /dev/null 2>&1 && return 0
-  return 1
 }
 
 #
@@ -6484,13 +6484,13 @@ CSFSTANDBY
   fi
   rm -f ${_pthLog}/vmnetfix.sh.ctrl.*
   if [ -e "${_pthLog}" ]; then
-    _fetch_versioned ${_usrBin}/fix-drupal-platform-permissions.sh "${_urlHmr}/${_tBn}/fix-drupal-platform-permissions.sh" f52
+    _fetch_versioned ${_usrBin}/fix-drupal-platform-permissions.sh "${_urlHmr}/${_tBn}/fix-drupal-platform-permissions.sh" f51
     _fetch_versioned ${_usrBin}/fix-drupal-site-permissions.sh     "${_urlHmr}/${_tBn}/fix-drupal-site-permissions.sh"     f58
-    _fetch_versioned ${_usrBin}/fix-drupal-platform-ownership.sh   "${_urlHmr}/${_tBn}/fix-drupal-platform-ownership.sh"   f66
+    _fetch_versioned ${_usrBin}/fix-drupal-platform-ownership.sh   "${_urlHmr}/${_tBn}/fix-drupal-platform-ownership.sh"   f65
     _fetch_versioned ${_usrBin}/fix-drupal-site-ownership.sh       "${_urlHmr}/${_tBn}/fix-drupal-site-ownership.sh"       f61
     _fetch_versioned ${_usrBin}/lock-local-drush-permissions.sh    "${_urlHmr}/${_tBn}/lock-local-drush-permissions.sh"    f90
     _fetch_versioned ${_usrBin}/fix-drupal-site-symlinks.sh        "${_urlHmr}/${_tBn}/fix-drupal-site-symlinks.sh"        f96
-    _fetch_versioned ${_usrBin}/boa-dbctl                          "${_urlHmr}/${_tBn}/boa-dbctl"                          f02
+    _fetch_versioned ${_usrBin}/boa-dbctl                          "${_urlHmr}/${_tBn}/boa-dbctl"                          f01
   fi
   mkdir -p ${_optBin}
   # Per-file, serial-gated, retry-on-failure fetch of the core /opt/local/bin
@@ -6509,23 +6509,23 @@ CSFSTANDBY
     # None of the three runs on its own and every source-side verb refuses a
     # BOA box. stage2 is dual-resident and run by name on the target, so the
     # documented /usr/local/bin path stays a symlink to the fleet copy.
-    _fetch_versioned ${_optBin}/aegir2boa-preflight "${_urlHmr}/${_tBn}/aegir2boa-preflight" f94 --guard /local/bin/aegir2boa-preflight
-    _fetch_versioned ${_optBin}/aegir2boa-stage1 "${_urlHmr}/${_tBn}/aegir2boa-stage1" f95 --guard /local/bin/aegir2boa-stage1
-    _fetch_versioned ${_optBin}/aegir2boa-stage2 "${_urlHmr}/${_tBn}/aegir2boa-stage2" f47 --symlink ${_usrBin}/aegir2boa-stage2 --guard /local/bin/aegir2boa-stage2
+    _fetch_versioned ${_optBin}/aegir2boa-preflight "${_urlHmr}/${_tBn}/aegir2boa-preflight" f93 --guard /local/bin/aegir2boa-preflight
+    _fetch_versioned ${_optBin}/aegir2boa-stage1 "${_urlHmr}/${_tBn}/aegir2boa-stage1" f94 --guard /local/bin/aegir2boa-stage1
+    _fetch_versioned ${_optBin}/aegir2boa-stage2 "${_urlHmr}/${_tBn}/aegir2boa-stage2" f46 --symlink ${_usrBin}/aegir2boa-stage2 --guard /local/bin/aegir2boa-stage2
     _fetch_versioned ${_optBin}/aptcleanup "${_urlHmr}/${_tBn}/aptcleanup" f92 --guard /local/bin/aptcleanup
     _fetch_versioned ${_optBin}/aptfast "${_urlHmr}/${_tBn}/aptfast" f95 --guard /local/bin/aptfast
     _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/${_tBn}/autobeowulf" f79 --guard /local/bin/autobeowulf
     _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/${_tBn}/autoexcalibur" f78 --guard /local/bin/autoexcalibur
-    _fetch_versioned ${_optBin}/autosymlink "${_urlHmr}/${_tBn}/autosymlink" f33 --guard /local/bin/autosymlink
+    _fetch_versioned ${_optBin}/autosymlink "${_urlHmr}/${_tBn}/autosymlink" f32 --guard /local/bin/autosymlink
     _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/${_tBn}/autoupboa" f01 --guard /local/bin/autoupboa
     # Backup family: guard on duplicity itself -- never replace a backup tool
     # while a backup run is in flight.
-    _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f39 --guard duplicity
-    _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f26 --guard /local/bin/barracuda
-    _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f74 --guard /local/bin/boa
+    _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f38 --guard duplicity
+    _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f25 --guard /local/bin/barracuda
+    _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f73 --guard /local/bin/boa
     _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/${_tBn}/dcysetup" f91 --guard duplicity
     _fetch_versioned ${_optBin}/dhcpfix "${_urlHmr}/${_tBn}/dhcpfix" f98 --guard /local/bin/dhcpfix
-    _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/${_tBn}/duobackboa" f40 --guard duplicity
+    _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/${_tBn}/duobackboa" f39 --guard duplicity
     # The remote-backups run scripts ride here with dcysetup, which drives
     # them from clear.sh every few minutes: on a _SKYNET_MODE=OFF box the
     # agents pass never runs, and a refreshed dcysetup calling a stale
@@ -6535,7 +6535,7 @@ CSFSTANDBY
       _fetch_versioned /root/.remote_backups/run/create_credentials_templates.sh "${_urlHmr}/tools/backup/run/create_credentials_templates.sh" f41
       _fetch_versioned /root/.remote_backups/run/create_global_paths_config.sh "${_urlHmr}/tools/backup/run/create_global_paths_config.sh" f43
       _fetch_versioned /root/.remote_backups/run/create_user_paths_config.sh "${_urlHmr}/tools/backup/run/create_user_paths_config.sh" f36
-      _fetch_versioned /root/.remote_backups/run/create_cron_entries.sh "${_urlHmr}/tools/backup/run/create_cron_entries.sh" f32
+      _fetch_versioned /root/.remote_backups/run/create_cron_entries.sh "${_urlHmr}/tools/backup/run/create_cron_entries.sh" f31
       _fetch_versioned /root/.remote_backups/run/create_readme.sh "${_urlHmr}/tools/backup/run/create_readme.sh" f39
       _fetch_versioned /root/.remote_backups/run/create_config_readme.sh "${_urlHmr}/tools/backup/run/create_config_readme.sh" f37
     fi
@@ -6543,25 +6543,25 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/ffmirror "${_urlHmr}/${_tBn}/ffmirror" f97 --guard /local/bin/ffmirror
     _fetch_versioned ${_optBin}/fixmounts "${_urlHmr}/${_tBn}/fixmounts" f98 --guard /local/bin/fixmounts
     _fetch_versioned ${_optBin}/fixrepo "${_urlHmr}/${_tBn}/fixrepo" f90 --guard /local/bin/fixrepo
-    _fetch_versioned ${_optBin}/instgrp "${_urlHmr}/${_tBn}/instgrp" f99 --guard /local/bin/instgrp
-    _fetch_versioned ${_optBin}/linkguard "${_urlHmr}/${_tBn}/linkguard" f86 --guard /local/bin/linkguard
+    _fetch_versioned ${_optBin}/instgrp "${_urlHmr}/${_tBn}/instgrp" f98 --guard /local/bin/instgrp
+    _fetch_versioned ${_optBin}/linkguard "${_urlHmr}/${_tBn}/linkguard" f85 --guard /local/bin/linkguard
     _fetch_versioned ${_optBin}/ngxstore "${_urlHmr}/${_tBn}/ngxstore" f01 --guard /local/bin/ngxstore
     _fetch_versioned ${_optBin}/eolreport "${_urlHmr}/${_tBn}/eolreport" f98 --symlink ${_usrBin}/eolreport --guard /local/bin/eolreport
     _fetch_core_coverage
     _fetch_versioned ${_optBin}/floodreport "${_urlHmr}/${_tBn}/floodreport" f99 --symlink ${_usrBin}/floodreport --guard /local/bin/floodreport
     _fetch_versioned ${_optBin}/fpmreport "${_urlHmr}/${_tBn}/fpmreport" f98 --symlink ${_usrBin}/fpmreport --guard /local/bin/fpmreport
     _fetch_versioned ${_optBin}/heavyslots "${_urlHmr}/${_tBn}/heavyslots" f01 --symlink ${_usrBin}/heavyslots --guard /local/bin/heavyslots
-    _fetch_versioned ${_optBin}/loadreport "${_urlHmr}/${_tBn}/loadreport" f90 --symlink ${_usrBin}/loadreport --guard /local/bin/loadreport
+    _fetch_versioned ${_optBin}/loadreport "${_urlHmr}/${_tBn}/loadreport" f89 --symlink ${_usrBin}/loadreport --guard /local/bin/loadreport
     _fetch_versioned ${_optBin}/lock.inc "${_urlHmr}/${_tBn}/lock.inc" f84 --guard /local/bin/lock.inc
-    _fetch_versioned ${_optBin}/multiback "${_urlHmr}/${_tBn}/multiback" f70 --guard duplicity
-    _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/${_tBn}/mybackup" f85 --mode 755 --guard duplicity
-    _fetch_versioned ${_optBin}/octopus "${_urlHmr}/${_tBn}/octopus" f41 --guard /local/bin/octopus
-    _fetch_versioned ${_optBin}/perftest "${_urlHmr}/${_tBn}/perftest" f92 --symlink ${_usrBin}/perftest --guard /local/bin/perftest
-    _fetch_versioned ${_optBin}/renameaegirhost "${_urlHmr}/${_tBn}/renameaegirhost" f39 --guard /local/bin/renameaegirhost
+    _fetch_versioned ${_optBin}/multiback "${_urlHmr}/${_tBn}/multiback" f69 --guard duplicity
+    _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/${_tBn}/mybackup" f84 --mode 755 --guard duplicity
+    _fetch_versioned ${_optBin}/octopus "${_urlHmr}/${_tBn}/octopus" f40 --guard /local/bin/octopus
+    _fetch_versioned ${_optBin}/perftest "${_urlHmr}/${_tBn}/perftest" f91 --symlink ${_usrBin}/perftest --guard /local/bin/perftest
+    _fetch_versioned ${_optBin}/renameaegirhost "${_urlHmr}/${_tBn}/renameaegirhost" f38 --guard /local/bin/renameaegirhost
     _fetch_versioned ${_optBin}/screenfetch "${_urlHmr}/${_tBn}/screenfetch" f99 --guard /local/bin/screenfetch
-    _fetch_versioned ${_optBin}/updatesymlinks "${_urlHmr}/${_tBn}/updatesymlinks" f74 --guard /local/bin/updatesymlinks
+    _fetch_versioned ${_optBin}/updatesymlinks "${_urlHmr}/${_tBn}/updatesymlinks" f73 --guard /local/bin/updatesymlinks
     _fetch_versioned ${_optBin}/symlinkinfo "${_urlHmr}/${_tBn}/symlinkinfo" f95 --guard /local/bin/symlinkinfo
-    _fetch_versioned ${_optBin}/migratefs "${_urlHmr}/${_tBn}/migratefs" f76 --guard /local/bin/migratefs
+    _fetch_versioned ${_optBin}/migratefs "${_urlHmr}/${_tBn}/migratefs" f75 --guard /local/bin/migratefs
     _fetch_versioned ${_optBin}/synproxy "${_urlHmr}/${_tBn}/synproxy" f93 --guard /local/bin/synproxy
     _fetch_versioned ${_optBin}/synproxy_hook_fix "${_urlHmr}/${_tBn}/synproxy_hook_fix" f99 --guard /local/bin/synproxy_hook_fix
     _fetch_versioned ${_optBin}/synproxy_monitor "${_urlHmr}/${_tBn}/synproxy_monitor" f98 --guard /local/bin/synproxy_monitor
@@ -6570,17 +6570,17 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/synproxy_snapshot "${_urlHmr}/${_tBn}/synproxy_snapshot" f99 --guard /local/bin/synproxy_snapshot
     _fetch_versioned ${_optBin}/synproxy_status "${_urlHmr}/${_tBn}/synproxy_status" f99 --guard /local/bin/synproxy_status
     _fetch_versioned ${_optBin}/webserver "${_urlHmr}/${_tBn}/webserver" f91 --guard /local/bin/webserver
-    _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f93 --guard /local/bin/xcopy
-    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f70 --guard /local/bin/xmass
-    _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f68 --guard /local/bin/xoct
-    _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f15 --guard /local/bin/xtrim
+    _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f92 --guard /local/bin/xcopy
+    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f69 --guard /local/bin/xmass
+    _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f67 --guard /local/bin/xoct
+    _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f14 --guard /local/bin/xtrim
     # The migration-proxy trust and realip tools ride here with xoct and xmass,
     # which run them: on a _SKYNET_MODE=OFF box the agents pass never runs, and
     # a refreshed xoct calling a stale trust tool (no adopt verb) left the
     # accounts' log/ records unread and every move undeclared. An installed box
     # only: before the install there is no /var/xdrago to put them in.
     if [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
-      _fetch_versioned /var/xdrago/migration_proxy_trust.sh "${_urlHmr}/tools/system/migration_proxy_trust.sh" f71 --peer-written
+      _fetch_versioned /var/xdrago/migration_proxy_trust.sh "${_urlHmr}/tools/system/migration_proxy_trust.sh" f70 --peer-written
       # Proxy records and proxied markers moved out of the accounts' log/ into
       # /root: import what older tools left there once, before any tool reads
       # the root copies. It reloads nothing and is a no-op after its stamp.
@@ -6590,7 +6590,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/solrtrim "${_urlHmr}/${_tBn}/solrtrim" f82 --guard /local/bin/solrtrim
     _fetch_versioned ${_optBin}/autochimaera "${_urlHmr}/${_tBn}/autochimaera" f80 --guard /local/bin/autochimaera
     _fetch_versioned ${_optBin}/autodaedalus "${_urlHmr}/${_tBn}/autodaedalus" f80 --guard /local/bin/autodaedalus
-    _fetch_versioned ${_optBin}/autoinit "${_urlHmr}/${_tBn}/autoinit" f64 --guard /local/bin/autoinit
+    _fetch_versioned ${_optBin}/autoinit "${_urlHmr}/${_tBn}/autoinit" f63 --guard /local/bin/autoinit
     # automini is retired: a reduced copy of autoinit made for custom
     # testing, never started by BOA. Markers go with the file.
     rm -f ${_optBin}/automini ${_usrBin}/automini \
@@ -6599,7 +6599,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/backchain "${_urlHmr}/${_tBn}/backchain" f93 --mode 755 --guard /local/bin/backchain
     _fetch_versioned ${_optBin}/checkmyperms "${_urlHmr}/${_tBn}/checkmyperms" f96 --mode 755 --guard /local/bin/checkmyperms
     _fetch_versioned ${_optBin}/codebasecheck "${_urlHmr}/${_tBn}/codebasecheck" f88 --guard /local/bin/codebasecheck
-    _fetch_versioned ${_optBin}/copydbackup "${_urlHmr}/${_tBn}/copydbackup" f77 --guard /local/bin/copydbackup
+    _fetch_versioned ${_optBin}/copydbackup "${_urlHmr}/${_tBn}/copydbackup" f76 --guard /local/bin/copydbackup
     _fetch_versioned ${_optBin}/fancynow "${_urlHmr}/${_tBn}/fancynow" f99 --guard /local/bin/fancynow
     _fetch_versioned ${_optBin}/killer "${_urlHmr}/${_tBn}/killer" f96 --guard /local/bin/killer
     _fetch_versioned ${_optBin}/memorytuner "${_urlHmr}/${_tBn}/memorytuner" f86 --guard /local/bin/memorytuner
@@ -6617,7 +6617,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/thinkdifferent "${_urlHmr}/${_tBn}/thinkdifferent" f99 --mode 755 --guard /local/bin/thinkdifferent
     _fetch_versioned ${_optBin}/verifyvhostsdns "${_urlHmr}/${_tBn}/verifyvhostsdns" f97 --guard /local/bin/verifyvhostsdns
     _fetch_versioned ${_optBin}/vhostcheck "${_urlHmr}/${_tBn}/vhostcheck" f97 --guard /local/bin/vhostcheck
-    _fetch_versioned ${_optBin}/vmnetfix "${_urlHmr}/${_tBn}/vmnetfix" f93 --guard /local/bin/vmnetfix
+    _fetch_versioned ${_optBin}/vmnetfix "${_urlHmr}/${_tBn}/vmnetfix" f92 --guard /local/bin/vmnetfix
     # weblogx: skip while owl.sh runs (preserves the old loop guard)
     _wlOwlCnt=$(pgrep -u root -U root -fc /var/xdrago/owl.sh 2>/dev/null)
     _wlOwlCnt=${_wlOwlCnt:-0}
@@ -6630,7 +6630,7 @@ CSFSTANDBY
     # tail-anchored sentinel refuses a wrong OR truncated payload before it
     # can reach client shells -- websh invokes its dash forwarder near EOF,
     # so the token must keep living in websh's last 4 KiB.
-    _fetch_versioned ${_optBin}/websh "${_urlHmr}/${_tBn}/websh" f58 --mode 755 --require-token _forward_to_dash --guard /local/bin/websh
+    _fetch_versioned ${_optBin}/websh "${_urlHmr}/${_tBn}/websh" f56 --mode 755 --require-token _forward_to_dash --guard /local/bin/websh
     _fetch_versioned ${_optBin}/xdr9000 "${_urlHmr}/${_tBn}/xdr9000" f98 --symlink ${_usrBin}/xdr9000 --guard /local/bin/xdr9000
   fi
 

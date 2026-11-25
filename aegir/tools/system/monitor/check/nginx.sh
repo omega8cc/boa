@@ -148,36 +148,6 @@ _incident_email_report() {
   fi
 }
 
-_stop_nginx_processes() {
-  # Ask the recorded master to quit first: QUIT lets in-flight requests
-  # finish, where the old unconditional -9 severed every connection on the
-  # box. The -9 still follows, but only for what survives the grace, matched
-  # by the title nginx sets at argv position 0 (master, workers, cache manager
-  # and loader): a title SUBSTRING also hit any grep, tail or pgrep whose argv
-  # carried "nginx: " -- during the very outage being cleared -- and a bare
-  # process name would take a plain `nginx -t` or `-s reload` in flight with it.
-  local _mpid _w=0
-  _mpid=$( { tr -dc '0-9' < /run/nginx.pid; } 2>/dev/null )
-  # With the pidfile missing or naming something else, the one master the
-  # box lists still gets its QUIT before the -9.
-  if [ -z "${_mpid}" ] || [ "$(cat /proc/${_mpid}/comm 2>/dev/null)" != "nginx" ]; then
-    _mpid=$(_nginx_master_pids)
-    [ "$(printf '%s\n' "${_mpid}" | grep -c .)" -eq 1 ] || _mpid=
-  fi
-  # The number must still BE nginx: a pidfile left by a -9'd master outlives
-  # its owner on tmpfs, and a recycled pid would receive root's SIGQUIT.
-  if [ -n "${_mpid}" ] \
-    && [ "$(cat /proc/${_mpid}/comm 2>/dev/null)" = "nginx" ] \
-    && kill -0 "${_mpid}" 2>/dev/null; then
-    kill -QUIT "${_mpid}" 2>/dev/null
-    while kill -0 "${_mpid}" 2>/dev/null && [ "${_w}" -lt 10 ]; do
-      sleep 1
-      _w=$(( _w + 1 ))
-    done
-  fi
-  pkill -9 -f '^nginx: ' || true
-}
-
 _nginx_error_log_aside() {
   # error.log to a dated name no move this minute has taken: a restart and a
   # bind stand-down in the same minute must never overwrite each other's copy.
@@ -260,6 +230,36 @@ _nginx_master_pids() {
     | awk '{print $1}'); do
     _nginx_pid_is_nginx "${_p}" && echo "${_p}"
   done
+}
+
+_stop_nginx_processes() {
+  # Ask the recorded master to quit first: QUIT lets in-flight requests
+  # finish, where the old unconditional -9 severed every connection on the
+  # box. The -9 still follows, but only for what survives the grace, matched
+  # by the title nginx sets at argv position 0 (master, workers, cache manager
+  # and loader): a title SUBSTRING also hit any grep, tail or pgrep whose argv
+  # carried "nginx: " -- during the very outage being cleared -- and a bare
+  # process name would take a plain `nginx -t` or `-s reload` in flight with it.
+  local _mpid _w=0
+  _mpid=$( { tr -dc '0-9' < /run/nginx.pid; } 2>/dev/null )
+  # With the pidfile missing or naming something else, the one master the
+  # box lists still gets its QUIT before the -9.
+  if [ -z "${_mpid}" ] || [ "$(cat /proc/${_mpid}/comm 2>/dev/null)" != "nginx" ]; then
+    _mpid=$(_nginx_master_pids)
+    [ "$(printf '%s\n' "${_mpid}" | grep -c .)" -eq 1 ] || _mpid=
+  fi
+  # The number must still BE nginx: a pidfile left by a -9'd master outlives
+  # its owner on tmpfs, and a recycled pid would receive root's SIGQUIT.
+  if [ -n "${_mpid}" ] \
+    && [ "$(cat /proc/${_mpid}/comm 2>/dev/null)" = "nginx" ] \
+    && kill -0 "${_mpid}" 2>/dev/null; then
+    kill -QUIT "${_mpid}" 2>/dev/null
+    while kill -0 "${_mpid}" 2>/dev/null && [ "${_w}" -lt 10 ]; do
+      sleep 1
+      _w=$(( _w + 1 ))
+    done
+  fi
+  pkill -9 -f '^nginx: ' || true
 }
 
 _box_going_down() {
@@ -396,6 +396,179 @@ _nginx_quic_bpf_shed() {
   echo "$(date) Nginx did not start with quic_bpf on (${_how}); the fragment was removed. Delete this file to let the next barracuda pass probe again." > "${_latch}"
   echo "$(date) NGX failed to start with quic_bpf on (${_how}); fragment removed, latch left at ${_latch}, restarted" >> ${_pthOml}
   _incident_email_report "Nginx failed to start with quic_bpf on, fragment removed"
+}
+
+# An account asks for a restart by leaving a file in its static/control.
+# The restart is box-wide, so each account is honoured at most once in
+# _ACCT_REQ_SECS for each service, and only for a regular file, not a link,
+# owned by one of its identities in its own real static/control. Any other
+# entry of a request's name is removed and never acted on.
+_ACCT_REQ_SECS=900
+_ACCT_REQ_DIR="/run/boa_acct_requests"
+# each account's uids, read once a pass (_acct_req_in_ctrl)
+declare -A _ACCT_REQ_U=()
+# The uids of root and of every identity of the account $1 as passwd names
+# them, comma-separated, as _acct_walk_uids gives them, with passwd cut to
+# the account's own lines first. Status 1, and nothing, unless the account
+# itself is in passwd.
+_acct_req_uids() {
+  local _a="${1}" _n _p _u _r _x="0" _self=NO
+  case "${_a}" in
+    ""|*[!a-z0-9_-]*) return 1 ;;
+  esac
+  while IFS=: read -r _n _p _u _r; do
+    [[ "${_n}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]] || continue
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    _x="${_x},${_u}"
+    [ "${_n}" = "${_a}" ] && _self=YES
+  done < <(getent passwd 2> /dev/null | grep -E "^${_a}[.:]")
+  [ "${_self}" = "YES" ] || return 1
+  echo "${_x}"
+}
+# Run "$@" with the account $1's uids last, inside its real static/control:
+# the directory the shell is in, as the kernel names it (never bash's own
+# pwd, which reads back the path cd was given), and root's or one of the
+# account's.
+_acct_req_in_ctrl() {
+  local _a="${1}" _u _want
+  shift
+  if [ -z "${_ACCT_REQ_U[${_a}]+x}" ]; then
+    _ACCT_REQ_U[${_a}]="$(_acct_req_uids "${_a}")"
+  fi
+  _u="${_ACCT_REQ_U[${_a}]}"
+  [ -n "${_u}" ] || return 1
+  _want="$(cd -P -- /data/disk 2> /dev/null && /bin/pwd -P)/${_a}/static/control"
+  ( cd -P -- "/data/disk/${_a}/static/control" 2> /dev/null \
+    && [ "$(/bin/pwd -P)" = "${_want}" ] \
+    && [[ ",${_u}," == *",$(stat -c %u . 2> /dev/null),"* ]] \
+    && "$@" "${_u}" )
+}
+# Inside the real static/control: remove ./$1, a directory only when empty.
+_acct_req_drop() {
+  if [ -d "./${1}" ] && [ ! -L "./${1}" ]; then
+    rmdir -- "./${1}" 2> /dev/null
+  else
+    rm -f -- "./${1}" 2> /dev/null
+  fi
+  return 0
+}
+# Inside the real static/control: status 0 when ./$1 is a request that
+# counts, a regular file and not a link, owned by one of the uids $2;
+# anything else of that name is removed.
+_acct_req_judge() {
+  local _o
+  if [ -f "./${1}" ] && [ ! -L "./${1}" ]; then
+    _o=$(stat -c %u -- "./${1}" 2> /dev/null)
+    [ -n "${_o}" ] && [[ ",${2}," == *",${_o},"* ]] && return 0
+  fi
+  _acct_req_drop "${1}"
+  return 1
+}
+# Fills _ACCT_REQ with the accounts whose request, under any of the names
+# $2..., counts for the service $1 this pass. A request made again inside
+# the account's allowance is removed and noted once, not acted on.
+_acct_req_scan() {
+  local _svc="${1}" _p _a _n _hit _st _ts _now
+  shift
+  _ACCT_REQ=()
+  _now=$(date +%s)
+  for _p in /data/disk/*/static/control; do
+    _a="${_p#/data/disk/}"
+    _a="${_a%%/*}"
+    [[ "${_a}" =~ ^[a-z0-9_-]+$ ]] || continue
+    _hit=NO
+    for _n in "$@"; do
+      [ -e "${_p}/${_n}" ] || [ -L "${_p}/${_n}" ] || continue
+      _acct_req_in_ctrl "${_a}" _acct_req_judge "${_n}" && _hit=YES
+    done
+    [ "${_hit}" = "YES" ] || continue
+    _st="${_ACCT_REQ_DIR}/${_svc}.${_a}"
+    _ts=$(tr -dc '0-9' 2> /dev/null < "${_st}")
+    if [[ "${_ts}" =~ ^[1-9][0-9]{0,11}$ ]] && [ $(( _now - _ts )) -ge 0 ] \
+      && [ $(( _now - _ts )) -lt "${_ACCT_REQ_SECS}" ]; then
+      for _n in "$@"; do
+        _acct_req_in_ctrl "${_a}" _acct_req_drop "${_n}"
+      done
+      if [ ! -e "${_st}.noted" ]; then
+        mkdir -p -m 0700 "${_ACCT_REQ_DIR}" 2> /dev/null
+        : > "${_st}.noted"
+        echo "$(date) INFO: ${_svc} restart asked again by ${_a} within $(( _ACCT_REQ_SECS / 60 )) minutes; request removed, not acted on" >> "${_pthOml}"
+      fi
+      continue
+    fi
+    _ACCT_REQ+=("${_a}")
+  done
+}
+# Removes the counted requests, under any of the names $2..., of every
+# account in _ACCT_REQ and starts each one's allowance for the service $1.
+_acct_req_take() {
+  local _svc="${1}" _a _n
+  shift
+  mkdir -p -m 0700 "${_ACCT_REQ_DIR}" 2> /dev/null
+  for _a in "${_ACCT_REQ[@]}"; do
+    for _n in "$@"; do
+      _acct_req_in_ctrl "${_a}" _acct_req_drop "${_n}"
+    done
+    date +%s > "${_ACCT_REQ_DIR}/${_svc}.${_a}"
+    rm -f "${_ACCT_REQ_DIR}/${_svc}.${_a}.noted"
+  done
+}
+
+###
+### Stand down while the database is being deliberately restarted
+###
+export _SQL_MUTATION_MAX_MINS=${_SQL_MUTATION_MAX_MINS//[^0-9]/}
+: "${_SQL_MUTATION_MAX_MINS:=15}"
+
+# Pass-scoped state for the standby block below: the cached restart answer,
+# the cached marker-gap role, and the two "this pass could not tell, so it
+# changed nothing" flags the release paths read.
+_NGX_SQL_MUT_RC=""
+_NGX_GAP_ROLE=""
+_NGX_GAP_UNKNOWN=NO
+_NGX_FTPS_GAP_UNKNOWN=NO
+
+_sql_mutation_in_flight() {
+  # move_sql.sh stops Nginx and every PHP-FPM pool to restart the database, and
+  # it never brings them back: these watchdogs are the intended recovery. That
+  # only works if they wait for the restart to finish. Restarting the web tier
+  # mid-teardown stands it in front of a database that is still down, so workers
+  # pile onto failed connections and the whole herd arrives at a cold cache the
+  # moment the database returns; that cascade is what turns a brief database
+  # fault into a site-wide one. runner.sh and system.sh already stand down on
+  # the same two markers: mysql_restart_running.pid, written by move_sql.sh,
+  # and boa_mysql_auto_healing.pid, held by the database watchdog for the
+  # length of its heal.
+  #
+  # Honoured only while the marker is recent, deliberately. clear.sh reaps a
+  # leaked mysql_restart_running.pid an hour after the writer died, and an hour
+  # with no web auto-healing is a worse outcome than the cascade this avoids; a
+  # marker older than the bound is treated as abandoned rather than authoritative.
+  #
+  # Answered once per pass and cached: the standby role read below asks as
+  # well as the health checks at the tail, and one pass must not write the
+  # stand-down line twice.
+  [ -n "${_NGX_SQL_MUT_RC}" ] && return "${_NGX_SQL_MUT_RC}"
+  local _m
+  for _m in /run/mysql_restart_running.pid /run/boa_mysql_auto_healing.pid; do
+    [ -e "${_m}" ] || continue
+    if [ -z "$(find "${_m}" -mmin "+${_SQL_MUTATION_MAX_MINS}" 2>/dev/null)" ]; then
+      echo "$(date) INFO: MySQL restart in progress (${_m##*/}); standing down this pass" >> ${_pthOml}
+      _NGX_SQL_MUT_RC=0
+      return 0
+    fi
+  done
+  _NGX_SQL_MUT_RC=1
+  return 1
+}
+
+# Asked again past the cached answer, after the grace and before the restart
+# of a stopped Nginx: move_sql.sh writes its marker and only then stops
+# Nginx, so the stop the grace watched may be its own, and a restart now
+# would bring Nginx up in the middle of the database restart.
+_sql_mutation_began() {
+  _NGX_SQL_MUT_RC=""
+  _sql_mutation_in_flight
 }
 
 _restart_nginx() {
@@ -693,122 +866,6 @@ _nginx_if_up_check_fix() {
   fi
 }
 
-# An account asks for a restart by leaving a file in its static/control.
-# The restart is box-wide, so each account is honoured at most once in
-# _ACCT_REQ_SECS for each service, and only for a regular file, not a link,
-# owned by one of its identities in its own real static/control. Any other
-# entry of a request's name is removed and never acted on.
-_ACCT_REQ_SECS=900
-_ACCT_REQ_DIR="/run/boa_acct_requests"
-# each account's uids, read once a pass (_acct_req_in_ctrl)
-declare -A _ACCT_REQ_U=()
-# The uids of root and of every identity of the account $1 as passwd names
-# them, comma-separated, as _acct_walk_uids gives them, with passwd cut to
-# the account's own lines first. Status 1, and nothing, unless the account
-# itself is in passwd.
-_acct_req_uids() {
-  local _a="${1}" _n _p _u _r _x="0" _self=NO
-  case "${_a}" in
-    ""|*[!a-z0-9_-]*) return 1 ;;
-  esac
-  while IFS=: read -r _n _p _u _r; do
-    [[ "${_n}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]] || continue
-    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
-    _x="${_x},${_u}"
-    [ "${_n}" = "${_a}" ] && _self=YES
-  done < <(getent passwd 2> /dev/null | grep -E "^${_a}[.:]")
-  [ "${_self}" = "YES" ] || return 1
-  echo "${_x}"
-}
-# Run "$@" with the account $1's uids last, inside its real static/control:
-# the directory the shell is in, as the kernel names it (never bash's own
-# pwd, which reads back the path cd was given), and root's or one of the
-# account's.
-_acct_req_in_ctrl() {
-  local _a="${1}" _u _want
-  shift
-  if [ -z "${_ACCT_REQ_U[${_a}]+x}" ]; then
-    _ACCT_REQ_U[${_a}]="$(_acct_req_uids "${_a}")"
-  fi
-  _u="${_ACCT_REQ_U[${_a}]}"
-  [ -n "${_u}" ] || return 1
-  _want="$(cd -P -- /data/disk 2> /dev/null && /bin/pwd -P)/${_a}/static/control"
-  ( cd -P -- "/data/disk/${_a}/static/control" 2> /dev/null \
-    && [ "$(/bin/pwd -P)" = "${_want}" ] \
-    && [[ ",${_u}," == *",$(stat -c %u . 2> /dev/null),"* ]] \
-    && "$@" "${_u}" )
-}
-# Inside the real static/control: remove ./$1, a directory only when empty.
-_acct_req_drop() {
-  if [ -d "./${1}" ] && [ ! -L "./${1}" ]; then
-    rmdir -- "./${1}" 2> /dev/null
-  else
-    rm -f -- "./${1}" 2> /dev/null
-  fi
-  return 0
-}
-# Inside the real static/control: status 0 when ./$1 is a request that
-# counts, a regular file and not a link, owned by one of the uids $2;
-# anything else of that name is removed.
-_acct_req_judge() {
-  local _o
-  if [ -f "./${1}" ] && [ ! -L "./${1}" ]; then
-    _o=$(stat -c %u -- "./${1}" 2> /dev/null)
-    [ -n "${_o}" ] && [[ ",${2}," == *",${_o},"* ]] && return 0
-  fi
-  _acct_req_drop "${1}"
-  return 1
-}
-# Fills _ACCT_REQ with the accounts whose request, under any of the names
-# $2..., counts for the service $1 this pass. A request made again inside
-# the account's allowance is removed and noted once, not acted on.
-_acct_req_scan() {
-  local _svc="${1}" _p _a _n _hit _st _ts _now
-  shift
-  _ACCT_REQ=()
-  _now=$(date +%s)
-  for _p in /data/disk/*/static/control; do
-    _a="${_p#/data/disk/}"
-    _a="${_a%%/*}"
-    [[ "${_a}" =~ ^[a-z0-9_-]+$ ]] || continue
-    _hit=NO
-    for _n in "$@"; do
-      [ -e "${_p}/${_n}" ] || [ -L "${_p}/${_n}" ] || continue
-      _acct_req_in_ctrl "${_a}" _acct_req_judge "${_n}" && _hit=YES
-    done
-    [ "${_hit}" = "YES" ] || continue
-    _st="${_ACCT_REQ_DIR}/${_svc}.${_a}"
-    _ts=$(tr -dc '0-9' 2> /dev/null < "${_st}")
-    if [[ "${_ts}" =~ ^[1-9][0-9]{0,11}$ ]] && [ $(( _now - _ts )) -ge 0 ] \
-      && [ $(( _now - _ts )) -lt "${_ACCT_REQ_SECS}" ]; then
-      for _n in "$@"; do
-        _acct_req_in_ctrl "${_a}" _acct_req_drop "${_n}"
-      done
-      if [ ! -e "${_st}.noted" ]; then
-        mkdir -p -m 0700 "${_ACCT_REQ_DIR}" 2> /dev/null
-        : > "${_st}.noted"
-        echo "$(date) INFO: ${_svc} restart asked again by ${_a} within $(( _ACCT_REQ_SECS / 60 )) minutes; request removed, not acted on" >> "${_pthOml}"
-      fi
-      continue
-    fi
-    _ACCT_REQ+=("${_a}")
-  done
-}
-# Removes the counted requests, under any of the names $2..., of every
-# account in _ACCT_REQ and starts each one's allowance for the service $1.
-_acct_req_take() {
-  local _svc="${1}" _a _n
-  shift
-  mkdir -p -m 0700 "${_ACCT_REQ_DIR}" 2> /dev/null
-  for _a in "${_ACCT_REQ[@]}"; do
-    for _n in "$@"; do
-      _acct_req_in_ctrl "${_a}" _acct_req_drop "${_n}"
-    done
-    date +%s > "${_ACCT_REQ_DIR}/${_svc}.${_a}"
-    rm -f "${_ACCT_REQ_DIR}/${_svc}.${_a}.noted"
-  done
-}
-
 _if_nginx_restart() {
   # A passive mirror (replication standby): the sentinel is the ACTIVE box's
   # self-service request, delivered here only because static/control rides the
@@ -860,63 +917,6 @@ _if_nginx_restart() {
       _restart_nginx "Nginx Server Restart Requested" requested
     fi
   fi
-}
-
-###
-### Stand down while the database is being deliberately restarted
-###
-export _SQL_MUTATION_MAX_MINS=${_SQL_MUTATION_MAX_MINS//[^0-9]/}
-: "${_SQL_MUTATION_MAX_MINS:=15}"
-
-# Pass-scoped state for the standby block below: the cached restart answer,
-# the cached marker-gap role, and the two "this pass could not tell, so it
-# changed nothing" flags the release paths read.
-_NGX_SQL_MUT_RC=""
-_NGX_GAP_ROLE=""
-_NGX_GAP_UNKNOWN=NO
-_NGX_FTPS_GAP_UNKNOWN=NO
-
-_sql_mutation_in_flight() {
-  # move_sql.sh stops Nginx and every PHP-FPM pool to restart the database, and
-  # it never brings them back: these watchdogs are the intended recovery. That
-  # only works if they wait for the restart to finish. Restarting the web tier
-  # mid-teardown stands it in front of a database that is still down, so workers
-  # pile onto failed connections and the whole herd arrives at a cold cache the
-  # moment the database returns; that cascade is what turns a brief database
-  # fault into a site-wide one. runner.sh and system.sh already stand down on
-  # the same two markers: mysql_restart_running.pid, written by move_sql.sh,
-  # and boa_mysql_auto_healing.pid, held by the database watchdog for the
-  # length of its heal.
-  #
-  # Honoured only while the marker is recent, deliberately. clear.sh reaps a
-  # leaked mysql_restart_running.pid an hour after the writer died, and an hour
-  # with no web auto-healing is a worse outcome than the cascade this avoids; a
-  # marker older than the bound is treated as abandoned rather than authoritative.
-  #
-  # Answered once per pass and cached: the standby role read below asks as
-  # well as the health checks at the tail, and one pass must not write the
-  # stand-down line twice.
-  [ -n "${_NGX_SQL_MUT_RC}" ] && return "${_NGX_SQL_MUT_RC}"
-  local _m
-  for _m in /run/mysql_restart_running.pid /run/boa_mysql_auto_healing.pid; do
-    [ -e "${_m}" ] || continue
-    if [ -z "$(find "${_m}" -mmin "+${_SQL_MUTATION_MAX_MINS}" 2>/dev/null)" ]; then
-      echo "$(date) INFO: MySQL restart in progress (${_m##*/}); standing down this pass" >> ${_pthOml}
-      _NGX_SQL_MUT_RC=0
-      return 0
-    fi
-  done
-  _NGX_SQL_MUT_RC=1
-  return 1
-}
-
-# Asked again past the cached answer, after the grace and before the restart
-# of a stopped Nginx: move_sql.sh writes its marker and only then stops
-# Nginx, so the stop the grace watched may be its own, and a restart now
-# would bring Nginx up in the middle of the database restart.
-_sql_mutation_began() {
-  _NGX_SQL_MUT_RC=""
-  _sql_mutation_in_flight
 }
 
 ###
