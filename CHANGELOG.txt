@@ -69,8 +69,9 @@
       the control panel made again from its own recipe at the newest patch
       or minor release of its Drupal, the next major, another version or a
       Git branch or tag, and keeps the new platform for the sites' Upgrade
-      only when it is a newer version of the same codebase that adds no
-      security advisory; otherwise it is deleted. It is granted to no role yet.
+      only when it is a newer version of the same codebase; otherwise it is
+      deleted. A security advisory the build adds is named in its result. It
+      is granted to no role yet.
 
     * An outgoing mail relay that wants a login, such as Amazon SES, is a
       setting now: _SMTP_RELAY_USER and _SMTP_RELAY_PASS beside
@@ -80,6 +81,12 @@
       Postfix is left alone.
 
 @=> Improvements
+
+    * The Upgrade no longer refuses a newer platform that brings a security
+      advisory the site's platform does not have: its plan and its result
+      line name the advisory, and so does its dialog where both platforms'
+      advisories were read. A drupal_upgrade_modes list that asks for
+      security fixes still refuses such a move.
 
     * websh reads a shell account's long command lines faster again: the
       redirection reading had made some of them up to twice as slow, and a
