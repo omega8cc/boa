@@ -3848,19 +3848,119 @@ _display_info() {
   fi
 }
 
+# Why the account $1, which has no log/cores.txt, is no install that never
+# finished; nothing when it is one. A finished install writes log/cores.txt
+# at its end, and an account in use has it. A stopped or killed install
+# leaves its system user with /data/disk/$1 as its own home, its root-owned
+# install record /root/.$1.octopus.cnf naming it, and no site but its own
+# control panel: a vhost or a site alias of any other name is an account in
+# use. Names are read, never a file's content, and never through a link.
+_purge_half_made() {
+  local _u="${1}" _d="/data/disk/${1}" _c="/root/.${1}.octopus.cnf"
+  local _pw _uid _home _dom _v _f _n
+  if [[ ! "${_u}" =~ ^[a-z][a-z0-9_]{0,31}$ ]]; then
+    echo "${_u} is not an account name"
+    return
+  fi
+  if [[ ! -d "${_d}" || -L "${_d}" ]]; then
+    echo "${_d} is not a directory"
+    return
+  fi
+  if [[ -e "${_d}/log/cores.txt" ]]; then
+    echo "its install finished (log/cores.txt)"
+    return
+  fi
+  _pw="$(getent passwd "${_u}" 2> /dev/null)"
+  _uid="$(cut -d: -f3 <<< "${_pw}")"
+  _home="$(cut -d: -f6 <<< "${_pw}")"
+  if [[ -z "${_pw}" || "${_home}" != "${_d}" ]] \
+    || [[ "$(stat -c %u -- "${_d}" 2> /dev/null)" != "${_uid}" ]]; then
+    echo "${_d} is not the home of a system user ${_u} that owns it"
+    return
+  fi
+  if [[ ! -f "${_c}" || -L "${_c}" ]] \
+    || [[ "$(stat -c %u -- "${_c}" 2> /dev/null)" != "0" ]] \
+    || ! grep -qx "_USER=\"${_u}\"" "${_c}" 2> /dev/null; then
+    echo "no root-owned install record ${_c} names ${_u}"
+    return
+  fi
+  _dom="$(grep -m1 '^_DOMAIN=' "${_c}" 2> /dev/null | cut -d= -f2- | tr -d "\"' ")"
+  _v="${_d}/config/server_master/nginx/vhost.d"
+  for _f in "${_d}/config" "${_d}/config/server_master" \
+    "${_d}/config/server_master/nginx" "${_v}" "${_d}/.drush"; do
+    if [[ -L "${_f}" ]]; then
+      echo "${_f} is a link, so its sites are not proven"
+      return
+    fi
+  done
+  for _f in "${_v}"/* "${_v}"/.[!.]*; do
+    [[ -e "${_f}" || -L "${_f}" ]] || continue
+    _n="${_f##*/}"
+    if [[ -z "${_dom}" || "${_n}" != "${_dom}" ]]; then
+      echo "it serves ${_n}, so it is an account in use"
+      return
+    fi
+  done
+  for _f in "${_d}/.drush"/*.alias.drushrc.php; do
+    [[ -e "${_f}" || -L "${_f}" ]] || continue
+    _n="${_f##*/}"
+    _n="${_n%.alias.drushrc.php}"
+    case "${_n}" in
+      hostmaster|hm|platform_*|server_*) continue ;;
+    esac
+    [[ -n "${_dom}" && "${_n}" = "${_dom}" ]] && continue
+    echo "it has the site alias ${_n}, so it is an account in use"
+    return
+  done
+}
+
 # Why /data/disk/$1 is no account 'boa cleanup purge' takes, by the three names
-# detect reads (tested, never opened); nothing when it is one.
+# detect reads (tested, never opened), or for an install that never finished
+# by _purge_half_made; nothing when it is one.
 _purge_not_candidate() {
-  local _d="/data/disk/${1}"
+  local _d="/data/disk/${1}" _h
   if [[ ! -d "${_d}" ]]; then
     echo "${_d} does not exist"
   elif [[ ! -e "${_d}/log/CANCELLED" ]]; then
     echo "it is not marked log/CANCELLED"
   elif [[ ! -e "${_d}/log/cores.txt" ]]; then
-    echo "it is marked log/CANCELLED but has no log/cores.txt, so it is not an Octopus instance detect lists"
+    _h="$(_purge_half_made "${1}")"
+    [[ -n "${_h}" ]] && echo "it is marked log/CANCELLED but has no log/cores.txt, and it is no install that never finished: ${_h}"
   elif [[ ! -d "${_d}/config/server_master/nginx/vhost.d" ]]; then
     echo "it is marked log/CANCELLED but has no config/server_master/nginx/vhost.d, so it is not an Octopus instance detect lists"
   fi
+}
+
+# The sudo lines the install gave the account $1 (its nginx reload in
+# /etc/sudoers, the permission scripts and the database broker in
+# /etc/sudoers.d): each line whose user field is exactly $1 goes, the file
+# kept first in $2, and a file is replaced only with a copy visudo passes,
+# by a rename in its own directory. One line says each file changed.
+_purge_sudoers_drop() {
+  local _u="${1}" _keep="${2}" _f _t _n
+  [[ "${_u}" =~ ^[a-z][a-z0-9_]{0,31}$ ]] || return 0
+  if ! command -v visudo > /dev/null 2>&1; then
+    echo "sudo lines of ${_u} left: no visudo to check a changed file"
+    return 0
+  fi
+  for _f in /etc/sudoers /etc/sudoers.d/*; do
+    [[ -f "${_f}" && ! -L "${_f}" ]] || continue
+    [[ "$(stat -c %u -- "${_f}" 2> /dev/null)" = "0" ]] || continue
+    _n="$(grep -cE "^${_u}[[:space:]]" "${_f}" 2> /dev/null)"
+    [[ "${_n}" =~ ^[1-9][0-9]*$ ]] || continue
+    _t="$(mktemp "${_f%/*}/.sudoers.boa.XXXXXX" 2> /dev/null)" || continue
+    # grep exits 1 when the account's lines were the file's only ones
+    grep -vE "^${_u}[[:space:]]" "${_f}" > "${_t}" 2> /dev/null
+    if [[ "$?" -le 1 ]] \
+      && chmod 0440 "${_t}" && visudo -cqf "${_t}" > /dev/null 2>&1 \
+      && mkdir -p "${_keep}" && cp -a -- "${_f}" "${_keep}/${_f##*/}.sudo" \
+      && mv -f -T -- "${_t}" "${_f}"; then
+      echo "removed ${_n} sudo line(s) of ${_u} from ${_f}"
+    else
+      rm -f -- "${_t}"
+      echo "sudo lines of ${_u} left in ${_f}: the changed copy did not pass visudo"
+    fi
+  done
 }
 
 # A pass in flight writes back what a purge parks: a panel proxy left in pre.d
@@ -4375,6 +4475,7 @@ _octopus_cleanup() {
       echo "Accounts marked for cleanup or active"
       echo
       rm -f /var/log/boa/.cleanup.detect.txt
+      local _hMade
       for _Usr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`
       do
         if [ -d "${_Usr}/config/server_master/nginx/vhost.d" ] \
@@ -4388,8 +4489,17 @@ _octopus_cleanup() {
           if [ -d "${_Usr}/config/server_master/nginx/vhost.d" ] \
             && [ -e "${_Usr}/log/cores.txt" ]; then
             echo "ACTIVE ${_Usr}"
+          elif [ -e "${_Usr}/log/CANCELLED" ] && [ ! -e "${_Usr}/log/cores.txt" ]; then
+            _hMade="$(_purge_half_made "${_Usr##*/}")"
+            if [ -z "${_hMade}" ]; then
+              _sIze=$(du -s -h ${_Usr} | cut -d' ' -f1 | awk '{ print $1}' 2>/dev/null)
+              echo "CANCELLED ${_Usr} ${_sIze} (an install that never finished)"
+              echo "CANCELLED ${_Usr##*/}" >> /var/log/boa/.cleanup.detect.txt
+            else
+              echo "SKIPPED ${_Usr}: marked log/CANCELLED, with no log/cores.txt, but no install that never finished (${_hMade}): purge refuses it"
+            fi
           elif [ -e "${_Usr}/log/CANCELLED" ]; then
-            echo "SKIPPED ${_Usr}: marked log/CANCELLED, but not an Octopus instance (no vhost.d or no log/cores.txt): purge refuses it"
+            echo "SKIPPED ${_Usr}: marked log/CANCELLED, but not an Octopus instance (no vhost.d): purge refuses it"
           fi
         fi
       done
@@ -4453,11 +4563,19 @@ _octopus_cleanup() {
       _nginx_inc="/var/aegir/config/server_master/nginx/platform.d"
       _nginx_ssl="/var/aegir/config/server_master/nginx/pre.d"
       _sites_nr=$(ls /data/disk/${_usEr}/config/server_master/nginx/vhost.d 2>/dev/null | wc -l)
-      if [ -d "/data/disk/${_usEr}/config/server_master/nginx/vhost.d" ] \
-        && [ -e "/data/disk/${_usEr}/log/cores.txt" ] \
-        && [ -e "/data/disk/${_usEr}/log/CANCELLED" ]; then
+      # _purge_not_candidate above has judged it: an Octopus instance, or an
+      # install that never finished (no log/cores.txt), which goes the same way
+      _halfMade=""
+      if [ ! -e "/data/disk/${_usEr}/log/cores.txt" ] \
+        && [ -z "$(_purge_half_made "${_usEr}")" ]; then
+        _halfMade=" (an install that never finished)"
+      fi
+      if [ -e "/data/disk/${_usEr}/log/CANCELLED" ] \
+        && { [ -n "${_halfMade}" ] \
+          || { [ -d "/data/disk/${_usEr}/config/server_master/nginx/vhost.d" ] \
+            && [ -e "/data/disk/${_usEr}/log/cores.txt" ]; }; }; then
         echo
-        echo "Account to purge: ${_usEr}"
+        echo "Account to purge: ${_usEr}${_halfMade}"
         echo
         mkdir -p ${_zombie_dir}
         # the stamp a finished purge leaves (below): a batch run again reads it,
@@ -4515,6 +4633,9 @@ _octopus_cleanup() {
           /root/.${_usEr}.remote-db.txt; do
           [ -e "${_rootCnf}" ] && mv -f "${_rootCnf}" ${_zombie_dir}root/
         done
+        # And its sudo lines: a later account of the name gets its own at
+        # its install.
+        _purge_sudoers_drop "${_usEr}" "${_zombie_dir}root"
         # So does the list of its identities' uids the sites' PHP reads (the
         # ltd worker writes it again for an account made later by the name),
         # and the record of its removed identities' numbers, which stay held

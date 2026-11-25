@@ -171,6 +171,18 @@
       not from web/, so the panel named the source site's database until a
       later Verify.
 
+    * boa cleanup takes an Octopus account whose install never finished:
+      one marked log/CANCELLED that has no log/cores.txt, whose system
+      user owns /data/disk/<oN> as its home, whose /root/.<oN>.octopus.cnf
+      names it, and which serves no site but its own panel. detect lists it
+      as an install that never finished, and purge removes it as any other
+      account, so a new install of the name is possible again. An account
+      with any other vhost or site alias is refused, saying why.
+
+    * boa cleanup purge removes the account's own sudo lines from
+      /etc/sudoers and /etc/sudoers.d, each changed file checked by visudo
+      first and kept with the account's other records.
+
     * vdrush @alias updb runs on a Drupal 10 or newer codebase again after a
       Composer run that installed drush/drush (an update or a require) put
       vendor/bin/drush back. Drush starts its update check through that
