@@ -52,8 +52,9 @@
       not UTF-8, or a control character, is shown as \xNN.
 
     * Drupal 7 core 7.108.2 (D7ES) for the panel and the Drupal 7 platforms:
-      its session handler is ready for PHP 8.6, and under strict mode a
-      session cookie that names no stored session now gets a new ID.
+      its session handler is ready for PHP 8.6, and on PHP 7.0 and later,
+      under strict mode, a session cookie that names no stored session now
+      gets a new ID.
 
     * The marker of an unfinished platform build is written as a new file
       and renamed into place, never through a link standing at its name.
