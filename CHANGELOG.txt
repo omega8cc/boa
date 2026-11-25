@@ -65,6 +65,13 @@
       redirection reading had made some of them up to twice as slow, and a
       very long run of redirection signs far slower.
 
+    * A platform the control panel builds with Composer stops a build step
+      after 45 minutes, as it stops one silent for five, with everything the
+      step started, and removes what it made. A failed step says why in its
+      last lines. A Verify or a Delete of the platform while a build of it
+      still runs changes nothing and says so. The Drush a first Verify adds
+      to such a codebase has the same limit, and a stopped one is undone.
+
 @=> Important Fixes
 
     * _SMTP_RELAY_HOST takes [host]:port, as a relay on port 587 or 465
