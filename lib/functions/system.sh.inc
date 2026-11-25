@@ -12774,11 +12774,15 @@ EOF
   ### no-relay/direct mode -- routing through the relay would re-stamp the
   ### sites' own mail to the relay's single sending domain. Self-correcting
   ### both ways: enabling the allow file reverts an already-active relayhost
-  ### back to direct.
+  ### back to direct. _SMTP_RELAY_SITES=YES lifts the gate, for a relay that
+  ### keeps each sender's own address: the sites' mail goes through it too.
   ###
   if [ ! -z "${_SMTP_RELAY_HOST}" ] \
     && [ "${_ALLOW_SENDMAIL}" != "YES" ] \
     && [ ! -e "/etc/boa/.allow.sendmail.cnf" ]; then
+    _smtp_relay_apply
+  elif [ ! -z "${_SMTP_RELAY_HOST}" ] \
+    && [ "${_SMTP_RELAY_SITES}" = "YES" ]; then
     _smtp_relay_apply
   elif [ "${_ALLOW_SENDMAIL}" = "YES" ] \
     || [ -e "/etc/boa/.allow.sendmail.cnf" ]; then
