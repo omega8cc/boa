@@ -54,6 +54,12 @@ _php_cli_local_dirs_update() {
   chown -R aegir:aegir ${_U_TP}
 }
 
+_master_reown_here() {
+  perl -e "${_ACCT_REOWN_PL}" -- "${1}" "${2}" . \
+    && env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 \
+      \( -type d -o -type f \) \
+      -execdir perl -e "${_ACCT_REOWN_PL}" -- "${1}" "${2}" {} +
+}
 #
 # The master's hostmaster tree holds directories every account can write
 # (sites/all/{modules,libraries,themes} in group users, the site's files/
@@ -76,12 +82,6 @@ _master_reown_in() {
   [[ "${_u}" =~ ^[0-9]+$ && "${_g}" =~ ^(-1|[0-9]+)$ ]] || return 1
   _acct_in_real_dir "${1}" _master_reown_here "${_u}" "${_g}"
 }
-_master_reown_here() {
-  perl -e "${_ACCT_REOWN_PL}" -- "${1}" "${2}" . \
-    && env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 \
-      \( -type d -o -type f \) \
-      -execdir perl -e "${_ACCT_REOWN_PL}" -- "${1}" "${2}" {} +
-}
 # A mode set through a handle on each name given (d: a directory, f: a
 # regular file with a single link), as chmod(1) sets a numeric one: a
 # directory keeps its set-user-ID and set-group-ID bits unless the mode has
@@ -102,13 +102,6 @@ for my $f (@ARGV) {
   }
   close($h);
 }'
-# $1 and every directory below it set to $2, every regular file below it
-# to $3. Files take their own mode, never the directories' set-group-ID one:
-# any account can write a file there, and a setgid executable would run
-# with the store's group.
-_master_mode_all_in() {
-  _acct_in_real_dir "${1}" _master_mode_all_here "${2}" "${3}"
-}
 _master_mode_all_here() {
   perl -e "${_MASTER_NOFOLLOW_CHMOD_PL}" d "${1}" . 2> /dev/null
   env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 -type d \
@@ -116,15 +109,19 @@ _master_mode_all_here() {
   env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 -type f \
     -execdir perl -e "${_MASTER_NOFOLLOW_CHMOD_PL}" f "${2}" {} +
 }
+# $1 and every directory below it set to $2, every regular file below it
+# to $3. Files take their own mode, never the directories' set-group-ID one:
+# any account can write a file there, and a setgid executable would run
+# with the store's group.
+_master_mode_all_in() {
+  _acct_in_real_dir "${1}" _master_mode_all_here "${2}" "${3}"
+}
 # As _master_mode_all_in, for a files store of a master converted to its own
 # web group: its private set (./private, and the subtrees nginx denies, a
 # case-insensitive prefix after any files/) keeps the modes the conversion
 # gave it, with no world bits. POSIX extended, read after -regextype
 # posix-extended.
 _MASTER_DENIED_RE='\./(civicrm/(configandlog|custom|upload|templates_c)|backup_migrate|config_)[^/]*|.*/files/(civicrm/(configandlog|custom|upload|templates_c)|backup_migrate|config_)[^/]*'
-_master_mode_pub_in() {
-  _acct_in_real_dir "${1}" _master_mode_pub_here "${2}" "${3}"
-}
 _master_mode_pub_here() {
   perl -e "${_MASTER_NOFOLLOW_CHMOD_PL}" d "${1}" . 2> /dev/null
   env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 -regextype posix-extended \
@@ -135,6 +132,9 @@ _master_mode_pub_here() {
     -execdir perl -e "${_MASTER_NOFOLLOW_CHMOD_PL}" f "${2}" {} +
 }
 
+_master_mode_pub_in() {
+  _acct_in_real_dir "${1}" _master_mode_pub_here "${2}" "${3}"
+}
 _master_web_group() {
   # The master's own web group, wg-aegir, the way _web_group_state reads an
   # account's: "<state> <gid> wg-aegir", "none - -" when there is none. Its
@@ -596,137 +596,6 @@ EOFMYSQL
 }
 
 #
-# Revoke from the panel's database user $1, at localhost and at %, every right
-# but those on its own database $2 (the name as a grant writes it, _ escaped):
-# the rights on all databases and the grant option an earlier release gave,
-# and the rights on any other database. The own grant itself is never taken
-# away, so the panel keeps its database while this runs. The global rights
-# go through _hostmaster_db_user_global_revoke: each by name, never REVOKE
-# ALL on *.*, which on Percona 8.4 takes every database grant with it.
-_hostmaster_frontend_dbuser_trim() {
-  local _h _d
-  local _C=(mysql --silent --skip-column-names --raw -u root -h"${_SQL_CONNECT}"
-    -P"${_THIS_DB_PORT}" --protocol=tcp --database=mysql -e)
-  # held in a variable: on the right of =~ a bare $- would expand
-  local _dbre='^[-A-Za-z0-9_%$\\]{1,64}$'
-  [[ "${1}" =~ ^[A-Za-z0-9_]{1,32}$ ]] || return 0
-  _hostmaster_db_user_global_revoke "${1}" "localhost"$'\n'"%" \
-    || _msg "ALRT: panel database user ${1} keeps a global right or lost a database grant"
-  for _h in localhost %; do
-    while IFS= read -r _d; do
-      [[ "${_d}" =~ ${_dbre} ]] || continue
-      if [ "${_d}" != "${2}" ]; then
-        "${_C[@]}" "REVOKE ALL ON \`${_d}\`.* FROM '${1}'@'${_h}'" &> /dev/null
-      fi
-      "${_C[@]}" "REVOKE GRANT OPTION ON \`${_d}\`.* FROM '${1}'@'${_h}'" &> /dev/null
-    done < <("${_C[@]}" "SELECT Db FROM mysql.db WHERE User='${1}' AND Host='${_h}'" 2> /dev/null)
-  done
-}
-
-#
-# Sync hostmaster frontend db_passwd.
-_hostmaster_frontend_dbpass_sync() {
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _hostmaster_frontend_dbpass_sync"
-  fi
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "INFO: Syncing hostmaster frontend db_passwd..."
-  fi
-  if [ -e "/var/aegir/use_proxysql.txt" ]; then
-    _SQL_CONNECT=127.0.0.1
-    _THIS_DB_PORT=6033
-  else
-    _THIS_DB_PORT=3306
-  fi
-  _THIS_HM_SPTH=$(cat /var/aegir/.drush/hm.alias.drushrc.php \
-    | grep "site_path'" \
-    | cut -d: -f2 \
-    | awk '{ print $3}' \
-    | sed "s/[\,']//g" 2>&1)
-  _THIS_HM_DBUR=$(cat ${_THIS_HM_SPTH}/drushrc.php \
-    | grep "options\['db_user'\] = " \
-    | cut -d: -f2 \
-    | awk '{ print $3}' \
-    | sed "s/[\,';]//g" 2>&1)
-  _THIS_HM_DBPD=$(cat ${_THIS_HM_SPTH}/drushrc.php \
-    | grep "options\['db_passwd'\] = " \
-    | cut -d: -f2 \
-    | awk '{ print $3}' \
-    | sed "s/[\,';]//g" 2>&1)
-  _THIS_HM_DBNM=$(cat ${_THIS_HM_SPTH}/drushrc.php \
-    | grep "options\['db_name'\] = " \
-    | cut -d: -f2 \
-    | awk '{ print $3}' \
-    | sed "s/[\,';]//g" 2>&1)
-  if [ -e "${_THIS_HM_SPTH}" ] \
-    && [ ! -z "${_THIS_HM_DBUR}" ] \
-    && [ ! -z "${_THIS_HM_DBPD}" ]; then
-    _SQL_CONNECT=localhost
-    if [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
-      || [ "${_THIS_DB_HOST}" = "PROXYSQL" ]; then
-      _SQL_CONNECT=127.0.0.1
-    fi
-    ### The panel works in its own database only: grant just that one,
-    ### escaped as provisioning writes it (a bare _ matches any character).
-    ### An unreadable name keeps the old grant rather than locking the panel
-    ### out mid-upgrade.
-    if [[ "${_THIS_HM_DBNM}" =~ ^[A-Za-z0-9_]{1,64}$ ]]; then
-      _ESC="\`${_THIS_HM_DBNM//_/\\_}\`.*"
-      _GOPT=""
-    else
-      _ESC="*.*"
-      _GOPT="WITH GRANT OPTION"
-      _msg "ALRT: master hostmaster db_name not readable, its panel user keeps rights on all databases"
-    fi
-    _USE_DB_USER="${_THIS_HM_DBUR}"
-    _USE_AEGIR_HOST="${_hName}"
-    [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL11 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
-    if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
-      _write_proxysql_adm_cnf &> /dev/null
-      mysql --defaults-extra-file=/root/.my.proxysql_adm.cnf<<PROXYSQL
-DELETE FROM mysql_users WHERE username='${_USE_DB_USER}';
-DELETE FROM mysql_query_rules WHERE username='${_USE_DB_USER}';
-INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_USE_DB_USER}','${_THIS_HM_DBPD}','10');
-LOAD MYSQL USERS TO RUNTIME;
-SAVE MYSQL USERS FROM RUNTIME;
-SAVE MYSQL USERS TO DISK;
-INSERT INTO mysql_query_rules (username,destination_hostgroup,active) VALUES ('${_USE_DB_USER}',10,1);
-INSERT INTO mysql_query_rules (username,destination_hostgroup,active) VALUES ('${_USE_DB_USER}',11,1);
-LOAD MYSQL QUERY RULES TO RUNTIME;
-SAVE MYSQL QUERY RULES TO DISK;
-PROXYSQL
-    fi
-    ### The two accounts the panel logs in with are set in place, never
-    ### dropped and made again: the panel serves requests all through the
-    ### pass, and between a DROP and the ALTER that gave the password back
-    ### none of them could log in. Rights beyond the own database, as an
-    ### earlier release gave, are revoked once the own grant is in place
-    ### (not while the name is unreadable), and the accounts named after the
-    ### host go last.
-    _C_SQL="mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp --database=mysql -e"
-    mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -u root mysql<<EOFMYSQL
-CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_THIS_HM_DBPD}';
-CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_THIS_HM_DBPD}';
-ALTER USER '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_THIS_HM_DBPD}';
-ALTER USER '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_THIS_HM_DBPD}';
-GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' ${_GOPT};
-GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' ${_GOPT};
-EOFMYSQL
-    if [ -z "${_GOPT}" ]; then
-      _hostmaster_frontend_dbuser_trim "${_USE_DB_USER}" "${_THIS_HM_DBNM//_/\\_}"
-    fi
-    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';" &> /dev/null
-    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';" &> /dev/null
-    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'127.0.0.1';" &> /dev/null
-    _hostmaster_oldhost_dbuser_drop
-    case "${_SQL_CONNECT}" in
-      localhost|127.0.0.1) _dbctl_rerecord master-panel ;;
-    esac
-  fi
-  mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG PRIVILEGES" &> /dev/null
-}
-
-#
 # The value the last assignment of setting $2 in cnf $1 gives it, read as
 # bash reads the file: export is tolerated, a quoted value ends at its
 # closing quote, any other at the first blank or semicolon. Nothing when the
@@ -963,6 +832,78 @@ _hostmaster_db_user_label() {
     echo "${_o} earlier panel database user"
   fi
 }
+# Takes from the user $1, on each host row given in $2 (one per line), the
+# global privileges SHOW GRANTS lists for that row, each by name, and its
+# global grant option: a REVOKE ALL on *.* takes the database grants too
+# (measured on Percona 8.4), and Percona 5.7 lists every global right as
+# ALL PRIVILEGES, so those are named too. A database grant that goes all the
+# same is granted back as it read before. Zero when no row keeps a global
+# right and every row has the database grants it had. One text in
+# master.sh.inc and satellite.sh.inc.
+_hostmaster_db_user_global_revoke() {
+  local _u="${1}" _h _g _d _p _n=0 _b=0 _a=0
+  local _C=(mysql --silent --skip-column-names --raw -u root -h"${_SQL_CONNECT}"
+    -P"${_THIS_DB_PORT}" --protocol=tcp --database=mysql -e)
+  local _ALL57="SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, RELOAD, SHUTDOWN, PROCESS, FILE, REFERENCES, INDEX, ALTER, SHOW DATABASES, SUPER, CREATE TEMPORARY TABLES, LOCK TABLES, EXECUTE, REPLICATION SLAVE, REPLICATION CLIENT, CREATE VIEW, SHOW VIEW, CREATE ROUTINE, ALTER ROUTINE, CREATE USER, EVENT, TRIGGER, CREATE TABLESPACE"
+  while IFS= read -r _h; do
+    case "${_h}" in
+      ""|*[!A-Za-z0-9._%:-]*) return 1 ;;
+    esac
+    _g=$("${_C[@]}" "SHOW GRANTS FOR '${_u}'@'${_h}'" 2> /dev/null) || return 1
+    _d=$(printf '%s\n' "${_g}" | grep '^GRANT .* ON .* TO ' | grep -v ' ON \*\.\* TO ')
+    _b=$((_b + $(printf '%s\n' "${_d}" | grep -c .)))
+    while IFS= read -r _p; do
+      _p="${_p#GRANT }"
+      _p="${_p%% ON \*.\* TO *}"
+      [ "${_p}" = "ALL PRIVILEGES" ] && _p="${_ALL57}"
+      [[ "${_p}" =~ ^[A-Z_][A-Z_\ ,]*$ ]] && [ "${_p}" != "USAGE" ] || continue
+      "${_C[@]}" "REVOKE ${_p} ON *.* FROM '${_u}'@'${_h}'" &> /dev/null
+    done < <(printf '%s\n' "${_g}" | grep '^GRANT .* ON \*\.\* TO ')
+    "${_C[@]}" "REVOKE GRANT OPTION ON *.* FROM '${_u}'@'${_h}'" &> /dev/null
+    _g=$("${_C[@]}" "SHOW GRANTS FOR '${_u}'@'${_h}'" 2> /dev/null) || return 1
+    while IFS= read -r _p; do
+      [ -n "${_p}" ] || continue
+      printf '%s\n' "${_g}" | grep -qxF -- "${_p}" && continue
+      case "${_p}" in
+        *";"*) continue ;;
+      esac
+      "${_C[@]}" "${_p}" &> /dev/null
+    done <<< "${_d}"
+    _g=$("${_C[@]}" "SHOW GRANTS FOR '${_u}'@'${_h}'" 2> /dev/null) || return 1
+    _a=$((_a + $(printf '%s\n' "${_g}" | grep '^GRANT .* ON .* TO ' | grep -vc ' ON \*\.\* TO ')))
+    _n=$((_n + $(printf '%s\n' "${_g}" | grep ' ON \*\.\* TO ' | grep -vc '^GRANT USAGE ON ')))
+  done <<< "${2}"
+  [ "${_n}" = "0" ] && [ "${_a}" = "${_b}" ]
+}
+
+#
+# Revoke from the panel's database user $1, at localhost and at %, every right
+# but those on its own database $2 (the name as a grant writes it, _ escaped):
+# the rights on all databases and the grant option an earlier release gave,
+# and the rights on any other database. The own grant itself is never taken
+# away, so the panel keeps its database while this runs. The global rights
+# go through _hostmaster_db_user_global_revoke: each by name, never REVOKE
+# ALL on *.*, which on Percona 8.4 takes every database grant with it.
+_hostmaster_frontend_dbuser_trim() {
+  local _h _d
+  local _C=(mysql --silent --skip-column-names --raw -u root -h"${_SQL_CONNECT}"
+    -P"${_THIS_DB_PORT}" --protocol=tcp --database=mysql -e)
+  # held in a variable: on the right of =~ a bare $- would expand
+  local _dbre='^[-A-Za-z0-9_%$\\]{1,64}$'
+  [[ "${1}" =~ ^[A-Za-z0-9_]{1,32}$ ]] || return 0
+  _hostmaster_db_user_global_revoke "${1}" "localhost"$'\n'"%" \
+    || _msg "ALRT: panel database user ${1} keeps a global right or lost a database grant"
+  for _h in localhost %; do
+    while IFS= read -r _d; do
+      [[ "${_d}" =~ ${_dbre} ]] || continue
+      if [ "${_d}" != "${2}" ]; then
+        "${_C[@]}" "REVOKE ALL ON \`${_d}\`.* FROM '${1}'@'${_h}'" &> /dev/null
+      fi
+      "${_C[@]}" "REVOKE GRANT OPTION ON \`${_d}\`.* FROM '${1}'@'${_h}'" &> /dev/null
+    done < <("${_C[@]}" "SELECT Db FROM mysql.db WHERE User='${1}' AND Host='${_h}'" 2> /dev/null)
+  done
+}
+
 # The candidates given after $1 (the pass's own: an account's name, or
 # master) are users of this box's own plain server with the shape and
 # prefix of an earlier panel's, none the live panel's user or an account's
@@ -1061,50 +1002,6 @@ _hostmaster_db_users_settle() {
     fi
   done
 }
-# Takes from the user $1, on each host row given in $2 (one per line), the
-# global privileges SHOW GRANTS lists for that row, each by name, and its
-# global grant option: a REVOKE ALL on *.* takes the database grants too
-# (measured on Percona 8.4), and Percona 5.7 lists every global right as
-# ALL PRIVILEGES, so those are named too. A database grant that goes all the
-# same is granted back as it read before. Zero when no row keeps a global
-# right and every row has the database grants it had. One text in
-# master.sh.inc and satellite.sh.inc.
-_hostmaster_db_user_global_revoke() {
-  local _u="${1}" _h _g _d _p _n=0 _b=0 _a=0
-  local _C=(mysql --silent --skip-column-names --raw -u root -h"${_SQL_CONNECT}"
-    -P"${_THIS_DB_PORT}" --protocol=tcp --database=mysql -e)
-  local _ALL57="SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, RELOAD, SHUTDOWN, PROCESS, FILE, REFERENCES, INDEX, ALTER, SHOW DATABASES, SUPER, CREATE TEMPORARY TABLES, LOCK TABLES, EXECUTE, REPLICATION SLAVE, REPLICATION CLIENT, CREATE VIEW, SHOW VIEW, CREATE ROUTINE, ALTER ROUTINE, CREATE USER, EVENT, TRIGGER, CREATE TABLESPACE"
-  while IFS= read -r _h; do
-    case "${_h}" in
-      ""|*[!A-Za-z0-9._%:-]*) return 1 ;;
-    esac
-    _g=$("${_C[@]}" "SHOW GRANTS FOR '${_u}'@'${_h}'" 2> /dev/null) || return 1
-    _d=$(printf '%s\n' "${_g}" | grep '^GRANT .* ON .* TO ' | grep -v ' ON \*\.\* TO ')
-    _b=$((_b + $(printf '%s\n' "${_d}" | grep -c .)))
-    while IFS= read -r _p; do
-      _p="${_p#GRANT }"
-      _p="${_p%% ON \*.\* TO *}"
-      [ "${_p}" = "ALL PRIVILEGES" ] && _p="${_ALL57}"
-      [[ "${_p}" =~ ^[A-Z_][A-Z_\ ,]*$ ]] && [ "${_p}" != "USAGE" ] || continue
-      "${_C[@]}" "REVOKE ${_p} ON *.* FROM '${_u}'@'${_h}'" &> /dev/null
-    done < <(printf '%s\n' "${_g}" | grep '^GRANT .* ON \*\.\* TO ')
-    "${_C[@]}" "REVOKE GRANT OPTION ON *.* FROM '${_u}'@'${_h}'" &> /dev/null
-    _g=$("${_C[@]}" "SHOW GRANTS FOR '${_u}'@'${_h}'" 2> /dev/null) || return 1
-    while IFS= read -r _p; do
-      [ -n "${_p}" ] || continue
-      printf '%s\n' "${_g}" | grep -qxF -- "${_p}" && continue
-      case "${_p}" in
-        *";"*) continue ;;
-      esac
-      "${_C[@]}" "${_p}" &> /dev/null
-    done <<< "${_d}"
-    _g=$("${_C[@]}" "SHOW GRANTS FOR '${_u}'@'${_h}'" 2> /dev/null) || return 1
-    _a=$((_a + $(printf '%s\n' "${_g}" | grep '^GRANT .* ON .* TO ' | grep -vc ' ON \*\.\* TO ')))
-    _n=$((_n + $(printf '%s\n' "${_g}" | grep ' ON \*\.\* TO ' | grep -vc '^GRANT USAGE ON ')))
-  done <<< "${2}"
-  [ "${_n}" = "0" ] && [ "${_a}" = "${_b}" ]
-}
-
 #  A master panel database user an earlier release left with every global
 # right under a name no upgrade reuses: named from the master's uri before
 # the host was renamed, provisioning never re-grants, re-creates or drops
@@ -1160,6 +1057,109 @@ _hostmaster_oldhost_dbuser_drop() {
   done <<< "${_rows}"
   [ "${#_cand[@]}" -gt 0 ] || return 0
   _hostmaster_db_users_settle master "${_cand[@]}"
+}
+
+#
+# Sync hostmaster frontend db_passwd.
+_hostmaster_frontend_dbpass_sync() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _hostmaster_frontend_dbpass_sync"
+  fi
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "INFO: Syncing hostmaster frontend db_passwd..."
+  fi
+  if [ -e "/var/aegir/use_proxysql.txt" ]; then
+    _SQL_CONNECT=127.0.0.1
+    _THIS_DB_PORT=6033
+  else
+    _THIS_DB_PORT=3306
+  fi
+  _THIS_HM_SPTH=$(cat /var/aegir/.drush/hm.alias.drushrc.php \
+    | grep "site_path'" \
+    | cut -d: -f2 \
+    | awk '{ print $3}' \
+    | sed "s/[\,']//g" 2>&1)
+  _THIS_HM_DBUR=$(cat ${_THIS_HM_SPTH}/drushrc.php \
+    | grep "options\['db_user'\] = " \
+    | cut -d: -f2 \
+    | awk '{ print $3}' \
+    | sed "s/[\,';]//g" 2>&1)
+  _THIS_HM_DBPD=$(cat ${_THIS_HM_SPTH}/drushrc.php \
+    | grep "options\['db_passwd'\] = " \
+    | cut -d: -f2 \
+    | awk '{ print $3}' \
+    | sed "s/[\,';]//g" 2>&1)
+  _THIS_HM_DBNM=$(cat ${_THIS_HM_SPTH}/drushrc.php \
+    | grep "options\['db_name'\] = " \
+    | cut -d: -f2 \
+    | awk '{ print $3}' \
+    | sed "s/[\,';]//g" 2>&1)
+  if [ -e "${_THIS_HM_SPTH}" ] \
+    && [ ! -z "${_THIS_HM_DBUR}" ] \
+    && [ ! -z "${_THIS_HM_DBPD}" ]; then
+    _SQL_CONNECT=localhost
+    if [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
+      || [ "${_THIS_DB_HOST}" = "PROXYSQL" ]; then
+      _SQL_CONNECT=127.0.0.1
+    fi
+    ### The panel works in its own database only: grant just that one,
+    ### escaped as provisioning writes it (a bare _ matches any character).
+    ### An unreadable name keeps the old grant rather than locking the panel
+    ### out mid-upgrade.
+    if [[ "${_THIS_HM_DBNM}" =~ ^[A-Za-z0-9_]{1,64}$ ]]; then
+      _ESC="\`${_THIS_HM_DBNM//_/\\_}\`.*"
+      _GOPT=""
+    else
+      _ESC="*.*"
+      _GOPT="WITH GRANT OPTION"
+      _msg "ALRT: master hostmaster db_name not readable, its panel user keeps rights on all databases"
+    fi
+    _USE_DB_USER="${_THIS_HM_DBUR}"
+    _USE_AEGIR_HOST="${_hName}"
+    [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL11 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
+    if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
+      _write_proxysql_adm_cnf &> /dev/null
+      mysql --defaults-extra-file=/root/.my.proxysql_adm.cnf<<PROXYSQL
+DELETE FROM mysql_users WHERE username='${_USE_DB_USER}';
+DELETE FROM mysql_query_rules WHERE username='${_USE_DB_USER}';
+INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_USE_DB_USER}','${_THIS_HM_DBPD}','10');
+LOAD MYSQL USERS TO RUNTIME;
+SAVE MYSQL USERS FROM RUNTIME;
+SAVE MYSQL USERS TO DISK;
+INSERT INTO mysql_query_rules (username,destination_hostgroup,active) VALUES ('${_USE_DB_USER}',10,1);
+INSERT INTO mysql_query_rules (username,destination_hostgroup,active) VALUES ('${_USE_DB_USER}',11,1);
+LOAD MYSQL QUERY RULES TO RUNTIME;
+SAVE MYSQL QUERY RULES TO DISK;
+PROXYSQL
+    fi
+    ### The two accounts the panel logs in with are set in place, never
+    ### dropped and made again: the panel serves requests all through the
+    ### pass, and between a DROP and the ALTER that gave the password back
+    ### none of them could log in. Rights beyond the own database, as an
+    ### earlier release gave, are revoked once the own grant is in place
+    ### (not while the name is unreadable), and the accounts named after the
+    ### host go last.
+    _C_SQL="mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp --database=mysql -e"
+    mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -u root mysql<<EOFMYSQL
+CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_THIS_HM_DBPD}';
+CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_THIS_HM_DBPD}';
+ALTER USER '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_THIS_HM_DBPD}';
+ALTER USER '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_THIS_HM_DBPD}';
+GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' ${_GOPT};
+GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' ${_GOPT};
+EOFMYSQL
+    if [ -z "${_GOPT}" ]; then
+      _hostmaster_frontend_dbuser_trim "${_USE_DB_USER}" "${_THIS_HM_DBNM//_/\\_}"
+    fi
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'127.0.0.1';" &> /dev/null
+    _hostmaster_oldhost_dbuser_drop
+    case "${_SQL_CONNECT}" in
+      localhost|127.0.0.1) _dbctl_rerecord master-panel ;;
+    esac
+  fi
+  mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG PRIVILEGES" &> /dev/null
 }
 
 #
@@ -1291,6 +1291,23 @@ _master_download_for_local_build() {
 }
 
 #
+# The PHP the Master's Drush launcher defaults to: the CLI binary of
+# _PHP_CLI_VERSION, printed only when it is installed.
+_master_drush_lnch_php() {
+  local _p="/opt/php${_PHP_CLI_VERSION//./}/bin/php"
+  [ -x "${_p}" ] || return 1
+  printf '%s\n' "${_p}"
+}
+#
+# The launcher's edit as one sed script, the DRUSH_PHP default $1: made on a
+# fresh copy before it goes in (_hostmaster_dr_up) and on the tree in place
+# (_php_cli_drush_update).
+_master_drush_lnch_sed() {
+  printf '%s\n%s\n%s' "1s/^#\!.*/#\!\/bin\/bash/" "/^export DRUSH_PHP=/d" \
+    "1a export DRUSH_PHP=\"\${DRUSH_PHP:-${1}}\""
+}
+
+#
 _php_cli_drush_update() {
   if [ ! -z "${1}" ]; then
     _DRUSH_FILE="${_ROOT}/drush/${1}"
@@ -1349,23 +1366,6 @@ _php_cli_drush_update() {
     # are written again.
     sed -i "$(_master_drush_lnch_sed "${_LNCH_PHP}")" "${_DRUSH_LNCH}" &> /dev/null
   fi
-}
-
-#
-# The PHP the Master's Drush launcher defaults to: the CLI binary of
-# _PHP_CLI_VERSION, printed only when it is installed.
-_master_drush_lnch_php() {
-  local _p="/opt/php${_PHP_CLI_VERSION//./}/bin/php"
-  [ -x "${_p}" ] || return 1
-  printf '%s\n' "${_p}"
-}
-#
-# The launcher's edit as one sed script, the DRUSH_PHP default $1: made on a
-# fresh copy before it goes in (_hostmaster_dr_up) and on the tree in place
-# (_php_cli_drush_update).
-_master_drush_lnch_sed() {
-  printf '%s\n%s\n%s' "1s/^#\!.*/#\!\/bin\/bash/" "/^export DRUSH_PHP=/d" \
-    "1a export DRUSH_PHP=\"\${DRUSH_PHP:-${1}}\""
 }
 
 #
