@@ -1441,6 +1441,213 @@ _relocate_backups_to_static_fs() {
   exec {_lockfd}>&-
 }
 
+### The site Upgrade's nightly report, its customer notice and the file the
+### operator digest (90-global-post.sh) reads. Both switches default to NO;
+### the account's /root/.<oN>.octopus.cnf, sourced into this pass, wins over
+### /root/.barracuda.cnf. True when the value $1 is YES.
+_upgrade_flag_on() {
+  local _v
+  _v=$(printf '%s' "${1}" | tr -d "\"' " | tr '[:lower:]' '[:upper:]')
+  [ "${_v}" = "YES" ]
+}
+### True when $1 is a line of the report's shape: UPGRADE-REPORT, a host
+### name, a release, yes, no or unknown, a platform's title and the kind of
+### move ('-' for none), tab-separated.
+_upgrade_due_line_ok() {
+  local _t _s _r _y _p _k _x
+  IFS=$'\t' read -r _t _s _r _y _p _k _x <<< "${1}"
+  [ "${_t}" = "UPGRADE-REPORT" ] && [ -n "${_p}" ] && [ -n "${_k}" ] \
+    && [ -z "${_x}" ] && _night_host_ok "${_s}" \
+    && [[ "${_r}" =~ ^[0-9]+\.[0-9]+ ]] && [[ "${_y}" =~ ^(yes|no|unknown)$ ]]
+}
+### The account's upgrade report from its control panel
+### (hosting-drupal-upgrade-report), run as the account as every panel read
+### of this pass is, never on a half-made aegir2boa panel, for at most 300 s.
+### Only a whole report counts: the command ended with status 0 and its
+### closing line counts the site lines before it. Sets _UPGRADE_DUE_REP to
+### its site lines and a closing line counting them (a line of another shape
+### is left out, with a NOTE), or _UPGRADE_DUE_WHY and status 1.
+_upgrade_due_read() {
+  local _out _rc _l _n=0 _kept=0 _end=""
+  _UPGRADE_DUE_REP=""
+  _UPGRADE_DUE_WHY=""
+  if [ -s /etc/boa/control/instgrp-web-arm.ready.txt ] \
+    && _a2b_import_unfinished "${_HM_U}"; then
+    _UPGRADE_DUE_WHY="an aegir2boa db-import is unfinished"
+    return 1
+  fi
+  _out=$(su -s /bin/bash - "${_HM_U}" \
+    -c "timeout -k 10 300 drush8 @hostmaster hosting-drupal-upgrade-report" \
+    2> /dev/null < /dev/null)
+  _rc=$?
+  if [ "${_rc}" = "124" ] || [ "${_rc}" = "137" ]; then
+    _UPGRADE_DUE_WHY="it ran past 300 s and was stopped"
+    return 1
+  fi
+  if [ "${_rc}" != "0" ]; then
+    _UPGRADE_DUE_WHY="it ended with status ${_rc}"
+    return 1
+  fi
+  while IFS= read -r _l; do
+    case "${_l}" in
+      "UPGRADE-REPORT"$'\t'*)
+        if [ -n "${_end}" ]; then
+          _UPGRADE_DUE_WHY="a site line follows its closing line"
+          return 1
+        fi
+        _n=$((_n + 1))
+        if _upgrade_due_line_ok "${_l}"; then
+          _UPGRADE_DUE_REP="${_UPGRADE_DUE_REP}${_l}"$'\n'
+          _kept=$((_kept + 1))
+        else
+          echo "NOTE: upgrade report of ${_HM_U}: a line not of the report's shape is left out: $(printf '%s' "${_l}" | LC_ALL=C tr -c ' -~' ' ' | cut -c1-200)"
+        fi
+        ;;
+      "UPGRADE-REPORT-END "*)
+        if [ -n "${_end}" ]; then
+          _UPGRADE_DUE_WHY="it has two closing lines"
+          return 1
+        fi
+        _end="${_l#UPGRADE-REPORT-END }"
+        ;;
+    esac
+  done <<< "${_out}"
+  if [[ ! "${_end}" =~ ^[0-9]{1,9}$ ]]; then
+    _UPGRADE_DUE_WHY="its closing line is missing"
+    return 1
+  fi
+  if [ "$((10#${_end}))" != "${_n}" ]; then
+    _UPGRADE_DUE_WHY="its closing line counts $((10#${_end})) sites and ${_n} came"
+    return 1
+  fi
+  _UPGRADE_DUE_REP="${_UPGRADE_DUE_REP}UPGRADE-REPORT-END ${_kept}"$'\n'
+  return 0
+}
+### A whole report $1 as /var/log/boa/upgrade-due/<oN>.txt, root's alone, its
+### first line run=<this run>: written beside it, then moved over it.
+_upgrade_due_put() {
+  local _d=/var/log/boa/upgrade-due _f
+  mkdir -p "${_d}" && chmod 0700 "${_d}" || return 1
+  _f="${_d}/${_HM_U}.txt"
+  rm -f -- "${_f}.new"
+  ( umask 077
+    { printf 'run=%s\n' "${_NOW}"; printf '%s' "${1}"; } > "${_f}.new" ) \
+    && mv -f -- "${_f}.new" "${_f}" && return 0
+  rm -f -- "${_f}.new"
+  return 1
+}
+### In the current (pinned) log/ctrl: the site of each told marker
+### (upgrade-told.<site>.info), one per line.
+_upgrade_told_here() {
+  local _f _s
+  for _f in ./upgrade-told.*.info; do
+    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
+    _s="${_f#./upgrade-told.}"
+    _s="${_s%.info}"
+    _night_host_ok "${_s}" && printf '%s\n' "${_s}"
+  done
+  return 0
+}
+### The customer notice from a whole report $1. A site whose release no
+### longer gets security fixes is named once: its told marker in the
+### account's log/ctrl (it moves with the account) is written after the mail
+### went, and removed when a whole report shows the site supported again or
+### no longer lists it. Only with _UPGRADE_CLIENT_NOTIFY=YES for the account
+### and a real client address; a mail the hold stops, or that is not sent,
+### marks nothing and goes on a later night. It says what the release means
+### and where Upgrade is, never that one is ready: what is ready depends on
+### the login that looks.
+_upgrade_due_notice() {
+  local _t _s _r _y _p _k _site _upList="" _clBody _reply _cc _w _subj
+  local -a _told=() _ws=() _args=()
+  local -A _seen=() _no=()
+  while IFS=$'\t' read -r _t _s _r _y _p _k; do
+    [ "${_t}" = "UPGRADE-REPORT" ] || continue
+    _seen["${_s}"]="${_y}"
+    [ "${_y}" = "no" ] && _no["${_s}"]="${_r}"
+  done <<< "${1}"
+  # a site listed with an unknown answer keeps its marker
+  while IFS= read -r _site; do
+    [ -n "${_site}" ] || continue
+    if [ -z "${_seen[${_site}]+x}" ] || [ "${_seen[${_site}]}" = "yes" ]; then
+      _acct_in_real_dir "${_usEr}/log/ctrl" rm -f -- "./upgrade-told.${_site}.info"
+    fi
+  done < <(_acct_in_real_dir "${_usEr}/log/ctrl" _upgrade_told_here)
+  _upgrade_flag_on "${_UPGRADE_CLIENT_NOTIFY}" || return 0
+  if [ -z "${_CLIENT_EMAIL}" ] || [ "${_CLIENT_EMAIL}" = "root" ]; then
+    return 0
+  fi
+  while IFS= read -r _site; do
+    [ -n "${_site}" ] || continue
+    [ -n "$(_acct_in_real_dir "${_usEr}/log/ctrl" _night_mtime_here "upgrade-told.${_site}.info")" ] \
+      && continue
+    _upList="${_upList}"$'\n'"  - ${_site} (Drupal ${_no[${_site}]})"
+    _told+=("${_site}")
+  done < <(printf '%s\n' "${!_no[@]}" | LC_ALL=C sort)
+  [ "${#_told[@]}" -gt 0 ] || return 0
+  # before any site is marked told: a notice the hold stops goes out later
+  _client_mail_hold "${_CLIENT_EMAIL}" || return 0
+  _clBody="Hello,"$'\n'
+  _clBody="${_clBody}"$'\n'"The Drupal release of the following site(s) in your hosting account on ${_hName} no longer gets security fixes:"$'\n'"${_upList}"$'\n'
+  _clBody="${_clBody}"$'\n'"Drupal publishes security fixes only for its newest release lines. A site on an older line keeps working, but a security problem found in Drupal from now on will not be fixed for it."$'\n'
+  _clBody="${_clBody}"$'\n'"When a newer platform is ready for a site, the site's page in your control panel offers Upgrade: it moves the site onto that platform and keeps a copy of the site to go back to. If the page offers no Upgrade, your developer or our support can prepare a newer platform for it."$'\n'
+  _clBody="${_clBody}"$'\n'"This is an automated message from your hosting platform, sent once for each site when its Drupal release stops getting security fixes."$'\n'
+  _reply="${_MY_OCTO_EMAIL}"
+  if [ -z "${_reply}" ] || [ "${_reply}" = "root" ] \
+    || [[ "${_reply}" =~ ^root@ ]]; then
+    _reply="${_ADMIN_EMAIL}"
+  fi
+  _args=(-S ttycharset=utf-8 -S sendcharsets=utf-8)
+  if [ -n "${_reply}" ] && [ "${_reply}" != "root" ] \
+    && ! [[ "${_reply}" =~ ^root@ ]] && [[ "${_reply}" =~ @ ]]; then
+    _args+=(-S "replyto=${_reply}")
+  fi
+  # a visible copy on the vendor's own hosted servers, never under the hold
+  # and never to an address the mail already goes to
+  _cc=""
+  if [ -z "${_MAIL_HOLD_SFX}" ] && [[ "${_hName,,}" == ?*.aegir.cc ]]; then
+    _cc="admin@omega8.cc"
+    read -r -a _ws <<< "${_MAIL_HOLD_RCPT//,/ }"
+    for _w in "${_ws[@]}"; do
+      [ "${_w,,}" = "${_cc}" ] && _cc=""
+    done
+  fi
+  [ -n "${_cc}" ] && _args+=(-c "${_cc}")
+  _subj="Drupal security fixes have ended for one or more of your sites${_MAIL_HOLD_SFX}"
+  echo "Sending upgrade notice for ${_HM_U} to ${_MAIL_HOLD_RCPT}${_MAIL_HOLD_SFX} on $(date)"
+  if printf '%s\n' "${_clBody}" | s-nail "${_args[@]}" -s "${_subj}" "${_MAIL_HOLD_RCPT}"; then
+    _acct_in_real_dir "${_usEr}/log" mkdir -p ./ctrl 2> /dev/null
+    for _site in "${_told[@]}"; do
+      _log_ctrl_mark "upgrade-told.${_site}.info"
+    done
+  else
+    echo "ALRT: the upgrade notice for ${_HM_U} was not sent; no site is marked told, it goes on a later night"
+  fi
+  return 0
+}
+### This account's upgrade report, when either switch is YES for it: a whole
+### report replaces its file and the notice is sent from it; anything else
+### keeps the last whole file, sends nothing and says why in one line. With
+### both switches off for the account its file goes, so the digest drops it.
+_upgrade_due_account() {
+  local _f="/var/log/boa/upgrade-due/${_HM_U}.txt"
+  if ! _upgrade_flag_on "${_UPGRADE_DIGEST}" \
+    && ! _upgrade_flag_on "${_UPGRADE_CLIENT_NOTIFY}"; then
+    [ -e "${_f}" ] && rm -f -- "${_f}" \
+      && echo "upgrade report of ${_HM_U}: both switches are off, its last file removed"
+    return 0
+  fi
+  if ! _upgrade_due_read; then
+    echo "NOTE: upgrade report of ${_HM_U} not taken tonight (${_UPGRADE_DUE_WHY}); its last whole report is kept and no upgrade notice is sent"
+    return 0
+  fi
+  if ! _upgrade_due_put "${_UPGRADE_DUE_REP}"; then
+    echo "NOTE: upgrade report of ${_HM_U} could not be written to /var/log/boa/upgrade-due; no upgrade notice is sent tonight"
+    return 0
+  fi
+  _upgrade_due_notice "${_UPGRADE_DUE_REP}"
+}
+
 _account_process() {
   _HM_U=$(echo ${_usEr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
   # .drush/, log/ and .tmp/ are oN's: the alias is read bounded inside the
@@ -1730,6 +1937,7 @@ _account_process() {
   echo "Done for ${_usEr}"
   _le_account_report
   _ghost_account_report
+  _upgrade_due_account
   _enable_chattr ${_HM_U}.ftp
   rm -f /run/night-account-${_HM_U}.pid
 }
