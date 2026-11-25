@@ -327,20 +327,6 @@ _require_clean_dry_run_or_exit() {
   _write_state "BATCH" "BATCH"
 }
 
-_finalize_dry_run_state() {
-  # Evaluate DRY flags and write state
-  if [ "${_DRY_HAS_ERRORS}" = "NO" ] && [ "${_DRY_HAS_EDGE_CASES}" = "NO" ]; then
-    _log "[DRY] OK: checks passed (including any pending break-sharing fixes). Batch LIVE mode is allowed."
-    _write_state "CLEAN" "DRY"
-  else
-    _log "[DRY] NOT CLEAN: edge cases and/or errors detected. Batch LIVE mode is NOT allowed."
-    # Explain before writing state, so the section is the last thing in the log
-    # and in the mail body the operator actually opens.
-    _explain_anomalies
-    _write_state "NOT_CLEAN" "DRY"
-  fi
-}
-
 
 _log_reserved_fs_summary() {
   # End-of-run summary for cumulative break-sharing copy reservations per target filesystem.
@@ -1269,6 +1255,20 @@ _explain_anomalies() {
   _log "------------------------------------------------------------------"
 }
 
+_finalize_dry_run_state() {
+  # Evaluate DRY flags and write state
+  if [ "${_DRY_HAS_ERRORS}" = "NO" ] && [ "${_DRY_HAS_EDGE_CASES}" = "NO" ]; then
+    _log "[DRY] OK: checks passed (including any pending break-sharing fixes). Batch LIVE mode is allowed."
+    _write_state "CLEAN" "DRY"
+  else
+    _log "[DRY] NOT CLEAN: edge cases and/or errors detected. Batch LIVE mode is NOT allowed."
+    # Explain before writing state, so the section is the last thing in the log
+    # and in the mail body the operator actually opens.
+    _explain_anomalies
+    _write_state "NOT_CLEAN" "DRY"
+  fi
+}
+
 _ask_confirm_site() {
   # Ask once per site if we should perform the prepared actions.
   # Expects "yes" or "Y" (case-insensitive).
@@ -1629,90 +1629,6 @@ _open_store_base() {
   printf '%s|%s\n' "${_store}" "${_base}"
 }
 
-_archive_existing_store_target() {
-  # Move a pre-existing per-site store target ASIDE into a timestamped archive
-  # UNDER the store itself: static/files/.archived/<stamp>/<site>/<type>. The
-  # leading-dot .archived is skipped by the orphan/site scan (it ignores .*), so
-  # it is never mistaken for a live/orphan site, while a script that knows the
-  # path still tracks it. Keeping it under static/files (NOT a static/files-*
-  # sibling) guarantees the archive lands on the SAME filesystem as the store:
-  # static/files may be a symlink to a large dedicated disk, whereas a sibling
-  # would fall on the possibly-tiny root filesystem, turning a free rename into a
-  # cross-FS copy that can fill the disk. Used when a fresh install/clone reuses a
-  # site name whose store dir was left behind by a prior lifecycle (site delete
-  # does not remove it): a non-destructive self-heal. ALWAYS archives (never
-  # skips) and ALWAYS reports the incident with a disk-space snapshot for the
-  # ghost, even when space is ample. Every move is pinned: the store is resolved
-  # once by the caller, and the base and the archive dir are entered for real
-  # and checked to lie in that very store, so a name swapped under the
-  # group-writable static/ cannot send the move elsewhere. The archive is built
-  # UNDER the resolved store, so it is always the SAME filesystem (a free
-  # rename, never a disk-filling cross-FS copy). Degrades to a pinned in-place
-  # rename aside if the archive dir cannot be made or the move fails, so it
-  # never blocks the conversion. The store's name and each path that holds
-  # it are logged through _log_name, as the orphan archive logs them.
-  # Args: 1 type label (files|private)
-  #       2 store handle (resolved static/files of the account, _store_files_dir)
-  #       3 base real (<store real>/<site>, the live per-site store)
-  #       4 account dir (/data/disk/oX)
-  #       5 site name
-  _ARCH_TYPE="$1"
-  _ARCH_STORE="$2"
-  _ARCH_BASE="$3"
-  _ARCH_ACCOUNT_DIR="$4"
-  _ARCH_SITE="$5"
-
-  { [ -e "${_ARCH_BASE}/${_ARCH_TYPE}" ] || [ -L "${_ARCH_BASE}/${_ARCH_TYPE}" ]; } || return 0
-
-  # Run-scoped stamp so a site's files + private land under one archive dir; fall
-  # back to a fresh stamp if _process_site did not set it.
-  _ARCH_STAMP="${_ARCHIVE_STAMP:-$(date -u +%Y%m%dT%H%M%SZ)-$$}"
-
-  # Disk-space snapshot for the archived ghost only, ALWAYS reported (even with
-  # ample space): the ghost's own size and the free space where the archive lands.
-  _ARCH_SRC_KB=$(_store_in_bound "${_ARCH_STORE}" "${_ARCH_BASE}" du -sk -- "./${_ARCH_TYPE}" 2>/dev/null | awk 'NR==1 {print $1}')
-  _ARCH_SRC_KB="${_ARCH_SRC_KB:-?}"
-  _ARCH_AVAIL_KB=$(df -Pk "${_ARCH_STORE%|*}" 2>/dev/null | awk 'NR==2 {print $4}')
-  _ARCH_AVAIL_KB="${_ARCH_AVAIL_KB:-?}"
-  _log "[REPORT] ORPHAN archive incident: $(_log_name "${_ARCH_SITE}")/${_ARCH_TYPE} stale store size=${_ARCH_SRC_KB}K -> static/files/.archived/${_ARCH_STAMP}/ (target FS avail=${_ARCH_AVAIL_KB}K)"
-
-  # No reader guard here, by design: refusing would block the conversion that
-  # needs this name. So a stale store some registered site still reads through
-  # its own files/private link IS moved from under that reader, and its link
-  # dangles until that site's unshare is re-run -- said loudly, per the shared
-  # index (the store dir, so a reader of either type is named). The scan is
-  # given the CANONICAL store name (…/static/files/<site>, the text an in-site
-  # link carries) so a reader is found whether static/files is the account's own
-  # directory or a migratefs link onto attached storage.
-  _ARCH_CANON="${_ARCH_ACCOUNT_DIR}/static/files/${_ARCH_SITE}"
-  _store_live_readers "${_ARCH_CANON}" "${_ARCH_SITE}" "${_ARCH_ACCOUNT_DIR}"
-  if [ -n "${_SLR_LIVE}" ]; then
-    _log "[ALERT] Stale store $(_log_name "${_ARCH_CANON}") is still read through a live site's link and is being moved from under it (the reused name needs the store; that reader's link dangles until its unshare is re-run): ${_SLR_LIVE}"
-  elif [ -n "${_SLR_STALE}" ]; then
-    _log "[REPORT] Stale store $(_log_name "${_ARCH_CANON}"): link(s) into it belong to no registered site: ${_SLR_STALE}"
-  fi
-
-  # Build the archive dir under the pinned store and hand back its real path.
-  _ARCH_DIR_REAL=$(_store_arch_dir "${_ARCH_STORE}" "${_ARCH_STAMP}" "${_ARCH_SITE}")
-  if [ -z "${_ARCH_DIR_REAL}" ]; then
-    _log "[WARN] Could not create archive dir static/files/.archived/${_ARCH_STAMP}/$(_log_name "${_ARCH_SITE}"); renaming $(_log_name "${_ARCH_BASE}")/${_ARCH_TYPE} aside in place instead"
-    _store_in_bound "${_ARCH_STORE}" "${_ARCH_BASE}" _make_unique_target_here "${_ARCH_TYPE}" "${_ARCH_BASE}"
-    return 0
-  fi
-
-  # A collision at the archive <type> (a same stamp+site+type seen twice) is
-  # renamed aside inside the pinned archive dir first, so the move never
-  # overwrites a prior archived copy.
-  _store_in_bound "${_ARCH_STORE}" "${_ARCH_DIR_REAL}" _make_unique_target_here "${_ARCH_TYPE}" "${_ARCH_DIR_REAL}"
-
-  _log "[APPLY] Archiving stale store target: $(_log_name "${_ARCH_BASE}")/${_ARCH_TYPE} -> $(_log_name "${_ARCH_DIR_REAL}")/${_ARCH_TYPE}"
-  if ! _store_in_bound "${_ARCH_STORE}" "${_ARCH_BASE}" _store_move_here "${_ARCH_TYPE}" "${_ARCH_DIR_REAL}" any "${_ARCH_STORE}"; then
-    _log "[WARN] Archive move failed for ${_ARCH_TYPE} of site $(_log_name "${_ARCH_SITE}"); renaming $(_log_name "${_ARCH_BASE}")/${_ARCH_TYPE} aside in place instead"
-    _store_in_bound "${_ARCH_STORE}" "${_ARCH_BASE}" _make_unique_target_here "${_ARCH_TYPE}" "${_ARCH_BASE}"
-  fi
-  return 0
-}
-
 # The uids root's walks over the account $1's trees act on, comma-separated:
 # root's own (0) and those of every identity of the account as passwd names
 # them: oN and oN.<name> (its .ftp login, its client sub-accounts oN.<client>
@@ -1840,66 +1756,6 @@ _site_share_file() {
   return 1
 }
 
-_archive_site_store_now() {
-  # Narrow --archive-store: the Delete task's request to set THIS site's store
-  # aside now, before its alias and vhost go (the wrapper proved the caller owns
-  # the site through that alias). Trusts the request the way the nightly trusts
-  # "neither alias nor vhost": the deleting task is the authority that the site
-  # is going away. Same archive layout as the sweep, never a deletion; a store
-  # entry that is itself a symlink is unlinked (the data lives elsewhere); a
-  # store named by a share control file is left in place and reported, because
-  # another site reads it and the operator decides; so is a store some live
-  # site still reads through its own link (the shared archive path tests it).
-  # Uses _SITE/_ACCOUNT_DIR. static/ is group-writable, so static/files is
-  # resolved ONCE by identity and every act runs on ./<site> inside the pinned
-  # store, checked to be the store resolved, never by a path through the
-  # swappable name.
-  _ASN_CANON="${_ACCOUNT_DIR}/static/files/${_SITE}"
-  _store_files_dir_close "${_ACCOUNT_DIR}"
-  _ASN_H=$(_store_files_dir "${_ACCOUNT_DIR}")
-  if [ -z "${_ASN_H}" ]; then
-    if [ -e "${_ACCOUNT_DIR}/static/files" ] || [ -L "${_ACCOUNT_DIR}/static/files" ]; then
-      _log "[ALERT] Archive-store: ${_ACCOUNT_DIR}/static/files is not the account's own store (root's and closed to group and other, or the migratefs layout); ${_ASN_CANON} left in place, manual review required"
-      return 3
-    fi
-    _log "[INFO] Archive-store: no store at ${_ASN_CANON}; nothing to do"
-    return 0
-  fi
-  _ASN_STORE="${_ASN_H%|*}"
-  _ASN_SRC="${_ASN_STORE}/${_SITE}"
-  if [ ! -e "${_ASN_SRC}" ] && [ ! -L "${_ASN_SRC}" ]; then
-    _log "[INFO] Archive-store: no store at ${_ASN_CANON}; nothing to do"
-    return 0
-  fi
-  if [ -L "${_ASN_SRC}" ]; then
-    _log "[APPLY] Archive-store: ${_ASN_CANON} is a symlink ($(_log_name "$(readlink "${_ASN_SRC}" 2>/dev/null)")); unlinking, the data stays where it points"
-    if _store_in_bound "${_ASN_H}" "${_ASN_STORE}" rm -f -- "./${_SITE}" \
-      && [ ! -e "${_ASN_SRC}" ] && [ ! -L "${_ASN_SRC}" ]; then
-      return 0
-    fi
-    _log "[ALERT] Archive-store: could not unlink ${_ASN_CANON}; left in place, manual review required"
-    return 3
-  fi
-  if [ -f /data/conf/disable_orphan_store_archiving.cnf ]; then
-    _log "[INFO] Archive-store: ${_ASN_CANON} left in place (operator switch /data/conf/disable_orphan_store_archiving.cnf: orphan stores are report-only on this box)"
-    return 3
-  fi
-  _ASN_SHARE=$(_site_share_file "${_ACCOUNT_DIR}" "${_SITE}")
-  if [ -n "${_ASN_SHARE}" ]; then
-    _log "[ALERT] Archive-store: ${_ASN_CANON} is named by share control file ${_ASN_SHARE}; another site reads it - left in place, manual review required"
-    return 3
-  fi
-  _ARCHIVE_STAMP="$(date -u +%Y%m%dT%H%M%SZ 2>/dev/null)-$$"
-  _ASN_KB=$(_store_in_bound "${_ASN_H}" "${_ASN_STORE}" du -sk -- "./${_SITE}" 2>/dev/null | awk 'NR==1 {print $1}')
-  _archive_orphan_store "${_ASN_H}" "${_ACCOUNT_DIR}" "${_SITE}" "${_ASN_KB:-?}"
-  if [ -e "${_ASN_SRC}" ] || [ -L "${_ASN_SRC}" ]; then
-    _log "[ALERT] Archive-store: ${_ASN_CANON} is still in place after the archive attempt - manual review required"
-    return 3
-  fi
-  _log "[APPLY] Archive-store: ${_SITE} store set aside under static/files/.archived/${_ARCHIVE_STAMP}/"
-  return 0
-}
-
 _store_sites_dirs() {
   # The sites/ directory of every platform on the box, one per line, memoised
   # in _SLR_SITES for the whole run (the links are read again for every
@@ -2023,6 +1879,90 @@ EOT
   return 0
 }
 
+_archive_existing_store_target() {
+  # Move a pre-existing per-site store target ASIDE into a timestamped archive
+  # UNDER the store itself: static/files/.archived/<stamp>/<site>/<type>. The
+  # leading-dot .archived is skipped by the orphan/site scan (it ignores .*), so
+  # it is never mistaken for a live/orphan site, while a script that knows the
+  # path still tracks it. Keeping it under static/files (NOT a static/files-*
+  # sibling) guarantees the archive lands on the SAME filesystem as the store:
+  # static/files may be a symlink to a large dedicated disk, whereas a sibling
+  # would fall on the possibly-tiny root filesystem, turning a free rename into a
+  # cross-FS copy that can fill the disk. Used when a fresh install/clone reuses a
+  # site name whose store dir was left behind by a prior lifecycle (site delete
+  # does not remove it): a non-destructive self-heal. ALWAYS archives (never
+  # skips) and ALWAYS reports the incident with a disk-space snapshot for the
+  # ghost, even when space is ample. Every move is pinned: the store is resolved
+  # once by the caller, and the base and the archive dir are entered for real
+  # and checked to lie in that very store, so a name swapped under the
+  # group-writable static/ cannot send the move elsewhere. The archive is built
+  # UNDER the resolved store, so it is always the SAME filesystem (a free
+  # rename, never a disk-filling cross-FS copy). Degrades to a pinned in-place
+  # rename aside if the archive dir cannot be made or the move fails, so it
+  # never blocks the conversion. The store's name and each path that holds
+  # it are logged through _log_name, as the orphan archive logs them.
+  # Args: 1 type label (files|private)
+  #       2 store handle (resolved static/files of the account, _store_files_dir)
+  #       3 base real (<store real>/<site>, the live per-site store)
+  #       4 account dir (/data/disk/oX)
+  #       5 site name
+  _ARCH_TYPE="$1"
+  _ARCH_STORE="$2"
+  _ARCH_BASE="$3"
+  _ARCH_ACCOUNT_DIR="$4"
+  _ARCH_SITE="$5"
+
+  { [ -e "${_ARCH_BASE}/${_ARCH_TYPE}" ] || [ -L "${_ARCH_BASE}/${_ARCH_TYPE}" ]; } || return 0
+
+  # Run-scoped stamp so a site's files + private land under one archive dir; fall
+  # back to a fresh stamp if _process_site did not set it.
+  _ARCH_STAMP="${_ARCHIVE_STAMP:-$(date -u +%Y%m%dT%H%M%SZ)-$$}"
+
+  # Disk-space snapshot for the archived ghost only, ALWAYS reported (even with
+  # ample space): the ghost's own size and the free space where the archive lands.
+  _ARCH_SRC_KB=$(_store_in_bound "${_ARCH_STORE}" "${_ARCH_BASE}" du -sk -- "./${_ARCH_TYPE}" 2>/dev/null | awk 'NR==1 {print $1}')
+  _ARCH_SRC_KB="${_ARCH_SRC_KB:-?}"
+  _ARCH_AVAIL_KB=$(df -Pk "${_ARCH_STORE%|*}" 2>/dev/null | awk 'NR==2 {print $4}')
+  _ARCH_AVAIL_KB="${_ARCH_AVAIL_KB:-?}"
+  _log "[REPORT] ORPHAN archive incident: $(_log_name "${_ARCH_SITE}")/${_ARCH_TYPE} stale store size=${_ARCH_SRC_KB}K -> static/files/.archived/${_ARCH_STAMP}/ (target FS avail=${_ARCH_AVAIL_KB}K)"
+
+  # No reader guard here, by design: refusing would block the conversion that
+  # needs this name. So a stale store some registered site still reads through
+  # its own files/private link IS moved from under that reader, and its link
+  # dangles until that site's unshare is re-run -- said loudly, per the shared
+  # index (the store dir, so a reader of either type is named). The scan is
+  # given the CANONICAL store name (…/static/files/<site>, the text an in-site
+  # link carries) so a reader is found whether static/files is the account's own
+  # directory or a migratefs link onto attached storage.
+  _ARCH_CANON="${_ARCH_ACCOUNT_DIR}/static/files/${_ARCH_SITE}"
+  _store_live_readers "${_ARCH_CANON}" "${_ARCH_SITE}" "${_ARCH_ACCOUNT_DIR}"
+  if [ -n "${_SLR_LIVE}" ]; then
+    _log "[ALERT] Stale store $(_log_name "${_ARCH_CANON}") is still read through a live site's link and is being moved from under it (the reused name needs the store; that reader's link dangles until its unshare is re-run): ${_SLR_LIVE}"
+  elif [ -n "${_SLR_STALE}" ]; then
+    _log "[REPORT] Stale store $(_log_name "${_ARCH_CANON}"): link(s) into it belong to no registered site: ${_SLR_STALE}"
+  fi
+
+  # Build the archive dir under the pinned store and hand back its real path.
+  _ARCH_DIR_REAL=$(_store_arch_dir "${_ARCH_STORE}" "${_ARCH_STAMP}" "${_ARCH_SITE}")
+  if [ -z "${_ARCH_DIR_REAL}" ]; then
+    _log "[WARN] Could not create archive dir static/files/.archived/${_ARCH_STAMP}/$(_log_name "${_ARCH_SITE}"); renaming $(_log_name "${_ARCH_BASE}")/${_ARCH_TYPE} aside in place instead"
+    _store_in_bound "${_ARCH_STORE}" "${_ARCH_BASE}" _make_unique_target_here "${_ARCH_TYPE}" "${_ARCH_BASE}"
+    return 0
+  fi
+
+  # A collision at the archive <type> (a same stamp+site+type seen twice) is
+  # renamed aside inside the pinned archive dir first, so the move never
+  # overwrites a prior archived copy.
+  _store_in_bound "${_ARCH_STORE}" "${_ARCH_DIR_REAL}" _make_unique_target_here "${_ARCH_TYPE}" "${_ARCH_DIR_REAL}"
+
+  _log "[APPLY] Archiving stale store target: $(_log_name "${_ARCH_BASE}")/${_ARCH_TYPE} -> $(_log_name "${_ARCH_DIR_REAL}")/${_ARCH_TYPE}"
+  if ! _store_in_bound "${_ARCH_STORE}" "${_ARCH_BASE}" _store_move_here "${_ARCH_TYPE}" "${_ARCH_DIR_REAL}" any "${_ARCH_STORE}"; then
+    _log "[WARN] Archive move failed for ${_ARCH_TYPE} of site $(_log_name "${_ARCH_SITE}"); renaming $(_log_name "${_ARCH_BASE}")/${_ARCH_TYPE} aside in place instead"
+    _store_in_bound "${_ARCH_STORE}" "${_ARCH_BASE}" _make_unique_target_here "${_ARCH_TYPE}" "${_ARCH_BASE}"
+  fi
+  return 0
+}
+
 _archive_orphan_store() {
   # Archive a whole DELETED-site leftover store (static/files/<site>/) ASIDE into
   # static/files/.archived/<stamp>/<site>/ -- the same hidden, same-filesystem archive
@@ -2097,6 +2037,66 @@ _archive_orphan_store() {
     _log "[WARN] Archive move failed for orphan store $(_log_name "${_ORPH_SITE}"); leaving $(_log_name "${_ORPH_CANON}") in place"
     return 0
   fi
+  return 0
+}
+
+_archive_site_store_now() {
+  # Narrow --archive-store: the Delete task's request to set THIS site's store
+  # aside now, before its alias and vhost go (the wrapper proved the caller owns
+  # the site through that alias). Trusts the request the way the nightly trusts
+  # "neither alias nor vhost": the deleting task is the authority that the site
+  # is going away. Same archive layout as the sweep, never a deletion; a store
+  # entry that is itself a symlink is unlinked (the data lives elsewhere); a
+  # store named by a share control file is left in place and reported, because
+  # another site reads it and the operator decides; so is a store some live
+  # site still reads through its own link (the shared archive path tests it).
+  # Uses _SITE/_ACCOUNT_DIR. static/ is group-writable, so static/files is
+  # resolved ONCE by identity and every act runs on ./<site> inside the pinned
+  # store, checked to be the store resolved, never by a path through the
+  # swappable name.
+  _ASN_CANON="${_ACCOUNT_DIR}/static/files/${_SITE}"
+  _store_files_dir_close "${_ACCOUNT_DIR}"
+  _ASN_H=$(_store_files_dir "${_ACCOUNT_DIR}")
+  if [ -z "${_ASN_H}" ]; then
+    if [ -e "${_ACCOUNT_DIR}/static/files" ] || [ -L "${_ACCOUNT_DIR}/static/files" ]; then
+      _log "[ALERT] Archive-store: ${_ACCOUNT_DIR}/static/files is not the account's own store (root's and closed to group and other, or the migratefs layout); ${_ASN_CANON} left in place, manual review required"
+      return 3
+    fi
+    _log "[INFO] Archive-store: no store at ${_ASN_CANON}; nothing to do"
+    return 0
+  fi
+  _ASN_STORE="${_ASN_H%|*}"
+  _ASN_SRC="${_ASN_STORE}/${_SITE}"
+  if [ ! -e "${_ASN_SRC}" ] && [ ! -L "${_ASN_SRC}" ]; then
+    _log "[INFO] Archive-store: no store at ${_ASN_CANON}; nothing to do"
+    return 0
+  fi
+  if [ -L "${_ASN_SRC}" ]; then
+    _log "[APPLY] Archive-store: ${_ASN_CANON} is a symlink ($(_log_name "$(readlink "${_ASN_SRC}" 2>/dev/null)")); unlinking, the data stays where it points"
+    if _store_in_bound "${_ASN_H}" "${_ASN_STORE}" rm -f -- "./${_SITE}" \
+      && [ ! -e "${_ASN_SRC}" ] && [ ! -L "${_ASN_SRC}" ]; then
+      return 0
+    fi
+    _log "[ALERT] Archive-store: could not unlink ${_ASN_CANON}; left in place, manual review required"
+    return 3
+  fi
+  if [ -f /data/conf/disable_orphan_store_archiving.cnf ]; then
+    _log "[INFO] Archive-store: ${_ASN_CANON} left in place (operator switch /data/conf/disable_orphan_store_archiving.cnf: orphan stores are report-only on this box)"
+    return 3
+  fi
+  _ASN_SHARE=$(_site_share_file "${_ACCOUNT_DIR}" "${_SITE}")
+  if [ -n "${_ASN_SHARE}" ]; then
+    _log "[ALERT] Archive-store: ${_ASN_CANON} is named by share control file ${_ASN_SHARE}; another site reads it - left in place, manual review required"
+    return 3
+  fi
+  _ARCHIVE_STAMP="$(date -u +%Y%m%dT%H%M%SZ 2>/dev/null)-$$"
+  _ASN_KB=$(_store_in_bound "${_ASN_H}" "${_ASN_STORE}" du -sk -- "./${_SITE}" 2>/dev/null | awk 'NR==1 {print $1}')
+  _archive_orphan_store "${_ASN_H}" "${_ACCOUNT_DIR}" "${_SITE}" "${_ASN_KB:-?}"
+  if [ -e "${_ASN_SRC}" ] || [ -L "${_ASN_SRC}" ]; then
+    _log "[ALERT] Archive-store: ${_ASN_CANON} is still in place after the archive attempt - manual review required"
+    return 3
+  fi
+  _log "[APPLY] Archive-store: ${_SITE} store set aside under static/files/.archived/${_ARCHIVE_STAMP}/"
   return 0
 }
 
@@ -2390,245 +2390,6 @@ _check_space_for_transfer() {
   return 0
 }
 
-_check_symlink_sharing() {
-  # Args:
-  #   1: path to symlink (e.g. /.../sites/example.com/files)
-  #   2: type: "files" or "private"
-  #   3: site name (e.g. example.com)
-  #   4: account dir (/data/disk/o1)
-  _PATH="$1"
-  _TYPE="$2"
-  _SITE_NAME="$3"
-  _ACCOUNT_DIR="$4"
-
-  if [ ! -L "${_PATH}" ]; then
-    return
-  fi
-
-  _LINK_TARGET=$(readlink "${_PATH}")
-
-  if [ -z "${_LINK_TARGET}" ]; then
-    _log "[WARN] ${_TYPE} symlink for site ${_SITE_NAME} is empty or broken: ${_PATH}"
-    if [ "${_MODE}" = "DRY" ]; then
-      _DRY_HAS_ERRORS="YES"
-      _record_anomaly "SYMLINK_EMPTY_OR_BROKEN" "site=${_SITE_NAME}" "account_dir=${_ACCOUNT_DIR}" \
-        "type=${_TYPE}" "path=${_PATH}"
-    fi
-    return
-  fi
-
-  # Expect something like /data/disk/o1/static/files/OTHER-SITE/files[/...]
-  case "${_LINK_TARGET}" in
-    *"/static/files/"*/"${_TYPE}"|*"/static/files/"*/"${_TYPE}/"|*"/static/files/"*/"${_TYPE}/"* )
-      _AFTER="${_LINK_TARGET#*/static/files/}"
-      _TARGET_SITE_NAME="${_AFTER%%/*}"
-      ;;
-    *)
-      # Unknown layout; in REPORT we just note it, in DRY we treat as edge case.
-      if [ "${_MODE}" = "REPORT" ]; then
-        _log "[REPORT] ${_TYPE} symlink for site ${_SITE_NAME} has non-standard target: $(_log_name "${_LINK_TARGET}")"
-        return
-      fi
-      _log "[WARN] ${_TYPE} symlink for site ${_SITE_NAME} points to unknown pattern: $(_log_name "${_LINK_TARGET}") – skipping"
-      if [ "${_MODE}" = "DRY" ]; then
-        _DRY_HAS_EDGE_CASES="YES"
-        # The only edge-case (rather than error) finding in the script.
-        # _TARGET_SITE_NAME is deliberately not recorded: this is the case where
-        # the target layout did not parse, so no owner site is known.
-        _record_anomaly "SYMLINK_UNKNOWN_PATTERN" "site=${_SITE_NAME}" "account_dir=${_ACCOUNT_DIR}" \
-          "type=${_TYPE}" "path=${_PATH}" "link_target=${_LINK_TARGET}"
-      fi
-      return
-      ;;
-  esac
-
-  # REPORT mode: just classify and exit.
-  if [ "${_MODE}" = "REPORT" ]; then
-    if [ "${_TARGET_SITE_NAME}" = "${_SITE_NAME}" ]; then
-      # Proper, non-shared symlink.
-      _log "[REPORT] ${_TYPE} symlink for site ${_SITE_NAME} → self ($(_log_name "${_TARGET_SITE_NAME}")), OK, target='$(_log_name "${_LINK_TARGET}")'"
-      return
-    fi
-
-    _CONTROL_DIR="${_ACCOUNT_DIR}/static/control"
-    _SHARE_THIS="${_CONTROL_DIR}/share.files.${_SITE_NAME}.info"
-    _SHARE_TARGET="${_CONTROL_DIR}/share.files.${_TARGET_SITE_NAME}.info"
-
-    _INTENT="ACCIDENTAL"
-    if _share_marked "${_ACCOUNT_DIR}" "${_SHARE_THIS}" "${_SHARE_TARGET}"; then
-      _INTENT="INTENTIONAL"
-      _SITE_HAS_INTENTIONAL_SHARED_SYMLINK="YES"
-    else
-      _SITE_NEEDS_SHARED_SYMLINK_FIX="YES"
-    fi
-
-    _log "[REPORT] ${_TYPE} symlink for site ${_SITE_NAME} → $(_log_name "${_TARGET_SITE_NAME}") (${_INTENT}), target='$(_log_name "${_LINK_TARGET}")'"
-    return
-  fi
-
-  # For non-REPORT modes, continue with normal sharing logic.
-
-  if [ "${_TARGET_SITE_NAME}" = "${_SITE_NAME}" ]; then
-    return
-  fi
-
-  _CONTROL_DIR="${_ACCOUNT_DIR}/static/control"
-  _SHARE_THIS="${_CONTROL_DIR}/share.files.${_SITE_NAME}.info"
-  _SHARE_TARGET="${_CONTROL_DIR}/share.files.${_TARGET_SITE_NAME}.info"
-
-  if [ "${_FORCE_UNSHARE}" = "YES" ]; then
-    # Clone path: a freshly cloned site never opted into sharing, so break an
-    # inherited cross-account symlink even when a share control file exists for
-    # the source/target site (it belongs to the source, not this new clone).
-    if [ -f "${_SHARE_THIS}" ] || [ -f "${_SHARE_TARGET}" ]; then
-      _log "[INFO] ${_TYPE} symlink for site ${_SITE_NAME} points to $(_log_name "${_TARGET_SITE_NAME}") with a share control file present, but --force-unshare is set – breaking sharing for this site"
-    fi
-  elif _share_marked "${_ACCOUNT_DIR}" "${_SHARE_THIS}" "${_SHARE_TARGET}"; then
-    _SITE_HAS_INTENTIONAL_SHARED_SYMLINK="YES"
-    _log "[INFO] ${_TYPE} symlink for site ${_SITE_NAME} intentionally shares with $(_log_name "${_TARGET_SITE_NAME}") (control file present) – leaving as is"
-    return
-  fi
-
-  _SITE_NEEDS_SHARED_SYMLINK_FIX="YES"
-
-  _NEW_TARGET_BASE="${_ACCOUNT_DIR}/static/files/${_SITE_NAME}"
-  # Derive the copy source from the link's OWN /static/files prefix, not the
-  # current account, so an inherited cross-account symlink (e.g. a clone of a
-  # shared site into a different account) copies from the real source store.
-  # Same-account shares are unaffected (the prefix equals ${_ACCOUNT_DIR}).
-  _LINK_PREFIX="${_LINK_TARGET%%/static/files/*}"
-  # The in-site link is tenant-writable, so its target names the copy SOURCE for
-  # the rsync below. Cross-account is legitimate (an inherited clone link), but
-  # only from a real /data/disk/<account> store -- never an arbitrary prefix.
-  # Accept the relocated-store form as well: a store moved onto attached
-  # storage lives at <mount>/files/<acct>/static/files (migratefs, xoct), so a
-  # /data/disk-only test would refuse to unshare on every relocated box.
-  case "${_LINK_PREFIX}" in
-    *..*)               _LINK_PREFIX_OK="NO" ;;
-    /data/disk/*/*)     _LINK_PREFIX_OK="NO" ;;
-    /data/disk/?*)      _LINK_PREFIX_OK="YES" ;;
-    /mnt/*/files/*/*/*) _LINK_PREFIX_OK="NO" ;;
-    /mnt/*/files/?*)    _LINK_PREFIX_OK="YES" ;;
-    *)                  _LINK_PREFIX_OK="NO" ;;
-  esac
-  if [ "${_LINK_PREFIX_OK}" != "YES" ]; then
-    _log "[WARN] ${_TYPE} symlink for site ${_SITE_NAME} names a non-account store prefix: $(_log_name "${_LINK_PREFIX}") – refusing to break sharing"
-    if [ "${_MODE}" = "DRY" ]; then
-      _DRY_HAS_EDGE_CASES="YES"
-      _record_anomaly "SYMLINK_UNKNOWN_PATTERN" "site=${_SITE_NAME}" "account_dir=${_ACCOUNT_DIR}" \
-        "type=${_TYPE}" "path=${_PATH}" "link_target=${_LINK_TARGET}"
-    fi
-    _SITE_SHARED_SYMLINK_FIX_SKIPPED="YES"
-    return
-  fi
-  _ORIGINAL_TOP="${_LINK_PREFIX}/static/files/${_TARGET_SITE_NAME}/${_TYPE}"
-  _NEW_TARGET="${_NEW_TARGET_BASE}/${_TYPE}"
-
-  # The copy follows its source to the directory it resolves to (rsync of
-  # "<source>/"), as the account. That must be a store's files or private
-  # dir: a name on the way an account turned into a link elsewhere would have
-  # the copy take any tree the account can read, uncounted by the space check.
-  _ORIGINAL_REAL=$(realpath -e -- "${_ORIGINAL_TOP}" 2>/dev/null)
-  if [ -n "${_ORIGINAL_REAL}" ] && ! _is_store_site_dir "${_ORIGINAL_REAL}"; then
-    _log "[WARN] ${_TYPE} symlink for site ${_SITE_NAME} names a store that resolves outside the account stores: $(_log_name "${_ORIGINAL_REAL}") – refusing to break sharing"
-    if [ "${_MODE}" = "DRY" ]; then
-      _DRY_HAS_EDGE_CASES="YES"
-      _record_anomaly "SYMLINK_UNKNOWN_PATTERN" "site=${_SITE_NAME}" "account_dir=${_ACCOUNT_DIR}" \
-        "type=${_TYPE}" "path=${_PATH}" "link_target=${_LINK_TARGET}" \
-        "resolved=${_ORIGINAL_REAL}"
-    fi
-    _SITE_SHARED_SYMLINK_FIX_SKIPPED="YES"
-    return
-  fi
-
-  _log "[INFO] ${_TYPE} symlink for site ${_SITE_NAME} currently points to $(_log_name "${_LINK_TARGET}") (owned by $(_log_name "${_TARGET_SITE_NAME}"))"
-  _log "[PLAN] Break sharing: copy from $(_log_name "${_ORIGINAL_TOP}") to ${_NEW_TARGET} and update symlink at ${_PATH}"
-
-  if [ "${_MODE}" = "LIVE" ] && [ "${_LIVE_SITE_APPROVED}" != "YES" ]; then
-    if ! _ask_confirm_site "${_SITE_NAME}"; then
-      _log "[LIVE] Skipping shared symlink fix for site: ${_SITE_NAME}"
-      _SITE_SHARED_SYMLINK_FIX_SKIPPED="YES"
-      return
-    fi
-    _LIVE_SITE_APPROVED="YES"
-  fi
-
-  if [ "${_MODE}" = "DRY" ]; then
-    if [ ! -d "${_ORIGINAL_TOP}" ]; then
-      _log "[WARN] Original ${_TYPE} directory not found at $(_log_name "${_ORIGINAL_TOP}") – would fail breaking sharing"
-      _DRY_HAS_ERRORS="YES"
-      # No inline mode test here on purpose: this whole block is already DRY-only.
-      _record_anomaly "BREAK_SHARING_SOURCE_MISSING" "site=${_SITE_NAME}" "account_dir=${_ACCOUNT_DIR}" \
-        "type=${_TYPE}" "path=${_PATH}" "link_target=${_LINK_TARGET}" \
-        "target_site=${_TARGET_SITE_NAME}" "original_top=${_ORIGINAL_TOP}"
-      return
-    fi
-    # Check space on target filesystem (if different FS)
-    if ! _check_space_for_transfer "${_ORIGINAL_TOP}" "${_NEW_TARGET_BASE}" "copy ${_TYPE} (break sharing)" "${_SITE_NAME}" "YES"; then
-      # _check_space_for_transfer already logged + flagged DRY errors if needed
-      return
-    fi
-    return
-  fi
-
-  if [ ! -d "${_ORIGINAL_TOP}" ]; then
-    _log "[WARN] Original ${_TYPE} directory not found at $(_log_name "${_ORIGINAL_TOP}") – cannot break sharing for ${_SITE_NAME}"
-    _SITE_SHARED_SYMLINK_FIX_SKIPPED="YES"
-    return
-  fi
-
-  # LIVE / BATCH: space check
-  if ! _check_space_for_transfer "${_ORIGINAL_TOP}" "${_NEW_TARGET_BASE}" "copy ${_TYPE} (break sharing)" "${_SITE_NAME}" "YES"; then
-    _log "[WARN] Skipping breaking sharing for ${_TYPE} of site ${_SITE_NAME} due to insufficient space or inodes."
-    _SITE_SHARED_SYMLINK_FIX_SKIPPED="YES"
-    return
-  fi
-
-  # static/ is group-writable, so static/files -- and static/files/<site> when
-  # static/files is itself a link -- can be swapped for a link or another
-  # directory between any check and any later act by full path. Resolve
-  # static/files ONCE by identity and open the per-site base for real, so the
-  # archive move and the copy run inside a base root still owns, in the store
-  # the handle captured, and no name on the store path is trusted again.
-  _STORE_PAIR=$(_open_store_base "${_ACCOUNT_DIR}" "${_SITE_NAME}")
-  if [ -z "${_STORE_PAIR}" ]; then
-    _log "[ERROR] Store base ${_NEW_TARGET_BASE} is not a real directory – leaving symlink unchanged."
-    _SITE_SHARED_SYMLINK_FIX_SKIPPED="YES"
-    return
-  fi
-  # "<store path>|<dev>:<ino>|<base>": neither of the first two holds a "|"
-  _BASE_REAL="${_STORE_PAIR#*|*|}"
-  _STORE_FILES_H="${_STORE_PAIR%"|${_BASE_REAL}"}"
-
-  if [ -e "${_BASE_REAL}/${_TYPE}" ] || [ -L "${_BASE_REAL}/${_TYPE}" ]; then
-    # A pre-existing store at this (renamed/migrated) target name is a stale ghost
-    # from a prior lifecycle: archive it aside (tracked, into static/files/.archived)
-    # rather than renaming it in place, so break-sharing collisions are handled the
-    # same way as the local-convert path (_convert_dir_to_symlink) and land in the
-    # reported/prunable archive instead of cluttering the live store.
-    _archive_existing_store_target "${_TYPE}" "${_STORE_FILES_H}" "${_BASE_REAL}" "${_ACCOUNT_DIR}" "${_SITE_NAME}"
-  fi
-
-  _log "[APPLY] Copying $(_log_name "${_ORIGINAL_TOP}") -> ${_NEW_TARGET}"
-  if ! _unshare_copy "${_ORIGINAL_TOP}" "${_BASE_REAL}" "${_TYPE}" "${_ACCOUNT_DIR}" "${_STORE_FILES_H}"; then
-    _log "[ERROR] Copy failed for site ${_SITE_NAME} (${_TYPE}: $(_log_name "${_ORIGINAL_TOP}") -> ${_NEW_TARGET}) – leaving symlink unchanged."
-    _SITE_SHARED_SYMLINK_FIX_SKIPPED="YES"
-    return
-  fi
-
-  _log "[APPLY] Updating symlink: ${_PATH} -> ${_NEW_TARGET}"
-  # the site dir is the account's: the old link goes and the new one is made
-  # by ./name inside it, entered for real, never through a name on its path
-  _store_in_pinned "${_PATH%/*}" rm -f -- "./${_PATH##*/}"
-  if ! _store_in_pinned "${_PATH%/*}" _link_as_store_owner "${_NEW_TARGET}" "./${_PATH##*/}" \
-    "$(_store_in_bound "${_STORE_FILES_H}" "${_BASE_REAL}" _store_owner_here "${_TYPE}")"; then
-    _log "[ERROR] Failed to create symlink for site ${_SITE_NAME} (${_TYPE}: ${_PATH} -> ${_NEW_TARGET})"
-    _SITE_SHARED_SYMLINK_FIX_SKIPPED="YES"
-    return
-  fi
-  _SITE_SHARED_SYMLINK_FIX_APPLIED="YES"
-}
-
 _web_group_state() {
   # The account's own web group, wg-<account>, derived on the box and never
   # taken from argv or a cnf: the group its pools, backend user and shell
@@ -2896,6 +2657,95 @@ _unshare_copy_other() {
   return 0
 }
 
+_unshare_staging_rm_here() {
+  # cwd = a store base _unshare_copy entered and checked (root's, and no other
+  # identity can write it). Remove the un-share staging dir ./$1 only when it
+  # is provably one this tool made: a real directory root owns that neither
+  # its group nor others can write, whose dev:ino is $5 (taken when this run
+  # made it) or, with $5 empty (a dead run's), whose inode is the one root
+  # wrote in its .autosymlink-staging marker, a single-link file root owns
+  # that only root could have put there. Anything else at such a name is left
+  # (rc 2). The copy's ./$2 dir in it was handed to the account ($3 uid, $4
+  # gid), which can move into it whatever it can move: what it holds is
+  # removed AS the account (_rm_tree_as_here, as the copy ran; a read-only
+  # directory the copy made is given owner write first), so root never
+  # deletes an entry the account could not delete itself. Root then removes
+  # only what it made: the emptied ./$2 (or one it never handed over), the
+  # marker and the staging dir, each by a name checked in the staging dir
+  # entered for real. rc 1 when something is left in it.
+  local _n="${1}" _t="${2}" _uid="${3}" _gid="${4}" _id="${5}" _p _u _m _di _ty
+  _p="$(/bin/pwd -P)"
+  read -r _u _m _di _ty < <(stat -c '%u %a %d:%i %F' -- "./${_n}" 2>/dev/null)
+  [ "${_ty}" = "directory" ] && [ "${_u}" = "0" ] && [[ "${_m}" =~ ^[0-7]+$ ]] \
+    && (( (8#${_m} & 8#022) == 0 )) || return 2
+  if [ -n "${_id}" ]; then
+    [ "${_di}" = "${_id}" ] || return 2
+  fi
+  (
+    cd -P -- "./${_n}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${_p}/${_n}" ] \
+      && [ "$(stat -c '%d:%i' . 2>/dev/null)" = "${_di}" ] || exit 2
+    if [ -z "${_id}" ]; then
+      read -r _u _m _ty < <(stat -c '%u:%h %a %F' -- ./.autosymlink-staging 2>/dev/null)
+      [ "${_ty}" = "regular file" ] && [ "${_u}" = "0:1" ] && [[ "${_m}" =~ ^[0-7]+$ ]] \
+        && (( (8#${_m} & 8#022) == 0 )) || exit 2
+      [ "$(head -n 1 -- ./.autosymlink-staging 2>/dev/null)" = "${_di##*:}" ] || exit 2
+    fi
+    if [ -e "./${_t}" ] || [ -L "./${_t}" ]; then
+      { [ -d "./${_t}" ] && [ ! -L "./${_t}" ]; } || exit 1
+      _u=$(stat -c '%u' -- "./${_t}" 2>/dev/null)
+      if [ "${_u}" = "${_uid}" ]; then
+        # emptied from inside, entered for real (only root can rename in the
+        # staging dir, so the name still holds the copy's directory)
+        ( cd -P -- "./${_t}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${_p}/${_n}/${_t}" ] \
+          && _rm_tree_as_here "${_uid}" "${_gid}" )
+      elif [ "${_u}" != "0" ]; then
+        exit 1
+      fi
+      rmdir -- "./${_t}" 2>/dev/null || exit 1
+    fi
+    rm -f -- ./.autosymlink-staging
+  ) || return $?
+  [ "$(stat -c '%d:%i' -- "./${_n}" 2>/dev/null)" = "${_di}" ] || return 1
+  rmdir -- "./${_n}" 2>/dev/null
+}
+
+_unshare_stale_here() {
+  # cwd = a store base _unshare_copy entered and checked (root's, and no other
+  # identity can write it). Remove the staging dirs of earlier un-share copies
+  # of type $1 whose run is gone: a copy killed outright (SIGKILL, a power
+  # cut) never reaches its own clean-up, and nothing else removes it. Only a
+  # .unshare.<type>.<pid>.<n> no process of that pid holds, and only through
+  # _unshare_staging_rm_here (one this tool provably made; what the copy left
+  # in it removed as the account); anything else at such a name is reported
+  # and left. $2 $3 = the account's uid and gid.
+  local _st _p _rc
+  for _st in ./.unshare."${1}".*; do
+    { [ -d "${_st}" ] && [ ! -L "${_st}" ]; } || continue
+    _p="${_st#./.unshare."${1}".}"
+    _p="${_p%%.*}"
+    [[ "${_p}" =~ ^[0-9]+$ ]] || continue
+    kill -0 "${_p}" 2>/dev/null && continue
+    _unshare_staging_rm_here "${_st#./}" "${1}" "${2}" "${3}" ""
+    _rc=$?
+    if [ "${_rc}" = "0" ]; then
+      _log "[INFO] Removed the staging dir of an un-share copy whose run is gone: $(/bin/pwd -P)/$(printf '%q' "${_st#./}")"
+    elif [ "${_rc}" = "2" ]; then
+      _log "[WARN] Left $(/bin/pwd -P)/$(printf '%q' "${_st#./}"): not a staging dir this tool can prove it made; remove it by hand after a check"
+    else
+      _log "[WARN] Left the staging dir $(/bin/pwd -P)/$(printf '%q' "${_st#./}") of an un-share copy whose run is gone: it holds an entry the account cannot remove; remove it by hand after a check"
+    fi
+  done
+  return 0
+}
+
+_store_owner_here() {
+  # "<uid>:<gid>" of the real directory ./$1 in the current directory, a store's
+  # base entered and checked by _store_in_bound; nothing for any other kind.
+  local _st
+  _st=$(stat -c '%u:%g %F' -- "./${1}" 2>/dev/null)
+  [ "${_st#* }" = "directory" ] && printf '%s\n' "${_st%% *}"
+}
+
 _unshare_copy() {
   # The un-share copy, made by the site's own account in its web group, so
   # the new store is <account>:<web group> as the ownership pass gives it.
@@ -3028,95 +2878,6 @@ _unshare_copy() {
   return 1
 }
 
-_unshare_staging_rm_here() {
-  # cwd = a store base _unshare_copy entered and checked (root's, and no other
-  # identity can write it). Remove the un-share staging dir ./$1 only when it
-  # is provably one this tool made: a real directory root owns that neither
-  # its group nor others can write, whose dev:ino is $5 (taken when this run
-  # made it) or, with $5 empty (a dead run's), whose inode is the one root
-  # wrote in its .autosymlink-staging marker, a single-link file root owns
-  # that only root could have put there. Anything else at such a name is left
-  # (rc 2). The copy's ./$2 dir in it was handed to the account ($3 uid, $4
-  # gid), which can move into it whatever it can move: what it holds is
-  # removed AS the account (_rm_tree_as_here, as the copy ran; a read-only
-  # directory the copy made is given owner write first), so root never
-  # deletes an entry the account could not delete itself. Root then removes
-  # only what it made: the emptied ./$2 (or one it never handed over), the
-  # marker and the staging dir, each by a name checked in the staging dir
-  # entered for real. rc 1 when something is left in it.
-  local _n="${1}" _t="${2}" _uid="${3}" _gid="${4}" _id="${5}" _p _u _m _di _ty
-  _p="$(/bin/pwd -P)"
-  read -r _u _m _di _ty < <(stat -c '%u %a %d:%i %F' -- "./${_n}" 2>/dev/null)
-  [ "${_ty}" = "directory" ] && [ "${_u}" = "0" ] && [[ "${_m}" =~ ^[0-7]+$ ]] \
-    && (( (8#${_m} & 8#022) == 0 )) || return 2
-  if [ -n "${_id}" ]; then
-    [ "${_di}" = "${_id}" ] || return 2
-  fi
-  (
-    cd -P -- "./${_n}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${_p}/${_n}" ] \
-      && [ "$(stat -c '%d:%i' . 2>/dev/null)" = "${_di}" ] || exit 2
-    if [ -z "${_id}" ]; then
-      read -r _u _m _ty < <(stat -c '%u:%h %a %F' -- ./.autosymlink-staging 2>/dev/null)
-      [ "${_ty}" = "regular file" ] && [ "${_u}" = "0:1" ] && [[ "${_m}" =~ ^[0-7]+$ ]] \
-        && (( (8#${_m} & 8#022) == 0 )) || exit 2
-      [ "$(head -n 1 -- ./.autosymlink-staging 2>/dev/null)" = "${_di##*:}" ] || exit 2
-    fi
-    if [ -e "./${_t}" ] || [ -L "./${_t}" ]; then
-      { [ -d "./${_t}" ] && [ ! -L "./${_t}" ]; } || exit 1
-      _u=$(stat -c '%u' -- "./${_t}" 2>/dev/null)
-      if [ "${_u}" = "${_uid}" ]; then
-        # emptied from inside, entered for real (only root can rename in the
-        # staging dir, so the name still holds the copy's directory)
-        ( cd -P -- "./${_t}" 2>/dev/null && [ "$(/bin/pwd -P)" = "${_p}/${_n}/${_t}" ] \
-          && _rm_tree_as_here "${_uid}" "${_gid}" )
-      elif [ "${_u}" != "0" ]; then
-        exit 1
-      fi
-      rmdir -- "./${_t}" 2>/dev/null || exit 1
-    fi
-    rm -f -- ./.autosymlink-staging
-  ) || return $?
-  [ "$(stat -c '%d:%i' -- "./${_n}" 2>/dev/null)" = "${_di}" ] || return 1
-  rmdir -- "./${_n}" 2>/dev/null
-}
-
-_unshare_stale_here() {
-  # cwd = a store base _unshare_copy entered and checked (root's, and no other
-  # identity can write it). Remove the staging dirs of earlier un-share copies
-  # of type $1 whose run is gone: a copy killed outright (SIGKILL, a power
-  # cut) never reaches its own clean-up, and nothing else removes it. Only a
-  # .unshare.<type>.<pid>.<n> no process of that pid holds, and only through
-  # _unshare_staging_rm_here (one this tool provably made; what the copy left
-  # in it removed as the account); anything else at such a name is reported
-  # and left. $2 $3 = the account's uid and gid.
-  local _st _p _rc
-  for _st in ./.unshare."${1}".*; do
-    { [ -d "${_st}" ] && [ ! -L "${_st}" ]; } || continue
-    _p="${_st#./.unshare."${1}".}"
-    _p="${_p%%.*}"
-    [[ "${_p}" =~ ^[0-9]+$ ]] || continue
-    kill -0 "${_p}" 2>/dev/null && continue
-    _unshare_staging_rm_here "${_st#./}" "${1}" "${2}" "${3}" ""
-    _rc=$?
-    if [ "${_rc}" = "0" ]; then
-      _log "[INFO] Removed the staging dir of an un-share copy whose run is gone: $(/bin/pwd -P)/$(printf '%q' "${_st#./}")"
-    elif [ "${_rc}" = "2" ]; then
-      _log "[WARN] Left $(/bin/pwd -P)/$(printf '%q' "${_st#./}"): not a staging dir this tool can prove it made; remove it by hand after a check"
-    else
-      _log "[WARN] Left the staging dir $(/bin/pwd -P)/$(printf '%q' "${_st#./}") of an un-share copy whose run is gone: it holds an entry the account cannot remove; remove it by hand after a check"
-    fi
-  done
-  return 0
-}
-
-_store_owner_here() {
-  # "<uid>:<gid>" of the real directory ./$1 in the current directory, a store's
-  # base entered and checked by _store_in_bound; nothing for any other kind.
-  local _st
-  _st=$(stat -c '%u:%g %F' -- "./${1}" 2>/dev/null)
-  [ "${_st#* }" = "directory" ] && printf '%s\n' "${_st%% *}"
-}
-
 _uid_of_account() {
   # rc 0 when uid $1 is account $2's own login or a named identity of it, by
   # linkguard's rule of names; root and every other account's are not.
@@ -3182,6 +2943,245 @@ _link_as_store_owner() {
   fi
   _log "[ALERT] setpriv cannot switch user on this box: root makes the link $(_log_name "$2") -> $(_log_name "$1")"
   ln -s -T -- "$1" "$2"
+}
+
+_check_symlink_sharing() {
+  # Args:
+  #   1: path to symlink (e.g. /.../sites/example.com/files)
+  #   2: type: "files" or "private"
+  #   3: site name (e.g. example.com)
+  #   4: account dir (/data/disk/o1)
+  _PATH="$1"
+  _TYPE="$2"
+  _SITE_NAME="$3"
+  _ACCOUNT_DIR="$4"
+
+  if [ ! -L "${_PATH}" ]; then
+    return
+  fi
+
+  _LINK_TARGET=$(readlink "${_PATH}")
+
+  if [ -z "${_LINK_TARGET}" ]; then
+    _log "[WARN] ${_TYPE} symlink for site ${_SITE_NAME} is empty or broken: ${_PATH}"
+    if [ "${_MODE}" = "DRY" ]; then
+      _DRY_HAS_ERRORS="YES"
+      _record_anomaly "SYMLINK_EMPTY_OR_BROKEN" "site=${_SITE_NAME}" "account_dir=${_ACCOUNT_DIR}" \
+        "type=${_TYPE}" "path=${_PATH}"
+    fi
+    return
+  fi
+
+  # Expect something like /data/disk/o1/static/files/OTHER-SITE/files[/...]
+  case "${_LINK_TARGET}" in
+    *"/static/files/"*/"${_TYPE}"|*"/static/files/"*/"${_TYPE}/"|*"/static/files/"*/"${_TYPE}/"* )
+      _AFTER="${_LINK_TARGET#*/static/files/}"
+      _TARGET_SITE_NAME="${_AFTER%%/*}"
+      ;;
+    *)
+      # Unknown layout; in REPORT we just note it, in DRY we treat as edge case.
+      if [ "${_MODE}" = "REPORT" ]; then
+        _log "[REPORT] ${_TYPE} symlink for site ${_SITE_NAME} has non-standard target: $(_log_name "${_LINK_TARGET}")"
+        return
+      fi
+      _log "[WARN] ${_TYPE} symlink for site ${_SITE_NAME} points to unknown pattern: $(_log_name "${_LINK_TARGET}") – skipping"
+      if [ "${_MODE}" = "DRY" ]; then
+        _DRY_HAS_EDGE_CASES="YES"
+        # The only edge-case (rather than error) finding in the script.
+        # _TARGET_SITE_NAME is deliberately not recorded: this is the case where
+        # the target layout did not parse, so no owner site is known.
+        _record_anomaly "SYMLINK_UNKNOWN_PATTERN" "site=${_SITE_NAME}" "account_dir=${_ACCOUNT_DIR}" \
+          "type=${_TYPE}" "path=${_PATH}" "link_target=${_LINK_TARGET}"
+      fi
+      return
+      ;;
+  esac
+
+  # REPORT mode: just classify and exit.
+  if [ "${_MODE}" = "REPORT" ]; then
+    if [ "${_TARGET_SITE_NAME}" = "${_SITE_NAME}" ]; then
+      # Proper, non-shared symlink.
+      _log "[REPORT] ${_TYPE} symlink for site ${_SITE_NAME} → self ($(_log_name "${_TARGET_SITE_NAME}")), OK, target='$(_log_name "${_LINK_TARGET}")'"
+      return
+    fi
+
+    _CONTROL_DIR="${_ACCOUNT_DIR}/static/control"
+    _SHARE_THIS="${_CONTROL_DIR}/share.files.${_SITE_NAME}.info"
+    _SHARE_TARGET="${_CONTROL_DIR}/share.files.${_TARGET_SITE_NAME}.info"
+
+    _INTENT="ACCIDENTAL"
+    if _share_marked "${_ACCOUNT_DIR}" "${_SHARE_THIS}" "${_SHARE_TARGET}"; then
+      _INTENT="INTENTIONAL"
+      _SITE_HAS_INTENTIONAL_SHARED_SYMLINK="YES"
+    else
+      _SITE_NEEDS_SHARED_SYMLINK_FIX="YES"
+    fi
+
+    _log "[REPORT] ${_TYPE} symlink for site ${_SITE_NAME} → $(_log_name "${_TARGET_SITE_NAME}") (${_INTENT}), target='$(_log_name "${_LINK_TARGET}")'"
+    return
+  fi
+
+  # For non-REPORT modes, continue with normal sharing logic.
+
+  if [ "${_TARGET_SITE_NAME}" = "${_SITE_NAME}" ]; then
+    return
+  fi
+
+  _CONTROL_DIR="${_ACCOUNT_DIR}/static/control"
+  _SHARE_THIS="${_CONTROL_DIR}/share.files.${_SITE_NAME}.info"
+  _SHARE_TARGET="${_CONTROL_DIR}/share.files.${_TARGET_SITE_NAME}.info"
+
+  if [ "${_FORCE_UNSHARE}" = "YES" ]; then
+    # Clone path: a freshly cloned site never opted into sharing, so break an
+    # inherited cross-account symlink even when a share control file exists for
+    # the source/target site (it belongs to the source, not this new clone).
+    if [ -f "${_SHARE_THIS}" ] || [ -f "${_SHARE_TARGET}" ]; then
+      _log "[INFO] ${_TYPE} symlink for site ${_SITE_NAME} points to $(_log_name "${_TARGET_SITE_NAME}") with a share control file present, but --force-unshare is set – breaking sharing for this site"
+    fi
+  elif _share_marked "${_ACCOUNT_DIR}" "${_SHARE_THIS}" "${_SHARE_TARGET}"; then
+    _SITE_HAS_INTENTIONAL_SHARED_SYMLINK="YES"
+    _log "[INFO] ${_TYPE} symlink for site ${_SITE_NAME} intentionally shares with $(_log_name "${_TARGET_SITE_NAME}") (control file present) – leaving as is"
+    return
+  fi
+
+  _SITE_NEEDS_SHARED_SYMLINK_FIX="YES"
+
+  _NEW_TARGET_BASE="${_ACCOUNT_DIR}/static/files/${_SITE_NAME}"
+  # Derive the copy source from the link's OWN /static/files prefix, not the
+  # current account, so an inherited cross-account symlink (e.g. a clone of a
+  # shared site into a different account) copies from the real source store.
+  # Same-account shares are unaffected (the prefix equals ${_ACCOUNT_DIR}).
+  _LINK_PREFIX="${_LINK_TARGET%%/static/files/*}"
+  # The in-site link is tenant-writable, so its target names the copy SOURCE for
+  # the rsync below. Cross-account is legitimate (an inherited clone link), but
+  # only from a real /data/disk/<account> store -- never an arbitrary prefix.
+  # Accept the relocated-store form as well: a store moved onto attached
+  # storage lives at <mount>/files/<acct>/static/files (migratefs, xoct), so a
+  # /data/disk-only test would refuse to unshare on every relocated box.
+  case "${_LINK_PREFIX}" in
+    *..*)               _LINK_PREFIX_OK="NO" ;;
+    /data/disk/*/*)     _LINK_PREFIX_OK="NO" ;;
+    /data/disk/?*)      _LINK_PREFIX_OK="YES" ;;
+    /mnt/*/files/*/*/*) _LINK_PREFIX_OK="NO" ;;
+    /mnt/*/files/?*)    _LINK_PREFIX_OK="YES" ;;
+    *)                  _LINK_PREFIX_OK="NO" ;;
+  esac
+  if [ "${_LINK_PREFIX_OK}" != "YES" ]; then
+    _log "[WARN] ${_TYPE} symlink for site ${_SITE_NAME} names a non-account store prefix: $(_log_name "${_LINK_PREFIX}") – refusing to break sharing"
+    if [ "${_MODE}" = "DRY" ]; then
+      _DRY_HAS_EDGE_CASES="YES"
+      _record_anomaly "SYMLINK_UNKNOWN_PATTERN" "site=${_SITE_NAME}" "account_dir=${_ACCOUNT_DIR}" \
+        "type=${_TYPE}" "path=${_PATH}" "link_target=${_LINK_TARGET}"
+    fi
+    _SITE_SHARED_SYMLINK_FIX_SKIPPED="YES"
+    return
+  fi
+  _ORIGINAL_TOP="${_LINK_PREFIX}/static/files/${_TARGET_SITE_NAME}/${_TYPE}"
+  _NEW_TARGET="${_NEW_TARGET_BASE}/${_TYPE}"
+
+  # The copy follows its source to the directory it resolves to (rsync of
+  # "<source>/"), as the account. That must be a store's files or private
+  # dir: a name on the way an account turned into a link elsewhere would have
+  # the copy take any tree the account can read, uncounted by the space check.
+  _ORIGINAL_REAL=$(realpath -e -- "${_ORIGINAL_TOP}" 2>/dev/null)
+  if [ -n "${_ORIGINAL_REAL}" ] && ! _is_store_site_dir "${_ORIGINAL_REAL}"; then
+    _log "[WARN] ${_TYPE} symlink for site ${_SITE_NAME} names a store that resolves outside the account stores: $(_log_name "${_ORIGINAL_REAL}") – refusing to break sharing"
+    if [ "${_MODE}" = "DRY" ]; then
+      _DRY_HAS_EDGE_CASES="YES"
+      _record_anomaly "SYMLINK_UNKNOWN_PATTERN" "site=${_SITE_NAME}" "account_dir=${_ACCOUNT_DIR}" \
+        "type=${_TYPE}" "path=${_PATH}" "link_target=${_LINK_TARGET}" \
+        "resolved=${_ORIGINAL_REAL}"
+    fi
+    _SITE_SHARED_SYMLINK_FIX_SKIPPED="YES"
+    return
+  fi
+
+  _log "[INFO] ${_TYPE} symlink for site ${_SITE_NAME} currently points to $(_log_name "${_LINK_TARGET}") (owned by $(_log_name "${_TARGET_SITE_NAME}"))"
+  _log "[PLAN] Break sharing: copy from $(_log_name "${_ORIGINAL_TOP}") to ${_NEW_TARGET} and update symlink at ${_PATH}"
+
+  if [ "${_MODE}" = "LIVE" ] && [ "${_LIVE_SITE_APPROVED}" != "YES" ]; then
+    if ! _ask_confirm_site "${_SITE_NAME}"; then
+      _log "[LIVE] Skipping shared symlink fix for site: ${_SITE_NAME}"
+      _SITE_SHARED_SYMLINK_FIX_SKIPPED="YES"
+      return
+    fi
+    _LIVE_SITE_APPROVED="YES"
+  fi
+
+  if [ "${_MODE}" = "DRY" ]; then
+    if [ ! -d "${_ORIGINAL_TOP}" ]; then
+      _log "[WARN] Original ${_TYPE} directory not found at $(_log_name "${_ORIGINAL_TOP}") – would fail breaking sharing"
+      _DRY_HAS_ERRORS="YES"
+      # No inline mode test here on purpose: this whole block is already DRY-only.
+      _record_anomaly "BREAK_SHARING_SOURCE_MISSING" "site=${_SITE_NAME}" "account_dir=${_ACCOUNT_DIR}" \
+        "type=${_TYPE}" "path=${_PATH}" "link_target=${_LINK_TARGET}" \
+        "target_site=${_TARGET_SITE_NAME}" "original_top=${_ORIGINAL_TOP}"
+      return
+    fi
+    # Check space on target filesystem (if different FS)
+    if ! _check_space_for_transfer "${_ORIGINAL_TOP}" "${_NEW_TARGET_BASE}" "copy ${_TYPE} (break sharing)" "${_SITE_NAME}" "YES"; then
+      # _check_space_for_transfer already logged + flagged DRY errors if needed
+      return
+    fi
+    return
+  fi
+
+  if [ ! -d "${_ORIGINAL_TOP}" ]; then
+    _log "[WARN] Original ${_TYPE} directory not found at $(_log_name "${_ORIGINAL_TOP}") – cannot break sharing for ${_SITE_NAME}"
+    _SITE_SHARED_SYMLINK_FIX_SKIPPED="YES"
+    return
+  fi
+
+  # LIVE / BATCH: space check
+  if ! _check_space_for_transfer "${_ORIGINAL_TOP}" "${_NEW_TARGET_BASE}" "copy ${_TYPE} (break sharing)" "${_SITE_NAME}" "YES"; then
+    _log "[WARN] Skipping breaking sharing for ${_TYPE} of site ${_SITE_NAME} due to insufficient space or inodes."
+    _SITE_SHARED_SYMLINK_FIX_SKIPPED="YES"
+    return
+  fi
+
+  # static/ is group-writable, so static/files -- and static/files/<site> when
+  # static/files is itself a link -- can be swapped for a link or another
+  # directory between any check and any later act by full path. Resolve
+  # static/files ONCE by identity and open the per-site base for real, so the
+  # archive move and the copy run inside a base root still owns, in the store
+  # the handle captured, and no name on the store path is trusted again.
+  _STORE_PAIR=$(_open_store_base "${_ACCOUNT_DIR}" "${_SITE_NAME}")
+  if [ -z "${_STORE_PAIR}" ]; then
+    _log "[ERROR] Store base ${_NEW_TARGET_BASE} is not a real directory – leaving symlink unchanged."
+    _SITE_SHARED_SYMLINK_FIX_SKIPPED="YES"
+    return
+  fi
+  # "<store path>|<dev>:<ino>|<base>": neither of the first two holds a "|"
+  _BASE_REAL="${_STORE_PAIR#*|*|}"
+  _STORE_FILES_H="${_STORE_PAIR%"|${_BASE_REAL}"}"
+
+  if [ -e "${_BASE_REAL}/${_TYPE}" ] || [ -L "${_BASE_REAL}/${_TYPE}" ]; then
+    # A pre-existing store at this (renamed/migrated) target name is a stale ghost
+    # from a prior lifecycle: archive it aside (tracked, into static/files/.archived)
+    # rather than renaming it in place, so break-sharing collisions are handled the
+    # same way as the local-convert path (_convert_dir_to_symlink) and land in the
+    # reported/prunable archive instead of cluttering the live store.
+    _archive_existing_store_target "${_TYPE}" "${_STORE_FILES_H}" "${_BASE_REAL}" "${_ACCOUNT_DIR}" "${_SITE_NAME}"
+  fi
+
+  _log "[APPLY] Copying $(_log_name "${_ORIGINAL_TOP}") -> ${_NEW_TARGET}"
+  if ! _unshare_copy "${_ORIGINAL_TOP}" "${_BASE_REAL}" "${_TYPE}" "${_ACCOUNT_DIR}" "${_STORE_FILES_H}"; then
+    _log "[ERROR] Copy failed for site ${_SITE_NAME} (${_TYPE}: $(_log_name "${_ORIGINAL_TOP}") -> ${_NEW_TARGET}) – leaving symlink unchanged."
+    _SITE_SHARED_SYMLINK_FIX_SKIPPED="YES"
+    return
+  fi
+
+  _log "[APPLY] Updating symlink: ${_PATH} -> ${_NEW_TARGET}"
+  # the site dir is the account's: the old link goes and the new one is made
+  # by ./name inside it, entered for real, never through a name on its path
+  _store_in_pinned "${_PATH%/*}" rm -f -- "./${_PATH##*/}"
+  if ! _store_in_pinned "${_PATH%/*}" _link_as_store_owner "${_NEW_TARGET}" "./${_PATH##*/}" \
+    "$(_store_in_bound "${_STORE_FILES_H}" "${_BASE_REAL}" _store_owner_here "${_TYPE}")"; then
+    _log "[ERROR] Failed to create symlink for site ${_SITE_NAME} (${_TYPE}: ${_PATH} -> ${_NEW_TARGET})"
+    _SITE_SHARED_SYMLINK_FIX_SKIPPED="YES"
+    return
+  fi
+  _SITE_SHARED_SYMLINK_FIX_APPLIED="YES"
 }
 
 _put_back_here() {
@@ -3252,6 +3252,19 @@ _aside_rm_here() {
   rmdir -- "./${1}" 2>/dev/null
 }
 
+_aside_same_here() {
+  # cwd = the aside, entered for real and checked; fd 9 = the store's base,
+  # held and checked (_aside_catch_up_here). rc 0 only when a dry pass of the
+  # copy's options WITHOUT --update, as the account ($2 uid, $3 gid), from here
+  # into ./$1 of the base itemizes no regular file: each file the aside holds
+  # is in the store as it is here. rc 1 when one is listed or the pass fails.
+  local _out
+  _out=$(setpriv --reuid="${2}" --regid="${3}" --init-groups \
+    rsync "${_UNSHARE_RSYNC_ARGS[@]}" -n -i -- ./ "/proc/self/fd/9/${1}/" 2>/dev/null) || return 1
+  # an itemized line is YXcstpoguax and the name; X is f for a regular file
+  [[ $'\n'"${_out}" != *$'\n'?f* ]]
+}
+
 _aside_catch_up_here() {
   # cwd = the pinned in-site parent. After a cross-filesystem conversion set
   # the site's directory aside and made the link, copy into the store what was
@@ -3278,19 +3291,6 @@ _aside_catch_up_here() {
     setpriv --reuid="${_uid}" --regid="${_gid}" --init-groups \
       rsync "${_UNSHARE_RSYNC_ARGS[@]}" --update -- ./ "/proc/self/fd/9/${4}/" >&2 || exit 1
     _aside_same_here "${4}" "${_uid}" "${_gid}" || exit 3 )
-}
-
-_aside_same_here() {
-  # cwd = the aside, entered for real and checked; fd 9 = the store's base,
-  # held and checked (_aside_catch_up_here). rc 0 only when a dry pass of the
-  # copy's options WITHOUT --update, as the account ($2 uid, $3 gid), from here
-  # into ./$1 of the base itemizes no regular file: each file the aside holds
-  # is in the store as it is here. rc 1 when one is listed or the pass fails.
-  local _out
-  _out=$(setpriv --reuid="${2}" --regid="${3}" --init-groups \
-    rsync "${_UNSHARE_RSYNC_ARGS[@]}" -n -i -- ./ "/proc/self/fd/9/${1}/" 2>/dev/null) || return 1
-  # an itemized line is YXcstpoguax and the name; X is f for a regular file
-  [[ $'\n'"${_out}" != *$'\n'?f* ]]
 }
 
 _store_filled_owner_here() {
@@ -3379,15 +3379,6 @@ _dir_residue_only() {
   if [ ${_RES_RC} -ne 0 ] || [ -n "${_RES_OUT}" ]; then
     return 1
   fi
-  return 0
-}
-
-# _convert_dir_to_symlink, noting a site whose dir was not moved into its
-# store (_SITE_CONVERT_SKIPPED); a new account's first run, which has no
-# store to move into yet (status 2, said as INFO), is not one.
-_convert_or_note() {
-  _convert_dir_to_symlink "$@"
-  [ "$?" = "1" ] && _SITE_CONVERT_SKIPPED="YES"
   return 0
 }
 
@@ -3578,6 +3569,15 @@ _convert_dir_to_symlink() {
     _log "[ERROR] Failed to create symlink for ${_TYPE} of site ${_SITE}: ${_SRC} -> ${_DST}; data is safe in ${_DST}, self-heal will retry the link"
     return 1
   fi
+  return 0
+}
+
+# _convert_dir_to_symlink, noting a site whose dir was not moved into its
+# store (_SITE_CONVERT_SKIPPED); a new account's first run, which has no
+# store to move into yet (status 2, said as INFO), is not one.
+_convert_or_note() {
+  _convert_dir_to_symlink "$@"
+  [ "$?" = "1" ] && _SITE_CONVERT_SKIPPED="YES"
   return 0
 }
 

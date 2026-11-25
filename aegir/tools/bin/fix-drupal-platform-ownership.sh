@@ -643,19 +643,6 @@ _copy_new_here() {
   return 1
 }
 
-# Each Grav capsule in the current (pinned) sites/, entered for real: its
-# writable set and its .env handed to the web group, the writable set
-# keeping the group write of what the site's PHP pool made in it
-# (_reown_own_here -W). Nothing is done in a capsule that is, or is below,
-# a directory another user owns.
-_grav_capsules_own_here() {
-  local _c _here
-  _here="$(/bin/pwd -P)"
-  for _c in ./*/; do
-    _c="${_c#./}"
-    _in_pinned_dir "${_here}/${_c%/}" _grav_capsule_own_here
-  done
-}
 _grav_capsule_own_here() {
   local _wd
   [ -f ./system/defines.php ] || return 0
@@ -671,6 +658,19 @@ _grav_capsule_own_here() {
   fi
 }
 
+# Each Grav capsule in the current (pinned) sites/, entered for real: its
+# writable set and its .env handed to the web group, the writable set
+# keeping the group write of what the site's PHP pool made in it
+# (_reown_own_here -W). Nothing is done in a capsule that is, or is below,
+# a directory another user owns.
+_grav_capsules_own_here() {
+  local _c _here
+  _here="$(/bin/pwd -P)"
+  for _c in ./*/; do
+    _c="${_c#./}"
+    _in_pinned_dir "${_here}/${_c%/}" _grav_capsule_own_here
+  done
+}
 drupal_root=${1%/}
 script_user=${2:-aegir}
 
