@@ -775,9 +775,20 @@ _SMTP_RELAY_TEST=YES
 ### The login is sent only over TLS. All three
 ### are applied on every barracuda upgrade.
 ###
+### With local sendmail allowed for hosted sites
+### (_ALLOW_SENDMAIL=YES) the relay is not used
+### and mail goes out directly, unless you add:
+###
+### _SMTP_RELAY_SITES=YES
+###
+### Use it only with a relay which keeps each
+### sender's own address, like Amazon SES - then
+### the sites' mail goes through the relay too.
+###
 _SMTP_RELAY_HOST=""
 _SMTP_RELAY_USER=""
 _SMTP_RELAY_PASS=""
+_SMTP_RELAY_SITES=NO
 
 
 ###----------------------------------------###
@@ -1383,7 +1394,8 @@ _INSTANT_BUSY_MYSQL_ACTION=NO
 _MYSQLADMIN_MONITOR=NO
 ###
 ### Leaves sendmail executable for tenants and points Postfix at direct
-### delivery instead of the relay. Off by default.
+### delivery instead of the relay, unless _SMTP_RELAY_SITES=YES keeps the
+### relay for the sites' mail too. Off by default.
 ### Replaces /etc/boa/.allow.sendmail.cnf
 _ALLOW_SENDMAIL=NO
 ###

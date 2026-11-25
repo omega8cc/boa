@@ -266,18 +266,14 @@ _initd_solr_start() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Restarting Solr 9"
     fi
-    # owner-any: a stale JVM of this version, whoever started it
-    pkill -9 -f '^[^ ]*java[0-9]* .*solr9'
-    _mrun "service solr9 start"
+    _solr_restart solr9
   fi
   if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ] \
     && ! _solr_svc_denied solr7; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Restarting Solr 7"
     fi
-    # owner-any: a stale JVM of this version, whoever started it
-    pkill -9 -f '^[^ ]*java[0-9]* .*solr7'
-    _mrun "service solr7 start"
+    _solr_restart solr7
   fi
   if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ] \
     && ! _solr_svc_denied jetty9; then
@@ -286,6 +282,34 @@ _initd_solr_start() {
     fi
     _jetty9_restart
   fi
+}
+
+#
+# Kill Solr 9 or Solr 7 and start it again. Solr's own start refuses while
+# the process its pid file names still exists, and a JVM killed with -9 is
+# there for a moment longer, more so on a loaded box or with a large heap.
+# A start in that moment starts nothing, and Solr stays down behind a stale
+# pid file until the Java monitor finds it once the pass is over. The wait
+# is on the killed pids themselves: an exiting process has no command line
+# left, so a search by name no longer sees it while its pid still exists.
+_solr_restart() {
+  # ${1} = solr9 or solr7
+  local _svc="${1}" _pids _pid _left _SOLR_WAIT=0
+  case "${_svc}" in solr9|solr7) ;; *) return 0 ;; esac
+  # owner-any: a stale JVM of this version, whoever started it
+  _pids="$(pgrep -f "^[^ ]*java[0-9]* .*${_svc}" 2> /dev/null | tr -dc '0-9\n')"
+  # owner-any: a stale JVM of this version, whoever started it
+  pkill -9 -f "^[^ ]*java[0-9]* .*${_svc}"
+  while [[ "${_SOLR_WAIT}" -lt 30 ]]; do
+    _left=NO
+    for _pid in ${_pids}; do
+      [ -d "/proc/${_pid}" ] && _left=YES
+    done
+    [ "${_left}" = "YES" ] || break
+    sleep 1
+    _SOLR_WAIT=$(( _SOLR_WAIT + 1 ))
+  done
+  _mrun "service ${_svc} start"
 }
 
 #
