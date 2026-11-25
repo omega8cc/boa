@@ -41,6 +41,16 @@ _get_core_ext() {
   fi
 }
 
+# The first entry of the tree $1, $1 itself included, that is a link, is
+# not root's or is writable by its group or others, found without following
+# a link; nothing when every entry is root's alone or $1 is not there. The
+# kit and the shared modules root stages hold no link, and only root can
+# write any entry in them.
+_satellite_not_root_alone() {
+  find -P "${1}" \( -type l -o \! -user 0 -o -perm /022 \) -print -quit \
+    2> /dev/null
+}
+
 #
 # Stage the pinned D6->D7 contrib kit from the mirror (Backdrop support).
 # The provision-backdrop-d6-upgrade task copies module directories from this
@@ -110,6 +120,23 @@ _stage_d6d7_kit() {
 }
 
 #
+# Keep the three newest staged official Grav admin-bundle zips; remove the
+# rest. Version order, never mtime (a re-fetched old zip must not displace
+# a newer one); only complete zips are considered (the .tmp of a fetch in
+# flight is left alone).
+_prune_grav_releases() {
+  local _pDir="$1" _pZip _pKeep=3 _pN
+  [ -d "${_pDir}" ] || return 0
+  _pN=$(ls "${_pDir}"/grav-admin-v*.zip 2> /dev/null | wc -l)
+  [ "${_pN}" -le "${_pKeep}" ] && return 0
+  for _pZip in $(ls "${_pDir}"/grav-admin-v*.zip 2> /dev/null \
+    | sed 's#.*/grav-admin-v##; s#\.zip$##' | sort -V | head -n -"${_pKeep}"); do
+    rm -f "${_pDir}/grav-admin-v${_pZip}.zip"
+    _msg "INFO: Pruned the staged Grav admin bundle ${_pZip} (three newest kept)"
+  done
+}
+
+#
 # Stage the newest official Grav admin-bundle release zip for the upgrade
 # channel: provision-grav-upgrade resolves the newest grav-admin-v*.zip
 # under /data/all/000/grav-releases/ (mirror-fed; this box never talks to
@@ -163,20 +190,27 @@ _stage_grav_releases() {
 }
 
 #
-# Keep the three newest staged official Grav admin-bundle zips; remove the
-# rest. Version order, never mtime (a re-fetched old zip must not displace
-# a newer one); only complete zips are considered (the .tmp of a fetch in
-# flight is left alone).
-_prune_grav_releases() {
-  local _pDir="$1" _pZip _pKeep=3 _pN
-  [ -d "${_pDir}" ] || return 0
-  _pN=$(ls "${_pDir}"/grav-admin-v*.zip 2> /dev/null | wc -l)
-  [ "${_pN}" -le "${_pKeep}" ] && return 0
-  for _pZip in $(ls "${_pDir}"/grav-admin-v*.zip 2> /dev/null \
-    | sed 's#.*/grav-admin-v##; s#\.zip$##' | sort -V | head -n -"${_pKeep}"); do
-    rm -f "${_pDir}/grav-admin-v${_pZip}.zip"
-    _msg "INFO: Pruned the staged Grav admin bundle ${_pZip} (three newest kept)"
-  done
+# The newest version on the shelf of root's, from the names of its regular
+# files; nothing when the shelf is not there, holds no bundle, or has an
+# entry that is not root's alone (then it is not trusted either).
+_satellite_grav_shelf_newest() {
+  local _gDir="/data/all/000/grav-releases"
+  [ -d "${_gDir}" ] && [ ! -L "${_gDir}" ] || return 0
+  [ -z "$(_satellite_not_root_alone "${_gDir}")" ] || return 0
+  find -P "${_gDir}" -mindepth 1 -maxdepth 1 -type f -name 'grav-admin-v*.zip' \
+    2> /dev/null | sed 's#.*/grav-admin-v##; s#\.zip$##' | grep '^[0-9]' \
+    | sort -V | tail -n 1
+}
+
+#
+# ./grav-releases in the current (pinned) static/ removed whole: a real
+# directory with everything in it (an entry that is a link is removed as a
+# name, never followed), or a link at the name, removed as a name. Returns
+# 0 when the name is gone.
+_satellite_grav_retire_here() {
+  { [ -e ./grav-releases ] || [ -L ./grav-releases ]; } || return 1
+  rm -rf -- ./grav-releases
+  [ ! -e ./grav-releases ] && [ ! -L ./grav-releases ]
 }
 
 #
@@ -201,30 +235,6 @@ _retire_static_grav_releases() {
   if _acct_in_real_dir "${_ROOT}/static" _satellite_grav_retire_here; then
     _msg "INFO: Removed ${_gOld}, the shelf an earlier release staged there; the shelf is /data/all/000/grav-releases now"
   fi
-}
-
-#
-# The newest version on the shelf of root's, from the names of its regular
-# files; nothing when the shelf is not there, holds no bundle, or has an
-# entry that is not root's alone (then it is not trusted either).
-_satellite_grav_shelf_newest() {
-  local _gDir="/data/all/000/grav-releases"
-  [ -d "${_gDir}" ] && [ ! -L "${_gDir}" ] || return 0
-  [ -z "$(_satellite_not_root_alone "${_gDir}")" ] || return 0
-  find -P "${_gDir}" -mindepth 1 -maxdepth 1 -type f -name 'grav-admin-v*.zip' \
-    2> /dev/null | sed 's#.*/grav-admin-v##; s#\.zip$##' | grep '^[0-9]' \
-    | sort -V | tail -n 1
-}
-
-#
-# ./grav-releases in the current (pinned) static/ removed whole: a real
-# directory with everything in it (an entry that is a link is removed as a
-# name, never followed), or a link at the name, removed as a name. Returns
-# 0 when the name is gone.
-_satellite_grav_retire_here() {
-  { [ -e ./grav-releases ] || [ -L ./grav-releases ]; } || return 1
-  rm -rf -- ./grav-releases
-  [ ! -e ./grav-releases ] && [ ! -L ./grav-releases ]
 }
 
 #
@@ -404,6 +414,273 @@ _satellite_tune_fpm_workers() {
 }
 
 #
+# The account's static/control is the main login's, so it can put a link or
+# a FIFO at any name there, or at control itself: these run inside the real
+# directory (_acct_in_real_dir) and never follow or open either.
+#
+# ./control made a real directory, run inside the real static/: a link put
+# at the name is removed, a missing directory created 0755.
+_satellite_ctrl_dir_here() {
+  [ -L ./control ] && rm -f ./control
+  [ -d ./control ] || ( umask 022; mkdir -p ./control )
+}
+# The uids root's walks over the account $1's trees act on, comma-separated:
+# root's own (0, what root wrote there for the account) and those of every
+# identity of the account as passwd names them: oN and oN.<name>, that is its
+# .ftp login, its client sub-accounts oN.<client> and oN.<client>-dev and its
+# PHP-FPM users oN.web and oN.<ver>.web. An account name holds no dot, so the
+# match is exact: o1 never takes o10's. Status 1, and nothing, unless the
+# account itself is in passwd. The numbers of the account's removed
+# identities that root recorded in /data/conf/acct-uids/<oN>.gone (the ltd
+# worker, before deluser frees one) are listed too while no user has them.
+# Root's check of the control folder, its reads of the control files and its
+# hand-overs into that folder take a uid no passwd entry names only when it
+# is listed: another account's removed login leaves files under such a number
+# too. Its other hand-overs, mode walks and removal walks still take any.
+_acct_walk_uids() {
+  local _a="${1}" _n _p _u _r _x="0" _self=NO
+  case "${_a}" in
+    ""|*[!a-z0-9-]*) return 1 ;;
+  esac
+  while IFS=: read -r _n _p _u _r; do
+    [[ "${_n}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]] || continue
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    _x="${_x},${_u}"
+    [ "${_n}" = "${_a}" ] && _self=YES
+  done < <(getent passwd 2> /dev/null)
+  [ "${_self}" = "YES" ] || return 1
+  # the account's removed identities, their numbers recorded by root before
+  # deluser freed them; a number a user has again is not taken
+  while IFS= read -r _u; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    getent passwd "${_u}" > /dev/null 2>&1 && continue
+    _x="${_x},${_u}"
+  done 2> /dev/null < "/data/conf/acct-uids/${_a}.gone"
+  echo "${_x}"
+}
+# As _ACCT_REOWN_PL, the same way: given first the uids it acts for, then
+# the uid and gid to hand each name to; a name another named uid owns, and
+# anything below a directory another named uid owns, keeps its owner. A gid
+# given with a + first keeps the group write of what is handed over, as the
+# ownership fixers' -W does; no caller here gives one. A list with '=' first
+# takes a uid no passwd entry names only when it is listed: the control
+# folder's hand-over gives one (_satellite_ctrl_make_here).
+_SAT_REOWN_OWN_PL='use Fcntl;
+my ($o, $u, $g) = (shift @ARGV, shift @ARGV, shift @ARGV);
+my $deny = $o =~ s/^-// ? 1 : 0;
+my $strict = $o =~ s/^=// ? 1 : 0;
+my $gw = $g =~ s/^\+// ? 1 : 0;
+my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, $o);
+sub own { my $u = shift; return (exists $own{$u} ? 0 : 1) if $deny; return (exists $own{$u} ? 1 : 0) if $strict; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
+my ($p, $ok, @d, @x) = (".", 0);
+for (1 .. 256) {
+  @x = stat($p) or last;
+  last unless own($x[4]);
+  if (@d && $x[0] == $d[0] && $x[1] == $d[1]) { $ok = 1; last; }
+  @d = @x;
+  $p .= "/..";
+}
+unless ($ok) {
+  print "$x[0]:$x[1]\n" if @x && !own($x[4]) && grep { $_ eq "." } @ARGV;
+  exit 1;
+}
+for my $f (@ARGV) {
+  sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
+  my @s = stat($h);
+  if (@s && !own($s[4])) {
+    print "$s[0]:$s[1]\n";
+  } elsif (@s && (-d _ || (-f _ && $s[3] == 1))) {
+    if (chown($u, $g, $h) && $gw && ($s[2] & 0200) && !($s[2] & 020) && !(-f _ && ($s[2] & 06000))) {
+      chmod(($s[2] & 07777) | 020, $h);
+    }
+  }
+  close($h);
+}
+exit 0;'
+# owner[:group] as chown takes it (names; an empty owner or no group keeps
+# that id) printed as the "uid gid" _ACCT_REOWN_PL takes (-1 kept); nothing
+# when a name does not resolve.
+_satellite_ids() {
+  local _u=-1 _g=-1
+  [ -z "${1%%:*}" ] || _u=$(id -u -- "${1%%:*}" 2> /dev/null)
+  if [[ "${1}" == *:* ]]; then
+    _g=$(getent group "${1#*:}" 2> /dev/null | cut -d: -f3)
+  fi
+  [[ "${_u}" =~ ^(-1|[0-9]+)$ && "${_g}" =~ ^(-1|[0-9]+)$ ]] || return 1
+  echo "${_u} ${_g}"
+}
+# As _satellite_reown_here, through _SAT_REOWN_OWN_PL: only what root or
+# one of the instance's own identities owns (_acct_walk_uids) is handed
+# over, and nothing below a directory another user owns. Prints dev:ino of
+# each entry left for another owner.
+_satellite_reown_own_here() {
+  local _u _g _o _s=""
+  # = first: only the account's identities and its recorded removed ones
+  # (_acct_walk_uids), never another number no user has (the control folder)
+  [ "${1}" = "=" ] && { _s="="; shift; }
+  read -r _u _g <<< "$(_satellite_ids "${1}")"
+  [ -n "${_g}" ] || return 1
+  _o=$(_acct_walk_uids "${_USER}") || return 1
+  shift
+  perl -e "${_SAT_REOWN_OWN_PL}" -- "${_s}${_o}" "${_u}" "${_g}" . \
+    && env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 "$@" \
+      \( -type d -o -type f \) \
+      -execdir perl -e "${_SAT_REOWN_OWN_PL}" -- "${_s}${_o}" "${_u}" "${_g}" {} +
+}
+# The control directory on install and upgrade (run inside it): fpm.info
+# and cli.info where missing (cli.info from a regular fpm.info), the README
+# and this serial's stamp on its first pass, at install the release pass's
+# defaults where the owner has none, the tree handed to the main
+# login as _satellite_reown_own_here hands it (never a link, nor a file the
+# login hard-linked there, nor what another user owns: the login can rename
+# into it what another account left group-writable).
+_satellite_ctrl_make_here() {
+  local _v
+  [ -e ./fpm.info ] || _acct_put_here fpm.info "${_PHP_FPM_VERSION}"
+  if [ ! -e ./cli.info ]; then
+    _v=""
+    [ -e ./fpm.info ] && _v="$(_acct_read_here fpm.info)"
+    _acct_put_here cli.info "${_v:-${_PHP_CLI_VERSION}}"
+  fi
+  if [ ! -e "./.ctrl.${_tRee}.${_xSrl}.pid" ] \
+    && [ -e "/home/${_USER}.ftp/clients" ]; then
+    if [ -e "/var/xdrago/conf/control-readme.txt" ]; then
+      ( umask 022
+        cp -T --no-preserve=mode --remove-destination \
+          /var/xdrago/conf/control-readme.txt ./README.txt ) &> /dev/null
+    fi
+    rm -f -- ./.ctrl.*
+    _acct_put_here ".ctrl.${_tRee}.${_xSrl}.pid" OK
+  fi
+  # An account made by this pass never held the FastTrack.info that BOA
+  # wrote by default before 2024: the release pass removes that one once,
+  # where this marker is missing, and must never take a FastTrack.info
+  # the account's owner puts here.
+  if [ "${_STATUS}" = "INIT" ] && [ ! -e ./.disFastTrack.pid ]; then
+    _acct_put_here .disFastTrack.pid OK
+  fi
+  # The release pass's two defaults, by its rules (BOA.sh.txt _ctrl_seed_here):
+  # it seeds each account once per release, so an account made after it would
+  # wait for the next one, its Delete and Migrate safety copies taking the
+  # classic dump meanwhile (only MyQuick.info sends them to the fast dumps).
+  # At install only: what an existing account holds is the owner's choice.
+  if [ "${_STATUS}" = "INIT" ]; then
+    if [ ! -e ./MyQuick.info ] && [ ! -e ./MyClassic.info ]; then
+      _acct_put_here MyQuick.info ON
+    fi
+    if [ ! -e ./FastTrack.info ] && [ ! -e ./ClassicTrack.info ]; then
+      _acct_put_here ClassicTrack.info ON
+    fi
+  fi
+  # an account still on the box-wide group gets group root here, as the ltd
+  # worker gives it (_ltd_ctrl_shut): what the login makes in this
+  # set-group-ID tree is then never writable by another account's login
+  if [ "${_ACCG:-users}" = "${_USER}" ]; then
+    _satellite_reown_own_here = "${_USER}.ftp:${_ACCG}" > /dev/null
+  else
+    _satellite_reown_own_here = "${_USER}.ftp:root" > /dev/null
+  fi
+}
+
+#
+# The instance user owns the rest of the account (log/, .drush/, tools/,
+# .ssh/, the hostmaster tree), so any name there can be a link or a FIFO too.
+# Root reads, writes, copies, edits and sets modes there only through these,
+# run inside the real directory (_acct_in_real_dir), beside the shared
+# _acct_* helpers.
+#
+# A mode set on names in the current (pinned) directory, never through a
+# link: each name is opened without following one and without blocking on a
+# FIFO, checked to be the expected type and changed through the open handle.
+# Run it inside a pinned directory or from find -execdir: O_NOFOLLOW covers
+# the last name only. Args: f|d (regular file or directory), the mode
+# (octal), the names.
+# A directory keeps its set-user-ID and set-group-ID bits unless the mode has
+# five digits (02775, 00755), as chmod(1) does with a numeric mode. A regular
+# file is changed only while it has a single link: a hard link the account
+# planted or renamed over a name is never given the mode.
+_SAT_NOFOLLOW_CHMOD_PL='use Fcntl;
+my ($t, $ms) = (shift @ARGV, shift @ARGV);
+my ($m, $k) = (oct($ms), length($ms) < 5 ? 06000 : 0);
+for my $f (@ARGV) {
+  sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
+  my @s = stat($h);
+  if ($t eq "f" && -f _ && $s[3] == 1) {
+    chmod($m, $h);
+  } elsif ($t eq "d" && -d _) {
+    chmod($m | ($s[2] & $k), $h);
+  }
+  close($h);
+}'
+_satellite_chmod_nofollow() {
+  local _t="${1}" _m="${2}"
+  shift 2
+  [ "$#" -gt 0 ] || return 0
+  perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" "${_t}" "${_m}" "$@" 2> /dev/null
+}
+# ./$1 in the current (pinned) directory made from stdin: a fresh file
+# created exclusively (0600 until it is complete), handed to $3 (owner:group,
+# names or numbers; empty leaves it root's) and given the mode $2, both
+# through the handle that created it (_ACCT_PUT_MODE_PL), and renamed over
+# the name, so a link or a FIFO put at the name is replaced, never followed
+# or opened, and nothing is handed over or moded by name.
+_satellite_put_stdin_here() {
+  local _t="./.${1}.put.$$.${RANDOM}" _u=-1 _g=-1
+  if [ -n "${3}" ]; then
+    _u="${3%%:*}"
+    _g="${3#*:}"
+    [[ "${_u}" =~ ^[0-9]+$ ]] || _u=$(id -u -- "${_u}" 2> /dev/null)
+    [[ "${_g}" =~ ^[0-9]+$ ]] \
+      || _g=$(getent group "${_g}" 2> /dev/null | cut -d: -f3)
+    [[ "${_u}" =~ ^[0-9]+$ && "${_g}" =~ ^[0-9]+$ ]] || return 1
+  fi
+  rm -f -- "${_t}"
+  if perl -e "${_ACCT_PUT_MODE_PL}" "${_t}" "${_u}" "${_g}" "${2:-0644}" \
+    2> /dev/null && mv -f -T -- "${_t}" "./${1}"; then
+    return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+# The current (pinned) directory and everything below it handed to $1
+# (owner[:group], as chown -R took it) through _ACCT_REOWN_PL, from the
+# directory find walked (-execdir): each directory and each regular file
+# with a single link, never a link, a FIFO, a socket or a hard-linked file,
+# so a hard link the account planted in the tree is never handed over.
+# Further arguments are find tests put in front of the walk (a prune).
+_satellite_reown_here() {
+  local _u _g
+  read -r _u _g <<< "$(_satellite_ids "${1}")"
+  [ -n "${_g}" ] || return 1
+  shift
+  perl -e "${_ACCT_REOWN_PL}" -- "${_u}" "${_g}" . \
+    && env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 "$@" \
+      \( -type d -o -type f \) \
+      -execdir perl -e "${_ACCT_REOWN_PL}" -- "${_u}" "${_g}" {} +
+}
+# The names given in the current (pinned) directory handed to $1
+# (owner[:group]) through _ACCT_REOWN_PL, as chown or chgrp handed them,
+# except a link, a FIFO, a socket or a hard-linked file.
+_satellite_reown_names_here() {
+  local _u _g
+  read -r _u _g <<< "$(_satellite_ids "${1}")"
+  [ -n "${_g}" ] || return 1
+  shift
+  perl -e "${_ACCT_REOWN_PL}" -- "${_u}" "${_g}" "$@"
+}
+# The current (pinned) directory and every directory below it set to $1,
+# every regular file below it to $2, as find -type d|f -exec chmod set them,
+# each through a handle opened without following a link, from the
+# directory find walked (-execdir); a hard-linked file is left alone.
+_satellite_modes_walk_here() (
+  PATH=/usr/local/bin:/usr/bin:/bin
+  _satellite_chmod_nofollow d "${1}" .
+  find . -mindepth 1 -type d \
+    -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" d "${1}" {} +
+  find . -mindepth 1 -type f \
+    -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" f "${2}" {} +
+)
+#
 # Update web user.
 _satellite_web_user_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -532,24 +809,6 @@ _acct_gone_write() {
   rm -f -- "${_t}"
   return 1
 }
-_acct_gone_add() {
-  local _a="${1}" _u="${2}" _d=/data/conf/acct-uids _f _r=0
-  [[ "${_a}" =~ ^[a-z0-9-]+$ && "${_u}" =~ ^[1-9][0-9]*$ ]] || return 1
-  mkdir -p "${_d}" && chown root:root "${_d}" && chmod 0711 "${_d}" || return 1
-  for _f in "${_d}"/*.gone; do
-    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
-    [ "${_f}" = "${_d}/${_a}.gone" ] && continue
-    grep -qx -- "${_u}" "${_f}" || continue
-    _acct_gone_write "${_f}" "$(grep -vx -- "${_u}" "${_f}")"
-  done
-  _f="${_d}/${_a}.gone"
-  if ! grep -qsx -- "${_u}" "${_f}"; then
-    _acct_gone_write "${_f}" "$( { cat -- "${_f}" 2> /dev/null; echo "${_u}"; } | sort -un)" || _r=1
-  fi
-  # held back from every other account's next identity (_acct_pick_uid)
-  _acct_unswept_add "${_u}" || _r=1
-  return "${_r}"
-}
 # A number freed for an account identity is listed in
 # /data/conf/acct-uids/.unswept (root's, 0600) until the nightly sweep has
 # handed over what it still owns on the server's own filesystems (a file
@@ -591,33 +850,23 @@ _acct_unswept_add() {
     _acct_gone_write "${_f}" "$(printf '%s\n%s\n' "${_c}" "${_u}" | sort -un)"
   ) 9> "${_d}/.unswept.lock"
 }
-# The records of an earlier account of the name $1, which passwd no longer
-# has (removed other than by boa cleanup purge, its name made again before
-# the ltd worker's prune saw it gone): its recorded numbers and its
-# identities' (the uid list) that no user has stay held for no account
-# (_acct_purged_add) and both records go, so a new account of the name
-# never takes what the earlier one left as its own. An account in passwd
-# (an upgrade) keeps them, and nothing goes while passwd does not answer.
-_acct_gone_retire() {
-  local _a="${1}" _d=/data/conf/acct-uids _c="" _x _u _gone=""
-  [[ "${_a}" =~ ^[a-z0-9-]+$ ]] || return 1
-  getent passwd root > /dev/null 2>&1 || return 0
-  id -u -- "${_a}" > /dev/null 2>&1 && return 0
-  if [ -f "${_d}/${_a}.gone" ] && [ ! -L "${_d}/${_a}.gone" ]; then
-    _c=$(cat -- "${_d}/${_a}.gone") || return 1
+_acct_gone_add() {
+  local _a="${1}" _u="${2}" _d=/data/conf/acct-uids _f _r=0
+  [[ "${_a}" =~ ^[a-z0-9-]+$ && "${_u}" =~ ^[1-9][0-9]*$ ]] || return 1
+  mkdir -p "${_d}" && chown root:root "${_d}" && chmod 0711 "${_d}" || return 1
+  for _f in "${_d}"/*.gone; do
+    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
+    [ "${_f}" = "${_d}/${_a}.gone" ] && continue
+    grep -qx -- "${_u}" "${_f}" || continue
+    _acct_gone_write "${_f}" "$(grep -vx -- "${_u}" "${_f}")"
+  done
+  _f="${_d}/${_a}.gone"
+  if ! grep -qsx -- "${_u}" "${_f}"; then
+    _acct_gone_write "${_f}" "$( { cat -- "${_f}" 2> /dev/null; echo "${_u}"; } | sort -un)" || _r=1
   fi
-  if [ -f "${_d}/${_a}" ] && [ ! -L "${_d}/${_a}" ]; then
-    _x=$(tr ',' '\n' < "${_d}/${_a}") || return 1
-    _c="${_c}"$'\n'"${_x}"
-  fi
-  [ -n "${_c//[[:space:]]/}" ] || return 0
-  while IFS= read -r _u; do
-    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
-    getent passwd "${_u}" > /dev/null 2>&1 && continue
-    _gone="${_gone} ${_u}"
-  done <<< "${_c}"
-  # shellcheck disable=SC2086
-  _acct_purged_add ${_gone} && rm -f -- "${_d}/${_a}.gone" "${_d}/${_a}"
+  # held back from every other account's next identity (_acct_pick_uid)
+  _acct_unswept_add "${_u}" || _r=1
+  return "${_r}"
 }
 # The numbers of an account that is gone (boa cleanup purge, or one removed
 # some other way, which the ltd worker's prune finds by its records) are
@@ -651,6 +900,34 @@ _acct_purged_add() {
     _acct_unswept_add "${_u}" || _r=1
   done <<< "${_n}"
   return "${_r}"
+}
+# The records of an earlier account of the name $1, which passwd no longer
+# has (removed other than by boa cleanup purge, its name made again before
+# the ltd worker's prune saw it gone): its recorded numbers and its
+# identities' (the uid list) that no user has stay held for no account
+# (_acct_purged_add) and both records go, so a new account of the name
+# never takes what the earlier one left as its own. An account in passwd
+# (an upgrade) keeps them, and nothing goes while passwd does not answer.
+_acct_gone_retire() {
+  local _a="${1}" _d=/data/conf/acct-uids _c="" _x _u _gone=""
+  [[ "${_a}" =~ ^[a-z0-9-]+$ ]] || return 1
+  getent passwd root > /dev/null 2>&1 || return 0
+  id -u -- "${_a}" > /dev/null 2>&1 && return 0
+  if [ -f "${_d}/${_a}.gone" ] && [ ! -L "${_d}/${_a}.gone" ]; then
+    _c=$(cat -- "${_d}/${_a}.gone") || return 1
+  fi
+  if [ -f "${_d}/${_a}" ] && [ ! -L "${_d}/${_a}" ]; then
+    _x=$(tr ',' '\n' < "${_d}/${_a}") || return 1
+    _c="${_c}"$'\n'"${_x}"
+  fi
+  [ -n "${_c//[[:space:]]/}" ] || return 0
+  while IFS= read -r _u; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    getent passwd "${_u}" > /dev/null 2>&1 && continue
+    _gone="${_gone} ${_u}"
+  done <<< "${_c}"
+  # shellcheck disable=SC2086
+  _acct_purged_add ${_gone} && rm -f -- "${_d}/${_a}.gone" "${_d}/${_a}"
 }
 # The number a new identity of account $2 is made under, the highest of
 # those that fit first ($1 high, as useradd -r picks one) or the lowest ($1
@@ -815,6 +1092,470 @@ _acct_new_identity() {
   fi
   return 1
 }
+# ./$1 in the current (pinned) directory removed as rm -rf removed it,
+# through _ACCT_RM_OWN_PL: only what root or the instance's own identities
+# own (_acct_walk_uids), never through a link, and nothing below a directory
+# another user owns. Prints dev:ino of each entry left for another owner.
+_satellite_rm_own_here() {
+  local _o
+  [ -e "./${1}" ] || [ -L "./${1}" ] || return 0
+  _o=$(_acct_walk_uids "${_USER}") || return 0
+  perl -e "${_ACCT_RM_OWN_PL}" -- r "${_o}" - "./${1}" 2> /dev/null
+  return 0
+}
+#
+# The instance user's clients/ (the current, pinned directory) cleaned: the
+# legacy client dirs removed, each client's backups/ removed inside that
+# client's real directory, dangling links dropped by find, which walks
+# without following a link; nothing is reached through a link put at
+# clients or at a client name. Only what root or the instance's own
+# identities own is removed (_satellite_rm_own_here): the account can rename
+# into clients/ what another account left group-writable. Prints dev:ino of
+# each entry left because another user owns it.
+_satellite_clients_clean_here() {
+  local _c
+  _satellite_rm_own_here admin
+  _satellite_rm_own_here omega8ccgmailcom
+  _satellite_rm_own_here nocomega8cc
+  for _c in ./*; do
+    [ -d "${_c}" ] && [ ! -L "${_c}" ] || continue
+    _acct_in_real_dir "$(/bin/pwd -P)/${_c#./}" _satellite_rm_own_here backups
+  done
+  find . -xdev -mindepth 1 -xtype l -delete 2> /dev/null
+  return 0
+}
+# The names given (./name) in the current (pinned) directory removed as
+# rm -f removed them (a link as a link, never a directory), through
+# _ACCT_RM_OWN_PL: only what root or the instance's own identities own
+# (_acct_walk_uids), and nothing in a directory another user owns. Prints
+# dev:ino of each entry left for another owner, the directory itself when
+# it is another user's.
+_satellite_unlink_own_here() {
+  local _o
+  _o=$(_acct_walk_uids "${_USER}") || return 0
+  perl -e "${_ACCT_RM_OWN_PL}" -- h "${_o}" - "$@" 2> /dev/null
+  return 0
+}
+# Every entry below the current (pinned) directory older than $1 days removed
+# as find -mindepth 1 -mtime +$1 -execdir rm -rf removed it, the top-level
+# dot names too, through _ACCT_RM_OWN_PL: only what root or the instance's
+# own identities own (_acct_walk_uids), never through a link, and nothing
+# below a directory another user owns. Prints dev:ino of each entry left for
+# another owner.
+_satellite_aged_rm_own_here() {
+  local _o
+  _o=$(_acct_walk_uids "${_USER}") || return 0
+  perl -e "${_ACCT_RM_OWN_PL}" -- a "${_o}" "${1}" 2> /dev/null
+  return 0
+}
+
+# As _SAT_NOFOLLOW_CHMOD_PL, given first the comma-separated uids it acts
+# for (_acct_walk_uids; a uid no passwd entry names counts too, sub own): a
+# name another named uid owns keeps its mode, and nothing is changed unless
+# the current directory and every directory above it, up to /, are owned by
+# those uids, read through '..' from where find stands.
+# The account's identities can rename into their trees what another account
+# left group-writable, a whole directory with everything nested in it, and
+# nothing below such a directory is changed. Prints dev:ino of each name
+# another uid owns, and, given . as a name, of the directory another uid
+# owns above the place when it is refused; status 1 when it is. A list
+# with '-' first (the Verify fixers' deny list) names the uids it never
+# acts for.
+_SAT_CHMOD_OWN_PL='use Fcntl;
+my ($o, $t, $ms) = (shift @ARGV, shift @ARGV, shift @ARGV);
+my $deny = $o =~ s/^-// ? 1 : 0;
+my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, $o);
+sub own { my $u = shift; return (exists $own{$u} ? 0 : 1) if $deny; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
+my ($p, $ok, @d, @x) = (".", 0);
+for (1 .. 256) {
+  @x = stat($p) or last;
+  last unless own($x[4]);
+  if (@d && $x[0] == $d[0] && $x[1] == $d[1]) { $ok = 1; last; }
+  @d = @x;
+  $p .= "/..";
+}
+unless ($ok) {
+  print "$x[0]:$x[1]\n" if @x && !own($x[4]) && grep { $_ eq "." } @ARGV;
+  exit 1;
+}
+my ($m, $k) = (oct($ms), length($ms) < 5 ? 06000 : 0);
+for my $f (@ARGV) {
+  sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
+  my @s = stat($h);
+  if (@s && !own($s[4])) {
+    print "$s[0]:$s[1]\n";
+  } elsif (@s && $t eq "f" && -f _ && $s[3] == 1) {
+    chmod($m, $h);
+  } elsif (@s && $t eq "d" && -d _) {
+    chmod($m | ($s[2] & $k), $h);
+  }
+  close($h);
+}
+exit 0;'
+# uid:gid and mode of ./$1 in the current (pinned) directory when it is a
+# regular file _acct_read_here reads whole (1 MiB at most); fails otherwise.
+_satellite_stat_here() {
+  local _o _m _s
+  [ -f "./${1}" ] && [ ! -L "./${1}" ] || return 1
+  read -r _o _m _s <<< "$(stat -c '%u:%g %a %s' -- "./${1}" 2> /dev/null)"
+  [ -n "${_s}" ] && [ "${_s}" -le 1048576 ] || return 1
+  echo "${_o} ${_m}"
+}
+# ./$2 in the current (pinned) directory made from the regular file ./$1 (the
+# same name edits it in place), through the sed script $3 when given, with
+# $1's owner and mode: what cp -a or sed -i did there, without following a
+# link or opening a FIFO at either name.
+_satellite_copy_here() {
+  local _st
+  _st="$(_satellite_stat_here "${1}")" || return 1
+  _acct_read_here "${1}" | sed -e "${3:-}" \
+    | _satellite_put_stdin_here "${2}" "${_st#* }" "${_st%% *}"
+}
+# The sed script $1 applied as _satellite_copy_here applies it to every name
+# the glob $2 matches in the current (pinned) directory, expanded there.
+_satellite_edit_all_here() (
+  local _f
+  shopt -s nullglob
+  # shellcheck disable=SC2086
+  for _f in ./${2}; do
+    _satellite_copy_here "${_f#./}" "${_f#./}" "${1}"
+  done
+)
+# The current (pinned) directory handed to $1 (owner:group) with the mode
+# $2 (empty: its mode kept), through _SAT_REOWN_OWN_PL: only when root or
+# one of the instance's own identities (_acct_walk_uids) owns it and every
+# directory above it. The account can rename to any name in its tree a
+# directory another account left group-writable: such a directory keeps its
+# owner and mode. Prints dev:ino of the directory left for another owner;
+# status 1 when one is.
+_satellite_own_dir_here() {
+  local _u _g _o
+  read -r _u _g <<< "$(_satellite_ids "${1}")"
+  [ -n "${_g}" ] || return 1
+  _o=$(_acct_walk_uids "${_USER}") || return 1
+  perl -e "${_SAT_REOWN_OWN_PL}" -- "${_o}" "${_u}" "${_g}" . || return 1
+  [ -z "${2}" ] || chmod "${2}" .
+}
+# The names after the type $1 (f or d) and the mode $2 in the current
+# (pinned) directory given that mode through _SAT_CHMOD_OWN_PL: only what
+# root or one of the instance's own identities owns (_acct_walk_uids), only
+# while this directory and every one above it are, never through a link.
+# Prints dev:ino of each entry left for another owner (given ., the
+# directory above that refused the place).
+_satellite_chmod_own_here() {
+  local _o
+  _o=$(_acct_walk_uids "${_USER}") || return 0
+  perl -e "${_SAT_CHMOD_OWN_PL}" -- "${_o}" "$@" 2> /dev/null
+  return 0
+}
+# One NOTE line for what the owner-checked helpers left to another owner:
+# $1 the dev:ino lines they printed, each entry counted once though more
+# than one of them met it, $2 the end of the sentence (how and where it was
+# left). Nothing when none was left.
+_satellite_left_note() {
+  local _n
+  _n=$(printf '%s\n' "${1}" | grep -E '^[0-9]+:[0-9]+$' | sort -u | grep -c .)
+  [ "${_n}" -gt 0 ] || return 0
+  _msg "${_STATUS} A: NOTE: ${_n} entries owned by another user left ${2}"
+}
+# The link ./$1 in the current (pinned) directory handed to $2 (owner[:group]
+# names; an owner alone keeps the link's group), as chown -h handed it: made
+# anew by that owner (setpriv) under a fresh name, to the same target, and
+# renamed over the name, so nothing is chowned by name where the account
+# could swap a file in for the link. Left as it is when it already has that
+# owner or cannot be made so. Only the owner is compared: in a setgid
+# directory a new link takes the directory's group whatever the maker's, and
+# a link's group grants nothing, so comparing it would re-make the link on
+# every pass.
+_satellite_relink_here() {
+  local _t="./.${1}.rln.$$.${RANDOM}" _l _u _g
+  read -r _u _g <<< "$(_satellite_ids "${2}")"
+  [ -L "./${1}" ] || return 1
+  [ "${_g}" = "-1" ] && _g="$(stat -c %g -- "./${1}" 2> /dev/null)"
+  [[ "${_u}" =~ ^[0-9]+$ && "${_g}" =~ ^[0-9]+$ ]] || return 1
+  [ "$(stat -c '%u' -- "./${1}" 2> /dev/null)" = "${_u}" ] && return 0
+  _l="$(readlink -- "./${1}")" && [ -n "${_l}" ] || return 1
+  rm -f -- "${_t}"
+  setpriv --reuid="${_u}" --regid="${_g}" --clear-groups \
+    ln -s -- "${_l}" "${_t}" 2> /dev/null
+  if [ -L "${_t}" ] && mv -f -T -- "${_t}" "./${1}"; then
+    return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+# One value of the account's hostmaster alias ($1 = the key and its closing
+# quote, as root' or site_path'), parsed as before from a bounded read that
+# never follows a link or blocks on a FIFO.
+_satellite_hm_alias_get() {
+  _acct_read_in "${_ROOT}/.drush" hostmaster.alias.drushrc.php \
+    | grep "${1}" \
+    | cut -d: -f2 \
+    | awk '{ print $3}' \
+    | sed "s/[\,']//g" 2>&1
+}
+
+# The control panel's own PHP switches (docs/cnf/barracuda.cnf), read from
+# the box cnf as bash reads it: the last assignment wins, export, quotes
+# and a trailing comment are tolerated, and a key that is not there yet
+# (a box whose barracuda pass has not appended it) takes the shipped
+# default, on. The children see them through the sealed include only.
+_satellite_hm_switches() {
+  local _k _v
+  for _k in _HM_CLI_FLOOR _HM_FPM_POOL _HM_FPM_VERSION; do
+    _v=$(grep -iE "^[[:space:]]*(export[[:space:]]+)?${_k}=" /root/.barracuda.cnf 2>/dev/null \
+      | tail -n 1 | sed -E 's/^[^=]*=//; s/[[:space:]]+#.*$//' | tr -d "\"' " | tr -d '\n')
+    printf -v "${_k}" '%s' "${_v}"
+  done
+  [ -z "${_HM_CLI_FLOOR}" ] && _HM_CLI_FLOOR=7.4
+  [ -z "${_HM_FPM_POOL}" ] && _HM_FPM_POOL=YES
+  export _HM_CLI_FLOOR _HM_FPM_POOL _HM_FPM_VERSION
+}
+
+# True when $1 names one of the account's own hostmaster roots
+# (<root>/aegir/distro/<name>) or, with $2 = site, a site in one
+# (.../<name>/sites/<site>). The alias is the account's file: a path read
+# from it is used only there, and as root only through _acct_in_real_dir,
+# which also refuses a link or a dot name on the way; otherwise it goes,
+# quoted, to the account user's own shell, which reaches nothing more than
+# the account itself can.
+_satellite_hm_path_ok() {
+  local _p="${1#"${_ROOT}/aegir/distro/"}"
+  [ -n "${1}" ] && [ "${_p}" != "${1}" ] || return 1
+  if [ "${2}" = "site" ]; then
+    [[ "${_p}" =~ ^[^/]+/sites/[^/]+$ ]]
+  else
+    [[ "${_p}" =~ ^[^/]+$ ]]
+  fi
+}
+_satellite_in_store() {
+  local _k="${1}" _d="${2}" _r _s _m _top
+  shift 2
+  if [ ! -L "${_d}" ]; then
+    _acct_in_real_dir "${_d}" "$@"
+    return
+  fi
+  _r="$(readlink -f -- "${_d}" 2> /dev/null)"
+  _s="$(cd -P -- /data/disk 2> /dev/null && /bin/pwd -P)/${_USER}/static/files/"
+  # The store on attached storage is /mnt/<mount>/files/<oN>/static/files,
+  # the mount itself possibly nested, as migratefs accepts it under /mnt,
+  # as the nightly decides it.
+  case "${_r}" in
+    ""|*[!A-Za-z0-9._/-]*) return 1 ;;
+    "${_s}"?*)
+      _top="${_r#"${_s}"}"
+      ;;
+    /mnt/?*/files/"${_USER}"/static/files/?*)
+      _m="${_r%%/files/"${_USER}"/static/files/*}"
+      case "${_m}" in
+        */files/*|*/static/*) return 1 ;;
+      esac
+      _top="${_r#"${_m}"/files/"${_USER}"/static/files/}"
+      ;;
+    *) return 1 ;;
+  esac
+  case "${_k}:${_top}" in
+    site:.*) return 1 ;;
+  esac
+  ( cd -P -- "${_r}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_r}" ] && "$@" )
+}
+# Run "$@" inside the real directory $1, as _acct_in_real_dir runs it, or,
+# when $1 is a link into the account's files store (backups relocated onto
+# the store, a site's files/ or private/ moved into it), inside the
+# directory the link resolves to: only one in the account's own
+# static/files, or in the store moved onto attached storage
+# (/mnt/<mount>/files/<oN>/static/files). Any other link is refused. The
+# backups link leads to the store's .backups by design; a site's store is
+# never a dot-name right below the store root (BOA's own .backups,
+# .backup-exports, .archived), so _satellite_in_site_store_dir refuses one.
+_satellite_in_store_dir() {
+  _satellite_in_store any "$@"
+}
+_satellite_in_site_store_dir() {
+  _satellite_in_store site "$@"
+}
+# ./$1 in the current (pinned) directory made a directory where missing,
+# then "${@:2}" run inside it as _acct_in_real_dir runs it: a link put at
+# the name is never followed or entered.
+_satellite_sub_here() {
+  local _n="${1}"
+  shift
+  mkdir -p -- "./${_n}" 2> /dev/null
+  _acct_in_real_dir "./${_n}" "$@"
+}
+# The command line $1 run by the instance user from its own home, with HOME
+# set to it and the system PATH, whatever the calling environment holds
+# (git reads its config from HOME): whatever a link in the account's tree
+# leads to, it reaches only what that user may change.
+_satellite_as_user() {
+  su -s /bin/bash "${_USER}" \
+    -c "cd ${_ROOT} && export HOME=${_ROOT} PATH=/usr/local/bin:/usr/bin:/bin && { ${1}; }"
+}
+# +i cleared on each regular file named, in the current (pinned) directory,
+# through a handle (_ACCT_CHATTR_PL): never through a link, nor on a file
+# the account hard-linked or renamed over the name.
+_satellite_unlock_here() {
+  local _f
+  for _f in "$@"; do
+    [ -f "./${_f}" ] && [ ! -L "./${_f}" ] \
+      && perl -e "${_ACCT_CHATTR_PL}" - "./${_f}" &> /dev/null
+  done
+  return 0
+}
+# The current (pinned) platforms/ of a main login and each entry in it
+# locked ($1 = +i) or unlocked (-i): a directory entry from inside it (on
+# '.', once entered as the real directory), a regular file through a handle
+# (_ACCT_CHATTR_PL, a single link only); a link is left alone.
+_satellite_chattr_all_here() {
+  local _e
+  chattr "${1}" . &> /dev/null
+  for _e in ./*; do
+    if [ -d "${_e}" ] && [ ! -L "${_e}" ]; then
+      _acct_in_real_dir "${_e}" chattr "${1}" . &> /dev/null
+    elif [ -f "${_e}" ] && [ ! -L "${_e}" ]; then
+      perl -e "${_ACCT_CHATTR_PL}" "${1%i}" "${_e}" &> /dev/null
+    fi
+  done
+  return 0
+}
+# The current (pinned) ~/.drush of a main login locked ($1 = +i) or
+# unlocked (-i) with its usr/ when that is a real directory (from inside
+# it, on '.'); unlocking also clears a CLI php.ini an earlier release left,
+# for the ltd worker to remove.
+_satellite_chattr_drush_here() {
+  chattr "${1}" . &> /dev/null
+  [ -d ./usr ] && [ ! -L ./usr ] \
+    && _acct_in_real_dir ./usr chattr "${1}" . &> /dev/null
+  [ "${1}" = "-i" ] && _satellite_unlock_here php.ini
+  return 0
+}
+# The current (pinned) directory and every directory and single-link
+# regular file below it unlocked (-i), each through a handle opened without
+# following a link or blocking on a FIFO (_ACCT_CHATTR_PL), from the
+# directory find walked (-execdir): a link, a FIFO or a hard-linked file is
+# left alone.
+_satellite_unlock_tree_here() {
+  perl -e "${_ACCT_CHATTR_PL}" - . &> /dev/null
+  env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 \
+    \( -type d -o -type f \) \
+    -execdir perl -e "${_ACCT_CHATTR_PL}" - {} + &> /dev/null
+  return 0
+}
+# Every directory set to $1 and every file to $2 below the current (pinned)
+# directory, top-level dot names left out as the globs this replaces left
+# them, each through a handle opened without following a link, from the
+# directory find walked (-execdir).
+_satellite_tree_modes_here() (
+  PATH=/usr/local/bin:/usr/bin:/bin
+  find . -mindepth 1 -path './.*' -prune -o -type d \
+    -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" d "${1}" {} +
+  find . -mindepth 1 -path './.*' -prune -o -type f \
+    -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" f "${2}" {} +
+)
+# The current (pinned) directory and every directory below it set to $1,
+# every regular file below it to $2, dot entries included, as the nightly
+# sets a site's files store, each through a handle opened without
+# following a link, from the directory find walked (-execdir): a name
+# swapped for a link during the walk is refused, never followed. Only what
+# root or one of the instance's own identities owns is changed, and nothing
+# below a directory another user owns (_SAT_CHMOD_OWN_PL). Prints dev:ino of
+# each entry left for another owner.
+_satellite_tree_mode_all_here() (
+  local _o
+  PATH=/usr/local/bin:/usr/bin:/bin
+  _o=$(_acct_walk_uids "${_USER}") || exit 0
+  perl -e "${_SAT_CHMOD_OWN_PL}" -- "${_o}" d "${1}" . 2> /dev/null || exit 0
+  find . -mindepth 1 -type d \
+    -execdir perl -e "${_SAT_CHMOD_OWN_PL}" -- "${_o}" d "${1}" {} +
+  find . -mindepth 1 -type f \
+    -execdir perl -e "${_SAT_CHMOD_OWN_PL}" -- "${_o}" f "${2}" {} +
+)
+# The current (pinned) backups directory's system/ (and system/$1 when
+# given) made where missing, handed to the instance user and set 0700,
+# each inside its real directory: the instance user moves its own old
+# backups there. Only where root or the instance's own identities own the
+# directory (_satellite_own_dir_here): nothing is made in a backups or a
+# system another user owns, which is tested before the first mkdir (the
+# same walker with no owner to give changes nothing). Prints dev:ino of the
+# directory left for another owner.
+_satellite_sys_dir_here() {
+  local _o
+  _o=$(_acct_walk_uids "${_USER}") || return 1
+  perl -e "${_SAT_REOWN_OWN_PL}" -- "${_o}" -1 -1 . || return 1
+  _satellite_sub_here system _satellite_own_dir_here \
+    "${_USER}:${_ACCG:-users}" 0700 || return 1
+  [ -z "${1}" ] || _acct_in_real_dir ./system _satellite_sub_here "${1}" \
+    _satellite_own_dir_here "${_USER}:${_ACCG:-users}" 0700
+}
+# The main login's new ~/.tmp (the current, pinned directory): anything
+# older than a day removed from inside the directory find walked, the tree
+# handed to the login (_satellite_reown_here), the directory 0755.
+_satellite_ftp_tmp_here() (
+  PATH=/usr/local/bin:/usr/bin:/bin
+  _satellite_own_dir_here "${_USERFTP}:${_ACCG:-users}" 755 || exit 1
+  touch .
+  _satellite_aged_rm_own_here 0
+  _satellite_reown_own_here "${_USERFTP}:${_ACCG:-users}"
+)
+# A login's ~/.bazaar (the current, pinned directory) seeded: bazaar.conf
+# put as a fresh file, the tree handed to $1 (owner:group) as
+# _satellite_reown_own_here hands it (what another user owns stays its),
+# the directory 0700.
+_satellite_bzr_seed_here() {
+  _acct_put_here bazaar.conf ignore_missing_extensions=True
+  _satellite_reown_own_here "${1}"
+  chmod 700 .
+}
+# The main login's ~/.drush/usr (the current, pinned directory) handed to
+# the login, its mode kept, and ./$1 linked to the instance user's own copy
+# of that drush extension, all from inside the one directory: its owner
+# test, the test of what holds the name and the link meet the same usr/
+# whatever is renamed onto that name meanwhile, and no owner is set through
+# a link or on a file put at it. The login can rename to usr, or to an
+# extension's name in it, what another account left group-writable. A usr/
+# another user owns keeps its owner and mode and gets no link. At the name,
+# a file or a link root or one of the instance's own identities owns is
+# removed (_satellite_unlink_own_here), a directory never, and the link is
+# made only where the name is then free (-T: never inside a directory at
+# the name, nor where a link there points), so another user's entry stays
+# as it is. Prints dev:ino of the directory or entry left for another
+# owner; status 1 when the link was not made.
+_satellite_user_ds_usr_here() {
+  local _o
+  _satellite_own_dir_here "${_USERFTP}:${_ACCG:-users}" "" || return 1
+  _satellite_unlink_own_here "./${1}"
+  if [ -d "./${1}" ] && [ ! -L "./${1}" ]; then
+    # the walker with no owner to give changes nothing: it prints a
+    # directory another user owns
+    _o=$(_acct_walk_uids "${_USER}") || return 1
+    perl -e "${_SAT_REOWN_OWN_PL}" -- "${_o}" -1 -1 "./${1}"
+    return 1
+  fi
+  ln -s -T -- "${_ROOT}/.drush/usr/${1}" "./${1}"
+}
+# The main login's ~/.drush (the current, pinned directory) and its usr/
+# made real directories and handed to the login, ~/.drush 0700, and usr/$1
+# linked to the instance user's own copy of that drush extension
+# (_satellite_user_ds_usr_here): a link put at usr is removed first, and
+# usr/ is entered once, as the real directory, for all that is done in it.
+# ~/.drush is handed over only where root or one of the instance's own
+# identities owns it (_satellite_own_dir_here), before anything is made in
+# it: the login can rename to .drush a directory another account left
+# group-writable, which keeps its owner and mode, with no usr/ made in it.
+# Prints dev:ino of each directory or entry left for another owner; status
+# 1 when the link was not made.
+_satellite_user_ds_link_here() {
+  _satellite_own_dir_here "${_USERFTP}:${_ACCG:-users}" 700 || return 1
+  [ -L ./usr ] && rm -f ./usr
+  mkdir -p ./usr
+  _acct_in_real_dir ./usr _satellite_user_ds_usr_here "${1}"
+}
+# ./$2 in the current (pinned) directory made a link to $1 where no name
+# there resolves.
+_satellite_link_new_here() {
+  [ -e "./${2}" ] || ln -sfn "${1}" "./${2}"
+}
+
 #
 # Remove web user.
 _satellite_remove_web_user() {
@@ -852,6 +1593,26 @@ _satellite_remove_web_user() {
 }
 
 #
+# An identity of an account that holds its own web group is listed in that
+# group (supplementary, verified in the group database, never by id -nG),
+# and so is one of an account converted onto a group an identity outside it
+# holds too (_web_group_conv: its paths are in that group); nothing to do
+# while the account has none. $1 = the identity.
+_satellite_wg_grant() {
+  local _st _g
+  _st=$(_web_group_state "${1}")
+  if [ "${_st%% *}" != "held" ] && [ -z "$(_web_group_conv "${1}" "${_st}")" ]; then
+    return 0
+  fi
+  _g="${_st##* }"
+  getent group "${_g}" | cut -d: -f4 | tr ',' '\n' | grep -qxF "${1}" && return 0
+  usermod -aG "${_g}" "${1}" &> /dev/null
+  getent group "${_g}" | cut -d: -f4 | tr ',' '\n' | grep -qxF "${1}" && return 0
+  _msg "${_STATUS} A: ALRT: ${1} could not be listed in ${_g}"
+  return 1
+}
+
+#
 # Add web user.
 _satellite_create_web_user() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -881,26 +1642,6 @@ _satellite_create_web_user() {
   # its own web group, the pool is listed in it before its pool file is
   # written and FPM reloaded, or its workers could not read settings.php.
   _satellite_wg_grant "${_WEB}"
-}
-
-#
-# An identity of an account that holds its own web group is listed in that
-# group (supplementary, verified in the group database, never by id -nG),
-# and so is one of an account converted onto a group an identity outside it
-# holds too (_web_group_conv: its paths are in that group); nothing to do
-# while the account has none. $1 = the identity.
-_satellite_wg_grant() {
-  local _st _g
-  _st=$(_web_group_state "${1}")
-  if [ "${_st%% *}" != "held" ] && [ -z "$(_web_group_conv "${1}" "${_st}")" ]; then
-    return 0
-  fi
-  _g="${_st##* }"
-  getent group "${_g}" | cut -d: -f4 | tr ',' '\n' | grep -qxF "${1}" && return 0
-  usermod -aG "${_g}" "${1}" &> /dev/null
-  getent group "${_g}" | cut -d: -f4 | tr ',' '\n' | grep -qxF "${1}" && return 0
-  _msg "${_STATUS} A: ALRT: ${1} could not be listed in ${_g}"
-  return 1
 }
 
 #
@@ -1019,6 +1760,112 @@ _php_fpm_memory_limit() {
 _satellite_newrelic_in_ini() {
   [ -f "/opt/php$1/etc/php$1.ini" ] \
     && grep -q "^extension=newrelic\.so[[:space:]]*$" "/opt/php$1/etc/php$1.ini"
+}
+
+# $1 without the blanks around it; nothing for text over 1024 characters,
+# longer than any value read this way, so the caller keeps its own value
+# (the cost of these trims grows with the square of the length).
+_satellite_trim() {
+  local _t="${1}"
+  [ "${#_t}" -le 1024 ] || return 0
+  _t="${_t#"${_t%%[![:space:]]*}"}"
+  printf '%s' "${_t%"${_t##*[![:space:]]}"}"
+}
+# The account's password file $2 in the real directory $1, read bounded and
+# joined into one line as echo joined it, never expanded as a file name
+# pattern; nothing for text over 256 characters (the generators make 128 at
+# most).
+_satellite_pass_read() (
+  local _v
+  _v="$(_acct_read_in "${1}" "${2}")"
+  [ "${#_v}" -le 256 ] || exit 0
+  set -f
+  # shellcheck disable=SC2086
+  echo -n ${_v}
+)
+# Root's reader of an account's plan file in log/, a copy of usage.sh's: ./$1
+# through one handle, only while it is root's regular file with one link that
+# no one else can write, at most 64 KiB. On Linux the handle carries the
+# root-only stamp trusted.boa.plan with the file's own name: a file stamped
+# with another name (a file of root's the account renamed, or one copied with
+# cp -a) is refused with status 6, an unstamped one is stamped. $2 "read"
+# prints its mtime on a line, then its bytes; "stamp" only stamps. Status 3:
+# no such name; 4: anything else there; 5: a read error.
+# shellcheck disable=SC2016
+_PLAN_HREAD_PL='use Fcntl; use Errno qw(ENOENT ENODATA EOPNOTSUPP); my ($n, $m) = @ARGV; exit 4 unless defined $m && ($m eq "read" || $m eq "stamp"); (my $b = $n) =~ s{^\./}{}; exit 4 unless $b =~ /^[A-Za-z0-9_][A-Za-z0-9_.-]{0,63}$/; sysopen(my $h, $n, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit($! == ENOENT ? 3 : 4); my @t = stat($h); exit 4 unless @t && -f _ && $t[3] == 1 && $t[4] == 0 && $t[7] <= 65536 && ($t[2] & 022) == 0; if ($^O eq "linux" && eval { require "syscall.ph"; 1 }) { my ($k, $v) = ("trusted.boa.plan", "\0" x 256); my $g = syscall(&SYS_fgetxattr, fileno($h), $k, $v, 256); if ($g >= 0) { exit 6 unless substr($v, 0, $g) eq $b; } elsif ($! == ENODATA) { syscall(&SYS_fsetxattr, fileno($h), $k, $b, length($b), 0); } elsif ($! != EOPNOTSUPP) { exit 4; } } exit 0 if $m eq "stamp"; my ($d, $r) = (""); while ($r = sysread($h, my $c, 65536)) { $d .= $c; exit 4 if length($d) > 65536; } exit 5 unless defined $r; close($h); binmode(STDOUT); print "$t[9]\n", $d or exit 5; exit 0'
+# The account's log/$1 as root wrote it under that name (_PLAN_HREAD_PL):
+# log/ is the account's, so a file it made there, a link, a FIFO or a file of
+# root's it renamed there sizes nothing. Sets _sLog to the bytes, blanks
+# around them dropped. Status 0: root's file; 1: no such name; 2: something
+# else is there.
+_satellite_root_log() {
+  local _r _s
+  _sLog=
+  _r="$(_acct_in_real_dir "${_ROOT}/log" perl -e "${_PLAN_HREAD_PL}" \
+    -- "./${1}" read && printf x)"
+  _s=$?
+  if [ "${_s}" -ne 0 ]; then
+    [ -e "${_ROOT}/log/${1}" ] || [ -L "${_ROOT}/log/${1}" ] || return 1
+    return 2
+  fi
+  _r="${_r%x}"
+  _sLog="$(_satellite_trim "${_r#*$'\n'}")"
+  return 0
+}
+# The account's plan file log/$1, root's, stamped with its own name
+# (_PLAN_HREAD_PL "stamp") right after root wrote it.
+_satellite_plan_stamp() {
+  _acct_in_real_dir "${_ROOT}/log" perl -e "${_PLAN_HREAD_PL}" \
+    -- "./${1}" stamp > /dev/null 2>&1
+}
+# The engines count the pool sizing multiplies by: root's log/cores.txt when
+# it holds a whole number (leading zeros dropped, at most nine digits, so
+# the product stays a number), otherwise _CLIENT_CORES as the root cnf or
+# this pass set it. Never digits picked out of other text: a file of root's
+# renamed to cores.txt (fpm.txt holds 8.4) gives no count.
+_satellite_cores_now() {
+  local _v
+  _satellite_root_log cores.txt || return 0
+  _v="${_sLog}"
+  [[ "${_v}" =~ ^[0-9]+$ ]] || return 0
+  _v="${_v#"${_v%%[!0]*}"}"
+  [ -n "${_v}" ] && [ "${#_v}" -le 9 ] || return 0
+  _CLIENT_CORES="${_v}"
+}
+# $1 made literal for the replacement of a sed s/// command: each '\', '/'
+# and '&' escaped and line breaks dropped, so no text can end the command
+# or add to it.
+_satellite_sed_rep() {
+  local _v
+  _v=${1//$'\n'/}
+  # shellcheck disable=SC1003
+  _v=${_v//\\/'\\'}
+  _v=${_v//\//'\/'}
+  _v=${_v//&/'\&'}
+  printf '%s' "${_v}"
+}
+# export $1="the value of $1" appended to the include being written
+# (_writeTo), the value quoted for the shell (printf %q), so no text can end
+# its quotes.
+_satellite_inc_put() {
+  printf 'export %s=%q\n' "${1}" "${!1}" >> "${_writeTo}"
+}
+
+#
+# One PHP version in the text of fpm.info or cli.info, dotted (8.4) or
+# two-digit (84, as the ltd worker also reads it), printed dotted; nothing for
+# any other text, and nothing for text over 64 characters, before any
+# pattern substitution (its cost grows with the square of the length).
+_satellite_php_vrn() {
+  [ "${#1}" -le 64 ] || return 0
+  local _t="${1//[^0-9.]/}" _d="${1//[^0-9]/}"
+  case "${_t}" in
+    [0-9].[0-9]|[0-9][0-9]) ;;
+    *) return 0 ;;
+  esac
+  case "${_d}" in
+    56|70|71|72|73|74|80|81|82|83|84|85|86) echo "${_d:0:1}.${_d:1:1}" ;;
+  esac
 }
 
 #
@@ -1324,6 +2171,138 @@ _disable_chattr() {
   fi
 }
 
+#
+# Every NUL byte of the cnf $1 dropped, said once; nothing when it holds
+# none, is a link or no file. A run of NUL bytes that cut a line short (a
+# crash can zero-fill a file's tail from the middle of a line) ends that
+# line, so a line written after it later starts a line of its own. The
+# healed text is written beside the cnf and renamed over it (its mode
+# kept), so a heal that cannot be finished leaves the cnf as it was, and a
+# NOTE says so. Status 0 always.
+_satellite_cnf_nul_heal() {
+  local _t
+  [[ -f "$1" && ! -L "$1" ]] || return 0
+  [[ "$(tr -d '\000' < "$1" | wc -c)" != "$(wc -c < "$1")" ]] || return 0
+  _t="$1.nulheal.$$"
+  rm -f -- "${_t}"
+  if { perl -0777 -pe 's/(?<=[^\n\0])\0+/\n/g; tr/\0//d' < "$1" > "${_t}" \
+    && chmod --reference="$1" -- "${_t}" && mv -f -- "${_t}" "$1"; } 2> /dev/null; then
+    _msg "NOTE: NUL bytes dropped from $1 (a crash can zero-fill a file's tail; bash stops reading a file at its first NUL byte)"
+  else
+    rm -f -- "${_t}"
+    _msg "NOTE: NUL bytes could not be dropped from $1: it stays as it was, and the next pass tries again"
+  fi
+  return 0
+}
+
+#
+# The value the last assignment of setting $2 in cnf $1 gives it, read as
+# bash reads the file: export is tolerated, a quoted value ends at its
+# closing quote, any other at the first blank or semicolon. Nothing when the
+# file assigns it nowhere or cannot be read.
+# A NUL byte in the file (a crash can zero-fill its tail) hides no line:
+# grep reads it as text.
+_satellite_db_broker_cnf_last() {
+  local _v
+  _v=$(grep -aE "^[[:space:]]*(export[[:space:]]+)?${2}=" "${1}" 2> /dev/null | tail -n 1)
+  _v="${_v#*=}"
+  case "${_v}" in
+    \"*) _v="${_v#\"}"; _v="${_v%%\"*}" ;;
+    \'*) _v="${_v#\'}"; _v="${_v%%\'*}" ;;
+    *) _v="${_v%%[[:space:];]*}" ;;
+  esac
+  printf '%s' "${_v}"
+}
+
+#
+# One call the pass makes of the database broker by itself ($@), said as one
+# line of the pass: the broker's last line when that is its OK line, a NOTE
+# naming the call with that line otherwise. A refusal is never an alarm and
+# never the end of the pass: what the broker refuses stays as it is, nothing
+# is tried again or forced, and the next pass asks anew. The line is
+# repeated only as printable text of the broker's own shape, and never with
+# a word the pass launchers read as an alarm in a pass's log: a row's host
+# and a database's name are an account's to choose. A call that stopped
+# after it changed something (scope-failed, baseline-settle-incomplete), or
+# that an SQL statement failed in (sql-failed: never a policy refusal), is
+# no refusal: each ALRT line of the broker's answer is relayed (printable,
+# at most 20 lines of 512 characters, OOPS: said without its colon, a word
+# the launchers read as an oops while the line is an alarm already) and the
+# call's line is an ALRT too, so the pass is reported with errors, as a new
+# account's failed switch is.
+# Each login a settle revoked or dropped is named on an INFO line of its own
+# (at most 20, printable, the alarm words kept out as above), so a login of
+# an operator's own that loses its rights is never named in the broker's
+# log alone.
+_satellite_db_broker_call() {
+  local _out _rc _last _kind="NOTE" _l _na=0 _ns=0
+  _out=$(/usr/local/bin/boa-dbctl "$@" 2>&1 < /dev/null)
+  _rc=$?
+  _last=$(printf '%s' "${_out##*$'\n'}" | LC_ALL=C tr -cd ' -~' | cut -c1-300)
+  case "${_last}" in
+    "ERR 7 scope-failed "*|"ERR 7 baseline-settle-incomplete "*|"ERR 7 sql-failed "*) _kind="ALRT" ;;
+  esac
+  while IFS= read -r _l; do
+    case "${_l}" in
+      "ALRT: "*)
+        [[ "${_kind}" == "ALRT" && "${_na}" -lt 20 ]] || continue
+        _na=$(( _na + 1 ))
+        _l=$(printf '%s' "${_l#ALRT: }" | LC_ALL=C tr -cd ' -~' | cut -c1-512)
+        _msg "ALRT: database broker: ${_l//OOPS:/OOPS }"
+        ;;
+      "settled revoked "*|"settled dropped "*)
+        [[ "${_ns}" -lt 20 ]] || continue
+        _ns=$(( _ns + 1 ))
+        _l=$(printf '%s' "${_l}" | LC_ALL=C tr -cd ' -~' | cut -c1-300)
+        case "${_l}" in
+          *ALRT*|*"FATAL ERROR"*|*OOPS:*|*"cannot open shared object file"*)
+            _l="${_l#settled }"
+            _l="settled ${_l%% *}: the login's name is in /var/log/boa/dbctl/dbctl.log"
+            ;;
+        esac
+        _msg "INFO: database broker: ${_l}"
+        ;;
+    esac
+  done <<< "${_out}"
+  if [[ "${_rc}" == "0" && "${_last}" == "OK "* ]]; then
+    _kind="INFO"
+  elif [[ "${_last}" == "ERR "* ]]; then
+    _last="$*: ${_last}"
+  else
+    _last="$*: no answer line, exit ${_rc}"
+  fi
+  case "${_last}" in
+    *ALRT*|*"FATAL ERROR"*|*OOPS:*|*"cannot open shared object file"*)
+      _last="$*: exit ${_rc}, its answer is in /var/log/boa/dbctl/dbctl.log"
+      ;;
+  esac
+  _msg "${_kind}: database broker: ${_last}"
+  return 0
+}
+
+# The account's control/ judged once a pass (_acct_ctrl_own): _sat_ctrl_has
+# is 0 when the name $1 is in it and it is the account's own, and
+# _sat_ctrl_foreign is 0 when it is not the account's own. The pass then
+# neither reads nor writes there: the cnf's PHP versions, the platforms
+# list and the pools stay as they are, and the run says why (ALRT).
+_sat_ctrl_judge() {
+  [ "${_SAT_CTRL_FOR:-}" = "${_USER}" ] && return 0
+  _SAT_CTRL_FOR="${_USER}"
+  _SAT_CTRL_OWN=YES
+  if ! _SAT_CTRL_WHY=$(_acct_ctrl_own "${_USER}"); then
+    _SAT_CTRL_OWN=NO
+    _msg "ALRT: ${_ROOT}/static/control is not ${_USER}'s own (${_SAT_CTRL_WHY}); its control files are not read"
+  fi
+  return 0
+}
+_sat_ctrl_has() {
+  _sat_ctrl_judge
+  [ "${_SAT_CTRL_OWN}" = "YES" ] && [ -e "${_ROOT}/static/control/${1}" ]
+}
+_sat_ctrl_foreign() {
+  _sat_ctrl_judge
+  [ "${_SAT_CTRL_OWN}" = "NO" ]
+}
 #
 # Read or create Octopus cnf file.
 _satellite_cnf() {
@@ -2460,57 +3439,457 @@ _satellite_update_drush_php_cli() {
   fi
 }
 
+# What $1 is, for an alert: a link with its owner and where it points, or
+# the file type and owner.
+_satellite_what_is() {
+  if [ -L "${1}" ]; then
+    echo "a link of uid $(stat -c %u -- "${1}" 2> /dev/null) to $(readlink -- "${1}")"
+  else
+    echo "a $(stat -c '%F of uid %u' -- "${1}" 2> /dev/null)"
+  fi
+}
+# The pass stopped at the store, each argument said first as a line of its
+# own: a name of root's there that this store does not use is left for the
+# admin as it is, never removed, followed or built around.
+_satellite_store_stop() {
+  local _l
+  for _l in "$@"; do
+    _msg "${_STATUS} A: FATAL ERROR: ${_l}"
+  done
+  _msg "${_STATUS} A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
+  touch "/opt/tmp/state/.root/${_USER}/status-AegirSetupA-FAIL"
+  exit 1
+}
+# Why a name of root's in the store can be one this store does not use,
+# and how to repair it, by who put it there: the second line of the FATAL
+# that names it. Root's passes re-own what is in the store, so no owner
+# there or behind a link tells who made it; only the admin's own records
+# do. The platforms built on shared code link into the store by these
+# names, so a directory an admin moved elsewhere behind the link is moved
+# back into place, never left behind; anything else is never moved into
+# the store, which is restored from a backup.
+_satellite_store_name_why() {
+  echo "an earlier release's recursive chown to root also re-owned what an account had left in the store, and root's passes re-own what is in the store, so a link or file of root's at this name can be the account's work, and neither its owner nor the owner of what it leads to tells who made them. To repair, check what it is (a link: where it leads). A link to a directory an admin moved elsewhere (known from your own records, never from an owner): remove the link (rm removes a link itself, never what it leads to), move that directory to this name (or mount it here) and run the upgrade again; never just remove the link: the platforms built on shared code link into the store by this name, and an empty directory here gets back only what this release builds (${_DRUPAL6}, ${_DRUPAL7} and its own shared code), so every site on an older shared core or an older release's shared code stays down until its trees are back. Anything else (a file, or a link not known to be an admin's, whoever owns it or what it leads to): what it holds or leads to can be an account's work, so never move it into the store; remove it, restore this directory from a backup (or let the pass make it an empty directory of root's and the next upgrade that builds platforms make what this release builds, with every site on an older shared core or an older release's shared code down until its trees are back) and run the upgrade again"
+}
+# The pass stopped at a link of root's at the store that is not used ($1:
+# why), with the rule the link is used by, what can leave such a link
+# there, and how to repair it by who put the store where it leads, or
+# with $2 as that second line when there is one; the link and where it
+# leads are left as they are. Earlier releases' chowns by path went
+# through the link, so no owner tells who made the link or the directory
+# it leads to; only the admin's own records do. The platforms built on
+# shared code link into the store, so a store an admin moved elsewhere is
+# moved to /data/disk/all before the link is pointed there: an empty store
+# gets back only what the current release builds. Anything else is never
+# moved into the store, which is restored from a backup instead. The
+# store is kept behind a link only in the real directory /data/disk/all,
+# so when that name holds a link or anything but a directory, the first
+# line says so and to remove it first: no repair can put the store there
+# while it does.
+_satellite_store_link_stop() {
+  local _w=""
+  if [ -z "${2:-}" ] && { [ -L /data/disk/all ] \
+    || { [ -e /data/disk/all ] && [ ! -d /data/disk/all ]; }; }; then
+    _w="; /data/disk/all is $(_satellite_what_is /data/disk/all), not the real directory the store has to be: remove it first (rm removes a link itself, never what it leads to), make /data/disk/all a directory of root's and repair as below"
+  fi
+  _msg "${_STATUS} A: FATAL ERROR: ${_D} is $(_satellite_what_is "${_D}"), not used, left in place: ${1}${_w}"
+  if [ -n "${2:-}" ]; then
+    _msg "${_STATUS} A: FATAL ERROR: ${2}"
+  else
+    _msg "${_STATUS} A: FATAL ERROR: a link of root's at ${_D} is used only when it leads to /data/disk/all, the directory named all directly in the real /data/disk, and every link on the way and every directory above it is root's and closed to others. An earlier release's recursive chown to root also re-owned a link an account had left at ${_D}, and earlier releases' chowns to root by path went through such a link into the directory it led to, so this link can be the account's work, and neither its owner nor the owner of what it leads to tells who made them. To repair, check where it points (readlink ${_D}). A store an admin moved there (known from your own records, never from an owner): move its content to /data/disk/all (or mount it there), point ${_D} at /data/disk/all and run the upgrade again; never just re-point or remove the link: the platforms built on shared code link into the store, and an empty store gets back only what this release builds (${_DRUPAL6}, ${_DRUPAL7} and its own shared code), so every site on an older shared core or an older release's shared code stays down until its trees are back. Anything else, whoever owns it: its content can be an account's work, so never move it into the store; restore the store into /data/disk/all from a backup (or make /data/disk/all an empty directory of root's and let the next upgrade that builds platforms make what this release builds, with every site on an older shared core or an older release's shared code down until its trees are back), then point ${_D} at /data/disk/all and run the upgrade again"
+  fi
+  _satellite_store_stop
+}
 #
-# Create shared dirs.
-_satellite_create_shared_dirs() {
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _satellite_create_shared_dirs"
-    _debug_proc
+# The shared trees this pass needs, built by root before the platform build
+# runs as the account: AegirSetupC's shared phase (the same catalogue,
+# platform list and download mode the account's phase reads) makes the
+# D6/D7 cores in 000/core and the shared platforms in ${_CORE}, each in a
+# stage directory beside its name, moved into place when it is complete
+# (every fetch for it succeeded and what the build makes is in it).
+# The account's phase only reads the store: nothing in it is handed over.
+# Archives are unpacked as the account's build unpacked them (owned by the
+# one who unpacks, modes under the umask), and the modes the build sets (a
+# cache or files directory open to all, a settings.php writable by all) are
+# closed to others in the stage before it is placed, and again over what
+# the phase made (_satellite_lent_back_here).
+#
+# The store's one-time pass (_SAT_REBUILD, decided in
+# _satellite_create_shared_dirs while 000 holds no ${_SAT_REBUILT}): earlier
+# releases let the account build these trees and own the store while it
+# did, so what an account wrote there then is root's now and cannot be told
+# apart by owner or mode. On the first pass that builds platforms
+# (_SAT_REBUILD=YES), the bundles already in ${_CORE} are fetched again (the
+# forced check_fix path), so is the bundle a current core links from an
+# earlier serial (_satellite_core_bundles_redo), every tree the shared phase
+# makes that is already there is built again and swapped in, and every
+# POSIX ACL in the store is removed (_satellite_store_no_acl_here; the daily
+# sweep then puts back the owners and modes the store keeps). Nothing is
+# replaced by what a failed fetch left: what could not be fetched or built
+# again stays as it was and is named in 000 (${_SAT_REBUILD_LEFT}), and the
+# next pass (_SAT_REBUILD=LEFT) does only that, so an archive the mirror
+# keeps failing costs that one item on each pass, never the whole pass
+# again. The record in 000 is written only when nothing is left, and keeps
+# the pass from running again (_satellite_rebuild_record).
+_SAT_REBUILT="rebuilt-by-root.info"
+_SAT_REBUILD_LEFT="rebuilt-by-root.left"
+# fremovexattr's system call number, read once per walk from perl's own
+# syscall.ph (every Debian and Devuan perl carries it) and handed to
+# _SAT_ROOT_NO_ACL_PL, so the perl find starts in each directory does not
+# load it again; nothing when it cannot be read.
+_satellite_xattr_nr() {
+  perl -e 'my $n = eval { require "syscall.ph"; &SYS_fremovexattr }; print $n if defined $n && $n =~ /^[0-9]+$/' 2> /dev/null
+}
+
+#
+# Every directory and single-link regular file in the current (pinned)
+# store, '.' included, handed to root:root with its POSIX ACLs removed
+# through its own handle (_SAT_ROOT_NO_ACL_PL), never through a link: the
+# store's one-time pass. The daily sweep run right after it puts back the
+# owners and modes the store keeps (_satellite_shared_fix_here).
+_satellite_store_no_acl_here() (
+  PATH=/usr/local/bin:/usr/bin:/bin
+  local _x
+  _x="$(_satellite_xattr_nr)"
+  perl -e "${_SAT_ROOT_NO_ACL_PL}" -- "${_x}" .
+  find . -mindepth 1 \( -type d -o -type f \) \
+    -execdir perl -e "${_SAT_ROOT_NO_ACL_PL}" -- "${_x}" {} +
+)
+# The current (pinned) directory and everything below it handed back to
+# root:root as chown -R root:root handed it (_satellite_reown_here), the
+# walk calling perl only where a name is not root's already.
+_satellite_root_back_here() {
+  _satellite_reown_here root:root \! \( -uid 0 -gid 0 \)
+}
+# The daily sweep of the current (pinned) shared store, as the path globs it
+# replaces set it: the store handed to root, 000/ 0755 directories and 0644
+# files, */*/profiles 0755, the sites/all/{modules,libraries,themes} of
+# */* and 000/core/* 02775, then every */*/sites and
+# */*/{web,docroot,html}/sites tree handed to root:users, and the day's
+# stamp put. find never follows a link, each name is changed from the
+# directory find walked, through a handle, and dot names at the first two
+# levels are left out as the globs left them.
+_satellite_shared_fix_here() (
+  PATH=/usr/local/bin:/usr/bin:/bin
+  local _users
+  _satellite_root_back_here
+  _acct_in_real_dir ./000 _satellite_modes_walk_here 0755 0644
+  find . -mindepth 3 -maxdepth 3 -regextype posix-extended \
+    -regex '\./[^/.][^/]*/[^/.][^/]*/profiles' \( -type d -o -type f \) \
+    -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" d 755 {} + \
+    -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" f 755 {} +
+  find . -mindepth 5 -maxdepth 5 -regextype posix-extended \
+    -regex '\./[^/.][^/]*/[^/.][^/]*/sites/all/(modules|libraries|themes)' \
+    \( -type d -o -type f \) \
+    -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" d 02775 {} + \
+    -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" f 02775 {} +
+  find . -mindepth 6 -maxdepth 6 -regextype posix-extended \
+    -regex '\./000/core/[^/.][^/]*/sites/all/(modules|libraries|themes)' \
+    \( -type d -o -type f \) \
+    -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" d 02775 {} + \
+    -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" f 02775 {} +
+  _users=$(getent group users 2> /dev/null | cut -d: -f3)
+  if [[ "${_users}" =~ ^[0-9]+$ ]]; then
+    find . -mindepth 1 -regextype posix-extended \
+      \( -regex '\./[^/]+(/[^/]+)?' \) \
+      -o \( -regex '\./[^/.][^/]*/[^/.][^/]*/sites(/.*)?' \( -type d -o -type f \) \
+        -execdir perl -e "${_ACCT_REOWN_PL}" -- 0 "${_users}" {} + \) \
+      -o -prune
+    find . -mindepth 1 -regextype posix-extended \
+      \( -regex '\./[^/]+(/[^/]+)?' \
+        -o -regex '\./[^/.][^/]*/[^/.][^/]*/(web|docroot|html)' \) \
+      -o \( -regex '\./[^/.][^/]*/[^/.][^/]*/(web|docroot|html)/sites(/.*)?' \
+        \( -type d -o -type f \) \
+        -execdir perl -e "${_ACCT_REOWN_PL}" -- 0 "${_users}" {} + \) \
+      -o -prune
   fi
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "${_STATUS} A: Creating shared directories..."
-  fi
-  rm -rf /data/src
-  ### The store, 000/, 000/core, 000/modules and ${_CORE} stay root's for
-  ### the whole run and nothing in them is handed over: root builds the
-  ### shared trees (_satellite_build_shared). The first four were checked
-  ### at the start of this pass (_satellite_store_dirs_back) and are checked
-  ### again here, then ${_CORE} the same way. /data/conf is never handed
-  ### over: it stays root's for the whole run (_satellite_add_user_dirs).
-  _satellite_store_dirs_back
-  _acct_in_real_dir "${_D_REAL}" _satellite_store_sub_here "${_CORE##*/}"
-  if [ "$?" -eq 3 ]; then
-    _satellite_store_stop
-  fi
-  ### 777 here made /data, /data/disk, /data/conf and the shared /data/all
-  ### store writable by every local user for the whole platform build below
-  ### (reverted only in _satellite_batch_cleanup) -- long enough to drop code
-  ### into a codebase every legacy site loads, or into the global config tree.
-  ### Root builds the shared trees and the account's build only reads them;
-  ### nothing writes in /data/conf, which stays root's. These are the same
-  ### modes _satellite_batch_cleanup asserts at the end of the run.
-  chmod 0755 ${_D} &> /dev/null
-  chmod 0711 /data /data/disk /data/conf &> /dev/null
-  _acct_in_real_dir "${_CORE}" chmod 0711 . &> /dev/null
-  ### The store's one-time pass (_satellite_build_shared) is due while 000
-  ### holds no record of it. The first such pass does all of it: the
-  ### bundles already in ${_CORE} are then fetched again on the forced
-  ### check_fix path. A pass that could not do all of it named what is
-  ### left in 000 (${_SAT_REBUILD_LEFT}), and the next pass does only that.
-  _SAT_REBUILD=NO
-  _SAT_LEFT_ITEMS=""
-  _SAT_REDO_DONE=""
-  _SAT_REDO_LEFT=""
-  if [ ! -e "${_D_REAL}/000/${_SAT_REBUILT}" ]; then
-    _SAT_LEFT_ITEMS="$(_acct_read_in "${_D_REAL}/000" "${_SAT_REBUILD_LEFT}")"
-    if [ -n "${_SAT_LEFT_ITEMS}" ]; then
-      _SAT_REBUILD=LEFT
+  _acct_put_here "permissions-fix-${_xSrl}-${_X_VERSION}-${_TODAY}.info" fixed
+)
+#
+# The store's one-time pass, closed: $1 the shared phase's signal prefix
+# (its -DONE and -MISSED lists), $2 YES when the ACLs are to be removed in
+# this pass, $3 the trees and cores this pass was asked to build again (a
+# LEFT pass), $4 what was left that is no longer there to do. A tree asked
+# for that the shared phase neither built again nor missed is not one it
+# makes any more (another catalogue, or gone): dropped with an alert, as an
+# older serial's trees are left. What is still left (the trees and cores
+# missed, the bundles not fetched again, the ACLs when neither perl's
+# syscall.ph nor setfacl is there) is named in 000 for the next pass, and
+# the record is written only when nothing is; the last line says which.
+_satellite_rebuild_record() {
+  local _st="${1}" _acl="${2}" _asked="${3}" _gone="${4}" _p _done _missed
+  local _left="" _what _nt=0 _nb=0
+  _done="$(cat -- "${_st}-DONE" 2> /dev/null)"
+  _missed="$(cat -- "${_st}-MISSED" 2> /dev/null)"
+  for _p in ${_asked}; do
+    printf '%s\n%s\n' "${_done}" "${_missed}" | grep -qxF -- "${_p}" \
+      || _gone="${_gone} ${_p}"
+  done
+  [ -n "${_done}" ] && _nt="$(printf '%s\n' "${_done}" | grep -c .)"
+  for _p in ${_SAT_REDO_DONE}; do
+    _nb=$((_nb + 1))
+  done
+  while IFS= read -r _p; do
+    [ -n "${_p}" ] && _left="${_left}tree ${_p}"$'\n'
+  done <<< "${_missed}"
+  for _p in ${_SAT_REDO_LEFT}; do
+    _left="${_left}bundle ${_p}"$'\n'
+  done
+  _what="${_nb} bundle(s) fetched again, ${_nt} shared core(s) and tree(s) built again"
+  if [ "${_acl}" = "YES" ]; then
+    # ACLs go only through perl's syscall.ph or setfacl (_SAT_ROOT_NO_ACL_PL)
+    if [ -z "$(_satellite_xattr_nr)" ] && [ ! -x /usr/bin/setfacl ] \
+      && [ ! -x /bin/setfacl ]; then
+      _msg "${_STATUS} A: ALRT POSIX ACLs cannot be removed here (no syscall.ph for perl, no setfacl): the store keeps any it has"
+      _left="${_left}acl"$'\n'
     else
-      _SAT_REBUILD=YES
-      if [ -e "${_CORE}/o_contrib_seven" ] || [ -e "${_CORE}/o_contrib" ]; then
-        _O_CONTRIB_FORCED_UP=YES
-      fi
+      _acct_in_real_dir "${_D_REAL:-${_D}}" _satellite_store_no_acl_here &> /dev/null
+      _acct_in_real_dir "${_D_REAL:-${_D}}" _satellite_shared_fix_here &> /dev/null
+      _what="${_what}, ACLs removed"
     fi
+  fi
+  if [ -n "${_gone// /}" ]; then
+    _msg "${_STATUS} A: ALRT left out of the shared store's one-time pass, no longer built here:${_gone}"
+  fi
+  if [ -z "${_left}" ]; then
+    _acct_in_real_dir "${_D_REAL:-${_D}}" _acct_in_real_dir ./000 \
+      _acct_put_here "${_SAT_REBUILT}" "${_xSrl}-${_X_VERSION} $(date +%F)"
+    _acct_in_real_dir "${_D_REAL:-${_D}}" _acct_in_real_dir ./000 \
+      rm -f -- "./${_SAT_REBUILD_LEFT}"
+    _msg "${_STATUS} A: Shared store rebuilt by root once: ${_what}"
+  else
+    _acct_in_real_dir "${_D_REAL:-${_D}}" _acct_in_real_dir ./000 \
+      _acct_put_here "${_SAT_REBUILD_LEFT}" "${_left%$'\n'}"
+    _msg "${_STATUS} A: ALRT shared store's one-time pass not complete (${_what}), left for the next pass: $(printf '%s' "${_left}" | tr '\n' ';' | sed 's/;$//; s/;/; /g')"
+  fi
+}
+# $1, a download function, run in the current directory: status 0 only when
+# every fetch it made succeeded (_GET_FAILS, counted by _get_dev_contrib and
+# by the Backdrop webform fetch).
+_satellite_all_fetched_here() {
+  _GET_FAILS=0
+  "${1}"
+  [ "${_GET_FAILS}" -eq 0 ]
+}
+#
+# The bundle ./$1 in the current (pinned) serial directory fetched again by
+# $2 (a download function that fills the directory it runs in, the bundle's
+# links into ${_D}/000/modules included): $2 fills a fresh stage beside the
+# bundle (stages a stopped pass left are removed first), and the stage,
+# once every fetch $2 made succeeded
+# (_satellite_all_fetched_here) and it holds a module (a directory, or a link
+# to one: Drupal 12's shelf holds only its link into the store), is swapped
+# in for the bundle in one rename (_SAT_SWAP_PL), so a site loading the bundle never
+# finds it emptied or part-fetched while it is fetched; where one rename
+# cannot do it, the bundle is moved aside first and the stage moved in. The
+# old bundle is removed with the stage. A stage a fetch failed for is
+# dropped and the bundle kept whole (status 1). Archives unpack owned by
+# root, whatever owner they recorded.
+_satellite_bundle_redo_in() {
+  local _s="./.${1}.redo.$$"
+  find . -mindepth 1 -maxdepth 1 -name ".${1}.redo.*" \
+    -exec rm -rf -- {} + &> /dev/null
+  mkdir -m 0755 -- "${_s}" || return 1
+  if ! TAR_OPTIONS="--no-same-owner" \
+    _acct_in_real_dir "${_s}" _satellite_all_fetched_here "${2}" \
+    || [ -z "$(find "${_s}" -mindepth 1 -maxdepth 1 -xtype d -print -quit)" ]; then
+    _msg "${_STATUS} A: ALRT ${PWD}/${1} not fetched again (a fetch failed), kept as it was"
+    rm -rf -- "${_s}"
+    return 1
+  fi
+  if ! perl -e "${_SAT_SWAP_PL}" -- "${_s}" "./${1}" 2> /dev/null; then
+    mv -T -- "./${1}" "${_s}.old" || { rm -rf -- "${_s}"; return 1; }
+    if ! mv -T -- "${_s}" "./${1}"; then
+      mv -T -- "${_s}.old" "./${1}"
+      rm -rf -- "${_s}"
+      return 1
+    fi
+  fi
+  rm -rf -- "${_s}" "${_s}.old"
+}
+#
+# The bundle $2 of the serial directory $1 fetched again on the forced path
+# by its own download function (_satellite_bundle_redo_in), the outcome kept
+# for the store's one-time pass (_satellite_rebuild_record): _SAT_REDO_DONE,
+# or _SAT_REDO_LEFT when it was not fetched again.
+_satellite_bundle_redo_at() {
+  local _fn="_satellite_download_${2}"
+  [ "${2}" = "o_contrib" ] && _fn=_satellite_download_o_contrib_six
+  if _acct_in_real_dir "${1}" _satellite_bundle_redo_in "${2}" "${_fn}"; then
+    _SAT_REDO_DONE="${_SAT_REDO_DONE} ${1}/${2}"
+    return 0
+  fi
+  _SAT_REDO_LEFT="${_SAT_REDO_LEFT} ${1}/${2}"
+  return 1
+}
+
+#
+# The bundle a current shared core links from a serial other than ${_CORE}
+# fetched again on the forced path (_satellite_bundle_redo_at), on the
+# store's first one-time pass: a core built under an earlier serial keeps
+# linking that serial's bundle when it is built again (_shared_core in
+# AegirSetupC), and copies files from it, and its sites load it.
+_satellite_core_bundles_redo() {
+  local _c _b _l
+  for _c in "${_DRUPAL6}:o_contrib" "${_DRUPAL7}:o_contrib_seven"; do
+    _b="${_c#*:}"
+    _l="$(readlink "${_D}/000/core/${_c%%:*}/modules/${_b}" 2> /dev/null)"
+    [[ "${_l}" =~ ^/data/all/[0-9]+/${_b}$ ]] || continue
+    [ "${_l%/*}" != "${_CORE}" ] && [ -d "${_l}" ] && [ ! -L "${_l%/*}" ] \
+      || continue
+    [[ " ${_SAT_REDO_DONE} ${_SAT_REDO_LEFT} " == *" ${_l} "* ]] && continue
+    _msg "${_STATUS} A: Running ${_l} forced upgrade..."
+    _satellite_bundle_redo_at "${_l%/*}" "${_b}"
+  done
+}
+# A link at a current shared core's name in the current (pinned) 000/core
+# (an earlier release lent 000/core to the account) is removed, never taken
+# for the core, so root's build makes that core again.
+_satellite_core_links_here() {
+  local _c
+  for _c in "$@"; do
+    if [ -L "./${_c}" ]; then
+      _msg "${_STATUS} A: ALRT ${PWD}/${_c} was $(_satellite_what_is "./${_c}"): removed, the build makes this core again"
+      rm -f -- "./${_c}"
+    fi
+  done
+  return 0
+}
+
+#
+# '.' of the current (pinned) directory handed back to root:root and
+# cleared of POSIX ACLs (_SAT_ROOT_NO_ACL_PL), then given the mode $1 (five
+# digits, so set-ID bits the account set go too). An ACL the account set
+# while it owned the directory outlasts the new owner and mode: a named
+# entry keeps its grant, and a default ACL is copied onto every entry made
+# in it later, root's too.
+_satellite_dot_back_here() {
+  chown -h root:root . || return 1
+  perl -e "${_SAT_ROOT_NO_ACL_PL}" -- "$(_satellite_xattr_nr)" .
+  chmod "${1}" .
+}
+#
+# ./$1 in the current (pinned) directory of the store used only as a real
+# directory of root's. A link, or anything but a directory, at the name:
+# not root's, it is removed with an alert, never followed (return 2);
+# root's, it is left as it is and reported with why and how to repair it
+# (return 3: the caller stops the pass). The directory is then made when
+# missing and handed back to root on
+# '.' from inside it, as a take-back closes a lent one
+# (_satellite_dot_back_here: owner, no ACLs, 00755), since the account an
+# earlier release handed it to could have widened its mode or set an ACL.
+_satellite_store_sub_here() {
+  local _rc=0
+  if [ -L "./${1}" ] || { [ -e "./${1}" ] && [ ! -d "./${1}" ]; }; then
+    if [ "$(stat -c %u -- "./${1}" 2> /dev/null)" = "0" ]; then
+      _msg "${_STATUS} A: FATAL ERROR: ${PWD}/${1} is $(_satellite_what_is "./${1}"), not a directory this store uses: left in place"
+      _msg "${_STATUS} A: FATAL ERROR: $(_satellite_store_name_why)"
+      return 3
+    fi
+    _msg "${_STATUS} A: ALRT ${PWD}/${1} was $(_satellite_what_is "./${1}"), not root's: removed"
+    rm -f -- "./${1}"
+    _rc=2
+  fi
+  [ -d "./${1}" ] || mkdir -m 0755 -- "./${1}" &> /dev/null
+  _acct_in_real_dir "./${1}" _satellite_dot_back_here 00755 &> /dev/null
+  return "${_rc}"
+}
+#
+# The missing bundle $1 made in ${_CORE} as a fresh directory (never through a
+# link put at the name) and filled by $2 from inside it, only when this mkdir
+# made it: a name that is taken by then is not root's to fill. Archives
+# unpack owned by root, whatever owner they recorded.
+_satellite_bundle_new() {
+  if ! _acct_in_real_dir "${_CORE}" mkdir -m 0755 -- "./${1}" &> /dev/null; then
+    _msg "${_STATUS} A: ALRT ${_CORE}/${1} not made (the name is taken), not fetched"
+    return 1
+  fi
+  TAR_OPTIONS="--no-same-owner" _acct_in_real_dir "${_CORE}/${1}" "${2}"
+}
+
+# The top of the current (pinned) shared store at the end of the run: each
+# name directly in it 0711 (a directory keeping its set-ID bits), the
+# cpuinfo file 0644, the store and its 000/ 0755, as chmod set them by path,
+# never through a link. A cpuinfo that is not a single-link regular file,
+# empty or not (a link or a hard link an account put there under an earlier
+# release), is removed, so the next writer puts a fresh one instead of
+# writing through it; one a writer holds truncated for a moment is kept.
+_satellite_shared_top_here() {
+  if [ -L ./cpuinfo ]; then
+    rm -f -- ./cpuinfo
+  elif [ -e ./cpuinfo ]; then
+    case "$(stat -c '%F:%h' -- ./cpuinfo 2> /dev/null)" in
+      "regular file:1"|"regular empty file:1") ;;
+      *) rm -f -- ./cpuinfo ;;
+    esac
+  fi
+  _satellite_chmod_nofollow d 0711 ./*
+  _satellite_chmod_nofollow f 0711 ./*
+  _satellite_chmod_nofollow f 644 ./cpuinfo
+  chmod 0755 .
+  _acct_in_real_dir ./000 chmod 0755 .
+}
+# /data/disk/all where the link of root's at the store leads (_D_REAL,
+# _SAT_STORE_TARGET_PL; every link and directory above it checked)
+# handed back to root when it is not root's alone, from inside it as a
+# real store is (_satellite_dot_back_here: owner, ACLs, 0755), with an
+# alert naming the owner and mode it had; one still not root's 0755 after
+# that stops the pass, which then names what can refuse the take-back,
+# since the link already leads where it should.
+_satellite_store_link_back() {
+  local _was _u _m
+  _was="$(stat -c '%u %a' -- "${_D_REAL}" 2> /dev/null)"
+  _u="${_was%% *}"
+  _m="${_was##* }"
+  if [ "${_u}" = "0" ] && [[ "${_m}" =~ ^[0-7]+$ ]] \
+    && [ "$(( 8#${_m} & 8#022 ))" = "0" ]; then
+    return 0
+  fi
+  _acct_in_real_dir "${_D_REAL}" _satellite_dot_back_here 00755 &> /dev/null
+  if [ "$(stat -c '%u %a' -- "${_D_REAL}" 2> /dev/null)" != "0 755" ]; then
+    _satellite_store_link_stop "it leads to ${_D_REAL}, uid ${_u} mode ${_m}, which could not be taken back" \
+      "the link leads where it should, to ${_D_REAL}, but that directory could not be handed back to root 0755 (an immutable attribute, or a read-only or root-squashed mount, refuses it). To repair, fix that (lsattr -d ${_D_REAL}, the mount's options) and run the upgrade again; the link and the store's content stay as they are"
+  fi
+  _msg "${_STATUS} A: ALRT ${_D_REAL}, where the link of root's at ${_D} leads, was uid ${_u} mode ${_m} (an earlier release's chown or chmod of the store through the link): taken back, root's 0755"
+}
+# $1 as the directory root works in: itself when it is a real directory;
+# when it is a link, the real directory it leads to, only when every link
+# on the way is root's and every directory on the way, the last one
+# included, is root's and writable by no one else, so no one but root can
+# change where it leads or what is in it; nothing otherwise (exit 1). With
+# a second argument "last", the last directory may be anyone's and open to
+# others; every link and every directory above it is checked as before
+# (the store check uses no other directory than /data/disk/all, which it
+# takes back). One text wherever it is defined.
+_ROOT_REAL_PATH_PL='my ($p, $k) = @ARGV; if (!-l $p) { print $p if -d _; exit(-d _ ? 0 : 1); } my ($c, $n, @s) = ("", 0, stat("/")); exit 1 unless $p =~ m{^/} && @s && $s[4] == 0 && !($s[2] & 022); my @w = grep { length && $_ ne "." } split(m{/}, $p); while (@w) { my $e = shift(@w); if ($e eq "..") { $c =~ s{/[^/]*$}{}; next; } my @l = lstat("$c/$e") or exit 1; if (-l _) { exit 1 if $l[4] != 0 || ++$n > 40; my $t = readlink("$c/$e"); exit 1 unless defined $t; $c = "" if $t =~ m{^/}; unshift(@w, grep { length && $_ ne "." } split(m{/}, $t)); next; } exit 1 unless -d _ && (($l[4] == 0 && !($l[2] & 022)) || (defined $k && $k eq "last" && !@w)); $c .= "/$e"; } print($c eq "" ? "/" : $c); exit 0'
+# $1, the real directory a link of root's at /data/all leads to
+# (_ROOT_REAL_PATH_PL's answer), is the one the store may be kept in
+# behind that link (exit 0) only when it is /data/disk/all, the directory
+# named all directly in the real /data/disk, compared by device and inode
+# with that name not followed, so a link put at it does not count; any
+# other directory, or none, exit 1. Besides a real /data/all it is the
+# one layout of the store BOA knows, and the one other store directory
+# every PHP-FPM pool's open_basedir names. One text wherever it is defined
+# (satellite.sh.inc, BOA.sh.txt, xoct, xcopy, manage_solr_config.sh,
+# night.inc.sh).
+_SAT_STORE_TARGET_PL='my @t = lstat(defined $ARGV[0] ? $ARGV[0] : ""); my @a = lstat("/data/disk/all"); exit((@t && @a && -d _ && $t[0] == $a[0] && $t[1] == $a[1]) ? 0 : 1)'
+# After a store, 000 or 000/core that was not root's was replaced by an
+# empty one: the shared cores the account platforms link to (each
+# platform's index.php link, read by find without following it) that
+# 000/core no longer holds are named, since their sites stay down until
+# they are back; a pass that builds platforms makes only ${_DRUPAL6} and
+# ${_DRUPAL7} again.
+_satellite_cores_gone_alert() {
+  local _c _gone=""
+  for _c in $(env PATH=/usr/local/bin:/usr/bin:/bin find /data/disk/*/distro \
+    -mindepth 3 -maxdepth 3 -name index.php -type l \
+    -lname "${_D}/000/core/*/index.php" -printf '%l\n' 2> /dev/null \
+    | sed -n "s|^${_D}/000/core/\([A-Za-z0-9._-]*\)/index.php$|\1|p" \
+    | sort -u); do
+    [ -d "${_D_REAL}/000/core/${_c}" ] || _gone="${_gone:+${_gone} }${_c}"
+  done
+  if [ -n "${_gone}" ]; then
+    _msg "${_STATUS} A: ALRT shared cores the platforms link to are gone from ${_D}/000/core: ${_gone}; sites on them stay down until the admin puts them back (a pass that builds platforms makes ${_DRUPAL6} and ${_DRUPAL7} again, not older ones)"
   fi
 }
 
@@ -2598,153 +3977,56 @@ _satellite_store_dirs_back() {
 }
 
 #
-# ./$1 in the current (pinned) directory of the store used only as a real
-# directory of root's. A link, or anything but a directory, at the name:
-# not root's, it is removed with an alert, never followed (return 2);
-# root's, it is left as it is and reported with why and how to repair it
-# (return 3: the caller stops the pass). The directory is then made when
-# missing and handed back to root on
-# '.' from inside it, as a take-back closes a lent one
-# (_satellite_dot_back_here: owner, no ACLs, 00755), since the account an
-# earlier release handed it to could have widened its mode or set an ACL.
-_satellite_store_sub_here() {
-  local _rc=0
-  if [ -L "./${1}" ] || { [ -e "./${1}" ] && [ ! -d "./${1}" ]; }; then
-    if [ "$(stat -c %u -- "./${1}" 2> /dev/null)" = "0" ]; then
-      _msg "${_STATUS} A: FATAL ERROR: ${PWD}/${1} is $(_satellite_what_is "./${1}"), not a directory this store uses: left in place"
-      _msg "${_STATUS} A: FATAL ERROR: $(_satellite_store_name_why)"
-      return 3
+# Create shared dirs.
+_satellite_create_shared_dirs() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _satellite_create_shared_dirs"
+    _debug_proc
+  fi
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "${_STATUS} A: Creating shared directories..."
+  fi
+  rm -rf /data/src
+  ### The store, 000/, 000/core, 000/modules and ${_CORE} stay root's for
+  ### the whole run and nothing in them is handed over: root builds the
+  ### shared trees (_satellite_build_shared). The first four were checked
+  ### at the start of this pass (_satellite_store_dirs_back) and are checked
+  ### again here, then ${_CORE} the same way. /data/conf is never handed
+  ### over: it stays root's for the whole run (_satellite_add_user_dirs).
+  _satellite_store_dirs_back
+  _acct_in_real_dir "${_D_REAL}" _satellite_store_sub_here "${_CORE##*/}"
+  if [ "$?" -eq 3 ]; then
+    _satellite_store_stop
+  fi
+  ### 777 here made /data, /data/disk, /data/conf and the shared /data/all
+  ### store writable by every local user for the whole platform build below
+  ### (reverted only in _satellite_batch_cleanup) -- long enough to drop code
+  ### into a codebase every legacy site loads, or into the global config tree.
+  ### Root builds the shared trees and the account's build only reads them;
+  ### nothing writes in /data/conf, which stays root's. These are the same
+  ### modes _satellite_batch_cleanup asserts at the end of the run.
+  chmod 0755 ${_D} &> /dev/null
+  chmod 0711 /data /data/disk /data/conf &> /dev/null
+  _acct_in_real_dir "${_CORE}" chmod 0711 . &> /dev/null
+  ### The store's one-time pass (_satellite_build_shared) is due while 000
+  ### holds no record of it. The first such pass does all of it: the
+  ### bundles already in ${_CORE} are then fetched again on the forced
+  ### check_fix path. A pass that could not do all of it named what is
+  ### left in 000 (${_SAT_REBUILD_LEFT}), and the next pass does only that.
+  _SAT_REBUILD=NO
+  _SAT_LEFT_ITEMS=""
+  _SAT_REDO_DONE=""
+  _SAT_REDO_LEFT=""
+  if [ ! -e "${_D_REAL}/000/${_SAT_REBUILT}" ]; then
+    _SAT_LEFT_ITEMS="$(_acct_read_in "${_D_REAL}/000" "${_SAT_REBUILD_LEFT}")"
+    if [ -n "${_SAT_LEFT_ITEMS}" ]; then
+      _SAT_REBUILD=LEFT
+    else
+      _SAT_REBUILD=YES
+      if [ -e "${_CORE}/o_contrib_seven" ] || [ -e "${_CORE}/o_contrib" ]; then
+        _O_CONTRIB_FORCED_UP=YES
+      fi
     fi
-    _msg "${_STATUS} A: ALRT ${PWD}/${1} was $(_satellite_what_is "./${1}"), not root's: removed"
-    rm -f -- "./${1}"
-    _rc=2
-  fi
-  [ -d "./${1}" ] || mkdir -m 0755 -- "./${1}" &> /dev/null
-  _acct_in_real_dir "./${1}" _satellite_dot_back_here 00755 &> /dev/null
-  return "${_rc}"
-}
-# What $1 is, for an alert: a link with its owner and where it points, or
-# the file type and owner.
-_satellite_what_is() {
-  if [ -L "${1}" ]; then
-    echo "a link of uid $(stat -c %u -- "${1}" 2> /dev/null) to $(readlink -- "${1}")"
-  else
-    echo "a $(stat -c '%F of uid %u' -- "${1}" 2> /dev/null)"
-  fi
-}
-# The pass stopped at the store, each argument said first as a line of its
-# own: a name of root's there that this store does not use is left for the
-# admin as it is, never removed, followed or built around.
-_satellite_store_stop() {
-  local _l
-  for _l in "$@"; do
-    _msg "${_STATUS} A: FATAL ERROR: ${_l}"
-  done
-  _msg "${_STATUS} A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
-  touch "/opt/tmp/state/.root/${_USER}/status-AegirSetupA-FAIL"
-  exit 1
-}
-# Why a name of root's in the store can be one this store does not use,
-# and how to repair it, by who put it there: the second line of the FATAL
-# that names it. Root's passes re-own what is in the store, so no owner
-# there or behind a link tells who made it; only the admin's own records
-# do. The platforms built on shared code link into the store by these
-# names, so a directory an admin moved elsewhere behind the link is moved
-# back into place, never left behind; anything else is never moved into
-# the store, which is restored from a backup.
-_satellite_store_name_why() {
-  echo "an earlier release's recursive chown to root also re-owned what an account had left in the store, and root's passes re-own what is in the store, so a link or file of root's at this name can be the account's work, and neither its owner nor the owner of what it leads to tells who made them. To repair, check what it is (a link: where it leads). A link to a directory an admin moved elsewhere (known from your own records, never from an owner): remove the link (rm removes a link itself, never what it leads to), move that directory to this name (or mount it here) and run the upgrade again; never just remove the link: the platforms built on shared code link into the store by this name, and an empty directory here gets back only what this release builds (${_DRUPAL6}, ${_DRUPAL7} and its own shared code), so every site on an older shared core or an older release's shared code stays down until its trees are back. Anything else (a file, or a link not known to be an admin's, whoever owns it or what it leads to): what it holds or leads to can be an account's work, so never move it into the store; remove it, restore this directory from a backup (or let the pass make it an empty directory of root's and the next upgrade that builds platforms make what this release builds, with every site on an older shared core or an older release's shared code down until its trees are back) and run the upgrade again"
-}
-# The pass stopped at a link of root's at the store that is not used ($1:
-# why), with the rule the link is used by, what can leave such a link
-# there, and how to repair it by who put the store where it leads, or
-# with $2 as that second line when there is one; the link and where it
-# leads are left as they are. Earlier releases' chowns by path went
-# through the link, so no owner tells who made the link or the directory
-# it leads to; only the admin's own records do. The platforms built on
-# shared code link into the store, so a store an admin moved elsewhere is
-# moved to /data/disk/all before the link is pointed there: an empty store
-# gets back only what the current release builds. Anything else is never
-# moved into the store, which is restored from a backup instead. The
-# store is kept behind a link only in the real directory /data/disk/all,
-# so when that name holds a link or anything but a directory, the first
-# line says so and to remove it first: no repair can put the store there
-# while it does.
-_satellite_store_link_stop() {
-  local _w=""
-  if [ -z "${2:-}" ] && { [ -L /data/disk/all ] \
-    || { [ -e /data/disk/all ] && [ ! -d /data/disk/all ]; }; }; then
-    _w="; /data/disk/all is $(_satellite_what_is /data/disk/all), not the real directory the store has to be: remove it first (rm removes a link itself, never what it leads to), make /data/disk/all a directory of root's and repair as below"
-  fi
-  _msg "${_STATUS} A: FATAL ERROR: ${_D} is $(_satellite_what_is "${_D}"), not used, left in place: ${1}${_w}"
-  if [ -n "${2:-}" ]; then
-    _msg "${_STATUS} A: FATAL ERROR: ${2}"
-  else
-    _msg "${_STATUS} A: FATAL ERROR: a link of root's at ${_D} is used only when it leads to /data/disk/all, the directory named all directly in the real /data/disk, and every link on the way and every directory above it is root's and closed to others. An earlier release's recursive chown to root also re-owned a link an account had left at ${_D}, and earlier releases' chowns to root by path went through such a link into the directory it led to, so this link can be the account's work, and neither its owner nor the owner of what it leads to tells who made them. To repair, check where it points (readlink ${_D}). A store an admin moved there (known from your own records, never from an owner): move its content to /data/disk/all (or mount it there), point ${_D} at /data/disk/all and run the upgrade again; never just re-point or remove the link: the platforms built on shared code link into the store, and an empty store gets back only what this release builds (${_DRUPAL6}, ${_DRUPAL7} and its own shared code), so every site on an older shared core or an older release's shared code stays down until its trees are back. Anything else, whoever owns it: its content can be an account's work, so never move it into the store; restore the store into /data/disk/all from a backup (or make /data/disk/all an empty directory of root's and let the next upgrade that builds platforms make what this release builds, with every site on an older shared core or an older release's shared code down until its trees are back), then point ${_D} at /data/disk/all and run the upgrade again"
-  fi
-  _satellite_store_stop
-}
-# /data/disk/all where the link of root's at the store leads (_D_REAL,
-# _SAT_STORE_TARGET_PL; every link and directory above it checked)
-# handed back to root when it is not root's alone, from inside it as a
-# real store is (_satellite_dot_back_here: owner, ACLs, 0755), with an
-# alert naming the owner and mode it had; one still not root's 0755 after
-# that stops the pass, which then names what can refuse the take-back,
-# since the link already leads where it should.
-_satellite_store_link_back() {
-  local _was _u _m
-  _was="$(stat -c '%u %a' -- "${_D_REAL}" 2> /dev/null)"
-  _u="${_was%% *}"
-  _m="${_was##* }"
-  if [ "${_u}" = "0" ] && [[ "${_m}" =~ ^[0-7]+$ ]] \
-    && [ "$(( 8#${_m} & 8#022 ))" = "0" ]; then
-    return 0
-  fi
-  _acct_in_real_dir "${_D_REAL}" _satellite_dot_back_here 00755 &> /dev/null
-  if [ "$(stat -c '%u %a' -- "${_D_REAL}" 2> /dev/null)" != "0 755" ]; then
-    _satellite_store_link_stop "it leads to ${_D_REAL}, uid ${_u} mode ${_m}, which could not be taken back" \
-      "the link leads where it should, to ${_D_REAL}, but that directory could not be handed back to root 0755 (an immutable attribute, or a read-only or root-squashed mount, refuses it). To repair, fix that (lsattr -d ${_D_REAL}, the mount's options) and run the upgrade again; the link and the store's content stay as they are"
-  fi
-  _msg "${_STATUS} A: ALRT ${_D_REAL}, where the link of root's at ${_D} leads, was uid ${_u} mode ${_m} (an earlier release's chown or chmod of the store through the link): taken back, root's 0755"
-}
-# $1 as the directory root works in: itself when it is a real directory;
-# when it is a link, the real directory it leads to, only when every link
-# on the way is root's and every directory on the way, the last one
-# included, is root's and writable by no one else, so no one but root can
-# change where it leads or what is in it; nothing otherwise (exit 1). With
-# a second argument "last", the last directory may be anyone's and open to
-# others; every link and every directory above it is checked as before
-# (the store check uses no other directory than /data/disk/all, which it
-# takes back). One text wherever it is defined.
-_ROOT_REAL_PATH_PL='my ($p, $k) = @ARGV; if (!-l $p) { print $p if -d _; exit(-d _ ? 0 : 1); } my ($c, $n, @s) = ("", 0, stat("/")); exit 1 unless $p =~ m{^/} && @s && $s[4] == 0 && !($s[2] & 022); my @w = grep { length && $_ ne "." } split(m{/}, $p); while (@w) { my $e = shift(@w); if ($e eq "..") { $c =~ s{/[^/]*$}{}; next; } my @l = lstat("$c/$e") or exit 1; if (-l _) { exit 1 if $l[4] != 0 || ++$n > 40; my $t = readlink("$c/$e"); exit 1 unless defined $t; $c = "" if $t =~ m{^/}; unshift(@w, grep { length && $_ ne "." } split(m{/}, $t)); next; } exit 1 unless -d _ && (($l[4] == 0 && !($l[2] & 022)) || (defined $k && $k eq "last" && !@w)); $c .= "/$e"; } print($c eq "" ? "/" : $c); exit 0'
-# $1, the real directory a link of root's at /data/all leads to
-# (_ROOT_REAL_PATH_PL's answer), is the one the store may be kept in
-# behind that link (exit 0) only when it is /data/disk/all, the directory
-# named all directly in the real /data/disk, compared by device and inode
-# with that name not followed, so a link put at it does not count; any
-# other directory, or none, exit 1. Besides a real /data/all it is the
-# one layout of the store BOA knows, and the one other store directory
-# every PHP-FPM pool's open_basedir names. One text wherever it is defined
-# (satellite.sh.inc, BOA.sh.txt, xoct, xcopy, manage_solr_config.sh,
-# night.inc.sh).
-_SAT_STORE_TARGET_PL='my @t = lstat(defined $ARGV[0] ? $ARGV[0] : ""); my @a = lstat("/data/disk/all"); exit((@t && @a && -d _ && $t[0] == $a[0] && $t[1] == $a[1]) ? 0 : 1)'
-# After a store, 000 or 000/core that was not root's was replaced by an
-# empty one: the shared cores the account platforms link to (each
-# platform's index.php link, read by find without following it) that
-# 000/core no longer holds are named, since their sites stay down until
-# they are back; a pass that builds platforms makes only ${_DRUPAL6} and
-# ${_DRUPAL7} again.
-_satellite_cores_gone_alert() {
-  local _c _gone=""
-  for _c in $(env PATH=/usr/local/bin:/usr/bin:/bin find /data/disk/*/distro \
-    -mindepth 3 -maxdepth 3 -name index.php -type l \
-    -lname "${_D}/000/core/*/index.php" -printf '%l\n' 2> /dev/null \
-    | sed -n "s|^${_D}/000/core/\([A-Za-z0-9._-]*\)/index.php$|\1|p" \
-    | sort -u); do
-    [ -d "${_D_REAL}/000/core/${_c}" ] || _gone="${_gone:+${_gone} }${_c}"
-  done
-  if [ -n "${_gone}" ]; then
-    _msg "${_STATUS} A: ALRT shared cores the platforms link to are gone from ${_D}/000/core: ${_gone}; sites on them stay down until the admin puts them back (a pass that builds platforms makes ${_DRUPAL6} and ${_DRUPAL7} again, not older ones)"
   fi
 }
 
@@ -2789,238 +4071,6 @@ _satellite_module_stale() {
   [ -n "$(_satellite_not_root_alone "${_D}/000/modules/${1}")" ] \
     || [ ! -e "${_D}/000/modules/${1}/${2}" ]
 }
-# The first entry of the tree $1, $1 itself included, that is a link, is
-# not root's or is writable by its group or others, found without following
-# a link; nothing when every entry is root's alone or $1 is not there. The
-# kit and the shared modules root stages hold no link, and only root can
-# write any entry in them.
-_satellite_not_root_alone() {
-  find -P "${1}" \( -type l -o \! -user 0 -o -perm /022 \) -print -quit \
-    2> /dev/null
-}
-
-#
-# The shared trees this pass needs, built by root before the platform build
-# runs as the account: AegirSetupC's shared phase (the same catalogue,
-# platform list and download mode the account's phase reads) makes the
-# D6/D7 cores in 000/core and the shared platforms in ${_CORE}, each in a
-# stage directory beside its name, moved into place when it is complete
-# (every fetch for it succeeded and what the build makes is in it).
-# The account's phase only reads the store: nothing in it is handed over.
-# Archives are unpacked as the account's build unpacked them (owned by the
-# one who unpacks, modes under the umask), and the modes the build sets (a
-# cache or files directory open to all, a settings.php writable by all) are
-# closed to others in the stage before it is placed, and again over what
-# the phase made (_satellite_lent_back_here).
-#
-# The store's one-time pass (_SAT_REBUILD, decided in
-# _satellite_create_shared_dirs while 000 holds no ${_SAT_REBUILT}): earlier
-# releases let the account build these trees and own the store while it
-# did, so what an account wrote there then is root's now and cannot be told
-# apart by owner or mode. On the first pass that builds platforms
-# (_SAT_REBUILD=YES), the bundles already in ${_CORE} are fetched again (the
-# forced check_fix path), so is the bundle a current core links from an
-# earlier serial (_satellite_core_bundles_redo), every tree the shared phase
-# makes that is already there is built again and swapped in, and every
-# POSIX ACL in the store is removed (_satellite_store_no_acl_here; the daily
-# sweep then puts back the owners and modes the store keeps). Nothing is
-# replaced by what a failed fetch left: what could not be fetched or built
-# again stays as it was and is named in 000 (${_SAT_REBUILD_LEFT}), and the
-# next pass (_SAT_REBUILD=LEFT) does only that, so an archive the mirror
-# keeps failing costs that one item on each pass, never the whole pass
-# again. The record in 000 is written only when nothing is left, and keeps
-# the pass from running again (_satellite_rebuild_record).
-_SAT_REBUILT="rebuilt-by-root.info"
-_SAT_REBUILD_LEFT="rebuilt-by-root.left"
-_satellite_build_shared() {
-  local _st="/opt/tmp/state/.root/${_USER}/status-AegirSetupC-shared"
-  local _dc=NO _acl=NO _k _p _trees="" _gone=""
-  local -a _rb=()
-  case "${_SAT_REBUILD}" in
-    YES)
-      _rb=(rebuild)
-      _acl=YES
-      if [ "${_STATUS}" = "INIT" ] && [ "${_O_CONTRIB_FORCED_UP}" = "YES" ]; then
-        _satellite_check_fix_o_contrib
-      fi
-      _satellite_core_bundles_redo
-      ;;
-    LEFT)
-      while read -r _k _p; do
-        case "${_k}" in
-          tree)
-            [ -n "${_p}" ] && _trees="${_trees} ${_p}"
-            ;;
-          bundle)
-            # Drupal 12's shelf is built only while its pin is set
-            if [[ ! "${_p}" =~ ^/data/all/[0-9]+/o_contrib(_seven|_eight|_nine|_ten|_eleven|_twelve|_backdrop)?$ ]] \
-              || [ ! -d "${_p}" ] \
-              || { [ "${_p##*/}" = "o_contrib_twelve" ] && [ -z "${_REDIS_W_VERSION}" ]; }; then
-              _gone="${_gone} ${_p}"
-            elif [[ " ${_SAT_REDO_DONE} ${_SAT_REDO_LEFT} " != *" ${_p} "* ]]; then
-              _msg "${_STATUS} A: Running ${_p} forced upgrade..."
-              _satellite_bundle_redo_at "${_p%/*}" "${_p##*/}"
-            fi
-            ;;
-          acl)
-            _acl=YES
-            ;;
-        esac
-      done <<< "${_SAT_LEFT_ITEMS}"
-      # shellcheck disable=SC2206 # _trees: one store path per word
-      [ -n "${_trees}" ] && _rb=(rebuild ${_trees})
-      ;;
-  esac
-  [ "${#_rb[@]}" -gt 0 ] && _dc=YES
-  _satellite_in_dcore _satellite_core_links_here "${_DRUPAL6}" "${_DRUPAL7}"
-  if [ ! -e "${_D}/000/core/${_DRUPAL6}" ] \
-    || [ ! -e "${_D}/000/core/${_DRUPAL7}" ]; then
-    _dc=YES
-  fi
-  rm -f -- "${_st}-OK" "${_st}-FAIL" "${_st}-MISSED" "${_st}-DONE"
-  # _SHRD_STALE: the bundles not fetched again, which no core copies from
-  ( cd / && umask 022 \
-    && TAR_OPTIONS="--no-same-owner --no-same-permissions" \
-      _SHRD_STALE="${_SAT_REDO_LEFT}" \
-      bash "${_AegirSetupC}" "${_USER}" shared "${_rb[@]}" )
-  _acct_in_real_dir "${_CORE}" _satellite_lent_back_here &> /dev/null
-  if [ "${_dc}" = "YES" ]; then
-    _satellite_in_dcore _satellite_lent_back_here &> /dev/null
-  fi
-  if [ -e "${_st}-FAIL" ] || [ ! -e "${_st}-OK" ]; then
-    _msg "${_STATUS} A: FATAL ERROR: AegirSetupC shared phase failed"
-    _msg "${_STATUS} A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
-    touch "/opt/tmp/state/.root/${_USER}/status-AegirSetupA-FAIL"
-    exit 1
-  fi
-  [ "${_SAT_REBUILD}" = "YES" ] || [ "${_SAT_REBUILD}" = "LEFT" ] || return 0
-  _satellite_rebuild_record "${_st}" "${_acl}" "${_trees}" "${_gone}"
-}
-#
-# The store's one-time pass, closed: $1 the shared phase's signal prefix
-# (its -DONE and -MISSED lists), $2 YES when the ACLs are to be removed in
-# this pass, $3 the trees and cores this pass was asked to build again (a
-# LEFT pass), $4 what was left that is no longer there to do. A tree asked
-# for that the shared phase neither built again nor missed is not one it
-# makes any more (another catalogue, or gone): dropped with an alert, as an
-# older serial's trees are left. What is still left (the trees and cores
-# missed, the bundles not fetched again, the ACLs when neither perl's
-# syscall.ph nor setfacl is there) is named in 000 for the next pass, and
-# the record is written only when nothing is; the last line says which.
-_satellite_rebuild_record() {
-  local _st="${1}" _acl="${2}" _asked="${3}" _gone="${4}" _p _done _missed
-  local _left="" _what _nt=0 _nb=0
-  _done="$(cat -- "${_st}-DONE" 2> /dev/null)"
-  _missed="$(cat -- "${_st}-MISSED" 2> /dev/null)"
-  for _p in ${_asked}; do
-    printf '%s\n%s\n' "${_done}" "${_missed}" | grep -qxF -- "${_p}" \
-      || _gone="${_gone} ${_p}"
-  done
-  [ -n "${_done}" ] && _nt="$(printf '%s\n' "${_done}" | grep -c .)"
-  for _p in ${_SAT_REDO_DONE}; do
-    _nb=$((_nb + 1))
-  done
-  while IFS= read -r _p; do
-    [ -n "${_p}" ] && _left="${_left}tree ${_p}"$'\n'
-  done <<< "${_missed}"
-  for _p in ${_SAT_REDO_LEFT}; do
-    _left="${_left}bundle ${_p}"$'\n'
-  done
-  _what="${_nb} bundle(s) fetched again, ${_nt} shared core(s) and tree(s) built again"
-  if [ "${_acl}" = "YES" ]; then
-    # ACLs go only through perl's syscall.ph or setfacl (_SAT_ROOT_NO_ACL_PL)
-    if [ -z "$(_satellite_xattr_nr)" ] && [ ! -x /usr/bin/setfacl ] \
-      && [ ! -x /bin/setfacl ]; then
-      _msg "${_STATUS} A: ALRT POSIX ACLs cannot be removed here (no syscall.ph for perl, no setfacl): the store keeps any it has"
-      _left="${_left}acl"$'\n'
-    else
-      _acct_in_real_dir "${_D_REAL:-${_D}}" _satellite_store_no_acl_here &> /dev/null
-      _acct_in_real_dir "${_D_REAL:-${_D}}" _satellite_shared_fix_here &> /dev/null
-      _what="${_what}, ACLs removed"
-    fi
-  fi
-  if [ -n "${_gone// /}" ]; then
-    _msg "${_STATUS} A: ALRT left out of the shared store's one-time pass, no longer built here:${_gone}"
-  fi
-  if [ -z "${_left}" ]; then
-    _acct_in_real_dir "${_D_REAL:-${_D}}" _acct_in_real_dir ./000 \
-      _acct_put_here "${_SAT_REBUILT}" "${_xSrl}-${_X_VERSION} $(date +%F)"
-    _acct_in_real_dir "${_D_REAL:-${_D}}" _acct_in_real_dir ./000 \
-      rm -f -- "./${_SAT_REBUILD_LEFT}"
-    _msg "${_STATUS} A: Shared store rebuilt by root once: ${_what}"
-  else
-    _acct_in_real_dir "${_D_REAL:-${_D}}" _acct_in_real_dir ./000 \
-      _acct_put_here "${_SAT_REBUILD_LEFT}" "${_left%$'\n'}"
-    _msg "${_STATUS} A: ALRT shared store's one-time pass not complete (${_what}), left for the next pass: $(printf '%s' "${_left}" | tr '\n' ';' | sed 's/;$//; s/;/; /g')"
-  fi
-}
-#
-# The bundle a current shared core links from a serial other than ${_CORE}
-# fetched again on the forced path (_satellite_bundle_redo_at), on the
-# store's first one-time pass: a core built under an earlier serial keeps
-# linking that serial's bundle when it is built again (_shared_core in
-# AegirSetupC), and copies files from it, and its sites load it.
-_satellite_core_bundles_redo() {
-  local _c _b _l
-  for _c in "${_DRUPAL6}:o_contrib" "${_DRUPAL7}:o_contrib_seven"; do
-    _b="${_c#*:}"
-    _l="$(readlink "${_D}/000/core/${_c%%:*}/modules/${_b}" 2> /dev/null)"
-    [[ "${_l}" =~ ^/data/all/[0-9]+/${_b}$ ]] || continue
-    [ "${_l%/*}" != "${_CORE}" ] && [ -d "${_l}" ] && [ ! -L "${_l%/*}" ] \
-      || continue
-    [[ " ${_SAT_REDO_DONE} ${_SAT_REDO_LEFT} " == *" ${_l} "* ]] && continue
-    _msg "${_STATUS} A: Running ${_l} forced upgrade..."
-    _satellite_bundle_redo_at "${_l%/*}" "${_b}"
-  done
-}
-#
-# Every directory and single-link regular file in the current (pinned)
-# store, '.' included, handed to root:root with its POSIX ACLs removed
-# through its own handle (_SAT_ROOT_NO_ACL_PL), never through a link: the
-# store's one-time pass. The daily sweep run right after it puts back the
-# owners and modes the store keeps (_satellite_shared_fix_here).
-_satellite_store_no_acl_here() (
-  PATH=/usr/local/bin:/usr/bin:/bin
-  local _x
-  _x="$(_satellite_xattr_nr)"
-  perl -e "${_SAT_ROOT_NO_ACL_PL}" -- "${_x}" .
-  find . -mindepth 1 \( -type d -o -type f \) \
-    -execdir perl -e "${_SAT_ROOT_NO_ACL_PL}" -- "${_x}" {} +
-)
-# A link at a current shared core's name in the current (pinned) 000/core
-# (an earlier release lent 000/core to the account) is removed, never taken
-# for the core, so root's build makes that core again.
-_satellite_core_links_here() {
-  local _c
-  for _c in "$@"; do
-    if [ -L "./${_c}" ]; then
-      _msg "${_STATUS} A: ALRT ${PWD}/${_c} was $(_satellite_what_is "./${_c}"): removed, the build makes this core again"
-      rm -f -- "./${_c}"
-    fi
-  done
-  return 0
-}
-
-#
-# '.' of the current (pinned) directory handed back to root:root and
-# cleared of POSIX ACLs (_SAT_ROOT_NO_ACL_PL), then given the mode $1 (five
-# digits, so set-ID bits the account set go too). An ACL the account set
-# while it owned the directory outlasts the new owner and mode: a named
-# entry keeps its grant, and a default ACL is copied onto every entry made
-# in it later, root's too.
-_satellite_dot_back_here() {
-  chown -h root:root . || return 1
-  perl -e "${_SAT_ROOT_NO_ACL_PL}" -- "$(_satellite_xattr_nr)" .
-  chmod "${1}" .
-}
-# fremovexattr's system call number, read once per walk from perl's own
-# syscall.ph (every Debian and Devuan perl carries it) and handed to
-# _SAT_ROOT_NO_ACL_PL, so the perl find starts in each directory does not
-# load it again; nothing when it cannot be read.
-_satellite_xattr_nr() {
-  perl -e 'my $n = eval { require "syscall.ph"; &SYS_fremovexattr }; print $n if defined $n && $n =~ /^[0-9]+$/' 2> /dev/null
-}
-
 #
 # The top of the current (pinned) directory put back as root had it: each
 # o_contrib* bundle name (root makes every bundle before the build) that is
@@ -3632,53 +4682,6 @@ _satellite_o_contrib_twelve_update_global() {
   cd
 }
 
-_satellite_o_contrib_backdrop_update_global() {
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _satellite_o_contrib_backdrop_update_global"
-    _debug_proc
-  fi
-
-  _RMMODULES="some_foo_bar"
-
-  for i in "${_D}"/*; do
-    _satellite_store_dir_ok "${i}" "${i}/o_contrib_backdrop" || continue
-    if [ -e "${i}/o_contrib_backdrop" ]; then
-      _satellite_restore_o_contrib_backdrop_webform "${i}/o_contrib_backdrop" "${i##*/}"
-    fi
-    if [ -d "${i}/o_contrib_backdrop/webform" ] \
-      && [ ! -e "${i}/o_contrib_backdrop/webform/ver-${_WEBFORM_B_TAG}.info" ]; then
-      _satellite_refresh_o_contrib_backdrop_webform "${i}/o_contrib_backdrop" "${i##*/}"
-    fi
-    if [ -e "${i}/o_contrib_backdrop" ] \
-      && [ ! -e "${i}/o_contrib_backdrop/update-${_xSrl}-${_X_VERSION}.info" ]; then
-      _FORCE_UP_BACKDROP=YES
-    elif [ -e "${i}/o_contrib_backdrop" ] \
-      && [ ! -L "${i}/o_contrib_backdrop/redis_backdrop" ]; then
-      _FORCE_UP_BACKDROP=YES
-    else
-      _FORCE_UP_BACKDROP=NO
-    fi
-    if [ "${_FORCE_UP_BACKDROP}" = "YES" ] \
-      && [ -e "${i}/o_contrib_backdrop" ]; then
-      for m in ${_RMMODULES}; do
-        if [ -d "${i}/o_contrib_backdrop/$m" ]; then
-          rm -rf ${i}/o_contrib_backdrop/$m
-        fi
-      done
-      cd ${i}/o_contrib_backdrop
-      if [ -e "${_D}/000/modules/redis_backdrop" ] \
-        && [ ! -L "${i}/o_contrib_backdrop/redis_backdrop" ]; then
-        ln -sfn ${_D}/000/modules/redis_backdrop ${i}/o_contrib_backdrop/redis_backdrop
-      fi
-      _acct_in_real_dir "${i}/o_contrib_backdrop" \
-        _satellite_modes_walk_here 0755 0644 &> /dev/null
-      _acct_in_real_dir "${i}/o_contrib_backdrop" _satellite_put_stdin_here \
-        "update-${_xSrl}-${_X_VERSION}.info" 0644 "" < /dev/null
-    fi
-  done
-  cd
-}
-
 
 #
 # The Backdrop webform release every o_contrib_backdrop bundle carries: bumped
@@ -3687,103 +4690,6 @@ _satellite_o_contrib_backdrop_update_global() {
 # on the next upgrade pass (_satellite_refresh_o_contrib_backdrop_webform).
 _WEBFORM_B_TAG="1.x-4.26.6"
 
-#
-# Replace one shared module under ${_D}/000/modules from the dev/contrib
-# mirror. It is fetched and unpacked in a directory of this pass's own,
-# compared with its archive, stamped there and swapped in only when every
-# member is in place and whole: a copy cut short never replaces the one
-# in place and is fetched again on the next pass, where the old code stamped
-# it as deployed. The new copy and the one in place swap names in one rename
-# (_SAT_SWAP_PL), so a site loading the module through a bundle's link finds
-# the old copy or the new one, never none; where one rename cannot do it
-# (nothing in place yet, or no renameat2 on the box), the copy in place is
-# moved aside first and put back when the new one cannot go in. The gates
-# read the ".full" stamp, the pair BOA.sh.txt writes for the same modules;
-# owner "root" re-owns the copy.
-# Every step runs from inside the real 000/modules (each directory on the
-# way entered as the real one, _satellite_in_modules) and names the unpack
-# directory relative to it, never by the store's path; that directory is
-# this pass's own (mktemp, root's, 0700), so nothing else can put a name in
-# it and chown -R there hands over only what the archive holds. No real
-# 000/modules to work in (a link on the way) or no unpack directory is
-# reported, and the copy in place is kept.
-_satellite_shared_module_update() {
-  local _e
-  _satellite_mk_modules
-  if ! _satellite_in_modules _satellite_shared_module_here "$@"; then
-    _msg "${_STATUS} A: OOPS ${1}-${2} was not updated (no unpack directory in the real ${_D}/000/modules); the copy in place is kept"
-    # nothing can be set aside where 000/modules is not the real one; a
-    # flagged module there is said all the same
-    _e="$(_satellite_not_root_alone "${_D}/000/modules/${1}")"
-    [ -n "${_e}" ] && _satellite_module_alarm "${1}" "${_e}" NO
-  fi
-  return 0
-}
-_satellite_shared_module_here() {
-  local _nm="$1" _ver="$2" _own="$3" _tmp _arc _ok=NO _swp=NO _in=NO _why
-  _arc="${_nm}-${_ver}.tar.gz"
-  # a directory a killed pass left behind; a live pass's is never this old
-  find . -maxdepth 1 -type d -name ".${_nm}.*" -mmin +60 \
-    -exec rm -rf -- {} + &> /dev/null
-  _tmp="$(mktemp -d "./.${_nm}.XXXXXX")" || _tmp=""
-  if [ -n "${_tmp}" ]; then
-    ( cd -P -- "${_tmp}" && _get_dev_contrib "${_arc}" keep )
-    # every member present and whole: tar compares the kept archive with
-    # what it unpacked, and fails on a cut archive and on a missing or short
-    # file
-    if [ -e "${_tmp}/${_arc}" ] && [ -d "${_tmp}/${_nm}" ] \
-      && [ ! -L "${_tmp}/${_nm}" ] \
-      && _satellite_tar_whole "${_tmp}" "${_tmp}/${_arc}"; then
-      _ok=YES
-    fi
-  fi
-  if [ "${_ok}" = "YES" ]; then
-    [ "${_own}" = "root" ] && chown -R root:root "${_tmp}/${_nm}" &> /dev/null
-    rm -f -- "${_tmp}/${_nm}/ver-${_ver}.${_xSrl}.info" \
-      "${_tmp}/${_nm}/ver-${_ver}.${_xSrl}.full.info"
-    echo update > "${_tmp}/${_nm}/ver-${_ver}.${_xSrl}.info"
-    echo update > "${_tmp}/${_nm}/ver-${_ver}.${_xSrl}.full.info"
-    # the store's modes before the copy goes in, its stamps included (some
-    # archives record modes writable by the group, which root's tar keeps):
-    # a copy is never flagged as it enters the store
-    _acct_in_real_dir "${_tmp}/${_nm}" _satellite_modes_walk_here 0755 0644 &> /dev/null
-  fi
-  if [ -z "${_tmp}" ]; then
-    _why="was not updated (no unpack directory in the real ${_D}/000/modules)"
-  elif [ "${_ok}" != "YES" ]; then
-    _why="was not updated (download or unpack failed)"
-  elif [ -n "$(_satellite_not_root_alone "${_tmp}/${_nm}")" ]; then
-    # a link in it, or an entry the walk could not make root's alone
-    _why="was not updated (the unpacked copy holds a link or an entry not root's alone)"
-  else
-    # swapped, the copy that was in place is left at ${_tmp}/${_nm}
-    if [ -e "./${_nm}" ] || [ -L "./${_nm}" ]; then
-      if perl -e "${_SAT_SWAP_PL}" -- "${_tmp}/${_nm}" "./${_nm}" 2> /dev/null; then
-        _swp=YES
-      else
-        mv -T -- "./${_nm}" "${_tmp}/.old" &> /dev/null
-      fi
-    fi
-    if [ "${_swp}" = "YES" ] \
-      || mv -T -- "${_tmp}/${_nm}" "./${_nm}" &> /dev/null; then
-      _in=YES
-    else
-      [ -e "${_tmp}/.old" ] && [ ! -e "./${_nm}" ] \
-        && mv -T -- "${_tmp}/.old" "./${_nm}" &> /dev/null
-      _why="could not be swapped in"
-    fi
-  fi
-  [ -n "${_tmp}" ] && rm -rf -- "${_tmp}"
-  if [ "${_in}" != "YES" ]; then
-    _satellite_module_seal_here "${_nm}"
-    case $? in
-      4) _msg "${_STATUS} A: OOPS ${_nm}-${_ver} ${_why}; the copy in place, flagged, was taken out of use" ;;
-      5) _msg "${_STATUS} A: OOPS ${_nm}-${_ver} ${_why}; the copy in place, flagged, could not be set aside" ;;
-      *) _msg "${_STATUS} A: OOPS ${_nm}-${_ver} ${_why}; $(_satellite_module_kept_here "${_nm}")" ;;
-    esac
-  fi
-  return 0
-}
 # What a failed fetch leaves of the module ./$1 in the current (pinned)
 # 000/modules, for its OOPS line.
 _satellite_module_kept_here() {
@@ -3895,39 +4801,103 @@ _satellite_module_seal_here() {
   return 5
 }
 
-#
-# Download o_contrib_backdrop. The bundle carries the Backdrop-native contrib
-# BOA maintains for every Backdrop platform; like the D6/D7 bundles the redis
-# integration is a symlink into the single shared /data/all/000/modules copy,
-# created here at download time so a fresh space is never redis-less. Plain
-# curated members (webform since 2026-09) extract into the bundle dir.
-_satellite_download_o_contrib_backdrop() {
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _satellite_download_o_contrib_backdrop"
-    _debug_proc
+_satellite_shared_module_here() {
+  local _nm="$1" _ver="$2" _own="$3" _tmp _arc _ok=NO _swp=NO _in=NO _why
+  _arc="${_nm}-${_ver}.tar.gz"
+  # a directory a killed pass left behind; a live pass's is never this old
+  find . -maxdepth 1 -type d -name ".${_nm}.*" -mmin +60 \
+    -exec rm -rf -- {} + &> /dev/null
+  _tmp="$(mktemp -d "./.${_nm}.XXXXXX")" || _tmp=""
+  if [ -n "${_tmp}" ]; then
+    ( cd -P -- "${_tmp}" && _get_dev_contrib "${_arc}" keep )
+    # every member present and whole: tar compares the kept archive with
+    # what it unpacked, and fails on a cut archive and on a missing or short
+    # file
+    if [ -e "${_tmp}/${_arc}" ] && [ -d "${_tmp}/${_nm}" ] \
+      && [ ! -L "${_tmp}/${_nm}" ] \
+      && _satellite_tar_whole "${_tmp}" "${_tmp}/${_arc}"; then
+      _ok=YES
+    fi
   fi
-  touch update-${_xSrl}-${_X_VERSION}.info
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "${_STATUS} A: Downloading o_contrib_backdrop modules..."
+  if [ "${_ok}" = "YES" ]; then
+    [ "${_own}" = "root" ] && chown -R root:root "${_tmp}/${_nm}" &> /dev/null
+    rm -f -- "${_tmp}/${_nm}/ver-${_ver}.${_xSrl}.info" \
+      "${_tmp}/${_nm}/ver-${_ver}.${_xSrl}.full.info"
+    echo update > "${_tmp}/${_nm}/ver-${_ver}.${_xSrl}.info"
+    echo update > "${_tmp}/${_nm}/ver-${_ver}.${_xSrl}.full.info"
+    # the store's modes before the copy goes in, its stamps included (some
+    # archives record modes writable by the group, which root's tar keeps):
+    # a copy is never flagged as it enters the store
+    _acct_in_real_dir "${_tmp}/${_nm}" _satellite_modes_walk_here 0755 0644 &> /dev/null
   fi
-  ### Plain bundle members extract into the bundle dir itself (the current,
-  ### pinned directory, named '.', never by its path), before the redis
-  ### block below (same ordering as o_contrib_eleven).
-  if _o_contrib_backdrop_webform_get .; then
-    echo update > ./webform/ver-${_WEBFORM_B_TAG}.info
+  if [ -z "${_tmp}" ]; then
+    _why="was not updated (no unpack directory in the real ${_D}/000/modules)"
+  elif [ "${_ok}" != "YES" ]; then
+    _why="was not updated (download or unpack failed)"
+  elif [ -n "$(_satellite_not_root_alone "${_tmp}/${_nm}")" ]; then
+    # a link in it, or an entry the walk could not make root's alone
+    _why="was not updated (the unpacked copy holds a link or an entry not root's alone)"
   else
-    _msg "${_STATUS} A: webform-${_WEBFORM_B_TAG} not fetched into o_contrib_backdrop"
-    _GET_FAILS=$(( ${_GET_FAILS:-0} + 1 ))
+    # swapped, the copy that was in place is left at ${_tmp}/${_nm}
+    if [ -e "./${_nm}" ] || [ -L "./${_nm}" ]; then
+      if perl -e "${_SAT_SWAP_PL}" -- "${_tmp}/${_nm}" "./${_nm}" 2> /dev/null; then
+        _swp=YES
+      else
+        mv -T -- "./${_nm}" "${_tmp}/.old" &> /dev/null
+      fi
+    fi
+    if [ "${_swp}" = "YES" ] \
+      || mv -T -- "${_tmp}/${_nm}" "./${_nm}" &> /dev/null; then
+      _in=YES
+    else
+      [ -e "${_tmp}/.old" ] && [ ! -e "./${_nm}" ] \
+        && mv -T -- "${_tmp}/.old" "./${_nm}" &> /dev/null
+      _why="could not be swapped in"
+    fi
   fi
-  if [ ! -L "./redis_backdrop" ]; then
-    ln -sfn ${_D}/000/modules/redis_backdrop redis_backdrop
+  [ -n "${_tmp}" ] && rm -rf -- "${_tmp}"
+  if [ "${_in}" != "YES" ]; then
+    _satellite_module_seal_here "${_nm}"
+    case $? in
+      4) _msg "${_STATUS} A: OOPS ${_nm}-${_ver} ${_why}; the copy in place, flagged, was taken out of use" ;;
+      5) _msg "${_STATUS} A: OOPS ${_nm}-${_ver} ${_why}; the copy in place, flagged, could not be set aside" ;;
+      *) _msg "${_STATUS} A: OOPS ${_nm}-${_ver} ${_why}; $(_satellite_module_kept_here "${_nm}")" ;;
+    esac
   fi
-  if _satellite_module_stale redis_backdrop "ver-${_REDIS_B_VERSION}.${_xSrl}.full.info"; then
-    _satellite_shared_module_update redis_backdrop "${_REDIS_B_VERSION}" root
-  fi
-  _satellite_in_modules _satellite_modes_walk_here 0755 0644 &> /dev/null
+  return 0
 }
-
+#
+# Replace one shared module under ${_D}/000/modules from the dev/contrib
+# mirror. It is fetched and unpacked in a directory of this pass's own,
+# compared with its archive, stamped there and swapped in only when every
+# member is in place and whole: a copy cut short never replaces the one
+# in place and is fetched again on the next pass, where the old code stamped
+# it as deployed. The new copy and the one in place swap names in one rename
+# (_SAT_SWAP_PL), so a site loading the module through a bundle's link finds
+# the old copy or the new one, never none; where one rename cannot do it
+# (nothing in place yet, or no renameat2 on the box), the copy in place is
+# moved aside first and put back when the new one cannot go in. The gates
+# read the ".full" stamp, the pair BOA.sh.txt writes for the same modules;
+# owner "root" re-owns the copy.
+# Every step runs from inside the real 000/modules (each directory on the
+# way entered as the real one, _satellite_in_modules) and names the unpack
+# directory relative to it, never by the store's path; that directory is
+# this pass's own (mktemp, root's, 0700), so nothing else can put a name in
+# it and chown -R there hands over only what the archive holds. No real
+# 000/modules to work in (a link on the way) or no unpack directory is
+# reported, and the copy in place is kept.
+_satellite_shared_module_update() {
+  local _e
+  _satellite_mk_modules
+  if ! _satellite_in_modules _satellite_shared_module_here "$@"; then
+    _msg "${_STATUS} A: OOPS ${1}-${2} was not updated (no unpack directory in the real ${_D}/000/modules); the copy in place is kept"
+    # nothing can be set aside where 000/modules is not the real one; a
+    # flagged module there is said all the same
+    _e="$(_satellite_not_root_alone "${_D}/000/modules/${1}")"
+    [ -n "${_e}" ] && _satellite_module_alarm "${1}" "${_e}" NO
+  fi
+  return 0
+}
 #
 # Fetch the _WEBFORM_B_TAG release into directory $1 and unpack it there as
 # webform/. Returns 0 only when the archive tests whole, unpacks cleanly and
@@ -4008,6 +4978,86 @@ _satellite_restore_o_contrib_backdrop_webform() {
     fi
     [ -e "${_bnd}/webform" ] && rm -rf "${_s}"
   done
+}
+
+_satellite_o_contrib_backdrop_update_global() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _satellite_o_contrib_backdrop_update_global"
+    _debug_proc
+  fi
+
+  _RMMODULES="some_foo_bar"
+
+  for i in "${_D}"/*; do
+    _satellite_store_dir_ok "${i}" "${i}/o_contrib_backdrop" || continue
+    if [ -e "${i}/o_contrib_backdrop" ]; then
+      _satellite_restore_o_contrib_backdrop_webform "${i}/o_contrib_backdrop" "${i##*/}"
+    fi
+    if [ -d "${i}/o_contrib_backdrop/webform" ] \
+      && [ ! -e "${i}/o_contrib_backdrop/webform/ver-${_WEBFORM_B_TAG}.info" ]; then
+      _satellite_refresh_o_contrib_backdrop_webform "${i}/o_contrib_backdrop" "${i##*/}"
+    fi
+    if [ -e "${i}/o_contrib_backdrop" ] \
+      && [ ! -e "${i}/o_contrib_backdrop/update-${_xSrl}-${_X_VERSION}.info" ]; then
+      _FORCE_UP_BACKDROP=YES
+    elif [ -e "${i}/o_contrib_backdrop" ] \
+      && [ ! -L "${i}/o_contrib_backdrop/redis_backdrop" ]; then
+      _FORCE_UP_BACKDROP=YES
+    else
+      _FORCE_UP_BACKDROP=NO
+    fi
+    if [ "${_FORCE_UP_BACKDROP}" = "YES" ] \
+      && [ -e "${i}/o_contrib_backdrop" ]; then
+      for m in ${_RMMODULES}; do
+        if [ -d "${i}/o_contrib_backdrop/$m" ]; then
+          rm -rf ${i}/o_contrib_backdrop/$m
+        fi
+      done
+      cd ${i}/o_contrib_backdrop
+      if [ -e "${_D}/000/modules/redis_backdrop" ] \
+        && [ ! -L "${i}/o_contrib_backdrop/redis_backdrop" ]; then
+        ln -sfn ${_D}/000/modules/redis_backdrop ${i}/o_contrib_backdrop/redis_backdrop
+      fi
+      _acct_in_real_dir "${i}/o_contrib_backdrop" \
+        _satellite_modes_walk_here 0755 0644 &> /dev/null
+      _acct_in_real_dir "${i}/o_contrib_backdrop" _satellite_put_stdin_here \
+        "update-${_xSrl}-${_X_VERSION}.info" 0644 "" < /dev/null
+    fi
+  done
+  cd
+}
+
+#
+# Download o_contrib_backdrop. The bundle carries the Backdrop-native contrib
+# BOA maintains for every Backdrop platform; like the D6/D7 bundles the redis
+# integration is a symlink into the single shared /data/all/000/modules copy,
+# created here at download time so a fresh space is never redis-less. Plain
+# curated members (webform since 2026-09) extract into the bundle dir.
+_satellite_download_o_contrib_backdrop() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _satellite_download_o_contrib_backdrop"
+    _debug_proc
+  fi
+  touch update-${_xSrl}-${_X_VERSION}.info
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "${_STATUS} A: Downloading o_contrib_backdrop modules..."
+  fi
+  ### Plain bundle members extract into the bundle dir itself (the current,
+  ### pinned directory, named '.', never by its path), before the redis
+  ### block below (same ordering as o_contrib_eleven).
+  if _o_contrib_backdrop_webform_get .; then
+    echo update > ./webform/ver-${_WEBFORM_B_TAG}.info
+  else
+    _msg "${_STATUS} A: webform-${_WEBFORM_B_TAG} not fetched into o_contrib_backdrop"
+    _GET_FAILS=$(( ${_GET_FAILS:-0} + 1 ))
+  fi
+  if [ ! -L "./redis_backdrop" ]; then
+    ln -sfn ${_D}/000/modules/redis_backdrop redis_backdrop
+  fi
+  if _satellite_module_stale redis_backdrop "ver-${_REDIS_B_VERSION}.${_xSrl}.full.info"; then
+    _satellite_shared_module_update redis_backdrop "${_REDIS_B_VERSION}" root
+  fi
+  _satellite_in_modules _satellite_modes_walk_here 0755 0644 &> /dev/null
 }
 
 
@@ -4380,6 +5430,70 @@ _satellite_check_fix_o_contrib() {
   _satellite_in_modules _satellite_modes_walk_here 0755 0644 &> /dev/null
 }
 
+_satellite_build_shared() {
+  local _st="/opt/tmp/state/.root/${_USER}/status-AegirSetupC-shared"
+  local _dc=NO _acl=NO _k _p _trees="" _gone=""
+  local -a _rb=()
+  case "${_SAT_REBUILD}" in
+    YES)
+      _rb=(rebuild)
+      _acl=YES
+      if [ "${_STATUS}" = "INIT" ] && [ "${_O_CONTRIB_FORCED_UP}" = "YES" ]; then
+        _satellite_check_fix_o_contrib
+      fi
+      _satellite_core_bundles_redo
+      ;;
+    LEFT)
+      while read -r _k _p; do
+        case "${_k}" in
+          tree)
+            [ -n "${_p}" ] && _trees="${_trees} ${_p}"
+            ;;
+          bundle)
+            # Drupal 12's shelf is built only while its pin is set
+            if [[ ! "${_p}" =~ ^/data/all/[0-9]+/o_contrib(_seven|_eight|_nine|_ten|_eleven|_twelve|_backdrop)?$ ]] \
+              || [ ! -d "${_p}" ] \
+              || { [ "${_p##*/}" = "o_contrib_twelve" ] && [ -z "${_REDIS_W_VERSION}" ]; }; then
+              _gone="${_gone} ${_p}"
+            elif [[ " ${_SAT_REDO_DONE} ${_SAT_REDO_LEFT} " != *" ${_p} "* ]]; then
+              _msg "${_STATUS} A: Running ${_p} forced upgrade..."
+              _satellite_bundle_redo_at "${_p%/*}" "${_p##*/}"
+            fi
+            ;;
+          acl)
+            _acl=YES
+            ;;
+        esac
+      done <<< "${_SAT_LEFT_ITEMS}"
+      # shellcheck disable=SC2206 # _trees: one store path per word
+      [ -n "${_trees}" ] && _rb=(rebuild ${_trees})
+      ;;
+  esac
+  [ "${#_rb[@]}" -gt 0 ] && _dc=YES
+  _satellite_in_dcore _satellite_core_links_here "${_DRUPAL6}" "${_DRUPAL7}"
+  if [ ! -e "${_D}/000/core/${_DRUPAL6}" ] \
+    || [ ! -e "${_D}/000/core/${_DRUPAL7}" ]; then
+    _dc=YES
+  fi
+  rm -f -- "${_st}-OK" "${_st}-FAIL" "${_st}-MISSED" "${_st}-DONE"
+  # _SHRD_STALE: the bundles not fetched again, which no core copies from
+  ( cd / && umask 022 \
+    && TAR_OPTIONS="--no-same-owner --no-same-permissions" \
+      _SHRD_STALE="${_SAT_REDO_LEFT}" \
+      bash "${_AegirSetupC}" "${_USER}" shared "${_rb[@]}" )
+  _acct_in_real_dir "${_CORE}" _satellite_lent_back_here &> /dev/null
+  if [ "${_dc}" = "YES" ]; then
+    _satellite_in_dcore _satellite_lent_back_here &> /dev/null
+  fi
+  if [ -e "${_st}-FAIL" ] || [ ! -e "${_st}-OK" ]; then
+    _msg "${_STATUS} A: FATAL ERROR: AegirSetupC shared phase failed"
+    _msg "${_STATUS} A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
+    touch "/opt/tmp/state/.root/${_USER}/status-AegirSetupA-FAIL"
+    exit 1
+  fi
+  [ "${_SAT_REBUILD}" = "YES" ] || [ "${_SAT_REBUILD}" = "LEFT" ] || return 0
+  _satellite_rebuild_record "${_st}" "${_acl}" "${_trees}" "${_gone}"
+}
 #
 # Manage o_contrib.
 _satellite_manage_o_contrib() {
@@ -4463,79 +5577,6 @@ _satellite_manage_o_contrib() {
   fi
 }
 
-#
-# The missing bundle $1 made in ${_CORE} as a fresh directory (never through a
-# link put at the name) and filled by $2 from inside it, only when this mkdir
-# made it: a name that is taken by then is not root's to fill. Archives
-# unpack owned by root, whatever owner they recorded.
-_satellite_bundle_new() {
-  if ! _acct_in_real_dir "${_CORE}" mkdir -m 0755 -- "./${1}" &> /dev/null; then
-    _msg "${_STATUS} A: ALRT ${_CORE}/${1} not made (the name is taken), not fetched"
-    return 1
-  fi
-  TAR_OPTIONS="--no-same-owner" _acct_in_real_dir "${_CORE}/${1}" "${2}"
-}
-
-#
-# The bundle $2 of the serial directory $1 fetched again on the forced path
-# by its own download function (_satellite_bundle_redo_in), the outcome kept
-# for the store's one-time pass (_satellite_rebuild_record): _SAT_REDO_DONE,
-# or _SAT_REDO_LEFT when it was not fetched again.
-_satellite_bundle_redo_at() {
-  local _fn="_satellite_download_${2}"
-  [ "${2}" = "o_contrib" ] && _fn=_satellite_download_o_contrib_six
-  if _acct_in_real_dir "${1}" _satellite_bundle_redo_in "${2}" "${_fn}"; then
-    _SAT_REDO_DONE="${_SAT_REDO_DONE} ${1}/${2}"
-    return 0
-  fi
-  _SAT_REDO_LEFT="${_SAT_REDO_LEFT} ${1}/${2}"
-  return 1
-}
-
-#
-# The bundle ./$1 in the current (pinned) serial directory fetched again by
-# $2 (a download function that fills the directory it runs in, the bundle's
-# links into ${_D}/000/modules included): $2 fills a fresh stage beside the
-# bundle (stages a stopped pass left are removed first), and the stage,
-# once every fetch $2 made succeeded
-# (_satellite_all_fetched_here) and it holds a module (a directory, or a link
-# to one: Drupal 12's shelf holds only its link into the store), is swapped
-# in for the bundle in one rename (_SAT_SWAP_PL), so a site loading the bundle never
-# finds it emptied or part-fetched while it is fetched; where one rename
-# cannot do it, the bundle is moved aside first and the stage moved in. The
-# old bundle is removed with the stage. A stage a fetch failed for is
-# dropped and the bundle kept whole (status 1). Archives unpack owned by
-# root, whatever owner they recorded.
-_satellite_bundle_redo_in() {
-  local _s="./.${1}.redo.$$"
-  find . -mindepth 1 -maxdepth 1 -name ".${1}.redo.*" \
-    -exec rm -rf -- {} + &> /dev/null
-  mkdir -m 0755 -- "${_s}" || return 1
-  if ! TAR_OPTIONS="--no-same-owner" \
-    _acct_in_real_dir "${_s}" _satellite_all_fetched_here "${2}" \
-    || [ -z "$(find "${_s}" -mindepth 1 -maxdepth 1 -xtype d -print -quit)" ]; then
-    _msg "${_STATUS} A: ALRT ${PWD}/${1} not fetched again (a fetch failed), kept as it was"
-    rm -rf -- "${_s}"
-    return 1
-  fi
-  if ! perl -e "${_SAT_SWAP_PL}" -- "${_s}" "./${1}" 2> /dev/null; then
-    mv -T -- "./${1}" "${_s}.old" || { rm -rf -- "${_s}"; return 1; }
-    if ! mv -T -- "${_s}" "./${1}"; then
-      mv -T -- "${_s}.old" "./${1}"
-      rm -rf -- "${_s}"
-      return 1
-    fi
-  fi
-  rm -rf -- "${_s}" "${_s}.old"
-}
-# $1, a download function, run in the current directory: status 0 only when
-# every fetch it made succeeded (_GET_FAILS, counted by _get_dev_contrib and
-# by the Backdrop webform fetch).
-_satellite_all_fetched_here() {
-  _GET_FAILS=0
-  "${1}"
-  [ "${_GET_FAILS}" -eq 0 ]
-}
 # The two names given swapped in one rename (renameat2 with
 # RENAME_EXCHANGE, its number read from perl's syscall.ph): exit 0 only
 # when they were. One text wherever it is defined (satellite.sh.inc, which
@@ -4592,6 +5633,43 @@ _instance_group_held() {
     '$4 == g && $1 != u && index($1, u ".") != 1 { f=1 } END { exit !f }'
 }
 
+# Each directory and regular file named (find -execdir, or in a pinned
+# directory) made root's, with the mode $1 for a directory (its set-ID bits
+# kept, as chmod 0755 keeps them) and $2 for a file, except xmass's two
+# records, which xmass writes 0600. An entry is checked by lstat before it is
+# opened, so a FIFO or a device is never opened, and is changed through its
+# own handle, never through a link. A hard-linked file is taken back too:
+# /data/conf is never an account's, so a file an account linked there is
+# made root's, as chown -R root:root made it.
+_CONF_ROOT_PL='use Fcntl;
+my ($dm, $fm) = (oct(shift @ARGV), oct(shift @ARGV));
+for my $f (@ARGV) {
+  my @l = lstat($f);
+  next unless @l && (-d _ || -f _);
+  sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
+  my @s = stat($h);
+  if (@s && $s[0] == $l[0] && $s[1] == $l[1]) {
+    if (-d _) {
+      chown(0, 0, $h);
+      chmod($dm | ($s[2] & 06000), $h);
+    } elsif (-f _) {
+      chown(0, 0, $h);
+      chmod($f =~ m{(^|/)xmass_(state|solr_used)\.cnf(\.tmp\.\d+)?$} ? 0600 : $fm, $h);
+    }
+  }
+  close($h);
+}'
+# /data/conf (the current, pinned directory) and everything below it made
+# root's (_CONF_ROOT_PL): directories 0755, files 0644, the top 0711. Every
+# site on the box loads its global includes from here and nothing an account
+# runs writes here, so it is never handed to an account.
+_satellite_conf_root_here() (
+  PATH=/usr/local/bin:/usr/bin:/bin
+  perl -e "${_CONF_ROOT_PL}" 0755 0644 .
+  find . -mindepth 1 \( -type d -o -type f \) \
+    -execdir perl -e "${_CONF_ROOT_PL}" 0755 0644 {} +
+  chmod 0711 .
+)
 _satellite_add_user_dirs() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _satellite_add_user_dirs"
@@ -4842,115 +5920,6 @@ _satellite_db_broker_born() {
     _msg "ALRT: ${_USER} is not switched to the database broker: ${_out##*$'\n'}"
     _msg "ALRT: boa-dbctl scope ${_USER} plan says why"
   fi
-  return 0
-}
-
-#
-# Every NUL byte of the cnf $1 dropped, said once; nothing when it holds
-# none, is a link or no file. A run of NUL bytes that cut a line short (a
-# crash can zero-fill a file's tail from the middle of a line) ends that
-# line, so a line written after it later starts a line of its own. The
-# healed text is written beside the cnf and renamed over it (its mode
-# kept), so a heal that cannot be finished leaves the cnf as it was, and a
-# NOTE says so. Status 0 always.
-_satellite_cnf_nul_heal() {
-  local _t
-  [[ -f "$1" && ! -L "$1" ]] || return 0
-  [[ "$(tr -d '\000' < "$1" | wc -c)" != "$(wc -c < "$1")" ]] || return 0
-  _t="$1.nulheal.$$"
-  rm -f -- "${_t}"
-  if { perl -0777 -pe 's/(?<=[^\n\0])\0+/\n/g; tr/\0//d' < "$1" > "${_t}" \
-    && chmod --reference="$1" -- "${_t}" && mv -f -- "${_t}" "$1"; } 2> /dev/null; then
-    _msg "NOTE: NUL bytes dropped from $1 (a crash can zero-fill a file's tail; bash stops reading a file at its first NUL byte)"
-  else
-    rm -f -- "${_t}"
-    _msg "NOTE: NUL bytes could not be dropped from $1: it stays as it was, and the next pass tries again"
-  fi
-  return 0
-}
-
-#
-# The value the last assignment of setting $2 in cnf $1 gives it, read as
-# bash reads the file: export is tolerated, a quoted value ends at its
-# closing quote, any other at the first blank or semicolon. Nothing when the
-# file assigns it nowhere or cannot be read.
-# A NUL byte in the file (a crash can zero-fill its tail) hides no line:
-# grep reads it as text.
-_satellite_db_broker_cnf_last() {
-  local _v
-  _v=$(grep -aE "^[[:space:]]*(export[[:space:]]+)?${2}=" "${1}" 2> /dev/null | tail -n 1)
-  _v="${_v#*=}"
-  case "${_v}" in
-    \"*) _v="${_v#\"}"; _v="${_v%%\"*}" ;;
-    \'*) _v="${_v#\'}"; _v="${_v%%\'*}" ;;
-    *) _v="${_v%%[[:space:];]*}" ;;
-  esac
-  printf '%s' "${_v}"
-}
-
-#
-# One call the pass makes of the database broker by itself ($@), said as one
-# line of the pass: the broker's last line when that is its OK line, a NOTE
-# naming the call with that line otherwise. A refusal is never an alarm and
-# never the end of the pass: what the broker refuses stays as it is, nothing
-# is tried again or forced, and the next pass asks anew. The line is
-# repeated only as printable text of the broker's own shape, and never with
-# a word the pass launchers read as an alarm in a pass's log: a row's host
-# and a database's name are an account's to choose. A call that stopped
-# after it changed something (scope-failed, baseline-settle-incomplete), or
-# that an SQL statement failed in (sql-failed: never a policy refusal), is
-# no refusal: each ALRT line of the broker's answer is relayed (printable,
-# at most 20 lines of 512 characters, OOPS: said without its colon, a word
-# the launchers read as an oops while the line is an alarm already) and the
-# call's line is an ALRT too, so the pass is reported with errors, as a new
-# account's failed switch is.
-# Each login a settle revoked or dropped is named on an INFO line of its own
-# (at most 20, printable, the alarm words kept out as above), so a login of
-# an operator's own that loses its rights is never named in the broker's
-# log alone.
-_satellite_db_broker_call() {
-  local _out _rc _last _kind="NOTE" _l _na=0 _ns=0
-  _out=$(/usr/local/bin/boa-dbctl "$@" 2>&1 < /dev/null)
-  _rc=$?
-  _last=$(printf '%s' "${_out##*$'\n'}" | LC_ALL=C tr -cd ' -~' | cut -c1-300)
-  case "${_last}" in
-    "ERR 7 scope-failed "*|"ERR 7 baseline-settle-incomplete "*|"ERR 7 sql-failed "*) _kind="ALRT" ;;
-  esac
-  while IFS= read -r _l; do
-    case "${_l}" in
-      "ALRT: "*)
-        [[ "${_kind}" == "ALRT" && "${_na}" -lt 20 ]] || continue
-        _na=$(( _na + 1 ))
-        _l=$(printf '%s' "${_l#ALRT: }" | LC_ALL=C tr -cd ' -~' | cut -c1-512)
-        _msg "ALRT: database broker: ${_l//OOPS:/OOPS }"
-        ;;
-      "settled revoked "*|"settled dropped "*)
-        [[ "${_ns}" -lt 20 ]] || continue
-        _ns=$(( _ns + 1 ))
-        _l=$(printf '%s' "${_l}" | LC_ALL=C tr -cd ' -~' | cut -c1-300)
-        case "${_l}" in
-          *ALRT*|*"FATAL ERROR"*|*OOPS:*|*"cannot open shared object file"*)
-            _l="${_l#settled }"
-            _l="settled ${_l%% *}: the login's name is in /var/log/boa/dbctl/dbctl.log"
-            ;;
-        esac
-        _msg "INFO: database broker: ${_l}"
-        ;;
-    esac
-  done <<< "${_out}"
-  if [[ "${_rc}" == "0" && "${_last}" == "OK "* ]]; then
-    _kind="INFO"
-  elif [[ "${_last}" == "ERR "* ]]; then
-    _last="$*: ${_last}"
-  else
-    _last="$*: no answer line, exit ${_rc}"
-  fi
-  case "${_last}" in
-    *ALRT*|*"FATAL ERROR"*|*OOPS:*|*"cannot open shared object file"*)
-      _last="$*: exit ${_rc}, its answer is in /var/log/boa/dbctl/dbctl.log"
-      ;;
-  esac
-  _msg "${_kind}: database broker: ${_last}"
   return 0
 }
 
@@ -5227,6 +6196,21 @@ _satellite_pass_php_put() {
     ".${_USER}.pass.php" 0600 "${_USER}:${_ACCG:-users}"
 }
 
+_satellite_init_pass_back() {
+  [ "${_SAT_INIT_PASS_LENT}" = "YES" ] || return 0
+  if [ -z "${_ESC_PASS}" ] || ! _satellite_pass_php_put "${_ESC_PASS}" \
+    || ! _satellite_pass_txt_put "${_ESC_PASS}"; then
+    _acct_in_real_dir "${_ROOT}" rm -f -- "./.${_USER}.pass.php" "./.${_USER}.pass.txt"
+    _msg "ALRT: ${_USER}: its database password files could not be written and were removed, the next upgrade makes new ones"
+  fi
+  _SAT_INIT_PASS_LENT=NO
+  trap - EXIT
+}
+_satellite_init_pass_back_on_exit() {
+  trap '' HUP INT TERM PIPE
+  _satellite_init_pass_back
+}
+
 #
 # The install of a remote account's panel (AegirSetupB) logs in to its
 # database server as aegir_root, the login all accounts there share. It runs
@@ -5251,21 +6235,6 @@ _satellite_init_pass_lend() {
   _satellite_pass_txt_put "${_r}" \
     || _msg "ALRT: the database password for the install of ${_USER} could not be written"
 }
-_satellite_init_pass_back() {
-  [ "${_SAT_INIT_PASS_LENT}" = "YES" ] || return 0
-  if [ -z "${_ESC_PASS}" ] || ! _satellite_pass_php_put "${_ESC_PASS}" \
-    || ! _satellite_pass_txt_put "${_ESC_PASS}"; then
-    _acct_in_real_dir "${_ROOT}" rm -f -- "./.${_USER}.pass.php" "./.${_USER}.pass.txt"
-    _msg "ALRT: ${_USER}: its database password files could not be written and were removed, the next upgrade makes new ones"
-  fi
-  _SAT_INIT_PASS_LENT=NO
-  trap - EXIT
-}
-_satellite_init_pass_back_on_exit() {
-  trap '' HUP INT TERM PIPE
-  _satellite_init_pass_back
-}
-
 #
 # Generate provision backend db_passwd.
 _provision_backend_dbpass_generate() {
@@ -5711,135 +6680,6 @@ _satellite_hm_dbuser_own() {
 }
 
 #
-# Revoke from the panel's database user $1, at localhost and at %, every right
-# but those on its own database $2 (the name as a grant writes it, _ escaped):
-# the rights on all databases and the grant option an earlier release gave,
-# and the rights on any other database. The own grant itself is never taken
-# away, so the panel keeps its database while this runs. The global rights
-# go through _hostmaster_db_user_global_revoke: each by name, never REVOKE
-# ALL on *.*, which on Percona 8.4 takes every database grant with it.
-_hostmaster_frontend_dbuser_trim() {
-  local _h _d
-  local _C=(mysql --silent --skip-column-names --raw -u root -h"${_SQL_CONNECT}"
-    -P"${_THIS_DB_PORT}" --protocol=tcp --database=mysql -e)
-  # held in a variable: on the right of =~ a bare $- would expand
-  local _dbre='^[-A-Za-z0-9_%$\\]{1,64}$'
-  [[ "${1}" =~ ^[A-Za-z0-9_]{1,32}$ ]] || return 0
-  _hostmaster_db_user_global_revoke "${1}" "localhost"$'\n'"%" \
-    || _msg "ALRT: panel database user ${1} keeps a global right or lost a database grant"
-  for _h in localhost %; do
-    while IFS= read -r _d; do
-      [[ "${_d}" =~ ${_dbre} ]] || continue
-      if [ "${_d}" != "${2}" ]; then
-        "${_C[@]}" "REVOKE ALL ON \`${_d}\`.* FROM '${1}'@'${_h}'" &> /dev/null
-      fi
-      "${_C[@]}" "REVOKE GRANT OPTION ON \`${_d}\`.* FROM '${1}'@'${_h}'" &> /dev/null
-    done < <("${_C[@]}" "SELECT Db FROM mysql.db WHERE User='${1}' AND Host='${_h}'" 2> /dev/null)
-  done
-}
-
-#
-# Sync hostmaster frontend db_passwd.
-_hostmaster_frontend_dbpass_sync() {
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _hostmaster_frontend_dbpass_sync"
-    _debug_proc
-  fi
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "${_STATUS} A: Syncing hostmaster frontend db_passwd..."
-  fi
-  if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
-    _SQL_CONNECT=127.0.0.1
-    _THIS_DB_PORT=6033
-  else
-    _THIS_DB_PORT=3306
-  fi
-  ### The alias and the site's drushrc.php are the instance user's: read
-  ### bounded, never through a link or from a FIFO, and only from a site in
-  ### the account's own hostmaster tree.
-  _THIS_HM_SPTH=$(_satellite_hm_alias_get "site_path'")
-  _satellite_hm_path_ok "${_THIS_HM_SPTH}" site || _THIS_HM_SPTH=""
-  _THIS_HM_DBUR=""
-  _THIS_HM_DBPD=""
-  if [ -n "${_THIS_HM_SPTH}" ]; then
-    _THIS_HM_DBUR=$(_satellite_drc_get "${_THIS_HM_SPTH}" db_user)
-    _THIS_HM_DBPD=$(_satellite_drc_get "${_THIS_HM_SPTH}" db_passwd)
-    ### Both go into SQL root runs: the user only as a plain database user
-    ### name that is not one of the server's own, the password only in the
-    ### alphabets the provisioning and BOA generators use. The user is also
-    ### the site's database name, as provisioning and transfers set it, and
-    ### no other hostmaster on this box names it as its own.
-    if [[ ! "${_THIS_HM_DBUR}" =~ ^[A-Za-z0-9_]{1,32}$ ]] \
-      || [ "${_THIS_HM_DBUR}" = "root" ] \
-      || [ "${_THIS_HM_DBUR}" = "aegir_root" ] \
-      || [ -e "/data/disk/${_THIS_HM_DBUR}" ] \
-      || [[ ! "${_THIS_HM_DBPD}" =~ ^[A-Za-z0-9%@._+=/-]+$ ]] \
-      || [ "${_THIS_HM_DBUR}" != "$(_satellite_drc_get "${_THIS_HM_SPTH}" db_name)" ] \
-      || ! _satellite_hm_dbuser_own "${_THIS_HM_DBUR}"; then
-      if [ -n "${_THIS_HM_DBUR}" ] || [ -n "${_THIS_HM_DBPD}" ]; then
-        _msg "ALRT: ${_USER} hostmaster db_user or db_passwd is not in the expected form, or db_user is not this instance's own; frontend db sync skipped"
-      fi
-      _THIS_HM_DBUR=""
-      _THIS_HM_DBPD=""
-    fi
-  fi
-  if [ -e "${_THIS_HM_SPTH}" ] \
-    && [ ! -z "${_THIS_HM_DBUR}" ] \
-    && [ ! -z "${_THIS_HM_DBPD}" ]; then
-    ### The panel works in its own database only: grant just that one,
-    ### escaped as provisioning writes it (a bare _ matches any character).
-    _ESC="\`${_THIS_HM_DBUR//_/\\_}\`.*"
-    _USE_DB_USER="${_THIS_HM_DBUR}"
-    _USE_AEGIR_HOST="${_hName}"
-    _find_correct_ip
-    _USE_RESOLVEIP="${_LOC_IP}"
-    [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL17 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
-    if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
-      _write_proxysql_adm_cnf &> /dev/null
-      mysql --defaults-extra-file=/root/.my.proxysql_adm.cnf<<PROXYSQL
-DELETE FROM mysql_users WHERE username='${_USE_DB_USER}';
-DELETE FROM mysql_query_rules WHERE username='${_USE_DB_USER}';
-INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_USE_DB_USER}','${_THIS_HM_DBPD}','10');
-LOAD MYSQL USERS TO RUNTIME;
-SAVE MYSQL USERS FROM RUNTIME;
-SAVE MYSQL USERS TO DISK;
-INSERT INTO mysql_query_rules (username,destination_hostgroup,active) VALUES ('${_USE_DB_USER}',10,1);
-INSERT INTO mysql_query_rules (username,destination_hostgroup,active) VALUES ('${_USE_DB_USER}',11,1);
-LOAD MYSQL QUERY RULES TO RUNTIME;
-SAVE MYSQL QUERY RULES TO DISK;
-PROXYSQL
-    fi
-    ### The two accounts the panel logs in with are set in place, never
-    ### dropped and made again: the panel serves requests all through the
-    ### pass, and between a DROP and the ALTER that gave the password back
-    ### none of them could log in. Rights beyond the own database, as an
-    ### earlier release gave, are revoked once the own grant is in place,
-    ### and the accounts named after the host go last.
-    _C_SQL="mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp --database=mysql -e"
-    mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -u root mysql<<EOFMYSQL
-CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_THIS_HM_DBPD}';
-CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_THIS_HM_DBPD}';
-ALTER USER '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_THIS_HM_DBPD}';
-ALTER USER '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_THIS_HM_DBPD}';
-GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost';
-GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%';
-EOFMYSQL
-    _hostmaster_frontend_dbuser_trim "${_USE_DB_USER}" "${_THIS_HM_DBUR//_/\\_}"
-    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';" &> /dev/null
-    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';" &> /dev/null
-    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'127.0.0.1';" &> /dev/null
-    _hostmaster_oldhost_dbuser_drop
-  fi
-  if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
-    _SQL_CONNECT=127.0.0.1
-    _THIS_DB_PORT=6033
-    mysqladmin -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges &> /dev/null
-  else
-    mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG PRIVILEGES" &> /dev/null
-  fi
-}
-
-#
 # Where the files of this box name each of the database users given, one
 # line per mention:
 #   db <user> <alias>         the master_db of a server alias: an instance's
@@ -5965,6 +6805,78 @@ _hostmaster_db_user_label() {
     echo "${_o} earlier panel database user"
   fi
 }
+# Takes from the user $1, on each host row given in $2 (one per line), the
+# global privileges SHOW GRANTS lists for that row, each by name, and its
+# global grant option: a REVOKE ALL on *.* takes the database grants too
+# (measured on Percona 8.4), and Percona 5.7 lists every global right as
+# ALL PRIVILEGES, so those are named too. A database grant that goes all the
+# same is granted back as it read before. Zero when no row keeps a global
+# right and every row has the database grants it had. One text in
+# master.sh.inc and satellite.sh.inc.
+_hostmaster_db_user_global_revoke() {
+  local _u="${1}" _h _g _d _p _n=0 _b=0 _a=0
+  local _C=(mysql --silent --skip-column-names --raw -u root -h"${_SQL_CONNECT}"
+    -P"${_THIS_DB_PORT}" --protocol=tcp --database=mysql -e)
+  local _ALL57="SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, RELOAD, SHUTDOWN, PROCESS, FILE, REFERENCES, INDEX, ALTER, SHOW DATABASES, SUPER, CREATE TEMPORARY TABLES, LOCK TABLES, EXECUTE, REPLICATION SLAVE, REPLICATION CLIENT, CREATE VIEW, SHOW VIEW, CREATE ROUTINE, ALTER ROUTINE, CREATE USER, EVENT, TRIGGER, CREATE TABLESPACE"
+  while IFS= read -r _h; do
+    case "${_h}" in
+      ""|*[!A-Za-z0-9._%:-]*) return 1 ;;
+    esac
+    _g=$("${_C[@]}" "SHOW GRANTS FOR '${_u}'@'${_h}'" 2> /dev/null) || return 1
+    _d=$(printf '%s\n' "${_g}" | grep '^GRANT .* ON .* TO ' | grep -v ' ON \*\.\* TO ')
+    _b=$((_b + $(printf '%s\n' "${_d}" | grep -c .)))
+    while IFS= read -r _p; do
+      _p="${_p#GRANT }"
+      _p="${_p%% ON \*.\* TO *}"
+      [ "${_p}" = "ALL PRIVILEGES" ] && _p="${_ALL57}"
+      [[ "${_p}" =~ ^[A-Z_][A-Z_\ ,]*$ ]] && [ "${_p}" != "USAGE" ] || continue
+      "${_C[@]}" "REVOKE ${_p} ON *.* FROM '${_u}'@'${_h}'" &> /dev/null
+    done < <(printf '%s\n' "${_g}" | grep '^GRANT .* ON \*\.\* TO ')
+    "${_C[@]}" "REVOKE GRANT OPTION ON *.* FROM '${_u}'@'${_h}'" &> /dev/null
+    _g=$("${_C[@]}" "SHOW GRANTS FOR '${_u}'@'${_h}'" 2> /dev/null) || return 1
+    while IFS= read -r _p; do
+      [ -n "${_p}" ] || continue
+      printf '%s\n' "${_g}" | grep -qxF -- "${_p}" && continue
+      case "${_p}" in
+        *";"*) continue ;;
+      esac
+      "${_C[@]}" "${_p}" &> /dev/null
+    done <<< "${_d}"
+    _g=$("${_C[@]}" "SHOW GRANTS FOR '${_u}'@'${_h}'" 2> /dev/null) || return 1
+    _a=$((_a + $(printf '%s\n' "${_g}" | grep '^GRANT .* ON .* TO ' | grep -vc ' ON \*\.\* TO ')))
+    _n=$((_n + $(printf '%s\n' "${_g}" | grep ' ON \*\.\* TO ' | grep -vc '^GRANT USAGE ON ')))
+  done <<< "${2}"
+  [ "${_n}" = "0" ] && [ "${_a}" = "${_b}" ]
+}
+
+#
+# Revoke from the panel's database user $1, at localhost and at %, every right
+# but those on its own database $2 (the name as a grant writes it, _ escaped):
+# the rights on all databases and the grant option an earlier release gave,
+# and the rights on any other database. The own grant itself is never taken
+# away, so the panel keeps its database while this runs. The global rights
+# go through _hostmaster_db_user_global_revoke: each by name, never REVOKE
+# ALL on *.*, which on Percona 8.4 takes every database grant with it.
+_hostmaster_frontend_dbuser_trim() {
+  local _h _d
+  local _C=(mysql --silent --skip-column-names --raw -u root -h"${_SQL_CONNECT}"
+    -P"${_THIS_DB_PORT}" --protocol=tcp --database=mysql -e)
+  # held in a variable: on the right of =~ a bare $- would expand
+  local _dbre='^[-A-Za-z0-9_%$\\]{1,64}$'
+  [[ "${1}" =~ ^[A-Za-z0-9_]{1,32}$ ]] || return 0
+  _hostmaster_db_user_global_revoke "${1}" "localhost"$'\n'"%" \
+    || _msg "ALRT: panel database user ${1} keeps a global right or lost a database grant"
+  for _h in localhost %; do
+    while IFS= read -r _d; do
+      [[ "${_d}" =~ ${_dbre} ]] || continue
+      if [ "${_d}" != "${2}" ]; then
+        "${_C[@]}" "REVOKE ALL ON \`${_d}\`.* FROM '${1}'@'${_h}'" &> /dev/null
+      fi
+      "${_C[@]}" "REVOKE GRANT OPTION ON \`${_d}\`.* FROM '${1}'@'${_h}'" &> /dev/null
+    done < <("${_C[@]}" "SELECT Db FROM mysql.db WHERE User='${1}' AND Host='${_h}'" 2> /dev/null)
+  done
+}
+
 # The candidates given after $1 (the pass's own: an account's name, or
 # master) are users of this box's own plain server with the shape and
 # prefix of an earlier panel's, none the live panel's user or an account's
@@ -6063,50 +6975,6 @@ _hostmaster_db_users_settle() {
     fi
   done
 }
-# Takes from the user $1, on each host row given in $2 (one per line), the
-# global privileges SHOW GRANTS lists for that row, each by name, and its
-# global grant option: a REVOKE ALL on *.* takes the database grants too
-# (measured on Percona 8.4), and Percona 5.7 lists every global right as
-# ALL PRIVILEGES, so those are named too. A database grant that goes all the
-# same is granted back as it read before. Zero when no row keeps a global
-# right and every row has the database grants it had. One text in
-# master.sh.inc and satellite.sh.inc.
-_hostmaster_db_user_global_revoke() {
-  local _u="${1}" _h _g _d _p _n=0 _b=0 _a=0
-  local _C=(mysql --silent --skip-column-names --raw -u root -h"${_SQL_CONNECT}"
-    -P"${_THIS_DB_PORT}" --protocol=tcp --database=mysql -e)
-  local _ALL57="SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, RELOAD, SHUTDOWN, PROCESS, FILE, REFERENCES, INDEX, ALTER, SHOW DATABASES, SUPER, CREATE TEMPORARY TABLES, LOCK TABLES, EXECUTE, REPLICATION SLAVE, REPLICATION CLIENT, CREATE VIEW, SHOW VIEW, CREATE ROUTINE, ALTER ROUTINE, CREATE USER, EVENT, TRIGGER, CREATE TABLESPACE"
-  while IFS= read -r _h; do
-    case "${_h}" in
-      ""|*[!A-Za-z0-9._%:-]*) return 1 ;;
-    esac
-    _g=$("${_C[@]}" "SHOW GRANTS FOR '${_u}'@'${_h}'" 2> /dev/null) || return 1
-    _d=$(printf '%s\n' "${_g}" | grep '^GRANT .* ON .* TO ' | grep -v ' ON \*\.\* TO ')
-    _b=$((_b + $(printf '%s\n' "${_d}" | grep -c .)))
-    while IFS= read -r _p; do
-      _p="${_p#GRANT }"
-      _p="${_p%% ON \*.\* TO *}"
-      [ "${_p}" = "ALL PRIVILEGES" ] && _p="${_ALL57}"
-      [[ "${_p}" =~ ^[A-Z_][A-Z_\ ,]*$ ]] && [ "${_p}" != "USAGE" ] || continue
-      "${_C[@]}" "REVOKE ${_p} ON *.* FROM '${_u}'@'${_h}'" &> /dev/null
-    done < <(printf '%s\n' "${_g}" | grep '^GRANT .* ON \*\.\* TO ')
-    "${_C[@]}" "REVOKE GRANT OPTION ON *.* FROM '${_u}'@'${_h}'" &> /dev/null
-    _g=$("${_C[@]}" "SHOW GRANTS FOR '${_u}'@'${_h}'" 2> /dev/null) || return 1
-    while IFS= read -r _p; do
-      [ -n "${_p}" ] || continue
-      printf '%s\n' "${_g}" | grep -qxF -- "${_p}" && continue
-      case "${_p}" in
-        *";"*) continue ;;
-      esac
-      "${_C[@]}" "${_p}" &> /dev/null
-    done <<< "${_d}"
-    _g=$("${_C[@]}" "SHOW GRANTS FOR '${_u}'@'${_h}'" 2> /dev/null) || return 1
-    _a=$((_a + $(printf '%s\n' "${_g}" | grep '^GRANT .* ON .* TO ' | grep -vc ' ON \*\.\* TO ')))
-    _n=$((_n + $(printf '%s\n' "${_g}" | grep ' ON \*\.\* TO ' | grep -vc '^GRANT USAGE ON ')))
-  done <<< "${2}"
-  [ "${_n}" = "0" ] && [ "${_a}" = "${_b}" ]
-}
-
 #  A panel database user an earlier release left with every global right
 # under a name no upgrade reuses: named from the hostmaster uri before the
 # host was renamed, provisioning never re-grants, re-creates or drops it,
@@ -6159,6 +7027,140 @@ _hostmaster_oldhost_dbuser_drop() {
   done <<< "${_rows}"
   [ "${#_cand[@]}" -gt 0 ] || return 0
   _hostmaster_db_users_settle "${_USER}" "${_cand[@]}"
+}
+
+#
+# Sync hostmaster frontend db_passwd.
+_hostmaster_frontend_dbpass_sync() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _hostmaster_frontend_dbpass_sync"
+    _debug_proc
+  fi
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "${_STATUS} A: Syncing hostmaster frontend db_passwd..."
+  fi
+  if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
+    _SQL_CONNECT=127.0.0.1
+    _THIS_DB_PORT=6033
+  else
+    _THIS_DB_PORT=3306
+  fi
+  ### The alias and the site's drushrc.php are the instance user's: read
+  ### bounded, never through a link or from a FIFO, and only from a site in
+  ### the account's own hostmaster tree.
+  _THIS_HM_SPTH=$(_satellite_hm_alias_get "site_path'")
+  _satellite_hm_path_ok "${_THIS_HM_SPTH}" site || _THIS_HM_SPTH=""
+  _THIS_HM_DBUR=""
+  _THIS_HM_DBPD=""
+  if [ -n "${_THIS_HM_SPTH}" ]; then
+    _THIS_HM_DBUR=$(_satellite_drc_get "${_THIS_HM_SPTH}" db_user)
+    _THIS_HM_DBPD=$(_satellite_drc_get "${_THIS_HM_SPTH}" db_passwd)
+    ### Both go into SQL root runs: the user only as a plain database user
+    ### name that is not one of the server's own, the password only in the
+    ### alphabets the provisioning and BOA generators use. The user is also
+    ### the site's database name, as provisioning and transfers set it, and
+    ### no other hostmaster on this box names it as its own.
+    if [[ ! "${_THIS_HM_DBUR}" =~ ^[A-Za-z0-9_]{1,32}$ ]] \
+      || [ "${_THIS_HM_DBUR}" = "root" ] \
+      || [ "${_THIS_HM_DBUR}" = "aegir_root" ] \
+      || [ -e "/data/disk/${_THIS_HM_DBUR}" ] \
+      || [[ ! "${_THIS_HM_DBPD}" =~ ^[A-Za-z0-9%@._+=/-]+$ ]] \
+      || [ "${_THIS_HM_DBUR}" != "$(_satellite_drc_get "${_THIS_HM_SPTH}" db_name)" ] \
+      || ! _satellite_hm_dbuser_own "${_THIS_HM_DBUR}"; then
+      if [ -n "${_THIS_HM_DBUR}" ] || [ -n "${_THIS_HM_DBPD}" ]; then
+        _msg "ALRT: ${_USER} hostmaster db_user or db_passwd is not in the expected form, or db_user is not this instance's own; frontend db sync skipped"
+      fi
+      _THIS_HM_DBUR=""
+      _THIS_HM_DBPD=""
+    fi
+  fi
+  if [ -e "${_THIS_HM_SPTH}" ] \
+    && [ ! -z "${_THIS_HM_DBUR}" ] \
+    && [ ! -z "${_THIS_HM_DBPD}" ]; then
+    ### The panel works in its own database only: grant just that one,
+    ### escaped as provisioning writes it (a bare _ matches any character).
+    _ESC="\`${_THIS_HM_DBUR//_/\\_}\`.*"
+    _USE_DB_USER="${_THIS_HM_DBUR}"
+    _USE_AEGIR_HOST="${_hName}"
+    _find_correct_ip
+    _USE_RESOLVEIP="${_LOC_IP}"
+    [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL17 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
+    if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
+      _write_proxysql_adm_cnf &> /dev/null
+      mysql --defaults-extra-file=/root/.my.proxysql_adm.cnf<<PROXYSQL
+DELETE FROM mysql_users WHERE username='${_USE_DB_USER}';
+DELETE FROM mysql_query_rules WHERE username='${_USE_DB_USER}';
+INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_USE_DB_USER}','${_THIS_HM_DBPD}','10');
+LOAD MYSQL USERS TO RUNTIME;
+SAVE MYSQL USERS FROM RUNTIME;
+SAVE MYSQL USERS TO DISK;
+INSERT INTO mysql_query_rules (username,destination_hostgroup,active) VALUES ('${_USE_DB_USER}',10,1);
+INSERT INTO mysql_query_rules (username,destination_hostgroup,active) VALUES ('${_USE_DB_USER}',11,1);
+LOAD MYSQL QUERY RULES TO RUNTIME;
+SAVE MYSQL QUERY RULES TO DISK;
+PROXYSQL
+    fi
+    ### The two accounts the panel logs in with are set in place, never
+    ### dropped and made again: the panel serves requests all through the
+    ### pass, and between a DROP and the ALTER that gave the password back
+    ### none of them could log in. Rights beyond the own database, as an
+    ### earlier release gave, are revoked once the own grant is in place,
+    ### and the accounts named after the host go last.
+    _C_SQL="mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp --database=mysql -e"
+    mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -u root mysql<<EOFMYSQL
+CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_THIS_HM_DBPD}';
+CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_THIS_HM_DBPD}';
+ALTER USER '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_THIS_HM_DBPD}';
+ALTER USER '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_THIS_HM_DBPD}';
+GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost';
+GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%';
+EOFMYSQL
+    _hostmaster_frontend_dbuser_trim "${_USE_DB_USER}" "${_THIS_HM_DBUR//_/\\_}"
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'127.0.0.1';" &> /dev/null
+    _hostmaster_oldhost_dbuser_drop
+  fi
+  if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
+    _SQL_CONNECT=127.0.0.1
+    _THIS_DB_PORT=6033
+    mysqladmin -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges &> /dev/null
+  else
+    mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG PRIVILEGES" &> /dev/null
+  fi
+}
+
+#
+# A Drupal 7 core from before 7.93.1 declares _drupal_error_handler() with a
+# required fifth argument that PHP 8 no longer passes: on PHP 8 the first
+# warning throws an ArgumentCountError before includes/cache.inc is loaded,
+# and Drupal's exception handler then dies on cache_get(), hiding the cause.
+# The upgrade runs the old control panel on PHP 8 before it moves it, so that
+# argument is made optional ($context = NULL). Only that exact line changes;
+# a missing file or a symlink is left alone. Returns 0 when it healed the
+# file, 1 when there was nothing to heal, 2 when the old line is still there.
+_satellite_heal_d7_error_handler() {
+  local _bInc="${1}/includes/bootstrap.inc"
+  local _oLd='function _drupal_error_handler($error_level, $message, $filename, $line, $context) {'
+  if [ -z "${1}" ] || [ ! -f "${_bInc}" ] || [ -L "${_bInc}" ]; then
+    return 1
+  fi
+  grep -qxF "${_oLd}" "${_bInc}" 2> /dev/null || return 1
+  sed -i 's/^function _drupal_error_handler(\$error_level, \$message, \$filename, \$line, \$context) {$/function _drupal_error_handler($error_level, $message, $filename, $line, $context = NULL) {/' "${_bInc}" &> /dev/null
+  if grep -qxF "${_oLd}" "${_bInc}" 2> /dev/null; then
+    return 2
+  fi
+  return 0
+}
+# The same heal for the root-side steps that run the current panel before
+# AegirSetupB does (syncpass, the backend password sync): on the root the
+# account's alias names, run as the account user in its own tree.
+_satellite_pre_heal_d7_panel() {
+  local _hmR
+  _hmR=$(_satellite_hm_alias_get "root'")
+  _hmR="${_hmR%/}"
+  _satellite_hm_path_ok "${_hmR}" || return 1
+  _satellite_as_user "$(declare -f _satellite_heal_d7_error_handler); _satellite_heal_d7_error_handler $(printf '%q' "${_hmR}")"
 }
 
 _satellite_run_pre_install() {
@@ -6357,6 +7359,78 @@ _satellite_download_for_local_build() {
     chown -R root:root ${_mL}
   fi
   _satellite_pin_panel_core
+}
+
+#
+# A mode set on names in a directory an account owns, never through a link
+# (the ltd worker's setter): each name is opened without following one and
+# without blocking on a FIFO, checked to be the expected type and changed
+# through the open handle. Run it inside a directory pinned with cd -P and
+# checked with pwd -P, or from find -execdir there. Args: d|f|p|q|w, the mode
+# (octal), the account user, the web group, the names. p, q and w are the
+# HTTP basic auth password directory and files as the Aegir task expects
+# them: in the web server's group, the directory setgid and closed to other
+# accounts, changed only when the account owns them (q: root, only for one
+# just made) and a file has a single link. A regular file (f) too is changed
+# only while it has a single link.
+_SAT_FCHMOD_PL='use Fcntl;
+my ($t, $m) = (shift @ARGV, oct(shift @ARGV));
+my $uid = (getpwnam(shift @ARGV))[2];
+my $gid = (getgrnam(shift @ARGV))[2];
+defined $uid && defined $gid or exit 1;
+for my $f (@ARGV) {
+  sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
+  my @s = stat($h);
+  if (($t eq "d" && -d _) || ($t eq "f" && -f _ && $s[3] == 1)) {
+    chmod($m, $h);
+  }
+  elsif (-d _ && (($t eq "p" && $s[4] == $uid) || ($t eq "q" && $s[4] == 0))) {
+    chown($uid, $gid, $h);
+    chmod($m, $h);
+  }
+  elsif ($t eq "w" && -f _ && $s[4] == $uid && $s[3] == 1) {
+    chown(-1, $gid, $h);
+    chmod($m, $h);
+  }
+  close($h);
+}'
+#
+# config/server_master is the account's: 0700 directories and 0600 files, set
+# from inside the real directory through the setter above. nginx (www-data)
+# opens each site's HTTP basic auth password file on every request, and the
+# ltd worker, which keeps the modes it needs, is held off until this run
+# ends, so the path to those files and the files themselves get the worker's
+# final modes in one step: server_master and nginx 0755, passwords.d 02710
+# (made when missing), each file 0640 (p and w above). $1 = all: the whole
+# tree; anything else: the password files and the path to them only.
+_satellite_server_master_modes() {
+  local _sm
+  _sm="$(cd -P -- /data/disk 2> /dev/null && /bin/pwd -P)/${_USER}/config/server_master"
+  ( PATH=/usr/local/bin:/usr/bin:/bin
+    cd -P -- "${_ROOT}/config/server_master" 2> /dev/null \
+      && [ "$(/bin/pwd -P)" = "${_sm}" ] || exit 1
+    if [ "${1}" = "all" ]; then
+      find . -type d ! -path . ! -path ./nginx ! -path ./nginx/passwords.d \
+        -execdir perl -e "${_SAT_FCHMOD_PL}" d 0700 "${_USER}" "${_WEBG}" {} +
+      find . -type f ! \( -path './nginx/passwords.d/*' ! -path './nginx/passwords.d/*/*' \) \
+        -execdir perl -e "${_SAT_FCHMOD_PL}" f 0600 "${_USER}" "${_WEBG}" {} +
+    fi
+    perl -e "${_SAT_FCHMOD_PL}" d 0755 "${_USER}" "${_WEBG}" . ./nginx )
+  ( PATH=/usr/local/bin:/usr/bin:/bin
+    cd -P -- "${_ROOT}/config/server_master/nginx" 2> /dev/null \
+      && [ "$(/bin/pwd -P)" = "${_sm}/nginx" ] || exit 1
+    _t=p
+    if [ ! -e ./passwords.d ] && [ ! -L ./passwords.d ]; then
+      mkdir -m 02710 ./passwords.d && _t=q
+    fi
+    perl -e "${_SAT_FCHMOD_PL}" "${_t}" 02710 "${_USER}" "${_WEBG}" ./passwords.d )
+  ( PATH=/usr/local/bin:/usr/bin:/bin
+    cd -P -- "${_ROOT}/config/server_master/nginx/passwords.d" 2> /dev/null \
+      && [ "$(/bin/pwd -P)" = "${_sm}/nginx/passwords.d" ] || exit 1
+    shopt -s dotglob nullglob
+    set -- ./*
+    [ "$#" -gt 0 ] || exit 0
+    perl -e "${_SAT_FCHMOD_PL}" w 0640 "${_USER}" "${_WEBG}" "$@" )
 }
 
 #
@@ -6634,76 +7708,31 @@ _satellite_run_post_install() {
 }
 
 #
-# A mode set on names in a directory an account owns, never through a link
-# (the ltd worker's setter): each name is opened without following one and
-# without blocking on a FIFO, checked to be the expected type and changed
-# through the open handle. Run it inside a directory pinned with cd -P and
-# checked with pwd -P, or from find -execdir there. Args: d|f|p|q|w, the mode
-# (octal), the account user, the web group, the names. p, q and w are the
-# HTTP basic auth password directory and files as the Aegir task expects
-# them: in the web server's group, the directory setgid and closed to other
-# accounts, changed only when the account owns them (q: root, only for one
-# just made) and a file has a single link. A regular file (f) too is changed
-# only while it has a single link.
-_SAT_FCHMOD_PL='use Fcntl;
-my ($t, $m) = (shift @ARGV, oct(shift @ARGV));
-my $uid = (getpwnam(shift @ARGV))[2];
-my $gid = (getgrnam(shift @ARGV))[2];
-defined $uid && defined $gid or exit 1;
-for my $f (@ARGV) {
-  sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
-  my @s = stat($h);
-  if (($t eq "d" && -d _) || ($t eq "f" && -f _ && $s[3] == 1)) {
-    chmod($m, $h);
-  }
-  elsif (-d _ && (($t eq "p" && $s[4] == $uid) || ($t eq "q" && $s[4] == 0))) {
-    chown($uid, $gid, $h);
-    chmod($m, $h);
-  }
-  elsif ($t eq "w" && -f _ && $s[4] == $uid && $s[3] == 1) {
-    chown(-1, $gid, $h);
-    chmod($m, $h);
-  }
-  close($h);
-}'
-#
-# config/server_master is the account's: 0700 directories and 0600 files, set
-# from inside the real directory through the setter above. nginx (www-data)
-# opens each site's HTTP basic auth password file on every request, and the
-# ltd worker, which keeps the modes it needs, is held off until this run
-# ends, so the path to those files and the files themselves get the worker's
-# final modes in one step: server_master and nginx 0755, passwords.d 02710
-# (made when missing), each file 0640 (p and w above). $1 = all: the whole
-# tree; anything else: the password files and the path to them only.
-_satellite_server_master_modes() {
-  local _sm
-  _sm="$(cd -P -- /data/disk 2> /dev/null && /bin/pwd -P)/${_USER}/config/server_master"
-  ( PATH=/usr/local/bin:/usr/bin:/bin
-    cd -P -- "${_ROOT}/config/server_master" 2> /dev/null \
-      && [ "$(/bin/pwd -P)" = "${_sm}" ] || exit 1
-    if [ "${1}" = "all" ]; then
-      find . -type d ! -path . ! -path ./nginx ! -path ./nginx/passwords.d \
-        -execdir perl -e "${_SAT_FCHMOD_PL}" d 0700 "${_USER}" "${_WEBG}" {} +
-      find . -type f ! \( -path './nginx/passwords.d/*' ! -path './nginx/passwords.d/*/*' \) \
-        -execdir perl -e "${_SAT_FCHMOD_PL}" f 0600 "${_USER}" "${_WEBG}" {} +
-    fi
-    perl -e "${_SAT_FCHMOD_PL}" d 0755 "${_USER}" "${_WEBG}" . ./nginx )
-  ( PATH=/usr/local/bin:/usr/bin:/bin
-    cd -P -- "${_ROOT}/config/server_master/nginx" 2> /dev/null \
-      && [ "$(/bin/pwd -P)" = "${_sm}/nginx" ] || exit 1
-    _t=p
-    if [ ! -e ./passwords.d ] && [ ! -L ./passwords.d ]; then
-      mkdir -m 02710 ./passwords.d && _t=q
-    fi
-    perl -e "${_SAT_FCHMOD_PL}" "${_t}" 02710 "${_USER}" "${_WEBG}" ./passwords.d )
-  ( PATH=/usr/local/bin:/usr/bin:/bin
-    cd -P -- "${_ROOT}/config/server_master/nginx/passwords.d" 2> /dev/null \
-      && [ "$(/bin/pwd -P)" = "${_sm}/nginx/passwords.d" ] || exit 1
-    shopt -s dotglob nullglob
-    set -- ./*
-    [ "$#" -gt 0 ] || exit 0
-    perl -e "${_SAT_FCHMOD_PL}" w 0640 "${_USER}" "${_WEBG}" "$@" )
-}
+# The instance user's .drush, run inside the real directory: directories
+# 0710 (usr and below 0750), files 0640, the top-level PHP files 0440 and the
+# aliases 0400, hm.alias made from the hostmaster alias where missing. Every
+# mode is set through a handle opened without following a link, in the
+# directory find walked (-execdir), so a name swapped for a link is refused,
+# and a file with more than one link (planted or renamed over a name) is
+# left alone (_SAT_NOFOLLOW_CHMOD_PL).
+_satellite_drush_modes_here() (
+  PATH=/usr/local/bin:/usr/bin:/bin
+  shopt -s nullglob
+  find . -mindepth 1 -type d \
+    -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" d 0710 {} +
+  find ./usr -type d \
+    -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" d 0750 {} +
+  find . -type f \
+    -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" f 0640 {} +
+  _satellite_chmod_nofollow f 0440 ./*.php
+  if [ ! -e ./hm.alias.drushrc.php ]; then
+    _satellite_copy_here hostmaster.alias.drushrc.php hm.alias.drushrc.php \
+      "s/\['hostmaster'\]/['hm']/g"
+  fi
+  _satellite_chmod_nofollow f 0400 ./server_*.php ./platform_*.php \
+    ./hostmaster*.php ./hm.alias.drushrc.php
+  _satellite_chmod_nofollow d 0710 .
+)
 
 #
 # Set permissions for all.
@@ -6737,30 +7766,15 @@ _satellite_set_permissions_for_all() {
 }
 
 #
-# The instance user's .drush, run inside the real directory: directories
-# 0710 (usr and below 0750), files 0640, the top-level PHP files 0440 and the
-# aliases 0400, hm.alias made from the hostmaster alias where missing. Every
-# mode is set through a handle opened without following a link, in the
-# directory find walked (-execdir), so a name swapped for a link is refused,
-# and a file with more than one link (planted or renamed over a name) is
-# left alone (_SAT_NOFOLLOW_CHMOD_PL).
-_satellite_drush_modes_here() (
+# VCS metadata and macOS litter removed below the current (pinned) core, each
+# name from the directory find walked (-execdir), never through a path it
+# could be led along.
+_satellite_dot_files_here() (
   PATH=/usr/local/bin:/usr/bin:/bin
-  shopt -s nullglob
-  find . -mindepth 1 -type d \
-    -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" d 0710 {} +
-  find ./usr -type d \
-    -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" d 0750 {} +
-  find . -type f \
-    -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" f 0640 {} +
-  _satellite_chmod_nofollow f 0440 ./*.php
-  if [ ! -e ./hm.alias.drushrc.php ]; then
-    _satellite_copy_here hostmaster.alias.drushrc.php hm.alias.drushrc.php \
-      "s/\['hostmaster'\]/['hm']/g"
-  fi
-  _satellite_chmod_nofollow f 0400 ./server_*.php ./platform_*.php \
-    ./hostmaster*.php ./hm.alias.drushrc.php
-  _satellite_chmod_nofollow d 0710 .
+  find . -mindepth 1 \( -name .svn -o -name .bzr -o -name .git \) -prune \
+    -execdir rm -rf -- {} +
+  find . -mindepth 1 -type f \( -name .DS_Store -o -name '._*' \) \
+    -execdir rm -f -- {} +
 )
 
 #
@@ -6834,18 +7848,6 @@ _satellite_run_child_c() {
       "dot-files-ctrl-${_xSrl}-${_X_VERSION}" 0644 "" < /dev/null
   fi
 }
-
-#
-# VCS metadata and macOS litter removed below the current (pinned) core, each
-# name from the directory find walked (-execdir), never through a path it
-# could be led along.
-_satellite_dot_files_here() (
-  PATH=/usr/local/bin:/usr/bin:/bin
-  find . -mindepth 1 \( -name .svn -o -name .bzr -o -name .git \) -prune \
-    -execdir rm -rf -- {} +
-  find . -mindepth 1 -type f \( -name .DS_Store -o -name '._*' \) \
-    -execdir rm -f -- {} +
-)
 
 _satellite_child_scripts_cleanup() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -7210,63 +8212,6 @@ _satellite_if_add_update_user_symlinks() {
   fi
 }
 
-#
-# The instance user's clients/ (the current, pinned directory) cleaned: the
-# legacy client dirs removed, each client's backups/ removed inside that
-# client's real directory, dangling links dropped by find, which walks
-# without following a link; nothing is reached through a link put at
-# clients or at a client name. Only what root or the instance's own
-# identities own is removed (_satellite_rm_own_here): the account can rename
-# into clients/ what another account left group-writable. Prints dev:ino of
-# each entry left because another user owns it.
-_satellite_clients_clean_here() {
-  local _c
-  _satellite_rm_own_here admin
-  _satellite_rm_own_here omega8ccgmailcom
-  _satellite_rm_own_here nocomega8cc
-  for _c in ./*; do
-    [ -d "${_c}" ] && [ ! -L "${_c}" ] || continue
-    _acct_in_real_dir "$(/bin/pwd -P)/${_c#./}" _satellite_rm_own_here backups
-  done
-  find . -xdev -mindepth 1 -xtype l -delete 2> /dev/null
-  return 0
-}
-# ./$1 in the current (pinned) directory removed as rm -rf removed it,
-# through _ACCT_RM_OWN_PL: only what root or the instance's own identities
-# own (_acct_walk_uids), never through a link, and nothing below a directory
-# another user owns. Prints dev:ino of each entry left for another owner.
-_satellite_rm_own_here() {
-  local _o
-  [ -e "./${1}" ] || [ -L "./${1}" ] || return 0
-  _o=$(_acct_walk_uids "${_USER}") || return 0
-  perl -e "${_ACCT_RM_OWN_PL}" -- r "${_o}" - "./${1}" 2> /dev/null
-  return 0
-}
-# The names given (./name) in the current (pinned) directory removed as
-# rm -f removed them (a link as a link, never a directory), through
-# _ACCT_RM_OWN_PL: only what root or the instance's own identities own
-# (_acct_walk_uids), and nothing in a directory another user owns. Prints
-# dev:ino of each entry left for another owner, the directory itself when
-# it is another user's.
-_satellite_unlink_own_here() {
-  local _o
-  _o=$(_acct_walk_uids "${_USER}") || return 0
-  perl -e "${_ACCT_RM_OWN_PL}" -- h "${_o}" - "$@" 2> /dev/null
-  return 0
-}
-# Every entry below the current (pinned) directory older than $1 days removed
-# as find -mindepth 1 -mtime +$1 -execdir rm -rf removed it, the top-level
-# dot names too, through _ACCT_RM_OWN_PL: only what root or the instance's
-# own identities own (_acct_walk_uids), never through a link, and nothing
-# below a directory another user owns. Prints dev:ino of each entry left for
-# another owner.
-_satellite_aged_rm_own_here() {
-  local _o
-  _o=$(_acct_walk_uids "${_USER}") || return 0
-  perl -e "${_ACCT_RM_OWN_PL}" -- a "${_o}" "${1}" 2> /dev/null
-  return 0
-}
-
 _satellite_if_add_update_user_dot_dirs() {
   local _T_N
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -7410,32 +8355,6 @@ _satellite_if_read_create_pass_txt() {
   fi
 }
 
-###---### Add/Update platforms ftp symlinks.
-#
-_satellite_if_add_update_user_platforms_symlinks() {
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _satellite_if_add_update_user_platforms_symlinks"
-    _debug_proc
-  fi
-
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "${_STATUS} A: Add/Update platforms ftp symlinks"
-  fi
-
-  _HM_U="${_USER}"
-  _LOW_NR="2"
-  _usEr="${_ROOT}"
-  _PL_HOME="/home/${_HM_U}.ftp/platforms"
-
-  ### platforms/ in the main login's home and distro/ of the instance user,
-  ### and every name in either, can be swapped for a link: each is acted on
-  ### inside its real directory, an entry is moved by its own name there,
-  ### and a revision is moved into undo/ by the instance user itself.
-  _acct_in_real_dir "${_PL_HOME}" _satellite_pl_ghosts_here
-  _acct_in_real_dir "${_usEr}/distro" _satellite_distro_ghosts_here
-  _acct_in_real_dir "${_usEr}/distro" _satellite_distro_links_here
-}
-
 #
 # Run inside the real platforms/ of the main login: an entry holding fewer
 # than two names is moved to /var/backups/ghost by its own name (a link is
@@ -7500,6 +8419,16 @@ _satellite_distro_ghosts_here() {
 }
 
 #
+# ./data in the current (pinned) platforms/ moved to /var/backups/ghost.
+_satellite_pl_data_here() {
+  local _g
+  [ -e ./data ] || return 0
+  _g="/var/backups/ghost/${_HM_U}/$(date +%y%m%d-%H%M%S)"
+  [ -d "${_g}" ] || mkdir -p "${_g}"
+  mv -f -- ./data "${_g}/platforms_data"
+}
+
+#
 # Run inside the real distro/ of the instance user: for each real revision
 # directory, the main login's platforms/<revision> (and platforms/ itself,
 # a link put at that name removed first) made where missing, and in it the
@@ -7535,14 +8464,30 @@ _satellite_distro_links_here() {
   return 0
 }
 
+###---### Add/Update platforms ftp symlinks.
 #
-# ./data in the current (pinned) platforms/ moved to /var/backups/ghost.
-_satellite_pl_data_here() {
-  local _g
-  [ -e ./data ] || return 0
-  _g="/var/backups/ghost/${_HM_U}/$(date +%y%m%d-%H%M%S)"
-  [ -d "${_g}" ] || mkdir -p "${_g}"
-  mv -f -- ./data "${_g}/platforms_data"
+_satellite_if_add_update_user_platforms_symlinks() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _satellite_if_add_update_user_platforms_symlinks"
+    _debug_proc
+  fi
+
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "${_STATUS} A: Add/Update platforms ftp symlinks"
+  fi
+
+  _HM_U="${_USER}"
+  _LOW_NR="2"
+  _usEr="${_ROOT}"
+  _PL_HOME="/home/${_HM_U}.ftp/platforms"
+
+  ### platforms/ in the main login's home and distro/ of the instance user,
+  ### and every name in either, can be swapped for a link: each is acted on
+  ### inside its real directory, an entry is moved by its own name there,
+  ### and a revision is moved into undo/ by the instance user itself.
+  _acct_in_real_dir "${_PL_HOME}" _satellite_pl_ghosts_here
+  _acct_in_real_dir "${_usEr}/distro" _satellite_distro_ghosts_here
+  _acct_in_real_dir "${_usEr}/distro" _satellite_distro_links_here
 }
 
 _satellite_if_add_update_backend_user_dirs_files_clean() {
@@ -8067,6 +9012,62 @@ _a2b_import_unfinished() {
   return 1
 }
 
+# Multi-FPM mode by the account's files: tools/le and multi-fpm.info. A
+# multi-fpm.info the login deleted from an account whose pools are multi-FPM
+# ones (root's /opt/php*/etc/pool.d/<acct>.<NN>.conf) is written back by the
+# ltd worker while PHP 7.4 or newer is installed, so it does not take the
+# account out of the mode: one pass left it and the next entered it again,
+# every pool and nginx reloaded twice, for a file the login cannot keep away.
+# $1 = the account's home, $2 = its name.
+_fpm_multi_files() {
+  local _e _p
+  [ -d "${1}/tools/le" ] || return 1
+  [ -f "${1}/static/control/multi-fpm.info" ] && return 0
+  [ -d "${1}/static/control" ] || return 1
+  for _p in /opt/php*/etc/pool.d/"${2}".[0-9]*.conf; do
+    [ -f "${_p}" ] || continue
+    for _e in 86 85 84 83 82 81 74; do
+      [ -x "/opt/php${_e}/bin/php" ] && return 0
+    done
+    return 1
+  done
+  return 1
+}
+# The PHP-FPM mode (multi or single) the ltd worker last made for account $1,
+# root's record; nothing without one, and nothing when root's pool files of
+# the account do not bear it out (a record an earlier account of the name
+# left, or one its removal outlived): multi needs a per-version pool of the
+# account, single the account's own pool file.
+_fpm_mode_rec() {
+  local _f="/var/backups/ltd/fpmcore/${1}.mode.applied" _r="" _p
+  [ -f "${_f}" ] && [ ! -L "${_f}" ] || return 0
+  { IFS= read -r _r < "${_f}"; } 2> /dev/null
+  case "${_r}" in
+    multi)
+      for _p in /opt/php*/etc/pool.d/"${1}".[0-9]*.conf; do
+        [ -f "${_p}" ] && { echo multi; return 0; }
+      done
+      ;;
+    single)
+      for _p in /opt/php*/etc/pool.d/"${1}".conf; do
+        [ -f "${_p}" ] && { echo single; return 0; }
+      done
+      ;;
+  esac
+  return 0
+}
+# The account's PHP-FPM mode as the ltd worker runs it: the mode it last made,
+# else the one its files give. The worker keeps an account in multi-FPM mode
+# with multi-fpm.info gone and holds a switch of the account's own for up to
+# 15 minutes, and a single pool set up here for such an account would run
+# beside its per-version ones.
+_sat_fpm_multi() {
+  local _r
+  _r="$(_fpm_mode_rec "${_USER}")"
+  [ "${_r}" = "multi" ] && return 0
+  [ "${_r}" = "single" ] && return 1
+  _fpm_multi_files "${_ROOT}" "${_USER}"
+}
 #
 # Satellite start.
 _satellite_make() {
@@ -8800,303 +9801,6 @@ _satellite_detect_vm_family() {
   fi
 }
 
-#
-# The account's static/control is the main login's, so it can put a link or
-# a FIFO at any name there, or at control itself: these run inside the real
-# directory (_acct_in_real_dir) and never follow or open either.
-#
-# ./control made a real directory, run inside the real static/: a link put
-# at the name is removed, a missing directory created 0755.
-_satellite_ctrl_dir_here() {
-  [ -L ./control ] && rm -f ./control
-  [ -d ./control ] || ( umask 022; mkdir -p ./control )
-}
-# The control directory on install and upgrade (run inside it): fpm.info
-# and cli.info where missing (cli.info from a regular fpm.info), the README
-# and this serial's stamp on its first pass, at install the release pass's
-# defaults where the owner has none, the tree handed to the main
-# login as _satellite_reown_own_here hands it (never a link, nor a file the
-# login hard-linked there, nor what another user owns: the login can rename
-# into it what another account left group-writable).
-_satellite_ctrl_make_here() {
-  local _v
-  [ -e ./fpm.info ] || _acct_put_here fpm.info "${_PHP_FPM_VERSION}"
-  if [ ! -e ./cli.info ]; then
-    _v=""
-    [ -e ./fpm.info ] && _v="$(_acct_read_here fpm.info)"
-    _acct_put_here cli.info "${_v:-${_PHP_CLI_VERSION}}"
-  fi
-  if [ ! -e "./.ctrl.${_tRee}.${_xSrl}.pid" ] \
-    && [ -e "/home/${_USER}.ftp/clients" ]; then
-    if [ -e "/var/xdrago/conf/control-readme.txt" ]; then
-      ( umask 022
-        cp -T --no-preserve=mode --remove-destination \
-          /var/xdrago/conf/control-readme.txt ./README.txt ) &> /dev/null
-    fi
-    rm -f -- ./.ctrl.*
-    _acct_put_here ".ctrl.${_tRee}.${_xSrl}.pid" OK
-  fi
-  # An account made by this pass never held the FastTrack.info that BOA
-  # wrote by default before 2024: the release pass removes that one once,
-  # where this marker is missing, and must never take a FastTrack.info
-  # the account's owner puts here.
-  if [ "${_STATUS}" = "INIT" ] && [ ! -e ./.disFastTrack.pid ]; then
-    _acct_put_here .disFastTrack.pid OK
-  fi
-  # The release pass's two defaults, by its rules (BOA.sh.txt _ctrl_seed_here):
-  # it seeds each account once per release, so an account made after it would
-  # wait for the next one, its Delete and Migrate safety copies taking the
-  # classic dump meanwhile (only MyQuick.info sends them to the fast dumps).
-  # At install only: what an existing account holds is the owner's choice.
-  if [ "${_STATUS}" = "INIT" ]; then
-    if [ ! -e ./MyQuick.info ] && [ ! -e ./MyClassic.info ]; then
-      _acct_put_here MyQuick.info ON
-    fi
-    if [ ! -e ./FastTrack.info ] && [ ! -e ./ClassicTrack.info ]; then
-      _acct_put_here ClassicTrack.info ON
-    fi
-  fi
-  # an account still on the box-wide group gets group root here, as the ltd
-  # worker gives it (_ltd_ctrl_shut): what the login makes in this
-  # set-group-ID tree is then never writable by another account's login
-  if [ "${_ACCG:-users}" = "${_USER}" ]; then
-    _satellite_reown_own_here = "${_USER}.ftp:${_ACCG}" > /dev/null
-  else
-    _satellite_reown_own_here = "${_USER}.ftp:root" > /dev/null
-  fi
-}
-
-#
-# The instance user owns the rest of the account (log/, .drush/, tools/,
-# .ssh/, the hostmaster tree), so any name there can be a link or a FIFO too.
-# Root reads, writes, copies, edits and sets modes there only through these,
-# run inside the real directory (_acct_in_real_dir), beside the shared
-# _acct_* helpers.
-#
-# A mode set on names in the current (pinned) directory, never through a
-# link: each name is opened without following one and without blocking on a
-# FIFO, checked to be the expected type and changed through the open handle.
-# Run it inside a pinned directory or from find -execdir: O_NOFOLLOW covers
-# the last name only. Args: f|d (regular file or directory), the mode
-# (octal), the names.
-# A directory keeps its set-user-ID and set-group-ID bits unless the mode has
-# five digits (02775, 00755), as chmod(1) does with a numeric mode. A regular
-# file is changed only while it has a single link: a hard link the account
-# planted or renamed over a name is never given the mode.
-_SAT_NOFOLLOW_CHMOD_PL='use Fcntl;
-my ($t, $ms) = (shift @ARGV, shift @ARGV);
-my ($m, $k) = (oct($ms), length($ms) < 5 ? 06000 : 0);
-for my $f (@ARGV) {
-  sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
-  my @s = stat($h);
-  if ($t eq "f" && -f _ && $s[3] == 1) {
-    chmod($m, $h);
-  } elsif ($t eq "d" && -d _) {
-    chmod($m | ($s[2] & $k), $h);
-  }
-  close($h);
-}'
-_satellite_chmod_nofollow() {
-  local _t="${1}" _m="${2}"
-  shift 2
-  [ "$#" -gt 0 ] || return 0
-  perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" "${_t}" "${_m}" "$@" 2> /dev/null
-}
-# The uids root's walks over the account $1's trees act on, comma-separated:
-# root's own (0, what root wrote there for the account) and those of every
-# identity of the account as passwd names them: oN and oN.<name>, that is its
-# .ftp login, its client sub-accounts oN.<client> and oN.<client>-dev and its
-# PHP-FPM users oN.web and oN.<ver>.web. An account name holds no dot, so the
-# match is exact: o1 never takes o10's. Status 1, and nothing, unless the
-# account itself is in passwd. The numbers of the account's removed
-# identities that root recorded in /data/conf/acct-uids/<oN>.gone (the ltd
-# worker, before deluser frees one) are listed too while no user has them.
-# Root's check of the control folder, its reads of the control files and its
-# hand-overs into that folder take a uid no passwd entry names only when it
-# is listed: another account's removed login leaves files under such a number
-# too. Its other hand-overs, mode walks and removal walks still take any.
-_acct_walk_uids() {
-  local _a="${1}" _n _p _u _r _x="0" _self=NO
-  case "${_a}" in
-    ""|*[!a-z0-9-]*) return 1 ;;
-  esac
-  while IFS=: read -r _n _p _u _r; do
-    [[ "${_n}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]] || continue
-    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
-    _x="${_x},${_u}"
-    [ "${_n}" = "${_a}" ] && _self=YES
-  done < <(getent passwd 2> /dev/null)
-  [ "${_self}" = "YES" ] || return 1
-  # the account's removed identities, their numbers recorded by root before
-  # deluser freed them; a number a user has again is not taken
-  while IFS= read -r _u; do
-    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
-    getent passwd "${_u}" > /dev/null 2>&1 && continue
-    _x="${_x},${_u}"
-  done 2> /dev/null < "/data/conf/acct-uids/${_a}.gone"
-  echo "${_x}"
-}
-# The account's control/ judged once a pass (_acct_ctrl_own): _sat_ctrl_has
-# is 0 when the name $1 is in it and it is the account's own, and
-# _sat_ctrl_foreign is 0 when it is not the account's own. The pass then
-# neither reads nor writes there: the cnf's PHP versions, the platforms
-# list and the pools stay as they are, and the run says why (ALRT).
-_sat_ctrl_judge() {
-  [ "${_SAT_CTRL_FOR:-}" = "${_USER}" ] && return 0
-  _SAT_CTRL_FOR="${_USER}"
-  _SAT_CTRL_OWN=YES
-  if ! _SAT_CTRL_WHY=$(_acct_ctrl_own "${_USER}"); then
-    _SAT_CTRL_OWN=NO
-    _msg "ALRT: ${_ROOT}/static/control is not ${_USER}'s own (${_SAT_CTRL_WHY}); its control files are not read"
-  fi
-  return 0
-}
-_sat_ctrl_has() {
-  _sat_ctrl_judge
-  [ "${_SAT_CTRL_OWN}" = "YES" ] && [ -e "${_ROOT}/static/control/${1}" ]
-}
-_sat_ctrl_foreign() {
-  _sat_ctrl_judge
-  [ "${_SAT_CTRL_OWN}" = "NO" ]
-}
-# Multi-FPM mode by the account's files: tools/le and multi-fpm.info. A
-# multi-fpm.info the login deleted from an account whose pools are multi-FPM
-# ones (root's /opt/php*/etc/pool.d/<acct>.<NN>.conf) is written back by the
-# ltd worker while PHP 7.4 or newer is installed, so it does not take the
-# account out of the mode: one pass left it and the next entered it again,
-# every pool and nginx reloaded twice, for a file the login cannot keep away.
-# $1 = the account's home, $2 = its name.
-_fpm_multi_files() {
-  local _e _p
-  [ -d "${1}/tools/le" ] || return 1
-  [ -f "${1}/static/control/multi-fpm.info" ] && return 0
-  [ -d "${1}/static/control" ] || return 1
-  for _p in /opt/php*/etc/pool.d/"${2}".[0-9]*.conf; do
-    [ -f "${_p}" ] || continue
-    for _e in 86 85 84 83 82 81 74; do
-      [ -x "/opt/php${_e}/bin/php" ] && return 0
-    done
-    return 1
-  done
-  return 1
-}
-# The PHP-FPM mode (multi or single) the ltd worker last made for account $1,
-# root's record; nothing without one, and nothing when root's pool files of
-# the account do not bear it out (a record an earlier account of the name
-# left, or one its removal outlived): multi needs a per-version pool of the
-# account, single the account's own pool file.
-_fpm_mode_rec() {
-  local _f="/var/backups/ltd/fpmcore/${1}.mode.applied" _r="" _p
-  [ -f "${_f}" ] && [ ! -L "${_f}" ] || return 0
-  { IFS= read -r _r < "${_f}"; } 2> /dev/null
-  case "${_r}" in
-    multi)
-      for _p in /opt/php*/etc/pool.d/"${1}".[0-9]*.conf; do
-        [ -f "${_p}" ] && { echo multi; return 0; }
-      done
-      ;;
-    single)
-      for _p in /opt/php*/etc/pool.d/"${1}".conf; do
-        [ -f "${_p}" ] && { echo single; return 0; }
-      done
-      ;;
-  esac
-  return 0
-}
-# The account's PHP-FPM mode as the ltd worker runs it: the mode it last made,
-# else the one its files give. The worker keeps an account in multi-FPM mode
-# with multi-fpm.info gone and holds a switch of the account's own for up to
-# 15 minutes, and a single pool set up here for such an account would run
-# beside its per-version ones.
-_sat_fpm_multi() {
-  local _r
-  _r="$(_fpm_mode_rec "${_USER}")"
-  [ "${_r}" = "multi" ] && return 0
-  [ "${_r}" = "single" ] && return 1
-  _fpm_multi_files "${_ROOT}" "${_USER}"
-}
-# As _SAT_NOFOLLOW_CHMOD_PL, given first the comma-separated uids it acts
-# for (_acct_walk_uids; a uid no passwd entry names counts too, sub own): a
-# name another named uid owns keeps its mode, and nothing is changed unless
-# the current directory and every directory above it, up to /, are owned by
-# those uids, read through '..' from where find stands.
-# The account's identities can rename into their trees what another account
-# left group-writable, a whole directory with everything nested in it, and
-# nothing below such a directory is changed. Prints dev:ino of each name
-# another uid owns, and, given . as a name, of the directory another uid
-# owns above the place when it is refused; status 1 when it is. A list
-# with '-' first (the Verify fixers' deny list) names the uids it never
-# acts for.
-_SAT_CHMOD_OWN_PL='use Fcntl;
-my ($o, $t, $ms) = (shift @ARGV, shift @ARGV, shift @ARGV);
-my $deny = $o =~ s/^-// ? 1 : 0;
-my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, $o);
-sub own { my $u = shift; return (exists $own{$u} ? 0 : 1) if $deny; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
-my ($p, $ok, @d, @x) = (".", 0);
-for (1 .. 256) {
-  @x = stat($p) or last;
-  last unless own($x[4]);
-  if (@d && $x[0] == $d[0] && $x[1] == $d[1]) { $ok = 1; last; }
-  @d = @x;
-  $p .= "/..";
-}
-unless ($ok) {
-  print "$x[0]:$x[1]\n" if @x && !own($x[4]) && grep { $_ eq "." } @ARGV;
-  exit 1;
-}
-my ($m, $k) = (oct($ms), length($ms) < 5 ? 06000 : 0);
-for my $f (@ARGV) {
-  sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
-  my @s = stat($h);
-  if (@s && !own($s[4])) {
-    print "$s[0]:$s[1]\n";
-  } elsif (@s && $t eq "f" && -f _ && $s[3] == 1) {
-    chmod($m, $h);
-  } elsif (@s && $t eq "d" && -d _) {
-    chmod($m | ($s[2] & $k), $h);
-  }
-  close($h);
-}
-exit 0;'
-# As _ACCT_REOWN_PL, the same way: given first the uids it acts for, then
-# the uid and gid to hand each name to; a name another named uid owns, and
-# anything below a directory another named uid owns, keeps its owner. A gid
-# given with a + first keeps the group write of what is handed over, as the
-# ownership fixers' -W does; no caller here gives one. A list with '=' first
-# takes a uid no passwd entry names only when it is listed: the control
-# folder's hand-over gives one (_satellite_ctrl_make_here).
-_SAT_REOWN_OWN_PL='use Fcntl;
-my ($o, $u, $g) = (shift @ARGV, shift @ARGV, shift @ARGV);
-my $deny = $o =~ s/^-// ? 1 : 0;
-my $strict = $o =~ s/^=// ? 1 : 0;
-my $gw = $g =~ s/^\+// ? 1 : 0;
-my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, $o);
-sub own { my $u = shift; return (exists $own{$u} ? 0 : 1) if $deny; return (exists $own{$u} ? 1 : 0) if $strict; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
-my ($p, $ok, @d, @x) = (".", 0);
-for (1 .. 256) {
-  @x = stat($p) or last;
-  last unless own($x[4]);
-  if (@d && $x[0] == $d[0] && $x[1] == $d[1]) { $ok = 1; last; }
-  @d = @x;
-  $p .= "/..";
-}
-unless ($ok) {
-  print "$x[0]:$x[1]\n" if @x && !own($x[4]) && grep { $_ eq "." } @ARGV;
-  exit 1;
-}
-for my $f (@ARGV) {
-  sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
-  my @s = stat($h);
-  if (@s && !own($s[4])) {
-    print "$s[0]:$s[1]\n";
-  } elsif (@s && (-d _ || (-f _ && $s[3] == 1))) {
-    if (chown($u, $g, $h) && $gw && ($s[2] & 0200) && !($s[2] & 020) && !(-f _ && ($s[2] & 06000))) {
-      chmod(($s[2] & 07777) | 020, $h);
-    }
-  }
-  close($h);
-}
-exit 0;'
 # Root's removals in an account's trees, run inside the directory they act
 # in: only what the uids given second own (_acct_walk_uids), or a uid no
 # passwd entry names (sub own), is removed or unlocked, and nothing below a
@@ -9228,135 +9932,6 @@ if ($op eq "r") {
   exit 2;
 }
 done();'
-# ./$1 in the current (pinned) directory made from stdin: a fresh file
-# created exclusively (0600 until it is complete), handed to $3 (owner:group,
-# names or numbers; empty leaves it root's) and given the mode $2, both
-# through the handle that created it (_ACCT_PUT_MODE_PL), and renamed over
-# the name, so a link or a FIFO put at the name is replaced, never followed
-# or opened, and nothing is handed over or moded by name.
-_satellite_put_stdin_here() {
-  local _t="./.${1}.put.$$.${RANDOM}" _u=-1 _g=-1
-  if [ -n "${3}" ]; then
-    _u="${3%%:*}"
-    _g="${3#*:}"
-    [[ "${_u}" =~ ^[0-9]+$ ]] || _u=$(id -u -- "${_u}" 2> /dev/null)
-    [[ "${_g}" =~ ^[0-9]+$ ]] \
-      || _g=$(getent group "${_g}" 2> /dev/null | cut -d: -f3)
-    [[ "${_u}" =~ ^[0-9]+$ && "${_g}" =~ ^[0-9]+$ ]] || return 1
-  fi
-  rm -f -- "${_t}"
-  if perl -e "${_ACCT_PUT_MODE_PL}" "${_t}" "${_u}" "${_g}" "${2:-0644}" \
-    2> /dev/null && mv -f -T -- "${_t}" "./${1}"; then
-    return 0
-  fi
-  rm -f -- "${_t}"
-  return 1
-}
-# owner[:group] as chown takes it (names; an empty owner or no group keeps
-# that id) printed as the "uid gid" _ACCT_REOWN_PL takes (-1 kept); nothing
-# when a name does not resolve.
-_satellite_ids() {
-  local _u=-1 _g=-1
-  [ -z "${1%%:*}" ] || _u=$(id -u -- "${1%%:*}" 2> /dev/null)
-  if [[ "${1}" == *:* ]]; then
-    _g=$(getent group "${1#*:}" 2> /dev/null | cut -d: -f3)
-  fi
-  [[ "${_u}" =~ ^(-1|[0-9]+)$ && "${_g}" =~ ^(-1|[0-9]+)$ ]] || return 1
-  echo "${_u} ${_g}"
-}
-# The current (pinned) directory and everything below it handed to $1
-# (owner[:group], as chown -R took it) through _ACCT_REOWN_PL, from the
-# directory find walked (-execdir): each directory and each regular file
-# with a single link, never a link, a FIFO, a socket or a hard-linked file,
-# so a hard link the account planted in the tree is never handed over.
-# Further arguments are find tests put in front of the walk (a prune).
-_satellite_reown_here() {
-  local _u _g
-  read -r _u _g <<< "$(_satellite_ids "${1}")"
-  [ -n "${_g}" ] || return 1
-  shift
-  perl -e "${_ACCT_REOWN_PL}" -- "${_u}" "${_g}" . \
-    && env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 "$@" \
-      \( -type d -o -type f \) \
-      -execdir perl -e "${_ACCT_REOWN_PL}" -- "${_u}" "${_g}" {} +
-}
-# As _satellite_reown_here, through _SAT_REOWN_OWN_PL: only what root or
-# one of the instance's own identities owns (_acct_walk_uids) is handed
-# over, and nothing below a directory another user owns. Prints dev:ino of
-# each entry left for another owner.
-_satellite_reown_own_here() {
-  local _u _g _o _s=""
-  # = first: only the account's identities and its recorded removed ones
-  # (_acct_walk_uids), never another number no user has (the control folder)
-  [ "${1}" = "=" ] && { _s="="; shift; }
-  read -r _u _g <<< "$(_satellite_ids "${1}")"
-  [ -n "${_g}" ] || return 1
-  _o=$(_acct_walk_uids "${_USER}") || return 1
-  shift
-  perl -e "${_SAT_REOWN_OWN_PL}" -- "${_s}${_o}" "${_u}" "${_g}" . \
-    && env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 "$@" \
-      \( -type d -o -type f \) \
-      -execdir perl -e "${_SAT_REOWN_OWN_PL}" -- "${_s}${_o}" "${_u}" "${_g}" {} +
-}
-# The names given in the current (pinned) directory handed to $1
-# (owner[:group]) through _ACCT_REOWN_PL, as chown or chgrp handed them,
-# except a link, a FIFO, a socket or a hard-linked file.
-_satellite_reown_names_here() {
-  local _u _g
-  read -r _u _g <<< "$(_satellite_ids "${1}")"
-  [ -n "${_g}" ] || return 1
-  shift
-  perl -e "${_ACCT_REOWN_PL}" -- "${_u}" "${_g}" "$@"
-}
-# The current (pinned) directory and every directory below it set to $1,
-# every regular file below it to $2, as find -type d|f -exec chmod set them,
-# each through a handle opened without following a link, from the
-# directory find walked (-execdir); a hard-linked file is left alone.
-_satellite_modes_walk_here() (
-  PATH=/usr/local/bin:/usr/bin:/bin
-  _satellite_chmod_nofollow d "${1}" .
-  find . -mindepth 1 -type d \
-    -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" d "${1}" {} +
-  find . -mindepth 1 -type f \
-    -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" f "${2}" {} +
-)
-# Each directory and regular file named (find -execdir, or in a pinned
-# directory) made root's, with the mode $1 for a directory (its set-ID bits
-# kept, as chmod 0755 keeps them) and $2 for a file, except xmass's two
-# records, which xmass writes 0600. An entry is checked by lstat before it is
-# opened, so a FIFO or a device is never opened, and is changed through its
-# own handle, never through a link. A hard-linked file is taken back too:
-# /data/conf is never an account's, so a file an account linked there is
-# made root's, as chown -R root:root made it.
-_CONF_ROOT_PL='use Fcntl;
-my ($dm, $fm) = (oct(shift @ARGV), oct(shift @ARGV));
-for my $f (@ARGV) {
-  my @l = lstat($f);
-  next unless @l && (-d _ || -f _);
-  sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
-  my @s = stat($h);
-  if (@s && $s[0] == $l[0] && $s[1] == $l[1]) {
-    if (-d _) {
-      chown(0, 0, $h);
-      chmod($dm | ($s[2] & 06000), $h);
-    } elsif (-f _) {
-      chown(0, 0, $h);
-      chmod($f =~ m{(^|/)xmass_(state|solr_used)\.cnf(\.tmp\.\d+)?$} ? 0600 : $fm, $h);
-    }
-  }
-  close($h);
-}'
-# /data/conf (the current, pinned directory) and everything below it made
-# root's (_CONF_ROOT_PL): directories 0755, files 0644, the top 0711. Every
-# site on the box loads its global includes from here and nothing an account
-# runs writes here, so it is never handed to an account.
-_satellite_conf_root_here() (
-  PATH=/usr/local/bin:/usr/bin:/bin
-  perl -e "${_CONF_ROOT_PL}" 0755 0644 .
-  find . -mindepth 1 \( -type d -o -type f \) \
-    -execdir perl -e "${_CONF_ROOT_PL}" 0755 0644 {} +
-  chmod 0711 .
-)
 # The first pass after a move to this box that would mail the account's
 # upgrade notice sends none: the move carries the account's setup mail
 # along, and the client has everything the notice says from the move
@@ -9399,126 +9974,6 @@ _satellite_read_tail_here() {
   timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock,skip_bytes \
     skip="${_s}" bs=1048576 count=1 status=none 2> /dev/null
 }
-# uid:gid and mode of ./$1 in the current (pinned) directory when it is a
-# regular file _acct_read_here reads whole (1 MiB at most); fails otherwise.
-_satellite_stat_here() {
-  local _o _m _s
-  [ -f "./${1}" ] && [ ! -L "./${1}" ] || return 1
-  read -r _o _m _s <<< "$(stat -c '%u:%g %a %s' -- "./${1}" 2> /dev/null)"
-  [ -n "${_s}" ] && [ "${_s}" -le 1048576 ] || return 1
-  echo "${_o} ${_m}"
-}
-# ./$2 in the current (pinned) directory made from the regular file ./$1 (the
-# same name edits it in place), through the sed script $3 when given, with
-# $1's owner and mode: what cp -a or sed -i did there, without following a
-# link or opening a FIFO at either name.
-_satellite_copy_here() {
-  local _st
-  _st="$(_satellite_stat_here "${1}")" || return 1
-  _acct_read_here "${1}" | sed -e "${3:-}" \
-    | _satellite_put_stdin_here "${2}" "${_st#* }" "${_st%% *}"
-}
-# The sed script $1 applied as _satellite_copy_here applies it to every name
-# the glob $2 matches in the current (pinned) directory, expanded there.
-_satellite_edit_all_here() (
-  local _f
-  shopt -s nullglob
-  # shellcheck disable=SC2086
-  for _f in ./${2}; do
-    _satellite_copy_here "${_f#./}" "${_f#./}" "${1}"
-  done
-)
-# The current (pinned) directory handed to $1 (owner:group) with the mode
-# $2 (empty: its mode kept), through _SAT_REOWN_OWN_PL: only when root or
-# one of the instance's own identities (_acct_walk_uids) owns it and every
-# directory above it. The account can rename to any name in its tree a
-# directory another account left group-writable: such a directory keeps its
-# owner and mode. Prints dev:ino of the directory left for another owner;
-# status 1 when one is.
-_satellite_own_dir_here() {
-  local _u _g _o
-  read -r _u _g <<< "$(_satellite_ids "${1}")"
-  [ -n "${_g}" ] || return 1
-  _o=$(_acct_walk_uids "${_USER}") || return 1
-  perl -e "${_SAT_REOWN_OWN_PL}" -- "${_o}" "${_u}" "${_g}" . || return 1
-  [ -z "${2}" ] || chmod "${2}" .
-}
-# The names after the type $1 (f or d) and the mode $2 in the current
-# (pinned) directory given that mode through _SAT_CHMOD_OWN_PL: only what
-# root or one of the instance's own identities owns (_acct_walk_uids), only
-# while this directory and every one above it are, never through a link.
-# Prints dev:ino of each entry left for another owner (given ., the
-# directory above that refused the place).
-_satellite_chmod_own_here() {
-  local _o
-  _o=$(_acct_walk_uids "${_USER}") || return 0
-  perl -e "${_SAT_CHMOD_OWN_PL}" -- "${_o}" "$@" 2> /dev/null
-  return 0
-}
-# One NOTE line for what the owner-checked helpers left to another owner:
-# $1 the dev:ino lines they printed, each entry counted once though more
-# than one of them met it, $2 the end of the sentence (how and where it was
-# left). Nothing when none was left.
-_satellite_left_note() {
-  local _n
-  _n=$(printf '%s\n' "${1}" | grep -E '^[0-9]+:[0-9]+$' | sort -u | grep -c .)
-  [ "${_n}" -gt 0 ] || return 0
-  _msg "${_STATUS} A: NOTE: ${_n} entries owned by another user left ${2}"
-}
-# The link ./$1 in the current (pinned) directory handed to $2 (owner[:group]
-# names; an owner alone keeps the link's group), as chown -h handed it: made
-# anew by that owner (setpriv) under a fresh name, to the same target, and
-# renamed over the name, so nothing is chowned by name where the account
-# could swap a file in for the link. Left as it is when it already has that
-# owner or cannot be made so. Only the owner is compared: in a setgid
-# directory a new link takes the directory's group whatever the maker's, and
-# a link's group grants nothing, so comparing it would re-make the link on
-# every pass.
-_satellite_relink_here() {
-  local _t="./.${1}.rln.$$.${RANDOM}" _l _u _g
-  read -r _u _g <<< "$(_satellite_ids "${2}")"
-  [ -L "./${1}" ] || return 1
-  [ "${_g}" = "-1" ] && _g="$(stat -c %g -- "./${1}" 2> /dev/null)"
-  [[ "${_u}" =~ ^[0-9]+$ && "${_g}" =~ ^[0-9]+$ ]] || return 1
-  [ "$(stat -c '%u' -- "./${1}" 2> /dev/null)" = "${_u}" ] && return 0
-  _l="$(readlink -- "./${1}")" && [ -n "${_l}" ] || return 1
-  rm -f -- "${_t}"
-  setpriv --reuid="${_u}" --regid="${_g}" --clear-groups \
-    ln -s -- "${_l}" "${_t}" 2> /dev/null
-  if [ -L "${_t}" ] && mv -f -T -- "${_t}" "./${1}"; then
-    return 0
-  fi
-  rm -f -- "${_t}"
-  return 1
-}
-# One value of the account's hostmaster alias ($1 = the key and its closing
-# quote, as root' or site_path'), parsed as before from a bounded read that
-# never follows a link or blocks on a FIFO.
-_satellite_hm_alias_get() {
-  _acct_read_in "${_ROOT}/.drush" hostmaster.alias.drushrc.php \
-    | grep "${1}" \
-    | cut -d: -f2 \
-    | awk '{ print $3}' \
-    | sed "s/[\,']//g" 2>&1
-}
-
-# The control panel's own PHP switches (docs/cnf/barracuda.cnf), read from
-# the box cnf as bash reads it: the last assignment wins, export, quotes
-# and a trailing comment are tolerated, and a key that is not there yet
-# (a box whose barracuda pass has not appended it) takes the shipped
-# default, on. The children see them through the sealed include only.
-_satellite_hm_switches() {
-  local _k _v
-  for _k in _HM_CLI_FLOOR _HM_FPM_POOL _HM_FPM_VERSION; do
-    _v=$(grep -iE "^[[:space:]]*(export[[:space:]]+)?${_k}=" /root/.barracuda.cnf 2>/dev/null \
-      | tail -n 1 | sed -E 's/^[^=]*=//; s/[[:space:]]+#.*$//' | tr -d "\"' " | tr -d '\n')
-    printf -v "${_k}" '%s' "${_v}"
-  done
-  [ -z "${_HM_CLI_FLOOR}" ] && _HM_CLI_FLOOR=7.4
-  [ -z "${_HM_FPM_POOL}" ] && _HM_FPM_POOL=YES
-  export _HM_CLI_FLOOR _HM_FPM_POOL _HM_FPM_VERSION
-}
-
 # $1 = the CLI directory (/opt/phpNN/bin) the account's version resolved
 # to; prints the directory the control panel's own command line runs on:
 # $1 itself when the floor is off, when the version is not below it, or
@@ -9564,250 +10019,6 @@ _satellite_hm_cli_bin() {
   done
   echo "${_d}"
 }
-# True when $1 names one of the account's own hostmaster roots
-# (<root>/aegir/distro/<name>) or, with $2 = site, a site in one
-# (.../<name>/sites/<site>). The alias is the account's file: a path read
-# from it is used only there, and as root only through _acct_in_real_dir,
-# which also refuses a link or a dot name on the way; otherwise it goes,
-# quoted, to the account user's own shell, which reaches nothing more than
-# the account itself can.
-_satellite_hm_path_ok() {
-  local _p="${1#"${_ROOT}/aegir/distro/"}"
-  [ -n "${1}" ] && [ "${_p}" != "${1}" ] || return 1
-  if [ "${2}" = "site" ]; then
-    [[ "${_p}" =~ ^[^/]+/sites/[^/]+$ ]]
-  else
-    [[ "${_p}" =~ ^[^/]+$ ]]
-  fi
-}
-# Run "$@" inside the real directory $1, as _acct_in_real_dir runs it, or,
-# when $1 is a link into the account's files store (backups relocated onto
-# the store, a site's files/ or private/ moved into it), inside the
-# directory the link resolves to: only one in the account's own
-# static/files, or in the store moved onto attached storage
-# (/mnt/<mount>/files/<oN>/static/files). Any other link is refused. The
-# backups link leads to the store's .backups by design; a site's store is
-# never a dot-name right below the store root (BOA's own .backups,
-# .backup-exports, .archived), so _satellite_in_site_store_dir refuses one.
-_satellite_in_store_dir() {
-  _satellite_in_store any "$@"
-}
-_satellite_in_site_store_dir() {
-  _satellite_in_store site "$@"
-}
-_satellite_in_store() {
-  local _k="${1}" _d="${2}" _r _s _m _top
-  shift 2
-  if [ ! -L "${_d}" ]; then
-    _acct_in_real_dir "${_d}" "$@"
-    return
-  fi
-  _r="$(readlink -f -- "${_d}" 2> /dev/null)"
-  _s="$(cd -P -- /data/disk 2> /dev/null && /bin/pwd -P)/${_USER}/static/files/"
-  # The store on attached storage is /mnt/<mount>/files/<oN>/static/files,
-  # the mount itself possibly nested, as migratefs accepts it under /mnt,
-  # as the nightly decides it.
-  case "${_r}" in
-    ""|*[!A-Za-z0-9._/-]*) return 1 ;;
-    "${_s}"?*)
-      _top="${_r#"${_s}"}"
-      ;;
-    /mnt/?*/files/"${_USER}"/static/files/?*)
-      _m="${_r%%/files/"${_USER}"/static/files/*}"
-      case "${_m}" in
-        */files/*|*/static/*) return 1 ;;
-      esac
-      _top="${_r#"${_m}"/files/"${_USER}"/static/files/}"
-      ;;
-    *) return 1 ;;
-  esac
-  case "${_k}:${_top}" in
-    site:.*) return 1 ;;
-  esac
-  ( cd -P -- "${_r}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_r}" ] && "$@" )
-}
-# ./$1 in the current (pinned) directory made a directory where missing,
-# then "${@:2}" run inside it as _acct_in_real_dir runs it: a link put at
-# the name is never followed or entered.
-_satellite_sub_here() {
-  local _n="${1}"
-  shift
-  mkdir -p -- "./${_n}" 2> /dev/null
-  _acct_in_real_dir "./${_n}" "$@"
-}
-# The command line $1 run by the instance user from its own home, with HOME
-# set to it and the system PATH, whatever the calling environment holds
-# (git reads its config from HOME): whatever a link in the account's tree
-# leads to, it reaches only what that user may change.
-_satellite_as_user() {
-  su -s /bin/bash "${_USER}" \
-    -c "cd ${_ROOT} && export HOME=${_ROOT} PATH=/usr/local/bin:/usr/bin:/bin && { ${1}; }"
-}
-# +i cleared on each regular file named, in the current (pinned) directory,
-# through a handle (_ACCT_CHATTR_PL): never through a link, nor on a file
-# the account hard-linked or renamed over the name.
-_satellite_unlock_here() {
-  local _f
-  for _f in "$@"; do
-    [ -f "./${_f}" ] && [ ! -L "./${_f}" ] \
-      && perl -e "${_ACCT_CHATTR_PL}" - "./${_f}" &> /dev/null
-  done
-  return 0
-}
-# The current (pinned) platforms/ of a main login and each entry in it
-# locked ($1 = +i) or unlocked (-i): a directory entry from inside it (on
-# '.', once entered as the real directory), a regular file through a handle
-# (_ACCT_CHATTR_PL, a single link only); a link is left alone.
-_satellite_chattr_all_here() {
-  local _e
-  chattr "${1}" . &> /dev/null
-  for _e in ./*; do
-    if [ -d "${_e}" ] && [ ! -L "${_e}" ]; then
-      _acct_in_real_dir "${_e}" chattr "${1}" . &> /dev/null
-    elif [ -f "${_e}" ] && [ ! -L "${_e}" ]; then
-      perl -e "${_ACCT_CHATTR_PL}" "${1%i}" "${_e}" &> /dev/null
-    fi
-  done
-  return 0
-}
-# The current (pinned) ~/.drush of a main login locked ($1 = +i) or
-# unlocked (-i) with its usr/ when that is a real directory (from inside
-# it, on '.'); unlocking also clears a CLI php.ini an earlier release left,
-# for the ltd worker to remove.
-_satellite_chattr_drush_here() {
-  chattr "${1}" . &> /dev/null
-  [ -d ./usr ] && [ ! -L ./usr ] \
-    && _acct_in_real_dir ./usr chattr "${1}" . &> /dev/null
-  [ "${1}" = "-i" ] && _satellite_unlock_here php.ini
-  return 0
-}
-# The current (pinned) directory and every directory and single-link
-# regular file below it unlocked (-i), each through a handle opened without
-# following a link or blocking on a FIFO (_ACCT_CHATTR_PL), from the
-# directory find walked (-execdir): a link, a FIFO or a hard-linked file is
-# left alone.
-_satellite_unlock_tree_here() {
-  perl -e "${_ACCT_CHATTR_PL}" - . &> /dev/null
-  env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 \
-    \( -type d -o -type f \) \
-    -execdir perl -e "${_ACCT_CHATTR_PL}" - {} + &> /dev/null
-  return 0
-}
-# Every directory set to $1 and every file to $2 below the current (pinned)
-# directory, top-level dot names left out as the globs this replaces left
-# them, each through a handle opened without following a link, from the
-# directory find walked (-execdir).
-_satellite_tree_modes_here() (
-  PATH=/usr/local/bin:/usr/bin:/bin
-  find . -mindepth 1 -path './.*' -prune -o -type d \
-    -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" d "${1}" {} +
-  find . -mindepth 1 -path './.*' -prune -o -type f \
-    -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" f "${2}" {} +
-)
-# The current (pinned) directory and every directory below it set to $1,
-# every regular file below it to $2, dot entries included, as the nightly
-# sets a site's files store, each through a handle opened without
-# following a link, from the directory find walked (-execdir): a name
-# swapped for a link during the walk is refused, never followed. Only what
-# root or one of the instance's own identities owns is changed, and nothing
-# below a directory another user owns (_SAT_CHMOD_OWN_PL). Prints dev:ino of
-# each entry left for another owner.
-_satellite_tree_mode_all_here() (
-  local _o
-  PATH=/usr/local/bin:/usr/bin:/bin
-  _o=$(_acct_walk_uids "${_USER}") || exit 0
-  perl -e "${_SAT_CHMOD_OWN_PL}" -- "${_o}" d "${1}" . 2> /dev/null || exit 0
-  find . -mindepth 1 -type d \
-    -execdir perl -e "${_SAT_CHMOD_OWN_PL}" -- "${_o}" d "${1}" {} +
-  find . -mindepth 1 -type f \
-    -execdir perl -e "${_SAT_CHMOD_OWN_PL}" -- "${_o}" f "${2}" {} +
-)
-# The current (pinned) backups directory's system/ (and system/$1 when
-# given) made where missing, handed to the instance user and set 0700,
-# each inside its real directory: the instance user moves its own old
-# backups there. Only where root or the instance's own identities own the
-# directory (_satellite_own_dir_here): nothing is made in a backups or a
-# system another user owns, which is tested before the first mkdir (the
-# same walker with no owner to give changes nothing). Prints dev:ino of the
-# directory left for another owner.
-_satellite_sys_dir_here() {
-  local _o
-  _o=$(_acct_walk_uids "${_USER}") || return 1
-  perl -e "${_SAT_REOWN_OWN_PL}" -- "${_o}" -1 -1 . || return 1
-  _satellite_sub_here system _satellite_own_dir_here \
-    "${_USER}:${_ACCG:-users}" 0700 || return 1
-  [ -z "${1}" ] || _acct_in_real_dir ./system _satellite_sub_here "${1}" \
-    _satellite_own_dir_here "${_USER}:${_ACCG:-users}" 0700
-}
-# The main login's new ~/.tmp (the current, pinned directory): anything
-# older than a day removed from inside the directory find walked, the tree
-# handed to the login (_satellite_reown_here), the directory 0755.
-_satellite_ftp_tmp_here() (
-  PATH=/usr/local/bin:/usr/bin:/bin
-  _satellite_own_dir_here "${_USERFTP}:${_ACCG:-users}" 755 || exit 1
-  touch .
-  _satellite_aged_rm_own_here 0
-  _satellite_reown_own_here "${_USERFTP}:${_ACCG:-users}"
-)
-# A login's ~/.bazaar (the current, pinned directory) seeded: bazaar.conf
-# put as a fresh file, the tree handed to $1 (owner:group) as
-# _satellite_reown_own_here hands it (what another user owns stays its),
-# the directory 0700.
-_satellite_bzr_seed_here() {
-  _acct_put_here bazaar.conf ignore_missing_extensions=True
-  _satellite_reown_own_here "${1}"
-  chmod 700 .
-}
-# The main login's ~/.drush (the current, pinned directory) and its usr/
-# made real directories and handed to the login, ~/.drush 0700, and usr/$1
-# linked to the instance user's own copy of that drush extension
-# (_satellite_user_ds_usr_here): a link put at usr is removed first, and
-# usr/ is entered once, as the real directory, for all that is done in it.
-# ~/.drush is handed over only where root or one of the instance's own
-# identities owns it (_satellite_own_dir_here), before anything is made in
-# it: the login can rename to .drush a directory another account left
-# group-writable, which keeps its owner and mode, with no usr/ made in it.
-# Prints dev:ino of each directory or entry left for another owner; status
-# 1 when the link was not made.
-_satellite_user_ds_link_here() {
-  _satellite_own_dir_here "${_USERFTP}:${_ACCG:-users}" 700 || return 1
-  [ -L ./usr ] && rm -f ./usr
-  mkdir -p ./usr
-  _acct_in_real_dir ./usr _satellite_user_ds_usr_here "${1}"
-}
-# The main login's ~/.drush/usr (the current, pinned directory) handed to
-# the login, its mode kept, and ./$1 linked to the instance user's own copy
-# of that drush extension, all from inside the one directory: its owner
-# test, the test of what holds the name and the link meet the same usr/
-# whatever is renamed onto that name meanwhile, and no owner is set through
-# a link or on a file put at it. The login can rename to usr, or to an
-# extension's name in it, what another account left group-writable. A usr/
-# another user owns keeps its owner and mode and gets no link. At the name,
-# a file or a link root or one of the instance's own identities owns is
-# removed (_satellite_unlink_own_here), a directory never, and the link is
-# made only where the name is then free (-T: never inside a directory at
-# the name, nor where a link there points), so another user's entry stays
-# as it is. Prints dev:ino of the directory or entry left for another
-# owner; status 1 when the link was not made.
-_satellite_user_ds_usr_here() {
-  local _o
-  _satellite_own_dir_here "${_USERFTP}:${_ACCG:-users}" "" || return 1
-  _satellite_unlink_own_here "./${1}"
-  if [ -d "./${1}" ] && [ ! -L "./${1}" ]; then
-    # the walker with no owner to give changes nothing: it prints a
-    # directory another user owns
-    _o=$(_acct_walk_uids "${_USER}") || return 1
-    perl -e "${_SAT_REOWN_OWN_PL}" -- "${_o}" -1 -1 "./${1}"
-    return 1
-  fi
-  ln -s -T -- "${_ROOT}/.drush/usr/${1}" "./${1}"
-}
-# ./$2 in the current (pinned) directory made a link to $1 where no name
-# there resolves.
-_satellite_link_new_here() {
-  [ -e "./${2}" ] || ln -sfn "${1}" "./${2}"
-}
-
 #
 # Text the account controls (log/*.txt, the names in its tree) reaches the
 # root cnf, the per-child include root sources and sed scripts root runs
@@ -9860,66 +10071,10 @@ _satellite_email_ok() {
   _re="^${_w}( ${_w})*$"
   [[ "${1}" =~ ${_re} ]]
 }
-# $1 without the blanks around it; nothing for text over 1024 characters,
-# longer than any value read this way, so the caller keeps its own value
-# (the cost of these trims grows with the square of the length).
-_satellite_trim() {
-  local _t="${1}"
-  [ "${#_t}" -le 1024 ] || return 0
-  _t="${_t#"${_t%%[![:space:]]*}"}"
-  printf '%s' "${_t%"${_t##*[![:space:]]}"}"
-}
-# The account's password file $2 in the real directory $1, read bounded and
-# joined into one line as echo joined it, never expanded as a file name
-# pattern; nothing for text over 256 characters (the generators make 128 at
-# most).
-_satellite_pass_read() (
-  local _v
-  _v="$(_acct_read_in "${1}" "${2}")"
-  [ "${#_v}" -le 256 ] || exit 0
-  set -f
-  # shellcheck disable=SC2086
-  echo -n ${_v}
-)
-# Root's reader of an account's plan file in log/, a copy of usage.sh's: ./$1
-# through one handle, only while it is root's regular file with one link that
-# no one else can write, at most 64 KiB. On Linux the handle carries the
-# root-only stamp trusted.boa.plan with the file's own name: a file stamped
-# with another name (a file of root's the account renamed, or one copied with
-# cp -a) is refused with status 6, an unstamped one is stamped. $2 "read"
-# prints its mtime on a line, then its bytes; "stamp" only stamps. Status 3:
-# no such name; 4: anything else there; 5: a read error.
-# shellcheck disable=SC2016
-_PLAN_HREAD_PL='use Fcntl; use Errno qw(ENOENT ENODATA EOPNOTSUPP); my ($n, $m) = @ARGV; exit 4 unless defined $m && ($m eq "read" || $m eq "stamp"); (my $b = $n) =~ s{^\./}{}; exit 4 unless $b =~ /^[A-Za-z0-9_][A-Za-z0-9_.-]{0,63}$/; sysopen(my $h, $n, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit($! == ENOENT ? 3 : 4); my @t = stat($h); exit 4 unless @t && -f _ && $t[3] == 1 && $t[4] == 0 && $t[7] <= 65536 && ($t[2] & 022) == 0; if ($^O eq "linux" && eval { require "syscall.ph"; 1 }) { my ($k, $v) = ("trusted.boa.plan", "\0" x 256); my $g = syscall(&SYS_fgetxattr, fileno($h), $k, $v, 256); if ($g >= 0) { exit 6 unless substr($v, 0, $g) eq $b; } elsif ($! == ENODATA) { syscall(&SYS_fsetxattr, fileno($h), $k, $b, length($b), 0); } elsif ($! != EOPNOTSUPP) { exit 4; } } exit 0 if $m eq "stamp"; my ($d, $r) = (""); while ($r = sysread($h, my $c, 65536)) { $d .= $c; exit 4 if length($d) > 65536; } exit 5 unless defined $r; close($h); binmode(STDOUT); print "$t[9]\n", $d or exit 5; exit 0'
 # The plan names the sizing knows. A plan value is one of these: a file of
 # root's renamed by the account to option.txt (its subscr.txt, a marker
 # saying "completed") names no plan and sizes nothing.
 _SAT_PLAN_RE='^(AERO|AGAIN|BUS|CLASSIC|CLUSTER|EDGE|HEADSPACE|MICRO|MINI|MONSTER|PHANTOM|POWER|QUIET|SSD|ULTRA)$'
-# The account's log/$1 as root wrote it under that name (_PLAN_HREAD_PL):
-# log/ is the account's, so a file it made there, a link, a FIFO or a file of
-# root's it renamed there sizes nothing. Sets _sLog to the bytes, blanks
-# around them dropped. Status 0: root's file; 1: no such name; 2: something
-# else is there.
-_satellite_root_log() {
-  local _r _s
-  _sLog=
-  _r="$(_acct_in_real_dir "${_ROOT}/log" perl -e "${_PLAN_HREAD_PL}" \
-    -- "./${1}" read && printf x)"
-  _s=$?
-  if [ "${_s}" -ne 0 ]; then
-    [ -e "${_ROOT}/log/${1}" ] || [ -L "${_ROOT}/log/${1}" ] || return 1
-    return 2
-  fi
-  _r="${_r%x}"
-  _sLog="$(_satellite_trim "${_r#*$'\n'}")"
-  return 0
-}
-# The account's plan file log/$1, root's, stamped with its own name
-# (_PLAN_HREAD_PL "stamp") right after root wrote it.
-_satellite_plan_stamp() {
-  _acct_in_real_dir "${_ROOT}/log" perl -e "${_PLAN_HREAD_PL}" \
-    -- "./${1}" stamp > /dev/null 2>&1
-}
 # The amazing upgrade's copy of the plan file log/$1 to log/$2: only from a
 # file of root's under its own name (_satellite_root_log), into a new file of
 # root's stamped with the name $2, so no copy takes another file's value or
@@ -9945,56 +10100,6 @@ _satellite_log_value() {
     _msg "NOTE: ${_ROOT}/log/${1} is not as root wrote it, ${2} kept as set in ${_octCnf}"
   fi
 }
-# The engines count the pool sizing multiplies by: root's log/cores.txt when
-# it holds a whole number (leading zeros dropped, at most nine digits, so
-# the product stays a number), otherwise _CLIENT_CORES as the root cnf or
-# this pass set it. Never digits picked out of other text: a file of root's
-# renamed to cores.txt (fpm.txt holds 8.4) gives no count.
-_satellite_cores_now() {
-  local _v
-  _satellite_root_log cores.txt || return 0
-  _v="${_sLog}"
-  [[ "${_v}" =~ ^[0-9]+$ ]] || return 0
-  _v="${_v#"${_v%%[!0]*}"}"
-  [ -n "${_v}" ] && [ "${#_v}" -le 9 ] || return 0
-  _CLIENT_CORES="${_v}"
-}
-# $1 made literal for the replacement of a sed s/// command: each '\', '/'
-# and '&' escaped and line breaks dropped, so no text can end the command
-# or add to it.
-_satellite_sed_rep() {
-  local _v
-  _v=${1//$'\n'/}
-  # shellcheck disable=SC1003
-  _v=${_v//\\/'\\'}
-  _v=${_v//\//'\/'}
-  _v=${_v//&/'\&'}
-  printf '%s' "${_v}"
-}
-# export $1="the value of $1" appended to the include being written
-# (_writeTo), the value quoted for the shell (printf %q), so no text can end
-# its quotes.
-_satellite_inc_put() {
-  printf 'export %s=%q\n' "${1}" "${!1}" >> "${_writeTo}"
-}
-
-#
-# One PHP version in the text of fpm.info or cli.info, dotted (8.4) or
-# two-digit (84, as the ltd worker also reads it), printed dotted; nothing for
-# any other text, and nothing for text over 64 characters, before any
-# pattern substitution (its cost grows with the square of the length).
-_satellite_php_vrn() {
-  [ "${#1}" -le 64 ] || return 0
-  local _t="${1//[^0-9.]/}" _d="${1//[^0-9]/}"
-  case "${_t}" in
-    [0-9].[0-9]|[0-9][0-9]) ;;
-    *) return 0 ;;
-  esac
-  case "${_d}" in
-    56|70|71|72|73|74|80|81|82|83|84|85|86) echo "${_d:0:1}.${_d:1:1}" ;;
-  esac
-}
-
 _satellite_check_php_compatibility() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _satellite_check_php_compatibility"
@@ -10933,34 +11038,6 @@ _satellite_post_cleanup() {
   [ -e "/run/manage_ruby_users.pid" ] && rm -f /run/manage_ruby_users.pid
 }
 
-_satellite_letsencrypt_crt_key_copy() {
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _satellite_letsencrypt_crt_key_copy"
-    _debug_proc
-  fi
-  if [ -e "${_leCrtPath}/fullchain.pem" ]; then
-    _crtPath="${_leCrtPath}/fullchain.pem"
-  elif [ -e "${_leCrtPath}/cert.pem" ]; then
-    _crtPath="${_leCrtPath}/cert.pem"
-  fi
-  _keyPath="${_leCrtPath}/privkey.pem"
-  ### tools/le is the instance user's: the certificate and the key are read
-  ### bounded inside the real certs/<domain>/, through a link only to a file
-  ### beside it (as the client links each name to a versioned file), and
-  ### written as root's own 0600 files, only under the account's own front.
-  if [[ ! "${_DOMAIN}" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$ ]] \
-    || ! _satellite_front_free "${_DOMAIN}"; then
-    _msg "NOTE: the ${_USER} front is not a host name this account may use; certificate not copied"
-    return 0
-  fi
-  if [ -e "${_crtPath}" ]; then
-    _satellite_le_copy "${_crtPath##*/}" "/etc/ssl/private/${_DOMAIN}.crt"
-  fi
-  if [ -e "${_keyPath}" ]; then
-    _satellite_le_copy privkey.pem "/etc/ssl/private/${_DOMAIN}.key"
-  fi
-}
-
 #
 # ./$1 in the current (pinned) certs/<domain>/, or the file beside it its
 # link names, read as _acct_read_here reads; nothing for a link that leads
@@ -10989,6 +11066,34 @@ _satellite_le_copy() {
     && mv -f -T -- "${_t}" "${2}" && return 0
   rm -f -- "${_t}"
   return 1
+}
+
+_satellite_letsencrypt_crt_key_copy() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _satellite_letsencrypt_crt_key_copy"
+    _debug_proc
+  fi
+  if [ -e "${_leCrtPath}/fullchain.pem" ]; then
+    _crtPath="${_leCrtPath}/fullchain.pem"
+  elif [ -e "${_leCrtPath}/cert.pem" ]; then
+    _crtPath="${_leCrtPath}/cert.pem"
+  fi
+  _keyPath="${_leCrtPath}/privkey.pem"
+  ### tools/le is the instance user's: the certificate and the key are read
+  ### bounded inside the real certs/<domain>/, through a link only to a file
+  ### beside it (as the client links each name to a versioned file), and
+  ### written as root's own 0600 files, only under the account's own front.
+  if [[ ! "${_DOMAIN}" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$ ]] \
+    || ! _satellite_front_free "${_DOMAIN}"; then
+    _msg "NOTE: the ${_USER} front is not a host name this account may use; certificate not copied"
+    return 0
+  fi
+  if [ -e "${_crtPath}" ]; then
+    _satellite_le_copy "${_crtPath##*/}" "/etc/ssl/private/${_DOMAIN}.crt"
+  fi
+  if [ -e "${_keyPath}" ]; then
+    _satellite_le_copy privkey.pem "/etc/ssl/private/${_DOMAIN}.key"
+  fi
 }
 
 _satellite_letsencrypt_vhost_sync() {
@@ -11068,6 +11173,92 @@ _satellite_ssl_proxy_template_refresh() {
   grep -q proxy_buffer_size "${_src}" 2>/dev/null || return 0
   mkdir -p /var/xdrago/conf
   cp -af "${_src}" "${_tpl}"
+}
+
+# A server_name line of a file in the current (pinned) vhost.d names $1 as one
+# of its names (links inside are not followed, FIFOs and devices skipped).
+_satellite_vhd_names_here() {
+  local _re="${1//./\\.}"
+  grep -rqsE -D skip \
+    "^[[:space:]]*server_name([[:space:]][^;]*)?[[:space:]]${_re}([[:space:];]|$)" . 2> /dev/null
+}
+
+#
+# A panel front of this account under a name it no longer has: the include
+# a host rename left when its renameaegirhost had no park of the old name's
+# (before 2026-09-06, or the copy of a restored box not fetched yet). It
+# keeps answering that name's HTTPS and names that name's certificate, so
+# nginx -t fails box-wide the day that certificate goes. Parked as the rename
+# parks it, and only such a file: the header names this account and the
+# first server_name is the file's own name, as xoct ssl-gen writes a panel
+# front (a relay answers "_"), and it is not the current panel name (_DOMAIN,
+# log/domain.txt) or a name a vhost of this account carries, as its file name
+# or in a server_name line (a site's alias lives in the site's own vhost). The
+# files go to root's own dated dir. When nginx -t passed before the move and
+# fails after it they are put back; when it failed already (another account's
+# stale include, any other file) they stay parked, or no pass could ever
+# clear a box where two accounts each keep one.
+_satellite_park_stale_panel_proxies() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _satellite_park_stale_panel_proxies"
+    _debug_proc
+  fi
+  local _preD="/var/aegir/config/server_master/nginx/pre.d"
+  local _vhd="${_ROOT}/config/server_master/nginx/vhost.d"
+  local _p _n _x _t _stamp _bak="" _moved="" _pre=""
+  [ -d "${_preD}" ] && [ ! -L "${_preD}" ] || return 0
+  # an unreadable vhost.d would read as "no vhost of that name" for all
+  _acct_in_real_dir "${_vhd}" true || return 0
+  _stamp="$(_acct_read_in "${_ROOT}/log" domain.txt | head -n1 | tr -d ' \r\n')"
+  for _p in "${_preD}/z_${_USER}."*_ssl_proxy.conf; do
+    [ -f "${_p}" ] && [ ! -L "${_p}" ] || continue
+    _n="${_p##*/}"
+    _x="${_n#z_${_USER}.}"
+    _x="${_x%_ssl_proxy.conf}"
+    [[ "${_x}" =~ ^[a-z0-9][a-z0-9-]*(\.[a-z0-9-]+)+$ ]] || continue
+    [ "${_USER}.${_x}" != "${_DOMAIN}" ] || continue
+    [ "${_USER}.${_x}" != "${_stamp}" ] || continue
+    _t="$(_acct_read_in "${_preD}" "${_n}")"
+    [ "$(awk '/^### Secure HTTPS proxy \(START\) / { print $6; exit }' <<< "${_t}")" = "${_USER}" ] \
+      || continue
+    [ "$(awk '$1 == "server_name" { sub(/;$/, "", $2); print $2; exit }' <<< "${_t}")" = "${_USER}.${_x}" ] \
+      || continue
+    if _acct_in_real_dir "${_vhd}" test -e "./${_USER}.${_x}" \
+      || _acct_in_real_dir "${_vhd}" test -L "./${_USER}.${_x}" \
+      || _acct_in_real_dir "${_vhd}" _satellite_vhd_names_here "${_USER}.${_x}"; then
+      continue
+    fi
+    if [ -z "${_bak}" ]; then
+      if nginx -t > /dev/null 2>&1; then
+        _pre=ok
+      else
+        _pre=failed
+      fi
+      _bak="/var/backups/panel-proxy/${_USER}/$(date +%y%m%d-%H%M%S)"
+      mkdir -p "${_bak}" && chmod 700 /var/backups/panel-proxy "${_bak}" || return 0
+    fi
+    if _acct_in_real_dir "${_preD}" mv -f -T -- "./${_n}" "${_bak}/${_n}"; then
+      _moved="${_moved} ${_n}"
+      _msg "${_STATUS} A: stale panel SSL proxy include ${_n} parked in ${_bak}"
+    else
+      _msg "${_STATUS} A: NOTE: stale panel SSL proxy include ${_n} not parked"
+    fi
+  done
+  if [ -z "${_moved}" ]; then
+    [ -n "${_bak}" ] && rmdir "${_bak}" 2> /dev/null
+    return 0
+  fi
+  if nginx -t > /dev/null 2>&1; then
+    _mrun "service nginx reload"
+  elif [ "${_pre}" = "ok" ]; then
+    for _n in ${_moved}; do
+      mv -f -T -- "${_bak}/${_n}" "${_preD}/${_n}"
+    done
+    rmdir "${_bak}" 2> /dev/null
+    _msg "${_STATUS} A: NOTE: nginx -t fails without${_moved}; put back"
+  else
+    _msg "${_STATUS} A: NOTE: nginx -t failed before the park and still fails;${_moved} stay in ${_bak}"
+  fi
 }
 
 _satellite_letsencrypt_vhost_setup() {
@@ -11206,92 +11397,6 @@ _satellite_letsencrypt_vhost_setup() {
   _satellite_park_stale_panel_proxies
 }
 
-#
-# A panel front of this account under a name it no longer has: the include
-# a host rename left when its renameaegirhost had no park of the old name's
-# (before 2026-09-06, or the copy of a restored box not fetched yet). It
-# keeps answering that name's HTTPS and names that name's certificate, so
-# nginx -t fails box-wide the day that certificate goes. Parked as the rename
-# parks it, and only such a file: the header names this account and the
-# first server_name is the file's own name, as xoct ssl-gen writes a panel
-# front (a relay answers "_"), and it is not the current panel name (_DOMAIN,
-# log/domain.txt) or a name a vhost of this account carries, as its file name
-# or in a server_name line (a site's alias lives in the site's own vhost). The
-# files go to root's own dated dir. When nginx -t passed before the move and
-# fails after it they are put back; when it failed already (another account's
-# stale include, any other file) they stay parked, or no pass could ever
-# clear a box where two accounts each keep one.
-_satellite_park_stale_panel_proxies() {
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _satellite_park_stale_panel_proxies"
-    _debug_proc
-  fi
-  local _preD="/var/aegir/config/server_master/nginx/pre.d"
-  local _vhd="${_ROOT}/config/server_master/nginx/vhost.d"
-  local _p _n _x _t _stamp _bak="" _moved="" _pre=""
-  [ -d "${_preD}" ] && [ ! -L "${_preD}" ] || return 0
-  # an unreadable vhost.d would read as "no vhost of that name" for all
-  _acct_in_real_dir "${_vhd}" true || return 0
-  _stamp="$(_acct_read_in "${_ROOT}/log" domain.txt | head -n1 | tr -d ' \r\n')"
-  for _p in "${_preD}/z_${_USER}."*_ssl_proxy.conf; do
-    [ -f "${_p}" ] && [ ! -L "${_p}" ] || continue
-    _n="${_p##*/}"
-    _x="${_n#z_${_USER}.}"
-    _x="${_x%_ssl_proxy.conf}"
-    [[ "${_x}" =~ ^[a-z0-9][a-z0-9-]*(\.[a-z0-9-]+)+$ ]] || continue
-    [ "${_USER}.${_x}" != "${_DOMAIN}" ] || continue
-    [ "${_USER}.${_x}" != "${_stamp}" ] || continue
-    _t="$(_acct_read_in "${_preD}" "${_n}")"
-    [ "$(awk '/^### Secure HTTPS proxy \(START\) / { print $6; exit }' <<< "${_t}")" = "${_USER}" ] \
-      || continue
-    [ "$(awk '$1 == "server_name" { sub(/;$/, "", $2); print $2; exit }' <<< "${_t}")" = "${_USER}.${_x}" ] \
-      || continue
-    if _acct_in_real_dir "${_vhd}" test -e "./${_USER}.${_x}" \
-      || _acct_in_real_dir "${_vhd}" test -L "./${_USER}.${_x}" \
-      || _acct_in_real_dir "${_vhd}" _satellite_vhd_names_here "${_USER}.${_x}"; then
-      continue
-    fi
-    if [ -z "${_bak}" ]; then
-      if nginx -t > /dev/null 2>&1; then
-        _pre=ok
-      else
-        _pre=failed
-      fi
-      _bak="/var/backups/panel-proxy/${_USER}/$(date +%y%m%d-%H%M%S)"
-      mkdir -p "${_bak}" && chmod 700 /var/backups/panel-proxy "${_bak}" || return 0
-    fi
-    if _acct_in_real_dir "${_preD}" mv -f -T -- "./${_n}" "${_bak}/${_n}"; then
-      _moved="${_moved} ${_n}"
-      _msg "${_STATUS} A: stale panel SSL proxy include ${_n} parked in ${_bak}"
-    else
-      _msg "${_STATUS} A: NOTE: stale panel SSL proxy include ${_n} not parked"
-    fi
-  done
-  if [ -z "${_moved}" ]; then
-    [ -n "${_bak}" ] && rmdir "${_bak}" 2> /dev/null
-    return 0
-  fi
-  if nginx -t > /dev/null 2>&1; then
-    _mrun "service nginx reload"
-  elif [ "${_pre}" = "ok" ]; then
-    for _n in ${_moved}; do
-      mv -f -T -- "${_bak}/${_n}" "${_preD}/${_n}"
-    done
-    rmdir "${_bak}" 2> /dev/null
-    _msg "${_STATUS} A: NOTE: nginx -t fails without${_moved}; put back"
-  else
-    _msg "${_STATUS} A: NOTE: nginx -t failed before the park and still fails;${_moved} stay in ${_bak}"
-  fi
-}
-
-# A server_name line of a file in the current (pinned) vhost.d names $1 as one
-# of its names (links inside are not followed, FIFOs and devices skipped).
-_satellite_vhd_names_here() {
-  local _re="${1//./\\.}"
-  grep -rqsE -D skip \
-    "^[[:space:]]*server_name([[:space:]][^;]*)?[[:space:]]${_re}([[:space:];]|$)" . 2> /dev/null
-}
-
 _satellite_log_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _satellite_log_update"
@@ -11370,78 +11475,13 @@ _satellite_shared_back() {
   chmod 0711 /data /data/disk /data/conf &> /dev/null
   _acct_in_real_dir "${_b}" _satellite_shared_top_here &> /dev/null
 }
-# The current (pinned) directory and everything below it handed back to
-# root:root as chown -R root:root handed it (_satellite_reown_here), the
-# walk calling perl only where a name is not root's already.
-_satellite_root_back_here() {
-  _satellite_reown_here root:root \! \( -uid 0 -gid 0 \)
+# The old include copies of the current (pinned) global/ moved into the
+# arch/ beside it (the glob expands here).
+_satellite_conf_pre_here() {
+  mv -f ./*inc-pre* ../arch/ &> /dev/null
+  return 0
 }
-# The daily sweep of the current (pinned) shared store, as the path globs it
-# replaces set it: the store handed to root, 000/ 0755 directories and 0644
-# files, */*/profiles 0755, the sites/all/{modules,libraries,themes} of
-# */* and 000/core/* 02775, then every */*/sites and
-# */*/{web,docroot,html}/sites tree handed to root:users, and the day's
-# stamp put. find never follows a link, each name is changed from the
-# directory find walked, through a handle, and dot names at the first two
-# levels are left out as the globs left them.
-_satellite_shared_fix_here() (
-  PATH=/usr/local/bin:/usr/bin:/bin
-  local _users
-  _satellite_root_back_here
-  _acct_in_real_dir ./000 _satellite_modes_walk_here 0755 0644
-  find . -mindepth 3 -maxdepth 3 -regextype posix-extended \
-    -regex '\./[^/.][^/]*/[^/.][^/]*/profiles' \( -type d -o -type f \) \
-    -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" d 755 {} + \
-    -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" f 755 {} +
-  find . -mindepth 5 -maxdepth 5 -regextype posix-extended \
-    -regex '\./[^/.][^/]*/[^/.][^/]*/sites/all/(modules|libraries|themes)' \
-    \( -type d -o -type f \) \
-    -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" d 02775 {} + \
-    -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" f 02775 {} +
-  find . -mindepth 6 -maxdepth 6 -regextype posix-extended \
-    -regex '\./000/core/[^/.][^/]*/sites/all/(modules|libraries|themes)' \
-    \( -type d -o -type f \) \
-    -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" d 02775 {} + \
-    -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" f 02775 {} +
-  _users=$(getent group users 2> /dev/null | cut -d: -f3)
-  if [[ "${_users}" =~ ^[0-9]+$ ]]; then
-    find . -mindepth 1 -regextype posix-extended \
-      \( -regex '\./[^/]+(/[^/]+)?' \) \
-      -o \( -regex '\./[^/.][^/]*/[^/.][^/]*/sites(/.*)?' \( -type d -o -type f \) \
-        -execdir perl -e "${_ACCT_REOWN_PL}" -- 0 "${_users}" {} + \) \
-      -o -prune
-    find . -mindepth 1 -regextype posix-extended \
-      \( -regex '\./[^/]+(/[^/]+)?' \
-        -o -regex '\./[^/.][^/]*/[^/.][^/]*/(web|docroot|html)' \) \
-      -o \( -regex '\./[^/.][^/]*/[^/.][^/]*/(web|docroot|html)/sites(/.*)?' \
-        \( -type d -o -type f \) \
-        -execdir perl -e "${_ACCT_REOWN_PL}" -- 0 "${_users}" {} + \) \
-      -o -prune
-  fi
-  _acct_put_here "permissions-fix-${_xSrl}-${_X_VERSION}-${_TODAY}.info" fixed
-)
-# The top of the current (pinned) shared store at the end of the run: each
-# name directly in it 0711 (a directory keeping its set-ID bits), the
-# cpuinfo file 0644, the store and its 000/ 0755, as chmod set them by path,
-# never through a link. A cpuinfo that is not a single-link regular file,
-# empty or not (a link or a hard link an account put there under an earlier
-# release), is removed, so the next writer puts a fresh one instead of
-# writing through it; one a writer holds truncated for a moment is kept.
-_satellite_shared_top_here() {
-  if [ -L ./cpuinfo ]; then
-    rm -f -- ./cpuinfo
-  elif [ -e ./cpuinfo ]; then
-    case "$(stat -c '%F:%h' -- ./cpuinfo 2> /dev/null)" in
-      "regular file:1"|"regular empty file:1") ;;
-      *) rm -f -- ./cpuinfo ;;
-    esac
-  fi
-  _satellite_chmod_nofollow d 0711 ./*
-  _satellite_chmod_nofollow f 0711 ./*
-  _satellite_chmod_nofollow f 644 ./cpuinfo
-  chmod 0755 .
-  _acct_in_real_dir ./000 chmod 0755 .
-}
+
 # /data/conf (the current, pinned directory) at the end of the run: arch/log
 # made where missing and set 0755, and the old global include copies moved
 # into arch/, each directory used only as the real one (a link an account
@@ -11457,11 +11497,19 @@ _satellite_conf_arch_here() {
   mv -f ./global.inc-missing* ./arch/ &> /dev/null
   return 0
 }
-# The old include copies of the current (pinned) global/ moved into the
-# arch/ beside it (the glob expands here).
-_satellite_conf_pre_here() {
-  mv -f ./*inc-pre* ../arch/ &> /dev/null
-  return 0
+#
+# module* directories two to five levels below the current (pinned) static/,
+# each set 0775 from inside it once cd -P lands on the real directory at the
+# path find reported.
+_satellite_static_modules_here() {
+  local _s _m
+  _s="$(/bin/pwd -P)"
+  find . -maxdepth 5 \( -name '.?*' -prune \) \
+    -o \( -path './*/*' -type d -name 'module*' -print0 \) \
+    | while LC_ALL=C IFS= read -r -d '' _m; do
+      ( cd -P -- "${_m}" 2> /dev/null \
+        && [ "$(/bin/pwd -P)" = "${_s}/${_m#./}" ] && chmod 775 . )
+    done
 }
 
 _satellite_batch_cleanup() {
@@ -11524,21 +11572,6 @@ _satellite_batch_cleanup() {
     rm -rf /var/backups/trash/*
     mv -f ${_CORE}/${_DRUPAL7} /var/backups/trash/ &> /dev/null
   fi
-}
-
-#
-# module* directories two to five levels below the current (pinned) static/,
-# each set 0775 from inside it once cd -P lands on the real directory at the
-# path find reported.
-_satellite_static_modules_here() {
-  local _s _m
-  _s="$(/bin/pwd -P)"
-  find . -maxdepth 5 \( -name '.?*' -prune \) \
-    -o \( -path './*/*' -type d -name 'module*' -print0 \) \
-    | while LC_ALL=C IFS= read -r -d '' _m; do
-      ( cd -P -- "${_m}" 2> /dev/null \
-        && [ "$(/bin/pwd -P)" = "${_s}/${_m#./}" ] && chmod 775 . )
-    done
 }
 
 _satellite_display_url_finalize() {
@@ -11967,39 +12000,6 @@ _satellite_child_b_drush_test() {
       _msg "${_STATUS} B: NOTE: Backdrop Drush extension not detected by Drush"
     fi
   fi
-}
-
-#
-# A Drupal 7 core from before 7.93.1 declares _drupal_error_handler() with a
-# required fifth argument that PHP 8 no longer passes: on PHP 8 the first
-# warning throws an ArgumentCountError before includes/cache.inc is loaded,
-# and Drupal's exception handler then dies on cache_get(), hiding the cause.
-# The upgrade runs the old control panel on PHP 8 before it moves it, so that
-# argument is made optional ($context = NULL). Only that exact line changes;
-# a missing file or a symlink is left alone. Returns 0 when it healed the
-# file, 1 when there was nothing to heal, 2 when the old line is still there.
-_satellite_heal_d7_error_handler() {
-  local _bInc="${1}/includes/bootstrap.inc"
-  local _oLd='function _drupal_error_handler($error_level, $message, $filename, $line, $context) {'
-  if [ -z "${1}" ] || [ ! -f "${_bInc}" ] || [ -L "${_bInc}" ]; then
-    return 1
-  fi
-  grep -qxF "${_oLd}" "${_bInc}" 2> /dev/null || return 1
-  sed -i 's/^function _drupal_error_handler(\$error_level, \$message, \$filename, \$line, \$context) {$/function _drupal_error_handler($error_level, $message, $filename, $line, $context = NULL) {/' "${_bInc}" &> /dev/null
-  if grep -qxF "${_oLd}" "${_bInc}" 2> /dev/null; then
-    return 2
-  fi
-  return 0
-}
-# The same heal for the root-side steps that run the current panel before
-# AegirSetupB does (syncpass, the backend password sync): on the root the
-# account's alias names, run as the account user in its own tree.
-_satellite_pre_heal_d7_panel() {
-  local _hmR
-  _hmR=$(_satellite_hm_alias_get "root'")
-  _hmR="${_hmR%/}"
-  _satellite_hm_path_ok "${_hmR}" || return 1
-  _satellite_as_user "$(declare -f _satellite_heal_d7_error_handler); _satellite_heal_d7_error_handler $(printf '%q' "${_hmR}")"
 }
 
 _satellite_child_b_aegir_build() {

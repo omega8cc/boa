@@ -453,6 +453,66 @@ _fix_php_ini_tet() {
 }
 
 #
+# One NOTE line per pass for each thing PHP 8.6 is left without.
+_php86_note_once() {
+  case " ${_PHP86_EXT_NOTED} " in
+    *" $1 "*) return 0 ;;
+  esac
+  _PHP86_EXT_NOTED="${_PHP86_EXT_NOTED} $1"
+  _msg "NOTE: $2"
+}
+
+#
+# PHP 8.6 is the newest version, and some extensions do not build against
+# it yet: their extension= line is commented out, or every PHP start logs a
+# load warning. Each pass copies the ini again and runs the fixers first, so
+# an extension that builds later is loaded again with no step of its own.
+# One that builds but does not load is left out the same way.
+_php_ini_drop_unbuilt_ext() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _php_ini_drop_unbuilt_ext ${_THIS_FILE}"
+  fi
+  local _dir _so _out _bad _try _cut
+  [ -e "${_THIS_FILE}" ] || return 0
+  _dir=$(sed -n 's/^extension_dir *= *"\([^"]*\)".*/\1/p' "${_THIS_FILE}" | head -n 1)
+  # no extension dir at all is the case where every shared module was left
+  # out (make install creates it only for one): every line goes then
+  [ -n "${_dir}" ] || return 0
+  for _so in $(sed -n 's/^extension=\([a-z0-9_]*\)\.so[[:space:]]*$/\1/p' "${_THIS_FILE}"); do
+    if [ ! -e "${_dir%/}/${_so}.so" ]; then
+      sed -i "s/^extension=${_so}\.so[[:space:]]*$/;extension=${_so}.so/" "${_THIS_FILE}"
+    fi
+  done
+  [ -x "/opt/php86/bin/php" ] || return 0
+  # PHP names each module it could not load; its own words (paths, linker
+  # errors) stay out of the log. A module whose dependency is left out is
+  # reported on the next try, hence the loop. Every symbol is bound at load
+  # (LD_BIND_NOW): a module that needs a name this PHP removed loads lazily
+  # and kills the worker at its first call, so here it fails and is left out.
+  for _try in 1 2 3; do
+    _out=$(LD_BIND_NOW=1 /opt/php86/bin/php -c "${_THIS_FILE}" -d log_errors=0 \
+      -d error_log=/dev/null -d display_errors=1 \
+      -d display_startup_errors=1 -r '' 2>&1)
+    _bad=$(echo "${_out}" | sed -n \
+      -e "s/.*Unable to load dynamic library '\([a-z0-9_]*\)\(\.so\)\{0,1\}'.*/\1/p" \
+      -e "s/.*Invalid library (maybe not a PHP library) '\([a-z0-9_]*\)\(\.so\)\{0,1\}'.*/\1/p" \
+      -e 's/.*Cannot load module "\([a-z0-9_]*\)".*/\1/p' \
+      -e 's/.*PHP Startup: \([a-z0-9_]*\): Unable to initialize module.*/\1/p' \
+      | sort -u)
+    _cut=NO
+    for _so in ${_bad}; do
+      if grep -q "^extension=${_so}\.so[[:space:]]*$" "${_THIS_FILE}"; then
+        sed -i "s/^extension=${_so}\.so[[:space:]]*$/;extension=${_so}.so/" "${_THIS_FILE}"
+        _php86_note_once "load-${_so}" \
+          "${_so} does not load in PHP ${_PHP86_VRN}, not enabled for it"
+        _cut=YES
+      fi
+    done
+    [ "${_cut}" = "YES" ] || break
+  done
+}
+
+#
 # Fix all php.ini files to add php_tet.so
 _fix_php_ini_tet_all() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -863,66 +923,6 @@ _php_conf_update() {
     _php_ini_drop_unbuilt_ext
   fi
   _php_pool_newrelic_fix
-}
-
-#
-# PHP 8.6 is the newest version, and some extensions do not build against
-# it yet: their extension= line is commented out, or every PHP start logs a
-# load warning. Each pass copies the ini again and runs the fixers first, so
-# an extension that builds later is loaded again with no step of its own.
-# One that builds but does not load is left out the same way.
-_php_ini_drop_unbuilt_ext() {
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _php_ini_drop_unbuilt_ext ${_THIS_FILE}"
-  fi
-  local _dir _so _out _bad _try _cut
-  [ -e "${_THIS_FILE}" ] || return 0
-  _dir=$(sed -n 's/^extension_dir *= *"\([^"]*\)".*/\1/p' "${_THIS_FILE}" | head -n 1)
-  # no extension dir at all is the case where every shared module was left
-  # out (make install creates it only for one): every line goes then
-  [ -n "${_dir}" ] || return 0
-  for _so in $(sed -n 's/^extension=\([a-z0-9_]*\)\.so[[:space:]]*$/\1/p' "${_THIS_FILE}"); do
-    if [ ! -e "${_dir%/}/${_so}.so" ]; then
-      sed -i "s/^extension=${_so}\.so[[:space:]]*$/;extension=${_so}.so/" "${_THIS_FILE}"
-    fi
-  done
-  [ -x "/opt/php86/bin/php" ] || return 0
-  # PHP names each module it could not load; its own words (paths, linker
-  # errors) stay out of the log. A module whose dependency is left out is
-  # reported on the next try, hence the loop. Every symbol is bound at load
-  # (LD_BIND_NOW): a module that needs a name this PHP removed loads lazily
-  # and kills the worker at its first call, so here it fails and is left out.
-  for _try in 1 2 3; do
-    _out=$(LD_BIND_NOW=1 /opt/php86/bin/php -c "${_THIS_FILE}" -d log_errors=0 \
-      -d error_log=/dev/null -d display_errors=1 \
-      -d display_startup_errors=1 -r '' 2>&1)
-    _bad=$(echo "${_out}" | sed -n \
-      -e "s/.*Unable to load dynamic library '\([a-z0-9_]*\)\(\.so\)\{0,1\}'.*/\1/p" \
-      -e "s/.*Invalid library (maybe not a PHP library) '\([a-z0-9_]*\)\(\.so\)\{0,1\}'.*/\1/p" \
-      -e 's/.*Cannot load module "\([a-z0-9_]*\)".*/\1/p' \
-      -e 's/.*PHP Startup: \([a-z0-9_]*\): Unable to initialize module.*/\1/p' \
-      | sort -u)
-    _cut=NO
-    for _so in ${_bad}; do
-      if grep -q "^extension=${_so}\.so[[:space:]]*$" "${_THIS_FILE}"; then
-        sed -i "s/^extension=${_so}\.so[[:space:]]*$/;extension=${_so}.so/" "${_THIS_FILE}"
-        _php86_note_once "load-${_so}" \
-          "${_so} does not load in PHP ${_PHP86_VRN}, not enabled for it"
-        _cut=YES
-      fi
-    done
-    [ "${_cut}" = "YES" ] || break
-  done
-}
-
-#
-# One NOTE line per pass for each thing PHP 8.6 is left without.
-_php86_note_once() {
-  case " ${_PHP86_EXT_NOTED} " in
-    *" $1 "*) return 0 ;;
-  esac
-  _PHP86_EXT_NOTED="${_PHP86_EXT_NOTED} $1"
-  _msg "NOTE: $2"
 }
 
 #
@@ -2187,6 +2187,191 @@ _php_pre_deb_back() {
 }
 
 #
+# Check if the PHP has correct SSL headers version.
+_check_php_ssl_version() {
+  # Debug mode: log the start of the function
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _check_php_ssl_version $1"
+  fi
+
+  # Set OpenSSL version based on the OS version
+  case "${_OS_CODE}" in
+    excalibur|daedalus|chimaera|beowulf|trixie|bookworm|bullseye|buster)
+      _OPENSSL_USE_VRN="${_OPENSSL_EOL_VRN}"  # 1.1.1w
+      if [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
+        _OPENSSL_USE_VRN="${_OPENSSL_MODERN_VRN}"  # 3.5.9
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "INFO: Using modern OpenSSL ${_OPENSSL_USE_VRN} for PHP in ${_OS_CODE} by default"
+        fi
+      else
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "INFO: Using EOL OpenSSL ${_OPENSSL_USE_VRN} for PHP in ${_OS_CODE} by default"
+        fi
+      fi
+      ;;
+    stretch)
+      _OPENSSL_USE_VRN="${_OPENSSL_EOL_VRN}"  # 1.1.1w
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "INFO: Using EOL OpenSSL ${_OPENSSL_USE_VRN} for PHP in ${_OS_CODE} by default"
+      fi
+      ;;
+    *)
+      _OPENSSL_USE_VRN="${_OPENSSL_LEGACY_VRN}"  # 1.0.2u
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "INFO: Using Legacy OpenSSL ${_OPENSSL_USE_VRN} for PHP in ${_OS_CODE} by default"
+      fi
+      ;;
+  esac
+
+  # Set OpenSSL version based on PHP version and detected OpenSSL version
+  case "${1}" in
+    56|70|71|72|73)
+      ### OpenSSL 3, when present, as _install_php_multi_src builds them
+      if [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
+        :
+      elif [ -e "/usr/local/ssl/lib/libssl.so.1.1" ]; then
+        _OPENSSL_USE_VRN="${_OPENSSL_EOL_VRN}"  # 1.1.1w
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "INFO: Using EOL OpenSSL ${_OPENSSL_USE_VRN} for PHP ${1}"
+        fi
+      elif [ -e "/usr/local/ssl/lib/libssl.so.1.0.0" ] \
+        || [ -e "/usr/local/ssl/lib/libssl.so.1.0.1" ] \
+        || [ -e "/usr/local/ssl/lib/libssl.so.1.0.2" ]; then
+        _OPENSSL_USE_VRN="${_OPENSSL_LEGACY_VRN}"  # 1.0.2u
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "INFO: Using Legacy OpenSSL ${_OPENSSL_LEGACY_VRN} for PHP ${1}"
+        fi
+      fi
+      ;;
+  esac
+
+  # Check the installed PHP OpenSSL version
+  _PHP_SSL_TEST=$(/opt/php$1/bin/php -i | grep "OpenSSL Header Version" 2>&1)
+  _PHP_SSL_LOOK_FOR="${_OPENSSL_USE_VRN}"
+
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "INFO: Expected PHP OpenSSL Header Version: ${_PHP_SSL_LOOK_FOR}"
+    _msg "INFO: Detected PHP OpenSSL Header Version: ${_PHP_SSL_TEST}"
+  fi
+
+  # Return true if mismatch is found, otherwise false
+  if [[ ! "${_PHP_SSL_TEST}" =~ "${_PHP_SSL_LOOK_FOR}" ]]; then
+
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: PHP OpenSSL version mismatch detected, rebuild required"
+    fi
+    return 1  # SSL version mismatch, rebuild needed
+  fi
+
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "INFO: PHP OpenSSL version is correct, no rebuild needed"
+  fi
+  return 0  # SSL version matches, no rebuild needed
+}
+
+#
+# Check if the PHP has correct ICU headers version.
+_check_php_icu_version() {
+  # Debug mode: log the start of the function
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _check_php_icu_version $1"
+  fi
+
+  # Expected ICU comes from the single resolver (honours _ICU_FORCE_VRN), so this
+  # check can never disagree with what the installer built or the intl gate
+  # enabled -- that disagreement is what caused the endless rebuild loop.
+  # Convert the dashed target (e.g. 73-1) to the dotted form php -i reports (73.1).
+  _resolve_icu_target
+  _ICE_USE_VRN="${_ICU_TARGET_VRN/[_-]/.}"
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "INFO: Expecting PHP ICU ${_ICE_USE_VRN} (target ${_ICU_TARGET_VRN}) in ${_OS_CODE}"
+  fi
+
+  # Check the installed PHP ICU version
+  _PHP_ICU_TEST=$(/opt/php$1/bin/php -i | grep "ICU version" 2>&1)
+  _PHP_ICU_LOOK_FOR="${_ICE_USE_VRN}"
+
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "INFO: Expected PHP ICU Header Version: ${_PHP_ICU_LOOK_FOR}"
+    _msg "INFO: Detected PHP ICU Header Version: ${_PHP_ICU_TEST}"
+  fi
+
+  # Return true if mismatch is found, otherwise false
+  if [[ ! "${_PHP_ICU_TEST}" =~ "${_PHP_ICU_LOOK_FOR}" ]]; then
+
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: PHP ICU version mismatch detected, rebuild required"
+    fi
+    return 1  # ICU version mismatch, rebuild needed
+  fi
+
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "INFO: PHP ICU version is correct, no rebuild needed"
+  fi
+  return 0  # ICU version matches, no rebuild needed
+}
+
+#
+# Check that PHP 8.4 or newer has no Pdo\Sqlite::loadExtension method (see
+# _install_php_multi_src); older versions never had it. A binary that does
+# not run passes here: the broken-build checks own that case.
+_check_php_sqlite_loadext() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _check_php_sqlite_loadext $1"
+  fi
+  local _lxt
+  if [ "${1}" -lt 84 ]; then
+    return 0
+  fi
+  _lxt=$("/opt/php${1}/bin/php" -r 'echo method_exists("Pdo\\Sqlite", "loadExtension") ? "loadext:on" : "loadext:off";' 2>/dev/null)
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "INFO: PHP $1 PDO SQLite extension loading probe: ${_lxt:-no answer}"
+  fi
+  if [[ "${_lxt}" =~ "loadext:on" ]]; then
+    return 1  # the method is there, rebuild needed
+  fi
+  return 0
+}
+
+#
+# Security fixes BOA backports to PHP releases PHP no longer fixes live in
+# aegir/patches/php-sec as php-<release>-<id>.patch and are applied to that
+# exact release when it is built from sources (_install_php_multi_src). The
+# build records the ids it carries in /opt/phpNN/lib/boa-sec-patches, which
+# the prebuilt package of that build carries too. Prints the ids this tree
+# has for _PHP_VERSION, one a line, in the glob's order, which is the order
+# they are applied in: a patch made on top of others needs an id that sorts
+# after theirs (xlts-N after sury-N).
+_php_sec_patches() {
+  local _p
+  for _p in "${_bldPth}/aegir/patches/php-sec/php-${_PHP_VERSION}-"*.patch; do
+    [ -e "${_p}" ] || continue
+    _p="${_p##*/}"
+    _p="${_p#"php-${_PHP_VERSION}-"}"
+    echo "${_p%.patch}"
+  done
+}
+
+#
+# Check that the PHP $1 build carries every security patch this tree has for
+# its release (_php_sec_patches); a release without any passes.
+_check_php_sec_patches() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _check_php_sec_patches $1"
+  fi
+  local _id
+  for _id in $(_php_sec_patches); do
+    if ! grep -qx -- "${_id}" "/opt/php${1}/lib/boa-sec-patches" 2> /dev/null; then
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "INFO: PHP $1 lacks the security patch ${_id}"
+      fi
+      return 1
+    fi
+  done
+  return 0
+}
+
+#
 # Install modern PHP version
 #
 # Install PHP /opt/phpNN from a prebuilt boa-phpNN package (_USE_PREBUILT_PKGS).
@@ -2299,6 +2484,62 @@ _install_php_deb() {
   _php_pre_deb_back "${1}"
   _msg "NOTE: Prebuilt boa-php${1} failed health check; building from sources"
   return 1
+}
+
+#
+# Record the security patches the build that just replaced /opt/php$1
+# carries, for _check_php_sec_patches; an empty file when it carries none.
+_php_sec_mark() {
+  local _id
+  mkdir -p "/opt/php${1}/lib"
+  : > "/opt/php${1}/lib/boa-sec-patches"
+  for _id in ${_PHP_SEC_DONE}; do
+    echo "${_id}" >> "/opt/php${1}/lib/boa-sec-patches"
+  done
+}
+
+#
+# The libavif GD's AVIF needs for PHP $1: 0.8.2 or newer, and 1.0.0 or newer
+# on PHP 8.6 (Daedalus has 0.11).
+_php_avif_min() {
+  if [ "$1" -ge 86 ]; then
+    echo "1.0.0"
+  else
+    echo "0.8.2"
+  fi
+}
+
+#
+# Exit 0 when pkg-config finds that libavif, with the PKG_CONFIG_PATH
+# _install_php_multi_src gives configure.
+_php_avif_ready() {
+  PKG_CONFIG_PATH="${_PKG_CONFIG_PATH}" \
+    pkg-config --atleast-version="$(_php_avif_min "$1")" libavif 2> /dev/null
+}
+
+#
+# Record whether the source build that just replaced /opt/php$1 left AVIF
+# out (_PHP_NO_AVIF, set by _install_php_multi_src).
+_php_avif_mark() {
+  mkdir -p "/opt/php${1}/lib"
+  if [ "${_PHP_NO_AVIF}" = "YES" ]; then
+    : > "/opt/php${1}/lib/boa-no-avif"
+  else
+    rm -f "/opt/php${1}/lib/boa-no-avif"
+  fi
+}
+
+_get_php_conf_extra() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _get_php_conf_extra"
+  fi
+  _PHP_EXTRA=""
+  if [ -x "/usr/bin/freetype-config" ]; then
+    _PHP_EXTRA="--with-freetype-dir=/usr"
+  fi
+  if [ ! -z "${_PHP_EXTRA_CONF}" ]; then
+    _PHP_EXTRA="${_PHP_EXTRA} ${_PHP_EXTRA_CONF}"
+  fi
 }
 
 #
@@ -3315,234 +3556,6 @@ _if_install_php_newrelic() {
 }
 
 #
-# Check if the PHP has correct SSL headers version.
-_check_php_ssl_version() {
-  # Debug mode: log the start of the function
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _check_php_ssl_version $1"
-  fi
-
-  # Set OpenSSL version based on the OS version
-  case "${_OS_CODE}" in
-    excalibur|daedalus|chimaera|beowulf|trixie|bookworm|bullseye|buster)
-      _OPENSSL_USE_VRN="${_OPENSSL_EOL_VRN}"  # 1.1.1w
-      if [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
-        _OPENSSL_USE_VRN="${_OPENSSL_MODERN_VRN}"  # 3.5.9
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "INFO: Using modern OpenSSL ${_OPENSSL_USE_VRN} for PHP in ${_OS_CODE} by default"
-        fi
-      else
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "INFO: Using EOL OpenSSL ${_OPENSSL_USE_VRN} for PHP in ${_OS_CODE} by default"
-        fi
-      fi
-      ;;
-    stretch)
-      _OPENSSL_USE_VRN="${_OPENSSL_EOL_VRN}"  # 1.1.1w
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        _msg "INFO: Using EOL OpenSSL ${_OPENSSL_USE_VRN} for PHP in ${_OS_CODE} by default"
-      fi
-      ;;
-    *)
-      _OPENSSL_USE_VRN="${_OPENSSL_LEGACY_VRN}"  # 1.0.2u
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        _msg "INFO: Using Legacy OpenSSL ${_OPENSSL_USE_VRN} for PHP in ${_OS_CODE} by default"
-      fi
-      ;;
-  esac
-
-  # Set OpenSSL version based on PHP version and detected OpenSSL version
-  case "${1}" in
-    56|70|71|72|73)
-      ### OpenSSL 3, when present, as _install_php_multi_src builds them
-      if [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
-        :
-      elif [ -e "/usr/local/ssl/lib/libssl.so.1.1" ]; then
-        _OPENSSL_USE_VRN="${_OPENSSL_EOL_VRN}"  # 1.1.1w
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "INFO: Using EOL OpenSSL ${_OPENSSL_USE_VRN} for PHP ${1}"
-        fi
-      elif [ -e "/usr/local/ssl/lib/libssl.so.1.0.0" ] \
-        || [ -e "/usr/local/ssl/lib/libssl.so.1.0.1" ] \
-        || [ -e "/usr/local/ssl/lib/libssl.so.1.0.2" ]; then
-        _OPENSSL_USE_VRN="${_OPENSSL_LEGACY_VRN}"  # 1.0.2u
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "INFO: Using Legacy OpenSSL ${_OPENSSL_LEGACY_VRN} for PHP ${1}"
-        fi
-      fi
-      ;;
-  esac
-
-  # Check the installed PHP OpenSSL version
-  _PHP_SSL_TEST=$(/opt/php$1/bin/php -i | grep "OpenSSL Header Version" 2>&1)
-  _PHP_SSL_LOOK_FOR="${_OPENSSL_USE_VRN}"
-
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "INFO: Expected PHP OpenSSL Header Version: ${_PHP_SSL_LOOK_FOR}"
-    _msg "INFO: Detected PHP OpenSSL Header Version: ${_PHP_SSL_TEST}"
-  fi
-
-  # Return true if mismatch is found, otherwise false
-  if [[ ! "${_PHP_SSL_TEST}" =~ "${_PHP_SSL_LOOK_FOR}" ]]; then
-
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      _msg "INFO: PHP OpenSSL version mismatch detected, rebuild required"
-    fi
-    return 1  # SSL version mismatch, rebuild needed
-  fi
-
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "INFO: PHP OpenSSL version is correct, no rebuild needed"
-  fi
-  return 0  # SSL version matches, no rebuild needed
-}
-
-#
-# Check if the PHP has correct ICU headers version.
-_check_php_icu_version() {
-  # Debug mode: log the start of the function
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _check_php_icu_version $1"
-  fi
-
-  # Expected ICU comes from the single resolver (honours _ICU_FORCE_VRN), so this
-  # check can never disagree with what the installer built or the intl gate
-  # enabled -- that disagreement is what caused the endless rebuild loop.
-  # Convert the dashed target (e.g. 73-1) to the dotted form php -i reports (73.1).
-  _resolve_icu_target
-  _ICE_USE_VRN="${_ICU_TARGET_VRN/[_-]/.}"
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "INFO: Expecting PHP ICU ${_ICE_USE_VRN} (target ${_ICU_TARGET_VRN}) in ${_OS_CODE}"
-  fi
-
-  # Check the installed PHP ICU version
-  _PHP_ICU_TEST=$(/opt/php$1/bin/php -i | grep "ICU version" 2>&1)
-  _PHP_ICU_LOOK_FOR="${_ICE_USE_VRN}"
-
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "INFO: Expected PHP ICU Header Version: ${_PHP_ICU_LOOK_FOR}"
-    _msg "INFO: Detected PHP ICU Header Version: ${_PHP_ICU_TEST}"
-  fi
-
-  # Return true if mismatch is found, otherwise false
-  if [[ ! "${_PHP_ICU_TEST}" =~ "${_PHP_ICU_LOOK_FOR}" ]]; then
-
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      _msg "INFO: PHP ICU version mismatch detected, rebuild required"
-    fi
-    return 1  # ICU version mismatch, rebuild needed
-  fi
-
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "INFO: PHP ICU version is correct, no rebuild needed"
-  fi
-  return 0  # ICU version matches, no rebuild needed
-}
-
-#
-# Check that PHP 8.4 or newer has no Pdo\Sqlite::loadExtension method (see
-# _install_php_multi_src); older versions never had it. A binary that does
-# not run passes here: the broken-build checks own that case.
-_check_php_sqlite_loadext() {
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _check_php_sqlite_loadext $1"
-  fi
-  local _lxt
-  if [ "${1}" -lt 84 ]; then
-    return 0
-  fi
-  _lxt=$("/opt/php${1}/bin/php" -r 'echo method_exists("Pdo\\Sqlite", "loadExtension") ? "loadext:on" : "loadext:off";' 2>/dev/null)
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "INFO: PHP $1 PDO SQLite extension loading probe: ${_lxt:-no answer}"
-  fi
-  if [[ "${_lxt}" =~ "loadext:on" ]]; then
-    return 1  # the method is there, rebuild needed
-  fi
-  return 0
-}
-
-#
-# Security fixes BOA backports to PHP releases PHP no longer fixes live in
-# aegir/patches/php-sec as php-<release>-<id>.patch and are applied to that
-# exact release when it is built from sources (_install_php_multi_src). The
-# build records the ids it carries in /opt/phpNN/lib/boa-sec-patches, which
-# the prebuilt package of that build carries too. Prints the ids this tree
-# has for _PHP_VERSION, one a line, in the glob's order, which is the order
-# they are applied in: a patch made on top of others needs an id that sorts
-# after theirs (xlts-N after sury-N).
-_php_sec_patches() {
-  local _p
-  for _p in "${_bldPth}/aegir/patches/php-sec/php-${_PHP_VERSION}-"*.patch; do
-    [ -e "${_p}" ] || continue
-    _p="${_p##*/}"
-    _p="${_p#"php-${_PHP_VERSION}-"}"
-    echo "${_p%.patch}"
-  done
-}
-
-#
-# Check that the PHP $1 build carries every security patch this tree has for
-# its release (_php_sec_patches); a release without any passes.
-_check_php_sec_patches() {
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _check_php_sec_patches $1"
-  fi
-  local _id
-  for _id in $(_php_sec_patches); do
-    if ! grep -qx -- "${_id}" "/opt/php${1}/lib/boa-sec-patches" 2> /dev/null; then
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        _msg "INFO: PHP $1 lacks the security patch ${_id}"
-      fi
-      return 1
-    fi
-  done
-  return 0
-}
-
-#
-# Record the security patches the build that just replaced /opt/php$1
-# carries, for _check_php_sec_patches; an empty file when it carries none.
-_php_sec_mark() {
-  local _id
-  mkdir -p "/opt/php${1}/lib"
-  : > "/opt/php${1}/lib/boa-sec-patches"
-  for _id in ${_PHP_SEC_DONE}; do
-    echo "${_id}" >> "/opt/php${1}/lib/boa-sec-patches"
-  done
-}
-
-#
-# The libavif GD's AVIF needs for PHP $1: 0.8.2 or newer, and 1.0.0 or newer
-# on PHP 8.6 (Daedalus has 0.11).
-_php_avif_min() {
-  if [ "$1" -ge 86 ]; then
-    echo "1.0.0"
-  else
-    echo "0.8.2"
-  fi
-}
-
-#
-# Exit 0 when pkg-config finds that libavif, with the PKG_CONFIG_PATH
-# _install_php_multi_src gives configure.
-_php_avif_ready() {
-  PKG_CONFIG_PATH="${_PKG_CONFIG_PATH}" \
-    pkg-config --atleast-version="$(_php_avif_min "$1")" libavif 2> /dev/null
-}
-
-#
-# Record whether the source build that just replaced /opt/php$1 left AVIF
-# out (_PHP_NO_AVIF, set by _install_php_multi_src).
-_php_avif_mark() {
-  mkdir -p "/opt/php${1}/lib"
-  if [ "${_PHP_NO_AVIF}" = "YES" ]; then
-    : > "/opt/php${1}/lib/boa-no-avif"
-  else
-    rm -f "/opt/php${1}/lib/boa-no-avif"
-  fi
-}
-
-#
 # Exit 1 when PHP $1 was built from sources without AVIF (boa-no-avif), its
 # GD still lacks it and pkg-config finds a new enough libavif now: a pass on
 # which the libavif-dev install failed is healed by the next one. On a host
@@ -3883,18 +3896,6 @@ _php_not_used_enable_again() {
 }
 
 #
-# Stop version $1's FPM for good. The FPM monitor watches a version while
-# its init script and CLI are in place and restarts a master it finds
-# gone, so the version's monitor cooldown is stamped first: the stop and
-# the parking of the init script that follows land inside it, and the
-# monitor never brings back a version the pass is retiring.
-_php_fpm_retire_stop() {
-  date +%s > "/run/php${1}-fpm.cooldown"
-  _php_panel_include_off "${1}"
-  _mrun "service php${1}-fpm force-quit"
-}
-
-#
 # The control panel's own pool (oN.hm) lives in the tree of the version
 # _HM_FPM_VERSION names, else the box default, and the ltd worker that moves
 # it never runs during a pass: a panel whose pool lives in version $1, which
@@ -3924,6 +3925,18 @@ _php_panel_include_off() {
     [ -z "${_left}" ] && break
     sleep 0.5
   done
+}
+
+#
+# Stop version $1's FPM for good. The FPM monitor watches a version while
+# its init script and CLI are in place and restarts a master it finds
+# gone, so the version's monitor cooldown is stamped first: the stop and
+# the parking of the init script that follows land inside it, and the
+# monitor never brings back a version the pass is retiring.
+_php_fpm_retire_stop() {
+  date +%s > "/run/php${1}-fpm.cooldown"
+  _php_panel_include_off "${1}"
+  _mrun "service php${1}-fpm force-quit"
 }
 
 #
@@ -4155,23 +4168,6 @@ _php_single_initd_cleanup() {
 }
 
 #
-# Re-set default PHP-CLI.
-_re_set_default_php_cli() {
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _re_set_default_php_cli ${_PHP_CLI_VERSION}"
-  fi
-  if [ "${_PHP_CLI_VERSION}" = "8.6" ]; then
-    _switch_php_cli "86"
-  elif [ "${_PHP_CLI_VERSION}" = "8.5" ]; then
-    _switch_php_cli "85"
-  elif [ "${_PHP_CLI_VERSION}" = "8.4" ]; then
-    _switch_php_cli "84"
-  elif [ "${_PHP_CLI_VERSION}" = "8.3" ]; then
-    _switch_php_cli "83"
-  fi
-}
-
-#
 # Fix path to PHP-CLI if needed.
 _check_php_cli() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -4233,6 +4229,36 @@ _switch_php_cli() {
       rm -f /usr/bin/php-config
       ln -sfn /opt/php$1/bin/php-config /usr/bin/php-config
     fi
+  fi
+}
+
+#
+# Re-set default PHP-CLI.
+_re_set_default_php_cli() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _re_set_default_php_cli ${_PHP_CLI_VERSION}"
+  fi
+  if [ "${_PHP_CLI_VERSION}" = "8.6" ]; then
+    _switch_php_cli "86"
+  elif [ "${_PHP_CLI_VERSION}" = "8.5" ]; then
+    _switch_php_cli "85"
+  elif [ "${_PHP_CLI_VERSION}" = "8.4" ]; then
+    _switch_php_cli "84"
+  elif [ "${_PHP_CLI_VERSION}" = "8.3" ]; then
+    _switch_php_cli "83"
+  fi
+}
+
+#
+# PHP 8.6 is opt-in and never the box's php: a build of it, or
+# a pass over it, points /usr/bin/php at it, so the default goes back.
+_php_rc_cli_restore() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _php_rc_cli_restore"
+  fi
+  if [ "$(readlink /usr/bin/php 2>/dev/null)" = "/opt/php86/bin/php" ]; then
+    _re_set_default_php_cli
+    _check_php_cli
   fi
 }
 
@@ -4315,19 +4341,6 @@ _php_upgrade_all() {
   done
   _PHP_FORCE_REINSTALL="${_force_in}"
   _php_rc_cli_restore
-}
-
-_get_php_conf_extra() {
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _get_php_conf_extra"
-  fi
-  _PHP_EXTRA=""
-  if [ -x "/usr/bin/freetype-config" ]; then
-    _PHP_EXTRA="--with-freetype-dir=/usr"
-  fi
-  if [ ! -z "${_PHP_EXTRA_CONF}" ]; then
-    _PHP_EXTRA="${_PHP_EXTRA} ${_PHP_EXTRA_CONF}"
-  fi
 }
 
 _php_install_upgrade() {
@@ -4492,19 +4505,6 @@ _php_install_upgrade() {
       _FRESH_PHP86_BUILD=86
       _php_rc_cli_restore
     fi
-  fi
-}
-
-#
-# PHP 8.6 is opt-in and never the box's php: a build of it, or
-# a pass over it, points /usr/bin/php at it, so the default goes back.
-_php_rc_cli_restore() {
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _php_rc_cli_restore"
-  fi
-  if [ "$(readlink /usr/bin/php 2>/dev/null)" = "/opt/php86/bin/php" ]; then
-    _re_set_default_php_cli
-    _check_php_cli
   fi
 }
 

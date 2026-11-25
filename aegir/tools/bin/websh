@@ -458,12 +458,25 @@ _drush_segments() {
 # (drush_escapeshellarg keeps a safe string as it is), so the child reaches
 # the bare-php launcher here; only a quoted prefix would take the verbatim
 # fast lane above.
-_LA_PATH=""; _LA_REST=""; _LA_RM=""; _LA_PRE=""; _LA_CD=""
+_LA_PATH=""; _LA_REST=""; _LA_RM=""; _LA_PRE=""; _LA_CD=""; _LA_PX=""
 _RE_CD='^[[:space:]]*cd[[:space:]]+[^[:space:];&|]+[[:space:]]*(&&|;)[[:space:]]*'
+# the characters a launcher's path may hold: a plain path alphabet, so a
+# shell operator, a quote or an expansion is never read as part of a path
+# the exec line then carries as it is
+_RE_LAPC="[[:alnum:]._:@%+,=~/-]"
 # a token may be single-quoted as escapeshellarg spells it; the quotes must
 # balance (a lone quote is the caller's, not a launcher)
 _RE_LAPHP="('?(php|php[0-9][0-9]|/opt/php[0-9][0-9]/bin/php|/usr/bin/php|/usr/local/bin/php)'?)[[:space:]]+"
-_RE_LADRUSH="('?(/opt/tools/drush/[^[:space:]']+/drush/drush\\.php|/data/disk/[^[:space:]']+/tools/drush/drush\\.php|/mnt/[^[:space:]']+/data/disk/[^[:space:]']+/tools/drush/drush\\.php|/var/aegir/drush/drush\\.php|[^[:space:]']*vendor/drush/drush/drush\\.php)'?)[[:space:]]+(.*)\$"
+_RE_LADRUSH="('?(/opt/tools/drush/${_RE_LAPC}+/drush/drush\\.php|/data/disk/${_RE_LAPC}+/tools/drush/drush\\.php|/mnt/${_RE_LAPC}+/data/disk/${_RE_LAPC}+/tools/drush/drush\\.php|/var/aegir/drush/drush\\.php|${_RE_LAPC}*vendor/drush/drush/drush\\.php)'?)[[:space:]]+(.*)\$"
+# Composer's shell proxy for a codebase's own Drush (vendor/bin/drush) and the
+# package's shell launcher it runs (vendor/drush/drush/drush): both start with
+# #!/usr/bin/env sh, so run by their path they come back here as a script,
+# which an account user may not run (exit 1 below). Drush 13 names the proxy
+# for its own children whenever it exists (updatedb starts updatedb:status
+# with it), and Composer writes it back each time it installs drush/drush;
+# Verify and Unlock Local Drush only set it aside. Both run the drush.php of
+# the same tree, which is what such a line runs here.
+_RE_LAPROXY="('?((${_RE_LAPC}*/)?vendor/(bin/drush|drush/drush/drush))'?)[[:space:]]+(.*)\$"
 _quotes_balance() {
   case "$1" in
     \'*\') return 0 ;;
@@ -474,7 +487,7 @@ _quotes_balance() {
 _drush_launcher() {
   [[ $'\xc3\xa9' == ? ]] && local LC_ALL=C
   local _s="$1" _tok
-  _LA_PATH=""; _LA_REST=""; _LA_RM=""; _LA_PRE=""; _LA_CD=""
+  _LA_PATH=""; _LA_REST=""; _LA_RM=""; _LA_PRE=""; _LA_CD=""; _LA_PX=""
   if [[ "${_s}" =~ ${_RE_SETM} ]]; then
     _s="${_s#"${BASH_REMATCH[0]}"}"
   fi
@@ -500,6 +513,12 @@ _drush_launcher() {
     && _quotes_balance "${BASH_REMATCH[1]}"; then
     _LA_PATH="${BASH_REMATCH[2]}"
     _LA_REST="${BASH_REMATCH[3]}"
+  elif [[ "${_s}" =~ ^${_RE_LAPROXY} ]] && _quotes_balance "${BASH_REMATCH[1]}"; then
+    # _LA_PX keeps the path as written, which the dispatch swaps for
+    # _LA_PATH in its copies of the line
+    _LA_PX="${BASH_REMATCH[2]}"
+    _LA_PATH="${BASH_REMATCH[3]}vendor/drush/drush/drush.php"
+    _LA_REST="${BASH_REMATCH[5]}"
   else
     _LA_PRE=""; _LA_CD=""
     return 1
@@ -517,7 +536,7 @@ _drush_launcher() {
 # vendor/ above it, so only Composer's proxy is launched. A php named in front
 # is not read here: an interpreter by name is a [grp:ltd-shell-more] line.
 _DRL_PATH=""; _DRL_REST=""; _DRL_PRE=""; _DRL_CD=""
-_RE_LADR="('?([^[:space:]']*vendor/bin/dr)'?)([[:space:]]+(.*))?\$"
+_RE_LADR="('?(${_RE_LAPC}*vendor/bin/dr)'?)([[:space:]]+(.*))?\$"
 _dr_launcher() {
   [[ $'\xc3\xa9' == ? ]] && local LC_ALL=C
   local _s="$1"
@@ -2373,6 +2392,9 @@ if [ "${1}" = "-c" ] \
   # which is the server default: the dispatch below launches it
   case "${_SF_LEAD}" in
     */vendor/drush/drush/drush.php) _SF_SKIP=YES ;;
+    # Composer's shell proxy for it, and the launcher the proxy runs: run
+    # verbatim they come back as a script and end in exit 1 (_RE_LAPROXY)
+    */vendor/bin/drush|*/vendor/drush/drush/drush) _SF_SKIP=YES ;;
     # core's dr by its path: the dr launch below, with the site folder
     */vendor/bin/dr) _is_tenant && _SF_SKIP=YES ;;
   esac
@@ -2437,6 +2459,13 @@ if _drush_launcher "${_ARGS}"; then
   _R_M="${_LA_RM}"
   _DL_PRE="${_LA_CD}${_LA_PRE}"
   _ARR=("${_LA_REST}")
+  # Composer's proxy (_RE_LAPROXY): the line reads as its drush.php spelling
+  # for every test below, whose substring tests for "drush " would otherwise
+  # match the proxy's name and none of drush.php's
+  if [ -n "${_LA_PX}" ]; then
+    _ARGS="${_ARGS/"${_LA_PX}"/"${_LA_PATH}"}"
+    _ALL="${_ALL/"${_LA_PX}"/"${_LA_PATH}"}"
+  fi
 # A line whose leading word (after a cd DIR &&) is a drush verb is a drush
 # line whatever its arguments name: the substring exclusions the old router
 # needed (composer, git, cd, mysql anywhere in the line) sent such lines --
@@ -4527,6 +4556,21 @@ if _grp_set_is "users www-data" \
       exit 1
     fi
   else
+    # Only a command line (-c) runs for these users: a script run by sh, a
+    # #!/bin/sh or #!/usr/bin/env sh one included, ends here. An account's
+    # own login is told so on stderr, since a tool whose child ended here
+    # silently had nothing to show for it; the instance user and the master,
+    # whose web and cron runs pass here too, stay silent as before. The name
+    # is the script's (never an option), in a plain alphabet; a subshell
+    # keeps a closed stderr from changing the status.
+    if _is_tenant; then
+      _cpp_safe "${1:-}"
+      if [ -n "${1:-}" ] && [[ "${1}" != -* ]]; then
+        ( echo "sh: ${_CPP_S}: refused: scripts do not run through sh for this account" >&2 )
+      else
+        ( echo "sh: refused: scripts do not run through sh for this account" >&2 )
+      fi
+    fi
     exit 1
   fi
 else
