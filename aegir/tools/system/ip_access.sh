@@ -513,27 +513,6 @@ _site_hosts() {
 declare -A _host_owners=()
 _owners_built=""
 
-_ensure_owners() {
-  # One pass over every rendered vhost on the box, and only when the front
-  # takes copies and this context lists a site that has a vhost of its own.
-  # Runs in the main shell, so the command substitutions after it inherit
-  # the index. $1 = control file, $2 = the context's vhost.d dir.
-  local _line _s _need=""
-  [[ -n "${_front_on}" && -z "${_owners_built}" ]] || return 0
-  while LC_ALL=C IFS= read -r _line; do
-    _line="${_line%%#*}"
-    [[ -z "${_line// /}" ]] && continue
-    read -r _s _ <<< "${_line}"
-    _s=$(echo "${_s}" | tr '[:upper:]' '[:lower:]')
-    if [[ ${_s} =~ ${_site_name_regex} && -f "${2}/${_s}" ]]; then
-      _need="yes"
-      break
-    fi
-  done < "$1"
-  [[ -n "${_need}" ]] || return 0
-  _build_owners
-}
-
 _build_owners() {
   # The box-wide index itself, at most once per run and in the main shell.
   # Each rendered vhost is read only as a copy that does not follow a link
@@ -566,6 +545,27 @@ _build_owners() {
       done | xargs -0 -r awk -v max="${_host_max}" "${_names_awk}" 2>/dev/null
     done | sort | uniq -c
     rm -rf -- "${_c}")
+}
+
+_ensure_owners() {
+  # One pass over every rendered vhost on the box, and only when the front
+  # takes copies and this context lists a site that has a vhost of its own.
+  # Runs in the main shell, so the command substitutions after it inherit
+  # the index. $1 = control file, $2 = the context's vhost.d dir.
+  local _line _s _need=""
+  [[ -n "${_front_on}" && -z "${_owners_built}" ]] || return 0
+  while LC_ALL=C IFS= read -r _line; do
+    _line="${_line%%#*}"
+    [[ -z "${_line// /}" ]] && continue
+    read -r _s _ <<< "${_line}"
+    _s=$(echo "${_s}" | tr '[:upper:]' '[:lower:]')
+    if [[ ${_s} =~ ${_site_name_regex} && -f "${2}/${_s}" ]]; then
+      _need="yes"
+      break
+    fi
+  done < "$1"
+  [[ -n "${_need}" ]] || return 0
+  _build_owners
 }
 
 _front_hosts() {

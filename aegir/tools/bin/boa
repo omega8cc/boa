@@ -46,6 +46,16 @@ if [ -z "${TERM+x}" ]; then
   export TERM=vt100
 fi
 
+_boa_lock_ino() { stat -c %i -- "${1}" 2> /dev/null; }
+# $1 the lock, $2 its inode when this run took it: removed only while it is
+# still that file
+_boa_lock_release() {
+  if [ -n "${2}" ] && [ "$(_boa_lock_ino "${1}")" = "${2}" ] && rm -f -- "${1}"; then
+    echo released
+  else
+    echo left
+  fi
+}
 _clean_pid_exit() {
   # A signal here must not cut the owner's cleanup short (cron left stopped)
   trap '' HUP INT TERM PIPE
@@ -1864,6 +1874,34 @@ _reports_root_only() {
   chown -h root:root -- "${_d}" && chmod 00700 -- "${_d}"
 }
 
+# A run killed by a dropped ssh channel (its next write raises PIPE), a hangup,
+# Ctrl-C or kill left boa_run.pid, boa_wait.pid and octopus_install_run.pid
+# behind, and clear.sh reaps those only by age, one to three hours later: the
+# re-run a migration asks for could not start. Release what this run holds at
+# that moment and nothing else, and never /opt/tmp, whose reuse across runs is
+# intentional. A lock is this run's while it is the very file this run made
+# (its inode, read when the run took it): the installers drop the run locks at
+# their own end, and a later step of the chain or another run may then take
+# new ones by the same names. Every release goes by that rule, the signal's
+# and the run's own. The marker handed to a nohup'd octopus is that run's; one
+# run in the foreground leaves this run's claim as it is, since the handler
+# waits for it to exit, by when the marker is gone or still this run's file.
+# Logged beside _clean_pid_exit's reasons, never to the closed channel.
+_BOA_LOCK_RUN_I=""
+_BOA_LOCK_WAIT_I=""
+_BOA_LOCK_OCT_I=""
+_boa_on_signal() {
+  local _r _w _o
+  trap '' HUP INT TERM PIPE
+  _r=$(_boa_lock_release /run/boa_run.pid "${_BOA_LOCK_RUN_I}")
+  _w=$(_boa_lock_release /run/boa_wait.pid "${_BOA_LOCK_WAIT_I}")
+  _o=$(_boa_lock_release /run/octopus_install_run.pid "${_BOA_LOCK_OCT_I}")
+  mkdir -p /var/log/boa 2> /dev/null
+  echo "SIGNAL ${1} in ${_cmNd:-boa} on $(date): boa_run.pid ${_r}, boa_wait.pid ${_w}, octopus_install_run.pid ${_o}" \
+    >> /var/log/boa/.boa.exit.exceptions.log 2> /dev/null
+  exit "${2}"
+}
+
 _init_start() {
   if [ -e "/run/boa_run.pid" ]; then
     echo
@@ -1908,32 +1946,6 @@ _init_start() {
   fi
 }
 
-# A run killed by a dropped ssh channel (its next write raises PIPE), a hangup,
-# Ctrl-C or kill left boa_run.pid, boa_wait.pid and octopus_install_run.pid
-# behind, and clear.sh reaps those only by age, one to three hours later: the
-# re-run a migration asks for could not start. Release what this run holds at
-# that moment and nothing else, and never /opt/tmp, whose reuse across runs is
-# intentional. A lock is this run's while it is the very file this run made
-# (its inode, read when the run took it): the installers drop the run locks at
-# their own end, and a later step of the chain or another run may then take
-# new ones by the same names. Every release goes by that rule, the signal's
-# and the run's own. The marker handed to a nohup'd octopus is that run's; one
-# run in the foreground leaves this run's claim as it is, since the handler
-# waits for it to exit, by when the marker is gone or still this run's file.
-# Logged beside _clean_pid_exit's reasons, never to the closed channel.
-_BOA_LOCK_RUN_I=""
-_BOA_LOCK_WAIT_I=""
-_BOA_LOCK_OCT_I=""
-_boa_lock_ino() { stat -c %i -- "${1}" 2> /dev/null; }
-# $1 the lock, $2 its inode when this run took it: removed only while it is
-# still that file
-_boa_lock_release() {
-  if [ -n "${2}" ] && [ "$(_boa_lock_ino "${1}")" = "${2}" ] && rm -f -- "${1}"; then
-    echo released
-  else
-    echo left
-  fi
-}
 # $1 the marker, $2 this run's claim on it: prints the claim. Made new here,
 # or still the file this run claimed, it is this run's; a file another run
 # made in between is touched as before but never claimed, so no release of
@@ -1955,18 +1967,6 @@ _boa_lock_take() {
     fi
   fi
 }
-_boa_on_signal() {
-  local _r _w _o
-  trap '' HUP INT TERM PIPE
-  _r=$(_boa_lock_release /run/boa_run.pid "${_BOA_LOCK_RUN_I}")
-  _w=$(_boa_lock_release /run/boa_wait.pid "${_BOA_LOCK_WAIT_I}")
-  _o=$(_boa_lock_release /run/octopus_install_run.pid "${_BOA_LOCK_OCT_I}")
-  mkdir -p /var/log/boa 2> /dev/null
-  echo "SIGNAL ${1} in ${_cmNd:-boa} on $(date): boa_run.pid ${_r}, boa_wait.pid ${_w}, octopus_install_run.pid ${_o}" \
-    >> /var/log/boa/.boa.exit.exceptions.log 2> /dev/null
-  exit "${2}"
-}
-
 _check_etc_apt_preferences() {
   if [ -e "/etc/apt/preferences" ] \
     && [ ! -e "/var/backups/old_etc_apt_preferences" ]; then

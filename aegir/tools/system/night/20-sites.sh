@@ -231,6 +231,45 @@ _validate_loop_dir() {
   return 1
 }
 
+### The walks of the permissions pass over a platform and a site (the
+### platform tree, the site's directory, its files and private stores) hand
+### over and set modes only on what root or the site's account's own
+### identities own, and on nothing below a directory another user owns: the
+### account's identities can rename into their trees what another account
+### left group-writable, a whole directory with everything in it, and that
+### keeps its owner and modes. Another account's store reached through a
+### share is that account's own pass's to set. The identity set as
+### satellite.sh.inc and night/10-account.sh read it (one text in each):
+### root's own (0) and the uid of every passwd name oN and oN.<name> (its
+### .ftp login, its client sub-accounts and their -dev logins, its PHP-FPM
+### users oN.web and oN.<ver>.web); status 1, and nothing, unless the
+### account itself is in passwd. A uid no passwd entry names counts as the
+### account's own in the walkers below, whether root recorded it as one of
+### the account's removed identities (/data/conf/acct-uids/<oN>.gone) or not:
+### they hand over and set site files, not the control files root reads as
+### the account's settings, whose hand-overs (the ltd worker, the Octopus
+### upgrade) take only recorded ones.
+_acct_walk_uids() {
+  local _a="${1}" _n _p _u _r _x="0" _self=NO
+  case "${_a}" in
+    ""|*[!a-z0-9-]*) return 1 ;;
+  esac
+  while IFS=: read -r _n _p _u _r; do
+    [[ "${_n}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]] || continue
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    _x="${_x},${_u}"
+    [ "${_n}" = "${_a}" ] && _self=YES
+  done < <(getent passwd 2> /dev/null)
+  [ "${_self}" = "YES" ] || return 1
+  # the account's removed identities, their numbers recorded by root before
+  # deluser freed them; a number a user has again is not taken
+  while IFS= read -r _u; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    getent passwd "${_u}" > /dev/null 2>&1 && continue
+    _x="${_x},${_u}"
+  done 2> /dev/null < "/data/conf/acct-uids/${_a}.gone"
+  echo "${_x}"
+}
 ### _validate_ctrl_dir is used below as a "continue" gate, so an undefined
 ### function -- 127, i.e. false -- would skip EVERY site on a box whose
 ### library is briefly behind this file. Fail-open is not an option either
@@ -482,10 +521,6 @@ fi
 ### checked root:root 0700 there before "$@" runs inside it (night.inc.sh
 ### carries the same bodies; an older library has none).
 if ! declare -F _ctrl_in_stage_dir > /dev/null 2>&1; then
-  _ctrl_in_stage_dir() {
-    [ -n "${_usEr}" ] || return 1
-    _acct_in_real_dir "${_usEr}" _ctrl_stage_here "$@"
-  }
   _ctrl_stage_here() {
     local _h _st
     _h="$(/bin/pwd -P)/.boa-ctrl"
@@ -499,8 +534,18 @@ if ! declare -F _ctrl_in_stage_dir > /dev/null 2>&1; then
       && (( (8#${_st##* } & 8#077) == 0 )) || return 1
     "$@"
   }
+  _ctrl_in_stage_dir() {
+    [ -n "${_usEr}" ] || return 1
+    _acct_in_real_dir "${_usEr}" _ctrl_stage_here "$@"
+  }
 fi
 
+### ./$1 of the current (pinned) directory as text: status 1, and nothing,
+### unless it is a regular file; read as _acct_read_here reads it.
+_acct_read_plain_here() {
+  [ -f "./${1}" ] && [ ! -L "./${1}" ] || return 1
+  _acct_read_here "${1}"
+}
 ### The consecutive-ghost counters (night.inc.sh documents them), kept by
 ### NAME inside the real log/ctrl. Defined here whatever the library holds:
 ### an older library's _ghost_seen_enough takes a path and acts on it.
@@ -689,45 +734,6 @@ _reown_tree_here() {
   return 0
 }
 
-### The walks of the permissions pass over a platform and a site (the
-### platform tree, the site's directory, its files and private stores) hand
-### over and set modes only on what root or the site's account's own
-### identities own, and on nothing below a directory another user owns: the
-### account's identities can rename into their trees what another account
-### left group-writable, a whole directory with everything in it, and that
-### keeps its owner and modes. Another account's store reached through a
-### share is that account's own pass's to set. The identity set as
-### satellite.sh.inc and night/10-account.sh read it (one text in each):
-### root's own (0) and the uid of every passwd name oN and oN.<name> (its
-### .ftp login, its client sub-accounts and their -dev logins, its PHP-FPM
-### users oN.web and oN.<ver>.web); status 1, and nothing, unless the
-### account itself is in passwd. A uid no passwd entry names counts as the
-### account's own in the walkers below, whether root recorded it as one of
-### the account's removed identities (/data/conf/acct-uids/<oN>.gone) or not:
-### they hand over and set site files, not the control files root reads as
-### the account's settings, whose hand-overs (the ltd worker, the Octopus
-### upgrade) take only recorded ones.
-_acct_walk_uids() {
-  local _a="${1}" _n _p _u _r _x="0" _self=NO
-  case "${_a}" in
-    ""|*[!a-z0-9-]*) return 1 ;;
-  esac
-  while IFS=: read -r _n _p _u _r; do
-    [[ "${_n}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]] || continue
-    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
-    _x="${_x},${_u}"
-    [ "${_n}" = "${_a}" ] && _self=YES
-  done < <(getent passwd 2> /dev/null)
-  [ "${_self}" = "YES" ] || return 1
-  # the account's removed identities, their numbers recorded by root before
-  # deluser freed them; a number a user has again is not taken
-  while IFS= read -r _u; do
-    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
-    getent passwd "${_u}" > /dev/null 2>&1 && continue
-    _x="${_x},${_u}"
-  done 2> /dev/null < "/data/conf/acct-uids/${_a}.gone"
-  echo "${_x}"
-}
 ### As _NIGHT_FCHMOD_PL, given first the uids it acts for (_acct_walk_uids):
 ### a name another named uid owns keeps its mode and is printed (dev:ino),
 ### and nothing is changed unless the current directory and every directory
@@ -1096,22 +1102,6 @@ _night_mkdir_own_here() {
   return 0
 }
 
-### Run "$@" inside the directory $1 as it resolves now, entered for real: $1
-### is never a link itself and resolves strictly below this account root, and
-### the resolved path is checked again once entered, so a name on the way
-### swapped for a link afterwards is no longer on the path. For the
-### alias-derived platform and site trees, which the per-site gates already
-### accept through a link on the way; the account's own log/, .drush/ and
-### config/ go through _acct_in_real_dir. Reads _usEr.
-_acct_in_resolved_dir() {
-  _in_resolved_dir acct "$@"
-}
-### The same for a site dir, which may also sit on the shared /data/all or
-### /data/disk/all store a legacy instance still hosts sites on (the stores
-### _validate_loop_dir accepts).
-_site_in_resolved_dir() {
-  _in_resolved_dir site "$@"
-}
 ### Only the directories above $1 are resolved: $1 itself is taken as a name
 ### in its resolved parent, so a link swapped in at $1 after the test above
 ### fails the check once entered instead of being resolved to where it
@@ -1135,6 +1125,22 @@ _in_resolved_dir() {
   ( cd -P -- "${_rd}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_rd}" ] && "$@" )
 }
 
+### Run "$@" inside the directory $1 as it resolves now, entered for real: $1
+### is never a link itself and resolves strictly below this account root, and
+### the resolved path is checked again once entered, so a name on the way
+### swapped for a link afterwards is no longer on the path. For the
+### alias-derived platform and site trees, which the per-site gates already
+### accept through a link on the way; the account's own log/, .drush/ and
+### config/ go through _acct_in_real_dir. Reads _usEr.
+_acct_in_resolved_dir() {
+  _in_resolved_dir acct "$@"
+}
+### The same for a site dir, which may also sit on the shared /data/all or
+### /data/disk/all store a legacy instance still hosts sites on (the stores
+### _validate_loop_dir accepts).
+_site_in_resolved_dir() {
+  _in_resolved_dir site "$@"
+}
 # ./$1 in the current (pinned) directory replaced by the exact bytes $2, only
 # while ./$1 is a regular file below 1 MiB (so a bounded read saw all of it):
 # a fresh file with the owner, group and read/write bits of the file it
@@ -1164,12 +1170,6 @@ _acct_put_same_here() {
   fi
   rm -f -- "${_t}"
   return 1
-}
-### ./$1 of the current (pinned) directory as text: status 1, and nothing,
-### unless it is a regular file; read as _acct_read_here reads it.
-_acct_read_plain_here() {
-  [ -f "./${1}" ] && [ ! -L "./${1}" ] || return 1
-  _acct_read_here "${1}"
 }
 ### ./$1 edited by the sed arguments after it, as sed -i edited it (the same
 ### bytes: the trailing "x" keeps every newline through the substitutions),
@@ -1218,15 +1218,6 @@ _ctrl_ini_want() {
   fi
 }
 
-### A root marker in the account's log/ctrl (made first if missing): a fresh
-### empty file created exclusively inside the real directory and renamed over
-### the name, so a link or a FIFO put at the name is replaced, never followed
-### or opened, and nothing is created through a link at log/ or log/ctrl.
-### $1 = marker name.
-_log_ctrl_mark() {
-  _acct_in_real_dir "${_usEr}/log" mkdir -p ./ctrl 2> /dev/null
-  _acct_in_real_dir "${_usEr}/log/ctrl" _acct_mark_here "${1}"
-}
 ### ./$1 in the current (pinned) directory as a fresh empty file, put as
 ### _acct_put_here puts one.
 _acct_mark_here() {
@@ -1238,6 +1229,15 @@ _acct_mark_here() {
   return 1
 }
 
+### A root marker in the account's log/ctrl (made first if missing): a fresh
+### empty file created exclusively inside the real directory and renamed over
+### the name, so a link or a FIFO put at the name is replaced, never followed
+### or opened, and nothing is created through a link at log/ or log/ctrl.
+### $1 = marker name.
+_log_ctrl_mark() {
+  _acct_in_real_dir "${_usEr}/log" mkdir -p ./ctrl 2> /dev/null
+  _acct_in_real_dir "${_usEr}/log/ctrl" _acct_mark_here "${1}"
+}
 ### Move ./$1 of the current directory, entered for real by the caller, into
 ### this account's real undo/ as $2 (default: the same name); undo/ is made
 ### first if missing. undo/ is opened and checked to be the account's own
@@ -1737,10 +1737,6 @@ _in_real_sub() {
   _h="$(/bin/pwd -P)"
   ( cd -P -- "./${_s}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_h}/${_s}" ] && "$@" )
 }
-### ./$1 removed unless it is a link; a link at the name is left alone.
-_rm_nolink_here() {
-  [ -L "./${2}" ] || _rm_own_here "${1}" "./${2}"
-}
 ### The names after the uids $1 removed in the current (pinned) directory
 ### through _ACCT_RM_OWN_PL (op r), a directory with everything below it:
 ### only what root or those uids own, nothing below a directory another
@@ -1766,6 +1762,10 @@ _rm_own_here() {
   _x=$(perl -e "${_ACCT_RM_OWN_PL}" -- h "${_o}" - "$@" 2> /dev/null)
   _perm_left_add "${_x}"
   return 0
+}
+### ./$1 removed unless it is a link; a link at the name is left alone.
+_rm_nolink_here() {
+  [ -L "./${2}" ] || _rm_own_here "${1}" "./${2}"
 }
 ### The names matching the globs after the uids $1 removed in the current
 ### (pinned) directory as _rm_own_here removes them; each glob expands here,
@@ -1862,26 +1862,6 @@ _stage_fetch_sum_here() {
   rm -f -- "${_t}"
   [ -n "${_s}" ] && [ "${_s}" = "${2}" ]
 }
-### ./$1 of the store $2 (a path resolved just before) replaced by the page
-### $3 as fetched now. curl writes by name, so it writes only into the
-### root-only staging dir (_ctrl_in_stage_dir); the store is then entered
-### for real, the fetched copy read through the staging dir held open
-### (/proc/self/fd), put there as a fresh file and renamed over the name, so
-### no name on either path can redirect a root write, the rename is atomic
-### in the store's own directory whatever filesystem it is on, and a link
-### re-planted at the name is replaced, never followed.
-_store_fetch() {
-  _ctrl_in_stage_dir _store_fetch_here "${1}" "${2}" "${3}"
-}
-_store_fetch_here() {
-  local _t _rc=1
-  _t=$(_stage_fetch_here "${3}") || return 1
-  ( exec 8< . || exit 1
-    cd -P -- "${2}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${2}" ] || exit 1
-    _store_put_copy_here "${1}" "/proc/self/fd/8/${_t#./}" ) && _rc=0
-  rm -f -- "${_t}"
-  return "${_rc}"
-}
 ### ./$1 of the current (pinned) directory replaced by a copy of the file
 ### $2: a fresh name created exclusively, then renamed over the name.
 _store_put_copy_here() {
@@ -1894,23 +1874,25 @@ _store_put_copy_here() {
   return 1
 }
 
-### The llms.txt, robots.txt and Boost cache legs run outside the permissions
-### pass, so each counts what it leaves for another owner on a NOTE line of
-### its own.
-_fix_llms_txt() {
-  _perm_left_open
-  _llms_txt_legs
-  _perm_left_note "${_Dir}" "the llms.txt leg"
+_store_fetch_here() {
+  local _t _rc=1
+  _t=$(_stage_fetch_here "${3}") || return 1
+  ( exec 8< . || exit 1
+    cd -P -- "${2}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${2}" ] || exit 1
+    _store_put_copy_here "${1}" "/proc/self/fd/8/${_t#./}" ) && _rc=0
+  rm -f -- "${_t}"
+  return "${_rc}"
 }
-_fix_robots_txt() {
-  _perm_left_open
-  _robots_txt_legs
-  _perm_left_note "${_Dir}" "the robots.txt leg"
-}
-_fix_boost_cache() {
-  _perm_left_open
-  _boost_cache_legs
-  _perm_left_note "${_Plr}/cache" "the Boost cache leg"
+### ./$1 of the store $2 (a path resolved just before) replaced by the page
+### $3 as fetched now. curl writes by name, so it writes only into the
+### root-only staging dir (_ctrl_in_stage_dir); the store is then entered
+### for real, the fetched copy read through the staging dir held open
+### (/proc/self/fd), put there as a fresh file and renamed over the name, so
+### no name on either path can redirect a root write, the rename is atomic
+### in the store's own directory whatever filesystem it is on, and a link
+### re-planted at the name is replaced, never followed.
+_store_fetch() {
+  _ctrl_in_stage_dir _store_fetch_here "${1}" "${2}" "${3}"
 }
 _llms_txt_legs() {
   # The site files/ dir is tenant-writable (oN:www-data 02775; the shell user is
@@ -2031,6 +2013,14 @@ _llms_txt_legs() {
   fi
 }
 
+### The llms.txt, robots.txt and Boost cache legs run outside the permissions
+### pass, so each counts what it leaves for another owner on a NOTE line of
+### its own.
+_fix_llms_txt() {
+  _perm_left_open
+  _llms_txt_legs
+  _perm_left_note "${_Dir}" "the llms.txt leg"
+}
 _robots_txt_legs() {
   # See _llms_txt_legs: files/ is tenant-writable and a link the tenant can
   # repoint, so every leg acts only inside the store as it resolves once here
@@ -2075,6 +2065,35 @@ _robots_txt_legs() {
   fi
 }
 
+_fix_robots_txt() {
+  _perm_left_open
+  _robots_txt_legs
+  _perm_left_note "${_Dir}" "the robots.txt leg"
+}
+### The docroot's cache link stripped, only in a docroot that is root's or
+### the uids $1' and every directory above it (one pin for test and act).
+_boost_cache_strip_here() {
+  _night_place_own_here "${1}" || return 1
+  _desymlink_planted ./cache
+  return 0
+}
+### Everything in the cache but its dot names, and .boost and .htaccess,
+### removed with the uids $1 (_ACCT_RM_OWN_PL): another user's entry, and
+### everything below its directory, is left and counted.
+_boost_cache_clear_here() {
+  local _x
+  _x=$(perl -e "${_ACCT_RM_OWN_PL}" -- r "${1}" - ./* 2> /dev/null)
+  _x="${_x}"$'\n'"$(perl -e "${_ACCT_RM_OWN_PL}" -- h "${1}" - ./.boost ./.htaccess 2> /dev/null)"
+  _perm_left_add "${_x}"
+  return 0
+}
+### The cache itself handed to the account (group $2) and set 02775, only
+### while it and every directory above it are root's or the uids $1'.
+_boost_cache_own_here() {
+  _night_reown_own_here "${1}" "${_HM_U}${2:+:${2}}" . || return 0
+  _night_chmod_own_here "${1}" d 02775 .
+}
+
 _boost_cache_legs() {
   # ${_Plr} is the docroot, 02775 and group-writable (by the account's shell
   # identities; by ANY tenant while the instance still carries the box-wide
@@ -2102,30 +2121,11 @@ _boost_cache_legs() {
   _site_in_resolved_dir "${_Plr}/cache" _boost_cache_own_here "${_o}" \
     "$(_web_group "$(_night_phys "${_Plr}")")"
 }
-### The docroot's cache link stripped, only in a docroot that is root's or
-### the uids $1' and every directory above it (one pin for test and act).
-_boost_cache_strip_here() {
-  _night_place_own_here "${1}" || return 1
-  _desymlink_planted ./cache
-  return 0
+_fix_boost_cache() {
+  _perm_left_open
+  _boost_cache_legs
+  _perm_left_note "${_Plr}/cache" "the Boost cache leg"
 }
-### Everything in the cache but its dot names, and .boost and .htaccess,
-### removed with the uids $1 (_ACCT_RM_OWN_PL): another user's entry, and
-### everything below its directory, is left and counted.
-_boost_cache_clear_here() {
-  local _x
-  _x=$(perl -e "${_ACCT_RM_OWN_PL}" -- r "${1}" - ./* 2> /dev/null)
-  _x="${_x}"$'\n'"$(perl -e "${_ACCT_RM_OWN_PL}" -- h "${1}" - ./.boost ./.htaccess 2> /dev/null)"
-  _perm_left_add "${_x}"
-  return 0
-}
-### The cache itself handed to the account (group $2) and set 02775, only
-### while it and every directory above it are root's or the uids $1'.
-_boost_cache_own_here() {
-  _night_reown_own_here "${1}" "${_HM_U}${2:+:${2}}" . || return 0
-  _night_chmod_own_here "${1}" d 02775 .
-}
-
 ### The shared-module links in the platform's own modules dir, removed and
 ### made only inside the real directory (_site_in_resolved_dir): a name on
 ### the way swapped for a link never takes a root rm or ln elsewhere.
@@ -2884,6 +2884,37 @@ _cleanup_ghost_platforms() {
   fi
 }
 
+### In the real profiles/: a link at the patch marker's name stripped, only
+### when the directory and every one above it are root's or the uids $1'.
+_seven_strip_here() {
+  [ -L ./SA-CORE-2014-005-D7-fix.info ] || return 0
+  _night_place_own_here "${1}" || return 1
+  _desymlink_planted ./SA-CORE-2014-005-D7-fix.info
+  return 0
+}
+### In the real profiles/: the patch marker put (_acct_put_here), only in a
+### directory that is root's or the uids $1' with every one above it.
+_seven_put_here() {
+  _night_place_own_here "${1}" || return 1
+  _acct_put_here SA-CORE-2014-005-D7-fix.info fixed
+}
+### In the real includes/database: the core patch applied to database.inc,
+### only when the directory and every one above it are root's or the uids
+### $1', and database.inc is too (a hand-over to -1 -1 changes nothing and
+### prints the dev:ino of another user's file); status 1 only when refused,
+### a patch that does not apply going on to the hand-over as before.
+_seven_patch_here() {
+  local _x
+  _night_place_own_here "${1}" || return 1
+  _x=$(perl -e "${_SAT_REOWN_OWN_PL}" -- "${1}" -1 -1 ./database.inc 2> /dev/null)
+  if [ -n "${_x}" ]; then
+    _perm_left_add "${_x}"
+    return 1
+  fi
+  patch -p3 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch
+  return 0
+}
+
 _fix_seven_core_patch() {
   ### $1 = the account's own uids (_acct_walk_uids).
   ### Derive the owning group from the PLATFORM PATH, never a literal and never
@@ -2944,37 +2975,6 @@ _fix_seven_core_patch() {
       _own_glob_here "${_o}" "${_HM_U}:${_grp}" 0664 '*-fix.info'
   fi
 }
-### In the real profiles/: a link at the patch marker's name stripped, only
-### when the directory and every one above it are root's or the uids $1'.
-_seven_strip_here() {
-  [ -L ./SA-CORE-2014-005-D7-fix.info ] || return 0
-  _night_place_own_here "${1}" || return 1
-  _desymlink_planted ./SA-CORE-2014-005-D7-fix.info
-  return 0
-}
-### In the real profiles/: the patch marker put (_acct_put_here), only in a
-### directory that is root's or the uids $1' with every one above it.
-_seven_put_here() {
-  _night_place_own_here "${1}" || return 1
-  _acct_put_here SA-CORE-2014-005-D7-fix.info fixed
-}
-### In the real includes/database: the core patch applied to database.inc,
-### only when the directory and every one above it are root's or the uids
-### $1', and database.inc is too (a hand-over to -1 -1 changes nothing and
-### prints the dev:ino of another user's file); status 1 only when refused,
-### a patch that does not apply going on to the hand-over as before.
-_seven_patch_here() {
-  local _x
-  _night_place_own_here "${1}" || return 1
-  _x=$(perl -e "${_SAT_REOWN_OWN_PL}" -- "${1}" -1 -1 ./database.inc 2> /dev/null)
-  if [ -n "${_x}" ]; then
-    _perm_left_add "${_x}"
-    return 1
-  fi
-  patch -p3 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch
-  return 0
-}
-
 ### The walk of a static platform tree, inside its real top directory (the
 ### current one): every directory 0775 but the three Drush-lock dirs (their
 ### contents are still walked), every regular file 0664 but the credential
@@ -3227,6 +3227,16 @@ _fix_expected_symlinks() {
   fi
 }
 
+### $1 = the account's web group, $2 = its own uids.
+_tcpdf_cache_here() {
+  local _o="${2}"
+  _night_chmod_own_here "${_o}" d 0775 . || return 0
+  _night_mode_own_here "${_o}" d 0775 . -mindepth 1
+  _night_mode_own_here "${_o}" f 0775 . -mindepth 1
+  _night_reown_own_tree_here "${_o}" "${_HM_U}${1:+:${1}}" .
+  return 0
+}
+
 ### The platform level of the permissions pass, inside the real platform
 ### root (the current directory; _site_in_resolved_dir): every leg acts on
 ### ./names, enters a directory below only for real (_in_real_sub), walks
@@ -3387,16 +3397,6 @@ _plr_perm_here() {
   fi
   return 0
 }
-### $1 = the account's web group, $2 = its own uids.
-_tcpdf_cache_here() {
-  local _o="${2}"
-  _night_chmod_own_here "${_o}" d 0775 . || return 0
-  _night_mode_own_here "${_o}" d 0775 . -mindepth 1
-  _night_mode_own_here "${_o}" f 0775 . -mindepth 1
-  _night_reown_own_tree_here "${_o}" "${_HM_U}${1:+:${1}}" .
-  return 0
-}
-
 ### The site level of the permissions pass, inside the real site dir (the
 ### current directory; _site_in_resolved_dir), the same way as
 ### _plr_perm_here. $1 = the group, $2 = the web group. Reads _siteCodeLink.
@@ -3470,6 +3470,40 @@ _site_perm_here() {
   _night_reown_own_tree_here "${_o}" "${_HM_U}${_wg:+:${_wg}}" ./files ./private
   return 0
 }
+### Private files' modes in the current (real) directory: every directory
+### 02770 and regular file 0660 once the account has its own web group
+### ($1 wg-*), 02775 and 0664 otherwise, as always; only on what root or the
+### account's own identities own, nothing below another user's directory.
+_private_modes_here() {
+  local _d=02775 _f=0664 _o
+  if [[ "${1}" == wg-* ]]; then
+    _d=02770
+    _f=0660
+  fi
+  _o=$(_acct_walk_uids "${_HM_U}") || return 0
+  _night_chmod_own_here "${_o}" d "${_d}" . || return 0
+  _night_mode_own_here "${_o}" d "${_d}" . -mindepth 1
+  _night_mode_own_here "${_o}" f "${_f}" . -mindepth 1
+  return 0
+}
+### The site's private store, the same way; config/ is walked as chown -h -R
+### walked it, never handing over a hard-linked file
+### (_night_reown_own_tree_here).
+_private_store_perm_here() {
+  ### $1 = the web group.
+  local _wg="${1}" _o
+  _o=$(_acct_walk_uids "${_HM_U}") || return 0
+  _private_modes_here "${_wg}"
+  _night_reown_own_here "${_o}" "${_HM_U}${_wg:+:${_wg}}" . || return 0
+  _night_reown_own_here "${_o}" "${_HM_U}${_wg:+:${_wg}}" ./files ./temp
+  _in_real_sub files _night_reown_own_here "${_o}" "${_HM_U}${_wg:+:${_wg}}" \
+    ./backup_migrate
+  _in_real_sub files/backup_migrate _night_reown_own_here "${_o}" \
+    "${_HM_U}${_wg:+:${_wg}}" ./manual ./scheduled
+  _night_reown_own_tree_here "${_o}" "${_HM_U}${_wg:+:${_wg}}" ./config
+  return 0
+}
+
 ### The site's files store, inside the real directory it resolves to (the
 ### current one): every directory 02775 and regular file 0664, set from
 ### inside the directory walked through a no-follow handle, the store handed
@@ -3506,40 +3540,6 @@ _files_store_perm_here() {
     ./templates_c ./upload ./persist ./custom ./dynamic
   return 0
 }
-### Private files' modes in the current (real) directory: every directory
-### 02770 and regular file 0660 once the account has its own web group
-### ($1 wg-*), 02775 and 0664 otherwise, as always; only on what root or the
-### account's own identities own, nothing below another user's directory.
-_private_modes_here() {
-  local _d=02775 _f=0664 _o
-  if [[ "${1}" == wg-* ]]; then
-    _d=02770
-    _f=0660
-  fi
-  _o=$(_acct_walk_uids "${_HM_U}") || return 0
-  _night_chmod_own_here "${_o}" d "${_d}" . || return 0
-  _night_mode_own_here "${_o}" d "${_d}" . -mindepth 1
-  _night_mode_own_here "${_o}" f "${_f}" . -mindepth 1
-  return 0
-}
-### The site's private store, the same way; config/ is walked as chown -h -R
-### walked it, never handing over a hard-linked file
-### (_night_reown_own_tree_here).
-_private_store_perm_here() {
-  ### $1 = the web group.
-  local _wg="${1}" _o
-  _o=$(_acct_walk_uids "${_HM_U}") || return 0
-  _private_modes_here "${_wg}"
-  _night_reown_own_here "${_o}" "${_HM_U}${_wg:+:${_wg}}" . || return 0
-  _night_reown_own_here "${_o}" "${_HM_U}${_wg:+:${_wg}}" ./files ./temp
-  _in_real_sub files _night_reown_own_here "${_o}" "${_HM_U}${_wg:+:${_wg}}" \
-    ./backup_migrate
-  _in_real_sub files/backup_migrate _night_reown_own_here "${_o}" \
-    "${_HM_U}${_wg:+:${_wg}}" ./manual ./scheduled
-  _night_reown_own_tree_here "${_o}" "${_HM_U}${_wg:+:${_wg}}" ./config
-  return 0
-}
-
 _fix_permissions() {
   ### Derive the owning group from the PLATFORM PATH (re-derived from the site
   ### path below), never a literal and never the account: _Plr and _Dir may
@@ -4618,16 +4618,6 @@ _le_demo_copy_drop_here() {
   rm -f ./config && echo "LE demo-mode copy removed from ${_usEr}/tools/le/config: the account is in live mode"
   return 0
 }
-### A Cloudflare DNS hook for dehydrated, cloned by root as tools/le/hooks/$1
-### from the repository $2: only inside the real hooks/ (made first if
-### missing), which is taken back as root:root 0755 first -- the nightly
-### account pass hands tools/le to the account, and the clone must land in
-### a directory the account can swap nothing in -- and only while the clone
-### dir is not there yet. A failed clone is tried again the next night.
-_le_hook_clone() {
-  _acct_in_real_dir "${_usEr}/tools/le" mkdir -p ./hooks 2> /dev/null
-  _acct_in_real_dir "${_usEr}/tools/le/hooks" _le_hook_clone_here "${1}" "${2}"
-}
 _le_hook_clone_here() {
   local _st
   chown root:root . 2> /dev/null && chmod 0755 . 2> /dev/null
@@ -4639,6 +4629,16 @@ _le_hook_clone_here() {
     return 1
   fi
   git clone "${2}" "./${1}" 2> /dev/null
+}
+### A Cloudflare DNS hook for dehydrated, cloned by root as tools/le/hooks/$1
+### from the repository $2: only inside the real hooks/ (made first if
+### missing), which is taken back as root:root 0755 first -- the nightly
+### account pass hands tools/le to the account, and the clone must land in
+### a directory the account can swap nothing in -- and only while the clone
+### dir is not there yet. A failed clone is tried again the next night.
+_le_hook_clone() {
+  _acct_in_real_dir "${_usEr}/tools/le" mkdir -p ./hooks 2> /dev/null
+  _acct_in_real_dir "${_usEr}/tools/le/hooks" _le_hook_clone_here "${1}" "${2}"
 }
 ### In a hook clone this pass just made (the current, pinned directory): true
 ### only while the directory and ./$1 are root's own regular file, so nothing

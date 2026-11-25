@@ -893,6 +893,20 @@ _lg_count_put() {
   printf '%s %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "${1}" >> "${_LG_COUNT_LOG}" 2> /dev/null
 }
 
+# The line appended, and the SUMMARY saying so; log=none and status 1 when
+# it could not be appended.
+_lg_count_say() {
+  if _lg_count_put "${1}"; then
+    _msg "SUMMARY count ${1} log=${_LG_COUNT_LOG}"
+    case "${1}" in
+      result=busy|result=no-*) return 1 ;;
+    esac
+    return 0
+  fi
+  _msg "SUMMARY count ${1} log=none"
+  return 1
+}
+
 # count: the walk scan makes, its links counted by kind, read-only. Nothing
 # is fixed, switched or mailed and the report is not rewritten (an operator
 # may be reading it); nginx is asked for nginx -T only. A BOA link that is
@@ -951,20 +965,6 @@ _lg_cmd_count() {
   done
   _line="${_line} blocking=${_b} refused=${_r} complete=${_cpl} roots=${_nr} missing=${_miss} entries=${_ent} unwalked=${_skip:-0} secs=$(( SECONDS - _t0 ))"
   _lg_count_say "${_line}"
-}
-
-# The line appended, and the SUMMARY saying so; log=none and status 1 when
-# it could not be appended.
-_lg_count_say() {
-  if _lg_count_put "${1}"; then
-    _msg "SUMMARY count ${1} log=${_LG_COUNT_LOG}"
-    case "${1}" in
-      result=busy|result=no-*) return 1 ;;
-    esac
-    return 0
-  fi
-  _msg "SUMMARY count ${1} log=none"
-  return 1
 }
 
 _lg_need_root

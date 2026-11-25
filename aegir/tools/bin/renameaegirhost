@@ -356,6 +356,13 @@ _renamed_already() {
   return 1
 }
 
+_text_needs_rename() {
+  # _file_needs_rename for text already read.
+  grep -q "${_OLD_HOST}" <<< "$1" || return 1
+  [ -z "${_SED_RENAME_GUARD}" ] && return 0
+  grep -v "${_NEW_HOST}" <<< "$1" | grep -q "${_OLD_HOST}"
+}
+
 _file_needs_rename() {
   # Eligible = the file has a line carrying OLD that is not already
   # NEW-carrying (line-level twin of _renamed_already; whole file counts
@@ -363,13 +370,6 @@ _file_needs_rename() {
   # blocking on a FIFO: the account owns most of what this tool reads.
   _text_needs_rename "$(timeout 10 dd if="$1" iflag=nofollow,nonblock,fullblock \
     bs=1048576 count=1 status=none 2>/dev/null)"
-}
-
-_text_needs_rename() {
-  # _file_needs_rename for text already read.
-  grep -q "${_OLD_HOST}" <<< "$1" || return 1
-  [ -z "${_SED_RENAME_GUARD}" ] && return 0
-  grep -v "${_NEW_HOST}" <<< "$1" | grep -q "${_OLD_HOST}"
 }
 
 # Run "$@" inside the real directory $1, never one reached through a link an
@@ -999,926 +999,6 @@ _rename_hostmaster_site_dir() {
 # name itself is changing and the old name keeps resolving to the source
 # box, which is why the tenant has to follow.
 
-_parked_capsule_platform_root() {
-  # Where a parked capsule belongs. provision persists a site's platform root
-  # in that site's ALIAS file ('root' => '...'), never in the site's own
-  # sites/<uri>/drushrc.php: that file is rendered from the 'site' drush
-  # context, which carries the six database credentials plus
-  # installed/profile/language and nothing else. Reading $options['root']
-  # from the capsule's drushrc.php therefore answers on a hand-written file
-  # only, which is why it is the last arm here and not the first. BOA's own
-  # tooling reads the same key from the same place (xoct, codebasecheck).
-  # $1 = old uri, $2 = new uri, $3 = the parked dir. Prints the root, or
-  # nothing at all when no source carries one.
-  local _OLDN="$1"
-  local _NEWN="$2"
-  local _PD="$3"
-  local _F _R
-  # This pass runs before §3 and before the surfaces pass, so the alias is
-  # still filed under the OLD uri -- unless an earlier buggy run already
-  # renamed it, hence the new name too. After the live dir, the .drush copies
-  # of EARLIER runs, newest first: an alias the run that parked this capsule
-  # destroyed is missing from the live dir and from this run's own copy of it
-  # (taken seconds ago from that same live dir), and lives only in the copy
-  # that run took before it acted.
-  local _CANDS=(
-    "${_DRUSH_DIR}/${_OLDN}.alias.drushrc.php"
-    "${_DRUSH_DIR}/${_NEWN}.alias.drushrc.php"
-  )
-  # Earlier releases kept their copies in the account's own backups, later
-  # ones where only root can reach them: both, newest first by name.
-  local _BK _RHP
-  _RHP="$(_own_real_path "${_BACKUP_DIR}")" || _RHP=""
-  for _BK in $( { ls -1d "${_PRIV_BK}"/drush_*
-      [ -n "${_RHP}" ] && ls -1d "${_RHP}"/drush_*
-    } 2>/dev/null | awk -F/ '{ print $NF "\t" $0 }' | sort -r | cut -f2-); do
-    [ -d "${_BK}" ] || continue
-    [ "${_BK}" = "${_PRIV_BK}/drush_${_TS}" ] && continue
-    _CANDS+=("${_BK}/${_OLDN}.alias.drushrc.php")
-    _CANDS+=("${_BK}/${_NEWN}.alias.drushrc.php")
-  done
-  for _F in "${_CANDS[@]}"; do
-    [ -f "${_F}" ] || continue
-    # inside the real directory, never through a link or into a FIFO: the
-    # copies carry whatever the account's .drush held when they were taken
-    case "${_F}" in
-      "${_DRUSH_DIR}"/*|"${_PRIV_BK}"/*)
-        _R=$(_read_file "${_F}" | sed -n "s/.*'root' => '\([^']*\)'.*/\1/p" | head -1)
-      ;;
-      *)
-        _R=$(_read_own_file "${_F}" | sed -n "s/.*'root' => '\([^']*\)'.*/\1/p" | head -1)
-      ;;
-    esac
-    if [ -n "${_R}" ]; then
-      printf '%s' "${_R}"
-      return 0
-    fi
-  done
-  _R=$(_txp_drushrc_value "${_PD}/drushrc.php" root) || _R=""
-  [ -z "${_R}" ] && return 1
-  printf '%s' "${_R}"
-  return 0
-}
-
-_recover_parked_site_dirs() {
-  # Un-park what an earlier release parked. That release tested a site dir for
-  # settings.php alone, so a Grav or Textpattern capsule whose uri carries the
-  # box name was moved into ${_BACKUP_DIR}/stray-sites/ while its panel node,
-  # its vhost and its alias were renamed around it — the new name answering
-  # 404 from a root that does not exist. Nothing else in this tool ever reads
-  # that directory back: every find excludes */backups/*, and _BACKUP_DIR is
-  # under backups/. So without this pass a re-run of the FIXED tool finds no
-  # dir to move, §9 has nothing to probe, the pre-queue guard sees nothing
-  # stranded, and the run prints "Rename complete" over a parked site.
-  #
-  # Guarded exactly like the mover it runs before: _safe_name on every value
-  # that reaches an eval, nothing moved under --dry-run, the move made from
-  # inside the real park into the real sites dir (both the account's), and a
-  # refusal rather than an overwrite when the destination is taken. The
-  # platform root comes from the site's alias file (helper above), and the
-  # capsule is reinstated only when that root sits UNDER ${_AEGIR_ROOT} and
-  # carries an index.php: this is the one destination in the tool chosen by
-  # file CONTENT rather than computed in place, so a stale or hand-edited
-  # value must never move a tenant into another instance's platform, where
-  # no later pass of this run could see it again while the summary still
-  # read "reinstated". On the
-  # account axis the recorded root still names /data/disk/<old-account>,
-  # which fails the containment test, so the capsule is reported and left
-  # parked rather than guessed at.
-  #
-  # Anything host-derived down there that this cannot reinstate is named at
-  # the end, so the summary can never read as success over a park.
-  local _PARK="${_BACKUP_DIR}/stray-sites"
-  local _P _OLDNAME _NEWNAME _CLASS _ROOT _NEWD _UNDER_ROOT _LEFT="" _PKR
-
-  [ -d "${_PARK}" ] || return 0
-  if ! _PKR="$(_own_real_path "${_PARK}")"; then
-    _alrt "  ${_PARK} is not a directory of ${_AEGIR_ROOT} -- nothing reinstated from it"
-    return 0
-  fi
-  for _P in "${_PKR}"/*; do
-    { [ -d "${_P}" ] && [ ! -L "${_P}" ]; } || continue
-    _OLDNAME=$(basename "${_P}")
-    case "${_OLDNAME}" in
-      *"${_OLD_HOST}"*) ;;
-      *) continue ;;
-    esac
-    _renamed_already "${_OLDNAME}" && continue
-    _NEWNAME="${_OLDNAME//${_OLD_HOST}/${_NEW_HOST}}"
-    [ "${_NEWNAME}" = "${_OLDNAME}" ] && continue
-    _safe_name "${_P}" "parked site dir" || continue
-    _CLASS=$(_site_capsule_class "${_P}")
-    if [ -z "${_CLASS}" ]; then
-      _LEFT="${_LEFT} ${_OLDNAME}"
-      _STRAY_LEFT_N=$((_STRAY_LEFT_N + 1))
-      continue
-    fi
-    _ROOT=$(_parked_capsule_platform_root "${_OLDNAME}" "${_NEWNAME}" "${_P}") || _ROOT=""
-    if [ -z "${_ROOT}" ] || ! _safe_name "${_ROOT}" "parked capsule platform root"; then
-      _alrt "  parked ${_CLASS} capsule ${_OLDNAME}: no usable platform root in its alias file or drushrc.php — left parked"
-      _LEFT="${_LEFT} ${_OLDNAME}"
-      _STRAY_LEFT_N=$((_STRAY_LEFT_N + 1))
-      continue
-    fi
-    # Containment before existence: a prefix test alone is escaped by a ..
-    # segment, and _safe_name admits dots and slashes.
-    _UNDER_ROOT=YES
-    case "/${_ROOT}/" in
-      *"/../"*) _UNDER_ROOT=NO ;;
-    esac
-    case "${_ROOT}/" in
-      "${_AEGIR_ROOT%/}"/*) ;;
-      *) _UNDER_ROOT=NO ;;
-    esac
-    if [ "${_UNDER_ROOT}" != "YES" ]; then
-      _alrt "  parked ${_CLASS} capsule ${_OLDNAME}: platform root ${_ROOT} is outside ${_AEGIR_ROOT} — left parked"
-      _LEFT="${_LEFT} ${_OLDNAME}"
-      _STRAY_LEFT_N=$((_STRAY_LEFT_N + 1))
-      continue
-    fi
-    if [ ! -d "${_ROOT}" ] || [ ! -f "${_ROOT}/index.php" ]; then
-      _alrt "  parked ${_CLASS} capsule ${_OLDNAME}: ${_ROOT} is not a platform root (no index.php) — left parked"
-      _LEFT="${_LEFT} ${_OLDNAME}"
-      _STRAY_LEFT_N=$((_STRAY_LEFT_N + 1))
-      continue
-    fi
-    _NEWD="${_ROOT}/sites/${_NEWNAME}"
-    if [ -e "${_NEWD}" ] || [ -L "${_NEWD}" ]; then
-      _alrt "  parked ${_CLASS} capsule ${_OLDNAME}: ${_NEWD} already exists — left parked, merge them by hand"
-      _LEFT="${_LEFT} ${_OLDNAME}"
-      _STRAY_LEFT_N=$((_STRAY_LEFT_N + 1))
-      continue
-    fi
-    _info "  un-park: stray-sites/${_OLDNAME} -> ${_NEWD} (${_CLASS} capsule)"
-    if [ "${_DRY_RUN}" = "YES" ]; then
-      echo "DRY:  mv -f -T ${_P} ${_NEWD}"
-    elif ! _unpark_capsule "${_PKR}" "${_OLDNAME}" "${_ROOT}/sites" "${_NEWNAME}"; then
-      _alrt "  un-park FAILED — left parked: ${_P}"
-      _LEFT="${_LEFT} ${_OLDNAME}"
-      _STRAY_LEFT_N=$((_STRAY_LEFT_N + 1))
-      continue
-    fi
-    # Reinstated, so it takes the same two passes and the same §9 gate as a
-    # capsule the mover moves itself — and the same exclusion from
-    # _RENAMED_SITE_URIS, for the reason given there.
-    _rename_site_uri_surfaces "${_OLDNAME}" "${_NEWNAME}" "${_P}" "${_NEWD}"
-    _rename_capsule_uri_surfaces "${_CLASS}" "${_OLDNAME}" "${_NEWNAME}" "${_P}" "${_NEWD}"
-    _SERVE_CHECK_URIS+=("${_NEWNAME}")
-    _CAPSULE_DONE_URIS="${_CAPSULE_DONE_URIS} ${_NEWNAME}"
-    _CAPSULE_DIRS_N=$((_CAPSULE_DIRS_N + 1))
-    _UNPARKED_N=$((_UNPARKED_N + 1))
-  done
-
-  if [ "${_UNPARKED_N}" -gt 0 ] && [ "${_DRY_RUN}" = "YES" ]; then
-    _info "  ${_UNPARKED_N} parked capsule(s) would be reinstated from ${_PARK}"
-  elif [ "${_UNPARKED_N}" -gt 0 ]; then
-    _info "  ${_UNPARKED_N} parked capsule(s) reinstated from ${_PARK}"
-  fi
-  if [ -n "${_LEFT}" ]; then
-    _alrt "  still parked in ${_PARK} and NOT reinstated:${_LEFT}"
-    _alrt "  Check each one before that directory is deleted — a parked site serves nothing."
-  fi
-  return 0
-}
-
-# The parked dir $2 of the park at the physical path $1 put back as $4 into
-# the platform sites dir $3, moved from inside the one real directory into
-# the other, never over a name already there.
-_unpark_capsule() {
-  local _s
-  _s="$(_own_real_path "${3}")" || return 1
-  _in_path_dir "${_s}" test ! -e "./${4}" -a ! -L "./${4}" || return 1
-  _in_path_dir "${_s}" _take_here "${1}" "${2}" "${4}"
-}
-
-# The site dir $2 of the sites dir $1 parked as it is in the rename's
-# stray-sites in the root's own tree, moved from inside the one real
-# directory into the other, never over a name already parked there.
-_park_stray_site_dir() {
-  local _s _p
-  _s="$(_own_real_path "${1}")" || return 1
-  _p="$(_rename_dir_real stray-sites)" || return 1
-  _in_path_dir "${_p}" test ! -e "./${2}" -a ! -L "./${2}" || return 1
-  _in_path_dir "${_p}" _take_here "${_s}" "${2}"
-}
-
-_rename_tenant_site_dirs() {
-  _info "§2c Renaming host-derived tenant site dirs under ${_AEGIR_ROOT} ..."
-
-  local _D _SITES _OLDNAME _NEWNAME _NEWD _CLASS _SR _N=0
-
-  # Before the mover, because a capsule parked by an earlier release is
-  # invisible to every find below and to the pre-queue guard.
-  _recover_parked_site_dirs
-
-  for _D in $(_find_old_host_site_dirs | sort); do
-    _OLDNAME=$(basename "${_D}")
-    _safe_name "${_D}" "site dir" || continue
-    _renamed_already "${_OLDNAME}" && continue
-    _NEWNAME="${_OLDNAME//${_OLD_HOST}/${_NEW_HOST}}"
-    [ "${_NEWNAME}" = "${_OLDNAME}" ] && continue
-    _SITES=$(dirname "${_D}")
-    _NEWD="${_SITES}/${_NEWNAME}"
-    if [ -d "${_NEWD}" ]; then
-      _alrt "  ${_NEWNAME} already exists beside ${_OLDNAME} — leaving both for review"
-      continue
-    fi
-    # A sites/<name> dir carrying none of the three site markers is not a
-    # site, yet §7's platform verify would import it as one: renamed, it
-    # became a bogus site node that §9 then alarmed NOT SERVING; left in
-    # place under the old host, the pre-queue guard refuses the whole tail.
-    # Park it under the rename's own backup dir and say so -- nothing to
-    # rename, nothing for §7 to import. Reversible: the recovery pass above
-    # reinstates anything down there that turns out to be a capsule, and
-    # names the rest. It counts into the SAME leftover total that pass feeds,
-    # because it runs before this loop: without that, the run which creates a
-    # park prints a summary reading as unqualified success and the ATTENTION
-    # line appears only on a next invocation that a one-shot cutover never
-    # makes.
-    _CLASS=$(_site_capsule_class "${_D}")
-    if [ ! -f "${_D}/settings.php" ] && [ -z "${_CLASS}" ]; then
-      if [ "${_DRY_RUN}" = "YES" ]; then
-        echo "DRY:  mv -f -T ${_D} ${_BACKUP_DIR}/stray-sites/${_OLDNAME}"
-      elif ! _park_stray_site_dir "${_SITES}" "${_OLDNAME}"; then
-        # Left in place, the pre-queue guard stops the run before §7.
-        _alrt "  ${_OLDNAME} is not a site and could NOT be parked in ${_BACKUP_DIR}/stray-sites/ (not a directory of ${_AEGIR_ROOT}, or the name is taken there)"
-        continue
-      fi
-      _alrt "  parked ${_OLDNAME}: no settings.php, no system/defines.php, no private/config.php (not a site) -> ${_BACKUP_DIR}/stray-sites/"
-      _STRAY_LEFT_N=$((_STRAY_LEFT_N + 1))
-      continue
-    fi
-    # The sites dir is the account's: the move runs on names inside the real
-    # directory, and -T refuses a link or a file put at the new name.
-    if ! _SR="$(_own_real_path "${_SITES}")"; then
-      _alrt "  ${_SITES} is not a directory of ${_AEGIR_ROOT} -- ${_OLDNAME} left in place"
-      continue
-    fi
-    _safe_name "${_SR}" "sites dir" || continue
-    if [ -n "${_CLASS}" ]; then
-      _info "  site dir: ${_OLDNAME} -> ${_NEWNAME} (in ${_SITES}, ${_CLASS} capsule)"
-    else
-      _info "  site dir: ${_OLDNAME} -> ${_NEWNAME} (in ${_SITES})"
-    fi
-    if ! _maybe_run _in_path_dir \'"${_SR}"\' mv -f -T -- \
-      \'"./${_OLDNAME}"\' \'"./${_NEWNAME}"\'; then
-      _alrt "  site dir move FAILED -- ${_OLDNAME} left in place in ${_SITES}"
-      continue
-    fi
-    _rename_site_uri_surfaces "${_OLDNAME}" "${_NEWNAME}" "${_D}" "${_NEWD}"
-    if [ -n "${_CLASS}" ]; then
-      _rename_capsule_uri_surfaces "${_CLASS}" "${_OLDNAME}" "${_NEWNAME}" "${_D}" "${_NEWD}"
-      # A capsule is gated by §9 like any other renamed name, but never joins
-      # _RENAMED_SITE_URIS: that list is what §7 queues per-site verifies
-      # from, and a capsule's verify is provision's own class-specific task,
-      # with its own PHP floor -- not this tool's to force from the queue.
-      _SERVE_CHECK_URIS+=("${_NEWNAME}")
-      _CAPSULE_DONE_URIS="${_CAPSULE_DONE_URIS} ${_NEWNAME}"
-      _CAPSULE_DIRS_N=$((_CAPSULE_DIRS_N + 1))
-    else
-      _RENAMED_SITE_URIS+=("${_NEWNAME}")
-    fi
-    _N=$((_N + 1))
-  done
-
-  # A reinstated capsule is a tenant dir that landed on the new hostname too,
-  # and the summary calls the capsule total a subset of this one: counted
-  # here, so a run whose only work was the recovery pass cannot print "0
-  # moved" over the capsule it just un-parked.
-  _TENANT_DIRS_N=$((_N + _UNPARKED_N))
-  if [ "${_N}" -eq 0 ] && [ "${_UNPARKED_N}" -eq 0 ]; then
-    _info "  no host-derived tenant site dirs found — nothing to move"
-  elif [ "${_N}" -eq 0 ] && [ "${_DRY_RUN}" = "YES" ]; then
-    _info "  no host-derived tenant site dirs left to move beside the ${_UNPARKED_N} that would be reinstated above"
-  elif [ "${_N}" -eq 0 ]; then
-    _info "  no host-derived tenant site dirs left to move beside the ${_UNPARKED_N} reinstated above"
-  elif [ "${_DRY_RUN}" = "YES" ]; then
-    _info "  ${_N} tenant site dir(s) would move onto ${_NEW_HOST}"
-  else
-    _info "  ${_N} tenant site dir(s) moved onto ${_NEW_HOST}"
-  fi
-
-  _converge_renamed_site_surfaces
-}
-
-_converge_renamed_site_surfaces() {
-  # A box renamed by an earlier release moved the site DIRS and nothing else:
-  # its sites keep an old-URI settings.php, dangling files symlinks and no
-  # client symlink. The loop above cannot see them — their dirs already carry
-  # the new hostname — so without this a re-run would report a clean pass over
-  # sites that do not serve. That is the whole failure mode being closed here,
-  # so it must converge rather than depend on being run at the right moment.
-  #
-  # Safe on a box with nothing to fix: every action in the surfaces function is
-  # conditioned on evidence that THIS site is wrong — the old name still on a
-  # surface, or a stored value that already disagrees with the site's own uri —
-  # so a correct site, including one freshly installed on a migration target
-  # which legitimately carries the new hostname, matches nothing and is not
-  # even queued for a verify. The database legs are held to the stricter half
-  # of that rule: old-name evidence only, never a constant that merely differs.
-  local _D _NAME _OLDNAME _CLASS _N=0
-  for _D in $(_find_host_site_dirs "${_NEW_HOST}" | sort); do
-    _NAME=$(basename "${_D}")
-    # Same guard the mover applies: this path reaches _maybe_run's eval
-    # through the surfaces function below.
-    _safe_name "${_D}" "site dir" || continue
-    _OLDNAME="${_NAME//${_NEW_HOST}/${_OLD_HOST}}"
-    [ "${_OLDNAME}" = "${_NAME}" ] && continue
-    # A capsule the loop above has already moved and re-pointed is finished:
-    # a second pass over it would find nothing to do and still repeat every
-    # ALRT it printed. Only capsule names ever reach that list, so the test
-    # needs no class of its own -- which is what lets the class be decided
-    # after the generic pass below.
-    case " ${_CAPSULE_DONE_URIS} " in
-      *" ${_NAME} "*) continue ;;
-    esac
-    _URI_SURFACES_CHANGED=NO
-    _rename_site_uri_surfaces "${_OLDNAME}" "${_NAME}" "${_D}" "${_D}"
-    # Classified only NOW, because the pass above moves and repoints the very
-    # surfaces the class markers are read through: the account's static files
-    # store follows the name there, and so does every link in the site dir
-    # that resolved into it. provision materialises private/ and system/ as
-    # real directories, but a half-finished earlier run -- the very state this
-    # pass exists to heal -- can leave a capsule's marker behind a link into
-    # the store under the OLD name, dangling until the pass above repoints
-    # it. Classified before that, such a capsule reads as a plain site with no
-    # settings.php: no capsule surface repaired, and not even probed by §9.
-    _CLASS=$(_site_capsule_class "${_D}")
-    # Every site already on the new hostname is §9's to confirm, repaired
-    # here or not: on a resume after a refusal the dirs were moved by the
-    # parked run, nothing below changes, and without this line the serving
-    # gate would have nothing to probe and the summary nothing to say.
-    # Host-derived means the name ENDS in the hostname (label.<host>, the
-    # panel's own oN.<host>); a substring match would drag in an unrelated
-    # domain that merely contains it.
-    case "${_NAME}" in
-      *".${_NEW_HOST}"|"${_NEW_HOST}")
-        if [ -f "${_D}/settings.php" ] || [ -n "${_CLASS}" ]; then
-          _SERVE_CHECK_URIS+=("${_NAME}")
-        fi
-      ;;
-    esac
-    if [ -n "${_CLASS}" ]; then
-      # Same converge duty for a capsule moved by an earlier run: its .env,
-      # environment overlay and private/config.php are conditioned on the
-      # value being wrong, and the database legs on old-name evidence this
-      # call did not bring (the dir did not move here), so a correct capsule
-      # matches nothing and issues no statement. It stays out of
-      # _RENAMED_SITE_URIS for the reason given in the mover -- §7 must not
-      # queue a class verify for it.
-      _rename_capsule_uri_surfaces "${_CLASS}" "${_OLDNAME}" "${_NAME}" "${_D}" "${_D}"
-      [ "${_URI_SURFACES_CHANGED}" = "YES" ] && _N=$((_N + 1))
-      continue
-    fi
-    if [ "${_URI_SURFACES_CHANGED}" = "YES" ]; then
-      _RENAMED_SITE_URIS+=("${_NAME}")
-      _N=$((_N + 1))
-    fi
-  done
-  if [ "${_N}" -gt 0 ]; then
-    _info "  ${_N} already-renamed site(s) had stale per-site surfaces repaired"
-  fi
-  return 0
-}
-
-_find_host_site_dirs() {
-  # Every platform docroot layout at once (sites/, web/sites/, docroot/sites/,
-  # html/sites/) — one platform can even carry the same site at two depths.
-  # Backups and the Drush checksum store are never site dirs.
-  find "${_AEGIR_ROOT}" -maxdepth 8 -type d -path '*/sites/*' \
-    -name "*${1}*" \
-    -not -path '*/backups/*' \
-    -not -path '*/.drush/*' \
-    -not -path '*/sites/*/*' 2>/dev/null
-}
-
-_find_old_host_site_dirs() {
-  _find_host_site_dirs "${_OLD_HOST}"
-}
-
-_rename_site_uri_surfaces() {
-  # Idempotent by construction: every move is skipped when the source is
-  # gone or, for a directory, the target already exists, so a site carried
-  # at two depths and a re-run both converge. The alias file is the one
-  # exception (below): at the new name it is replaced, not kept.
-  local _OLDNAME="$1"
-  local _NEWNAME="$2"
-  local _OLD_D="$3"
-  local _NEWD="$4"
-  local _OLD_ALIAS="${_DRUSH_DIR}/${_OLDNAME}.alias.drushrc.php"
-  local _NEW_ALIAS="${_DRUSH_DIR}/${_NEWNAME}.alias.drushrc.php"
-  local _OLD_FILES="${_AEGIR_ROOT}/static/files/${_OLDNAME}"
-  local _NEW_FILES="${_AEGIR_ROOT}/static/files/${_NEWNAME}"
-  local _SD _SDR _FS _CLR _C _B _TGT _SUF _OWN
-
-  # The dir to read from: the moved one live, the source one under --dry-run
-  # (where the move above only printed). Keeps the dry-run report honest
-  # about the settings.php and symlink work instead of silently skipping it.
-  _SD="${_OLD_D}"
-  [ -d "${_NEWD}" ] && _SD="${_NEWD}"
-
-  # .drush is the account's: the rename runs on ./names inside the real
-  # directory, and -T replaces a link put at the new name instead of moving
-  # the alias into whatever directory it points at.
-  # Unlike a site dir, an alias file already at the new name is replaced: a
-  # box promoted once before still holds the alias it wrote then, and the
-  # sync (a copy that deletes nothing) laid the active's old-name alias
-  # beside it. The old-name copy is the one the active kept current; this
-  # box's stopped at its demotion. Kept as a pair, the old-name copy is
-  # rewritten by §3 like any other, converted again by Drush at every pass,
-  # and its placeholder yml names the former host for good.
-  if [ -f "${_OLD_ALIAS}" ]; then
-    if [ -f "${_NEW_ALIAS}" ]; then
-      _info "    alias file: ${_OLDNAME}.alias.drushrc.php -> ${_NEWNAME}.alias.drushrc.php (replacing the copy kept from an earlier promotion)"
-    else
-      _info "    alias file: ${_OLDNAME}.alias.drushrc.php -> ${_NEWNAME}.alias.drushrc.php"
-    fi
-    _maybe_run _in_real_dir \'"${_DRUSH_DIR}"\' mv -f -T -- \
-      \'"./${_OLDNAME}.alias.drushrc.php"\' \'"./${_NEWNAME}.alias.drushrc.php"\'
-    _URI_SURFACES_CHANGED=YES
-  fi
-
-  # The site's files symlink resolves through this store. Leave it behind and
-  # the next verify mints an EMPTY store under the new URI and the site loses
-  # its files, so this move is not optional. The store is entered where it
-  # really lies: static/files may be migratefs' link onto the attached store,
-  # never anywhere else.
-  if [ -d "${_OLD_FILES}" ] && [ ! -d "${_NEW_FILES}" ]; then
-    if ! _FS="$(_own_real_path "${_AEGIR_ROOT}/static/files")"; then
-      _alrt "    static/files is not this root's own files store -- static/files/${_OLDNAME} NOT moved"
-    elif _safe_name "${_FS}" "files store"; then
-      _info "    static files store: static/files/${_OLDNAME} -> static/files/${_NEWNAME}"
-      _maybe_run _in_path_dir \'"${_FS}"\' mv -f -T -- \
-        \'"./${_OLDNAME}"\' \'"./${_NEWNAME}"\'
-      _URI_SURFACES_CHANGED=YES
-    fi
-  fi
-
-  # ...which leaves the site's own files/private symlinks pointing INTO the
-  # store under its old name: dangling, so the site serves without any of
-  # its files. Repoint every symlink in the site dir that resolves into the
-  # old store; a site whose files are a real directory has none and is left
-  # alone. The site dir is the account's: its links are read, replaced and
-  # handed back (chown -h: the link, never what it names; the numeric owner
-  # it had) as names inside the real directory. A store that did not move
-  # keeps them: repointed, they would name nothing.
-  _SDR="$(_own_real_path "${_SD}")" && _safe_name "${_SDR}" "site dir" \
-    || _SDR=""
-  if [ -n "${_SDR}" ] && [ "${_DRY_RUN}" != "YES" ] \
-    && [ -d "${_OLD_FILES}" ] && [ ! -d "${_NEW_FILES}" ]; then
-    _alrt "    static/files/${_OLDNAME} did not move -- the site's files links still name it"
-    _SDR=""
-  fi
-  while IFS= read -r _B; do
-    [ -n "${_B}" ] || continue
-    _TGT=$(_in_path_dir "${_SDR}" readlink -- "./${_B}" 2>/dev/null)
-    case "${_TGT}" in
-      "${_OLD_FILES}"|"${_OLD_FILES}"/*) ;;
-      *) continue ;;
-    esac
-    _SUF="${_TGT#"${_OLD_FILES}"}"
-    if [ -n "${_SUF}" ] && ! _safe_name "${_SUF}" "files symlink target suffix"; then
-      continue
-    fi
-    _safe_name "${_B}" "files symlink" || continue
-    _OWN=$(_in_path_dir "${_SDR}" stat -c '%u:%g' -- "./${_B}" 2>/dev/null)
-    _info "    files symlink: ${_B} -> static/files/${_NEWNAME}${_SUF}"
-    _maybe_run _in_path_dir \'"${_SDR}"\' _relink_here \'"${_B}"\' \
-      \'"${_NEW_FILES}${_SUF}"\' \'"${_OWN}"\'
-    _URI_SURFACES_CHANGED=YES
-  done < <([ -n "${_SDR}" ] && _in_path_dir "${_SDR}" _links_here)
-
-  # The client symlink MOVES with the name. Dropping it for provision to
-  # recreate cannot work — that only happens in a site verify, and §7 queues
-  # server verifies — and a missing one takes the site out of the client's
-  # home directory listing. clients/ is the account's: each client dir is
-  # entered as a real directory and its links handled as names there.
-  _CLR="$(_own_real_path "${_AEGIR_ROOT}/clients")" \
-    && _safe_name "${_CLR}" "clients dir" || _CLR=""
-  while IFS= read -r _C; do
-    [ -n "${_C}" ] || continue
-    _safe_name "${_C}" "client dir" || continue
-    _in_path_dir "${_CLR}/${_C}" test -L "./${_OLDNAME}" || continue
-    if _in_path_dir "${_CLR}/${_C}" test -e "./${_NEWNAME}" -o -L "./${_NEWNAME}"; then
-      _info "    client symlink already present: clients/${_C}/${_NEWNAME}"
-      _maybe_run _in_path_dir \'"${_CLR}/${_C}"\' rm -f -- \'"./${_OLDNAME}"\'
-      continue
-    fi
-    _OWN=$(_in_path_dir "${_CLR}/${_C}" stat -c '%u:%g' -- "./${_OLDNAME}" 2>/dev/null)
-    _info "    client symlink: clients/${_C}/${_OLDNAME} -> clients/${_C}/${_NEWNAME}"
-    _maybe_run _in_path_dir \'"${_CLR}/${_C}"\' _relink_here \'"${_NEWNAME}"\' \
-      \'"${_NEWD}"\' \'"${_OWN}"\'
-    _maybe_run _in_path_dir \'"${_CLR}/${_C}"\' rm -f -- \'"./${_OLDNAME}"\'
-    _URI_SURFACES_CHANGED=YES
-  done < <([ -n "${_CLR}" ] && _in_path_dir "${_CLR}" _real_dirs_here)
-
-  _rewrite_site_settings_uri "${_SD}/settings.php" "${_OLDNAME}" "${_NEWNAME}"
-}
-
-_rewrite_site_in_place() {
-  # Rewrite a file THROUGH ITS EXISTING INODE.
-  #
-  # `sed -i` does not edit in place: it writes a new file and renames it over
-  # the old one, so the inode changes. PHP resolves this path through its
-  # realpath cache -- default TTL 120s, and held PER FPM WORKER -- so opcache
-  # goes on compiling the copy it already has and the site keeps serving the
-  # OLD settings.php long after the correct one is on disk.
-  #
-  # Measured on a test box, in both directions: a corrected settings.php sat
-  # on disk while the site answered HTTP 400 for ~3 minutes, and later a
-  # deliberately broken one kept serving 200 for over 3 minutes. Because the
-  # cache is per worker, whether a given request sees the change is luck --
-  # which is exactly why it looked like "the fix did not work" once and "the
-  # fix works instantly" the next time.
-  #
-  # Truncating in place keeps the inode, so opcache's ordinary 2s
-  # revalidation applies and the rename takes effect immediately. It also
-  # preserves ownership and mode for free.
-  #
-  # The site dir is the account's (and private/ may be its link into the
-  # files store): the file is rewritten as a name inside its real directory
-  # (_rewrite_inode_here), so a link or a FIFO put at the name, or a link
-  # swapped in for a directory on the way, is never written through as root.
-  # $1 = sed expression, $2 = the file.
-  local _expr="$1"
-  local _f="$2"
-  local _d
-  _d="$(_own_real_path "${_f%/*}")" || return 1
-  _in_path_dir "${_d}" _rewrite_inode_here "${_f##*/}" "${_expr}"
-}
-
-_rewrite_site_settings_uri() {
-  # settings.php is provision-generated and embeds the site URI in far more
-  # than the host patterns: the public/private/temp file paths, the D10+
-  # config sync directory, the syslog identity and the ABSOLUTE
-  # local.settings.php include path all carry it. Only trusted_host_patterns
-  # produces the visible HTTP 400 ("The provided host name is not valid for
-  # this server") — the rest fail silently, writing into a directory that no
-  # longer exists and quietly dropping a client's local overrides.
-  #
-  # The DATABASE must NOT follow the rename: the site keeps its database by
-  # design. Its name and user are derived from the URI at install time in a
-  # MANGLED form (dots and dashes stripped, then truncated), so the dotted
-  # URI replaced here cannot reach them — and if a file ever does carry the
-  # dotted URI on a credential line, this refuses it rather than repoint a
-  # live site at a database that does not exist. That failure would look
-  # exactly like data loss.
-  local _SET="$1"
-  local _OLDNAME="$2"
-  local _NEWNAME="$3"
-  local _OLD_BS _NEW_BS _RE_BS _RP_BS _RE _EXPR _T
-
-  # A symlink here is never a provision artefact -- provision writes
-  # settings.php as a real file. The site dir is tenant-writable, so say so
-  # rather than leave it silently stale (the writer below refuses it anyway).
-  if [ -L "${_SET}" ]; then
-    _alrt "    settings.php is a symlink — refusing to rewrite: ${_SET}"
-    _SETTINGS_SKIPPED_N=$((_SETTINGS_SKIPPED_N + 1))
-    return 0
-  fi
-
-  # The URI appears in TWO spellings. Paths and identities carry it plain;
-  # trusted_host_patterns carries it as a PHP regex with the dots
-  # backslash-escaped ('^d7\.o1\.old\.example\.com$'). A rewrite that knows
-  # only the plain form leaves every host pattern stale — which is to say it
-  # leaves the site answering HTTP 400, the one symptom the whole exercise is
-  # about. Both spellings, one pass.
-  _OLD_BS="${_OLDNAME//./\\.}"
-  _NEW_BS="${_NEWNAME//./\\.}"
-
-  [ -f "${_SET}" ] || return 0
-  # This path lands in a _maybe_run (eval) argument list below inside literal
-  # single quotes. The files and client symlink legs re-guard their own
-  # values; this one is the exception, so guard it here rather than trust
-  # every caller to have done it.
-  if ! _safe_name "${_SET}" "settings.php path"; then
-    _SETTINGS_SKIPPED_N=$((_SETTINGS_SKIPPED_N + 1))
-    return 0
-  fi
-  # Read once, inside the real site dir, never through a link or into a FIFO.
-  _T="$(_read_own_file "${_SET}")"
-  grep -qF -e "${_OLDNAME}" -e "${_OLD_BS}" <<< "${_T}" || return 0
-
-  if grep -E "'(database|username|password)'|db_url" <<< "${_T}" \
-    | grep -qF -e "${_OLDNAME}" -e "${_OLD_BS}"; then
-    _alrt "    settings.php NOT rewritten — database credentials embed ${_OLDNAME}:"
-    _alrt "    ${_SET}"
-    _alrt "    Rewrite the URI values by hand; never the database name."
-    _SETTINGS_SKIPPED_N=$((_SETTINGS_SKIPPED_N + 1))
-    return 0
-  fi
-
-  # Dots are regex metacharacters and a site URI is nothing but dots; in the
-  # escaped spelling the backslashes need escaping too. The expression is
-  # single-quoted through _maybe_run because eval would otherwise eat them.
-  _RE=$(printf '%s' "${_OLDNAME}" | sed -e 's/[.]/\\./g')
-  _RE_BS=$(printf '%s' "${_OLD_BS}" | sed -e 's/[\]/\\\\/g' -e 's/[.]/\\./g')
-  _RP_BS=$(printf '%s' "${_NEW_BS}" | sed -e 's/[\]/\\\\/g')
-  _EXPR="${_SED_RENAME_GUARD}s/${_RE_BS}/${_RP_BS}/g"
-  _EXPR="${_EXPR}; ${_SED_RENAME_GUARD}s/${_RE}/${_NEWNAME}/g"
-  _info "    settings.php: file paths + trusted_host_patterns -> ${_NEWNAME}"
-  # Written through its own inode, so the account's owner and its 440 mode
-  # stay exactly as they were: nothing is handed back by name.
-  if ! _maybe_run _rewrite_site_in_place \'"${_EXPR}"\' \'"${_SET}"\'; then
-    _alrt "    settings.php rewrite FAILED — left untouched: ${_SET}"
-    _SETTINGS_SKIPPED_N=$((_SETTINGS_SKIPPED_N + 1))
-    return 0
-  fi
-  _URI_SURFACES_CHANGED=YES
-  return 0
-}
-
-###-------------§2c2 CAPSULE SITES-------###
-
-# A Grav or Textpattern site is not a Drupal site dir with other contents: it
-# is a self-contained capsule under sites/<uri>/, and the only things inside
-# it keyed by the uri are the few surfaces its own provision layer re-points
-# when IT renames a site. Those lists are mirrored here, each from the file
-# named above the function that implements it, rather than guessed -- the
-# host-axis rename moves the directory and nothing else will.
-
-_site_capsule_class() {
-  # Which non-Drupal site class owns this sites/<uri> dir, decided by the
-  # marker provision's own site finders glob for: provision-grav globs
-  # 'sites/*/system/defines.php', provision-txp 'sites/*/private/config.php'.
-  # Prints grav, txp, or nothing when the dir is neither -- a Drupal or
-  # Backdrop site is the settings.php case, and a dir with none of the three
-  # markers is the stray case. $1 = the site dir.
-  #
-  # settings.php outranks both markers because a capsule never carries one:
-  # without that test, a tenant who drops a config.php into a Drupal site's
-  # private files dir would have the site handled as a Textpattern capsule.
-  #
-  # Both marker tests are -f, which follows symlinks. provision materialises
-  # private/ and system/ as real directories (cp -a from the platform
-  # skeleton), so an untouched capsule answers whenever it is asked; a marker
-  # reached through a link -- left by a half-finished earlier run, or by an
-  # operator's own move into the account's static files store -- answers only
-  # once that link resolves. That is a timing requirement on the caller, not
-  # a test to loosen: ask AFTER the generic surfaces pass has moved the store
-  # and repointed the link, or a half-moved capsule reads as no capsule at
-  # all.
-  [ -f "$1/settings.php" ] && return 0
-  if [ -f "$1/system/defines.php" ]; then
-    echo "grav"
-  elif [ -f "$1/private/config.php" ]; then
-    echo "txp"
-  fi
-  return 0
-}
-
-_rename_capsule_uri_surfaces() {
-  # $1 class, $2 old uri, $3 new uri, $4 the source dir, $5 the moved dir.
-  # Called AFTER the generic surfaces pass: a Textpattern capsule's private/
-  # can be a symlink into the account's static files store, and that store has
-  # only just followed the name.
-  local _CLASS="$1"
-  local _OLDNAME="$2"
-  local _NEWNAME="$3"
-  local _SD="$4"
-  local _MOVED=NO
-  # "$5 is absent" cannot stand in for "the move only printed": a live `mv -f`
-  # that failed leaves the same shape, and then every value written below --
-  # including the path rows in the tenant's own database, which are outside
-  # _BACKUP_DIR and have no prior-value record -- would name a directory that
-  # does not exist. Dry-run is the only reading of an absent $5 that is safe.
-  if [ "${_DRY_RUN}" != "YES" ] && [ ! -d "$5" ]; then
-    _alrt "    capsule did not land at $5 — class surfaces left untouched"
-    return 0
-  fi
-  # Two different paths, and conflating them makes the dry-run lie. $5 is
-  # where the capsule ENDS UP, so it is what a stored path value must name,
-  # dry-run included; _SD is where its files are readable RIGHT NOW, which
-  # under --dry-run is still the source dir because the move only printed.
-  [ -d "$5" ] && _SD="$5"
-  # Old-name evidence of the strongest kind: this run moved the dir. The
-  # converge pass calls with $4 = $5 and carries no such evidence, so the
-  # class legs that write to a database have to find their own (see the txp
-  # leg) rather than assume the site was renamed.
-  [ "$4" != "$5" ] && _MOVED=YES
-  # Class-agnostic first: every capsule carries provision's persisted site
-  # context, and it is keyed by the uri whatever the class.
-  _rewrite_capsule_site_drushrc "${_SD}/drushrc.php" "${_OLDNAME}" "${_NEWNAME}"
-  case "${_CLASS}" in
-    grav)
-      _rename_grav_capsule_uri "${_OLDNAME}" "${_NEWNAME}" "${_SD}"
-    ;;
-    txp)
-      _rename_txp_capsule_uri "${_OLDNAME}" "${_NEWNAME}" "${_SD}" "$5" "${_MOVED}"
-    ;;
-  esac
-  return 0
-}
-
-_rewrite_capsule_site_drushrc() {
-  # The capsule's OWN sites/<uri>/drushrc.php -- provision's persisted site
-  # context, carrying uri and site_path among the options the backend reloads
-  # on every later task. A Drupal site has this file re-rendered by the site
-  # verify §7 queues for it; a capsule is deliberately not queued, so the
-  # rename re-points it here or the next task on that capsule resolves a
-  # site_path that no longer exists.
-  #
-  # The database name and user are MANGLED forms of the uri (dots and dashes
-  # stripped, then truncated), so the dotted uri replaced here cannot reach
-  # them -- and a file that does carry the dotted uri on a credential line is
-  # refused rather than repointed at a database that does not exist. Same
-  # rule, same reason, as the settings.php pass.
-  local _RC="$1"
-  local _OLDNAME="$2"
-  local _NEWNAME="$3"
-  local _RE _EXPR _T
-
-  [ -f "${_RC}" ] || return 0
-  if [ -L "${_RC}" ]; then
-    _alrt "    drushrc.php is a symlink — refusing to rewrite: ${_RC}"
-    return 0
-  fi
-  _safe_name "${_RC}" "drushrc.php path" || return 0
-  _T="$(_read_own_file "${_RC}")"
-  grep -qF "${_OLDNAME}" <<< "${_T}" || return 0
-  if grep -E "db_name|db_user|db_passwd|db_url" <<< "${_T}" \
-    | grep -qF "${_OLDNAME}"; then
-    _alrt "    drushrc.php NOT rewritten — database credentials embed ${_OLDNAME}:"
-    _alrt "    ${_RC}"
-    return 0
-  fi
-  _RE=$(printf '%s' "${_OLDNAME}" | sed -e 's/[.]/\\./g')
-  _EXPR="${_SED_RENAME_GUARD}s/${_RE}/${_NEWNAME}/g"
-  _info "    drushrc.php: uri + site_path -> ${_NEWNAME}"
-  if _maybe_run _rewrite_site_in_place \'"${_EXPR}"\' \'"${_RC}"\'; then
-    _URI_SURFACES_CHANGED=YES
-  else
-    _alrt "    drushrc.php rewrite FAILED — left untouched: ${_RC}"
-  fi
-  return 0
-}
-
-_rename_grav_capsule_uri() {
-  # Mirrors provision-grav's own rename (rename.grav.provision.inc, through
-  # _provision_grav_repoint_uri and _provision_grav_write_env): the capsule's
-  # .env pins GRAV_ENVIRONMENT to the site uri, and Grav resolves
-  # environment:// to user/env/<that value> when user/env exists and to
-  # user/<that value> otherwise -- refusing a directory that is not there and
-  # silently dropping every per-host config, blueprint and language override.
-  # No database, and nothing else in the capsule is uri-keyed: the nonce key,
-  # the api secret, the accounts and the pages are its identity.
-  local _OLDNAME="$1"
-  local _NEWNAME="$2"
-  local _SD="$3"
-  local _ENV="${_SD}/.env"
-  local _ENV_OK=NO
-  local _BASE _BR _OLD_ENV _NEW_ENV _EXPR _NEW_RE _ENV_N _ENV_OKN _ET
-
-  # The overlay move is gated on this file, because the pair must never come
-  # apart: an .env naming an overlay directory that no longer exists is the
-  # one state provision's writer says must not exist, and no verify is queued
-  # for a capsule to repair it. So the test is the whole line's VALUE, not the
-  # old name: a quoted value, trailing whitespace or a CRLF line ending all
-  # miss an exact-old-name match while leaving the capsule pinned to a dead
-  # overlay. A capsule already reading the new name matches here and is
-  # silently left alone, which is what the converge pass needs -- and it has
-  # to match in every form the rewrite arm below accepts, or a capsule whose
-  # environment already resolves to the new uri is rewritten and counted as a
-  # repair by the converge pass. Only the dot needs escaping: the value came
-  # through _safe_name, whose charset holds no other ERE metacharacter.
-  _NEW_RE=$(printf '%s' "${_NEWNAME}" | sed -e 's/[.]/\\./g')
-  # Read once, inside the real capsule dir, never through a link or a FIFO.
-  _ET="$(_read_own_file "${_ENV}")"
-  if [ ! -e "${_ENV}" ] && [ ! -L "${_ENV}" ]; then
-    # No .env at all is a stock shape (Grav falls back to user/<uri>), and
-    # there is nothing pinning the overlay name, so the move is safe.
-    _ENV_OK=YES
-  elif [ -L "${_ENV}" ]; then
-    # provision writes .env as a real file, and the capsule dir is
-    # tenant-writable; a link here is not provision's artefact.
-    _alrt "    .env is a symlink — refusing to rewrite: ${_ENV}"
-  elif ! _safe_name "${_ENV}" ".env path"; then
-    : # _safe_name said why; the overlay stays put with the file
-  elif _ENV_N=$(grep -c "^[[:space:]]*GRAV_ENVIRONMENT=" <<< "${_ET}"); \
-    _ENV_OKN=$(grep -Ec "^[[:space:]]*GRAV_ENVIRONMENT=(\"${_NEW_RE}\"|'${_NEW_RE}'|${_NEW_RE})[[:space:]]*\$" <<< "${_ET}"); \
-    [ "${_ENV_N:-0}" -gt 0 ] && [ "${_ENV_N}" -eq "${_ENV_OKN:-0}" ]; then
-    # Dotenv unquotes and trims, so a quoted or padded value that already
-    # reads the new uri is an honoured value and not a surface to repair --
-    # but only when EVERY assignment line reads it: a stale first line with a
-    # corrected one appended (a hand-fixed dotenv) resolves to whichever the
-    # reader honours, and the tool cannot prove which, so such a file falls
-    # through to the rewrite arm, which replaces every line and converges it.
-    _ENV_OK=YES
-  elif grep -q "^[[:space:]]*GRAV_ENVIRONMENT=" <<< "${_ET}"; then
-    # Whatever the value and whatever the quoting: the line is replaced whole.
-    _EXPR='s|^[[:space:]]*GRAV_ENVIRONMENT=.*$|GRAV_ENVIRONMENT='"${_NEWNAME}"'|'
-    _info "    .env: GRAV_ENVIRONMENT -> ${_NEWNAME}"
-    # The writer rewrites through the existing inode, so the file's ownership
-    # and its 0640 mode survive without being handed back explicitly.
-    if _maybe_run _rewrite_site_in_place \'"${_EXPR}"\' \'"${_ENV}"\'; then
-      _URI_SURFACES_CHANGED=YES
-      _ENV_OK=YES
-      # Prove it landed before moving the directory it names: a writer that
-      # reports success over a line that did not land -- a full filesystem, an
-      # .env replaced under the tool, an expression that stops matching after
-      # a later edit -- must not be followed by the overlay move. Exact,
-      # because the expression above writes the line whole and unquoted.
-      if [ "${_DRY_RUN}" != "YES" ] \
-        && ! _read_own_file "${_ENV}" | grep -qxF "GRAV_ENVIRONMENT=${_NEWNAME}"; then
-        _ENV_OK=NO
-        _alrt "    .env does not read GRAV_ENVIRONMENT=${_NEWNAME} after the rewrite — overlay left at ${_OLDNAME}: ${_ENV}"
-      fi
-    else
-      _alrt "    .env rewrite FAILED — left untouched: ${_ENV}"
-    fi
-  else
-    _alrt "    .env carries no GRAV_ENVIRONMENT line — overlay left at ${_OLDNAME}, set it by hand: ${_ENV}"
-  fi
-
-  [ "${_ENV_OK}" = "YES" ] || return 0
-
-  # Both bases, as provision does: a 1.6-shaped capsule keeps the overlay at
-  # user/<uri>, a 2.x one at user/env/<uri>, and a tree can carry both.
-  for _BASE in "${_SD}/user/env" "${_SD}/user"; do
-    _OLD_ENV="${_BASE}/${_OLDNAME}"
-    _NEW_ENV="${_BASE}/${_NEWNAME}"
-    { [ -d "${_OLD_ENV}" ] && [ ! -L "${_OLD_ENV}" ]; } || continue
-    if [ -e "${_NEW_ENV}" ] || [ -L "${_NEW_ENV}" ]; then
-      _alrt "    ${_BASE#${_SD}/} carries both ${_OLDNAME} and ${_NEWNAME} — neither overlay moved, merge them by hand"
-      continue
-    fi
-    _safe_name "${_OLD_ENV}" "grav env overlay" || continue
-    # The capsule is the account's: the overlay is renamed as a name inside
-    # its real parent directory, -T refusing whatever was put at the new name.
-    if ! _BR="$(_own_real_path "${_BASE}")"; then
-      _alrt "    ${_BASE#${_SD}/} is not a directory of ${_AEGIR_ROOT} -- overlay left at ${_OLDNAME}"
-      continue
-    fi
-    _safe_name "${_BR}" "grav env base" || continue
-    _info "    grav env overlay: ${_BASE#${_SD}/}/${_OLDNAME} -> ${_NEWNAME}"
-    # The inverse of the stale .env, and just as fatal: the vhost's
-    # fastcgi_param already names the new uri, so a failed move breaks the
-    # web tier too. provision logs it; so does this.
-    if _maybe_run _in_path_dir \'"${_BR}"\' mv -f -T -- \
-      \'"./${_OLDNAME}"\' \'"./${_NEWNAME}"\'; then
-      _URI_SURFACES_CHANGED=YES
-    else
-      _alrt "    grav env overlay move FAILED — .env now names ${_NEWNAME} with no overlay there: ${_OLD_ENV}"
-    fi
-  done
-  return 0
-}
-
-_rename_txp_capsule_uri() {
-  # Mirrors provision-txp's own rename (rename.txp.provision.inc): the file
-  # side is private/config.php, whose admin_url and multisite_root_path carry
-  # the uri and the site path (cookie_domain and txpath do not, and a
-  # substring pass leaves them alone), and the database side is that command's
-  # three operations in its order -- clear the session-bearing tables, rotate
-  # every user's nonce, re-point the six uri/path-bound txp_prefs rows. The
-  # database, its content and the site's identity -- blog_uid, image ids,
-  # every AUTO_INCREMENT -- never move and are never rewritten.
-  local _OLDNAME="$1"
-  local _NEWNAME="$2"
-  local _SD="$3"
-  local _TARGET="$4"
-  local _MOVED="$5"
-  local _CFG="${_SD}/private/config.php"
-  local _EVID="${_MOVED}"
-  local _RE _EXPR
-
-  if [ ! -f "${_CFG}" ]; then
-    _alrt "    no private/config.php under ${_SD} — Textpattern surfaces left alone"
-    return 0
-  fi
-  if [ -L "${_CFG}" ]; then
-    _alrt "    private/config.php is a symlink — refusing to rewrite: ${_CFG}"
-    return 0
-  fi
-  _safe_name "${_CFG}" "private/config.php path" || return 0
-  if _read_own_file "${_CFG}" | grep -qF "${_OLDNAME}"; then
-    # Old-name evidence of the second kind (see the database pass): this file
-    # still names the old uri, so the capsule really is mid-rename.
-    _EVID=YES
-    _RE=$(printf '%s' "${_OLDNAME}" | sed -e 's/[.]/\\./g')
-    _EXPR="${_SED_RENAME_GUARD}s/${_RE}/${_NEWNAME}/g"
-    _info "    private/config.php: admin_url + multisite_root_path -> ${_NEWNAME}"
-    if _maybe_run _rewrite_site_in_place \'"${_EXPR}"\' \'"${_CFG}"\'; then
-      _URI_SURFACES_CHANGED=YES
-      # Prove the write landed. In the NEW-contains-OLD regime a rewritten
-      # line still carries the old substring inside the new one, so the test
-      # is "a line with OLD and without NEW" -- _file_needs_rename's shape.
-      if [ "${_DRY_RUN}" != "YES" ] \
-        && _read_own_file "${_CFG}" | grep -vF "${_NEWNAME}" \
-        | grep -qF "${_OLDNAME}"; then
-        _alrt "    private/config.php still carries ${_OLDNAME}: ${_CFG}"
-      fi
-    else
-      _alrt "    private/config.php rewrite FAILED — left untouched: ${_CFG}"
-      return 0
-    fi
-  fi
-
-  _txp_repoint_database "${_CFG}" "${_NEWNAME}" "${_TARGET}" "${_SD}" \
-    "${_EVID}" "${_OLDNAME}"
-  return 0
-}
-
 _txp_sql() {
   # One batch query against ONE Textpattern site database. This tool runs as
   # root, so root's own defaults-file authenticates and the tenant's database
@@ -2251,6 +1331,926 @@ _txp_repoint_database() {
   return 0
 }
 
+_parked_capsule_platform_root() {
+  # Where a parked capsule belongs. provision persists a site's platform root
+  # in that site's ALIAS file ('root' => '...'), never in the site's own
+  # sites/<uri>/drushrc.php: that file is rendered from the 'site' drush
+  # context, which carries the six database credentials plus
+  # installed/profile/language and nothing else. Reading $options['root']
+  # from the capsule's drushrc.php therefore answers on a hand-written file
+  # only, which is why it is the last arm here and not the first. BOA's own
+  # tooling reads the same key from the same place (xoct, codebasecheck).
+  # $1 = old uri, $2 = new uri, $3 = the parked dir. Prints the root, or
+  # nothing at all when no source carries one.
+  local _OLDN="$1"
+  local _NEWN="$2"
+  local _PD="$3"
+  local _F _R
+  # This pass runs before §3 and before the surfaces pass, so the alias is
+  # still filed under the OLD uri -- unless an earlier buggy run already
+  # renamed it, hence the new name too. After the live dir, the .drush copies
+  # of EARLIER runs, newest first: an alias the run that parked this capsule
+  # destroyed is missing from the live dir and from this run's own copy of it
+  # (taken seconds ago from that same live dir), and lives only in the copy
+  # that run took before it acted.
+  local _CANDS=(
+    "${_DRUSH_DIR}/${_OLDN}.alias.drushrc.php"
+    "${_DRUSH_DIR}/${_NEWN}.alias.drushrc.php"
+  )
+  # Earlier releases kept their copies in the account's own backups, later
+  # ones where only root can reach them: both, newest first by name.
+  local _BK _RHP
+  _RHP="$(_own_real_path "${_BACKUP_DIR}")" || _RHP=""
+  for _BK in $( { ls -1d "${_PRIV_BK}"/drush_*
+      [ -n "${_RHP}" ] && ls -1d "${_RHP}"/drush_*
+    } 2>/dev/null | awk -F/ '{ print $NF "\t" $0 }' | sort -r | cut -f2-); do
+    [ -d "${_BK}" ] || continue
+    [ "${_BK}" = "${_PRIV_BK}/drush_${_TS}" ] && continue
+    _CANDS+=("${_BK}/${_OLDN}.alias.drushrc.php")
+    _CANDS+=("${_BK}/${_NEWN}.alias.drushrc.php")
+  done
+  for _F in "${_CANDS[@]}"; do
+    [ -f "${_F}" ] || continue
+    # inside the real directory, never through a link or into a FIFO: the
+    # copies carry whatever the account's .drush held when they were taken
+    case "${_F}" in
+      "${_DRUSH_DIR}"/*|"${_PRIV_BK}"/*)
+        _R=$(_read_file "${_F}" | sed -n "s/.*'root' => '\([^']*\)'.*/\1/p" | head -1)
+      ;;
+      *)
+        _R=$(_read_own_file "${_F}" | sed -n "s/.*'root' => '\([^']*\)'.*/\1/p" | head -1)
+      ;;
+    esac
+    if [ -n "${_R}" ]; then
+      printf '%s' "${_R}"
+      return 0
+    fi
+  done
+  _R=$(_txp_drushrc_value "${_PD}/drushrc.php" root) || _R=""
+  [ -z "${_R}" ] && return 1
+  printf '%s' "${_R}"
+  return 0
+}
+
+# The parked dir $2 of the park at the physical path $1 put back as $4 into
+# the platform sites dir $3, moved from inside the one real directory into
+# the other, never over a name already there.
+_unpark_capsule() {
+  local _s
+  _s="$(_own_real_path "${3}")" || return 1
+  _in_path_dir "${_s}" test ! -e "./${4}" -a ! -L "./${4}" || return 1
+  _in_path_dir "${_s}" _take_here "${1}" "${2}" "${4}"
+}
+
+# The site dir $2 of the sites dir $1 parked as it is in the rename's
+# stray-sites in the root's own tree, moved from inside the one real
+# directory into the other, never over a name already parked there.
+_park_stray_site_dir() {
+  local _s _p
+  _s="$(_own_real_path "${1}")" || return 1
+  _p="$(_rename_dir_real stray-sites)" || return 1
+  _in_path_dir "${_p}" test ! -e "./${2}" -a ! -L "./${2}" || return 1
+  _in_path_dir "${_p}" _take_here "${_s}" "${2}"
+}
+
+_find_host_site_dirs() {
+  # Every platform docroot layout at once (sites/, web/sites/, docroot/sites/,
+  # html/sites/) — one platform can even carry the same site at two depths.
+  # Backups and the Drush checksum store are never site dirs.
+  find "${_AEGIR_ROOT}" -maxdepth 8 -type d -path '*/sites/*' \
+    -name "*${1}*" \
+    -not -path '*/backups/*' \
+    -not -path '*/.drush/*' \
+    -not -path '*/sites/*/*' 2>/dev/null
+}
+
+_find_old_host_site_dirs() {
+  _find_host_site_dirs "${_OLD_HOST}"
+}
+
+_rewrite_site_in_place() {
+  # Rewrite a file THROUGH ITS EXISTING INODE.
+  #
+  # `sed -i` does not edit in place: it writes a new file and renames it over
+  # the old one, so the inode changes. PHP resolves this path through its
+  # realpath cache -- default TTL 120s, and held PER FPM WORKER -- so opcache
+  # goes on compiling the copy it already has and the site keeps serving the
+  # OLD settings.php long after the correct one is on disk.
+  #
+  # Measured on a test box, in both directions: a corrected settings.php sat
+  # on disk while the site answered HTTP 400 for ~3 minutes, and later a
+  # deliberately broken one kept serving 200 for over 3 minutes. Because the
+  # cache is per worker, whether a given request sees the change is luck --
+  # which is exactly why it looked like "the fix did not work" once and "the
+  # fix works instantly" the next time.
+  #
+  # Truncating in place keeps the inode, so opcache's ordinary 2s
+  # revalidation applies and the rename takes effect immediately. It also
+  # preserves ownership and mode for free.
+  #
+  # The site dir is the account's (and private/ may be its link into the
+  # files store): the file is rewritten as a name inside its real directory
+  # (_rewrite_inode_here), so a link or a FIFO put at the name, or a link
+  # swapped in for a directory on the way, is never written through as root.
+  # $1 = sed expression, $2 = the file.
+  local _expr="$1"
+  local _f="$2"
+  local _d
+  _d="$(_own_real_path "${_f%/*}")" || return 1
+  _in_path_dir "${_d}" _rewrite_inode_here "${_f##*/}" "${_expr}"
+}
+
+_rewrite_site_settings_uri() {
+  # settings.php is provision-generated and embeds the site URI in far more
+  # than the host patterns: the public/private/temp file paths, the D10+
+  # config sync directory, the syslog identity and the ABSOLUTE
+  # local.settings.php include path all carry it. Only trusted_host_patterns
+  # produces the visible HTTP 400 ("The provided host name is not valid for
+  # this server") — the rest fail silently, writing into a directory that no
+  # longer exists and quietly dropping a client's local overrides.
+  #
+  # The DATABASE must NOT follow the rename: the site keeps its database by
+  # design. Its name and user are derived from the URI at install time in a
+  # MANGLED form (dots and dashes stripped, then truncated), so the dotted
+  # URI replaced here cannot reach them — and if a file ever does carry the
+  # dotted URI on a credential line, this refuses it rather than repoint a
+  # live site at a database that does not exist. That failure would look
+  # exactly like data loss.
+  local _SET="$1"
+  local _OLDNAME="$2"
+  local _NEWNAME="$3"
+  local _OLD_BS _NEW_BS _RE_BS _RP_BS _RE _EXPR _T
+
+  # A symlink here is never a provision artefact -- provision writes
+  # settings.php as a real file. The site dir is tenant-writable, so say so
+  # rather than leave it silently stale (the writer below refuses it anyway).
+  if [ -L "${_SET}" ]; then
+    _alrt "    settings.php is a symlink — refusing to rewrite: ${_SET}"
+    _SETTINGS_SKIPPED_N=$((_SETTINGS_SKIPPED_N + 1))
+    return 0
+  fi
+
+  # The URI appears in TWO spellings. Paths and identities carry it plain;
+  # trusted_host_patterns carries it as a PHP regex with the dots
+  # backslash-escaped ('^d7\.o1\.old\.example\.com$'). A rewrite that knows
+  # only the plain form leaves every host pattern stale — which is to say it
+  # leaves the site answering HTTP 400, the one symptom the whole exercise is
+  # about. Both spellings, one pass.
+  _OLD_BS="${_OLDNAME//./\\.}"
+  _NEW_BS="${_NEWNAME//./\\.}"
+
+  [ -f "${_SET}" ] || return 0
+  # This path lands in a _maybe_run (eval) argument list below inside literal
+  # single quotes. The files and client symlink legs re-guard their own
+  # values; this one is the exception, so guard it here rather than trust
+  # every caller to have done it.
+  if ! _safe_name "${_SET}" "settings.php path"; then
+    _SETTINGS_SKIPPED_N=$((_SETTINGS_SKIPPED_N + 1))
+    return 0
+  fi
+  # Read once, inside the real site dir, never through a link or into a FIFO.
+  _T="$(_read_own_file "${_SET}")"
+  grep -qF -e "${_OLDNAME}" -e "${_OLD_BS}" <<< "${_T}" || return 0
+
+  if grep -E "'(database|username|password)'|db_url" <<< "${_T}" \
+    | grep -qF -e "${_OLDNAME}" -e "${_OLD_BS}"; then
+    _alrt "    settings.php NOT rewritten — database credentials embed ${_OLDNAME}:"
+    _alrt "    ${_SET}"
+    _alrt "    Rewrite the URI values by hand; never the database name."
+    _SETTINGS_SKIPPED_N=$((_SETTINGS_SKIPPED_N + 1))
+    return 0
+  fi
+
+  # Dots are regex metacharacters and a site URI is nothing but dots; in the
+  # escaped spelling the backslashes need escaping too. The expression is
+  # single-quoted through _maybe_run because eval would otherwise eat them.
+  _RE=$(printf '%s' "${_OLDNAME}" | sed -e 's/[.]/\\./g')
+  _RE_BS=$(printf '%s' "${_OLD_BS}" | sed -e 's/[\]/\\\\/g' -e 's/[.]/\\./g')
+  _RP_BS=$(printf '%s' "${_NEW_BS}" | sed -e 's/[\]/\\\\/g')
+  _EXPR="${_SED_RENAME_GUARD}s/${_RE_BS}/${_RP_BS}/g"
+  _EXPR="${_EXPR}; ${_SED_RENAME_GUARD}s/${_RE}/${_NEWNAME}/g"
+  _info "    settings.php: file paths + trusted_host_patterns -> ${_NEWNAME}"
+  # Written through its own inode, so the account's owner and its 440 mode
+  # stay exactly as they were: nothing is handed back by name.
+  if ! _maybe_run _rewrite_site_in_place \'"${_EXPR}"\' \'"${_SET}"\'; then
+    _alrt "    settings.php rewrite FAILED — left untouched: ${_SET}"
+    _SETTINGS_SKIPPED_N=$((_SETTINGS_SKIPPED_N + 1))
+    return 0
+  fi
+  _URI_SURFACES_CHANGED=YES
+  return 0
+}
+
+_rename_site_uri_surfaces() {
+  # Idempotent by construction: every move is skipped when the source is
+  # gone or, for a directory, the target already exists, so a site carried
+  # at two depths and a re-run both converge. The alias file is the one
+  # exception (below): at the new name it is replaced, not kept.
+  local _OLDNAME="$1"
+  local _NEWNAME="$2"
+  local _OLD_D="$3"
+  local _NEWD="$4"
+  local _OLD_ALIAS="${_DRUSH_DIR}/${_OLDNAME}.alias.drushrc.php"
+  local _NEW_ALIAS="${_DRUSH_DIR}/${_NEWNAME}.alias.drushrc.php"
+  local _OLD_FILES="${_AEGIR_ROOT}/static/files/${_OLDNAME}"
+  local _NEW_FILES="${_AEGIR_ROOT}/static/files/${_NEWNAME}"
+  local _SD _SDR _FS _CLR _C _B _TGT _SUF _OWN
+
+  # The dir to read from: the moved one live, the source one under --dry-run
+  # (where the move above only printed). Keeps the dry-run report honest
+  # about the settings.php and symlink work instead of silently skipping it.
+  _SD="${_OLD_D}"
+  [ -d "${_NEWD}" ] && _SD="${_NEWD}"
+
+  # .drush is the account's: the rename runs on ./names inside the real
+  # directory, and -T replaces a link put at the new name instead of moving
+  # the alias into whatever directory it points at.
+  # Unlike a site dir, an alias file already at the new name is replaced: a
+  # box promoted once before still holds the alias it wrote then, and the
+  # sync (a copy that deletes nothing) laid the active's old-name alias
+  # beside it. The old-name copy is the one the active kept current; this
+  # box's stopped at its demotion. Kept as a pair, the old-name copy is
+  # rewritten by §3 like any other, converted again by Drush at every pass,
+  # and its placeholder yml names the former host for good.
+  if [ -f "${_OLD_ALIAS}" ]; then
+    if [ -f "${_NEW_ALIAS}" ]; then
+      _info "    alias file: ${_OLDNAME}.alias.drushrc.php -> ${_NEWNAME}.alias.drushrc.php (replacing the copy kept from an earlier promotion)"
+    else
+      _info "    alias file: ${_OLDNAME}.alias.drushrc.php -> ${_NEWNAME}.alias.drushrc.php"
+    fi
+    _maybe_run _in_real_dir \'"${_DRUSH_DIR}"\' mv -f -T -- \
+      \'"./${_OLDNAME}.alias.drushrc.php"\' \'"./${_NEWNAME}.alias.drushrc.php"\'
+    _URI_SURFACES_CHANGED=YES
+  fi
+
+  # The site's files symlink resolves through this store. Leave it behind and
+  # the next verify mints an EMPTY store under the new URI and the site loses
+  # its files, so this move is not optional. The store is entered where it
+  # really lies: static/files may be migratefs' link onto the attached store,
+  # never anywhere else.
+  if [ -d "${_OLD_FILES}" ] && [ ! -d "${_NEW_FILES}" ]; then
+    if ! _FS="$(_own_real_path "${_AEGIR_ROOT}/static/files")"; then
+      _alrt "    static/files is not this root's own files store -- static/files/${_OLDNAME} NOT moved"
+    elif _safe_name "${_FS}" "files store"; then
+      _info "    static files store: static/files/${_OLDNAME} -> static/files/${_NEWNAME}"
+      _maybe_run _in_path_dir \'"${_FS}"\' mv -f -T -- \
+        \'"./${_OLDNAME}"\' \'"./${_NEWNAME}"\'
+      _URI_SURFACES_CHANGED=YES
+    fi
+  fi
+
+  # ...which leaves the site's own files/private symlinks pointing INTO the
+  # store under its old name: dangling, so the site serves without any of
+  # its files. Repoint every symlink in the site dir that resolves into the
+  # old store; a site whose files are a real directory has none and is left
+  # alone. The site dir is the account's: its links are read, replaced and
+  # handed back (chown -h: the link, never what it names; the numeric owner
+  # it had) as names inside the real directory. A store that did not move
+  # keeps them: repointed, they would name nothing.
+  _SDR="$(_own_real_path "${_SD}")" && _safe_name "${_SDR}" "site dir" \
+    || _SDR=""
+  if [ -n "${_SDR}" ] && [ "${_DRY_RUN}" != "YES" ] \
+    && [ -d "${_OLD_FILES}" ] && [ ! -d "${_NEW_FILES}" ]; then
+    _alrt "    static/files/${_OLDNAME} did not move -- the site's files links still name it"
+    _SDR=""
+  fi
+  while IFS= read -r _B; do
+    [ -n "${_B}" ] || continue
+    _TGT=$(_in_path_dir "${_SDR}" readlink -- "./${_B}" 2>/dev/null)
+    case "${_TGT}" in
+      "${_OLD_FILES}"|"${_OLD_FILES}"/*) ;;
+      *) continue ;;
+    esac
+    _SUF="${_TGT#"${_OLD_FILES}"}"
+    if [ -n "${_SUF}" ] && ! _safe_name "${_SUF}" "files symlink target suffix"; then
+      continue
+    fi
+    _safe_name "${_B}" "files symlink" || continue
+    _OWN=$(_in_path_dir "${_SDR}" stat -c '%u:%g' -- "./${_B}" 2>/dev/null)
+    _info "    files symlink: ${_B} -> static/files/${_NEWNAME}${_SUF}"
+    _maybe_run _in_path_dir \'"${_SDR}"\' _relink_here \'"${_B}"\' \
+      \'"${_NEW_FILES}${_SUF}"\' \'"${_OWN}"\'
+    _URI_SURFACES_CHANGED=YES
+  done < <([ -n "${_SDR}" ] && _in_path_dir "${_SDR}" _links_here)
+
+  # The client symlink MOVES with the name. Dropping it for provision to
+  # recreate cannot work — that only happens in a site verify, and §7 queues
+  # server verifies — and a missing one takes the site out of the client's
+  # home directory listing. clients/ is the account's: each client dir is
+  # entered as a real directory and its links handled as names there.
+  _CLR="$(_own_real_path "${_AEGIR_ROOT}/clients")" \
+    && _safe_name "${_CLR}" "clients dir" || _CLR=""
+  while IFS= read -r _C; do
+    [ -n "${_C}" ] || continue
+    _safe_name "${_C}" "client dir" || continue
+    _in_path_dir "${_CLR}/${_C}" test -L "./${_OLDNAME}" || continue
+    if _in_path_dir "${_CLR}/${_C}" test -e "./${_NEWNAME}" -o -L "./${_NEWNAME}"; then
+      _info "    client symlink already present: clients/${_C}/${_NEWNAME}"
+      _maybe_run _in_path_dir \'"${_CLR}/${_C}"\' rm -f -- \'"./${_OLDNAME}"\'
+      continue
+    fi
+    _OWN=$(_in_path_dir "${_CLR}/${_C}" stat -c '%u:%g' -- "./${_OLDNAME}" 2>/dev/null)
+    _info "    client symlink: clients/${_C}/${_OLDNAME} -> clients/${_C}/${_NEWNAME}"
+    _maybe_run _in_path_dir \'"${_CLR}/${_C}"\' _relink_here \'"${_NEWNAME}"\' \
+      \'"${_NEWD}"\' \'"${_OWN}"\'
+    _maybe_run _in_path_dir \'"${_CLR}/${_C}"\' rm -f -- \'"./${_OLDNAME}"\'
+    _URI_SURFACES_CHANGED=YES
+  done < <([ -n "${_CLR}" ] && _in_path_dir "${_CLR}" _real_dirs_here)
+
+  _rewrite_site_settings_uri "${_SD}/settings.php" "${_OLDNAME}" "${_NEWNAME}"
+}
+
+###-------------§2c2 CAPSULE SITES-------###
+
+# A Grav or Textpattern site is not a Drupal site dir with other contents: it
+# is a self-contained capsule under sites/<uri>/, and the only things inside
+# it keyed by the uri are the few surfaces its own provision layer re-points
+# when IT renames a site. Those lists are mirrored here, each from the file
+# named above the function that implements it, rather than guessed -- the
+# host-axis rename moves the directory and nothing else will.
+
+_site_capsule_class() {
+  # Which non-Drupal site class owns this sites/<uri> dir, decided by the
+  # marker provision's own site finders glob for: provision-grav globs
+  # 'sites/*/system/defines.php', provision-txp 'sites/*/private/config.php'.
+  # Prints grav, txp, or nothing when the dir is neither -- a Drupal or
+  # Backdrop site is the settings.php case, and a dir with none of the three
+  # markers is the stray case. $1 = the site dir.
+  #
+  # settings.php outranks both markers because a capsule never carries one:
+  # without that test, a tenant who drops a config.php into a Drupal site's
+  # private files dir would have the site handled as a Textpattern capsule.
+  #
+  # Both marker tests are -f, which follows symlinks. provision materialises
+  # private/ and system/ as real directories (cp -a from the platform
+  # skeleton), so an untouched capsule answers whenever it is asked; a marker
+  # reached through a link -- left by a half-finished earlier run, or by an
+  # operator's own move into the account's static files store -- answers only
+  # once that link resolves. That is a timing requirement on the caller, not
+  # a test to loosen: ask AFTER the generic surfaces pass has moved the store
+  # and repointed the link, or a half-moved capsule reads as no capsule at
+  # all.
+  [ -f "$1/settings.php" ] && return 0
+  if [ -f "$1/system/defines.php" ]; then
+    echo "grav"
+  elif [ -f "$1/private/config.php" ]; then
+    echo "txp"
+  fi
+  return 0
+}
+
+_rewrite_capsule_site_drushrc() {
+  # The capsule's OWN sites/<uri>/drushrc.php -- provision's persisted site
+  # context, carrying uri and site_path among the options the backend reloads
+  # on every later task. A Drupal site has this file re-rendered by the site
+  # verify §7 queues for it; a capsule is deliberately not queued, so the
+  # rename re-points it here or the next task on that capsule resolves a
+  # site_path that no longer exists.
+  #
+  # The database name and user are MANGLED forms of the uri (dots and dashes
+  # stripped, then truncated), so the dotted uri replaced here cannot reach
+  # them -- and a file that does carry the dotted uri on a credential line is
+  # refused rather than repointed at a database that does not exist. Same
+  # rule, same reason, as the settings.php pass.
+  local _RC="$1"
+  local _OLDNAME="$2"
+  local _NEWNAME="$3"
+  local _RE _EXPR _T
+
+  [ -f "${_RC}" ] || return 0
+  if [ -L "${_RC}" ]; then
+    _alrt "    drushrc.php is a symlink — refusing to rewrite: ${_RC}"
+    return 0
+  fi
+  _safe_name "${_RC}" "drushrc.php path" || return 0
+  _T="$(_read_own_file "${_RC}")"
+  grep -qF "${_OLDNAME}" <<< "${_T}" || return 0
+  if grep -E "db_name|db_user|db_passwd|db_url" <<< "${_T}" \
+    | grep -qF "${_OLDNAME}"; then
+    _alrt "    drushrc.php NOT rewritten — database credentials embed ${_OLDNAME}:"
+    _alrt "    ${_RC}"
+    return 0
+  fi
+  _RE=$(printf '%s' "${_OLDNAME}" | sed -e 's/[.]/\\./g')
+  _EXPR="${_SED_RENAME_GUARD}s/${_RE}/${_NEWNAME}/g"
+  _info "    drushrc.php: uri + site_path -> ${_NEWNAME}"
+  if _maybe_run _rewrite_site_in_place \'"${_EXPR}"\' \'"${_RC}"\'; then
+    _URI_SURFACES_CHANGED=YES
+  else
+    _alrt "    drushrc.php rewrite FAILED — left untouched: ${_RC}"
+  fi
+  return 0
+}
+
+_rename_grav_capsule_uri() {
+  # Mirrors provision-grav's own rename (rename.grav.provision.inc, through
+  # _provision_grav_repoint_uri and _provision_grav_write_env): the capsule's
+  # .env pins GRAV_ENVIRONMENT to the site uri, and Grav resolves
+  # environment:// to user/env/<that value> when user/env exists and to
+  # user/<that value> otherwise -- refusing a directory that is not there and
+  # silently dropping every per-host config, blueprint and language override.
+  # No database, and nothing else in the capsule is uri-keyed: the nonce key,
+  # the api secret, the accounts and the pages are its identity.
+  local _OLDNAME="$1"
+  local _NEWNAME="$2"
+  local _SD="$3"
+  local _ENV="${_SD}/.env"
+  local _ENV_OK=NO
+  local _BASE _BR _OLD_ENV _NEW_ENV _EXPR _NEW_RE _ENV_N _ENV_OKN _ET
+
+  # The overlay move is gated on this file, because the pair must never come
+  # apart: an .env naming an overlay directory that no longer exists is the
+  # one state provision's writer says must not exist, and no verify is queued
+  # for a capsule to repair it. So the test is the whole line's VALUE, not the
+  # old name: a quoted value, trailing whitespace or a CRLF line ending all
+  # miss an exact-old-name match while leaving the capsule pinned to a dead
+  # overlay. A capsule already reading the new name matches here and is
+  # silently left alone, which is what the converge pass needs -- and it has
+  # to match in every form the rewrite arm below accepts, or a capsule whose
+  # environment already resolves to the new uri is rewritten and counted as a
+  # repair by the converge pass. Only the dot needs escaping: the value came
+  # through _safe_name, whose charset holds no other ERE metacharacter.
+  _NEW_RE=$(printf '%s' "${_NEWNAME}" | sed -e 's/[.]/\\./g')
+  # Read once, inside the real capsule dir, never through a link or a FIFO.
+  _ET="$(_read_own_file "${_ENV}")"
+  if [ ! -e "${_ENV}" ] && [ ! -L "${_ENV}" ]; then
+    # No .env at all is a stock shape (Grav falls back to user/<uri>), and
+    # there is nothing pinning the overlay name, so the move is safe.
+    _ENV_OK=YES
+  elif [ -L "${_ENV}" ]; then
+    # provision writes .env as a real file, and the capsule dir is
+    # tenant-writable; a link here is not provision's artefact.
+    _alrt "    .env is a symlink — refusing to rewrite: ${_ENV}"
+  elif ! _safe_name "${_ENV}" ".env path"; then
+    : # _safe_name said why; the overlay stays put with the file
+  elif _ENV_N=$(grep -c "^[[:space:]]*GRAV_ENVIRONMENT=" <<< "${_ET}"); \
+    _ENV_OKN=$(grep -Ec "^[[:space:]]*GRAV_ENVIRONMENT=(\"${_NEW_RE}\"|'${_NEW_RE}'|${_NEW_RE})[[:space:]]*\$" <<< "${_ET}"); \
+    [ "${_ENV_N:-0}" -gt 0 ] && [ "${_ENV_N}" -eq "${_ENV_OKN:-0}" ]; then
+    # Dotenv unquotes and trims, so a quoted or padded value that already
+    # reads the new uri is an honoured value and not a surface to repair --
+    # but only when EVERY assignment line reads it: a stale first line with a
+    # corrected one appended (a hand-fixed dotenv) resolves to whichever the
+    # reader honours, and the tool cannot prove which, so such a file falls
+    # through to the rewrite arm, which replaces every line and converges it.
+    _ENV_OK=YES
+  elif grep -q "^[[:space:]]*GRAV_ENVIRONMENT=" <<< "${_ET}"; then
+    # Whatever the value and whatever the quoting: the line is replaced whole.
+    _EXPR='s|^[[:space:]]*GRAV_ENVIRONMENT=.*$|GRAV_ENVIRONMENT='"${_NEWNAME}"'|'
+    _info "    .env: GRAV_ENVIRONMENT -> ${_NEWNAME}"
+    # The writer rewrites through the existing inode, so the file's ownership
+    # and its 0640 mode survive without being handed back explicitly.
+    if _maybe_run _rewrite_site_in_place \'"${_EXPR}"\' \'"${_ENV}"\'; then
+      _URI_SURFACES_CHANGED=YES
+      _ENV_OK=YES
+      # Prove it landed before moving the directory it names: a writer that
+      # reports success over a line that did not land -- a full filesystem, an
+      # .env replaced under the tool, an expression that stops matching after
+      # a later edit -- must not be followed by the overlay move. Exact,
+      # because the expression above writes the line whole and unquoted.
+      if [ "${_DRY_RUN}" != "YES" ] \
+        && ! _read_own_file "${_ENV}" | grep -qxF "GRAV_ENVIRONMENT=${_NEWNAME}"; then
+        _ENV_OK=NO
+        _alrt "    .env does not read GRAV_ENVIRONMENT=${_NEWNAME} after the rewrite — overlay left at ${_OLDNAME}: ${_ENV}"
+      fi
+    else
+      _alrt "    .env rewrite FAILED — left untouched: ${_ENV}"
+    fi
+  else
+    _alrt "    .env carries no GRAV_ENVIRONMENT line — overlay left at ${_OLDNAME}, set it by hand: ${_ENV}"
+  fi
+
+  [ "${_ENV_OK}" = "YES" ] || return 0
+
+  # Both bases, as provision does: a 1.6-shaped capsule keeps the overlay at
+  # user/<uri>, a 2.x one at user/env/<uri>, and a tree can carry both.
+  for _BASE in "${_SD}/user/env" "${_SD}/user"; do
+    _OLD_ENV="${_BASE}/${_OLDNAME}"
+    _NEW_ENV="${_BASE}/${_NEWNAME}"
+    { [ -d "${_OLD_ENV}" ] && [ ! -L "${_OLD_ENV}" ]; } || continue
+    if [ -e "${_NEW_ENV}" ] || [ -L "${_NEW_ENV}" ]; then
+      _alrt "    ${_BASE#${_SD}/} carries both ${_OLDNAME} and ${_NEWNAME} — neither overlay moved, merge them by hand"
+      continue
+    fi
+    _safe_name "${_OLD_ENV}" "grav env overlay" || continue
+    # The capsule is the account's: the overlay is renamed as a name inside
+    # its real parent directory, -T refusing whatever was put at the new name.
+    if ! _BR="$(_own_real_path "${_BASE}")"; then
+      _alrt "    ${_BASE#${_SD}/} is not a directory of ${_AEGIR_ROOT} -- overlay left at ${_OLDNAME}"
+      continue
+    fi
+    _safe_name "${_BR}" "grav env base" || continue
+    _info "    grav env overlay: ${_BASE#${_SD}/}/${_OLDNAME} -> ${_NEWNAME}"
+    # The inverse of the stale .env, and just as fatal: the vhost's
+    # fastcgi_param already names the new uri, so a failed move breaks the
+    # web tier too. provision logs it; so does this.
+    if _maybe_run _in_path_dir \'"${_BR}"\' mv -f -T -- \
+      \'"./${_OLDNAME}"\' \'"./${_NEWNAME}"\'; then
+      _URI_SURFACES_CHANGED=YES
+    else
+      _alrt "    grav env overlay move FAILED — .env now names ${_NEWNAME} with no overlay there: ${_OLD_ENV}"
+    fi
+  done
+  return 0
+}
+
+_rename_txp_capsule_uri() {
+  # Mirrors provision-txp's own rename (rename.txp.provision.inc): the file
+  # side is private/config.php, whose admin_url and multisite_root_path carry
+  # the uri and the site path (cookie_domain and txpath do not, and a
+  # substring pass leaves them alone), and the database side is that command's
+  # three operations in its order -- clear the session-bearing tables, rotate
+  # every user's nonce, re-point the six uri/path-bound txp_prefs rows. The
+  # database, its content and the site's identity -- blog_uid, image ids,
+  # every AUTO_INCREMENT -- never move and are never rewritten.
+  local _OLDNAME="$1"
+  local _NEWNAME="$2"
+  local _SD="$3"
+  local _TARGET="$4"
+  local _MOVED="$5"
+  local _CFG="${_SD}/private/config.php"
+  local _EVID="${_MOVED}"
+  local _RE _EXPR
+
+  if [ ! -f "${_CFG}" ]; then
+    _alrt "    no private/config.php under ${_SD} — Textpattern surfaces left alone"
+    return 0
+  fi
+  if [ -L "${_CFG}" ]; then
+    _alrt "    private/config.php is a symlink — refusing to rewrite: ${_CFG}"
+    return 0
+  fi
+  _safe_name "${_CFG}" "private/config.php path" || return 0
+  if _read_own_file "${_CFG}" | grep -qF "${_OLDNAME}"; then
+    # Old-name evidence of the second kind (see the database pass): this file
+    # still names the old uri, so the capsule really is mid-rename.
+    _EVID=YES
+    _RE=$(printf '%s' "${_OLDNAME}" | sed -e 's/[.]/\\./g')
+    _EXPR="${_SED_RENAME_GUARD}s/${_RE}/${_NEWNAME}/g"
+    _info "    private/config.php: admin_url + multisite_root_path -> ${_NEWNAME}"
+    if _maybe_run _rewrite_site_in_place \'"${_EXPR}"\' \'"${_CFG}"\'; then
+      _URI_SURFACES_CHANGED=YES
+      # Prove the write landed. In the NEW-contains-OLD regime a rewritten
+      # line still carries the old substring inside the new one, so the test
+      # is "a line with OLD and without NEW" -- _file_needs_rename's shape.
+      if [ "${_DRY_RUN}" != "YES" ] \
+        && _read_own_file "${_CFG}" | grep -vF "${_NEWNAME}" \
+        | grep -qF "${_OLDNAME}"; then
+        _alrt "    private/config.php still carries ${_OLDNAME}: ${_CFG}"
+      fi
+    else
+      _alrt "    private/config.php rewrite FAILED — left untouched: ${_CFG}"
+      return 0
+    fi
+  fi
+
+  _txp_repoint_database "${_CFG}" "${_NEWNAME}" "${_TARGET}" "${_SD}" \
+    "${_EVID}" "${_OLDNAME}"
+  return 0
+}
+
+_rename_capsule_uri_surfaces() {
+  # $1 class, $2 old uri, $3 new uri, $4 the source dir, $5 the moved dir.
+  # Called AFTER the generic surfaces pass: a Textpattern capsule's private/
+  # can be a symlink into the account's static files store, and that store has
+  # only just followed the name.
+  local _CLASS="$1"
+  local _OLDNAME="$2"
+  local _NEWNAME="$3"
+  local _SD="$4"
+  local _MOVED=NO
+  # "$5 is absent" cannot stand in for "the move only printed": a live `mv -f`
+  # that failed leaves the same shape, and then every value written below --
+  # including the path rows in the tenant's own database, which are outside
+  # _BACKUP_DIR and have no prior-value record -- would name a directory that
+  # does not exist. Dry-run is the only reading of an absent $5 that is safe.
+  if [ "${_DRY_RUN}" != "YES" ] && [ ! -d "$5" ]; then
+    _alrt "    capsule did not land at $5 — class surfaces left untouched"
+    return 0
+  fi
+  # Two different paths, and conflating them makes the dry-run lie. $5 is
+  # where the capsule ENDS UP, so it is what a stored path value must name,
+  # dry-run included; _SD is where its files are readable RIGHT NOW, which
+  # under --dry-run is still the source dir because the move only printed.
+  [ -d "$5" ] && _SD="$5"
+  # Old-name evidence of the strongest kind: this run moved the dir. The
+  # converge pass calls with $4 = $5 and carries no such evidence, so the
+  # class legs that write to a database have to find their own (see the txp
+  # leg) rather than assume the site was renamed.
+  [ "$4" != "$5" ] && _MOVED=YES
+  # Class-agnostic first: every capsule carries provision's persisted site
+  # context, and it is keyed by the uri whatever the class.
+  _rewrite_capsule_site_drushrc "${_SD}/drushrc.php" "${_OLDNAME}" "${_NEWNAME}"
+  case "${_CLASS}" in
+    grav)
+      _rename_grav_capsule_uri "${_OLDNAME}" "${_NEWNAME}" "${_SD}"
+    ;;
+    txp)
+      _rename_txp_capsule_uri "${_OLDNAME}" "${_NEWNAME}" "${_SD}" "$5" "${_MOVED}"
+    ;;
+  esac
+  return 0
+}
+
+_recover_parked_site_dirs() {
+  # Un-park what an earlier release parked. That release tested a site dir for
+  # settings.php alone, so a Grav or Textpattern capsule whose uri carries the
+  # box name was moved into ${_BACKUP_DIR}/stray-sites/ while its panel node,
+  # its vhost and its alias were renamed around it — the new name answering
+  # 404 from a root that does not exist. Nothing else in this tool ever reads
+  # that directory back: every find excludes */backups/*, and _BACKUP_DIR is
+  # under backups/. So without this pass a re-run of the FIXED tool finds no
+  # dir to move, §9 has nothing to probe, the pre-queue guard sees nothing
+  # stranded, and the run prints "Rename complete" over a parked site.
+  #
+  # Guarded exactly like the mover it runs before: _safe_name on every value
+  # that reaches an eval, nothing moved under --dry-run, the move made from
+  # inside the real park into the real sites dir (both the account's), and a
+  # refusal rather than an overwrite when the destination is taken. The
+  # platform root comes from the site's alias file (helper above), and the
+  # capsule is reinstated only when that root sits UNDER ${_AEGIR_ROOT} and
+  # carries an index.php: this is the one destination in the tool chosen by
+  # file CONTENT rather than computed in place, so a stale or hand-edited
+  # value must never move a tenant into another instance's platform, where
+  # no later pass of this run could see it again while the summary still
+  # read "reinstated". On the
+  # account axis the recorded root still names /data/disk/<old-account>,
+  # which fails the containment test, so the capsule is reported and left
+  # parked rather than guessed at.
+  #
+  # Anything host-derived down there that this cannot reinstate is named at
+  # the end, so the summary can never read as success over a park.
+  local _PARK="${_BACKUP_DIR}/stray-sites"
+  local _P _OLDNAME _NEWNAME _CLASS _ROOT _NEWD _UNDER_ROOT _LEFT="" _PKR
+
+  [ -d "${_PARK}" ] || return 0
+  if ! _PKR="$(_own_real_path "${_PARK}")"; then
+    _alrt "  ${_PARK} is not a directory of ${_AEGIR_ROOT} -- nothing reinstated from it"
+    return 0
+  fi
+  for _P in "${_PKR}"/*; do
+    { [ -d "${_P}" ] && [ ! -L "${_P}" ]; } || continue
+    _OLDNAME=$(basename "${_P}")
+    case "${_OLDNAME}" in
+      *"${_OLD_HOST}"*) ;;
+      *) continue ;;
+    esac
+    _renamed_already "${_OLDNAME}" && continue
+    _NEWNAME="${_OLDNAME//${_OLD_HOST}/${_NEW_HOST}}"
+    [ "${_NEWNAME}" = "${_OLDNAME}" ] && continue
+    _safe_name "${_P}" "parked site dir" || continue
+    _CLASS=$(_site_capsule_class "${_P}")
+    if [ -z "${_CLASS}" ]; then
+      _LEFT="${_LEFT} ${_OLDNAME}"
+      _STRAY_LEFT_N=$((_STRAY_LEFT_N + 1))
+      continue
+    fi
+    _ROOT=$(_parked_capsule_platform_root "${_OLDNAME}" "${_NEWNAME}" "${_P}") || _ROOT=""
+    if [ -z "${_ROOT}" ] || ! _safe_name "${_ROOT}" "parked capsule platform root"; then
+      _alrt "  parked ${_CLASS} capsule ${_OLDNAME}: no usable platform root in its alias file or drushrc.php — left parked"
+      _LEFT="${_LEFT} ${_OLDNAME}"
+      _STRAY_LEFT_N=$((_STRAY_LEFT_N + 1))
+      continue
+    fi
+    # Containment before existence: a prefix test alone is escaped by a ..
+    # segment, and _safe_name admits dots and slashes.
+    _UNDER_ROOT=YES
+    case "/${_ROOT}/" in
+      *"/../"*) _UNDER_ROOT=NO ;;
+    esac
+    case "${_ROOT}/" in
+      "${_AEGIR_ROOT%/}"/*) ;;
+      *) _UNDER_ROOT=NO ;;
+    esac
+    if [ "${_UNDER_ROOT}" != "YES" ]; then
+      _alrt "  parked ${_CLASS} capsule ${_OLDNAME}: platform root ${_ROOT} is outside ${_AEGIR_ROOT} — left parked"
+      _LEFT="${_LEFT} ${_OLDNAME}"
+      _STRAY_LEFT_N=$((_STRAY_LEFT_N + 1))
+      continue
+    fi
+    if [ ! -d "${_ROOT}" ] || [ ! -f "${_ROOT}/index.php" ]; then
+      _alrt "  parked ${_CLASS} capsule ${_OLDNAME}: ${_ROOT} is not a platform root (no index.php) — left parked"
+      _LEFT="${_LEFT} ${_OLDNAME}"
+      _STRAY_LEFT_N=$((_STRAY_LEFT_N + 1))
+      continue
+    fi
+    _NEWD="${_ROOT}/sites/${_NEWNAME}"
+    if [ -e "${_NEWD}" ] || [ -L "${_NEWD}" ]; then
+      _alrt "  parked ${_CLASS} capsule ${_OLDNAME}: ${_NEWD} already exists — left parked, merge them by hand"
+      _LEFT="${_LEFT} ${_OLDNAME}"
+      _STRAY_LEFT_N=$((_STRAY_LEFT_N + 1))
+      continue
+    fi
+    _info "  un-park: stray-sites/${_OLDNAME} -> ${_NEWD} (${_CLASS} capsule)"
+    if [ "${_DRY_RUN}" = "YES" ]; then
+      echo "DRY:  mv -f -T ${_P} ${_NEWD}"
+    elif ! _unpark_capsule "${_PKR}" "${_OLDNAME}" "${_ROOT}/sites" "${_NEWNAME}"; then
+      _alrt "  un-park FAILED — left parked: ${_P}"
+      _LEFT="${_LEFT} ${_OLDNAME}"
+      _STRAY_LEFT_N=$((_STRAY_LEFT_N + 1))
+      continue
+    fi
+    # Reinstated, so it takes the same two passes and the same §9 gate as a
+    # capsule the mover moves itself — and the same exclusion from
+    # _RENAMED_SITE_URIS, for the reason given there.
+    _rename_site_uri_surfaces "${_OLDNAME}" "${_NEWNAME}" "${_P}" "${_NEWD}"
+    _rename_capsule_uri_surfaces "${_CLASS}" "${_OLDNAME}" "${_NEWNAME}" "${_P}" "${_NEWD}"
+    _SERVE_CHECK_URIS+=("${_NEWNAME}")
+    _CAPSULE_DONE_URIS="${_CAPSULE_DONE_URIS} ${_NEWNAME}"
+    _CAPSULE_DIRS_N=$((_CAPSULE_DIRS_N + 1))
+    _UNPARKED_N=$((_UNPARKED_N + 1))
+  done
+
+  if [ "${_UNPARKED_N}" -gt 0 ] && [ "${_DRY_RUN}" = "YES" ]; then
+    _info "  ${_UNPARKED_N} parked capsule(s) would be reinstated from ${_PARK}"
+  elif [ "${_UNPARKED_N}" -gt 0 ]; then
+    _info "  ${_UNPARKED_N} parked capsule(s) reinstated from ${_PARK}"
+  fi
+  if [ -n "${_LEFT}" ]; then
+    _alrt "  still parked in ${_PARK} and NOT reinstated:${_LEFT}"
+    _alrt "  Check each one before that directory is deleted — a parked site serves nothing."
+  fi
+  return 0
+}
+
+_converge_renamed_site_surfaces() {
+  # A box renamed by an earlier release moved the site DIRS and nothing else:
+  # its sites keep an old-URI settings.php, dangling files symlinks and no
+  # client symlink. The loop above cannot see them — their dirs already carry
+  # the new hostname — so without this a re-run would report a clean pass over
+  # sites that do not serve. That is the whole failure mode being closed here,
+  # so it must converge rather than depend on being run at the right moment.
+  #
+  # Safe on a box with nothing to fix: every action in the surfaces function is
+  # conditioned on evidence that THIS site is wrong — the old name still on a
+  # surface, or a stored value that already disagrees with the site's own uri —
+  # so a correct site, including one freshly installed on a migration target
+  # which legitimately carries the new hostname, matches nothing and is not
+  # even queued for a verify. The database legs are held to the stricter half
+  # of that rule: old-name evidence only, never a constant that merely differs.
+  local _D _NAME _OLDNAME _CLASS _N=0
+  for _D in $(_find_host_site_dirs "${_NEW_HOST}" | sort); do
+    _NAME=$(basename "${_D}")
+    # Same guard the mover applies: this path reaches _maybe_run's eval
+    # through the surfaces function below.
+    _safe_name "${_D}" "site dir" || continue
+    _OLDNAME="${_NAME//${_NEW_HOST}/${_OLD_HOST}}"
+    [ "${_OLDNAME}" = "${_NAME}" ] && continue
+    # A capsule the loop above has already moved and re-pointed is finished:
+    # a second pass over it would find nothing to do and still repeat every
+    # ALRT it printed. Only capsule names ever reach that list, so the test
+    # needs no class of its own -- which is what lets the class be decided
+    # after the generic pass below.
+    case " ${_CAPSULE_DONE_URIS} " in
+      *" ${_NAME} "*) continue ;;
+    esac
+    _URI_SURFACES_CHANGED=NO
+    _rename_site_uri_surfaces "${_OLDNAME}" "${_NAME}" "${_D}" "${_D}"
+    # Classified only NOW, because the pass above moves and repoints the very
+    # surfaces the class markers are read through: the account's static files
+    # store follows the name there, and so does every link in the site dir
+    # that resolved into it. provision materialises private/ and system/ as
+    # real directories, but a half-finished earlier run -- the very state this
+    # pass exists to heal -- can leave a capsule's marker behind a link into
+    # the store under the OLD name, dangling until the pass above repoints
+    # it. Classified before that, such a capsule reads as a plain site with no
+    # settings.php: no capsule surface repaired, and not even probed by §9.
+    _CLASS=$(_site_capsule_class "${_D}")
+    # Every site already on the new hostname is §9's to confirm, repaired
+    # here or not: on a resume after a refusal the dirs were moved by the
+    # parked run, nothing below changes, and without this line the serving
+    # gate would have nothing to probe and the summary nothing to say.
+    # Host-derived means the name ENDS in the hostname (label.<host>, the
+    # panel's own oN.<host>); a substring match would drag in an unrelated
+    # domain that merely contains it.
+    case "${_NAME}" in
+      *".${_NEW_HOST}"|"${_NEW_HOST}")
+        if [ -f "${_D}/settings.php" ] || [ -n "${_CLASS}" ]; then
+          _SERVE_CHECK_URIS+=("${_NAME}")
+        fi
+      ;;
+    esac
+    if [ -n "${_CLASS}" ]; then
+      # Same converge duty for a capsule moved by an earlier run: its .env,
+      # environment overlay and private/config.php are conditioned on the
+      # value being wrong, and the database legs on old-name evidence this
+      # call did not bring (the dir did not move here), so a correct capsule
+      # matches nothing and issues no statement. It stays out of
+      # _RENAMED_SITE_URIS for the reason given in the mover -- §7 must not
+      # queue a class verify for it.
+      _rename_capsule_uri_surfaces "${_CLASS}" "${_OLDNAME}" "${_NAME}" "${_D}" "${_D}"
+      [ "${_URI_SURFACES_CHANGED}" = "YES" ] && _N=$((_N + 1))
+      continue
+    fi
+    if [ "${_URI_SURFACES_CHANGED}" = "YES" ]; then
+      _RENAMED_SITE_URIS+=("${_NAME}")
+      _N=$((_N + 1))
+    fi
+  done
+  if [ "${_N}" -gt 0 ]; then
+    _info "  ${_N} already-renamed site(s) had stale per-site surfaces repaired"
+  fi
+  return 0
+}
+
+_rename_tenant_site_dirs() {
+  _info "§2c Renaming host-derived tenant site dirs under ${_AEGIR_ROOT} ..."
+
+  local _D _SITES _OLDNAME _NEWNAME _NEWD _CLASS _SR _N=0
+
+  # Before the mover, because a capsule parked by an earlier release is
+  # invisible to every find below and to the pre-queue guard.
+  _recover_parked_site_dirs
+
+  for _D in $(_find_old_host_site_dirs | sort); do
+    _OLDNAME=$(basename "${_D}")
+    _safe_name "${_D}" "site dir" || continue
+    _renamed_already "${_OLDNAME}" && continue
+    _NEWNAME="${_OLDNAME//${_OLD_HOST}/${_NEW_HOST}}"
+    [ "${_NEWNAME}" = "${_OLDNAME}" ] && continue
+    _SITES=$(dirname "${_D}")
+    _NEWD="${_SITES}/${_NEWNAME}"
+    if [ -d "${_NEWD}" ]; then
+      _alrt "  ${_NEWNAME} already exists beside ${_OLDNAME} — leaving both for review"
+      continue
+    fi
+    # A sites/<name> dir carrying none of the three site markers is not a
+    # site, yet §7's platform verify would import it as one: renamed, it
+    # became a bogus site node that §9 then alarmed NOT SERVING; left in
+    # place under the old host, the pre-queue guard refuses the whole tail.
+    # Park it under the rename's own backup dir and say so -- nothing to
+    # rename, nothing for §7 to import. Reversible: the recovery pass above
+    # reinstates anything down there that turns out to be a capsule, and
+    # names the rest. It counts into the SAME leftover total that pass feeds,
+    # because it runs before this loop: without that, the run which creates a
+    # park prints a summary reading as unqualified success and the ATTENTION
+    # line appears only on a next invocation that a one-shot cutover never
+    # makes.
+    _CLASS=$(_site_capsule_class "${_D}")
+    if [ ! -f "${_D}/settings.php" ] && [ -z "${_CLASS}" ]; then
+      if [ "${_DRY_RUN}" = "YES" ]; then
+        echo "DRY:  mv -f -T ${_D} ${_BACKUP_DIR}/stray-sites/${_OLDNAME}"
+      elif ! _park_stray_site_dir "${_SITES}" "${_OLDNAME}"; then
+        # Left in place, the pre-queue guard stops the run before §7.
+        _alrt "  ${_OLDNAME} is not a site and could NOT be parked in ${_BACKUP_DIR}/stray-sites/ (not a directory of ${_AEGIR_ROOT}, or the name is taken there)"
+        continue
+      fi
+      _alrt "  parked ${_OLDNAME}: no settings.php, no system/defines.php, no private/config.php (not a site) -> ${_BACKUP_DIR}/stray-sites/"
+      _STRAY_LEFT_N=$((_STRAY_LEFT_N + 1))
+      continue
+    fi
+    # The sites dir is the account's: the move runs on names inside the real
+    # directory, and -T refuses a link or a file put at the new name.
+    if ! _SR="$(_own_real_path "${_SITES}")"; then
+      _alrt "  ${_SITES} is not a directory of ${_AEGIR_ROOT} -- ${_OLDNAME} left in place"
+      continue
+    fi
+    _safe_name "${_SR}" "sites dir" || continue
+    if [ -n "${_CLASS}" ]; then
+      _info "  site dir: ${_OLDNAME} -> ${_NEWNAME} (in ${_SITES}, ${_CLASS} capsule)"
+    else
+      _info "  site dir: ${_OLDNAME} -> ${_NEWNAME} (in ${_SITES})"
+    fi
+    if ! _maybe_run _in_path_dir \'"${_SR}"\' mv -f -T -- \
+      \'"./${_OLDNAME}"\' \'"./${_NEWNAME}"\'; then
+      _alrt "  site dir move FAILED -- ${_OLDNAME} left in place in ${_SITES}"
+      continue
+    fi
+    _rename_site_uri_surfaces "${_OLDNAME}" "${_NEWNAME}" "${_D}" "${_NEWD}"
+    if [ -n "${_CLASS}" ]; then
+      _rename_capsule_uri_surfaces "${_CLASS}" "${_OLDNAME}" "${_NEWNAME}" "${_D}" "${_NEWD}"
+      # A capsule is gated by §9 like any other renamed name, but never joins
+      # _RENAMED_SITE_URIS: that list is what §7 queues per-site verifies
+      # from, and a capsule's verify is provision's own class-specific task,
+      # with its own PHP floor -- not this tool's to force from the queue.
+      _SERVE_CHECK_URIS+=("${_NEWNAME}")
+      _CAPSULE_DONE_URIS="${_CAPSULE_DONE_URIS} ${_NEWNAME}"
+      _CAPSULE_DIRS_N=$((_CAPSULE_DIRS_N + 1))
+    else
+      _RENAMED_SITE_URIS+=("${_NEWNAME}")
+    fi
+    _N=$((_N + 1))
+  done
+
+  # A reinstated capsule is a tenant dir that landed on the new hostname too,
+  # and the summary calls the capsule total a subset of this one: counted
+  # here, so a run whose only work was the recovery pass cannot print "0
+  # moved" over the capsule it just un-parked.
+  _TENANT_DIRS_N=$((_N + _UNPARKED_N))
+  if [ "${_N}" -eq 0 ] && [ "${_UNPARKED_N}" -eq 0 ]; then
+    _info "  no host-derived tenant site dirs found — nothing to move"
+  elif [ "${_N}" -eq 0 ] && [ "${_DRY_RUN}" = "YES" ]; then
+    _info "  no host-derived tenant site dirs left to move beside the ${_UNPARKED_N} that would be reinstated above"
+  elif [ "${_N}" -eq 0 ]; then
+    _info "  no host-derived tenant site dirs left to move beside the ${_UNPARKED_N} reinstated above"
+  elif [ "${_DRY_RUN}" = "YES" ]; then
+    _info "  ${_N} tenant site dir(s) would move onto ${_NEW_HOST}"
+  else
+    _info "  ${_N} tenant site dir(s) moved onto ${_NEW_HOST}"
+  fi
+
+  _converge_renamed_site_surfaces
+}
+
 _assert_site_dirs_converged() {
   # Fail closed BEFORE the queue runs. §7 turns any unclaimed sites/<dir>
   # into a new site node, so one stranded old-hostname dir is one duplicate
@@ -2319,28 +2319,6 @@ _rewrite_fpm_pin_control() {
 
 ###-------------§3 REWRITE DRUSH FILES---###
 
-_rewrite_drush_files() {
-  _info "§3 Rewriting Drush alias files in ${_DRUSH_DIR} ..."
-
-  # .drush is the account's: its files are listed, read and rewritten inside
-  # the real directory (owner and mode kept, never through a link or into a
-  # FIFO), and a name outside the hostname/path charset never reaches the
-  # eval in _maybe_run.
-  local _N
-  while IFS= read -r _N; do
-    [ -n "${_N}" ] || continue
-    _safe_name "${_N}" "alias file" || continue
-    _text_needs_rename "$(_in_real_dir "${_DRUSH_DIR}" _read_here "${_N}")" \
-      || continue
-    _info "  sed in-place: ${_DRUSH_DIR}/${_N}"
-    _maybe_run _in_real_dir \'"${_DRUSH_DIR}"\' _sed_here \'"${_N}"\' \
-      "${_SED_RENAME_GUARD}s/${_OLD_HOST}/${_NEW_HOST}/g" \
-      || _alrt "  ${_N} NOT rewritten -- it still names ${_OLD_HOST}"
-  done < <(_in_real_dir "${_DRUSH_DIR}" find . -maxdepth 1 -type f \
-    -name '*.drushrc.php' -printf '%f\n' 2>/dev/null | sort)
-  _rewrite_site_yml_files
-}
-
 # The yml aliases Drush 9+ reads are converted copies of the drushrc aliases
 # (site:alias-convert into <root>/.drush/sites, and for an Octopus account
 # the limited-shell user's copy in /home/<acct>.ftp/.drush/sites). The
@@ -2382,68 +2360,29 @@ _rewrite_site_yml_files() {
   done
 }
 
-###-------------§4 RENAME + REWRITE VHOSTS-###
+_rewrite_drush_files() {
+  _info "§3 Rewriting Drush alias files in ${_DRUSH_DIR} ..."
 
-_rewrite_vhosts() {
-  if [ ! -d "${_VHOSTD}" ]; then
-    _alrt "vhost.d dir not found: ${_VHOSTD} — skipping vhost step"
-    return
-  fi
-
-  _info "§4 Rewriting vhost files in ${_VHOSTD} ..."
-
-  # vhost.d is the account's (config/ is oN's): its files are listed, read,
-  # rewritten (owner and mode kept) and renamed as names inside the real
-  # directory, never through a link or into a FIFO put there, and -T keeps a
-  # rename from landing inside a directory a link at the new name points to.
-  if ! _in_real_dir "${_VHOSTD}" true; then
-    _alrt "${_VHOSTD} is not a real directory — skipping vhost step"
-    return
-  fi
-  local _N _NB
+  # .drush is the account's: its files are listed, read and rewritten inside
+  # the real directory (owner and mode kept, never through a link or into a
+  # FIFO), and a name outside the hostname/path charset never reaches the
+  # eval in _maybe_run.
+  local _N
   while IFS= read -r _N; do
     [ -n "${_N}" ] || continue
-    # the account names these files: a name outside the hostname/path
-    # charset never reaches the eval in _maybe_run
-    _safe_name "${_N}" "vhost file" || continue
-
-    # Rewrite content regardless of filename. A certificate line names a
-    # certificate (its record's name, or hosting_le's directory), not the
-    # site, and the rename moves no certificate: rewritten, it named a pair
-    # that did not exist yet and nginx -t failed for the whole box until the
-    # site's verify. It keeps the pair it served; §5 renames the site's own
-    # record, and its first verify moves it to the new name's certificate.
-    if _text_needs_rename "$(_in_real_dir "${_VHOSTD}" _read_here "${_N}")"; then
-      _info "  sed in-place content: ${_VHOSTD}/${_N}"
-      _maybe_run _in_real_dir \'"${_VHOSTD}"\' _sed_here \'"${_N}"\' \
-        \'"/^[[:space:]]*ssl_\(trusted_\)\{0,1\}certificate\(_key\)\{0,1\}[[:space:]]/!{${_SED_RENAME_GUARD}s/${_OLD_HOST}/${_NEW_HOST}/g;}"\' \
-        || _alrt "  ${_N} NOT rewritten -- it still names ${_OLD_HOST}"
-    fi
-
-    # Rename the file if old hostname appears in the filename — unless the
-    # name already carries NEW (NEW-contains-OLD re-run would double it)
-    if [[ "${_N}" == *"${_OLD_HOST}"* ]] \
-      && ! _renamed_already "${_N}"; then
-      _NB="${_N//${_OLD_HOST}/${_NEW_HOST}}"
-      _info "  rename: ${_N} -> ${_NB}"
-      _maybe_run _in_real_dir \'"${_VHOSTD}"\' mv -f -T -- \
-        \'"./${_N}"\' \'"./${_NB}"\' \
-        || _alrt "  rename FAILED -- ${_N} keeps its name"
-    fi
-  done < <(_in_real_dir "${_VHOSTD}" find . -maxdepth 1 -type f \
-    -printf '%f\n' 2>/dev/null | sort)
-
-  # The panel's SSL proxy include lives under the MASTER root's pre.d, keyed
-  # on the panel's old name. The account pass regenerates it for the new name
-  # once the new-name certificate exists, but nothing removed the old one: it
-  # kept naming a certificate under the old-name LE dir, and once that tree
-  # went (a purge, an LE cleanup) nginx failed its configtest box-wide. Park
-  # it with root's other backups of this run (never in the account's tree);
-  # never rewrite it in place, the new-name certificate is not there yet.
-  case "${_AEGIR_ROOT}" in
-    /data/disk/*) _park_old_panel_proxies ;;
-  esac
+    _safe_name "${_N}" "alias file" || continue
+    _text_needs_rename "$(_in_real_dir "${_DRUSH_DIR}" _read_here "${_N}")" \
+      || continue
+    _info "  sed in-place: ${_DRUSH_DIR}/${_N}"
+    _maybe_run _in_real_dir \'"${_DRUSH_DIR}"\' _sed_here \'"${_N}"\' \
+      "${_SED_RENAME_GUARD}s/${_OLD_HOST}/${_NEW_HOST}/g" \
+      || _alrt "  ${_N} NOT rewritten -- it still names ${_OLD_HOST}"
+  done < <(_in_real_dir "${_DRUSH_DIR}" find . -maxdepth 1 -type f \
+    -name '*.drushrc.php' -printf '%f\n' 2>/dev/null | sort)
+  _rewrite_site_yml_files
 }
+
+###-------------§4 RENAME + REWRITE VHOSTS-###
 
 # The park of §4. A box renamed before by a copy of this tool without it (a
 # restored box renamed before its tools were fetched, a box renamed long
@@ -2504,6 +2443,67 @@ _park_old_panel_proxies() {
       fi
     done
   done
+}
+
+_rewrite_vhosts() {
+  if [ ! -d "${_VHOSTD}" ]; then
+    _alrt "vhost.d dir not found: ${_VHOSTD} — skipping vhost step"
+    return
+  fi
+
+  _info "§4 Rewriting vhost files in ${_VHOSTD} ..."
+
+  # vhost.d is the account's (config/ is oN's): its files are listed, read,
+  # rewritten (owner and mode kept) and renamed as names inside the real
+  # directory, never through a link or into a FIFO put there, and -T keeps a
+  # rename from landing inside a directory a link at the new name points to.
+  if ! _in_real_dir "${_VHOSTD}" true; then
+    _alrt "${_VHOSTD} is not a real directory — skipping vhost step"
+    return
+  fi
+  local _N _NB
+  while IFS= read -r _N; do
+    [ -n "${_N}" ] || continue
+    # the account names these files: a name outside the hostname/path
+    # charset never reaches the eval in _maybe_run
+    _safe_name "${_N}" "vhost file" || continue
+
+    # Rewrite content regardless of filename. A certificate line names a
+    # certificate (its record's name, or hosting_le's directory), not the
+    # site, and the rename moves no certificate: rewritten, it named a pair
+    # that did not exist yet and nginx -t failed for the whole box until the
+    # site's verify. It keeps the pair it served; §5 renames the site's own
+    # record, and its first verify moves it to the new name's certificate.
+    if _text_needs_rename "$(_in_real_dir "${_VHOSTD}" _read_here "${_N}")"; then
+      _info "  sed in-place content: ${_VHOSTD}/${_N}"
+      _maybe_run _in_real_dir \'"${_VHOSTD}"\' _sed_here \'"${_N}"\' \
+        \'"/^[[:space:]]*ssl_\(trusted_\)\{0,1\}certificate\(_key\)\{0,1\}[[:space:]]/!{${_SED_RENAME_GUARD}s/${_OLD_HOST}/${_NEW_HOST}/g;}"\' \
+        || _alrt "  ${_N} NOT rewritten -- it still names ${_OLD_HOST}"
+    fi
+
+    # Rename the file if old hostname appears in the filename — unless the
+    # name already carries NEW (NEW-contains-OLD re-run would double it)
+    if [[ "${_N}" == *"${_OLD_HOST}"* ]] \
+      && ! _renamed_already "${_N}"; then
+      _NB="${_N//${_OLD_HOST}/${_NEW_HOST}}"
+      _info "  rename: ${_N} -> ${_NB}"
+      _maybe_run _in_real_dir \'"${_VHOSTD}"\' mv -f -T -- \
+        \'"./${_N}"\' \'"./${_NB}"\' \
+        || _alrt "  rename FAILED -- ${_N} keeps its name"
+    fi
+  done < <(_in_real_dir "${_VHOSTD}" find . -maxdepth 1 -type f \
+    -printf '%f\n' 2>/dev/null | sort)
+
+  # The panel's SSL proxy include lives under the MASTER root's pre.d, keyed
+  # on the panel's old name. The account pass regenerates it for the new name
+  # once the new-name certificate exists, but nothing removed the old one: it
+  # kept naming a certificate under the old-name LE dir, and once that tree
+  # went (a purge, an LE cleanup) nginx failed its configtest box-wide. Park
+  # it with root's other backups of this run (never in the account's tree);
+  # never rewrite it in place, the new-name certificate is not there yet.
+  case "${_AEGIR_ROOT}" in
+    /data/disk/*) _park_old_panel_proxies ;;
+  esac
 }
 
 ###-------------§4b OCTOPUS CONTROL CNF--###
@@ -2592,6 +2592,18 @@ _rewrite_log_stamps() {
 }
 
 ###-------------§4c PLATFORM SITES.PHP---###
+
+_sql() {
+  # Batch/silent query against the Aegir DB; -N drops headers so callers can
+  # capture single values.
+  mysql --defaults-file=/root/.my.cnf -N -B "${_AEGIR_DB}" -e "$1"
+}
+
+_sql_table_exists() {
+  # Hostmaster on Backdrop lacks some D7 tables (e.g. variable), so every §5
+  # step is existence-gated: one schema must never break the other.
+  [ -n "$(_sql "SHOW TABLES LIKE '$1'")" ]
+}
 
 _sites_php_candidates() {
   # Registered platforms first: hosting_platform.publish_path is
@@ -2725,6 +2737,11 @@ _rewrite_sites_php() {
 
 ###-------------§5 DATABASE RENAME-------###
 
+# One batch query $2 against the database $1, root's defaults-file.
+_sql_on() {
+  mysql --defaults-file=/root/.my.cnf -N -B "$1" -e "$2" 2> /dev/null
+}
+
 # 0 when the database $1 is a live hostmaster DB of this root: it has a
 # server_master context and platform publish paths under the root -- or, on
 # the account axis, under the old account's root, which the imported rows
@@ -2752,11 +2769,6 @@ _hm_db_owned() {
   _live=$(_read_file "${_sp}/drushrc.php" | grep "options\['db_name'\]" \
     | head -1 | sed "s/.*=//; s/[' ,;]//g" | tr -d ' ')
   [ -n "${_live}" ] && [ "${_live}" != "$1" ]
-}
-
-# One batch query $2 against the database $1, root's defaults-file.
-_sql_on() {
-  mysql --defaults-file=/root/.my.cnf -N -B "$1" -e "$2" 2> /dev/null
 }
 
 # The db_name a hostmaster drushrc.php of this root carries, read inside its
@@ -2868,18 +2880,6 @@ _detect_aegir_db() {
   fi
 
   _info "Detected Aegir database: ${_AEGIR_DB}"
-}
-
-_sql() {
-  # Batch/silent query against the Aegir DB; -N drops headers so callers can
-  # capture single values.
-  mysql --defaults-file=/root/.my.cnf -N -B "${_AEGIR_DB}" -e "$1"
-}
-
-_sql_table_exists() {
-  # Hostmaster on Backdrop lacks some D7 tables (e.g. variable), so every §5
-  # step is existence-gated: one schema must never break the other.
-  [ -n "$(_sql "SHOW TABLES LIKE '$1'")" ]
 }
 
 _sql_replace_col() {
@@ -3197,6 +3197,12 @@ _rename_site_certs() {
   return 0
 }
 
+_run_as_aegir() {
+  # Run a drush command as the Aegir user derived from the aegir root path.
+  # Uses login shell (-) so .bash_profile is sourced and drush PATH is set.
+  su -s /bin/bash - "${_AEGIR_USER}" -c "$1"
+}
+
 _rename_in_database() {
   _info "§5 Renaming hostname in Aegir database (${_AEGIR_DB}) ..."
 
@@ -3499,57 +3505,6 @@ _sql_replace_path_col() {
   fi
 }
 
-_rename_account_in_database() {
-  [ "${_ACCT_AXIS}" = "YES" ] || return 0
-  # Same derivation as the on-disk pass — repeated so neither §5b half
-  # depends on the other having run first.
-  _OLD_FRONT="${_OLD_ACCT}.${_NEW_HOST}"
-  _NEW_FRONT="${_NEW_ACCT}.${_NEW_HOST}"
-  _info "§5b Renaming account axis in Aegir database (${_AEGIR_DB}) ..."
-
-  if [ "${_DRY_RUN}" = "YES" ]; then
-    _info "(dry-run) Would move panel identity ${_OLD_FRONT} -> ${_NEW_FRONT} (nid-keyed)"
-    _info "(dry-run) Would re-path /data/disk/${_OLD_ACCT} -> /data/disk/${_NEW_ACCT} in platform/git/backup/package rows"
-    _info "(dry-run) Would repair path/front values in serialized variables via php/mysqli"
-    return
-  fi
-
-  # Panel identity, nid-keyed (the panel's hosting_context is named
-  # 'hostmaster' — account-free — so only the node title carries the front).
-  local _HM_NID _FG=""
-  _HM_NID=$(_sql "SELECT nid FROM hosting_context WHERE name = 'hostmaster'")
-  _HM_NID=${_HM_NID//[^0-9]/}
-  if [ -z "${_HM_NID}" ]; then
-    _die "hosting_context misses hostmaster — ${_AEGIR_DB} is not an Aegir hostmaster DB?"
-  fi
-  case "${_NEW_FRONT}" in
-    *"${_OLD_FRONT}"*) _FG=" AND title NOT LIKE '%${_NEW_FRONT}%'" ;;
-  esac
-  _sql "UPDATE node SET title = REPLACE(title, '${_OLD_FRONT}', '${_NEW_FRONT}') WHERE nid = ${_HM_NID}${_FG}"
-  _sql "UPDATE node_revision SET title = REPLACE(title, '${_OLD_FRONT}', '${_NEW_FRONT}') WHERE nid = ${_HM_NID}${_FG}"
-  _info "  Panel identity rows updated (hostmaster nid ${_HM_NID})"
-
-  # Start-anchored path rows the account owns (task history stays, matching
-  # the host axis policy — it shows up in the residual report instead).
-  _sql_replace_path_col hosting_platform publish_path
-  _sql_replace_path_col hosting_git repo_path
-  _sql_replace_path_col hosting_site_backups filename
-  _sql_replace_path_col hosting_package_instance filename
-
-  _repair_account_variables
-
-  _run_as_aegir "drush8 @hostmaster cc all" > /dev/null 2>&1 \
-    || _alrt "drush cc all returned non-zero after the account-axis rename"
-
-  # Residual report, account axis: trailing-slash pattern so converged
-  # prefix-extension renames (o1 -> o11) do not count forever.
-  local _RES_PATH="n/a"
-  if _sql_table_exists variable; then
-    _RES_PATH=$(_sql "SELECT COUNT(*) FROM variable WHERE value LIKE '%/data/disk/${_OLD_ACCT}/%'")
-  fi
-  _info "  Residual '/data/disk/${_OLD_ACCT}/' refs in variable: ${_RES_PATH}"
-}
-
 _repair_account_variables() {
   # Same bootstrap-free serialize-safe machinery as the host axis, with the
   # account-axis pairs and their anchors: the path pair is a free substring
@@ -3707,6 +3662,57 @@ PHPEOF
     _alrt "full output kept: ${_VOUT}; script kept: ${_PHP}"
   fi
   return 0
+}
+
+_rename_account_in_database() {
+  [ "${_ACCT_AXIS}" = "YES" ] || return 0
+  # Same derivation as the on-disk pass — repeated so neither §5b half
+  # depends on the other having run first.
+  _OLD_FRONT="${_OLD_ACCT}.${_NEW_HOST}"
+  _NEW_FRONT="${_NEW_ACCT}.${_NEW_HOST}"
+  _info "§5b Renaming account axis in Aegir database (${_AEGIR_DB}) ..."
+
+  if [ "${_DRY_RUN}" = "YES" ]; then
+    _info "(dry-run) Would move panel identity ${_OLD_FRONT} -> ${_NEW_FRONT} (nid-keyed)"
+    _info "(dry-run) Would re-path /data/disk/${_OLD_ACCT} -> /data/disk/${_NEW_ACCT} in platform/git/backup/package rows"
+    _info "(dry-run) Would repair path/front values in serialized variables via php/mysqli"
+    return
+  fi
+
+  # Panel identity, nid-keyed (the panel's hosting_context is named
+  # 'hostmaster' — account-free — so only the node title carries the front).
+  local _HM_NID _FG=""
+  _HM_NID=$(_sql "SELECT nid FROM hosting_context WHERE name = 'hostmaster'")
+  _HM_NID=${_HM_NID//[^0-9]/}
+  if [ -z "${_HM_NID}" ]; then
+    _die "hosting_context misses hostmaster — ${_AEGIR_DB} is not an Aegir hostmaster DB?"
+  fi
+  case "${_NEW_FRONT}" in
+    *"${_OLD_FRONT}"*) _FG=" AND title NOT LIKE '%${_NEW_FRONT}%'" ;;
+  esac
+  _sql "UPDATE node SET title = REPLACE(title, '${_OLD_FRONT}', '${_NEW_FRONT}') WHERE nid = ${_HM_NID}${_FG}"
+  _sql "UPDATE node_revision SET title = REPLACE(title, '${_OLD_FRONT}', '${_NEW_FRONT}') WHERE nid = ${_HM_NID}${_FG}"
+  _info "  Panel identity rows updated (hostmaster nid ${_HM_NID})"
+
+  # Start-anchored path rows the account owns (task history stays, matching
+  # the host axis policy — it shows up in the residual report instead).
+  _sql_replace_path_col hosting_platform publish_path
+  _sql_replace_path_col hosting_git repo_path
+  _sql_replace_path_col hosting_site_backups filename
+  _sql_replace_path_col hosting_package_instance filename
+
+  _repair_account_variables
+
+  _run_as_aegir "drush8 @hostmaster cc all" > /dev/null 2>&1 \
+    || _alrt "drush cc all returned non-zero after the account-axis rename"
+
+  # Residual report, account axis: trailing-slash pattern so converged
+  # prefix-extension renames (o1 -> o11) do not count forever.
+  local _RES_PATH="n/a"
+  if _sql_table_exists variable; then
+    _RES_PATH=$(_sql "SELECT COUNT(*) FROM variable WHERE value LIKE '%/data/disk/${_OLD_ACCT}/%'")
+  fi
+  _info "  Residual '/data/disk/${_OLD_ACCT}/' refs in variable: ${_RES_PATH}"
 }
 
 ###-------------§6 RELOAD NGINX----------###
@@ -3877,12 +3883,6 @@ _reload_nginx() {
 }
 
 ###-------------§7 AEGIR TASK QUEUE------###
-
-_run_as_aegir() {
-  # Run a drush command as the Aegir user derived from the aegir root path.
-  # Uses login shell (-) so .bash_profile is sourced and drush PATH is set.
-  su -s /bin/bash - "${_AEGIR_USER}" -c "$1"
-}
 
 _queue_renamed_site_verifies() {
   # Restored from the old xboa procedure, which scheduled `hosting-task

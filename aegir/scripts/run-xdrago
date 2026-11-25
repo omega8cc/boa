@@ -282,6 +282,52 @@ _acct_ctrl_own() {
   echo "${_r:-static/ is not a real directory}"
   return 1
 }
+# The tick slots of the pool behind socket $1, read from its pool file
+# (root's own, /opt/phpNN/etc/pool.d/<pool>.conf): one on a pool of fewer
+# than eight children, two on a larger one.
+_grav_tick_slots() {
+  local _pool="${1#/run/}" _f _n=""
+  _pool="${_pool%.fpm.socket}"
+  for _f in /opt/php*/etc/pool.d/"${_pool}".conf; do
+    [[ -f "${_f}" ]] && [[ ! -L "${_f}" ]] || continue
+    _n="$(sed -n 's/^pm\.max_children = \([0-9]*\)$/\1/p' "${_f}" 2> /dev/null | tail -n 1)"
+    break
+  done
+  if [[ "${_n}" =~ ^[0-9]+$ ]] && [[ "${_n}" -ge 8 ]]; then
+    echo 2
+  else
+    echo 1
+  fi
+}
+
+# Take one of the tick slots of the pool behind socket $1 on fd 6, held until
+# the tick's subshell ends. All taken: try again every two seconds for up to
+# 110, then leave this store to the next minute. Sets _GRAV_SLOT_WAITED to
+# YES when it had to wait.
+_grav_tick_slot() {
+  local _pool="${1#/run/}" _max _i _t=0 _sl
+  _pool="${_pool%.fpm.socket}"
+  _GRAV_SLOT_WAITED=NO
+  _max="$(_grav_tick_slots "${1}")"
+  for (( _i = 1; _i <= _max; _i++ )); do
+    ( umask 077; : >> "${_XDRAGO_LOCKS}/grav-slot-${_pool}-${_i}.lock" ) 2> /dev/null || return 1
+  done
+  while [[ "${_t}" -lt 110 ]]; do
+    for (( _i = 1; _i <= _max; _i++ )); do
+      _sl="${_XDRAGO_LOCKS}/grav-slot-${_pool}-${_i}.lock"
+      exec 6>"${_sl}"
+      if flock -n 6; then
+        return 0
+      fi
+      exec 6>&-
+    done
+    _GRAV_SLOT_WAITED=YES
+    sleep 2
+    _t=$(( _t + 2 ))
+  done
+  return 1
+}
+
 # One store's tick: $1 the capsule, $2 its domain. Runs in a subshell of its
 # own, so the environment it clears and the exports below reach nothing else.
 _grav_store_tick() {
@@ -342,52 +388,6 @@ _grav_store_tick() {
   export BOA_GRAV_TICK_SENT
   /usr/bin/timeout 200 /usr/bin/cgi-fcgi -bind -connect "${_GRAV_SOCK}" \
     > /dev/null 2>&1 < /dev/null 6>&- 7>&-
-}
-
-# The tick slots of the pool behind socket $1, read from its pool file
-# (root's own, /opt/phpNN/etc/pool.d/<pool>.conf): one on a pool of fewer
-# than eight children, two on a larger one.
-_grav_tick_slots() {
-  local _pool="${1#/run/}" _f _n=""
-  _pool="${_pool%.fpm.socket}"
-  for _f in /opt/php*/etc/pool.d/"${_pool}".conf; do
-    [[ -f "${_f}" ]] && [[ ! -L "${_f}" ]] || continue
-    _n="$(sed -n 's/^pm\.max_children = \([0-9]*\)$/\1/p' "${_f}" 2> /dev/null | tail -n 1)"
-    break
-  done
-  if [[ "${_n}" =~ ^[0-9]+$ ]] && [[ "${_n}" -ge 8 ]]; then
-    echo 2
-  else
-    echo 1
-  fi
-}
-
-# Take one of the tick slots of the pool behind socket $1 on fd 6, held until
-# the tick's subshell ends. All taken: try again every two seconds for up to
-# 110, then leave this store to the next minute. Sets _GRAV_SLOT_WAITED to
-# YES when it had to wait.
-_grav_tick_slot() {
-  local _pool="${1#/run/}" _max _i _t=0 _sl
-  _pool="${_pool%.fpm.socket}"
-  _GRAV_SLOT_WAITED=NO
-  _max="$(_grav_tick_slots "${1}")"
-  for (( _i = 1; _i <= _max; _i++ )); do
-    ( umask 077; : >> "${_XDRAGO_LOCKS}/grav-slot-${_pool}-${_i}.lock" ) 2> /dev/null || return 1
-  done
-  while [[ "${_t}" -lt 110 ]]; do
-    for (( _i = 1; _i <= _max; _i++ )); do
-      _sl="${_XDRAGO_LOCKS}/grav-slot-${_pool}-${_i}.lock"
-      exec 6>"${_sl}"
-      if flock -n 6; then
-        return 0
-      fi
-      exec 6>&-
-    done
-    _GRAV_SLOT_WAITED=YES
-    sleep 2
-    _t=$(( _t + 2 ))
-  done
-  return 1
 }
 
 # The enabled sites of this instance's aliases, site_path TAB uri, one per

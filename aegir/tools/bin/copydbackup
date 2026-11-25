@@ -326,38 +326,6 @@ binmode(STDOUT);
 print $d;
 exit 0;'
 
-# ./$1 of the current (pinned) directory, whole when it is at most $3 bytes,
-# only as the account $2's own (_ACCT_OWN_READ_PL); nothing otherwise.
-_dbk_own_read_here() {
-  local _o
-  _o=$(_acct_walk_uids "${2}") || { _dbk_read_here "${1}" "${3}"; return; }
-  perl -e "${_ACCT_OWN_READ_PL}" r "${_o}" "${3}" "${1}" 2> /dev/null
-}
-
-# What ./$1 of the current (pinned) directory is: "foreign" when it or this
-# directory is not the account $2's own (_ACCT_OWN_READ_PL), "odd" for a
-# link or anything but a regular file, "set" for a non-empty regular file,
-# "empty" for an empty one, "none" when absent.
-_dbk_cycle_state_here() {
-  local _o _rc=0
-  # an account no passwd entry names has nothing to judge it by
-  if _o=$(_acct_walk_uids "${2}"); then
-    perl -e "${_ACCT_OWN_READ_PL}" e "${_o}" 0 "${1}" 2> /dev/null
-    _rc=$?
-  fi
-  if [ "${_rc}" = "1" ]; then
-    echo foreign
-  elif [ -L "./${1}" ] || { [ -e "./${1}" ] && [ ! -f "./${1}" ]; }; then
-    echo odd
-  elif [ -s "./${1}" ]; then
-    echo set
-  elif [ -e "./${1}" ]; then
-    echo empty
-  else
-    echo none
-  fi
-}
-
 # The uids root's walks over the account $1's trees act on, comma-separated:
 # root's own (0, what root wrote there for the account) and those of every
 # identity of the account as passwd names them: oN and oN.<name>, that is its
@@ -392,6 +360,38 @@ _acct_walk_uids() {
   done 2> /dev/null < "/data/conf/acct-uids/${_a}.gone"
   echo "${_x}"
 }
+# ./$1 of the current (pinned) directory, whole when it is at most $3 bytes,
+# only as the account $2's own (_ACCT_OWN_READ_PL); nothing otherwise.
+_dbk_own_read_here() {
+  local _o
+  _o=$(_acct_walk_uids "${2}") || { _dbk_read_here "${1}" "${3}"; return; }
+  perl -e "${_ACCT_OWN_READ_PL}" r "${_o}" "${3}" "${1}" 2> /dev/null
+}
+
+# What ./$1 of the current (pinned) directory is: "foreign" when it or this
+# directory is not the account $2's own (_ACCT_OWN_READ_PL), "odd" for a
+# link or anything but a regular file, "set" for a non-empty regular file,
+# "empty" for an empty one, "none" when absent.
+_dbk_cycle_state_here() {
+  local _o _rc=0
+  # an account no passwd entry names has nothing to judge it by
+  if _o=$(_acct_walk_uids "${2}"); then
+    perl -e "${_ACCT_OWN_READ_PL}" e "${_o}" 0 "${1}" 2> /dev/null
+    _rc=$?
+  fi
+  if [ "${_rc}" = "1" ]; then
+    echo foreign
+  elif [ -L "./${1}" ] || { [ -e "./${1}" ] && [ ! -f "./${1}" ]; }; then
+    echo odd
+  elif [ -s "./${1}" ]; then
+    echo set
+  elif [ -e "./${1}" ]; then
+    echo empty
+  else
+    echo none
+  fi
+}
+
 # Root's removals in an account's trees, run inside the directory they act in:
 # only what the uids given second own (_acct_walk_uids), or a uid no passwd
 # entry names (sub own), is removed or unlocked, and nothing below a directory

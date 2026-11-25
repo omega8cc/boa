@@ -224,6 +224,13 @@ _alrt() {
   printf 'ALERT: %s\n' "$*" >&2
 }
 
+_log() {
+  local _ts
+  _ts=$(date '+%Y-%m-%d %H:%M:%S')
+  [ -d /var/log/boa ] || mkdir -p /var/log/boa
+  printf '%s instgrp %s\n' "${_ts}" "$*" >> "${_LOG}" 2> /dev/null
+}
+
 # Process-wide failure: usage, root, a missing box-wide group.
 _die() {
   printf 'ERROR: %s\n' "$*" >&2
@@ -237,13 +244,6 @@ _fail() {
   printf 'ERROR: %s\n' "$*" >&2
   _log "FAIL ${_ACCT:-?}: $*"
   return 1
-}
-
-_log() {
-  local _ts
-  _ts=$(date '+%Y-%m-%d %H:%M:%S')
-  [ -d /var/log/boa ] || mkdir -p /var/log/boa
-  printf '%s instgrp %s\n' "${_ts}" "$*" >> "${_LOG}" 2> /dev/null
 }
 
 _usage() {
@@ -568,26 +568,6 @@ _web_group_phase_b() {
   return 0
 }
 
-# The account's own web group, as the claim passes below keep it: its gid when
-# the group exists and only the account's identities hold it, nothing
-# otherwise. $1 = one of the account's roots (/data/disk/<oN>, /home/<oN>.*,
-# its store on attached storage); a root under neither names no account.
-# Numeric, and emitted only when it resolves: find refuses an unknown group
-# name, and every claim here discards find's errors. With $2, the account,
-# a second line while a free of its name is unfinished: the held gid, whose
-# paths are that free's walk to finish (_wg_free_held), never the account
-# group's, where its pools would lose them. One gid per line.
-_wg_keep() {
-  local _g
-  _g=$(_web_group_state "${1}" | cut -d' ' -f2)
-  case "${_g}" in
-    ""|*[!0-9]*) ;;
-    *) printf '%s\n' "${_g}" ;;
-  esac
-  [ -n "${2:-}" ] && _wg_free_held "${2}"
-  return 0
-}
-
 _grant_sup() {
   # Explicit supplementary membership, idempotent; verified by re-reading the
   # group database, never by id -nG.
@@ -599,6 +579,28 @@ _grant_sup() {
 
 _gid_of() {
   getent group "$1" 2> /dev/null | cut -d: -f3
+}
+
+# Put an identity's passwd home back, retrying for up to _HOME_RETRY seconds:
+# usermod -d is refused (exit 8, nothing changed) while any process of the
+# identity is running in this root, and a process that began between the two
+# usermod calls of a move is usually gone within seconds. True once the home
+# field reads as wanted.
+_HOME_RETRY=10
+_restore_home() {
+  local _u="$1" _want="$2" _t=0
+  usermod -d "${_want}" "${_u}" > /dev/null 2>&1
+  while [ "$(getent passwd "${_u}" 2> /dev/null | cut -d: -f6)" != "${_want}" ] \
+    && [ "${_t}" -lt "${_HOME_RETRY}" ]; do
+    sleep 1
+    _t=$((_t + 1))
+    usermod -d "${_want}" "${_u}" > /dev/null 2>&1
+  done
+  [ "$(getent passwd "${_u}" 2> /dev/null | cut -d: -f6)" = "${_want}" ]
+}
+
+_primary_of() {
+  id -gn "$1" 2> /dev/null
 }
 
 # Change an identity's primary group WITHOUT usermod's own walk: shadow's
@@ -652,24 +654,6 @@ _set_primary() {
   return 0
 }
 
-# Put an identity's passwd home back, retrying for up to _HOME_RETRY seconds:
-# usermod -d is refused (exit 8, nothing changed) while any process of the
-# identity is running in this root, and a process that began between the two
-# usermod calls of a move is usually gone within seconds. True once the home
-# field reads as wanted.
-_HOME_RETRY=10
-_restore_home() {
-  local _u="$1" _want="$2" _t=0
-  usermod -d "${_want}" "${_u}" > /dev/null 2>&1
-  while [ "$(getent passwd "${_u}" 2> /dev/null | cut -d: -f6)" != "${_want}" ] \
-    && [ "${_t}" -lt "${_HOME_RETRY}" ]; do
-    sleep 1
-    _t=$((_t + 1))
-    usermod -d "${_want}" "${_u}" > /dev/null 2>&1
-  done
-  [ "$(getent passwd "${_u}" 2> /dev/null | cut -d: -f6)" = "${_want}" ]
-}
-
 # Any identity whose passwd home is one of the staging directories (this
 # tool's, or the limited-shell worker's) was caught between the two usermod
 # calls: put the recorded home back, or the one the name implies (an account
@@ -704,10 +688,6 @@ _repair_homes() {
       fi
     done
   done
-}
-
-_primary_of() {
-  id -gn "$1" 2> /dev/null
 }
 
 _valid_account() {
@@ -1272,60 +1252,6 @@ _grp_changed_expr() {
 # $3 = account, then roots.
 _GRP_REOWN_PL='use Fcntl; my ($g, $ok, $from, $w, $x, @f) = @ARGV; my %o = map { $_ => 1 } grep { length } split(/,/, $ok); my $rc = 0; for my $f (@f) { my @l = lstat($f); next unless @l && (-d _ || -f _ || (-p _ && $o{$l[4]})); sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); if (@s && ($from ne "" ? $s[5] == $from : ($s[5] != $g && $s[5] != $w && $s[5] != $x && $s[5] != 0)) && (-d _ || (-f _ && $s[3] == 1) || ((-f _ || -p _) && $o{$s[4]}))) { chown(-1, $g, $h) or $rc = 1; } close($h); } exit $rc'
 _GRP_IMMUTABLE_PL='use Fcntl; my ($g, $ok, $w, $x, @f) = @ARGV; my %o = map { $_ => 1 } grep { length } split(/,/, $ok); my $rc = 0; for my $f (@f) { my @l = lstat($f); next unless @l && (-d _ || -f _); sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); if (@s && $s[5] != $g && $s[5] != $w && $s[5] != $x && $s[5] != 0 && (-d _ || (-f _ && ($s[3] == 1 || $o{$s[4]})))) { my $b = pack("L", 0); if (ioctl($h, 0x80086601, $b)) { my $fl = unpack("L", $b); if ($fl & 0x10) { if (ioctl($h, 0x40086602, pack("L", $fl & ~0x10))) { chown(-1, $g, $h) or $rc = 1; ioctl($h, 0x40086602, pack("L", $fl)) or $rc = 1; } else { $rc = 1 } } } else { $rc = 1 } } close($h); } exit $rc'
-_grp_walk() {
-  local _from="$1" _to="$2" _a="$3" _toGid _wGid _uids _r _keep _wg _wgX _g
-  shift 3
-  _toGid=$(_gid_of "${_to}")
-  [[ "${_toGid}" =~ ^[0-9]+$ ]] || return 1
-  _wGid=$(_gid_of "${_WEBG}")
-  [[ "${_wGid}" =~ ^[0-9]+$ ]] || _wGid=-1
-  _uids=$(_grp_owner_uids "${_to}" "${_a}")
-  _keep=YES
-  _chgrp_keeps_dir_setgid || _keep=NO
-  for _r in "$@"; do
-    [ -d "${_r}" ] || continue
-    if [ -n "${_from}" ]; then
-      if [ "${_keep}" = "NO" ]; then
-        # chmod has no no-follow form: the bit is set on '.' of each directory
-        # entered from its parent, only when it is the directory find met
-        # there, never on the target of a link swapped in after the test.
-        find -P "${_r}" -type d -gid "${_from}" -perm -2000 \
-          -execdir sh -c 'p=$(/bin/pwd -P); for d; do ( cd -P -- "$d" 2> /dev/null && [ "$(/bin/pwd -P)" = "${p%/}/${d#./}" ] && chgrp -h "$0" . 2> /dev/null && chmod g+s . 2> /dev/null ); done' "${_to}" {} + 2> /dev/null
-      fi
-      env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_r}" -gid "${_from}" \
-        -execdir perl -e "${_GRP_REOWN_PL}" -- "${_toGid}" "${_uids}" "${_from}" -1 -1 {} + > /dev/null 2>&1
-    fi
-    # Everything under the roots is this account's tree. A copy from another
-    # box (xoct, xcopy, xmass, a root-run restore of a foreign archive)
-    # carries the source account's numeric gid: no name here (no group at
-    # all), or -- the ordinary case, every box allocates account gids from
-    # the same system range -- the gid of a DIFFERENT named group on this
-    # box, whose identities could then read the copied credential files.
-    # Both take the account's group; only the FPM group, the account's own
-    # web group (its web paths once converted, and the old number while a
-    # free of its name is unfinished: _wg_keep) and root stay.
-    # The limited-shell homes carry chattr +i on a known set of names (the
-    # home itself, .drush, its ini files, .bee, .bazaar -- manage_ltd_users.sh
-    # sets and clears them around its own writes): when a batch left an
-    # entry the walk changes outside the group (the handle step's non-zero
-    # exit), each immutable one is re-grouped with the flag dropped and
-    # restored through the same handle (_GRP_IMMUTABLE_PL, under the walk's
-    # rule: a link, a FIFO and a hard-linked file of any other owner are left
-    # alone). Every name is opened inside the directory find holds, by its
-    # bare name, never through a pathname a tenant can re-point mid-way.
-    _wgX=()
-    _wg=""
-    for _g in $(_wg_keep "${_r}" "${_a}"); do
-      _wgX+=( ! -gid "${_g}" )
-      _wg="${_wg:-${_g}}"
-    done
-    env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_r}" ! -group "${_to}" ! -group "${_WEBG}" ! -group root "${_wgX[@]}" \
-      -execdir sh -c 'g=$0 r=$1 c=$2 u=$3 w=$4 x=$5; shift 5
-        perl -e "$r" -- "$g" "$u" "" "$w" "$x" "$@" && exit 0
-        perl -e "$c" -- "$g" "$u" "$w" "$x" "$@"' "${_toGid}" "${_GRP_REOWN_PL}" "${_GRP_IMMUTABLE_PL}" "${_uids}" "${_wGid}" "${_wg:--1}" {} + 2> /dev/null
-  done
-}
-
 # A probe's find prints R for an entry the walk changes (and quits) and U
 # for one it leaves alone other than a symlink (the rule above the walk);
 # this reads that as "<R seen> <U count>". The U lines cost no second
@@ -1336,46 +1262,6 @@ _grp_walk() {
 _UNWALKED=0
 _tally() {
   awk '$0 == "R" { r = 1 } $0 == "U" { u++ } END { print r + 0, u + 0 }'
-}
-
-# Residue = an entry the walk changes whose group is not the target group,
-# not the FPM group, not the account's own web group and not root. One
-# early-quit traversal; the probe a converted account pays instead of a
-# walk. The rest outside those groups, symlinks aside, is counted into
-# _UNWALKED, complete only when the probe passes.
-# $1 = target group, $2 = account, then roots.
-_grp_residue() {
-  local _to="$1" _a="$2" _r _res _n _chg _wg _wgX
-  shift 2
-  read -ra _chg <<< "$(_grp_changed_expr "$(_grp_owner_uids "${_to}" "${_a}")")"
-  _UNWALKED=0
-  for _r in "$@"; do
-    [ -d "${_r}" ] || continue
-    _wgX=()
-    for _wg in $(_wg_keep "${_r}" "${_a}"); do
-      _wgX+=( ! -gid "${_wg}" )
-    done
-    read -r _res _n < <(find -P "${_r}" ! -group "${_to}" ! -group "${_WEBG}" ! -group root "${_wgX[@]}" \
-      \( "${_chg[@]}" -printf 'R\n' -quit -o ! -type l -printf 'U\n' \) 2> /dev/null | _tally)
-    _UNWALKED=$((_UNWALKED + ${_n:-0}))
-    [[ "${_res}" = "1" ]] && return 0
-  done
-  return 1
-}
-
-# $1 = target group, $2 = account, then roots.
-_grp_residue_list() {
-  local _to="$1" _a="$2" _r _chg _wg _wgX
-  shift 2
-  read -ra _chg <<< "$(_grp_changed_expr "$(_grp_owner_uids "${_to}" "${_a}")")"
-  for _r in "$@"; do
-    [ -d "${_r}" ] || continue
-    _wgX=()
-    for _wg in $(_wg_keep "${_r}" "${_a}"); do
-      _wgX+=( ! -gid "${_wg}" )
-    done
-    find -P "${_r}" "${_chg[@]}" ! -group "${_to}" ! -group "${_WEBG}" ! -group root "${_wgX[@]}" -printf '%G %p\n' 2> /dev/null | head -5
-  done
 }
 
 # Entries the walk to group $2 changes still carrying ONE numeric gid under
@@ -1399,25 +1285,6 @@ _gid_left() {
     [[ "${_res}" = "1" ]] && return 0
   done
   return 1
-}
-
-# For status: the entries the walk leaves alone outside group $1, the FPM
-# group, the account's own web group and root, symlinks aside, as "<count>
-# <up to three example paths>". Informational; no verdict and no return code
-# reads it.
-# $1 = target group, $2 = account, then roots.
-_grp_unwalked() {
-  local _to="$1" _a="$2" _r _chg _wg _wgX
-  shift 2
-  read -ra _chg <<< "$(_grp_changed_expr "$(_grp_owner_uids "${_to}" "${_a}")")"
-  for _r in "$@"; do
-    [ -d "${_r}" ] || continue
-    _wgX=()
-    for _wg in $(_wg_keep "${_r}" "${_a}"); do
-      _wgX+=( ! -gid "${_wg}" )
-    done
-    find -P "${_r}" ! -type l ! "${_chg[@]}" ! -group "${_to}" ! -group "${_WEBG}" ! -group root "${_wgX[@]}" -print0 2> /dev/null
-  done | tr '\n\0' '?\n' | awk 'NR <= 3 { e = e " " $0 } END { print NR + 0 e }'
 }
 
 # One log line for what the last residue probe passed over, when any.
@@ -1556,37 +1423,6 @@ _assert_fpm_apart() {
 # rollback of a failed convert: files first, so no identity ever loses a group
 # its files still carry, then the primary groups, then the memberships.
 _UNDO_STUCK=""
-_undo_account() {
-  local _a="$1" _gid="$2" _roots="$3" _u _subs _ids _stuck=""
-  _subs=$(_acct_subusers "${_a}" 2> /dev/null)
-  _ids="${_a} ${_a}.ftp ${_subs}"
-  if [ -n "${_gid}" ]; then
-    # shellcheck disable=SC2086
-    _grp_walk "${_gid}" "${_USRG}" "${_a}" ${_roots}
-  fi
-  for _u in ${_ids}; do
-    getent passwd "${_u}" > /dev/null 2>&1 || continue
-    _grant_sup "${_u}" "${_USRG}" || _alrt "${_u}: could not list it in ${_USRG}"
-    if [ "$(_primary_of "${_u}")" != "${_USRG}" ]; then
-      # The walk above can take minutes: wait for this identity right before
-      # its move, as convert does before its own.
-      _wait_ids_idle "${_u}"
-      if _set_primary "${_u}" "${_USRG}"; then
-        _log "${_a}: ${_u} primary group -> ${_USRG}"
-      else
-        _alrt "${_u}: primary group could not be set back to ${_USRG}"
-        _stuck="${_stuck} ${_u}"
-      fi
-    fi
-    [ -n "${_gid}" ] && _in_grp_sup "${_u}" "${_a}" && gpasswd -d "${_u}" "${_a}" > /dev/null 2>&1
-  done
-  _marker_drop "${_a}"
-  # False with the identities still off the box-wide group in _UNDO_STUCK:
-  # a caller must never report a rollback it did not get.
-  _UNDO_STUCK="${_stuck# }"
-  [ -z "${_UNDO_STUCK}" ]
-}
-
 # Record the identities a revert, or the rollback of a convert, could not move
 # back to the box-wide group (in use): the limited-shell worker moves each back
 # on its first idle pass and never reads the account as converted meanwhile.
@@ -1624,6 +1460,237 @@ _marker_valid() {
   local _a="$1" _gid
   _gid=$(_gid_of "${_a}")
   [ -n "${_gid}" ] && _marker_text "${_a}" | grep -q " gid=${_gid}$"
+}
+
+# The name the group held at gid $1 is renamed to for account $2: the gid
+# and the account's name, so a second held name never meets a first, cut
+# to 32 characters (a group name's limit) where it would be longer: the gid
+# it starts with keeps it unique. One text in instgrp, the nightly's
+# 10-account.sh and the restore tools.
+_wg_free_aside() {
+  local _n="${1}-wgheld-${2}"
+  printf '%s\n' "${_n:0:32}"
+}
+
+# Account $1's free of its web group name while it is unfinished, its
+# journal not done: the held gid, whose paths in that number are the free's
+# walk to finish, so no claim or probe takes them meanwhile; nothing
+# otherwise. Unfinished is the rename alone (renamed: no wg-<account>, the
+# renamed group at the held gid, under its name or under the name an earlier
+# version gave it, <gid>-wgheld) or a free that can still finish (finish:
+# wg-<account> at another gid, and the renamed group at the held gid or
+# wg-<account> at the journal's new gid; the renamed group under either
+# name). With $2, the state on one line instead, "<state> <held gid> <new
+# gid or ->", where the state is one of those two, stale (the rename never
+# happened: wg-<account> still at the held gid) or lost (none of these:
+# the renamed group gone, renamed or renumbered; or a journal that names
+# no held gid or cannot be read, "lost - <new gid or ->", as the migration
+# tools count it unfinished); nothing when no journal is unfinished. One
+# text in instgrp, the nightly's 10-account.sh and the restore tools.
+_wg_free_held() {
+  local _j="/etc/boa/control/instgrp-web.${1}.free.txt" _s="" _h="" _n="" _g _r _o _st _
+  [ -f "${_j}" ] && [ ! -L "${_j}" ] || return 0
+  { read -r _s _h _n _ < "${_j}"; } 2> /dev/null || :
+  [ "${_s}" != "step=done" ] || return 0
+  _h="${_h#held=}"
+  _n="${_n#new=}"
+  [[ "${_n}" =~ ^[0-9]+$ ]] || _n="-"
+  if [[ ! "${_h}" =~ ^[0-9]+$ ]]; then
+    [ -z "${2:-}" ] || printf 'lost - %s\n' "${_n}"
+    return 0
+  fi
+  _g=$(getent group "wg-${1}" 2> /dev/null | cut -d: -f3)
+  _r=$(getent group "$(_wg_free_aside "${_h}" "${1}")" 2> /dev/null | cut -d: -f3)
+  _o=$(getent group "${_h}-wgheld" 2> /dev/null | cut -d: -f3)
+  if [ "${_g}" = "${_h}" ]; then
+    _st=stale
+  elif [ -z "${_g}" ] && { [ "${_r}" = "${_h}" ] || [ "${_o}" = "${_h}" ]; }; then
+    _st=renamed
+  elif [ -n "${_g}" ] && { [ "${_r}" = "${_h}" ] || [ "${_o}" = "${_h}" ] || [ "${_g}" = "${_n}" ]; }; then
+    _st=finish
+  else
+    _st=lost
+  fi
+  if [ -n "${2:-}" ]; then
+    printf '%s %s %s\n' "${_st}" "${_h}" "${_n}"
+  elif [ "${_st}" = "renamed" ] || [ "${_st}" = "finish" ]; then
+    printf '%s\n' "${_h}"
+  fi
+  return 0
+}
+
+# The account's own web group, as the claim passes below keep it: its gid when
+# the group exists and only the account's identities hold it, nothing
+# otherwise. $1 = one of the account's roots (/data/disk/<oN>, /home/<oN>.*,
+# its store on attached storage); a root under neither names no account.
+# Numeric, and emitted only when it resolves: find refuses an unknown group
+# name, and every claim here discards find's errors. With $2, the account,
+# a second line while a free of its name is unfinished: the held gid, whose
+# paths are that free's walk to finish (_wg_free_held), never the account
+# group's, where its pools would lose them. One gid per line.
+_wg_keep() {
+  local _g
+  _g=$(_web_group_state "${1}" | cut -d' ' -f2)
+  case "${_g}" in
+    ""|*[!0-9]*) ;;
+    *) printf '%s\n' "${_g}" ;;
+  esac
+  [ -n "${2:-}" ] && _wg_free_held "${2}"
+  return 0
+}
+
+_grp_walk() {
+  local _from="$1" _to="$2" _a="$3" _toGid _wGid _uids _r _keep _wg _wgX _g
+  shift 3
+  _toGid=$(_gid_of "${_to}")
+  [[ "${_toGid}" =~ ^[0-9]+$ ]] || return 1
+  _wGid=$(_gid_of "${_WEBG}")
+  [[ "${_wGid}" =~ ^[0-9]+$ ]] || _wGid=-1
+  _uids=$(_grp_owner_uids "${_to}" "${_a}")
+  _keep=YES
+  _chgrp_keeps_dir_setgid || _keep=NO
+  for _r in "$@"; do
+    [ -d "${_r}" ] || continue
+    if [ -n "${_from}" ]; then
+      if [ "${_keep}" = "NO" ]; then
+        # chmod has no no-follow form: the bit is set on '.' of each directory
+        # entered from its parent, only when it is the directory find met
+        # there, never on the target of a link swapped in after the test.
+        find -P "${_r}" -type d -gid "${_from}" -perm -2000 \
+          -execdir sh -c 'p=$(/bin/pwd -P); for d; do ( cd -P -- "$d" 2> /dev/null && [ "$(/bin/pwd -P)" = "${p%/}/${d#./}" ] && chgrp -h "$0" . 2> /dev/null && chmod g+s . 2> /dev/null ); done' "${_to}" {} + 2> /dev/null
+      fi
+      env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_r}" -gid "${_from}" \
+        -execdir perl -e "${_GRP_REOWN_PL}" -- "${_toGid}" "${_uids}" "${_from}" -1 -1 {} + > /dev/null 2>&1
+    fi
+    # Everything under the roots is this account's tree. A copy from another
+    # box (xoct, xcopy, xmass, a root-run restore of a foreign archive)
+    # carries the source account's numeric gid: no name here (no group at
+    # all), or -- the ordinary case, every box allocates account gids from
+    # the same system range -- the gid of a DIFFERENT named group on this
+    # box, whose identities could then read the copied credential files.
+    # Both take the account's group; only the FPM group, the account's own
+    # web group (its web paths once converted, and the old number while a
+    # free of its name is unfinished: _wg_keep) and root stay.
+    # The limited-shell homes carry chattr +i on a known set of names (the
+    # home itself, .drush, its ini files, .bee, .bazaar -- manage_ltd_users.sh
+    # sets and clears them around its own writes): when a batch left an
+    # entry the walk changes outside the group (the handle step's non-zero
+    # exit), each immutable one is re-grouped with the flag dropped and
+    # restored through the same handle (_GRP_IMMUTABLE_PL, under the walk's
+    # rule: a link, a FIFO and a hard-linked file of any other owner are left
+    # alone). Every name is opened inside the directory find holds, by its
+    # bare name, never through a pathname a tenant can re-point mid-way.
+    _wgX=()
+    _wg=""
+    for _g in $(_wg_keep "${_r}" "${_a}"); do
+      _wgX+=( ! -gid "${_g}" )
+      _wg="${_wg:-${_g}}"
+    done
+    env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_r}" ! -group "${_to}" ! -group "${_WEBG}" ! -group root "${_wgX[@]}" \
+      -execdir sh -c 'g=$0 r=$1 c=$2 u=$3 w=$4 x=$5; shift 5
+        perl -e "$r" -- "$g" "$u" "" "$w" "$x" "$@" && exit 0
+        perl -e "$c" -- "$g" "$u" "$w" "$x" "$@"' "${_toGid}" "${_GRP_REOWN_PL}" "${_GRP_IMMUTABLE_PL}" "${_uids}" "${_wGid}" "${_wg:--1}" {} + 2> /dev/null
+  done
+}
+
+# Residue = an entry the walk changes whose group is not the target group,
+# not the FPM group, not the account's own web group and not root. One
+# early-quit traversal; the probe a converted account pays instead of a
+# walk. The rest outside those groups, symlinks aside, is counted into
+# _UNWALKED, complete only when the probe passes.
+# $1 = target group, $2 = account, then roots.
+_grp_residue() {
+  local _to="$1" _a="$2" _r _res _n _chg _wg _wgX
+  shift 2
+  read -ra _chg <<< "$(_grp_changed_expr "$(_grp_owner_uids "${_to}" "${_a}")")"
+  _UNWALKED=0
+  for _r in "$@"; do
+    [ -d "${_r}" ] || continue
+    _wgX=()
+    for _wg in $(_wg_keep "${_r}" "${_a}"); do
+      _wgX+=( ! -gid "${_wg}" )
+    done
+    read -r _res _n < <(find -P "${_r}" ! -group "${_to}" ! -group "${_WEBG}" ! -group root "${_wgX[@]}" \
+      \( "${_chg[@]}" -printf 'R\n' -quit -o ! -type l -printf 'U\n' \) 2> /dev/null | _tally)
+    _UNWALKED=$((_UNWALKED + ${_n:-0}))
+    [[ "${_res}" = "1" ]] && return 0
+  done
+  return 1
+}
+
+# $1 = target group, $2 = account, then roots.
+_grp_residue_list() {
+  local _to="$1" _a="$2" _r _chg _wg _wgX
+  shift 2
+  read -ra _chg <<< "$(_grp_changed_expr "$(_grp_owner_uids "${_to}" "${_a}")")"
+  for _r in "$@"; do
+    [ -d "${_r}" ] || continue
+    _wgX=()
+    for _wg in $(_wg_keep "${_r}" "${_a}"); do
+      _wgX+=( ! -gid "${_wg}" )
+    done
+    find -P "${_r}" "${_chg[@]}" ! -group "${_to}" ! -group "${_WEBG}" ! -group root "${_wgX[@]}" -printf '%G %p\n' 2> /dev/null | head -5
+  done
+}
+
+# For status: the entries the walk leaves alone outside group $1, the FPM
+# group, the account's own web group and root, symlinks aside, as "<count>
+# <up to three example paths>". Informational; no verdict and no return code
+# reads it.
+# $1 = target group, $2 = account, then roots.
+_grp_unwalked() {
+  local _to="$1" _a="$2" _r _chg _wg _wgX
+  shift 2
+  read -ra _chg <<< "$(_grp_changed_expr "$(_grp_owner_uids "${_to}" "${_a}")")"
+  for _r in "$@"; do
+    [ -d "${_r}" ] || continue
+    _wgX=()
+    for _wg in $(_wg_keep "${_r}" "${_a}"); do
+      _wgX+=( ! -gid "${_wg}" )
+    done
+    find -P "${_r}" ! -type l ! "${_chg[@]}" ! -group "${_to}" ! -group "${_WEBG}" ! -group root "${_wgX[@]}" -print0 2> /dev/null
+  done | tr '\n\0' '?\n' | awk 'NR <= 3 { e = e " " $0 } END { print NR + 0 e }'
+}
+
+_undo_account() {
+  local _a="$1" _gid="$2" _roots="$3" _u _subs _ids _stuck=""
+  _subs=$(_acct_subusers "${_a}" 2> /dev/null)
+  _ids="${_a} ${_a}.ftp ${_subs}"
+  if [ -n "${_gid}" ]; then
+    # shellcheck disable=SC2086
+    _grp_walk "${_gid}" "${_USRG}" "${_a}" ${_roots}
+  fi
+  for _u in ${_ids}; do
+    getent passwd "${_u}" > /dev/null 2>&1 || continue
+    _grant_sup "${_u}" "${_USRG}" || _alrt "${_u}: could not list it in ${_USRG}"
+    if [ "$(_primary_of "${_u}")" != "${_USRG}" ]; then
+      # The walk above can take minutes: wait for this identity right before
+      # its move, as convert does before its own.
+      _wait_ids_idle "${_u}"
+      if _set_primary "${_u}" "${_USRG}"; then
+        _log "${_a}: ${_u} primary group -> ${_USRG}"
+      else
+        _alrt "${_u}: primary group could not be set back to ${_USRG}"
+        _stuck="${_stuck} ${_u}"
+      fi
+    fi
+    [ -n "${_gid}" ] && _in_grp_sup "${_u}" "${_a}" && gpasswd -d "${_u}" "${_a}" > /dev/null 2>&1
+  done
+  _marker_drop "${_a}"
+  # False with the identities still off the box-wide group in _UNDO_STUCK:
+  # a caller must never report a rollback it did not get.
+  _UNDO_STUCK="${_stuck# }"
+  [ -z "${_UNDO_STUCK}" ]
+}
+
+# 0 when account $1's free journal is there and cannot be read (a read
+# error; an empty file reads). _wg_free_held then names no held gid, so a
+# claim cannot keep the paths of a free that may still finish out of its
+# walk: it waits until the journal reads again. One text in instgrp, the
+# nightly's 10-account.sh and the restore tools.
+_wg_free_unreadable() {
+  local _j="/etc/boa/control/instgrp-web.${1}.free.txt"
+  [ -f "${_j}" ] && [ ! -L "${_j}" ] && ! head -c 1 -- "${_j}" > /dev/null 2>&1
 }
 
 _do_convert() {
@@ -1823,47 +1890,6 @@ _do_convert() {
   fi
   _log_unwalked "${_a}" "${_a}"
   return 0
-}
-
-# The web leg first (the account's own web group, when it has one or a
-# record names it), then the file half; the worse exit class of the two.
-# The web leg skips where the file half does (a freeze without --force, a
-# live install or upgrade run), with a note and rc 4, so a caller that
-# reclaims for the web residue sees it left. While a free of the account's
-# web group name that a kill cut short can still finish, or its journal
-# cannot be read, both legs skip (rc 4, alarmed) for the next web verb to
-# finish it; a rename alone is put back first, and a journal nothing can
-# finish from is dropped with an alarm (_wg_free_settled).
-_do_reclaim() {
-  local _a="$1" _wrc=0 _rc _held
-  if _valid_account "${_a}"; then
-    [ "${_FROM_OCTOPUS}" != "YES" ] && _reap_own_stale_lock
-    if [ -e "/data/disk/${_a}/log/proxied.pid" ] && [ "${_FORCE}" != "YES" ]; then
-      _msg "NOTE: ${_a}: the web group leg skipped: frozen for a migration (log/proxied.pid)"
-      _wrc=4
-    elif [ "${_FORCE}" != "YES" ] && _held=$(_a2b_held_why "${_a}"); then
-      _msg "NOTE: ${_a}: the web group leg skipped: ${_held}"
-      _wrc=4
-    elif [ "${_FROM_OCTOPUS}" != "YES" ] \
-      && { [ -e "/run/boa_run.pid" ] || [ -e "/run/boa_wait.pid" ] \
-        || [ -e "/run/octopus_install_run.pid" ]; }; then
-      _msg "NOTE: ${_a}: the web group leg skipped: a BOA install or upgrade run is live (/run/*.pid)"
-      _wrc=4
-    else
-      _wg_profile "${_a}"
-      if ! _wg_free_settled; then
-        _log "${_a}: RECLAIM skipped: a free of its web group name is unfinished, or its journal cannot be read"
-        return 4
-      fi
-      trap '_wg_on_exit' EXIT
-      _WG_CALLER=reclaim
-      _wg_run "${_a}"
-      _wrc=$?
-    fi
-  fi
-  _do_reclaim_files "${_a}"
-  _rc=$?
-  return "$(_worse_rc "${_rc}" "${_wrc}")"
 }
 
 # The file half alone: every path under the roots takes the account's
@@ -2760,42 +2786,6 @@ _wg_r_remove() {
 
 # ---- notes -----------------------------------------------------------------
 
-# One line into root's notes file and, for an account, a printable copy
-# into its own log/web-group-notes.txt (put through the no-follow writer,
-# the newest 200 lines kept) and one where its main login reads them
-# (_wg_note_put_here).
-_wg_note() {
-  local _t _old _u _rc
-  _t="$(date '+%Y-%m-%d %H:%M:%S') $*"
-  ( umask 077; printf '%s\n' "${_t}" >> "${_WP_NOTES}" ) 2> /dev/null
-  [ "${_WP_M}" = "YES" ] && return 0
-  _t=$(printf '%s' "${_t}" | tr -cd '[:print:]')
-  _old=$(_ig_in_real_dir "/data/disk/${_WP_A}/log" _ig_read_here web-group-notes.txt)
-  _ig_in_real_dir "/data/disk/${_WP_A}/log" _wg_note_own_here \
-    "$(printf '%s\n%s\n' "${_old}" "${_t}" | awk 'NF' | tail -n 200)" > /dev/null 2>&1
-  _u=$(id -u "${_WP_A}.ftp" 2> /dev/null)
-  if [[ "${_u}" =~ ^[0-9]+$ ]]; then
-    _ig_in_real_dir "/data/disk/${_WP_A}/static/control" _wg_note_put_here "${_u}" \
-      "$(tail -n 200 -- "${_WP_NOTES}" 2> /dev/null | tr -cd '[:print:]\n' | awk 'NF')" \
-      > /dev/null 2>&1
-    _rc=$?
-    # once a run: every note of the run meets the same place (a note
-    # written in a subshell hands _WG_NOTE_REFUSED back for its caller to
-    # mark)
-    case "${_rc}" in
-      2)
-        _wg_noted "${_WP_A}" "the notes copy: control owner" \
-          && { _log "${_WP_A}: the notes copy not written: /data/disk/${_WP_A}/static/control is owned by neither root nor an identity of the account"; _WG_NOTE_REFUSED=2; }
-        ;;
-      3)
-        _wg_noted "${_WP_A}" "the notes copy: not a file" \
-          && { _log "${_WP_A}: the notes copy not written: a directory stands at /data/disk/${_WP_A}/static/control/web-group-notes.txt"; _WG_NOTE_REFUSED=3; }
-        ;;
-    esac
-  fi
-  return 0
-}
-
 # The temp copies a killed note left in the current (pinned) directory: a
 # minute old or more, so a note written at the same moment keeps its own.
 # A migration excludes them as it excludes the notes.
@@ -2837,13 +2827,6 @@ _wg_note_put_here() {
   return 1
 }
 
-# A note that also goes into instgrp.log: why phase B waits, or what a run
-# left in www-data (the Octopus arm points at that log).
-_wg_note_log() {
-  _wg_note "$@"
-  _log "${_WP_A}: $*"
-}
-
 # The notes this run wrote, keyed by the run's account (_WG_NOTED_RUN),
 # the note's account and the text, so a lookup costs the same however many
 # it holds. _wg_run empties it, except under webconvert all, which empties
@@ -2863,6 +2846,49 @@ _wg_noted() {
   return 0
 }
 
+# One line into root's notes file and, for an account, a printable copy
+# into its own log/web-group-notes.txt (put through the no-follow writer,
+# the newest 200 lines kept) and one where its main login reads them
+# (_wg_note_put_here).
+_wg_note() {
+  local _t _old _u _rc
+  _t="$(date '+%Y-%m-%d %H:%M:%S') $*"
+  ( umask 077; printf '%s\n' "${_t}" >> "${_WP_NOTES}" ) 2> /dev/null
+  [ "${_WP_M}" = "YES" ] && return 0
+  _t=$(printf '%s' "${_t}" | tr -cd '[:print:]')
+  _old=$(_ig_in_real_dir "/data/disk/${_WP_A}/log" _ig_read_here web-group-notes.txt)
+  _ig_in_real_dir "/data/disk/${_WP_A}/log" _wg_note_own_here \
+    "$(printf '%s\n%s\n' "${_old}" "${_t}" | awk 'NF' | tail -n 200)" > /dev/null 2>&1
+  _u=$(id -u "${_WP_A}.ftp" 2> /dev/null)
+  if [[ "${_u}" =~ ^[0-9]+$ ]]; then
+    _ig_in_real_dir "/data/disk/${_WP_A}/static/control" _wg_note_put_here "${_u}" \
+      "$(tail -n 200 -- "${_WP_NOTES}" 2> /dev/null | tr -cd '[:print:]\n' | awk 'NF')" \
+      > /dev/null 2>&1
+    _rc=$?
+    # once a run: every note of the run meets the same place (a note
+    # written in a subshell hands _WG_NOTE_REFUSED back for its caller to
+    # mark)
+    case "${_rc}" in
+      2)
+        _wg_noted "${_WP_A}" "the notes copy: control owner" \
+          && { _log "${_WP_A}: the notes copy not written: /data/disk/${_WP_A}/static/control is owned by neither root nor an identity of the account"; _WG_NOTE_REFUSED=2; }
+        ;;
+      3)
+        _wg_noted "${_WP_A}" "the notes copy: not a file" \
+          && { _log "${_WP_A}: the notes copy not written: a directory stands at /data/disk/${_WP_A}/static/control/web-group-notes.txt"; _WG_NOTE_REFUSED=3; }
+        ;;
+    esac
+  fi
+  return 0
+}
+
+# A note that also goes into instgrp.log: why phase B waits, or what a run
+# left in www-data (the Octopus arm points at that log).
+_wg_note_log() {
+  _wg_note "$@"
+  _log "${_WP_A}: $*"
+}
+
 # A note the same run would write again (each walk reads the public set
 # twice and a raise to B walks twice; u6 and the B check name the same
 # grounds): written once per run and account, 0 when it is new (and
@@ -2875,51 +2901,17 @@ _wg_note_once() {
 
 # ---- holds -----------------------------------------------------------------
 
-# On every exit, a killed run's included: every hold this run took, and the
-# run lock while this run holds it and it still names this run. Set before
-# a web verb or the reclaim web leg takes anything, whoever holds the lock.
-# shellcheck disable=SC2329
-_wg_on_exit() {
-  _wg_release_all
-  if [ "${_HELD_LOCK}" = "YES" ] \
-    && [ "$(tr -cd 0-9 2> /dev/null < /run/boa_run.pid)" = "$$" ]; then
-    rm -f /run/boa_run.pid
-  fi
-  return 0
-}
-
-# Another BOA run must not overlap a conversion: the lock the wrappers use,
-# taken with the queue pause's idiom (a dead holder reaped, then created
-# exclusively). 0 held, 4 busy. The Octopus arm holds the wrapper's lock.
-_wg_lock() {
-  trap '_wg_on_exit' EXIT
-  if [ "${_FROM_OCTOPUS}" = "YES" ]; then
-    if [ ! -e "/run/boa_run.pid" ] \
-      && ( set -C; echo "$$" > /run/boa_run.pid ) 2> /dev/null; then
-      _HELD_LOCK=YES
-    fi
-  else
-    _reap_own_stale_lock
-    if [ -e "/run/boa_wait.pid" ] || [ -e "/run/octopus_install_run.pid" ] \
-      || ! ( set -C; echo "$$" > /run/boa_run.pid ) 2> /dev/null; then
-      _alrt "a BOA install or upgrade run is live (/run/*.pid); retry later"
-      return 4
-    fi
-    _HELD_LOCK=YES
-  fi
-  if ! _wait_worker; then
-    _alrt "the limited-shell worker is still running after ${_WORKER_WAIT_MAX}s (/run/manage_ltd_users.pid); retry later"
-    return 4
-  fi
-  return 0
-}
-
 # A pid file names a live holder: the pid runs and is root's.
 _wg_pid_live() {
   local _p
   _p=$( { tr -dc '0-9' < "${1}"; } 2> /dev/null )
   [ -n "${_p}" ] && kill -0 "${_p}" 2> /dev/null \
     && [ "$(awk '/^Uid:/ { print $2; exit }' "/proc/${_p}/status" 2> /dev/null)" = "0" ]
+}
+
+# The command line of pid $1, its arguments joined by spaces.
+_wg_cmdline() {
+  { tr '\0' ' ' < "/proc/${1}/cmdline"; } 2> /dev/null
 }
 
 # A migration verb's pid file $1 names a live run of its tool $2: the pid
@@ -2934,11 +2926,6 @@ _wg_verb_live() {
     */"${2}"\ *|*/"${2}"|*\ "${2}"\ *) return 0 ;;
   esac
   return 1
-}
-
-# The command line of pid $1, its arguments joined by spaces.
-_wg_cmdline() {
-  { tr '\0' ' ' < "/proc/${1}/cmdline"; } 2> /dev/null
 }
 
 # The pid file of a migration verb live for the box (xmass, xoct, xcopy;
@@ -2985,6 +2972,13 @@ _wg_reap_left() {
 # nightly or migratefs pass of the account. 0 held, 4 busy, 6 the wait
 # ended. The hold is this run's own when it already names this pid.
 _WG_HOLDS=""
+_wg_hold_release() {
+  local _h="/run/instgrp-web-${1}.pid"
+  [ "$( { tr -dc '0-9' < "${_h}"; } 2> /dev/null )" = "$$" ] && rm -f -- "${_h}"
+  _WG_HOLDS="${_WG_HOLDS// ${_h}/}"
+  return 0
+}
+
 _wg_hold() {
   local _a="${1}" _h="/run/instgrp-web-${1}.pid" _w=0 _f
   if [ "$( { tr -dc '0-9' < "${_h}"; } 2> /dev/null )" != "$$" ]; then
@@ -3020,19 +3014,95 @@ _wg_busy_why() {
   fi
 }
 
-_wg_hold_release() {
-  local _h="/run/instgrp-web-${1}.pid"
-  [ "$( { tr -dc '0-9' < "${_h}"; } 2> /dev/null )" = "$$" ] && rm -f -- "${_h}"
-  _WG_HOLDS="${_WG_HOLDS// ${_h}/}"
-  return 0
-}
-
 # The task queue held around the private-set narrowing, the alias and the
 # record: the pause file with this run's pid (a pause this pid already holds
 # is its own), then a bounded drain of the account's own tasks. 0 held, 6
 # the queue did not drain. The master's is its own marker, with the aegir
 # crontab parked and re-checked after the drain.
 _WG_QMADE=""
+_WG_MCRON_PARKED=NO
+# Back only when this run parked it and the box is no standby (runner.sh
+# keeps a standby's parked).
+_wg_mcron_unpark() {
+  [ "${_WG_MCRON_PARKED}" = "YES" ] || return 0
+  _WG_MCRON_PARKED=NO
+  [ -e "${_WG_STANDBY}" ] && return 0
+  if [ -e /var/spool/cron/crontabs/.aegir ] && [ ! -e /var/spool/cron/crontabs/aegir ]; then
+    mv -f /var/spool/cron/crontabs/.aegir /var/spool/cron/crontabs/aegir 2> /dev/null
+    service cron reload > /dev/null 2>&1
+  fi
+}
+
+_wg_qhold_release() {
+  if [ -n "${_WG_QMADE}" ] \
+    && [ "$( { tr -dc '0-9' < "${_WG_QMADE}"; } 2> /dev/null )" = "$$" ]; then
+    rm -f -- "${_WG_QMADE}"
+    [ "${_WG_QMADE}" = "${_WG_MQSTOP}" ] && _wg_mcron_unpark
+  fi
+  _WG_QMADE=""
+  return 0
+}
+
+_wg_mcron_parked() {
+  [ ! -e /var/spool/cron/crontabs/aegir ]
+}
+_wg_mcron_park() {
+  if [ -e /var/spool/cron/crontabs/aegir ]; then
+    mv -f /var/spool/cron/crontabs/aegir /var/spool/cron/crontabs/.aegir 2> /dev/null \
+      && _WG_MCRON_PARKED=YES
+    service cron reload > /dev/null 2>&1
+  fi
+}
+# Every hold this run took, on every return.
+_wg_release_all() {
+  local _h
+  _wg_qhold_release
+  for _h in ${_WG_HOLDS}; do
+    [ "$( { tr -dc '0-9' < "${_h}"; } 2> /dev/null )" = "$$" ] && rm -f -- "${_h}"
+  done
+  _WG_HOLDS=""
+  return 0
+}
+
+# On every exit, a killed run's included: every hold this run took, and the
+# run lock while this run holds it and it still names this run. Set before
+# a web verb or the reclaim web leg takes anything, whoever holds the lock.
+# shellcheck disable=SC2329
+_wg_on_exit() {
+  _wg_release_all
+  if [ "${_HELD_LOCK}" = "YES" ] \
+    && [ "$(tr -cd 0-9 2> /dev/null < /run/boa_run.pid)" = "$$" ]; then
+    rm -f /run/boa_run.pid
+  fi
+  return 0
+}
+
+# Another BOA run must not overlap a conversion: the lock the wrappers use,
+# taken with the queue pause's idiom (a dead holder reaped, then created
+# exclusively). 0 held, 4 busy. The Octopus arm holds the wrapper's lock.
+_wg_lock() {
+  trap '_wg_on_exit' EXIT
+  if [ "${_FROM_OCTOPUS}" = "YES" ]; then
+    if [ ! -e "/run/boa_run.pid" ] \
+      && ( set -C; echo "$$" > /run/boa_run.pid ) 2> /dev/null; then
+      _HELD_LOCK=YES
+    fi
+  else
+    _reap_own_stale_lock
+    if [ -e "/run/boa_wait.pid" ] || [ -e "/run/octopus_install_run.pid" ] \
+      || ! ( set -C; echo "$$" > /run/boa_run.pid ) 2> /dev/null; then
+      _alrt "a BOA install or upgrade run is live (/run/*.pid); retry later"
+      return 4
+    fi
+    _HELD_LOCK=YES
+  fi
+  if ! _wait_worker; then
+    _alrt "the limited-shell worker is still running after ${_WORKER_WAIT_MAX}s (/run/manage_ltd_users.pid); retry later"
+    return 4
+  fi
+  return 0
+}
+
 _wg_qhold() {
   local _stop="${_WG_QSTOP}" _w=0 _who="${_WP_A}"
   if [ "${_WP_M}" = "YES" ]; then
@@ -3080,50 +3150,6 @@ _wg_qhold() {
       return 6
     fi
   fi
-  return 0
-}
-
-_wg_qhold_release() {
-  if [ -n "${_WG_QMADE}" ] \
-    && [ "$( { tr -dc '0-9' < "${_WG_QMADE}"; } 2> /dev/null )" = "$$" ]; then
-    rm -f -- "${_WG_QMADE}"
-    [ "${_WG_QMADE}" = "${_WG_MQSTOP}" ] && _wg_mcron_unpark
-  fi
-  _WG_QMADE=""
-  return 0
-}
-
-_WG_MCRON_PARKED=NO
-_wg_mcron_parked() {
-  [ ! -e /var/spool/cron/crontabs/aegir ]
-}
-_wg_mcron_park() {
-  if [ -e /var/spool/cron/crontabs/aegir ]; then
-    mv -f /var/spool/cron/crontabs/aegir /var/spool/cron/crontabs/.aegir 2> /dev/null \
-      && _WG_MCRON_PARKED=YES
-    service cron reload > /dev/null 2>&1
-  fi
-}
-# Back only when this run parked it and the box is no standby (runner.sh
-# keeps a standby's parked).
-_wg_mcron_unpark() {
-  [ "${_WG_MCRON_PARKED}" = "YES" ] || return 0
-  _WG_MCRON_PARKED=NO
-  [ -e "${_WG_STANDBY}" ] && return 0
-  if [ -e /var/spool/cron/crontabs/.aegir ] && [ ! -e /var/spool/cron/crontabs/aegir ]; then
-    mv -f /var/spool/cron/crontabs/.aegir /var/spool/cron/crontabs/aegir 2> /dev/null
-    service cron reload > /dev/null 2>&1
-  fi
-}
-
-# Every hold this run took, on every return.
-_wg_release_all() {
-  local _h
-  _wg_qhold_release
-  for _h in ${_WG_HOLDS}; do
-    [ "$( { tr -dc '0-9' < "${_h}"; } 2> /dev/null )" = "$$" ] && rm -f -- "${_h}"
-  done
-  _WG_HOLDS=""
   return 0
 }
 
@@ -3233,41 +3259,6 @@ _wg_m_k() {
 _wg_m_s() {
   _WM_S=$(_ig_in_real_dir "${_WP_HOME}/.drush" _ig_read_here server_master.alias.drushrc.php \
     | sed -n "s/^[[:space:]]*'web_group' => '\([^']*\)',.*/\1/p" | head -n 1)
-}
-
-# The web class tops of every site: the settings trio, each accepted files
-# store and private store top. T holds when each is in the web group and
-# each private top is 02770; _WM_RT when any of them is in www-data.
-_wg_m_t() {
-  local _k _p _g _m
-  _WM_T=YES
-  _WM_RT=NO
-  while read -r _k _p; do
-    [ -n "${_p}" ] || continue
-    read -r _g _m < <(stat -c '%g %a' -- "${_p}" 2> /dev/null)
-    [ -n "${_g}" ] || continue
-    [ "${_g}" = "${_WG_WWWGID}" ] && _WM_RT=YES
-    [ "${_g}" = "${_WG_GID}" ] || _WM_T=NO
-    [ "${_k}" = "private" ] && [ "${_m}" != "2770" ] && _WM_T=NO
-  done < <(_wg_tops)
-  return 0
-}
-
-# Measures every trait the table reads and classifies them (lambda):
-# none, betw, A, betwP, betwK, betwB, B.
-_wg_measure() {
-  _WG_WWWGID=$(_gid_of "${_WEBG}")
-  _wg_m_g
-  _WG_VERS=$(_wg_versions)
-  _WM_LAM=none
-  [ "${_WM_G}" = "ours" ] || return 0
-  _wg_m_l
-  _wg_m_w
-  _wg_m_p
-  _wg_m_k
-  _wg_m_s
-  _wg_m_t
-  _wg_classify
 }
 
 _wg_classify() {
@@ -3419,116 +3410,6 @@ _wg_derive() {
   esac
 }
 
-# Reads a raise gate the row needs and the caller left unset.
-_wg_gate() {
-  local _v="${1}"
-  [ -n "${!_v}" ] && return 0
-  case "${_v}" in
-    _D_OPTOUT) { _wg_g_optout || _wg_g_v1_optout; } && _D_OPTOUT=YES || _D_OPTOUT=NO ;;
-    _D_V1) _wg_g_v1 && _D_V1=YES || _D_V1=NO ;;
-    _D_READY) _wg_g_ready && _D_READY=YES || _D_READY=NO ;;
-    _D_SHARE)
-      # where the run goes on to phase A (from below A, or from an A not
-      # complete: level betw) the gate only picks the row: u6 names the
-      # grounds it found. The inbound side is named here all the same,
-      # before the first write: a run that stops before u6 has taken the
-      # store from the reading site by then. A caller that reads silently
-      # stays silent
-      if [ "${_WG_SHARE_MODE}" != "silent" ] \
-        && { [ "${_D_SIGMA}" = "none" ] || [ "${_D_LAM}" = "betw" ]; }; then
-        _WG_SHARE_MODE=pick _wg_g_share && _D_SHARE=YES || _D_SHARE=NO
-      else
-        _wg_g_share && _D_SHARE=YES || _D_SHARE=NO
-      fi
-      ;;
-  esac
-}
-
-# _D_ROW := the one row that matches; rows are tried in this order and each
-# includes "every row above failed".
-_wg_table() {
-  local _bulk=NO _ground=NO
-  _wg_derive
-  case "${_D_CALLER}" in
-    all|all_b|arm) _bulk=YES ;;
-  esac
-  if [ "${_D_CALLER}" = "reclaim" ]; then
-    if [ "${_D_FOREIGN}" = "YES" ]; then _D_ROW=RC1
-    elif [ "${_D_STANDBY}" = "YES" ]; then _D_ROW=RC0
-    elif [ "${_D_RV}" = "A" ] || [ "${_D_RV}" = "B" ]; then _D_ROW=RC2
-    elif [ "${_D_LAM}" != "none" ]; then _D_ROW=RC3
-    else _D_ROW=RC4
-    fi
-    return 0
-  fi
-  if [ "${_D_FOREIGN}" = "YES" ]; then _D_ROW=E1; return 0; fi
-  if [ "${_D_BUSY}" = "YES" ]; then _D_ROW=E2; return 0; fi
-  if [ "${_D_FROZENB}" = "YES" ]; then _D_ROW=E3; return 0; fi
-  if [ "${_D_STANDBYB}" = "YES" ]; then _D_ROW=E4; return 0; fi
-  if [ "${_bulk}" = "YES" ] && [ "${_D_LN}" = "YES" ]; then
-    if [ "${_D_LAM}" != "none" ]; then _D_ROW=S1; else _D_ROW=S2; fi
-    return 0
-  fi
-  if [ "${_D_CALLER}" = "all_b" ] && [ "${_D_PIN}" = "YES" ]; then _D_ROW=S3; return 0; fi
-  if [ "${_D_RAISE}" = "YES" ]; then
-    if [ "${_bulk}" = "YES" ]; then
-      _wg_gate _D_OPTOUT
-      [ "${_D_OPTOUT}" = "YES" ] && { _D_ROW=G1; return 0; }
-    fi
-    _wg_gate _D_V1
-    [ "${_D_V1}" = "YES" ] || { _D_ROW=G2; return 0; }
-    _wg_gate _D_READY
-    [ "${_D_READY}" = "YES" ] || { _D_ROW=G3; return 0; }
-    # a ground of the share and store gate (an outbound share, a legacy
-    # site, a site or a store outside the account) refuses the raise from A
-    # to B only; from below A the run goes to A, that path left as it is
-    # (rows A0g and B0g), and the B check stops a run that asked for B. An
-    # account that carries A and reads betw (a first conversion cut short)
-    # is not refused either: its phase A is not complete, and the run
-    # finishes it as B0g does
-    _wg_gate _D_SHARE
-    if [ "${_D_SHARE}" = "YES" ]; then
-      [ "${_D_SIGMA}" != "none" ] && [ "${_D_LAM}" != "betw" ] && { _D_ROW=G4; return 0; }
-      _ground=YES
-    fi
-  fi
-  case "${_D_T}" in
-    none)
-      case "${_D_LAM}" in
-        none) _D_ROW=N0 ;;
-        betw|A) _D_ROW=N1 ;;
-        *) _D_ROW=N2 ;;
-      esac
-      ;;
-    A)
-      case "${_D_LAM}" in
-        none|betw)
-          if [ "${_ground}" = "YES" ]; then
-            _D_ROW=A0g
-          elif [ "${_D_RAISE}" = "YES" ]; then
-            _D_ROW=A0r
-          else
-            _D_ROW=A0
-          fi
-          ;;
-        A) _D_ROW=A1 ;;
-        *) _D_ROW=A2 ;;
-      esac
-      ;;
-    B)
-      if [ "${_D_LAM}" = "B" ]; then
-        _D_ROW=B1
-      elif [ "${_ground}" = "YES" ]; then
-        _D_ROW=B0g
-      elif [ "${_D_RAISE}" = "YES" ]; then
-        _D_ROW=B0r
-      else
-        _D_ROW=B0
-      fi
-      ;;
-  esac
-}
-
 # The row's leg: refuse, skip, finish, down, up, or a reclaim form.
 _wg_leg_of() {
   case "${1}" in
@@ -3637,6 +3518,28 @@ _wg_w_relist() {
   return "${_rc}"
 }
 
+# Re-reads the cheap traits after a step changed them (no ping).
+_wg_measure_after() {
+  _wg_m_w
+  _wg_m_p
+}
+
+# R := $1 under the queue hold, like every other record write but the
+# rollback's token (u10's commit, d2's lowering): 6 when the queue did not
+# drain (the next run resumes from here), 1 when the write failed.
+_wg_r_under_hold() {
+  local _q
+  _wg_qhold
+  _q=$?
+  [ "${_q}" = "0" ] || return "${_q}"
+  if ! _wg_r_write "${1}"; then
+    _wg_qhold_release
+    return 1
+  fi
+  _wg_qhold_release
+  return 0
+}
+
 # The token strip: every pool line out, every version that carried one or
 # whose worker lacks www-data reloaded, www-data verified back; no I or R
 # written, and an account's W untouched (the master re-lists its wwwNN: its
@@ -3675,43 +3578,7 @@ _wg_d2() {
   return 0
 }
 
-# Re-reads the cheap traits after a step changed them (no ping).
-_wg_measure_after() {
-  _wg_m_w
-  _wg_m_p
-}
-
-# R := $1 under the queue hold, like every other record write but the
-# rollback's token (u10's commit, d2's lowering): 6 when the queue did not
-# drain (the next run resumes from here), 1 when the write failed.
-_wg_r_under_hold() {
-  local _q
-  _wg_qhold
-  _q=$?
-  [ "${_q}" = "0" ] || return "${_q}"
-  if ! _wg_r_write "${1}"; then
-    _wg_qhold_release
-    return 1
-  fi
-  _wg_qhold_release
-  return 0
-}
-
 # ---- the up leg ------------------------------------------------------------
-
-_wg_u1() {
-  local _t _pin
-  read -r _t _pin <<< "$(_wg_plan)"
-  _wg_i_write "${_t}" "${_pin}" - || return 1
-  case "${_WG_CALLER}" in
-    conv|conv_a|conv_b)
-      # before anything else changes: a policy not written stops the leg
-      _wg_policy_set "${_pin}" \
-        || { _alrt "${_WP_A}: the web group policy could not be written to /root/.${_WP_A}.octopus.cnf"; return 1; }
-      ;;
-  esac
-  return 0
-}
 
 # G and L: the group made when it is missing (any record removed first: a
 # stale one would turn valid under a re-used gid), then every identity and
@@ -3754,23 +3621,6 @@ _wg_u4() {
   return "${_rc}"
 }
 
-# The private side, under the queue hold (released at u7): the private set
-# to 02770/0660, the secret set narrowed, the share and store re-scan (a
-# note here, never a refusal: what it finds is left as it is and holds
-# phase B only), the alias, the D9 stamp.
-_wg_u6() {
-  local _q
-  _wg_qhold
-  _q=$?
-  [ "${_q}" = "0" ] || return "${_q}"
-  _wg_private_modes 02770 0660
-  _wg_secret_narrow
-  _WG_SHARE_MODE=note _wg_g_share
-  _wg_alias_set "${_WP_G}" || return 1
-  _wg_d9 commit
-  return 0
-}
-
 # The record: A when absent or invalid, never lower; the queue hold ends.
 _wg_u7() {
   if [ -z "${_WR_PH}" ]; then
@@ -3779,40 +3629,6 @@ _wg_u7() {
     _WR_RB=NO
   fi
   _wg_qhold_release
-  return 0
-}
-
-# The B check, when a B trait is still missing: the account's static/files
-# resolving (5: a link to attached storage that is not mounted, which no
-# walk and no read reaches then, or a link changed), www-data in a part
-# (5: a site's store that no walk takes, _wg_residue_full part), then, on
-# a raise or while B is not committed, the share and store re-scan (6).
-# Either stops the run as it is: the account stays at A (or, when the run
-# started from a pool-side level, at that level with its phase A traits
-# complete; the NOTE names the level read now). What the walk left in
-# www-data where it walks (under the roots or in the account's store on
-# attached storage: the trio, the tops, the private set, the stores) does
-# not stop it: the pools write www-data until u12 reloads them, so the run
-# walks again after u13 (_wg_leg_up).
-_wg_u8() {
-  local _l
-  [ "${_D_LAM}" = "B" ] && return 0
-  if _l=$(_wg_store_gone); then
-    _msg "${_WP_A}: ${_l} is a link that does not resolve (its attached storage not mounted, or the link changed); phase B waits until it resolves"
-    _wg_note_log "phase B deferred: ${_l} is a link that does not resolve (its attached storage not mounted, or the link changed)"
-    return 5
-  fi
-  if _wg_residue_full part; then
-    _msg "${_WP_A}: www-data paths remain in its sites' stores that the conversion does not walk in this layout; phase B waits until the layout is one BOA makes (a single mount point under /mnt, the store owned by root or the account)"
-    _wg_note_log "phase B deferred: paths in www-data remain in the sites' stores that the conversion does not walk in this layout; it waits until the layout is one BOA makes"
-    return 5
-  fi
-  if [ "${_D_RAISE}" = "YES" ] || [ "${_D_BEV}" = "NO" ]; then
-    if _WG_SHARE_MODE=refuse _wg_g_share; then
-      _msg "NOTE: ${_WP_A}: $(_wg_held_where "$(_wg_level_now)") ($(_wg_grounds); see ${_WP_NOTES})"
-      return 6
-    fi
-  fi
   return 0
 }
 
@@ -3956,54 +3772,6 @@ _wg_rollback() {
   return 1
 }
 
-# W: the tenant identities out of www-data, the account's own user first;
-# then the account's processes still holding www-data are counted (reported,
-# never killed).
-_wg_u13() {
-  local _u _rc=0 _uids _n _sw=NO _owed
-  _owed="/var/log/boa/instgrp-web.${_WP_A}.sgid.txt"
-  if [ "${_WP_M}" != "YES" ]; then
-    for _u in "${_WP_A}" $(_wg_w_ids | grep -vxF -- "${_WP_A}"); do
-      _in_grp_sup "${_u}" "${_WEBG}" || continue
-      # the sweep below is owed from before the first identity leaves, so a
-      # run killed in between is finished by the next run at B
-      if [ "${_sw}" = "NO" ] && [ ! -e "${_owed}" ]; then
-        _wg_put_root "${_owed}" "owed $(date '+%Y-%m-%d_%H:%M:%S')" \
-          || _alrt "${_WP_A}: ${_owed} could not be written; this run sweeps all the same"
-      fi
-      _sw=YES
-      gpasswd -d "${_u}" "${_WEBG}" > /dev/null 2>&1
-      if _in_grp_sup "${_u}" "${_WEBG}"; then
-        _alrt "${_u}: could not take it out of ${_WEBG}"
-        _rc=1
-      fi
-    done
-  fi
-  # aegir keeps www-data by design: the master has no such count
-  [ "${_WP_M}" = "YES" ] && return "${_rc}"
-  # an identity still listed could make another file at once: swept by
-  # the run that takes it out
-  if [ "${_rc}" = "0" ] && { [ "${_sw}" = "YES" ] || [ -e "${_owed}" ]; }; then
-    _sw=YES
-    _wg_sgid_sweep || _rc=1
-  fi
-  _uids=$(_wg_own_uids)
-  _n=$(_wg_procs_www "${_uids}")
-  if [ "${_n:-0}" -gt 0 ]; then
-    _msg "NOTE: ${_WP_A}: ${_n} processes still hold ${_WEBG} (sessions started before phase B); they keep it until they end"
-    _wg_note "phase B: ${_n} processes still hold www-data until they end (reconnect shell and SFTP sessions)"
-    printf '%s\n' "${_n}" > "/var/log/boa/instgrp-web.${_WP_A}.procs.txt" 2> /dev/null
-    # one of them could still make such a file: every run at B sweeps
-    # again until none is left
-    [ -e "${_owed}" ] || _wg_put_root "${_owed}" "owed $(date '+%Y-%m-%d_%H:%M:%S')" \
-      || _alrt "${_WP_A}: ${_owed} could not be written; the next run at B does not sweep again"
-  else
-    rm -f "/var/log/boa/instgrp-web.${_WP_A}.procs.txt"
-    [ "${_sw}" = "YES" ] && [ "${_rc}" = "0" ] && rm -f -- "${_owed}"
-  fi
-  return "${_rc}"
-}
-
 # How many processes of the uids $1 (comma list) hold www-data: in their
 # groups, or as their real, effective, saved or file-system group (a
 # set-group-ID file run before its bit was cleared).
@@ -4117,6 +3885,54 @@ _wg_sgid_sweep() {
   return "${_rc}"
 }
 
+# W: the tenant identities out of www-data, the account's own user first;
+# then the account's processes still holding www-data are counted (reported,
+# never killed).
+_wg_u13() {
+  local _u _rc=0 _uids _n _sw=NO _owed
+  _owed="/var/log/boa/instgrp-web.${_WP_A}.sgid.txt"
+  if [ "${_WP_M}" != "YES" ]; then
+    for _u in "${_WP_A}" $(_wg_w_ids | grep -vxF -- "${_WP_A}"); do
+      _in_grp_sup "${_u}" "${_WEBG}" || continue
+      # the sweep below is owed from before the first identity leaves, so a
+      # run killed in between is finished by the next run at B
+      if [ "${_sw}" = "NO" ] && [ ! -e "${_owed}" ]; then
+        _wg_put_root "${_owed}" "owed $(date '+%Y-%m-%d_%H:%M:%S')" \
+          || _alrt "${_WP_A}: ${_owed} could not be written; this run sweeps all the same"
+      fi
+      _sw=YES
+      gpasswd -d "${_u}" "${_WEBG}" > /dev/null 2>&1
+      if _in_grp_sup "${_u}" "${_WEBG}"; then
+        _alrt "${_u}: could not take it out of ${_WEBG}"
+        _rc=1
+      fi
+    done
+  fi
+  # aegir keeps www-data by design: the master has no such count
+  [ "${_WP_M}" = "YES" ] && return "${_rc}"
+  # an identity still listed could make another file at once: swept by
+  # the run that takes it out
+  if [ "${_rc}" = "0" ] && { [ "${_sw}" = "YES" ] || [ -e "${_owed}" ]; }; then
+    _sw=YES
+    _wg_sgid_sweep || _rc=1
+  fi
+  _uids=$(_wg_own_uids)
+  _n=$(_wg_procs_www "${_uids}")
+  if [ "${_n:-0}" -gt 0 ]; then
+    _msg "NOTE: ${_WP_A}: ${_n} processes still hold ${_WEBG} (sessions started before phase B); they keep it until they end"
+    _wg_note "phase B: ${_n} processes still hold www-data until they end (reconnect shell and SFTP sessions)"
+    printf '%s\n' "${_n}" > "/var/log/boa/instgrp-web.${_WP_A}.procs.txt" 2> /dev/null
+    # one of them could still make such a file: every run at B sweeps
+    # again until none is left
+    [ -e "${_owed}" ] || _wg_put_root "${_owed}" "owed $(date '+%Y-%m-%d_%H:%M:%S')" \
+      || _alrt "${_WP_A}: ${_owed} could not be written; the next run at B does not sweep again"
+  else
+    rm -f "/var/log/boa/instgrp-web.${_WP_A}.procs.txt"
+    [ "${_sw}" = "YES" ] && [ "${_rc}" = "0" ] && rm -f -- "${_owed}"
+  fi
+  return "${_rc}"
+}
+
 # Phase A's exit 2: the walk ended with paths in www-data, written during
 # it, which the next run walks; said in a NOTE, the notes and instgrp.log,
 # where the Octopus arm's note points.
@@ -4125,159 +3941,15 @@ _wg_a_left() {
   _wg_note_log "phase A: paths in www-data remain after the walk at phase A, written during it; the next run walks them"
 }
 
-# The up leg, rows A0r A0g A0 A1 B0r B0g B0 B1. rc as the table's exit
-# column.
-_wg_leg_up() {
-  local _rc _rw=0
-  _wg_u1 || return 1
-  if [ "${_D_T}" = "A" ] || { [ "${_D_RAISE}" = "YES" ] && [ "${_WG_START_G}" != "ours" ]; }; then
-    _wg_d2 "${_D_T}" || return $?
-  fi
-  _wg_u3 || return 1
-  _WG_VERS=$(_wg_versions)
-  # webconvert all: the first phase ends here, the account hold kept; one
-  # reload per version follows for every account, then this run again. A
-  # raise to B with a ground (B0g) runs on in one piece: read again after
-  # these steps it carries A, and at a pool-side level, or at A with no
-  # record yet, the gate would refuse it with its phase A not complete or
-  # not on record
-  if [ "${_WG_STOP_AT_U3}" = "YES" ] && [ "${_D_ROW}" != "B0g" ]; then
-    _WG_STOP_AT_U3=HELD
-    return 0
-  fi
-  _wg_u4 || return 1
-  _wg_walk_up
-  _rw=$?
-  _wg_u6
-  _rc=$?
-  if [ "${_rc}" != "0" ]; then
-    _wg_qhold_release
-    return "${_rc}"
-  fi
-  _wg_u7 || return 1
-  if [ "${_D_T}" = "A" ]; then
-    [ "${_rw}" = "2" ] && { _wg_a_left; return 2; }
-    return 0
-  fi
-  _wg_u8
-  _rc=$?
-  [ "${_rc}" = "0" ] || return "${_rc}"
-  # u9: the intent to B
-  _wg_i_read
-  if [ "${_WI_T}" != "B" ] || [ "${_WI_PIN}" != "-" ]; then
-    _wg_i_write B - - || return 1
-  fi
-  # u10: the record, B committed here (a plain B: a token is dropped)
-  if [ "${_WR_PH}" = "B" ] && [ "${_WR_RB}" = "YES" ]; then
-    _WG_RSAVE=Brb
-  else
-    _WG_RSAVE="${_WR_PH:-A}"
-  fi
-  if [ "${_WR_PH}" != "B" ] || [ "${_WR_RB}" = "YES" ]; then
-    _wg_r_under_hold B || return $?
-    _WR_PH=B
-    _WR_RB=NO
-  fi
-  _wg_u11 || return 1
-  if ! _wg_u12; then
-    _wg_rollback
-    return 1
-  fi
-  _wg_u13 || return 1
-  # the walk once more, in the same run: until u12 reloaded the pools they
-  # wrote www-data (an upload PHP renames in from the pool's upload_tmp_dir
-  # keeps it), and now only a process that still holds www-data can (u13
-  # counts them), so what the walk above left, and what u8 left to it, is
-  # taken here, as the next run at B would take it. A run that started at
-  # B with a clean walk has nothing to take
-  if [ "${_D_LAM}" != "B" ] || [ "${_rw}" = "2" ]; then
-    _wg_walk_up
-    _rw=$?
-    [ "${_rw}" = "1" ] && return 1
-    _wg_d9 commit
-  fi
-  _rc=0
-  if [ "${_rw}" = "2" ]; then
-    _msg "NOTE: ${_WP_A}: www-data paths remain after the walk at phase B, written during it; the next run at phase B walks them"
-    _wg_note_log "phase B: paths in www-data remain after the walk at phase B, written during it; the next run at phase B walks them"
-    _rc=2
-  fi
-  # the parts no walk takes, read again on every run at B: what a pool
-  # wrote there after the B check read them, before u12 reloaded it, or a
-  # process that still holds www-data since, stays there
-  if _wg_residue_full part; then
-    _msg "NOTE: ${_WP_A}: www-data paths remain in its sites' stores that the conversion does not walk in this layout, written before its pools left www-data or since: give them ${_WP_G}, or the next run at phase B walks them once the layout is one BOA makes (a single mount point under /mnt, the store owned by root or the account)"
-    _wg_note_log "phase B: paths in www-data remain in the sites' stores that the conversion does not walk in this layout, written before its pools left www-data or since: give them ${_WP_G}, or the next run at phase B walks them once the layout is one BOA makes"
-    _rc=2
-  fi
-  return "${_rc}"
-}
-
 # ---- the down leg ----------------------------------------------------------
 
-# The down leg, rows N0 N1 N2 A2. d0, the opt-out, ran before the token
-# strip (_wg_run).
-_wg_leg_down() {
-  local _t _pin _rc
-  # d1
-  read -r _t _pin <<< "$(_wg_plan)"
-  _wg_i_write "${_t}" "${_pin}" - || return 1
-  case "${_WG_CALLER}" in
-    conv|conv_a|conv_b)
-      # before anything else changes: a policy not written stops the leg
-      _wg_policy_set "${_pin}" \
-        || { _alrt "${_WP_A}: the web group policy could not be written to /root/.${_WP_A}.octopus.cnf"; return 1; }
-      ;;
+# A name or path the account can choose (an alias, a directory a link
+# resolves to) is used only without a control character: a newline would
+# turn one path into two lines for every reader of these lists.
+_wg_clean() {
+  case "${1}" in
+    *[[:cntrl:]]*) return 1 ;;
   esac
-  # d2
-  _wg_d2 "${_D_T}" || return $?
-  if [ "${_D_T}" = "A" ]; then
-    _wg_u3 || return 1
-    _WG_VERS=$(_wg_versions)
-    _wg_u4 || return 1
-    _wg_walk_up
-    _rc=$?
-    _wg_u6
-    _t=$?
-    if [ "${_t}" != "0" ]; then
-      _wg_qhold_release
-      return "${_t}"
-    fi
-    _wg_u7 || return 1
-    [ "${_rc}" = "2" ] && { _wg_a_left; return 2; }
-    return 0
-  fi
-  if [ -n "$(_gid_of "${_WP_G}")" ] && [ "${_WM_G}" = "ours" ]; then
-    # d4: the record removed (writers write www-data from here), the alias
-    # back, under the queue hold
-    _wg_qhold
-    _rc=$?
-    [ "${_rc}" = "0" ] || return "${_rc}"
-    if ! _wg_r_remove; then
-      _wg_qhold_release
-      _alrt "${_WP_A}: the record ${_WP_R} could not be removed"
-      return 1
-    fi
-    _WR_PH=""
-    _WR_RB=NO
-    _wg_alias_set "${_WEBG}" || { _wg_qhold_release; return 1; }
-    _wg_qhold_release
-    # d5: the files back to www-data, the private set widened back (never a
-    # left-alone path: the conversion did not narrow it), the D9 stamp and
-    # xtrim's quarantined copies of the line gone
-    _wg_walk_down
-    _WG_LEFT=$(_wg_left)
-    _wg_private_modes 02775 0664
-    _wg_d9 remove
-    _wg_xtrim_scrub
-    # d6: the group goes only when nothing carries its gid
-    if ! _wg_group_drop; then
-      return 2
-    fi
-  fi
-  # d7
-  _wg_i_remove
-  rm -f "/var/log/boa/instgrp-web.${_WP_A}.procs.txt" "/var/log/boa/instgrp-web.${_WP_A}.sgid.txt"
   return 0
 }
 
@@ -4318,83 +3990,7 @@ _wg_store_gone() {
   printf '%s\n' "${_l}"
 }
 
-# d6: no path and no pool file carrying the gid: delist every member and
-# delete the group together; else 2, the group and its listings kept. The
-# roots, what the way down walks beyond them, and every store of the
-# account's name under /mnt that those do not hold are read; while the
-# account's static/files does not resolve, the group is kept unread.
-_wg_group_drop() {
-  local _gid _u _e _f _r _x _seen=""
-  _gid=$(_gid_of "${_WP_G}")
-  [ -n "${_gid}" ] || return 0
-  while read -r _e _f; do
-    [ -n "${_f}" ] || continue
-    if grep -qE "^[[:space:]]*group[[:space:]]*=[[:space:]]*(${_WP_G}|${_gid})[[:space:]]*$" "${_f}" 2> /dev/null; then
-      _msg "${_WP_A}: ${_f} still names ${_WP_G}; the group is kept (re-run webrevert)"
-      return 1
-    fi
-  done < <(_wg_pool_files)
-  if _x=$(_wg_store_gone); then
-    _msg "${_WP_A}: ${_x} is a link that does not resolve (its attached storage not mounted, or the link changed); the group is kept (re-run webrevert once it resolves)"
-    _log "${_WP_A}: web group kept, ${_x} does not resolve"
-    return 1
-  fi
-  for _r in $(_wg_roots); do
-    if [ -n "$(find -P "${_r}" -gid "${_gid}" ! -type l -print -quit 2> /dev/null)" ]; then
-      _msg "${_WP_A}: paths under ${_r} still carry ${_WP_G} (gid ${_gid}); the group is kept (re-run webrevert)"
-      _log "${_WP_A}: web group kept, paths still in gid ${_gid}"
-      return 1
-    fi
-    _x=$(realpath -e -- "${_r}" 2> /dev/null) && _seen="${_seen}${_x}"$'\n'
-  done
-  while IFS= read -r _r; do
-    [ -n "${_r}" ] || continue
-    if [ -n "$(_wg_in "${_r}" find -P . -gid "${_gid}" ! -type l -print -quit 2> /dev/null)" ]; then
-      _msg "${_WP_A}: paths under ${_r} still carry ${_WP_G} (gid ${_gid}); the group is kept (re-run webrevert)"
-      _log "${_WP_A}: web group kept, paths still in gid ${_gid}"
-      return 1
-    fi
-    _seen="${_seen}${_r}"$'\n'
-  done < <(_wg_parts_beyond)
-  while IFS= read -r _r; do
-    [ -n "${_r}" ] || continue
-    _wg_under "${_r}" "${_seen}" && continue
-    if [ -n "$(_wg_in "${_r}" find -P . -gid "${_gid}" ! -type l -print -quit 2> /dev/null)" ]; then
-      _msg "${_WP_A}: paths under ${_r} still carry ${_WP_G} (gid ${_gid}) where no revert walks in this layout; the group is kept: give those paths www-data, or re-run webrevert once it is the account's store at the single mount point under /mnt (root's or the account's)"
-      _log "${_WP_A}: web group kept, paths still in gid ${_gid}"
-      return 1
-    fi
-  done < <(_wg_mnt_stores)
-  # a folder at the account's names in the toolchain parents the walk leaves
-  # out (another owner, or a name it does not take) can still hold the group:
-  # an earlier walk up took it in
-  if [ "${_WP_M}" != "YES" ] && _x=$(_acct_tc_left_gid "${_gid}" "${_WP_A}"); then
-    _msg "${_WP_A}: ${_x} is left out of the walk and still holds entries in ${_WP_G} (gid ${_gid}); the group is kept (re-group or remove them, then re-run webrevert)"
-    _log "${_WP_A}: web group kept, ${_x} (left out of the walk) still holds entries in gid ${_gid}"
-    return 1
-  fi
-  for _u in $(getent group "${_WP_G}" | cut -d: -f4 | tr ',' ' '); do
-    gpasswd -d "${_u}" "${_WP_G}" > /dev/null 2>&1
-  done
-  if groupdel "${_WP_G}" > /dev/null 2>&1; then
-    _log "${_WP_A}: group ${_WP_G} removed"
-    return 0
-  fi
-  _alrt "${_WP_A}: groupdel ${_WP_G} failed; the group is kept"
-  return 1
-}
-
 # ---- sites, stores, tops -----------------------------------------------------
-
-# A name or path the account can choose (an alias, a directory a link
-# resolves to) is used only without a control character: a newline would
-# turn one path into two lines for every reader of these lists.
-_wg_clean() {
-  case "${1}" in
-    *[[:cntrl:]]*) return 1 ;;
-  esac
-  return 0
-}
 
 # The profile's registered sites, "<in|out> <alias> <resolved site dir>" per
 # line, each site once: each alias in the real .drush with a site_path, read
@@ -4520,6 +4116,52 @@ _wg_store_own() {
   return 0
 }
 
+# The resolved $1/$2 when it is a real directory inside the site dir $1
+# (resolved already), with no control character in its path; 1 otherwise.
+_wg_child() {
+  local _r
+  [ -d "${1}/${2}" ] && [ ! -L "${1}/${2}" ] || return 1
+  _r=$(realpath -e -- "${1}/${2}" 2> /dev/null) || return 1
+  _wg_clean "${_r}" || return 1
+  case "${_r}/" in
+    "${1}"/?*) printf '%s' "${_r}" ;;
+    *) return 1 ;;
+  esac
+}
+
+# The public set beyond the files stores, "public <resolved path>" per
+# directory: a Textpattern site's public/{files,images,themes}, a Grav
+# capsule's images, assets and user/pages (each a real child of the site
+# dir), and the Boost cache of the site's platform, cache/normal (a real
+# directory of the profile's own tree). The site classes are told apart as
+# the site ownership scripts tell them.
+_wg_public_parts() {
+  local _s="${1}" _p _r _rh _l=""
+  if [ -f "${_s}/public/index.php" ] && [ -f "${_s}/public/css.php" ] \
+    && [ -d "${_s}/admin" ] && [ ! -f "${_s}/settings.php" ]; then
+    _l="public/files public/images public/themes"
+  elif [ -f "${_s}/bin/grav" ] && [ -f "${_s}/system/defines.php" ] \
+    && [ ! -f "${_s}/settings.php" ]; then
+    _l="images assets user/pages"
+  fi
+  for _p in ${_l}; do
+    _r=$(_wg_child "${_s}" "${_p}") && printf 'public %s\n' "${_r}"
+  done
+  case "${_s}" in
+    */sites/?*) ;;
+    *) return 0 ;;
+  esac
+  _p="${_s%/sites/*}/cache/normal"
+  [ -d "${_p}" ] && [ ! -L "${_p}" ] || return 0
+  _r=$(realpath -e -- "${_p}" 2> /dev/null) || return 0
+  _rh=$(realpath -e -- "${_WP_HOME}" 2> /dev/null) || return 0
+  _wg_clean "${_r}" || return 0
+  case "${_r}/" in
+    "${_rh}"/?*) printf 'public %s\n' "${_r}" ;;
+  esac
+  return 0
+}
+
 # The stores and tops of one resolved site dir $1 of the profile, as
 # "<kind> <resolved path>": trio (settings files), store (the files store:
 # it must end in /files and be the profile's own, never the site's private
@@ -4573,52 +4215,6 @@ _wg_site_parts() {
   _wg_public_parts "${_s}"
 }
 
-# The resolved $1/$2 when it is a real directory inside the site dir $1
-# (resolved already), with no control character in its path; 1 otherwise.
-_wg_child() {
-  local _r
-  [ -d "${1}/${2}" ] && [ ! -L "${1}/${2}" ] || return 1
-  _r=$(realpath -e -- "${1}/${2}" 2> /dev/null) || return 1
-  _wg_clean "${_r}" || return 1
-  case "${_r}/" in
-    "${1}"/?*) printf '%s' "${_r}" ;;
-    *) return 1 ;;
-  esac
-}
-
-# The public set beyond the files stores, "public <resolved path>" per
-# directory: a Textpattern site's public/{files,images,themes}, a Grav
-# capsule's images, assets and user/pages (each a real child of the site
-# dir), and the Boost cache of the site's platform, cache/normal (a real
-# directory of the profile's own tree). The site classes are told apart as
-# the site ownership scripts tell them.
-_wg_public_parts() {
-  local _s="${1}" _p _r _rh _l=""
-  if [ -f "${_s}/public/index.php" ] && [ -f "${_s}/public/css.php" ] \
-    && [ -d "${_s}/admin" ] && [ ! -f "${_s}/settings.php" ]; then
-    _l="public/files public/images public/themes"
-  elif [ -f "${_s}/bin/grav" ] && [ -f "${_s}/system/defines.php" ] \
-    && [ ! -f "${_s}/settings.php" ]; then
-    _l="images assets user/pages"
-  fi
-  for _p in ${_l}; do
-    _r=$(_wg_child "${_s}" "${_p}") && printf 'public %s\n' "${_r}"
-  done
-  case "${_s}" in
-    */sites/?*) ;;
-    *) return 0 ;;
-  esac
-  _p="${_s%/sites/*}/cache/normal"
-  [ -d "${_p}" ] && [ ! -L "${_p}" ] || return 0
-  _r=$(realpath -e -- "${_p}" 2> /dev/null) || return 0
-  _rh=$(realpath -e -- "${_WP_HOME}" 2> /dev/null) || return 0
-  _wg_clean "${_r}" || return 0
-  case "${_r}/" in
-    "${_rh}"/?*) printf 'public %s\n' "${_r}" ;;
-  esac
-  return 0
-}
-
 # Every own part of every site of the profile, each once.
 _wg_parts() {
   local _al _s
@@ -4631,6 +4227,41 @@ _wg_parts() {
 # The tops T reads: the trio, each store top, each private top.
 _wg_tops() {
   _wg_parts | awk '$1 == "trio" || $1 == "store" || $1 == "private"'
+}
+
+# The web class tops of every site: the settings trio, each accepted files
+# store and private store top. T holds when each is in the web group and
+# each private top is 02770; _WM_RT when any of them is in www-data.
+_wg_m_t() {
+  local _k _p _g _m
+  _WM_T=YES
+  _WM_RT=NO
+  while read -r _k _p; do
+    [ -n "${_p}" ] || continue
+    read -r _g _m < <(stat -c '%g %a' -- "${_p}" 2> /dev/null)
+    [ -n "${_g}" ] || continue
+    [ "${_g}" = "${_WG_WWWGID}" ] && _WM_RT=YES
+    [ "${_g}" = "${_WG_GID}" ] || _WM_T=NO
+    [ "${_k}" = "private" ] && [ "${_m}" != "2770" ] && _WM_T=NO
+  done < <(_wg_tops)
+  return 0
+}
+
+# Measures every trait the table reads and classifies them (lambda):
+# none, betw, A, betwP, betwK, betwB, B.
+_wg_measure() {
+  _WG_WWWGID=$(_gid_of "${_WEBG}")
+  _wg_m_g
+  _WG_VERS=$(_wg_versions)
+  _WM_LAM=none
+  [ "${_WM_G}" = "ours" ] || return 0
+  _wg_m_l
+  _wg_m_w
+  _wg_m_p
+  _wg_m_k
+  _wg_m_s
+  _wg_m_t
+  _wg_classify
 }
 
 # The walk's roots: an account's roots (instgrp's own list) and its PHP
@@ -4809,6 +4440,72 @@ _wg_in() {
   ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_d}" ] && "$@" )
 }
 
+# d6: no path and no pool file carrying the gid: delist every member and
+# delete the group together; else 2, the group and its listings kept. The
+# roots, what the way down walks beyond them, and every store of the
+# account's name under /mnt that those do not hold are read; while the
+# account's static/files does not resolve, the group is kept unread.
+_wg_group_drop() {
+  local _gid _u _e _f _r _x _seen=""
+  _gid=$(_gid_of "${_WP_G}")
+  [ -n "${_gid}" ] || return 0
+  while read -r _e _f; do
+    [ -n "${_f}" ] || continue
+    if grep -qE "^[[:space:]]*group[[:space:]]*=[[:space:]]*(${_WP_G}|${_gid})[[:space:]]*$" "${_f}" 2> /dev/null; then
+      _msg "${_WP_A}: ${_f} still names ${_WP_G}; the group is kept (re-run webrevert)"
+      return 1
+    fi
+  done < <(_wg_pool_files)
+  if _x=$(_wg_store_gone); then
+    _msg "${_WP_A}: ${_x} is a link that does not resolve (its attached storage not mounted, or the link changed); the group is kept (re-run webrevert once it resolves)"
+    _log "${_WP_A}: web group kept, ${_x} does not resolve"
+    return 1
+  fi
+  for _r in $(_wg_roots); do
+    if [ -n "$(find -P "${_r}" -gid "${_gid}" ! -type l -print -quit 2> /dev/null)" ]; then
+      _msg "${_WP_A}: paths under ${_r} still carry ${_WP_G} (gid ${_gid}); the group is kept (re-run webrevert)"
+      _log "${_WP_A}: web group kept, paths still in gid ${_gid}"
+      return 1
+    fi
+    _x=$(realpath -e -- "${_r}" 2> /dev/null) && _seen="${_seen}${_x}"$'\n'
+  done
+  while IFS= read -r _r; do
+    [ -n "${_r}" ] || continue
+    if [ -n "$(_wg_in "${_r}" find -P . -gid "${_gid}" ! -type l -print -quit 2> /dev/null)" ]; then
+      _msg "${_WP_A}: paths under ${_r} still carry ${_WP_G} (gid ${_gid}); the group is kept (re-run webrevert)"
+      _log "${_WP_A}: web group kept, paths still in gid ${_gid}"
+      return 1
+    fi
+    _seen="${_seen}${_r}"$'\n'
+  done < <(_wg_parts_beyond)
+  while IFS= read -r _r; do
+    [ -n "${_r}" ] || continue
+    _wg_under "${_r}" "${_seen}" && continue
+    if [ -n "$(_wg_in "${_r}" find -P . -gid "${_gid}" ! -type l -print -quit 2> /dev/null)" ]; then
+      _msg "${_WP_A}: paths under ${_r} still carry ${_WP_G} (gid ${_gid}) where no revert walks in this layout; the group is kept: give those paths www-data, or re-run webrevert once it is the account's store at the single mount point under /mnt (root's or the account's)"
+      _log "${_WP_A}: web group kept, paths still in gid ${_gid}"
+      return 1
+    fi
+  done < <(_wg_mnt_stores)
+  # a folder at the account's names in the toolchain parents the walk leaves
+  # out (another owner, or a name it does not take) can still hold the group:
+  # an earlier walk up took it in
+  if [ "${_WP_M}" != "YES" ] && _x=$(_acct_tc_left_gid "${_gid}" "${_WP_A}"); then
+    _msg "${_WP_A}: ${_x} is left out of the walk and still holds entries in ${_WP_G} (gid ${_gid}); the group is kept (re-group or remove them, then re-run webrevert)"
+    _log "${_WP_A}: web group kept, ${_x} (left out of the walk) still holds entries in gid ${_gid}"
+    return 1
+  fi
+  for _u in $(getent group "${_WP_G}" | cut -d: -f4 | tr ',' ' '); do
+    gpasswd -d "${_u}" "${_WP_G}" > /dev/null 2>&1
+  done
+  if groupdel "${_WP_G}" > /dev/null 2>&1; then
+    _log "${_WP_A}: group ${_WP_G} removed"
+    return 0
+  fi
+  _alrt "${_WP_A}: groupdel ${_WP_G} failed; the group is kept"
+  return 1
+}
+
 # ---- the walks ---------------------------------------------------------------------
 
 # find's tests the walks start perl for, so a settled tree starts none (the
@@ -4909,52 +4606,6 @@ _wg_plants() {
       -execdir perl -e "${_WG_PLANT_PL}" "${_u}" "${_g}" "${_uids}" {} + 2> /dev/null)
   done < <(_wg_parts)
   [ "${_n}" -gt 0 ] && _msg "NOTE: ${_WP_A}: ${_n} hard links or FIFOs of other owners in its web paths (see ${_WP_NOTES})"
-  return 0
-}
-
-# www-data -> the web group over the roots (passwords.d pruned: nginx reads
-# it; the left-alone paths pruned: _wg_left) and over the account's store
-# on attached storage when no root covers it (_wg_parts_beyond store: root
-# owns it, as migratefs leaves the one BOA made in the home; the way down
-# walks it back), the gid re-read on each handle; then bare or foreign
-# gids in the stores and the trio claimed; walked again while residue is
-# left (twice at most). 0 clean, 2 residue left.
-_wg_walk_up() {
-  local _g _uids _r _pass=0 _ag
-  _WG_LEFT=$(_wg_left)
-  _g=$(_gid_of "${_WP_G}")
-  [[ "${_g}" =~ ^[0-9]+$ ]] || return 1
-  _uids=$(_grp_owner_uids "${_WP_G}" "${_WP_A}")
-  [ "${_WP_M}" = "YES" ] && _uids=$(_wg_own_uids)
-  _ag=$(_gid_of "$([ "${_WP_M}" = "YES" ] && echo aegir || echo "${_WP_A}")")
-  [[ "${_ag}" =~ ^[0-9]+$ ]] || _ag=-1
-  _wg_public_open
-  _wg_plants
-  while :; do
-    _pass=$((_pass + 1))
-    for _r in $(_wg_roots); do
-      [ -d "${_r}" ] || continue
-      _wg_left_prune "${_r}"
-      env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_r}" "${_WG_PRUNE[@]}" \
-        -path '*/config/server_master/nginx/passwords.d' -prune -o -gid "${_WG_WWWGID}" \
-        -execdir perl -e "${_GRP_REOWN_PL}" -- "${_g}" "${_uids}" "${_WG_WWWGID}" -1 -1 {} + > /dev/null 2>&1
-    done
-    while IFS= read -r _r; do
-      [ -n "${_r}" ] || continue
-      _wg_is_left "${_r}" && continue
-      _wg_left_prune "${_r}" .
-      _wg_in "${_r}" env PATH=/usr/local/bin:/usr/bin:/bin find -P . "${_WG_PRUNE[@]}" -gid "${_WG_WWWGID}" \
-        -execdir perl -e "${_GRP_REOWN_PL}" -- "${_g}" "${_uids}" "${_WG_WWWGID}" -1 -1 {} + > /dev/null 2>&1
-    done < <(_wg_parts_beyond store)
-    _wg_claim "${_g}" "${_uids}" "${_WG_WWWGID}" "${_ag}"
-    _wg_web_residue || break
-    [ "${_pass}" -ge 3 ] && break
-    _msg "${_WP_A}: web paths were written during the walk, walking again (${_pass})..."
-  done
-  _wg_d9 next
-  _wg_public_open
-  _wg_sessions_note
-  _wg_web_residue && return 2
   return 0
 }
 
@@ -5167,46 +4818,6 @@ _wg_secret_narrow() {
   return 0
 }
 
-# The web group back to www-data over the roots, with its residue loop.
-_wg_walk_down() {
-  local _g _uids _r _pass=0
-  _g=$(_gid_of "${_WP_G}")
-  [[ "${_g}" =~ ^[0-9]+$ ]] || return 0
-  _uids=$(_grp_owner_uids "${_WEBG}" "${_WP_A}")
-  [ "${_WP_M}" = "YES" ] && _uids=$(_wg_own_uids)
-  while :; do
-    _pass=$((_pass + 1))
-    for _r in $(_wg_roots); do
-      [ -d "${_r}" ] || continue
-      env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_r}" -gid "${_g}" \
-        -execdir perl -e "${_GRP_REOWN_PL}" -- "${_WG_WWWGID}" "${_uids}" "${_g}" -1 -1 {} + > /dev/null 2>&1
-    done
-    while IFS= read -r _r; do
-      [ -n "${_r}" ] || continue
-      _wg_in "${_r}" env PATH=/usr/local/bin:/usr/bin:/bin find -P . -gid "${_g}" \
-        -execdir perl -e "${_GRP_REOWN_PL}" -- "${_WG_WWWGID}" "${_uids}" "${_g}" -1 -1 {} + > /dev/null 2>&1
-    done < <(_wg_parts_beyond)
-    [ "${_pass}" -ge 3 ] && break
-    _wg_gid_in_roots "${_g}" || break
-  done
-  return 0
-}
-
-# Up to $2 of the entries _wg_gid_in_roots reads still in gid $1, one per
-# line, a byte outside the printable set shown as "?".
-_wg_gid_paths() {
-  local _r _l
-  { for _r in $(_wg_roots); do
-      find -P "${_r}" -gid "${1}" \( -type d -o -type f -links 1 \) -print0 2> /dev/null | head -z -n "${2}"
-    done
-    while IFS= read -r _r; do
-      [ -n "${_r}" ] || continue
-      _wg_in "${_r}" find -P . -gid "${1}" \( -type d -o -type f -links 1 \) -print0 2> /dev/null \
-        | head -z -n "${2}" | while LC_ALL=C IFS= read -r -d '' _l; do printf '%s\0' "${_r}${_l#.}"; done
-    done < <(_wg_parts_beyond)
-  } | head -z -n "${2}" | tr '\n\0' '?\n' | LC_ALL=C tr -c '[:print:]\n' '?'
-}
-
 # 0 when an entry the walk changes still carries gid $1 under the roots or
 # in what the way down walks beyond them (_wg_parts_beyond).
 _wg_gid_in_roots() {
@@ -5259,6 +4870,52 @@ _wg_d9() {
   return 0
 }
 
+# www-data -> the web group over the roots (passwords.d pruned: nginx reads
+# it; the left-alone paths pruned: _wg_left) and over the account's store
+# on attached storage when no root covers it (_wg_parts_beyond store: root
+# owns it, as migratefs leaves the one BOA made in the home; the way down
+# walks it back), the gid re-read on each handle; then bare or foreign
+# gids in the stores and the trio claimed; walked again while residue is
+# left (twice at most). 0 clean, 2 residue left.
+_wg_walk_up() {
+  local _g _uids _r _pass=0 _ag
+  _WG_LEFT=$(_wg_left)
+  _g=$(_gid_of "${_WP_G}")
+  [[ "${_g}" =~ ^[0-9]+$ ]] || return 1
+  _uids=$(_grp_owner_uids "${_WP_G}" "${_WP_A}")
+  [ "${_WP_M}" = "YES" ] && _uids=$(_wg_own_uids)
+  _ag=$(_gid_of "$([ "${_WP_M}" = "YES" ] && echo aegir || echo "${_WP_A}")")
+  [[ "${_ag}" =~ ^[0-9]+$ ]] || _ag=-1
+  _wg_public_open
+  _wg_plants
+  while :; do
+    _pass=$((_pass + 1))
+    for _r in $(_wg_roots); do
+      [ -d "${_r}" ] || continue
+      _wg_left_prune "${_r}"
+      env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_r}" "${_WG_PRUNE[@]}" \
+        -path '*/config/server_master/nginx/passwords.d' -prune -o -gid "${_WG_WWWGID}" \
+        -execdir perl -e "${_GRP_REOWN_PL}" -- "${_g}" "${_uids}" "${_WG_WWWGID}" -1 -1 {} + > /dev/null 2>&1
+    done
+    while IFS= read -r _r; do
+      [ -n "${_r}" ] || continue
+      _wg_is_left "${_r}" && continue
+      _wg_left_prune "${_r}" .
+      _wg_in "${_r}" env PATH=/usr/local/bin:/usr/bin:/bin find -P . "${_WG_PRUNE[@]}" -gid "${_WG_WWWGID}" \
+        -execdir perl -e "${_GRP_REOWN_PL}" -- "${_g}" "${_uids}" "${_WG_WWWGID}" -1 -1 {} + > /dev/null 2>&1
+    done < <(_wg_parts_beyond store)
+    _wg_claim "${_g}" "${_uids}" "${_WG_WWWGID}" "${_ag}"
+    _wg_web_residue || break
+    [ "${_pass}" -ge 3 ] && break
+    _msg "${_WP_A}: web paths were written during the walk, walking again (${_pass})..."
+  done
+  _wg_d9 next
+  _wg_public_open
+  _wg_sessions_note
+  _wg_web_residue && return 2
+  return 0
+}
+
 # xtrim's quarantined pool files of the account keep no web group line.
 _wg_xtrim_scrub() {
   local _f
@@ -5268,6 +4925,46 @@ _wg_xtrim_scrub() {
     _wg_file_strip "${_f}" "group = ${_WP_G}"
   done
   return 0
+}
+
+# The web group back to www-data over the roots, with its residue loop.
+_wg_walk_down() {
+  local _g _uids _r _pass=0
+  _g=$(_gid_of "${_WP_G}")
+  [[ "${_g}" =~ ^[0-9]+$ ]] || return 0
+  _uids=$(_grp_owner_uids "${_WEBG}" "${_WP_A}")
+  [ "${_WP_M}" = "YES" ] && _uids=$(_wg_own_uids)
+  while :; do
+    _pass=$((_pass + 1))
+    for _r in $(_wg_roots); do
+      [ -d "${_r}" ] || continue
+      env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_r}" -gid "${_g}" \
+        -execdir perl -e "${_GRP_REOWN_PL}" -- "${_WG_WWWGID}" "${_uids}" "${_g}" -1 -1 {} + > /dev/null 2>&1
+    done
+    while IFS= read -r _r; do
+      [ -n "${_r}" ] || continue
+      _wg_in "${_r}" env PATH=/usr/local/bin:/usr/bin:/bin find -P . -gid "${_g}" \
+        -execdir perl -e "${_GRP_REOWN_PL}" -- "${_WG_WWWGID}" "${_uids}" "${_g}" -1 -1 {} + > /dev/null 2>&1
+    done < <(_wg_parts_beyond)
+    [ "${_pass}" -ge 3 ] && break
+    _wg_gid_in_roots "${_g}" || break
+  done
+  return 0
+}
+
+# Up to $2 of the entries _wg_gid_in_roots reads still in gid $1, one per
+# line, a byte outside the printable set shown as "?".
+_wg_gid_paths() {
+  local _r _l
+  { for _r in $(_wg_roots); do
+      find -P "${_r}" -gid "${1}" \( -type d -o -type f -links 1 \) -print0 2> /dev/null | head -z -n "${2}"
+    done
+    while IFS= read -r _r; do
+      [ -n "${_r}" ] || continue
+      _wg_in "${_r}" find -P . -gid "${1}" \( -type d -o -type f -links 1 \) -print0 2> /dev/null \
+        | head -z -n "${2}" | while LC_ALL=C IFS= read -r -d '' _l; do printf '%s\0' "${_r}${_l#.}"; done
+    done < <(_wg_parts_beyond)
+  } | head -z -n "${2}" | tr '\n\0' '?\n' | LC_ALL=C tr -c '[:print:]\n' '?'
 }
 
 # ./server_master.alias.drushrc.php rewritten through sed, as renameaegirhost
@@ -5408,6 +5105,20 @@ _wg_policy_set() {
     | grep -aqE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=" || return 0
   _wg_policy_put REMOVE || return 1
   _msg "NOTE: _WEB_GROUP removed from /root/.${_WP_A}.octopus.cnf (a per-account verb lifts the opt-out; only --phase-a pins)"
+}
+
+_wg_u1() {
+  local _t _pin
+  read -r _t _pin <<< "$(_wg_plan)"
+  _wg_i_write "${_t}" "${_pin}" - || return 1
+  case "${_WG_CALLER}" in
+    conv|conv_a|conv_b)
+      # before anything else changes: a policy not written stops the leg
+      _wg_policy_set "${_pin}" \
+        || { _alrt "${_WP_A}: the web group policy could not be written to /root/.${_WP_A}.octopus.cnf"; return 1; }
+      ;;
+  esac
+  return 0
 }
 
 # G2: the account is converted to its own group by instgrp convert.
@@ -5567,6 +5278,30 @@ _wg_level_now() {
   ( _wg_measure > /dev/null 2>&1; printf '%s' "${_WM_LAM}" )
 }
 
+_all_accounts() {
+  local _f _a
+  for _f in /root/.*.octopus.cnf; do
+    [ -e "${_f}" ] || continue
+    _a="${_f#/root/.}"
+    _a="${_a%.octopus.cnf}"
+    _valid_account "${_a}" && printf '%s\n' "${_a}"
+  done
+}
+
+_rc_rank() {
+  case "$1" in
+    1) echo 6 ;; 3) echo 5 ;; 2) echo 4 ;; 5) echo 3 ;; 4) echo 2 ;; 0) echo 0 ;; *) echo 1 ;;
+  esac
+}
+
+# The exit codes are not ordered by number; over 'all' the worst class wins:
+# failed > inconsistent > drift > not ready > skipped > done.
+_worse_rc() {
+  local _x="$1" _y="$2" _rx _ry
+  _rx=$(_rc_rank "${_x}")
+  _ry=$(_rc_rank "${_y}")
+  [ "${_ry}" -gt "${_rx}" ] && printf '%s' "${_y}" || printf '%s' "${_x}"
+}
 _wg_g_share() {
   local _al _s _k _p _hit=1 _x _xh _xn _o _me="${_WP_A}"
   _WG_GN_SHARE=0
@@ -5643,6 +5378,321 @@ _wg_g_share() {
   done
   [ "${_WG_SHARE_MODE}" = "note" ] && return 1
   return "${_hit}"
+}
+
+# Reads a raise gate the row needs and the caller left unset.
+_wg_gate() {
+  local _v="${1}"
+  [ -n "${!_v}" ] && return 0
+  case "${_v}" in
+    _D_OPTOUT) { _wg_g_optout || _wg_g_v1_optout; } && _D_OPTOUT=YES || _D_OPTOUT=NO ;;
+    _D_V1) _wg_g_v1 && _D_V1=YES || _D_V1=NO ;;
+    _D_READY) _wg_g_ready && _D_READY=YES || _D_READY=NO ;;
+    _D_SHARE)
+      # where the run goes on to phase A (from below A, or from an A not
+      # complete: level betw) the gate only picks the row: u6 names the
+      # grounds it found. The inbound side is named here all the same,
+      # before the first write: a run that stops before u6 has taken the
+      # store from the reading site by then. A caller that reads silently
+      # stays silent
+      if [ "${_WG_SHARE_MODE}" != "silent" ] \
+        && { [ "${_D_SIGMA}" = "none" ] || [ "${_D_LAM}" = "betw" ]; }; then
+        _WG_SHARE_MODE=pick _wg_g_share && _D_SHARE=YES || _D_SHARE=NO
+      else
+        _wg_g_share && _D_SHARE=YES || _D_SHARE=NO
+      fi
+      ;;
+  esac
+}
+
+# _D_ROW := the one row that matches; rows are tried in this order and each
+# includes "every row above failed".
+_wg_table() {
+  local _bulk=NO _ground=NO
+  _wg_derive
+  case "${_D_CALLER}" in
+    all|all_b|arm) _bulk=YES ;;
+  esac
+  if [ "${_D_CALLER}" = "reclaim" ]; then
+    if [ "${_D_FOREIGN}" = "YES" ]; then _D_ROW=RC1
+    elif [ "${_D_STANDBY}" = "YES" ]; then _D_ROW=RC0
+    elif [ "${_D_RV}" = "A" ] || [ "${_D_RV}" = "B" ]; then _D_ROW=RC2
+    elif [ "${_D_LAM}" != "none" ]; then _D_ROW=RC3
+    else _D_ROW=RC4
+    fi
+    return 0
+  fi
+  if [ "${_D_FOREIGN}" = "YES" ]; then _D_ROW=E1; return 0; fi
+  if [ "${_D_BUSY}" = "YES" ]; then _D_ROW=E2; return 0; fi
+  if [ "${_D_FROZENB}" = "YES" ]; then _D_ROW=E3; return 0; fi
+  if [ "${_D_STANDBYB}" = "YES" ]; then _D_ROW=E4; return 0; fi
+  if [ "${_bulk}" = "YES" ] && [ "${_D_LN}" = "YES" ]; then
+    if [ "${_D_LAM}" != "none" ]; then _D_ROW=S1; else _D_ROW=S2; fi
+    return 0
+  fi
+  if [ "${_D_CALLER}" = "all_b" ] && [ "${_D_PIN}" = "YES" ]; then _D_ROW=S3; return 0; fi
+  if [ "${_D_RAISE}" = "YES" ]; then
+    if [ "${_bulk}" = "YES" ]; then
+      _wg_gate _D_OPTOUT
+      [ "${_D_OPTOUT}" = "YES" ] && { _D_ROW=G1; return 0; }
+    fi
+    _wg_gate _D_V1
+    [ "${_D_V1}" = "YES" ] || { _D_ROW=G2; return 0; }
+    _wg_gate _D_READY
+    [ "${_D_READY}" = "YES" ] || { _D_ROW=G3; return 0; }
+    # a ground of the share and store gate (an outbound share, a legacy
+    # site, a site or a store outside the account) refuses the raise from A
+    # to B only; from below A the run goes to A, that path left as it is
+    # (rows A0g and B0g), and the B check stops a run that asked for B. An
+    # account that carries A and reads betw (a first conversion cut short)
+    # is not refused either: its phase A is not complete, and the run
+    # finishes it as B0g does
+    _wg_gate _D_SHARE
+    if [ "${_D_SHARE}" = "YES" ]; then
+      [ "${_D_SIGMA}" != "none" ] && [ "${_D_LAM}" != "betw" ] && { _D_ROW=G4; return 0; }
+      _ground=YES
+    fi
+  fi
+  case "${_D_T}" in
+    none)
+      case "${_D_LAM}" in
+        none) _D_ROW=N0 ;;
+        betw|A) _D_ROW=N1 ;;
+        *) _D_ROW=N2 ;;
+      esac
+      ;;
+    A)
+      case "${_D_LAM}" in
+        none|betw)
+          if [ "${_ground}" = "YES" ]; then
+            _D_ROW=A0g
+          elif [ "${_D_RAISE}" = "YES" ]; then
+            _D_ROW=A0r
+          else
+            _D_ROW=A0
+          fi
+          ;;
+        A) _D_ROW=A1 ;;
+        *) _D_ROW=A2 ;;
+      esac
+      ;;
+    B)
+      if [ "${_D_LAM}" = "B" ]; then
+        _D_ROW=B1
+      elif [ "${_ground}" = "YES" ]; then
+        _D_ROW=B0g
+      elif [ "${_D_RAISE}" = "YES" ]; then
+        _D_ROW=B0r
+      else
+        _D_ROW=B0
+      fi
+      ;;
+  esac
+}
+
+# The private side, under the queue hold (released at u7): the private set
+# to 02770/0660, the secret set narrowed, the share and store re-scan (a
+# note here, never a refusal: what it finds is left as it is and holds
+# phase B only), the alias, the D9 stamp.
+_wg_u6() {
+  local _q
+  _wg_qhold
+  _q=$?
+  [ "${_q}" = "0" ] || return "${_q}"
+  _wg_private_modes 02770 0660
+  _wg_secret_narrow
+  _WG_SHARE_MODE=note _wg_g_share
+  _wg_alias_set "${_WP_G}" || return 1
+  _wg_d9 commit
+  return 0
+}
+
+# The B check, when a B trait is still missing: the account's static/files
+# resolving (5: a link to attached storage that is not mounted, which no
+# walk and no read reaches then, or a link changed), www-data in a part
+# (5: a site's store that no walk takes, _wg_residue_full part), then, on
+# a raise or while B is not committed, the share and store re-scan (6).
+# Either stops the run as it is: the account stays at A (or, when the run
+# started from a pool-side level, at that level with its phase A traits
+# complete; the NOTE names the level read now). What the walk left in
+# www-data where it walks (under the roots or in the account's store on
+# attached storage: the trio, the tops, the private set, the stores) does
+# not stop it: the pools write www-data until u12 reloads them, so the run
+# walks again after u13 (_wg_leg_up).
+_wg_u8() {
+  local _l
+  [ "${_D_LAM}" = "B" ] && return 0
+  if _l=$(_wg_store_gone); then
+    _msg "${_WP_A}: ${_l} is a link that does not resolve (its attached storage not mounted, or the link changed); phase B waits until it resolves"
+    _wg_note_log "phase B deferred: ${_l} is a link that does not resolve (its attached storage not mounted, or the link changed)"
+    return 5
+  fi
+  if _wg_residue_full part; then
+    _msg "${_WP_A}: www-data paths remain in its sites' stores that the conversion does not walk in this layout; phase B waits until the layout is one BOA makes (a single mount point under /mnt, the store owned by root or the account)"
+    _wg_note_log "phase B deferred: paths in www-data remain in the sites' stores that the conversion does not walk in this layout; it waits until the layout is one BOA makes"
+    return 5
+  fi
+  if [ "${_D_RAISE}" = "YES" ] || [ "${_D_BEV}" = "NO" ]; then
+    if _WG_SHARE_MODE=refuse _wg_g_share; then
+      _msg "NOTE: ${_WP_A}: $(_wg_held_where "$(_wg_level_now)") ($(_wg_grounds); see ${_WP_NOTES})"
+      return 6
+    fi
+  fi
+  return 0
+}
+
+# The up leg, rows A0r A0g A0 A1 B0r B0g B0 B1. rc as the table's exit
+# column.
+_wg_leg_up() {
+  local _rc _rw=0
+  _wg_u1 || return 1
+  if [ "${_D_T}" = "A" ] || { [ "${_D_RAISE}" = "YES" ] && [ "${_WG_START_G}" != "ours" ]; }; then
+    _wg_d2 "${_D_T}" || return $?
+  fi
+  _wg_u3 || return 1
+  _WG_VERS=$(_wg_versions)
+  # webconvert all: the first phase ends here, the account hold kept; one
+  # reload per version follows for every account, then this run again. A
+  # raise to B with a ground (B0g) runs on in one piece: read again after
+  # these steps it carries A, and at a pool-side level, or at A with no
+  # record yet, the gate would refuse it with its phase A not complete or
+  # not on record
+  if [ "${_WG_STOP_AT_U3}" = "YES" ] && [ "${_D_ROW}" != "B0g" ]; then
+    _WG_STOP_AT_U3=HELD
+    return 0
+  fi
+  _wg_u4 || return 1
+  _wg_walk_up
+  _rw=$?
+  _wg_u6
+  _rc=$?
+  if [ "${_rc}" != "0" ]; then
+    _wg_qhold_release
+    return "${_rc}"
+  fi
+  _wg_u7 || return 1
+  if [ "${_D_T}" = "A" ]; then
+    [ "${_rw}" = "2" ] && { _wg_a_left; return 2; }
+    return 0
+  fi
+  _wg_u8
+  _rc=$?
+  [ "${_rc}" = "0" ] || return "${_rc}"
+  # u9: the intent to B
+  _wg_i_read
+  if [ "${_WI_T}" != "B" ] || [ "${_WI_PIN}" != "-" ]; then
+    _wg_i_write B - - || return 1
+  fi
+  # u10: the record, B committed here (a plain B: a token is dropped)
+  if [ "${_WR_PH}" = "B" ] && [ "${_WR_RB}" = "YES" ]; then
+    _WG_RSAVE=Brb
+  else
+    _WG_RSAVE="${_WR_PH:-A}"
+  fi
+  if [ "${_WR_PH}" != "B" ] || [ "${_WR_RB}" = "YES" ]; then
+    _wg_r_under_hold B || return $?
+    _WR_PH=B
+    _WR_RB=NO
+  fi
+  _wg_u11 || return 1
+  if ! _wg_u12; then
+    _wg_rollback
+    return 1
+  fi
+  _wg_u13 || return 1
+  # the walk once more, in the same run: until u12 reloaded the pools they
+  # wrote www-data (an upload PHP renames in from the pool's upload_tmp_dir
+  # keeps it), and now only a process that still holds www-data can (u13
+  # counts them), so what the walk above left, and what u8 left to it, is
+  # taken here, as the next run at B would take it. A run that started at
+  # B with a clean walk has nothing to take
+  if [ "${_D_LAM}" != "B" ] || [ "${_rw}" = "2" ]; then
+    _wg_walk_up
+    _rw=$?
+    [ "${_rw}" = "1" ] && return 1
+    _wg_d9 commit
+  fi
+  _rc=0
+  if [ "${_rw}" = "2" ]; then
+    _msg "NOTE: ${_WP_A}: www-data paths remain after the walk at phase B, written during it; the next run at phase B walks them"
+    _wg_note_log "phase B: paths in www-data remain after the walk at phase B, written during it; the next run at phase B walks them"
+    _rc=2
+  fi
+  # the parts no walk takes, read again on every run at B: what a pool
+  # wrote there after the B check read them, before u12 reloaded it, or a
+  # process that still holds www-data since, stays there
+  if _wg_residue_full part; then
+    _msg "NOTE: ${_WP_A}: www-data paths remain in its sites' stores that the conversion does not walk in this layout, written before its pools left www-data or since: give them ${_WP_G}, or the next run at phase B walks them once the layout is one BOA makes (a single mount point under /mnt, the store owned by root or the account)"
+    _wg_note_log "phase B: paths in www-data remain in the sites' stores that the conversion does not walk in this layout, written before its pools left www-data or since: give them ${_WP_G}, or the next run at phase B walks them once the layout is one BOA makes"
+    _rc=2
+  fi
+  return "${_rc}"
+}
+
+# The down leg, rows N0 N1 N2 A2. d0, the opt-out, ran before the token
+# strip (_wg_run).
+_wg_leg_down() {
+  local _t _pin _rc
+  # d1
+  read -r _t _pin <<< "$(_wg_plan)"
+  _wg_i_write "${_t}" "${_pin}" - || return 1
+  case "${_WG_CALLER}" in
+    conv|conv_a|conv_b)
+      # before anything else changes: a policy not written stops the leg
+      _wg_policy_set "${_pin}" \
+        || { _alrt "${_WP_A}: the web group policy could not be written to /root/.${_WP_A}.octopus.cnf"; return 1; }
+      ;;
+  esac
+  # d2
+  _wg_d2 "${_D_T}" || return $?
+  if [ "${_D_T}" = "A" ]; then
+    _wg_u3 || return 1
+    _WG_VERS=$(_wg_versions)
+    _wg_u4 || return 1
+    _wg_walk_up
+    _rc=$?
+    _wg_u6
+    _t=$?
+    if [ "${_t}" != "0" ]; then
+      _wg_qhold_release
+      return "${_t}"
+    fi
+    _wg_u7 || return 1
+    [ "${_rc}" = "2" ] && { _wg_a_left; return 2; }
+    return 0
+  fi
+  if [ -n "$(_gid_of "${_WP_G}")" ] && [ "${_WM_G}" = "ours" ]; then
+    # d4: the record removed (writers write www-data from here), the alias
+    # back, under the queue hold
+    _wg_qhold
+    _rc=$?
+    [ "${_rc}" = "0" ] || return "${_rc}"
+    if ! _wg_r_remove; then
+      _wg_qhold_release
+      _alrt "${_WP_A}: the record ${_WP_R} could not be removed"
+      return 1
+    fi
+    _WR_PH=""
+    _WR_RB=NO
+    _wg_alias_set "${_WEBG}" || { _wg_qhold_release; return 1; }
+    _wg_qhold_release
+    # d5: the files back to www-data, the private set widened back (never a
+    # left-alone path: the conversion did not narrow it), the D9 stamp and
+    # xtrim's quarantined copies of the line gone
+    _wg_walk_down
+    _WG_LEFT=$(_wg_left)
+    _wg_private_modes 02775 0664
+    _wg_d9 remove
+    _wg_xtrim_scrub
+    # d6: the group goes only when nothing carries its gid
+    if ! _wg_group_drop; then
+      return 2
+    fi
+  fi
+  # d7
+  _wg_i_remove
+  rm -f "/var/log/boa/instgrp-web.${_WP_A}.procs.txt" "/var/log/boa/instgrp-web.${_WP_A}.sgid.txt"
+  return 0
 }
 
 # ---- one run -----------------------------------------------------------------
@@ -5812,38 +5862,6 @@ _wg_strip_owed() {
   return 0
 }
 
-# One run of the current caller on account $1 (or aegir): the row, the
-# token strip when owed, the row's leg. rc as the row's exit column.
-_wg_run() {
-  local _rc
-  _ACCT="${1}"
-  _wg_profile "${1}"
-  _wg_reset
-  [ "${_WG_NOTED_KEEP}" = "YES" ] || _WG_NOTED=()
-  _WG_NOTED_RUN="${1}"
-  if [ "${_WP_M}" = "YES" ]; then
-    if ! getent passwd aegir > /dev/null 2>&1 || [ ! -d /var/aegir ]; then
-      _fail "no Aegir master on this box"
-      return 1
-    fi
-  elif ! _valid_account "${1}"; then
-    _fail "${1} is not an Octopus account on this box"
-    return 1
-  fi
-  _wg_reap_left
-  _wg_run_row
-  _rc=$?
-  _wg_qhold_release
-  if [ "${_WG_STOP_AT_U3}" = "HELD" ]; then
-    _log "${1}: web ${_WG_CALLER} row=${_D_ROW:-?} first phase done, held"
-    return 0
-  fi
-  [ "${_WG_IWRITTEN}" = "YES" ] && _wg_i_rc "${_rc}"
-  _wg_hold_release "${1}"
-  _log "${1}: web ${_WG_CALLER} row=${_D_ROW:-?} lam=${_WM_LAM} T=${_D_T:--} rc=${_rc}"
-  return "${_rc}"
-}
-
 # The arm on a switched-off box (no arm stamp: _WEB_GROUP_ARM is not YES)
 # for an account with no web group, intent or record: every row it could
 # reach refuses, and it has nothing to report on every Octopus pass of every
@@ -5892,73 +5910,6 @@ _wg_free_journal() {
   printf '%s\n' "${_WG_ETC}/boa/control/instgrp-web.${_WP_A}.free.txt"
 }
 
-# The name the group held at gid $1 is renamed to for account $2: the gid
-# and the account's name, so a second held name never meets a first, cut
-# to 32 characters (a group name's limit) where it would be longer: the gid
-# it starts with keeps it unique. One text in instgrp, the nightly's
-# 10-account.sh and the restore tools.
-_wg_free_aside() {
-  local _n="${1}-wgheld-${2}"
-  printf '%s\n' "${_n:0:32}"
-}
-
-# Account $1's free of its web group name while it is unfinished, its
-# journal not done: the held gid, whose paths in that number are the free's
-# walk to finish, so no claim or probe takes them meanwhile; nothing
-# otherwise. Unfinished is the rename alone (renamed: no wg-<account>, the
-# renamed group at the held gid, under its name or under the name an earlier
-# version gave it, <gid>-wgheld) or a free that can still finish (finish:
-# wg-<account> at another gid, and the renamed group at the held gid or
-# wg-<account> at the journal's new gid; the renamed group under either
-# name). With $2, the state on one line instead, "<state> <held gid> <new
-# gid or ->", where the state is one of those two, stale (the rename never
-# happened: wg-<account> still at the held gid) or lost (none of these:
-# the renamed group gone, renamed or renumbered; or a journal that names
-# no held gid or cannot be read, "lost - <new gid or ->", as the migration
-# tools count it unfinished); nothing when no journal is unfinished. One
-# text in instgrp, the nightly's 10-account.sh and the restore tools.
-_wg_free_held() {
-  local _j="/etc/boa/control/instgrp-web.${1}.free.txt" _s="" _h="" _n="" _g _r _o _st _
-  [ -f "${_j}" ] && [ ! -L "${_j}" ] || return 0
-  { read -r _s _h _n _ < "${_j}"; } 2> /dev/null || :
-  [ "${_s}" != "step=done" ] || return 0
-  _h="${_h#held=}"
-  _n="${_n#new=}"
-  [[ "${_n}" =~ ^[0-9]+$ ]] || _n="-"
-  if [[ ! "${_h}" =~ ^[0-9]+$ ]]; then
-    [ -z "${2:-}" ] || printf 'lost - %s\n' "${_n}"
-    return 0
-  fi
-  _g=$(getent group "wg-${1}" 2> /dev/null | cut -d: -f3)
-  _r=$(getent group "$(_wg_free_aside "${_h}" "${1}")" 2> /dev/null | cut -d: -f3)
-  _o=$(getent group "${_h}-wgheld" 2> /dev/null | cut -d: -f3)
-  if [ "${_g}" = "${_h}" ]; then
-    _st=stale
-  elif [ -z "${_g}" ] && { [ "${_r}" = "${_h}" ] || [ "${_o}" = "${_h}" ]; }; then
-    _st=renamed
-  elif [ -n "${_g}" ] && { [ "${_r}" = "${_h}" ] || [ "${_o}" = "${_h}" ] || [ "${_g}" = "${_n}" ]; }; then
-    _st=finish
-  else
-    _st=lost
-  fi
-  if [ -n "${2:-}" ]; then
-    printf '%s %s %s\n' "${_st}" "${_h}" "${_n}"
-  elif [ "${_st}" = "renamed" ] || [ "${_st}" = "finish" ]; then
-    printf '%s\n' "${_h}"
-  fi
-  return 0
-}
-
-# 0 when account $1's free journal is there and cannot be read (a read
-# error; an empty file reads). _wg_free_held then names no held gid, so a
-# claim cannot keep the paths of a free that may still finish out of its
-# walk: it waits until the journal reads again. One text in instgrp, the
-# nightly's 10-account.sh and the restore tools.
-_wg_free_unreadable() {
-  local _j="/etc/boa/control/instgrp-web.${1}.free.txt"
-  [ -f "${_j}" ] && [ ! -L "${_j}" ] && ! head -c 1 -- "${_j}" > /dev/null 2>&1
-}
-
 # The journal's fields into _FJ_S (renaming, made or done), _FJ_H (the held
 # gid), _FJ_N (the new gid) and _FJ_AT (its epoch); empty when there is none
 # or it cannot be read.
@@ -5979,6 +5930,19 @@ _wg_free_j_read() {
   [[ "${_FJ_N}" =~ ^[0-9]+$ ]] || _FJ_N=""
   [[ "${_FJ_AT}" =~ ^[0-9]+$ ]] || _FJ_AT=""
   return 0
+}
+
+# The marker of an unreadable journal's alarm, its date (_wg_free_lost).
+_wg_free_unread_file() {
+  printf '%s\n' "/var/log/boa/instgrp-web.${_WP_A}.free-unread.txt"
+}
+
+# 0 when the journal is there and cannot be read (a read error: an empty
+# file reads), which _wg_free_held takes for one that names no held gid.
+_wg_free_j_unread() {
+  local _j
+  _j=$(_wg_free_journal)
+  [ -f "${_j}" ] && [ ! -L "${_j}" ] && ! head -c 1 -- "${_j}" > /dev/null 2>&1
 }
 
 # $1 the step, $2 the held gid, $3 the new gid, $4 a mark (warn: a check of
@@ -6056,6 +6020,12 @@ _wg_free_says() {
   esac
 }
 
+# 0 when $1 is one of the account's own names (as _web_group_state reads
+# them: the account, oN.<sub>, oN.<sub>-dev, oN.NN.web).
+_wg_own_name() {
+  [[ "${1}" =~ ^${_WP_A}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]]
+}
+
 # The account's own names a group of the old number lists, one
 # "<group> <name>" line each: every group entry at the held gid $1 (the
 # renamed group, another entry sharing the number, the renamed group under
@@ -6099,12 +6069,6 @@ _wg_free_carry() {
   _wg_free_rec "${2}" "${1}" || return 0
   [ "${_FR2}" = "gid=${1}" ] && return 0
   _wg_put_root "${_WP_R}" "${_FR1} gid=${1} ${_FR3}${_FREST:+ ${_FREST}}"
-}
-
-# 0 when $1 is one of the account's own names (as _web_group_state reads
-# them: the account, oN.<sub>, oN.<sub>-dev, oN.NN.web).
-_wg_own_name() {
-  [[ "${1}" =~ ^${_WP_A}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]]
 }
 
 # A gid for the new group: the highest in login.defs' system range
@@ -6253,6 +6217,57 @@ _wg_free_reload() {
     _alrt "${_WP_A}: php${_e} workers do not hold ${_WP_G} (gid ${_WG_GID}) after the reload"
     _rc=1
   done
+  return "${_rc}"
+}
+
+# What the migration tools do with the account while a free of its name is
+# unfinished here: xoct still takes a frozen account's proxy --repair and
+# go-live, which carry no account path.
+_wg_free_tools_say() {
+  if [ -e "/data/disk/${_WP_A}/log/proxied.pid" ]; then
+    echo "xmass skips the account's legs and xcopy refuses it meanwhile; xoct takes only its proxy --repair and go-live, and the free waits while the account is frozen (log/proxied.pid)"
+  else
+    echo "xmass skips the account's legs and xoct and xcopy refuse it meanwhile"
+  fi
+}
+
+# The marker of a free's set-group-ID sweep owed again, beside phase B's:
+# one line per held gid, "owed <date> gid=<gid>" (the sweep cleared a file)
+# or "failed <date> gid=<gid>" (it could not finish).
+_wg_free_sgid_file() {
+  printf '%s\n' "/var/log/boa/instgrp-web.${_WP_A}.sgid-held.txt"
+}
+
+# The account's own set-group-ID files in the held gid $1 lose the bit
+# (_wg_sgid_sweep). A sweep that failed or cleared a file leaves the gid's
+# line in the marker, so a later run of a web verb of the account sweeps
+# again (_wg_free_resweep): a session started before the free can still
+# make such a file. A sweep that cleared none and failed nowhere takes the
+# line out. 1 when the sweep failed.
+_wg_free_sweep() {
+  local _g="${1}" _rc=0 _f _l _keep=""
+  _wg_sgid_sweep "${_g}" "old web group" "its web group renewed" || _rc=1
+  [ "${_WG_SGID_N}" -gt 0 ] \
+    && _alrt "${_WP_A}: the set-group-ID bit cleared on ${_WG_SGID_N} file(s) of the account in gid ${_g} ($(_wg_free_named "${_g}")) outside its tree (${_LOG}); the next web verb of the account sweeps again"
+  _f=$(_wg_free_sgid_file)
+  if [ -f "${_f}" ] && [ ! -L "${_f}" ]; then
+    while IFS= read -r _l; do
+      [[ "${_l}" =~ \ gid=([0-9]+)$ ]] && [ "${BASH_REMATCH[1]}" != "${_g}" ] || continue
+      _keep="${_keep}${_l}"$'\n'
+    done < "${_f}"
+  fi
+  if [ "${_rc}" != "0" ]; then
+    _keep="${_keep}failed $(date '+%Y-%m-%d_%H:%M:%S') gid=${_g}"$'\n'
+  elif [ "${_WG_SGID_N}" -gt 0 ]; then
+    _keep="${_keep}owed $(date '+%Y-%m-%d_%H:%M:%S') gid=${_g}"$'\n'
+  fi
+  if [ -z "${_keep}" ]; then
+    rm -f -- "${_f}"
+  else
+    mkdir -p /var/log/boa 2> /dev/null
+    _wg_put_root "${_f}" "${_keep%$'\n'}" \
+      || _alrt "${_WP_A}: ${_f} could not be written; the set-group-ID sweep of gid ${_g} is not made again"
+  fi
   return "${_rc}"
 }
 
@@ -6532,19 +6547,6 @@ _wg_free_drop() {
   fi
 }
 
-# The marker of an unreadable journal's alarm, its date (_wg_free_lost).
-_wg_free_unread_file() {
-  printf '%s\n' "/var/log/boa/instgrp-web.${_WP_A}.free-unread.txt"
-}
-
-# 0 when the journal is there and cannot be read (a read error: an empty
-# file reads), which _wg_free_held takes for one that names no held gid.
-_wg_free_j_unread() {
-  local _j
-  _j=$(_wg_free_journal)
-  [ -f "${_j}" ] && [ ! -L "${_j}" ] && ! head -c 1 -- "${_j}" > /dev/null 2>&1
-}
-
 # A lost journal (_wg_free_held), its held gid $1 (or -), its new gid $2
 # (or -), $3 the run that found it: dropped (_wg_free_drop), unless it names
 # no held gid because it cannot be read. Such a journal may name a free that
@@ -6580,17 +6582,6 @@ _wg_free_lost() {
   return 1
 }
 
-# What the migration tools do with the account while a free of its name is
-# unfinished here: xoct still takes a frozen account's proxy --repair and
-# go-live, which carry no account path.
-_wg_free_tools_say() {
-  if [ -e "/data/disk/${_WP_A}/log/proxied.pid" ]; then
-    echo "xmass skips the account's legs and xcopy refuses it meanwhile; xoct takes only its proxy --repair and go-live, and the free waits while the account is frozen (log/proxied.pid)"
-  else
-    echo "xmass skips the account's legs and xoct and xcopy refuse it meanwhile"
-  fi
-}
-
 # Reclaim, on an account a free of whose name a kill cut short: 0 when no
 # free is unfinished (a journal whose rename never happened goes, a rename
 # alone is put back, a journal nothing can finish from goes with an alarm),
@@ -6612,46 +6603,6 @@ _wg_free_settled() {
       ;;
   esac
   return 0
-}
-
-# The marker of a free's set-group-ID sweep owed again, beside phase B's:
-# one line per held gid, "owed <date> gid=<gid>" (the sweep cleared a file)
-# or "failed <date> gid=<gid>" (it could not finish).
-_wg_free_sgid_file() {
-  printf '%s\n' "/var/log/boa/instgrp-web.${_WP_A}.sgid-held.txt"
-}
-
-# The account's own set-group-ID files in the held gid $1 lose the bit
-# (_wg_sgid_sweep). A sweep that failed or cleared a file leaves the gid's
-# line in the marker, so a later run of a web verb of the account sweeps
-# again (_wg_free_resweep): a session started before the free can still
-# make such a file. A sweep that cleared none and failed nowhere takes the
-# line out. 1 when the sweep failed.
-_wg_free_sweep() {
-  local _g="${1}" _rc=0 _f _l _keep=""
-  _wg_sgid_sweep "${_g}" "old web group" "its web group renewed" || _rc=1
-  [ "${_WG_SGID_N}" -gt 0 ] \
-    && _alrt "${_WP_A}: the set-group-ID bit cleared on ${_WG_SGID_N} file(s) of the account in gid ${_g} ($(_wg_free_named "${_g}")) outside its tree (${_LOG}); the next web verb of the account sweeps again"
-  _f=$(_wg_free_sgid_file)
-  if [ -f "${_f}" ] && [ ! -L "${_f}" ]; then
-    while IFS= read -r _l; do
-      [[ "${_l}" =~ \ gid=([0-9]+)$ ]] && [ "${BASH_REMATCH[1]}" != "${_g}" ] || continue
-      _keep="${_keep}${_l}"$'\n'
-    done < "${_f}"
-  fi
-  if [ "${_rc}" != "0" ]; then
-    _keep="${_keep}failed $(date '+%Y-%m-%d_%H:%M:%S') gid=${_g}"$'\n'
-  elif [ "${_WG_SGID_N}" -gt 0 ]; then
-    _keep="${_keep}owed $(date '+%Y-%m-%d_%H:%M:%S') gid=${_g}"$'\n'
-  fi
-  if [ -z "${_keep}" ]; then
-    rm -f -- "${_f}"
-  else
-    mkdir -p /var/log/boa 2> /dev/null
-    _wg_put_root "${_f}" "${_keep%$'\n'}" \
-      || _alrt "${_WP_A}: ${_f} could not be written; the set-group-ID sweep of gid ${_g} is not made again"
-  fi
-  return "${_rc}"
 }
 
 # Each set-group-ID sweep a free left owed (_wg_free_sweep), made again;
@@ -6775,6 +6726,42 @@ _wg_free_resume() {
   return 0
 }
 
+# The reclaim web leg (RC2 RC3 RC4); pools and W are never touched. The
+# queue hold covers the private-set and alias writes; the account hold is
+# the caller's.
+_wg_reclaim_leg() {
+  local _rc=0 _ag _uids _wg
+  _ag=$(_gid_of "${_WP_A}")
+  [[ "${_ag}" =~ ^[0-9]+$ ]] || _ag=-1
+  _uids=$(_wg_own_uids)
+  case "${_D_ROW}" in
+    RC2)
+      _wg_walk_up
+      _rc=$?
+      # the walk opened the whole public set: the D9 stamp moves to its start
+      _wg_d9 commit
+      _wg_qhold || return 6
+      _wg_private_modes 02770 0660
+      _wg_alias_set "${_WP_G}"
+      _wg_qhold_release
+      ;;
+    RC3)
+      _wg=$(_gid_of "${_WP_G}")
+      _wg_claim "${_WG_WWWGID}" "${_uids}" "${_wg:--1}" "${_ag}"
+      ;;
+    RC4)
+      _wg_claim "${_WG_WWWGID}" "${_uids}" -1 "${_ag}"
+      _wg_m_s
+      if [ "${_WM_S}" = "${_WP_G}" ]; then
+        _wg_qhold || return 6
+        _wg_alias_set "${_WEBG}"
+        _wg_qhold_release
+      fi
+      ;;
+  esac
+  return "${_rc}"
+}
+
 _wg_run_row() {
   local _leg _rc _why=""
   # a free a kill cut short is finished first: its rename is made
@@ -6890,40 +6877,77 @@ _wg_run_row() {
   return 1
 }
 
-# The reclaim web leg (RC2 RC3 RC4); pools and W are never touched. The
-# queue hold covers the private-set and alias writes; the account hold is
-# the caller's.
-_wg_reclaim_leg() {
-  local _rc=0 _ag _uids _wg
-  _ag=$(_gid_of "${_WP_A}")
-  [[ "${_ag}" =~ ^[0-9]+$ ]] || _ag=-1
-  _uids=$(_wg_own_uids)
-  case "${_D_ROW}" in
-    RC2)
-      _wg_walk_up
-      _rc=$?
-      # the walk opened the whole public set: the D9 stamp moves to its start
-      _wg_d9 commit
-      _wg_qhold || return 6
-      _wg_private_modes 02770 0660
-      _wg_alias_set "${_WP_G}"
-      _wg_qhold_release
-      ;;
-    RC3)
-      _wg=$(_gid_of "${_WP_G}")
-      _wg_claim "${_WG_WWWGID}" "${_uids}" "${_wg:--1}" "${_ag}"
-      ;;
-    RC4)
-      _wg_claim "${_WG_WWWGID}" "${_uids}" -1 "${_ag}"
-      _wg_m_s
-      if [ "${_WM_S}" = "${_WP_G}" ]; then
-        _wg_qhold || return 6
-        _wg_alias_set "${_WEBG}"
-        _wg_qhold_release
-      fi
-      ;;
-  esac
+# One run of the current caller on account $1 (or aegir): the row, the
+# token strip when owed, the row's leg. rc as the row's exit column.
+_wg_run() {
+  local _rc
+  _ACCT="${1}"
+  _wg_profile "${1}"
+  _wg_reset
+  [ "${_WG_NOTED_KEEP}" = "YES" ] || _WG_NOTED=()
+  _WG_NOTED_RUN="${1}"
+  if [ "${_WP_M}" = "YES" ]; then
+    if ! getent passwd aegir > /dev/null 2>&1 || [ ! -d /var/aegir ]; then
+      _fail "no Aegir master on this box"
+      return 1
+    fi
+  elif ! _valid_account "${1}"; then
+    _fail "${1} is not an Octopus account on this box"
+    return 1
+  fi
+  _wg_reap_left
+  _wg_run_row
+  _rc=$?
+  _wg_qhold_release
+  if [ "${_WG_STOP_AT_U3}" = "HELD" ]; then
+    _log "${1}: web ${_WG_CALLER} row=${_D_ROW:-?} first phase done, held"
+    return 0
+  fi
+  [ "${_WG_IWRITTEN}" = "YES" ] && _wg_i_rc "${_rc}"
+  _wg_hold_release "${1}"
+  _log "${1}: web ${_WG_CALLER} row=${_D_ROW:-?} lam=${_WM_LAM} T=${_D_T:--} rc=${_rc}"
   return "${_rc}"
+}
+
+# The web leg first (the account's own web group, when it has one or a
+# record names it), then the file half; the worse exit class of the two.
+# The web leg skips where the file half does (a freeze without --force, a
+# live install or upgrade run), with a note and rc 4, so a caller that
+# reclaims for the web residue sees it left. While a free of the account's
+# web group name that a kill cut short can still finish, or its journal
+# cannot be read, both legs skip (rc 4, alarmed) for the next web verb to
+# finish it; a rename alone is put back first, and a journal nothing can
+# finish from is dropped with an alarm (_wg_free_settled).
+_do_reclaim() {
+  local _a="$1" _wrc=0 _rc _held
+  if _valid_account "${_a}"; then
+    [ "${_FROM_OCTOPUS}" != "YES" ] && _reap_own_stale_lock
+    if [ -e "/data/disk/${_a}/log/proxied.pid" ] && [ "${_FORCE}" != "YES" ]; then
+      _msg "NOTE: ${_a}: the web group leg skipped: frozen for a migration (log/proxied.pid)"
+      _wrc=4
+    elif [ "${_FORCE}" != "YES" ] && _held=$(_a2b_held_why "${_a}"); then
+      _msg "NOTE: ${_a}: the web group leg skipped: ${_held}"
+      _wrc=4
+    elif [ "${_FROM_OCTOPUS}" != "YES" ] \
+      && { [ -e "/run/boa_run.pid" ] || [ -e "/run/boa_wait.pid" ] \
+        || [ -e "/run/octopus_install_run.pid" ]; }; then
+      _msg "NOTE: ${_a}: the web group leg skipped: a BOA install or upgrade run is live (/run/*.pid)"
+      _wrc=4
+    else
+      _wg_profile "${_a}"
+      if ! _wg_free_settled; then
+        _log "${_a}: RECLAIM skipped: a free of its web group name is unfinished, or its journal cannot be read"
+        return 4
+      fi
+      trap '_wg_on_exit' EXIT
+      _WG_CALLER=reclaim
+      _wg_run "${_a}"
+      _wrc=$?
+    fi
+  fi
+  _do_reclaim_files "${_a}"
+  _rc=$?
+  return "$(_worse_rc "${_rc}" "${_wrc}")"
 }
 
 # ---- webconvert all ------------------------------------------------------------
@@ -6986,6 +7010,27 @@ _wg_free_status() {
       *) _msg "sgid:     the set-group-ID sweep of ${_g} a free left cleared a file (${_d}): the account's next web verb sweeps again; ${_f}" ;;
     esac
   done < "${_f}"
+  return 0
+}
+
+# The profile's grounds of the share and store gate, read silently (no
+# note written), on one line after the label $1: phase B held by them, or
+# on record and not held once the record says a plain B (one left by a
+# rollback cut short carries the token and commits nothing: the next run
+# is held at the B check), or no outbound share. It measures the group and
+# reads the record as it goes.
+_wg_shares_line() {
+  if _WG_SHARE_MODE=silent _wg_g_share; then
+    _wg_m_g
+    _wg_r_read
+    if [ "${_WR_PH}" = "B" ] && [ "${_WR_RB}" != "YES" ]; then
+      _msg "${1}phase B on record, not held: $(_wg_grounds) (a conversion run names them in ${_WP_NOTES})"
+    else
+      _msg "${1}phase B held: $(_wg_grounds) (phase A only, $(_wg_grounds_left); a conversion run names them in ${_WP_NOTES})"
+    fi
+  else
+    _msg "${1}no outbound share (a conversion run names inbound ones in ${_WP_NOTES})"
+  fi
   return 0
 }
 
@@ -7417,27 +7462,6 @@ _wg_drift_box() {
 
 # ---- webcheck ----------------------------------------------------------------------
 
-# The profile's grounds of the share and store gate, read silently (no
-# note written), on one line after the label $1: phase B held by them, or
-# on record and not held once the record says a plain B (one left by a
-# rollback cut short carries the token and commits nothing: the next run
-# is held at the B check), or no outbound share. It measures the group and
-# reads the record as it goes.
-_wg_shares_line() {
-  if _WG_SHARE_MODE=silent _wg_g_share; then
-    _wg_m_g
-    _wg_r_read
-    if [ "${_WR_PH}" = "B" ] && [ "${_WR_RB}" != "YES" ]; then
-      _msg "${1}phase B on record, not held: $(_wg_grounds) (a conversion run names them in ${_WP_NOTES})"
-    else
-      _msg "${1}phase B held: $(_wg_grounds) (phase A only, $(_wg_grounds_left); a conversion run names them in ${_WP_NOTES})"
-    fi
-  else
-    _msg "${1}no outbound share (a conversion run names inbound ones in ${_WP_NOTES})"
-  fi
-  return 0
-}
-
 _wg_check() {
   local _t _p _tok _rc=0 _a
   for _t in ${_WG_INVENTORY} ${_WG_MINVENTORY}; do
@@ -7488,30 +7512,6 @@ _wg_check() {
     fi
   done
   return "${_rc}"
-}
-
-_all_accounts() {
-  local _f _a
-  for _f in /root/.*.octopus.cnf; do
-    [ -e "${_f}" ] || continue
-    _a="${_f#/root/.}"
-    _a="${_a%.octopus.cnf}"
-    _valid_account "${_a}" && printf '%s\n' "${_a}"
-  done
-}
-
-# The exit codes are not ordered by number; over 'all' the worst class wins:
-# failed > inconsistent > drift > not ready > skipped > done.
-_worse_rc() {
-  local _x="$1" _y="$2" _rx _ry
-  _rx=$(_rc_rank "${_x}")
-  _ry=$(_rc_rank "${_y}")
-  [ "${_ry}" -gt "${_rx}" ] && printf '%s' "${_y}" || printf '%s' "${_x}"
-}
-_rc_rank() {
-  case "$1" in
-    1) echo 6 ;; 3) echo 5 ;; 2) echo 4 ;; 5) echo 3 ;; 4) echo 2 ;; 0) echo 0 ;; *) echo 1 ;;
-  esac
 }
 
 _check_root

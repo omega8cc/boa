@@ -574,76 +574,6 @@ _dr_launcher() {
 # from the working directory a "cd DIR &&" moves; the docroot is its web/,
 # docroot/ or html/, or the app root itself, whichever holds core.
 _DRL_SITE=""; _DRL_NOTE=""; _DRL_HINT=""
-_dr_site() {
-  [[ $'\xc3\xa9' == ? ]] && local LC_ALL=C
-  local _ws _w _next=NO _u="" _h _app _base _doc="" _d
-  _DRL_SITE=""; _DRL_NOTE=""; _DRL_HINT=""
-  # the last --url before a --, as the console reads a repeated option,
-  # among dr's own words as the expansion rule reads them (_drush_segments'
-  # mark mode, _drush_xp): the line's first simple command (a later one's
-  # --url is not dr's, and no command of the line but a cd runs before dr),
-  # the redirections gone, quotes off, an exported name by its value. A value
-  # websh cannot know names no site folder.
-  _w=$(_drush_segments "${_DRL_REST}" keep join mark)
-  _w="${_w%%$'\n'*}"
-  _drush_xp_names "${_w}"
-  [ -n "${_DRL_CD}" ] && _DXP_CD=YES
-  _drush_xp "${_w}"
-  _drush_unredir "${_DXP_OUT//$'\016'/}"
-  read -r -a _ws <<< "${_DUR}"
-  for _w in "${_ws[@]}"; do
-    if [ "${_next}" = "YES" ]; then
-      _u="${_w}"
-      _next=NO
-    else
-      case "${_w}" in
-        --url=*) _u="${_w#--url=}" ;;
-        --url) _next=YES ;;
-        --) break ;;
-      esac
-    fi
-  done
-  # a quoted blank ends the address
-  _u="${_u%%$'\001'*}"
-  [ -n "${_u}" ] || return 0
-  _h="${_u#*://}"
-  _h="${_h%%/*}"
-  _h="${_h%%:*}"
-  _h="${_h,,}"
-  if ! [[ "${_h}" =~ ^[a-z0-9][a-z0-9.-]*$ ]] || [[ "${_h}" == *..* ]]; then
-    _DRL_NOTE="--url names no site folder; dr starts with no site"
-    return 0
-  fi
-  # dr builds its links from --url as given: without a scheme they point at
-  # http://localhost/<host>/, a login link included
-  if [[ "${_u}" != *://* ]]; then
-    _DRL_HINT="dr builds its links from --url as given: name the site as --url=https://${_h}"
-  fi
-  _base=$(pwd -P 2> /dev/null)
-  if _cd_dir_of "${_DRL_CD}"; then
-    # the folder read like --url's value above; none is HOME
-    _DXP_CD=NO
-    _drush_xp "$(_drush_segments "${_CDD}" keep join mark)"
-    _drush_unredir "${_DXP_OUT}"
-    read -r _w <<< "${_DUR}"
-    _base=$(cd -- "${_w:-${HOME}}" 2> /dev/null && pwd -P) || _base=$(pwd -P 2> /dev/null)
-  fi
-  _app="${_DRL_PATH%vendor/bin/dr}"
-  _app="${_app%/}"
-  [ -n "${_app}" ] || _app="."
-  [[ "${_app}" == /* ]] || _app="${_base}/${_app}"
-  for _d in "${_app}/web" "${_app}/docroot" "${_app}/html" "${_app}"; do
-    if [ -f "${_d}/core/lib/Drupal.php" ]; then
-      _doc="${_d}"
-      break
-    fi
-  done
-  if [ -n "${_doc}" ] && [ -d "${_doc}/sites/${_h}" ]; then
-    _DRL_SITE="sites/${_h}"
-  else
-    _DRL_NOTE="this codebase has no site folder sites/${_h}; dr starts with no site"
-  fi
-}
 # The composer line, the same way: the leading word after an optional
 # "set -m;", a leading "cd DIR &&" and NAME=value words, the arguments as
 # typed. The branch this replaces stripped "composer " everywhere with sed
@@ -659,6 +589,92 @@ _dr_site() {
 _CO_REST=""; _CO_PRE=""; _CO_CD=""; _CO_PHP=""
 _RE_COLEAD='^[[:space:]]*composer[[:space:]]+(.*)$'
 _RE_COPHP="^${_RE_LAPHP}((-d[[:space:]]*[A-Za-z_.]+=('[^']*'|[^[:space:]']*)[[:space:]]+)*)('?(/usr/local/bin/composer|/usr/bin/composer)'?)[[:space:]]+(.*)\$"
+_is_tenant() {
+  [[ "${_LTD_UID}" == *.ftp ]] || _in_grp lshellg || _in_grp ltd-shell || _in_grp ltd-shell-more
+}
+# Running a PHP interpreter by name is for [grp:ltd-shell-more] members only,
+# the one shell group whose policy offers phpNN, and only while the box's
+# shell policy carries those aliases (/etc/lshell.conf; the PHP-CLI strip,
+# _fix_php_in_lshell_access, removes them when it is called). Every other
+# tenant gets PHP through the drush, vdrush, bee and composer launches websh
+# makes itself, on the version the account chose.
+_php_word() {
+  case "${1##*/}" in
+    php|php[0-9][0-9]|php[0-9].[0-9]|php-cgi*|php-cli*|phpdbg*) return 0 ;;
+  esac
+  return 1
+}
+_php_member() {
+  local _lc=""
+  _in_grp ltd-shell-more || return 1
+  { _lc=$(< /etc/lshell.conf); } 2> /dev/null
+  [[ "${_lc}" == *"':'/opt/php"[0-9][0-9]"/bin/php'"* ]]
+}
+# A Composer run (websh's composer route below, or Composer started by its
+# path, which runs through its "#!/usr/bin/env php" line) starts PHP itself:
+# its @php scripts and plugin tasks, CiviCRM's compile tasks among them, and
+# the php lines of the project's own scripts come back here as "<php> -r ..."
+# or "<php> <script>". Those run: Composer already runs its plugins as PHP
+# inside its own process, so refusing its children stopped real builds
+# without closing anything. True when an ancestor of this shell, owned by
+# the same user, is such a Composer: its argv[0] one of the server's
+# /opt/phpNN/bin/php builds, /usr/bin/php, or "php" (env's PATH lookup,
+# which on BOA finds /usr/bin/php), its executable that very file (compared
+# by inode through /proc, which a process cannot rename) and its first
+# argument after -n, -d and -c (the options Composer is started with: its
+# own restart passes -n -c <ini>) /usr/local/bin/composer or BOA's link
+# to it, /usr/bin/composer. Any other PHP option before it ends the test: a
+# glued -r, -f or -B runs its own code and leaves composer an unused operand.
+# The path comes from argv[0] because a tenant cannot list /opt, so a glob
+# there matches nothing. A process that is not such a Composer is passed
+# over, so PHP that a tool inside a Composer run starts runs too. The walk
+# stops at the first process of another user, at PID 1, after eight steps
+# up, or where /proc gives no status. Pure bash: some identities cannot run
+# the system binaries.
+_under_composer() {
+  [[ $'\xc3\xa9' == ? ]] && local LC_ALL=C
+  local _p="${PPID}" _n _k _a _r _uid _pp _i _skip _b
+  local -a _argv
+  for _n in 1 2 3 4 5 6 7 8; do
+    [[ "${_p}" =~ ^[0-9]+$ ]] && [ "${_p}" -gt 1 ] || return 1
+    _uid=""
+    _pp=""
+    {
+      while read -r _k _a _r; do
+        case "${_k}" in
+          Uid:) _uid="${_a}" ;;
+          PPid:) _pp="${_a}" ;;
+        esac
+      done < "/proc/${_p}/status"
+    } 2> /dev/null
+    [ -n "${_uid}" ] && [ "${_uid}" = "${UID}" ] || return 1
+    _argv=()
+    { mapfile -d '' -t _argv < "/proc/${_p}/cmdline"; } 2> /dev/null
+    case "${_argv[0]:-}" in
+      /opt/php[0-9][0-9]/bin/php|/usr/bin/php) _b="${_argv[0]}" ;;
+      php) _b=/usr/bin/php ;;
+      *) _b="" ;;
+    esac
+    if [ -n "${_b}" ] && [ "${#_argv[@]}" -gt 1 ] && [ -f "${_b}" ] \
+      && [[ "/proc/${_p}/exe" -ef "${_b}" ]]; then
+      _skip=NO
+      for (( _i = 1; _i < ${#_argv[@]}; _i++ )); do
+        if [ "${_skip}" = "YES" ]; then
+          _skip=NO
+          continue
+        fi
+        case "${_argv[${_i}]}" in
+          -d|-c) _skip=YES ;;
+          -n|-d?*|-c?*) ;;
+          /usr/local/bin/composer|/usr/bin/composer) return 0 ;;
+          *) break ;;
+        esac
+      done
+    fi
+    _p="${_pp}"
+  done
+  return 1
+}
 _composer_lead() {
   [[ $'\xc3\xa9' == ? ]] && local LC_ALL=C
   local _s="$1"
@@ -742,6 +758,18 @@ _bee_lead() {
   fi
   _BE_CD=""
   return 1
+}
+# True when a Drush reads $1, in its first word's place, as the site and not
+# the command: an @alias, a #uri, a comma list (Drush 8), or a path with a
+# # or an @ (/path#uri, user@host/path, user@host#uri; Drush 9 and newer take
+# a backslash path too). A superset of both Drushes' forms: a word it takes
+# as a site is still tested as a command word too (_drush_cmd_word).
+_drush_site_word() {
+  case "$1" in
+    @*|*[,#]*) return 0 ;;
+    *@*) [[ "$1" == *[/\\]* ]] ;;
+    *) return 1 ;;
+  esac
 }
 _drush_cmd_word() {
   [[ $'\xc3\xa9' == ? ]] && local LC_ALL=C
@@ -847,18 +875,6 @@ _drush_cmd_word() {
     return 0
   fi
   return 1
-}
-# True when a Drush reads $1, in its first word's place, as the site and not
-# the command: an @alias, a #uri, a comma list (Drush 8), or a path with a
-# # or an @ (/path#uri, user@host/path, user@host#uri; Drush 9 and newer take
-# a backslash path too). A superset of both Drushes' forms: a word it takes
-# as a site is still tested as a command word too (_drush_cmd_word).
-_drush_site_word() {
-  case "$1" in
-    @*|*[,#]*) return 0 ;;
-    *@*) [[ "$1" == *[/\\]* ]] ;;
-    *) return 1 ;;
-  esac
 }
 # The expansion rule (_drush_refused): a tenant's Drush or dr words are
 # judged after the expansions dash applies to them, as far as websh can know
@@ -976,84 +992,6 @@ _drush_xp_names() {
   [[ "${_DXP_SET_NAMES}" == *" IFS "* ]] && _DXP_IFS=YES
   return 0
 }
-_drush_xp_scan() {
-  [[ $'\xc3\xa9' == ? ]] && local LC_ALL=C
-  local _p _sg _w0 _i _nw _n _r
-  local -a _ws
-  _drush_xp_names "$1"
-  # each simple command's first word ($2: the mark read's segments)
-  while IFS= read -r _sg; do
-    read -r -a _ws <<< "${_sg//$'\016'/}"
-    _nw=${#_ws[@]}
-    _i=0
-    _w0=""
-    while [ "${_i}" -lt "${_nw}" ]; do
-      _w0="${_ws[_i]}"
-      case "${_w0}" in
-        '!'|'{'|'}'|if|then|else|elif|while|until|do|done|fi|esac)
-          _i=$(( _i + 1 ))
-          continue
-          ;;
-        command)
-          _i=$(( _i + 1 ))
-          while [[ "${_ws[_i]:-}" == -* ]]; do _i=$(( _i + 1 )); done
-          continue
-          ;;
-      esac
-      if [[ "${_w0}" =~ ${_RE_DXP_REDIR} ]]; then
-        # a bare operator takes the next word for its target
-        if [ -z "${BASH_REMATCH[2]}" ]; then
-          _i=$(( _i + 2 ))
-        else
-          _i=$(( _i + 1 ))
-        fi
-        continue
-      fi
-      if [[ "${_w0}" =~ ^[A-Za-z_][A-Za-z0-9_]*= ]]; then
-        _i=$(( _i + 1 ))
-        continue
-      fi
-      _w0="${_ws[_i]:-}"
-      if [[ "${_w0}" == *[$'\002'-$'\006']* ]]; then
-        if [[ "${_w0}" != *[$'\002'$'\003'$'\005'$'\006']* ]]; then
-          # a pattern alone: each of them whose name it can match
-          _p="${_w0//$'\004'/}"
-          _w0="-"
-          for _n in read for getopts unset eval source local . cd chdir command; do
-            # shellcheck disable=SC2053 # the word is a pattern
-            [[ "${_n}" == ${_p} ]] || continue
-            case "${_n}" in
-              cd|chdir) _DXP_CD=YES ;;
-              command) _DXP_BIND=YES; _DXP_CD=YES ;;
-              *) _DXP_BIND=YES ;;
-            esac
-          done
-        else
-          _drush_xp "${_w0}"
-          _r="${_DXP_OUT}"
-          if [[ "${_r}" == *$'\007'* ]]; then
-            _w0=read
-            _DXP_CD=YES
-          else
-            read -r _w0 _p <<< "${_r}"
-            if [ -z "${_w0}" ]; then
-              _i=$(( _i + 1 ))
-              continue
-            fi
-          fi
-        fi
-      fi
-      break
-    done
-    case "${_w0:-}" in
-      read|for|getopts|unset|eval|source|local|.) _DXP_BIND=YES ;;
-      cd|chdir) _DXP_CD=YES ;;
-      # what an expansion gave (a literal command is read past above)
-      command) _DXP_BIND=YES; _DXP_CD=YES ;;
-    esac
-  done < <(printf '%s\n' "$2")
-  return 0
-}
 # True when the reader cannot follow dash's quoting through the line: a
 # here-document (its body is no command, and a quote in it is none) or a
 # command substitution (a backtick, $( and arithmetic: quoting nests inside),
@@ -1101,6 +1039,14 @@ _drush_xp_name() {
   _DXP_VAL="${_DXP_VAL//</$'\017'}"
   _DXP_VAL="${_DXP_VAL//>/$'\020'}"
   return 0
+}
+# ends the word _drush_xp builds: kept when it holds anything, or a quoted part
+_drush_xp_end() {
+  if [ -n "${_cur}" ] || [ "${_has}" = "YES" ]; then
+    _fl+=("${_cur:-$'\001'}")
+  fi
+  _cur=""
+  _has=NO
 }
 # $1, the runner's words as _drush_segments' mark mode gives them, after
 # the expansions dash applies: a plain name ($NAME, ${NAME}) takes its value
@@ -1228,35 +1174,83 @@ _drush_xp() {
   done
   _DXP_OUT="${_o% }"
 }
-# ends the word _drush_xp builds: kept when it holds anything, or a quoted part
-_drush_xp_end() {
-  if [ -n "${_cur}" ] || [ "${_has}" = "YES" ]; then
-    _fl+=("${_cur:-$'\001'}")
-  fi
-  _cur=""
-  _has=NO
-}
-# BOA's Drush 8 runs a file named as its first argument (after the --php
-# words its launcher puts in front) as php-script when the file's first line
-# is a shebang naming drush, and the file in the second place too when the
-# first argument holds a blank or does not start with a letter or digit
-# (drush_adjust_args_if_shebang_script, before it reads any option). $1 is
-# the argument string; a relative file is read from the line's working
-# directory (_GD_CWD). A first line longer than the read counts as one.
-_d8_shebang() {
-  local _ws _i=0 _a _b
-  read -r -a _ws <<< "$1"
-  while [ "${_i}" -lt "${#_ws[@]}" ] && [[ "${_ws[_i]}" == --php* ]]; do
-    _i=$(( _i + 1 ))
-  done
-  _a="${_ws[_i]:-}"
-  _b="${_ws[_i + 1]:-}"
-  [ -n "${_a}" ] || return 1
-  _d8_shebang_file "${_a}" && return 0
-  if [[ "${_a}" == *[[:blank:]$'\001']* ]] || [[ "${_a:0:1}" != [[:alnum:]] ]]; then
-    [ -n "${_b}" ] && _d8_shebang_file "${_b}" && return 0
-  fi
-  return 1
+_drush_xp_scan() {
+  [[ $'\xc3\xa9' == ? ]] && local LC_ALL=C
+  local _p _sg _w0 _i _nw _n _r
+  local -a _ws
+  _drush_xp_names "$1"
+  # each simple command's first word ($2: the mark read's segments)
+  while IFS= read -r _sg; do
+    read -r -a _ws <<< "${_sg//$'\016'/}"
+    _nw=${#_ws[@]}
+    _i=0
+    _w0=""
+    while [ "${_i}" -lt "${_nw}" ]; do
+      _w0="${_ws[_i]}"
+      case "${_w0}" in
+        '!'|'{'|'}'|if|then|else|elif|while|until|do|done|fi|esac)
+          _i=$(( _i + 1 ))
+          continue
+          ;;
+        command)
+          _i=$(( _i + 1 ))
+          while [[ "${_ws[_i]:-}" == -* ]]; do _i=$(( _i + 1 )); done
+          continue
+          ;;
+      esac
+      if [[ "${_w0}" =~ ${_RE_DXP_REDIR} ]]; then
+        # a bare operator takes the next word for its target
+        if [ -z "${BASH_REMATCH[2]}" ]; then
+          _i=$(( _i + 2 ))
+        else
+          _i=$(( _i + 1 ))
+        fi
+        continue
+      fi
+      if [[ "${_w0}" =~ ^[A-Za-z_][A-Za-z0-9_]*= ]]; then
+        _i=$(( _i + 1 ))
+        continue
+      fi
+      _w0="${_ws[_i]:-}"
+      if [[ "${_w0}" == *[$'\002'-$'\006']* ]]; then
+        if [[ "${_w0}" != *[$'\002'$'\003'$'\005'$'\006']* ]]; then
+          # a pattern alone: each of them whose name it can match
+          _p="${_w0//$'\004'/}"
+          _w0="-"
+          for _n in read for getopts unset eval source local . cd chdir command; do
+            # shellcheck disable=SC2053 # the word is a pattern
+            [[ "${_n}" == ${_p} ]] || continue
+            case "${_n}" in
+              cd|chdir) _DXP_CD=YES ;;
+              command) _DXP_BIND=YES; _DXP_CD=YES ;;
+              *) _DXP_BIND=YES ;;
+            esac
+          done
+        else
+          _drush_xp "${_w0}"
+          _r="${_DXP_OUT}"
+          if [[ "${_r}" == *$'\007'* ]]; then
+            _w0=read
+            _DXP_CD=YES
+          else
+            read -r _w0 _p <<< "${_r}"
+            if [ -z "${_w0}" ]; then
+              _i=$(( _i + 1 ))
+              continue
+            fi
+          fi
+        fi
+      fi
+      break
+    done
+    case "${_w0:-}" in
+      read|for|getopts|unset|eval|source|local|.) _DXP_BIND=YES ;;
+      cd|chdir) _DXP_CD=YES ;;
+      # what an expansion gave (a literal command is read past above)
+      command) _DXP_BIND=YES; _DXP_CD=YES ;;
+    esac
+  done < <(printf '%s\n' "$2")
+  return 0
 }
 _d8_shebang_file() {
   local _f="${1//$'\001'/ }" _l=""
@@ -1279,6 +1273,28 @@ _d8_shebang_file() {
   IFS= read -r -n 65536 _l 2> /dev/null < "${_f}"
   [[ "${_l}" == '#!'* ]] || return 1
   [[ "${_l}" == *drush* ]] || [ "${#_l}" -ge 65536 ]
+}
+# BOA's Drush 8 runs a file named as its first argument (after the --php
+# words its launcher puts in front) as php-script when the file's first line
+# is a shebang naming drush, and the file in the second place too when the
+# first argument holds a blank or does not start with a letter or digit
+# (drush_adjust_args_if_shebang_script, before it reads any option). $1 is
+# the argument string; a relative file is read from the line's working
+# directory (_GD_CWD). A first line longer than the read counts as one.
+_d8_shebang() {
+  local _ws _i=0 _a _b
+  read -r -a _ws <<< "$1"
+  while [ "${_i}" -lt "${#_ws[@]}" ] && [[ "${_ws[_i]}" == --php* ]]; do
+    _i=$(( _i + 1 ))
+  done
+  _a="${_ws[_i]:-}"
+  _b="${_ws[_i + 1]:-}"
+  [ -n "${_a}" ] || return 1
+  _d8_shebang_file "${_a}" && return 0
+  if [[ "${_a}" == *[[:blank:]$'\001']* ]] || [[ "${_a:0:1}" != [[:alnum:]] ]]; then
+    [ -n "${_b}" ] && _d8_shebang_file "${_b}" && return 0
+  fi
+  return 1
 }
 # True when Symfony console would resolve the typed command word $1 to the
 # command name $2 (Application::find's abbreviation rule): each colon part
@@ -1425,62 +1441,6 @@ _in_composer_run() {
     fi
   fi
   [ "${_IN_COMPOSER}" = "YES" ]
-}
-_drush_refused() {
-  [[ $'\xc3\xa9' == ? ]] && local LC_ALL=C
-  # every read of the line (_drush_segments): split at each newline and
-  # joined as dash joins lines, each with a quoted blank splitting its word
-  # and kept in it as dash keeps it (a quote the reader takes where dash
-  # sees none, in a comment, must not glue the words after it into one);
-  # refused when any read refuses
-  # Where a quoted word is split, a < or > in it looks like a redirection:
-  # those reads are done with the redirections gone and, where the line holds
-  # a < or >, once more with every word left in place (raw).
-  local _sg _raw=""
-  _DR_XP=""
-  [[ "$1" == *[\<\>]* ]] && _raw=raw
-  _sg=$(_drush_segments "$1")
-  _drush_refused_read "${_sg}" && return 0
-  [ -n "${_raw}" ] && _drush_refused_read "${_sg}" "" raw && return 0
-  _drush_refused_read "$(_drush_segments "$1" keep)" && return 0
-  if [[ "$1" == *$'\n'* ]]; then
-    _sg=$(_drush_segments "$1" "" join)
-    _drush_refused_read "${_sg}" && return 0
-    [ -n "${_raw}" ] && _drush_refused_read "${_sg}" "" raw && return 0
-    _drush_refused_read "$(_drush_segments "$1" keep join)" && return 0
-  fi
-  # The expansion rule: dash expands a word before the runner sees it, so
-  # the words a runner reads up to its command word are judged as dash
-  # expands them (_drush_xp), read once more with the marks of what it
-  # expands (kept blanks, joined lines: the read that quotes as dash does).
-  # Only a line holding a character dash expands, or an empty quoted string
-  # (a word dash keeps and the other reads drop); one whose quoting the
-  # reader cannot follow (_drush_xp_blunt) is refused whole.
-  case "$1" in
-    *[\$\`*?[~]*)
-      if _drush_xp_blunt "$1"; then
-        _DR_WHY=E
-        _DR_XP=YES
-        return 0
-      fi
-      ;;
-    *"''"*|*'""'*) ;;
-    *) return 1 ;;
-  esac
-  _sg=$(_drush_segments "$1" keep join mark)
-  _drush_xp_scan "$1" "${_sg}"
-  _drush_refused_read "${_sg}" mark
-}
-# $1 = the line's segments (_drush_segments); $2 = mark: those of its mark
-# mode; $3 = raw: the redirections left in place. A here-string holds them
-# while they fit in a pipe, so a short line starts no process for it.
-_drush_refused_read() {
-  [[ $'\xc3\xa9' == ? ]] && local LC_ALL=C
-  if [ "${#1}" -lt 4000 ]; then
-    _drush_refused_loop "${2:-}" "${3:-}" <<< "$1"
-  else
-    _drush_refused_loop "${2:-}" "${3:-}" < <(printf '%s\n' "$1")
-  fi
 }
 _drush_refused_loop() {
   [[ $'\xc3\xa9' == ? ]] && local LC_ALL=C
@@ -1736,6 +1696,62 @@ _drush_refused_loop() {
   done
   return 1
 }
+# $1 = the line's segments (_drush_segments); $2 = mark: those of its mark
+# mode; $3 = raw: the redirections left in place. A here-string holds them
+# while they fit in a pipe, so a short line starts no process for it.
+_drush_refused_read() {
+  [[ $'\xc3\xa9' == ? ]] && local LC_ALL=C
+  if [ "${#1}" -lt 4000 ]; then
+    _drush_refused_loop "${2:-}" "${3:-}" <<< "$1"
+  else
+    _drush_refused_loop "${2:-}" "${3:-}" < <(printf '%s\n' "$1")
+  fi
+}
+_drush_refused() {
+  [[ $'\xc3\xa9' == ? ]] && local LC_ALL=C
+  # every read of the line (_drush_segments): split at each newline and
+  # joined as dash joins lines, each with a quoted blank splitting its word
+  # and kept in it as dash keeps it (a quote the reader takes where dash
+  # sees none, in a comment, must not glue the words after it into one);
+  # refused when any read refuses
+  # Where a quoted word is split, a < or > in it looks like a redirection:
+  # those reads are done with the redirections gone and, where the line holds
+  # a < or >, once more with every word left in place (raw).
+  local _sg _raw=""
+  _DR_XP=""
+  [[ "$1" == *[\<\>]* ]] && _raw=raw
+  _sg=$(_drush_segments "$1")
+  _drush_refused_read "${_sg}" && return 0
+  [ -n "${_raw}" ] && _drush_refused_read "${_sg}" "" raw && return 0
+  _drush_refused_read "$(_drush_segments "$1" keep)" && return 0
+  if [[ "$1" == *$'\n'* ]]; then
+    _sg=$(_drush_segments "$1" "" join)
+    _drush_refused_read "${_sg}" && return 0
+    [ -n "${_raw}" ] && _drush_refused_read "${_sg}" "" raw && return 0
+    _drush_refused_read "$(_drush_segments "$1" keep join)" && return 0
+  fi
+  # The expansion rule: dash expands a word before the runner sees it, so
+  # the words a runner reads up to its command word are judged as dash
+  # expands them (_drush_xp), read once more with the marks of what it
+  # expands (kept blanks, joined lines: the read that quotes as dash does).
+  # Only a line holding a character dash expands, or an empty quoted string
+  # (a word dash keeps and the other reads drop); one whose quoting the
+  # reader cannot follow (_drush_xp_blunt) is refused whole.
+  case "$1" in
+    *[\$\`*?[~]*)
+      if _drush_xp_blunt "$1"; then
+        _DR_WHY=E
+        _DR_XP=YES
+        return 0
+      fi
+      ;;
+    *"''"*|*'""'*) ;;
+    *) return 1 ;;
+  esac
+  _sg=$(_drush_segments "$1" keep join mark)
+  _drush_xp_scan "$1" "${_sg}"
+  _drush_refused_read "${_sg}" mark
+}
 # what a refusal tells the tenant: G has its own way forward
 _drush_refused_say() {
   local _lc="" _app="" _doc="" _vnd=""
@@ -1830,21 +1846,6 @@ _drush_refused_say() {
   fi
   echo
 }
-_is_tenant() {
-  [[ "${_LTD_UID}" == *.ftp ]] || _in_grp lshellg || _in_grp ltd-shell || _in_grp ltd-shell-more
-}
-# Running a PHP interpreter by name is for [grp:ltd-shell-more] members only,
-# the one shell group whose policy offers phpNN, and only while the box's
-# shell policy carries those aliases (/etc/lshell.conf; the PHP-CLI strip,
-# _fix_php_in_lshell_access, removes them when it is called). Every other
-# tenant gets PHP through the drush, vdrush, bee and composer launches websh
-# makes itself, on the version the account chose.
-_php_word() {
-  case "${1##*/}" in
-    php|php[0-9][0-9]|php[0-9].[0-9]|php-cgi*|php-cli*|phpdbg*) return 0 ;;
-  esac
-  return 1
-}
 # true when a simple command of the line runs Drush: its program is a drush
 # word or a drush.php, or a PHP interpreter whose script is a drush.php
 _runs_drush() {
@@ -1860,77 +1861,6 @@ _runs_drush() {
     esac
     _php_word "${_w1}" && [[ "${_w2##*/}" == "drush.php" || "${_w2##*/}" == "dr" ]] && return 0
   done < <(_drush_segments "$1"; [[ "$1" == *$'\n'* ]] && _drush_segments "$1" "" join)
-  return 1
-}
-_php_member() {
-  local _lc=""
-  _in_grp ltd-shell-more || return 1
-  { _lc=$(< /etc/lshell.conf); } 2> /dev/null
-  [[ "${_lc}" == *"':'/opt/php"[0-9][0-9]"/bin/php'"* ]]
-}
-# A Composer run (websh's composer route below, or Composer started by its
-# path, which runs through its "#!/usr/bin/env php" line) starts PHP itself:
-# its @php scripts and plugin tasks, CiviCRM's compile tasks among them, and
-# the php lines of the project's own scripts come back here as "<php> -r ..."
-# or "<php> <script>". Those run: Composer already runs its plugins as PHP
-# inside its own process, so refusing its children stopped real builds
-# without closing anything. True when an ancestor of this shell, owned by
-# the same user, is such a Composer: its argv[0] one of the server's
-# /opt/phpNN/bin/php builds, /usr/bin/php, or "php" (env's PATH lookup,
-# which on BOA finds /usr/bin/php), its executable that very file (compared
-# by inode through /proc, which a process cannot rename) and its first
-# argument after -n, -d and -c (the options Composer is started with: its
-# own restart passes -n -c <ini>) /usr/local/bin/composer or BOA's link
-# to it, /usr/bin/composer. Any other PHP option before it ends the test: a
-# glued -r, -f or -B runs its own code and leaves composer an unused operand.
-# The path comes from argv[0] because a tenant cannot list /opt, so a glob
-# there matches nothing. A process that is not such a Composer is passed
-# over, so PHP that a tool inside a Composer run starts runs too. The walk
-# stops at the first process of another user, at PID 1, after eight steps
-# up, or where /proc gives no status. Pure bash: some identities cannot run
-# the system binaries.
-_under_composer() {
-  [[ $'\xc3\xa9' == ? ]] && local LC_ALL=C
-  local _p="${PPID}" _n _k _a _r _uid _pp _i _skip _b
-  local -a _argv
-  for _n in 1 2 3 4 5 6 7 8; do
-    [[ "${_p}" =~ ^[0-9]+$ ]] && [ "${_p}" -gt 1 ] || return 1
-    _uid=""
-    _pp=""
-    {
-      while read -r _k _a _r; do
-        case "${_k}" in
-          Uid:) _uid="${_a}" ;;
-          PPid:) _pp="${_a}" ;;
-        esac
-      done < "/proc/${_p}/status"
-    } 2> /dev/null
-    [ -n "${_uid}" ] && [ "${_uid}" = "${UID}" ] || return 1
-    _argv=()
-    { mapfile -d '' -t _argv < "/proc/${_p}/cmdline"; } 2> /dev/null
-    case "${_argv[0]:-}" in
-      /opt/php[0-9][0-9]/bin/php|/usr/bin/php) _b="${_argv[0]}" ;;
-      php) _b=/usr/bin/php ;;
-      *) _b="" ;;
-    esac
-    if [ -n "${_b}" ] && [ "${#_argv[@]}" -gt 1 ] && [ -f "${_b}" ] \
-      && [[ "/proc/${_p}/exe" -ef "${_b}" ]]; then
-      _skip=NO
-      for (( _i = 1; _i < ${#_argv[@]}; _i++ )); do
-        if [ "${_skip}" = "YES" ]; then
-          _skip=NO
-          continue
-        fi
-        case "${_argv[${_i}]}" in
-          -d|-c) _skip=YES ;;
-          -n|-d?*|-c?*) ;;
-          /usr/local/bin/composer|/usr/bin/composer) return 0 ;;
-          *) break ;;
-        esac
-      done
-    fi
-    _p="${_pp}"
-  done
   return 1
 }
 _php_direct_refused() {
@@ -2061,6 +1991,76 @@ _cd_dir_of() {
   _CDD=""
   [[ "$1" =~ ^[[:space:]]*cd[[:space:]]+([^[:space:]\;\&\|]+) ]] || return 1
   _CDD="${BASH_REMATCH[1]}"
+}
+_dr_site() {
+  [[ $'\xc3\xa9' == ? ]] && local LC_ALL=C
+  local _ws _w _next=NO _u="" _h _app _base _doc="" _d
+  _DRL_SITE=""; _DRL_NOTE=""; _DRL_HINT=""
+  # the last --url before a --, as the console reads a repeated option,
+  # among dr's own words as the expansion rule reads them (_drush_segments'
+  # mark mode, _drush_xp): the line's first simple command (a later one's
+  # --url is not dr's, and no command of the line but a cd runs before dr),
+  # the redirections gone, quotes off, an exported name by its value. A value
+  # websh cannot know names no site folder.
+  _w=$(_drush_segments "${_DRL_REST}" keep join mark)
+  _w="${_w%%$'\n'*}"
+  _drush_xp_names "${_w}"
+  [ -n "${_DRL_CD}" ] && _DXP_CD=YES
+  _drush_xp "${_w}"
+  _drush_unredir "${_DXP_OUT//$'\016'/}"
+  read -r -a _ws <<< "${_DUR}"
+  for _w in "${_ws[@]}"; do
+    if [ "${_next}" = "YES" ]; then
+      _u="${_w}"
+      _next=NO
+    else
+      case "${_w}" in
+        --url=*) _u="${_w#--url=}" ;;
+        --url) _next=YES ;;
+        --) break ;;
+      esac
+    fi
+  done
+  # a quoted blank ends the address
+  _u="${_u%%$'\001'*}"
+  [ -n "${_u}" ] || return 0
+  _h="${_u#*://}"
+  _h="${_h%%/*}"
+  _h="${_h%%:*}"
+  _h="${_h,,}"
+  if ! [[ "${_h}" =~ ^[a-z0-9][a-z0-9.-]*$ ]] || [[ "${_h}" == *..* ]]; then
+    _DRL_NOTE="--url names no site folder; dr starts with no site"
+    return 0
+  fi
+  # dr builds its links from --url as given: without a scheme they point at
+  # http://localhost/<host>/, a login link included
+  if [[ "${_u}" != *://* ]]; then
+    _DRL_HINT="dr builds its links from --url as given: name the site as --url=https://${_h}"
+  fi
+  _base=$(pwd -P 2> /dev/null)
+  if _cd_dir_of "${_DRL_CD}"; then
+    # the folder read like --url's value above; none is HOME
+    _DXP_CD=NO
+    _drush_xp "$(_drush_segments "${_CDD}" keep join mark)"
+    _drush_unredir "${_DXP_OUT}"
+    read -r _w <<< "${_DUR}"
+    _base=$(cd -- "${_w:-${HOME}}" 2> /dev/null && pwd -P) || _base=$(pwd -P 2> /dev/null)
+  fi
+  _app="${_DRL_PATH%vendor/bin/dr}"
+  _app="${_app%/}"
+  [ -n "${_app}" ] || _app="."
+  [[ "${_app}" == /* ]] || _app="${_base}/${_app}"
+  for _d in "${_app}/web" "${_app}/docroot" "${_app}/html" "${_app}"; do
+    if [ -f "${_d}/core/lib/Drupal.php" ]; then
+      _doc="${_d}"
+      break
+    fi
+  done
+  if [ -n "${_doc}" ] && [ -d "${_doc}/sites/${_h}" ]; then
+    _DRL_SITE="sites/${_h}"
+  else
+    _DRL_NOTE="this codebase has no site folder sites/${_h}; dr starts with no site"
+  fi
 }
 _drush_lead() {
   [[ $'\xc3\xa9' == ? ]] && local LC_ALL=C

@@ -450,6 +450,22 @@ _acct_reload_stamp() {
   rm -f "${_ACCT_REQ_DIR}/${_RELOAD_TOOL}.${1}.noted"
 }
 
+# The fragments in the real directory $3 replaced by those of the last-good
+# archive $2 in the real directory $1. The archive is proved whole before
+# anything on disk is deleted: one that does not unpack whole leaves the
+# fragments as they are, status 1. A put that fails after the drop alerts
+# for the running _process_instance's root.
+_ai_revert() {
+  _lg_fetch "${1}" "${2}" "${_work}/lg" || return 1
+  _acct_in_real_dir "${3}" _confs_drop_here > /dev/null
+  if ! _acct_in_real_dir "${3}" _confs_put_here "${_work}/lg"; then
+    _policy_alert "ai_policy.restore.${_root}" \
+      "ai_policy: restoring the last-good backup FAILED (${_root})" \
+      "restoring ${1}/${2} FAILED after the fragments were removed."
+  fi
+  return 0
+}
+
 _process_instance() {
   local _root="$1"
   local _input_file="${_root}/static/control/ai/policy.txt"
@@ -620,22 +636,6 @@ _process_instance() {
   _acct_in_real_dir "${_ai_path}" _acct_put_pairs_here \
     .policy_last_mod_time "${_current_mod_time}" .emit_version "${_emit_version}"
   echo "AI policy updated (${_root}): ${_configured[*]:-none}; Nginx reloaded."
-  return 0
-}
-
-# The fragments in the real directory $3 replaced by those of the last-good
-# archive $2 in the real directory $1. The archive is proved whole before
-# anything on disk is deleted: one that does not unpack whole leaves the
-# fragments as they are, status 1. A put that fails after the drop alerts
-# for the running _process_instance's root.
-_ai_revert() {
-  _lg_fetch "${1}" "${2}" "${_work}/lg" || return 1
-  _acct_in_real_dir "${3}" _confs_drop_here > /dev/null
-  if ! _acct_in_real_dir "${3}" _confs_put_here "${_work}/lg"; then
-    _policy_alert "ai_policy.restore.${_root}" \
-      "ai_policy: restoring the last-good backup FAILED (${_root})" \
-      "restoring ${1}/${2} FAILED after the fragments were removed."
-  fi
   return 0
 }
 

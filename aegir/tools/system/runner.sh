@@ -122,6 +122,26 @@ _disable_master_cron() {
 # run-*, and an upgrade needs both draining or its verify tasks starve.
 _IS_CI_BOX=NO
 _CI_QUEUE_GRACE=NO
+_if_allow_aegir_queue() {
+  _PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
+  _PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
+  _PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
+  _PrTestUltra=$(grep "ULTRA" /root/.*.octopus.cnf 2>&1)
+  _PrTestMonster=$(grep "MONSTER" /root/.*.octopus.cnf 2>&1)
+  _ReTest=$(ls /data/disk/*/static/control/run-aegir-queue.info | wc -l 2>&1)
+  if [[ "${_PrTestPower}" =~ "POWER" ]] \
+    || [[ "${_PrTestPhantom}" =~ "PHANTOM" ]] \
+    || [[ "${_PrTestCluster}" =~ "CLUSTER" ]] \
+    || [[ "${_PrTestUltra}" =~ "ULTRA" ]] \
+    || [[ "${_PrTestMonster}" =~ "MONSTER" ]] \
+    || [ -e "/etc/boa/.allow.aegir.queue.cnf" ] \
+    || grep -qiE "^[[:space:]]*(export[[:space:]]+)?_ALLOW_AEGIR_QUEUE=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null; then
+    if [ "${_ReTest}" -ge 1 ]; then
+      _QUEUE_OK=TRUE
+    fi
+  fi
+}
+
 _ci_master_cron_control() {
   local _grace="/run/boa_master_cron_grace.pid"
   if [ -e "/etc/boa/.look.like.jenkins.cnf" ] \
@@ -503,26 +523,6 @@ _runner_action() {
       echo "Load is ${_O_LOAD}% while max load is ${_O_LOAD_MAX}%. Waiting..."
     fi
   done
-}
-
-_if_allow_aegir_queue() {
-  _PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
-  _PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
-  _PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
-  _PrTestUltra=$(grep "ULTRA" /root/.*.octopus.cnf 2>&1)
-  _PrTestMonster=$(grep "MONSTER" /root/.*.octopus.cnf 2>&1)
-  _ReTest=$(ls /data/disk/*/static/control/run-aegir-queue.info | wc -l 2>&1)
-  if [[ "${_PrTestPower}" =~ "POWER" ]] \
-    || [[ "${_PrTestPhantom}" =~ "PHANTOM" ]] \
-    || [[ "${_PrTestCluster}" =~ "CLUSTER" ]] \
-    || [[ "${_PrTestUltra}" =~ "ULTRA" ]] \
-    || [[ "${_PrTestMonster}" =~ "MONSTER" ]] \
-    || [ -e "/etc/boa/.allow.aegir.queue.cnf" ] \
-    || grep -qiE "^[[:space:]]*(export[[:space:]]+)?_ALLOW_AEGIR_QUEUE=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null; then
-    if [ "${_ReTest}" -ge 1 ]; then
-      _QUEUE_OK=TRUE
-    fi
-  fi
 }
 
 ###-------------SYSTEM-----------------###

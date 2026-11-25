@@ -674,6 +674,60 @@ _nginx_test_and_reload() {
 # cert store instead of the Octopus /data/disk layout. Proxy semantics
 # (headers incl. CF-Connecting-IP hand-off, timeouts, buffering) verbatim.
 
+# nginx gained the standalone `http2` directive in 1.25.1; before that HTTP/2
+# is a parameter of the listen directive - and THAT parameter only exists
+# from 1.9.5. A vanilla source box runs the DISTRO's nginx - 1.18 on Debian
+# 11, older still on older releases - where an unknown directive fails the
+# WHOLE config. Measured 2026-08-11: every HTTPS site refused to cut over on
+# `http2 on;` against 1.18, while the HTTP sites proxied fine. BOA's own
+# template can assume its own modern build; this one cannot - so BOTH bounds
+# are probed and the emitted syntax degrades instead of failing nginx -t.
+_nginx_version() {
+  nginx -v 2>&1 | sed -n 's|.*nginx/\([0-9][0-9.]*\).*|\1|p'
+}
+
+_nginx_at_least() {   # 1 floor -> true when the running nginx is >= floor
+  local _v
+  _v="$(_nginx_version)"
+  [[ -n "${_v}" ]] || return 1
+  [[ "$(printf '%s\n%s\n' "$1" "${_v}" | sort -V | head -1)" = "$1" ]]
+}
+
+# The new host refuses a request (a banned address, a refused crawler, a probe
+# for a secret path) by closing the connection, which a proxy answers with its
+# own 502. BOA's templates drop that close too, and only that one; the test
+# reads $upstream_bytes_sent, which nginx has from 1.15.8 on. A distro nginx
+# older than that, or one whose version cannot be read, gets no rule and keeps
+# the 502: an unknown variable fails the whole config.
+_emit_backend_drop_top() {
+  _nginx_at_least 1.15.8 || return 0
+  cat <<'DROPEOF'
+    ### The host behind this proxy refuses a request (a banned address, a
+    ### refused crawler, a probe for a secret path) by closing the connection,
+    ### which this proxy would answer with its own 502: drop it here too.
+    error_page                 502 = @boa_drop;
+DROPEOF
+}
+
+_emit_backend_drop_loc() {
+  _nginx_at_least 1.15.8 || return 0
+  cat <<'DROPEOF'
+  location @boa_drop {
+    ### Only a close after the request and before any byte of an answer is
+    ### such a refusal: nothing listening at the target, an oversized header
+    ### or any other fault keeps its 502.
+    recursive_error_pages      off;
+    if ($upstream_bytes_received !~ "^[0, :]*$") {
+      return 502;
+    }
+    if ($upstream_bytes_sent !~ "[1-9]") {
+      return 502;
+    }
+    return 444;
+  }
+DROPEOF
+}
+
 _emit_proxy_http() {   # 1 server_names 2 target_ip
   cat <<PROXYEOF
 ###
@@ -717,60 +771,6 @@ PROXYEOF
 ### Plain HTTP proxy (END)
 ###
 PROXYEOF
-}
-
-# The new host refuses a request (a banned address, a refused crawler, a probe
-# for a secret path) by closing the connection, which a proxy answers with its
-# own 502. BOA's templates drop that close too, and only that one; the test
-# reads $upstream_bytes_sent, which nginx has from 1.15.8 on. A distro nginx
-# older than that, or one whose version cannot be read, gets no rule and keeps
-# the 502: an unknown variable fails the whole config.
-_emit_backend_drop_top() {
-  _nginx_at_least 1.15.8 || return 0
-  cat <<'DROPEOF'
-    ### The host behind this proxy refuses a request (a banned address, a
-    ### refused crawler, a probe for a secret path) by closing the connection,
-    ### which this proxy would answer with its own 502: drop it here too.
-    error_page                 502 = @boa_drop;
-DROPEOF
-}
-
-_emit_backend_drop_loc() {
-  _nginx_at_least 1.15.8 || return 0
-  cat <<'DROPEOF'
-  location @boa_drop {
-    ### Only a close after the request and before any byte of an answer is
-    ### such a refusal: nothing listening at the target, an oversized header
-    ### or any other fault keeps its 502.
-    recursive_error_pages      off;
-    if ($upstream_bytes_received !~ "^[0, :]*$") {
-      return 502;
-    }
-    if ($upstream_bytes_sent !~ "[1-9]") {
-      return 502;
-    }
-    return 444;
-  }
-DROPEOF
-}
-
-# nginx gained the standalone `http2` directive in 1.25.1; before that HTTP/2
-# is a parameter of the listen directive - and THAT parameter only exists
-# from 1.9.5. A vanilla source box runs the DISTRO's nginx - 1.18 on Debian
-# 11, older still on older releases - where an unknown directive fails the
-# WHOLE config. Measured 2026-08-11: every HTTPS site refused to cut over on
-# `http2 on;` against 1.18, while the HTTP sites proxied fine. BOA's own
-# template can assume its own modern build; this one cannot - so BOTH bounds
-# are probed and the emitted syntax degrades instead of failing nginx -t.
-_nginx_version() {
-  nginx -v 2>&1 | sed -n 's|.*nginx/\([0-9][0-9.]*\).*|\1|p'
-}
-
-_nginx_at_least() {   # 1 floor -> true when the running nginx is >= floor
-  local _v
-  _v="$(_nginx_version)"
-  [[ -n "${_v}" ]] || return 1
-  [[ "$(printf '%s\n%s\n' "$1" "${_v}" | sort -V | head -1)" = "$1" ]]
 }
 
 _nginx_has_http2_directive() {
@@ -1563,6 +1563,31 @@ verb_resume() {
 
 ###-------------VERB: create-----------###
 
+# Take the box-wide post-install upgrade guard back off the target. It is
+# read by 'boa in-octopus' on EVERY account created on that box afterwards,
+# by any actor - left behind, it silently skips the whole post-install chain
+# (dispatch, hosting-tasks, the LE completion and the enforced octopus
+# upgrade) for good. Best effort and safe to call twice: the point is that
+# no exit path can keep it.
+_guard_target_off() {
+  [[ -n "${_GUARD_TARGET}" ]] || return 0
+  ssh -o BatchMode=yes -o ConnectTimeout=15 "root@${_GUARD_TARGET}" \
+    "rm -f /root/.dont.upgrade.octopus.on.install.cnf" >/dev/null 2>&1
+  _GUARD_TARGET=""
+}
+
+# leaked-tempfile + lock cleanup on any exit (creds mktemp files live 600
+# under the 700 state dir; a _die between create and rm would otherwise
+# leave them). _STATE_DIR is set by the box-class requirement inside a verb.
+# Also the last chance to drop the target's upgrade guard: an operator Ctrl-C
+# or a _die anywhere inside the create window lands here (the INT/TERM trap
+# exits, which runs this), and every chained EXIT trap ends in _cleanup.
+_cleanup() {
+  _guard_target_off
+  [[ -n "${_STATE_DIR:-}" ]] && rm -f "${_STATE_DIR}/.myd."* "${_STATE_DIR}/.certs."* 2>/dev/null
+  # the lock dir holds a pid file - a bare rmdir leaves every lock stale
+  [[ -n "${_LOCK:-}" && -d "${_LOCK}" ]] && { rm -f "${_LOCK}/pid" 2>/dev/null; rmdir "${_LOCK}" 2>/dev/null; }
+}
 verb_create() {
   _require_source_box
   [[ -n "${_TARGET}" && -n "${_ACCOUNT}" && -n "${_EMAIL}" && -n "${_TREE}" ]] \
@@ -1891,6 +1916,24 @@ _a2b_rcd_a2b() {
 # account its target owner's).
 _ACCT_REOWN_PL='use Fcntl; my ($u, $g, @f) = @ARGV; for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); chown($u, $g, $h) if @s && (-d _ || (-f _ && $s[3] == 1)); close($h); } exit 0'
 
+# The account's web group on the target, as that box's own instgrp reads
+# it (webstatus, read only): an armed target converts a new account at its
+# INIT, and the web paths this run landed there take that group at the
+# import's Verify. Nothing is changed here; a verdict other than NONE, A or
+# B is an alert naming the command that shows it in full there.
+_a2b_web_group_report() {
+  local _st
+  _st=$(ssh -o BatchMode=yes -o ConnectTimeout=15 "root@${_TARGET}" \
+    "grep -q '^_wg_table() {' /opt/local/bin/instgrp 2> /dev/null && bash /opt/local/bin/instgrp webstatus '${_ACCOUNT}' 2> /dev/null" 2> /dev/null \
+    | sed -n 's/^STATUS:[[:space:]]*//p' | head -n 1 | tr -cd '[:print:]')
+  case "${_st}" in
+    "") _info "web group of ${_ACCOUNT} on ${_TARGET}: not read (its instgrp has no web-group verbs)" ;;
+    NONE|A|B) _info "web group of ${_ACCOUNT} on ${_TARGET}: ${_st}" ;;
+    *) _alrt "web group of ${_ACCOUNT} on ${_TARGET}: ${_st}; run 'instgrp webstatus ${_ACCOUNT}' there" ;;
+  esac
+  return 0
+}
+
 verb_transfer() {
   _require_source_box
   [[ -n "${_TARGET}" && -n "${_ACCOUNT}" ]] || _die "transfer needs --target and --account"
@@ -2181,24 +2224,6 @@ REMOTE
   _msg "transfer complete - next: run 'import --account ${_ACCOUNT} --route ${_route}' ON THE TARGET"
 }
 
-# The account's web group on the target, as that box's own instgrp reads
-# it (webstatus, read only): an armed target converts a new account at its
-# INIT, and the web paths this run landed there take that group at the
-# import's Verify. Nothing is changed here; a verdict other than NONE, A or
-# B is an alert naming the command that shows it in full there.
-_a2b_web_group_report() {
-  local _st
-  _st=$(ssh -o BatchMode=yes -o ConnectTimeout=15 "root@${_TARGET}" \
-    "grep -q '^_wg_table() {' /opt/local/bin/instgrp 2> /dev/null && bash /opt/local/bin/instgrp webstatus '${_ACCOUNT}' 2> /dev/null" 2> /dev/null \
-    | sed -n 's/^STATUS:[[:space:]]*//p' | head -n 1 | tr -cd '[:print:]')
-  case "${_st}" in
-    "") _info "web group of ${_ACCOUNT} on ${_TARGET}: not read (its instgrp has no web-group verbs)" ;;
-    NONE|A|B) _info "web group of ${_ACCOUNT} on ${_TARGET}: ${_st}" ;;
-    *) _alrt "web group of ${_ACCOUNT} on ${_TARGET}: ${_st}; run 'instgrp webstatus ${_ACCOUNT}' there" ;;
-  esac
-  return 0
-}
-
 ###-------------TARGET HELPERS---------###
 
 _tsql() { _as_octo "drush8 @hostmaster sqlq \"$1\" 2>/dev/null"; }
@@ -2242,32 +2267,6 @@ _t_wait_task() {
   return 1
 }
 
-# account freeze marker + agent drain (validated on disposable VMs): owl.sh skips
-# an account carrying log/proxied.pid; destructive steps additionally wait
-# for any active owl pass to drain. log/ is the account's: the marker is put
-# (root's, as created) and removed only inside the real log/, never through
-# a link put on the way or at the name. Its second line names the operation
-# that put it (db-import or revert-db), that run's pid and its process
-# group, so a re-run of the same operation can tell a freeze a killed run
-# left from one in flight. $1 = the operation, $2 = the account's
-# hostmaster database.
-_t_freeze_on() {
-  local _verb="${1:-db-import}" _st _pg=""
-  if [[ -e "${_ACCT_ROOT}/log/proxied.pid" ]]; then
-    _t_freeze_dead "${_verb}" "${2}" \
-      || _die "freeze marker already present on ${_ACCOUNT} - another operation in flight?${_T_FREEZE_WHY:+ (${_T_FREEZE_WHY})}"
-    _alrt "taking over the freeze a killed ${_verb} run left on ${_ACCOUNT}"
-  fi
-  # what this run starts (a dump load, su) keeps its process group when the
-  # run itself is killed outright
-  _st="$(cat "/proc/$$/stat" 2> /dev/null)"
-  _st="${_st##*") "}"
-  read -r _ _ _pg _ <<< "${_st}"
-  [[ "${_pg}" =~ ^[1-9][0-9]*$ ]] || _pg="$$"
-  _a2b_in_real_dir "${_ACCT_ROOT}/log" _a2b_put_here proxied.pid \
-    "$(printf 'A2B-IMPORT-FREEZE\nverb=%s pid=%s pgid=%s' "${_verb}" "$$" "${_pg}")" \
-    || _die "cannot put the freeze marker in ${_ACCT_ROOT}/log"
-}
 # A freeze a killed run of the operation $1 left (SIGKILL, a crash: no EXIT
 # trap ran), taken over only on a box armed for the web group, where BOA's
 # limited-shell worker also clears a killed import's freeze a day later:
@@ -2353,24 +2352,6 @@ for my $x (grep { /^[0-9]+$/ } readdir($dh)) {
   }
 }
 exit 0'
-# Whether the freeze is one a killed run of the operation $1 left; which
-# check refused, when one did, in _T_FREEZE_WHY. $2 = the account's
-# hostmaster database.
-_t_freeze_dead() {
-  local _w
-  _T_FREEZE_WHY=""
-  if [[ ! -s /etc/boa/control/instgrp-web-arm.ready.txt ]]; then
-    # never taken over on a box not armed for the web group, but a freeze
-    # of the other operation is named, as on an armed box
-    _w="$(_a2b_in_real_dir "${_ACCT_ROOT}/log" \
-      perl -e "${_A2B_FREEZE_PL}" -- 0 "${1}" "$$" "${_ACCOUNT}" /proc "${_STATE_DIR}" 2> /dev/null)"
-    [[ "${_w}" == "the freeze is a killed "* ]] && _T_FREEZE_WHY="${_w}"
-    return 1
-  fi
-  _T_FREEZE_WHY="$(_a2b_in_real_dir "${_ACCT_ROOT}/log" \
-    perl -e "${_A2B_FREEZE_PL}" -- 0 "${1}" "$$" "${_ACCOUNT}" /proc "${_STATE_DIR}" 2> /dev/null)" \
-    && _t_freeze_conns "${2}"
-}
 # No connection but the one asking on the hostmaster database $1: a dump
 # load or a drush the killed run left would still be writing the panel. A
 # count that cannot be read refuses. What refused goes to _T_FREEZE_WHY.
@@ -2386,7 +2367,6 @@ _t_freeze_conns() {
   fi
   return 1
 }
-_t_freeze_off() { _a2b_in_real_dir "${_ACCT_ROOT}/log" rm -f -- ./proxied.pid; }
 _t_owl_drain() {
   local _waited=0
   while pgrep -u root -U root -f "[o]wl\.sh" >/dev/null 2>&1; do
@@ -2474,6 +2454,114 @@ _dispatcher_set_aside() {
   return 0
 }
 
+# An earlier release held the dispatcher aside in the account's own tree
+# (log/a2b/held-run-<oN>). The account can write there, so that file is
+# never read, moved or copied back. Octopus writes every account's
+# dispatcher from one template that differs only in its _H_USER line:
+# rebuild this one from another account's dispatcher on this box, or
+# dispatch stays off until the next Octopus upgrade of the account
+# rewrites it. The copy is made under a name runner.sh never dispatches
+# (no run- in it) and renamed over the target.
+_t_dispatch_rebuild() {
+  local _f _n _src="" _t
+  for _f in /var/xdrago/run-*; do
+    _n="${_f#/var/xdrago/run-}"
+    [[ "${_n}" != "${_ACCOUNT}" && -f "${_f}" && ! -L "${_f}" ]] || continue
+    _dispatcher_trusted "${_f}" || continue
+    [[ "$(grep -c '^_H_USER=' -- "${_f}" 2>/dev/null)" = "1" ]] || continue
+    grep -qxF -- "_H_USER=${_n}" "${_f}" 2>/dev/null || continue
+    _src="${_n}"
+    break
+  done
+  if [[ -z "${_src}" ]]; then
+    _alrt "no dispatcher of another account in /var/xdrago to rebuild run-${_ACCOUNT} from: dispatch for ${_ACCOUNT} stays off until the next Octopus upgrade of ${_ACCOUNT} rewrites its dispatcher"
+    return 1
+  fi
+  _t="$(mktemp /var/xdrago/.a2b-dispatch.XXXXXX 2>/dev/null)" \
+    || { _alrt "cannot create a temp file in /var/xdrago: dispatch for ${_ACCOUNT} stays off until the next Octopus upgrade of ${_ACCOUNT} rewrites its dispatcher"; return 1; }
+  if awk -v u="${_ACCOUNT}" '/^_H_USER=/ { print "_H_USER=" u; next } { print }' \
+      "/var/xdrago/run-${_src}" > "${_t}" \
+    && chown root:root "${_t}" && chmod 0700 "${_t}" \
+    && [[ "$(grep -c '^_H_USER=' -- "${_t}")" = "1" ]] \
+    && grep -qxF -- "_H_USER=${_ACCOUNT}" "${_t}" \
+    && mv -f -T -- "${_t}" "/var/xdrago/run-${_ACCOUNT}"; then
+    _info "dispatcher run-${_ACCOUNT} rebuilt from run-${_src} (the copy an earlier release held aside in ${_ACCT_ROOT}/log/a2b is not used)"
+    return 0
+  fi
+  rm -f -- "${_t}"
+  _alrt "rebuilding run-${_ACCOUNT} from run-${_src} failed: dispatch for ${_ACCOUNT} stays off until the next Octopus upgrade of ${_ACCOUNT} rewrites its dispatcher"
+  return 1
+}
+
+# queue a verify for a hosting context and run it INLINE: the fork's
+# `hosting-task <ctx> <type>` (context+type form) creates the task node,
+# flips it to PROCESSING and executes it synchronously in the same process
+# (task.hosting.inc) - deterministic, no dispatcher dependency, so the
+# whole import can run with the account dispatcher held aside. The latest
+# vid is still polled afterwards as the completion proof.
+_t_verify_inline() {   # 1 context-name 2 label
+  _as_octo "drush8 @hostmaster hosting-task @$1 verify" >>"${_LOG}" 2>&1
+  _t_wait_task "$(_t_task_nid_for "$1" verify)" "$2"
+}
+
+# per-site PHP pool mapping + socket wait (open-q #4 / adversary M3),
+# shared by both routes. multi-fpm only takes effect when the FPM agent's
+# NEXT pass spawns the per-version pool + socket and writes the vhost
+# include - so a wanted version is WAITED for (socket presence), not
+# assumed. Until the socket exists the site serves under the account
+# default PHP: fatal for D6 on 8.x, so D6 without the socket is a
+# per-site FAIL; D7 degrades with a warning.
+# Returns 1 only on the D6-without-socket per-site FAIL.
+# Split map/wait: the db-import route maps while the account freeze
+# marker is up, but manage_ltd_users (the every-3-min agent that spawns
+# the per-version pools and applies multi-fpm.info) SKIPS any account
+# carrying log/proxied.pid - an in-window socket wait can never succeed
+# on a fresh account (observed: two 420s dead waits; every pool
+# appeared on the agent's first pass after the freeze lifted). Map early,
+# wait only after the freeze is off.
+# static/control is the account's main login's once the account exists: it
+# can put a link or a FIFO at any name there, or at control itself. Root
+# touches those names only inside the real directory (the ltd worker's rule):
+# run "$@" in the real directory $1, where below /data/disk every name on the
+# path must be a real directory.
+_a2b_in_real_dir() {
+  local _d="${1}" _a="" _want
+  shift
+  case "${_d}" in
+    /home/?*) _a=/home ;;
+    /data/disk/?*) _a=/data/disk ;;
+  esac
+  if [ -n "${_a}" ]; then
+    _want="$(cd -P -- "${_a}" 2> /dev/null && /bin/pwd -P)${_d#"${_a}"}"
+  else
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && /bin/pwd -P)/${_d##*/}"
+  fi
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] && "$@" )
+}
+# Whether the freeze is one a killed run of the operation $1 left; which
+# check refused, when one did, in _T_FREEZE_WHY. $2 = the account's
+# hostmaster database.
+_t_freeze_dead() {
+  local _w
+  _T_FREEZE_WHY=""
+  if [[ ! -s /etc/boa/control/instgrp-web-arm.ready.txt ]]; then
+    # never taken over on a box not armed for the web group, but a freeze
+    # of the other operation is named, as on an armed box
+    _w="$(_a2b_in_real_dir "${_ACCT_ROOT}/log" \
+      perl -e "${_A2B_FREEZE_PL}" -- 0 "${1}" "$$" "${_ACCOUNT}" /proc "${_STATE_DIR}" 2> /dev/null)"
+    [[ "${_w}" == "the freeze is a killed "* ]] && _T_FREEZE_WHY="${_w}"
+    return 1
+  fi
+  _T_FREEZE_WHY="$(_a2b_in_real_dir "${_ACCT_ROOT}/log" \
+    perl -e "${_A2B_FREEZE_PL}" -- 0 "${1}" "$$" "${_ACCOUNT}" /proc "${_STATE_DIR}" 2> /dev/null)" \
+    && _t_freeze_conns "${2}"
+}
+_t_freeze_off() { _a2b_in_real_dir "${_ACCT_ROOT}/log" rm -f -- ./proxied.pid; }
+# ./$1 read without following a link or blocking on a FIFO, at most 1 MiB.
+_a2b_read_here() {
+  timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
+    bs=1048576 count=1 status=none 2> /dev/null
+}
 # The held dispatcher goes back. With none held, one BOA's agent pass parked
 # in off-run while the freeze stood (it parks the dispatcher of every
 # frozen account there) goes back instead, unless the account is relayed,
@@ -2519,45 +2607,6 @@ _t_dispatch_on() {
     _t_dispatch_rebuild
   fi
 }
-# An earlier release held the dispatcher aside in the account's own tree
-# (log/a2b/held-run-<oN>). The account can write there, so that file is
-# never read, moved or copied back. Octopus writes every account's
-# dispatcher from one template that differs only in its _H_USER line:
-# rebuild this one from another account's dispatcher on this box, or
-# dispatch stays off until the next Octopus upgrade of the account
-# rewrites it. The copy is made under a name runner.sh never dispatches
-# (no run- in it) and renamed over the target.
-_t_dispatch_rebuild() {
-  local _f _n _src="" _t
-  for _f in /var/xdrago/run-*; do
-    _n="${_f#/var/xdrago/run-}"
-    [[ "${_n}" != "${_ACCOUNT}" && -f "${_f}" && ! -L "${_f}" ]] || continue
-    _dispatcher_trusted "${_f}" || continue
-    [[ "$(grep -c '^_H_USER=' -- "${_f}" 2>/dev/null)" = "1" ]] || continue
-    grep -qxF -- "_H_USER=${_n}" "${_f}" 2>/dev/null || continue
-    _src="${_n}"
-    break
-  done
-  if [[ -z "${_src}" ]]; then
-    _alrt "no dispatcher of another account in /var/xdrago to rebuild run-${_ACCOUNT} from: dispatch for ${_ACCOUNT} stays off until the next Octopus upgrade of ${_ACCOUNT} rewrites its dispatcher"
-    return 1
-  fi
-  _t="$(mktemp /var/xdrago/.a2b-dispatch.XXXXXX 2>/dev/null)" \
-    || { _alrt "cannot create a temp file in /var/xdrago: dispatch for ${_ACCOUNT} stays off until the next Octopus upgrade of ${_ACCOUNT} rewrites its dispatcher"; return 1; }
-  if awk -v u="${_ACCOUNT}" '/^_H_USER=/ { print "_H_USER=" u; next } { print }' \
-      "/var/xdrago/run-${_src}" > "${_t}" \
-    && chown root:root "${_t}" && chmod 0700 "${_t}" \
-    && [[ "$(grep -c '^_H_USER=' -- "${_t}")" = "1" ]] \
-    && grep -qxF -- "_H_USER=${_ACCOUNT}" "${_t}" \
-    && mv -f -T -- "${_t}" "/var/xdrago/run-${_ACCOUNT}"; then
-    _info "dispatcher run-${_ACCOUNT} rebuilt from run-${_src} (the copy an earlier release held aside in ${_ACCT_ROOT}/log/a2b is not used)"
-    return 0
-  fi
-  rm -f -- "${_t}"
-  _alrt "rebuilding run-${_ACCOUNT} from run-${_src} failed: dispatch for ${_ACCOUNT} stays off until the next Octopus upgrade of ${_ACCOUNT} rewrites its dispatcher"
-  return 1
-}
-
 # The account's .drush, log/ and hostmaster site dir are its own: each file
 # there is read inside its real directory, bounded, never through a link or
 # from a FIFO (_a2b_read_here), and a path read from the alias is used only
@@ -2611,56 +2660,6 @@ _t_panel_domain() {
   _sane_domain "${_d}"
 }
 
-# queue a verify for a hosting context and run it INLINE: the fork's
-# `hosting-task <ctx> <type>` (context+type form) creates the task node,
-# flips it to PROCESSING and executes it synchronously in the same process
-# (task.hosting.inc) - deterministic, no dispatcher dependency, so the
-# whole import can run with the account dispatcher held aside. The latest
-# vid is still polled afterwards as the completion proof.
-_t_verify_inline() {   # 1 context-name 2 label
-  _as_octo "drush8 @hostmaster hosting-task @$1 verify" >>"${_LOG}" 2>&1
-  _t_wait_task "$(_t_task_nid_for "$1" verify)" "$2"
-}
-
-# per-site PHP pool mapping + socket wait (open-q #4 / adversary M3),
-# shared by both routes. multi-fpm only takes effect when the FPM agent's
-# NEXT pass spawns the per-version pool + socket and writes the vhost
-# include - so a wanted version is WAITED for (socket presence), not
-# assumed. Until the socket exists the site serves under the account
-# default PHP: fatal for D6 on 8.x, so D6 without the socket is a
-# per-site FAIL; D7 degrades with a warning.
-# Returns 1 only on the D6-without-socket per-site FAIL.
-# Split map/wait: the db-import route maps while the account freeze
-# marker is up, but manage_ltd_users (the every-3-min agent that spawns
-# the per-version pools and applies multi-fpm.info) SKIPS any account
-# carrying log/proxied.pid - an in-window socket wait can never succeed
-# on a fresh account (observed: two 420s dead waits; every pool
-# appeared on the agent's first pass after the freeze lifted). Map early,
-# wait only after the freeze is off.
-# static/control is the account's main login's once the account exists: it
-# can put a link or a FIFO at any name there, or at control itself. Root
-# touches those names only inside the real directory (the ltd worker's rule):
-# run "$@" in the real directory $1, where below /data/disk every name on the
-# path must be a real directory.
-_a2b_in_real_dir() {
-  local _d="${1}" _a="" _want
-  shift
-  case "${_d}" in
-    /home/?*) _a=/home ;;
-    /data/disk/?*) _a=/data/disk ;;
-  esac
-  if [ -n "${_a}" ]; then
-    _want="$(cd -P -- "${_a}" 2> /dev/null && /bin/pwd -P)${_d#"${_a}"}"
-  else
-    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && /bin/pwd -P)/${_d##*/}"
-  fi
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(/bin/pwd -P)" = "${_want}" ] && "$@" )
-}
-# ./$1 read without following a link or blocking on a FIFO, at most 1 MiB.
-_a2b_read_here() {
-  timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
-    bs=1048576 count=1 status=none 2> /dev/null
-}
 # ./$1 with the content $2 (0644), handed to $3 (owner:group; empty, or a
 # name that does not resolve, leaves it as created, root's): a fresh file
 # created, written, owned and moded through one handle opened
@@ -2685,6 +2684,32 @@ _a2b_put_here() {
   fi
   rm -f -- "${_t}"
   return 1
+}
+# account freeze marker + agent drain (validated on disposable VMs): owl.sh skips
+# an account carrying log/proxied.pid; destructive steps additionally wait
+# for any active owl pass to drain. log/ is the account's: the marker is put
+# (root's, as created) and removed only inside the real log/, never through
+# a link put on the way or at the name. Its second line names the operation
+# that put it (db-import or revert-db), that run's pid and its process
+# group, so a re-run of the same operation can tell a freeze a killed run
+# left from one in flight. $1 = the operation, $2 = the account's
+# hostmaster database.
+_t_freeze_on() {
+  local _verb="${1:-db-import}" _st _pg=""
+  if [[ -e "${_ACCT_ROOT}/log/proxied.pid" ]]; then
+    _t_freeze_dead "${_verb}" "${2}" \
+      || _die "freeze marker already present on ${_ACCOUNT} - another operation in flight?${_T_FREEZE_WHY:+ (${_T_FREEZE_WHY})}"
+    _alrt "taking over the freeze a killed ${_verb} run left on ${_ACCOUNT}"
+  fi
+  # what this run starts (a dump load, su) keeps its process group when the
+  # run itself is killed outright
+  _st="$(cat "/proc/$$/stat" 2> /dev/null)"
+  _st="${_st##*") "}"
+  read -r _ _ _pg _ <<< "${_st}"
+  [[ "${_pg}" =~ ^[1-9][0-9]*$ ]] || _pg="$$"
+  _a2b_in_real_dir "${_ACCT_ROOT}/log" _a2b_put_here proxied.pid \
+    "$(printf 'A2B-IMPORT-FREEZE\nverb=%s pid=%s pgid=%s' "${_verb}" "$$" "${_pg}")" \
+    || _die "cannot put the freeze marker in ${_ACCT_ROOT}/log"
 }
 # ./control made a real directory, run inside the real static/.
 _a2b_ctrl_dir_here() {
@@ -2981,63 +3006,6 @@ _t_set_src_aside() {
     && _info "the dumps transferred here set aside as ${_sx}: the retry transfers afresh (remove it once the retry is done)"
 }
 
-_t_reset_site_dbs() {
-  local _mff _uri _dbn _done=""
-  for _mff in "${_STATE_DIR}/src/manifest/"*.info; do
-    [[ -e "${_mff}" ]] || continue
-    _uri="$(_manifest_val "${_mff}" URI)"
-    _marker_has "${_uri}.dbloaded.pid" || continue
-    _dbn="$(_sane_ident "$(_manifest_val "${_mff}" DBN)")"
-    [[ -n "${_dbn}" ]] || continue
-    if _t_drop_site_db "${_uri}" "${_dbn}"; then
-      _info "site ${_uri}: db ${_dbn} dropped"
-      _t_drop_made_users "${_uri}" "${_dbn}"
-    fi
-    _done="${_done} ${_dbn}"
-    rm -f "$(_marker "${_uri}.dbloaded.pid")" "$(_marker "${_uri}.imported.pid")"
-  done
-  # an earlier release kept its dbloaded markers in the account's tree,
-  # which the account can write: only their existence is tested here
-  if [[ -e "${_ACCT_ROOT}/log/a2b/markers" || -L "${_ACCT_ROOT}/log/a2b/markers" ]]; then
-    _alrt "site DBs loaded by an earlier release's import are recorded only in ${_ACCT_ROOT}/log/a2b/markers, which is never read: they are not dropped here - check that list against the transferred manifests and drop them by hand"
-  fi
-  _t_drop_kept_users "${_done}"
-}
-
-# A site database dropped as it was made: through the database broker's own
-# drop for an account switched to it (root's /data/conf/<account>_db_broker.txt:
-# the registry entry and the instance user's grant rows on it go with the
-# database), by plain SQL for an account not switched, and for one whose
-# control file the broker finds not valid (ERR 8: its tasks take the direct
-# path, its databases are not in the registry). Any other refusal of the
-# broker keeps the database, said with the broker's answer: a plain drop
-# would leave its registry entry naming a database that is gone. A refusal
-# after the broker's own drop ran (its DROP comes first, so a failed grant
-# or registry step after it ends 7 with the database gone) is the server's
-# to say: a database that is gone is dropped, and what the broker left is
-# named for the operator. True when the database was dropped.
-_t_drop_site_db() {   # 1 uri 2 dbn
-  local _f="/data/conf/${_ACCOUNT}_db_broker.txt" _out _rc
-  if [[ -e "${_f}" || -L "${_f}" ]]; then
-    if [[ ! -x /usr/local/bin/boa-dbctl ]]; then
-      _alrt "site ${1}: db ${2} kept: ${_ACCOUNT} is switched to the database broker, which is not installed here"
-      return 1
-    fi
-    _out="$(/usr/local/bin/boa-dbctl drop "${2}" --account "${_ACCOUNT}" 2>&1)"
-    _rc=$?
-    [[ "${_rc}" == "0" ]] && return 0
-    if [[ "${_rc}" != "8" ]]; then
-      if _t_db_gone "${2}"; then
-        _alrt "site ${1}: db ${2} dropped, but the database broker ended ${_rc} after its drop: ${_out##*$'\n'} - run boa-dbctl drop ${2} --account ${_ACCOUNT} again, which clears the grant rows and the entry it left"
-        return 0
-      fi
-      _alrt "site ${1}: db ${2} kept: the database broker refused its drop: ${_out##*$'\n'} - drop it with boa-dbctl drop ${2} --account ${_ACCOUNT} once that is settled"
-      return 1
-    fi
-  fi
-  mysql --silent -u root -e "DROP DATABASE IF EXISTS \`${2}\`"
-}
-
 # 0 when the server says the database $1 is not there, 1 when it is, 2 when
 # it could not say.
 _t_db_gone() {   # 1 dbn
@@ -3079,6 +3047,63 @@ _t_drop_kept_users() {   # 1 databases done already
       *) _alrt "site ${_uri}: database user ${_dbn} kept: the server could not say whether its database ${_dbn} is gone" ;;
     esac
   done
+}
+
+# A site database dropped as it was made: through the database broker's own
+# drop for an account switched to it (root's /data/conf/<account>_db_broker.txt:
+# the registry entry and the instance user's grant rows on it go with the
+# database), by plain SQL for an account not switched, and for one whose
+# control file the broker finds not valid (ERR 8: its tasks take the direct
+# path, its databases are not in the registry). Any other refusal of the
+# broker keeps the database, said with the broker's answer: a plain drop
+# would leave its registry entry naming a database that is gone. A refusal
+# after the broker's own drop ran (its DROP comes first, so a failed grant
+# or registry step after it ends 7 with the database gone) is the server's
+# to say: a database that is gone is dropped, and what the broker left is
+# named for the operator. True when the database was dropped.
+_t_drop_site_db() {   # 1 uri 2 dbn
+  local _f="/data/conf/${_ACCOUNT}_db_broker.txt" _out _rc
+  if [[ -e "${_f}" || -L "${_f}" ]]; then
+    if [[ ! -x /usr/local/bin/boa-dbctl ]]; then
+      _alrt "site ${1}: db ${2} kept: ${_ACCOUNT} is switched to the database broker, which is not installed here"
+      return 1
+    fi
+    _out="$(/usr/local/bin/boa-dbctl drop "${2}" --account "${_ACCOUNT}" 2>&1)"
+    _rc=$?
+    [[ "${_rc}" == "0" ]] && return 0
+    if [[ "${_rc}" != "8" ]]; then
+      if _t_db_gone "${2}"; then
+        _alrt "site ${1}: db ${2} dropped, but the database broker ended ${_rc} after its drop: ${_out##*$'\n'} - run boa-dbctl drop ${2} --account ${_ACCOUNT} again, which clears the grant rows and the entry it left"
+        return 0
+      fi
+      _alrt "site ${1}: db ${2} kept: the database broker refused its drop: ${_out##*$'\n'} - drop it with boa-dbctl drop ${2} --account ${_ACCOUNT} once that is settled"
+      return 1
+    fi
+  fi
+  mysql --silent -u root -e "DROP DATABASE IF EXISTS \`${2}\`"
+}
+
+_t_reset_site_dbs() {
+  local _mff _uri _dbn _done=""
+  for _mff in "${_STATE_DIR}/src/manifest/"*.info; do
+    [[ -e "${_mff}" ]] || continue
+    _uri="$(_manifest_val "${_mff}" URI)"
+    _marker_has "${_uri}.dbloaded.pid" || continue
+    _dbn="$(_sane_ident "$(_manifest_val "${_mff}" DBN)")"
+    [[ -n "${_dbn}" ]] || continue
+    if _t_drop_site_db "${_uri}" "${_dbn}"; then
+      _info "site ${_uri}: db ${_dbn} dropped"
+      _t_drop_made_users "${_uri}" "${_dbn}"
+    fi
+    _done="${_done} ${_dbn}"
+    rm -f "$(_marker "${_uri}.dbloaded.pid")" "$(_marker "${_uri}.imported.pid")"
+  done
+  # an earlier release kept its dbloaded markers in the account's tree,
+  # which the account can write: only their existence is tested here
+  if [[ -e "${_ACCT_ROOT}/log/a2b/markers" || -L "${_ACCT_ROOT}/log/a2b/markers" ]]; then
+    _alrt "site DBs loaded by an earlier release's import are recorded only in ${_ACCT_ROOT}/log/a2b/markers, which is never read: they are not dropped here - check that list against the transferred manifests and drop them by hand"
+  fi
+  _t_drop_kept_users "${_done}"
 }
 
 # db-import revert only: the restored panel no longer knows the estate's
@@ -4174,6 +4199,15 @@ verb_import() {
 
 ###-------------VERB: peer-------------###
 
+_peer_my_ip() {
+  # the address the target will see: the source address of the route to the
+  # target (a private network or a second interface can carry the relay), or
+  # of the default route when the target does not resolve
+  local _t
+  _t="$(getent ahostsv4 "${_TARGET}" 2>/dev/null | awk 'NR == 1 { print $1 }')"
+  ip -4 route get "${_t:-1.1.1.1}" 2>/dev/null | sed -n 's/.* src \([0-9.]*\).*/\1/p' | head -1
+}
+
 # Arrange reachability between the two boxes instead of prescribing it.
 #
 # The runbook used to tell the operator to hand-edit /etc/csf/csf.allow and
@@ -4276,15 +4310,6 @@ _peer_source() {
     _msg "the dry run stays armed - re-run this same --live command once the target has the key"
   fi
   return 1
-}
-
-_peer_my_ip() {
-  # the address the target will see: the source address of the route to the
-  # target (a private network or a second interface can carry the relay), or
-  # of the default route when the target does not resolve
-  local _t
-  _t="$(getent ahostsv4 "${_TARGET}" 2>/dev/null | awk 'NR == 1 { print $1 }')"
-  ip -4 route get "${_t:-1.1.1.1}" 2>/dev/null | sed -n 's/.* src \([0-9.]*\).*/\1/p' | head -1
 }
 
 _peer_target() {
@@ -4896,31 +4921,6 @@ touch "${_LOG}" 2>/dev/null \
 [[ -n "${_SITE}" && "${_ALL}" = "YES" ]] && _die "--site and --all are mutually exclusive"
 case "${_ROUTE}" in ""|per-site|db-import) : ;; *) _die "--route must be per-site|db-import" ;; esac
 
-# Take the box-wide post-install upgrade guard back off the target. It is
-# read by 'boa in-octopus' on EVERY account created on that box afterwards,
-# by any actor - left behind, it silently skips the whole post-install chain
-# (dispatch, hosting-tasks, the LE completion and the enforced octopus
-# upgrade) for good. Best effort and safe to call twice: the point is that
-# no exit path can keep it.
-_guard_target_off() {
-  [[ -n "${_GUARD_TARGET}" ]] || return 0
-  ssh -o BatchMode=yes -o ConnectTimeout=15 "root@${_GUARD_TARGET}" \
-    "rm -f /root/.dont.upgrade.octopus.on.install.cnf" >/dev/null 2>&1
-  _GUARD_TARGET=""
-}
-
-# leaked-tempfile + lock cleanup on any exit (creds mktemp files live 600
-# under the 700 state dir; a _die between create and rm would otherwise
-# leave them). _STATE_DIR is set by the box-class requirement inside a verb.
-# Also the last chance to drop the target's upgrade guard: an operator Ctrl-C
-# or a _die anywhere inside the create window lands here (the INT/TERM trap
-# exits, which runs this), and every chained EXIT trap ends in _cleanup.
-_cleanup() {
-  _guard_target_off
-  [[ -n "${_STATE_DIR:-}" ]] && rm -f "${_STATE_DIR}/.myd."* "${_STATE_DIR}/.certs."* 2>/dev/null
-  # the lock dir holds a pid file - a bare rmdir leaves every lock stale
-  [[ -n "${_LOCK:-}" && -d "${_LOCK}" ]] && { rm -f "${_LOCK}/pid" 2>/dev/null; rmdir "${_LOCK}" 2>/dev/null; }
-}
 trap _cleanup EXIT
 trap 'exit 2' INT TERM
 

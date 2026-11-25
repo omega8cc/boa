@@ -600,27 +600,6 @@ _site_hosts() {
 declare -A _host_owners=()
 _owners_built=""
 
-_ensure_owners() {
-  # One pass over every rendered vhost on the box, and only when the front
-  # takes copies and this context lists a site that has a vhost of its own.
-  # Runs in the main shell, so the command substitutions after it inherit
-  # the index. $1 = control file, $2 = the context's vhost.d dir.
-  local _line _s _need=""
-  [[ -n "${_front_on}" && -z "${_owners_built}" ]] || return 0
-  while LC_ALL=C IFS= read -r _line; do
-    _line="${_line%%#*}"
-    [[ -z "${_line// /}" ]] && continue
-    read -r _s _ <<< "${_line}"
-    _s=$(echo "${_s}" | tr '[:upper:]' '[:lower:]')
-    if [[ ${_s} =~ ${_site_name_regex} && -f "${2}/${_s}" ]]; then
-      _need="yes"
-      break
-    fi
-  done < "$1"
-  [[ -n "${_need}" ]] || return 0
-  _build_owners
-}
-
 _build_owners() {
   # The box-wide index itself, at most once per run and in the main shell.
   # Each rendered vhost is read only as a copy that does not follow a link
@@ -653,6 +632,27 @@ _build_owners() {
       done | xargs -0 -r awk -v max="${_host_max}" "${_names_awk}" 2>/dev/null
     done | sort | uniq -c
     rm -rf -- "${_c}")
+}
+
+_ensure_owners() {
+  # One pass over every rendered vhost on the box, and only when the front
+  # takes copies and this context lists a site that has a vhost of its own.
+  # Runs in the main shell, so the command substitutions after it inherit
+  # the index. $1 = control file, $2 = the context's vhost.d dir.
+  local _line _s _need=""
+  [[ -n "${_front_on}" && -z "${_owners_built}" ]] || return 0
+  while LC_ALL=C IFS= read -r _line; do
+    _line="${_line%%#*}"
+    [[ -z "${_line// /}" ]] && continue
+    read -r _s _ <<< "${_line}"
+    _s=$(echo "${_s}" | tr '[:upper:]' '[:lower:]')
+    if [[ ${_s} =~ ${_site_name_regex} && -f "${2}/${_s}" ]]; then
+      _need="yes"
+      break
+    fi
+  done < "$1"
+  [[ -n "${_need}" ]] || return 0
+  _build_owners
 }
 
 _front_hosts() {
@@ -815,6 +815,43 @@ _front_write() {
   mv -f "${_tmp}" "${_frag}"
 }
 
+_area_lines() {
+  # Body of the $uri map for the admin surface. $1 = CMS kind, $2 = api-open.
+  echo "  default 0;"
+  # Grav's /user is its public theme and media tree, served to every
+  # visitor, so a Grav map gates /admin only. A language-prefixed login
+  # (/de/user) is not matched: a prefix pattern would also gate a parent
+  # site's subdirectory sites, API endpoints such as /api/user/login and
+  # content paths shaped like a prefix.
+  if [[ "$1" == "grav" ]]; then
+    echo "  ~*^/+admin(?:/|\$) 1;"
+  else
+    echo "  ~*^/+(?:user|admin)(?:/|\$) 1;"
+  fi
+  # The whole /api route, not /api/v1, so a later version segment is
+  # covered too. The (?:/|\$) tail holds the match to the plugin's real
+  # routes: it wakes on any path that merely begins with /api, but such a
+  # lookalike (same length or not) lands on no endpoint, it only draws the
+  # plugin's own 401. The prefix is the API plugin's default: a site that
+  # renames its route moves it out from under the list. A language prefix
+  # needs no arm -- on a multi-language capsule /en/admin and /en/api/v1
+  # are plain 404s.
+  if [[ "$1" == "grav" && -z "$2" ]]; then
+    # KahunaCart's public routes stay open: the parties that call them are
+    # never on an owner's list (customers' software validating a licence, a
+    # carrier's tracking webhook, a shopper's booking widget, a partner's
+    # portal), and the plugin guards each as it means it to be used (see
+    # the header). Case-sensitive and on v1 only, written before the line
+    # they except (a map takes the first regex that matches): any other
+    # spelling or version stays locked.
+    echo "  ~^/+api/v1/kahunacart/(?:licenses|shipping|bookings)/public/ 0;"
+    echo "  ~^/+api/v1/kahunacart/affiliates/account/ 0;"
+    echo "  ~*^/+api(?:/|\$) 1;"
+  elif [[ "$1" == "txp" ]]; then
+    echo "  ~*^/+txpadmin(?:/|\$) 1;"
+  fi
+}
+
 _front_fill_frozen() {
   # An instance whose control file was deleted before the front copies existed
   # never got one, and nothing rewrites a frozen list, so its sites' admin
@@ -888,43 +925,6 @@ _geo_lines() {
   local _e
   echo "  default 0;"
   for _e in $1; do echo "  ${_e} 1;"; done
-}
-
-_area_lines() {
-  # Body of the $uri map for the admin surface. $1 = CMS kind, $2 = api-open.
-  echo "  default 0;"
-  # Grav's /user is its public theme and media tree, served to every
-  # visitor, so a Grav map gates /admin only. A language-prefixed login
-  # (/de/user) is not matched: a prefix pattern would also gate a parent
-  # site's subdirectory sites, API endpoints such as /api/user/login and
-  # content paths shaped like a prefix.
-  if [[ "$1" == "grav" ]]; then
-    echo "  ~*^/+admin(?:/|\$) 1;"
-  else
-    echo "  ~*^/+(?:user|admin)(?:/|\$) 1;"
-  fi
-  # The whole /api route, not /api/v1, so a later version segment is
-  # covered too. The (?:/|\$) tail holds the match to the plugin's real
-  # routes: it wakes on any path that merely begins with /api, but such a
-  # lookalike (same length or not) lands on no endpoint, it only draws the
-  # plugin's own 401. The prefix is the API plugin's default: a site that
-  # renames its route moves it out from under the list. A language prefix
-  # needs no arm -- on a multi-language capsule /en/admin and /en/api/v1
-  # are plain 404s.
-  if [[ "$1" == "grav" && -z "$2" ]]; then
-    # KahunaCart's public routes stay open: the parties that call them are
-    # never on an owner's list (customers' software validating a licence, a
-    # carrier's tracking webhook, a shopper's booking widget, a partner's
-    # portal), and the plugin guards each as it means it to be used (see
-    # the header). Case-sensitive and on v1 only, written before the line
-    # they except (a map takes the first regex that matches): any other
-    # spelling or version stays locked.
-    echo "  ~^/+api/v1/kahunacart/(?:licenses|shipping|bookings)/public/ 0;"
-    echo "  ~^/+api/v1/kahunacart/affiliates/account/ 0;"
-    echo "  ~*^/+api(?:/|\$) 1;"
-  elif [[ "$1" == "txp" ]]; then
-    echo "  ~*^/+txpadmin(?:/|\$) 1;"
-  fi
 }
 
 # Server-scope lines a site kind needs beside the gate. Grav routes on the
@@ -1157,6 +1157,30 @@ _acct_ssh_changed() {
     grep -qxF -- "${_a}" <<< "${_rec}" || return 0
   done
   return 1
+}
+
+# The change-gate markers of the running _process_instance put in its real
+# srv dir.
+_ua_markers_put() {
+  _acct_in_real_dir "${_srv_path}" _acct_put_pairs_here \
+    .ua_last_mod_time "${_current_mod_time}" .ua_ssh_ips_hash "${_ssh_ips_hash}" \
+    .ua_emit_version "${_emit_version}" .ua_cms_kinds_hash "${_kinds_hash}" \
+    .ua_front_hash "${_front_hash}"
+}
+
+# The fragments of the running _process_instance replaced by those unpacked
+# from its last-good archive into the work dir: every gate dropped before
+# the maps, every map put before the gates.
+_ua_restore() {
+  _acct_in_real_dir "${_srv_path}" _confs_drop_here > /dev/null
+  _acct_in_real_dir "${_map_path}" _confs_drop_here > /dev/null
+  if ! _acct_in_real_dir "${_map_path}" _confs_put_here "${_work}/lg/user_admin_access_map" \
+    || ! _acct_in_real_dir "${_srv_path}" _confs_put_here "${_work}/lg/user_admin_access"; then
+    _policy_alert "user_admin_access.restore.${_root}" \
+      "user_admin_access: restoring the last-good backup FAILED (${_root})" \
+      "restoring ${_last_good_backup} FAILED after the fragments were removed."
+  fi
+  _acct_in_real_dir "${_front_path}" _confs_drop_here > /dev/null
 }
 
 _process_instance() {
@@ -1479,30 +1503,6 @@ _process_instance() {
   _acct_ssh_record "${_root##*/}"
   echo "user_admin_access updated (${_root}): ${_configured[*]:-none}; Nginx reloaded."
   return 0
-}
-
-# The change-gate markers of the running _process_instance put in its real
-# srv dir.
-_ua_markers_put() {
-  _acct_in_real_dir "${_srv_path}" _acct_put_pairs_here \
-    .ua_last_mod_time "${_current_mod_time}" .ua_ssh_ips_hash "${_ssh_ips_hash}" \
-    .ua_emit_version "${_emit_version}" .ua_cms_kinds_hash "${_kinds_hash}" \
-    .ua_front_hash "${_front_hash}"
-}
-
-# The fragments of the running _process_instance replaced by those unpacked
-# from its last-good archive into the work dir: every gate dropped before
-# the maps, every map put before the gates.
-_ua_restore() {
-  _acct_in_real_dir "${_srv_path}" _confs_drop_here > /dev/null
-  _acct_in_real_dir "${_map_path}" _confs_drop_here > /dev/null
-  if ! _acct_in_real_dir "${_map_path}" _confs_put_here "${_work}/lg/user_admin_access_map" \
-    || ! _acct_in_real_dir "${_srv_path}" _confs_put_here "${_work}/lg/user_admin_access"; then
-    _policy_alert "user_admin_access.restore.${_root}" \
-      "user_admin_access: restoring the last-good backup FAILED (${_root})" \
-      "restoring ${_last_good_backup} FAILED after the fragments were removed."
-  fi
-  _acct_in_real_dir "${_front_path}" _confs_drop_here > /dev/null
 }
 
 # Octopus instances only. Real instances carry tools/drush; the BOA-canonical
