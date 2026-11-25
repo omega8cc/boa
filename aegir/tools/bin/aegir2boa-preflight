@@ -174,15 +174,15 @@ _reason_add() {
   fi
 }
 
-_s1_fail() { _reason_add _S1_FAIL "$1"; _note "FAIL S1" "$2"; }
-_s1_warn() { _reason_add _S1_WARN "$1"; _note "WARN S1" "$2"; }
-_s2_fail() { _reason_add _S2_FAIL "$1"; _note "FAIL S2" "$2"; }
-_s2_warn() { _reason_add _S2_WARN "$1"; _note "WARN S2" "$2"; }
-
 _note() {
   # notable line for the human report's blocking/notable section
   [[ -n "$2" ]] && printf '  %-8s %s\n' "$1" "$(_scrub "$2")" >> "${_TMPD}/notes.txt"
 }
+
+_s1_fail() { _reason_add _S1_FAIL "$1"; _note "FAIL S1" "$2"; }
+_s1_warn() { _reason_add _S1_WARN "$1"; _note "WARN S1" "$2"; }
+_s2_fail() { _reason_add _S2_FAIL "$1"; _note "FAIL S2" "$2"; }
+_s2_warn() { _reason_add _S2_WARN "$1"; _note "WARN S2" "$2"; }
 
 _env_kv() {
   # 1=KEY 2=value — scrubbed + single-quoted, safe to `source`

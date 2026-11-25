@@ -56,7 +56,7 @@ _satellite_not_root_alone() {
 # The provision-backdrop-d6-upgrade task copies module directories from this
 # on-box cache and never downloads anything itself; without the staged kit
 # the task fails closed in validate. One pinned tarball on the /core/ shelf
-# (the pressflow-6.60.3 pattern), stamp-gated for idempotency, re-checked on
+# (the pressflow-6.60.4 pattern), stamp-gated for idempotency, re-checked on
 # every up-* run. A kit version bump means editing _D6D7_KIT_V here. It
 # works by path in /data/all/000: this pass's AegirSetupA checked the store
 # and 000 before (_satellite_store_dirs_back, run whatever _HM_ONLY says):

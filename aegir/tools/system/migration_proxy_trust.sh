@@ -151,29 +151,6 @@ _is_ip() { _is_ipv4_or_cidr "$1" || _is_ipv6_ish "$1"; }
 
 _csf_present() { [ -x "/usr/sbin/csf" ] && [ -e "${_csf_allow}" ]; }
 
-_csf_reload() {
-  local _l
-  _csf_present || return 0
-  # a restart csf runs itself gives up at once when another holds csf's lock:
-  # it waits that one out and runs again
-  if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
-    csf -ra &>/dev/null || { _csf_restart_wait; csf -ra &>/dev/null; }
-    command -v synproxy_reassert >/dev/null 2>&1 \
-      && synproxy_reassert -p "443 80" --no-quic -q &>/dev/null
-    _csf_restart_wait
-  else
-    _l="$(stat -c %s /var/log/lfd.log 2> /dev/null)"
-    csf -r &>/dev/null || { _csf_restart_wait; csf -r &>/dev/null; }
-    _csf_restart_wait
-    # lfd's own restart gives up when another csf run holds the lock, says so
-    # in its log, and does not ask again: such a restart is asked for once more
-    if _csf_lfd_gave_up "${_l}"; then
-      csf -r &>/dev/null
-      _csf_restart_wait
-    fi
-  fi
-  return 0
-}
 # Whether lfd's log, past its byte $1 (all of it when the log is now shorter),
 # says a csf restart gave up on csf's lock.
 _csf_lfd_gave_up() {
@@ -181,6 +158,31 @@ _csf_lfd_gave_up() {
   _n="$(stat -c %s /var/log/lfd.log 2> /dev/null)" || return 1
   [[ "${_s}" =~ ^[0-9]+$ ]] && [ "${_n}" -ge "${_s}" ] || _s=0
   tail -c +"$(( _s + 1 ))" /var/log/lfd.log 2> /dev/null | grep -q 'csf is being restarted'
+}
+_csf_lfd_restarting() {
+  pgrep -u root -f '^lfd - \(re\)starting csf' > /dev/null 2>&1
+}
+# Whether csf holds its lock, read from /proc/locks and never by taking it: csf
+# takes the lock without waiting and gives up when it is held, and lfd does not
+# start a restart it gave up again.
+# /proc/locks names a file by its device (major:minor in hex) and inode, the
+# device split from the number stat gives as the kernel does.
+_csf_locked() {
+  local _d _ino _k
+  read -r _d _ino < <(stat -c '%d %i' /var/lib/csf/csf.lock 2> /dev/null) || return 1
+  [[ "${_d}" =~ ^[0-9]+$ ]] && [[ "${_ino}" =~ ^[0-9]+$ ]] || return 1
+  _k="$(printf '%02x:%02x:%s' "$(( (_d >> 8) & 0xfff ))" "$(( (_d & 0xff) | ((_d >> 12) & 0xfff00) ))" "${_ino}")"
+  grep -q " ${_k} " /proc/locks 2> /dev/null
+}
+
+# Whether a csf restart runs: root's lfd titles itself "lfd - (re)starting
+# csf..." from before it starts csf until csf ends (csf's lock comes a moment
+# later), or csf holds its lock.
+_csf_restarting() {
+  _csf_lfd_restarting || _csf_locked
+}
+_csf_lfd_alive() {
+  pgrep -u root -f '^lfd - ' > /dev/null 2>&1
 }
 # With LFDSTART on, csf -r leaves the restart to lfd a few seconds later, and
 # while csf runs it the allow rules are gone: a peer's next connection, such as
@@ -209,31 +211,29 @@ _csf_restart_wait() {
   done
   return 0
 }
-# Whether a csf restart runs: root's lfd titles itself "lfd - (re)starting
-# csf..." from before it starts csf until csf ends (csf's lock comes a moment
-# later), or csf holds its lock.
-_csf_restarting() {
-  _csf_lfd_restarting || _csf_locked
+_csf_reload() {
+  local _l
+  _csf_present || return 0
+  # a restart csf runs itself gives up at once when another holds csf's lock:
+  # it waits that one out and runs again
+  if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
+    csf -ra &>/dev/null || { _csf_restart_wait; csf -ra &>/dev/null; }
+    command -v synproxy_reassert >/dev/null 2>&1 \
+      && synproxy_reassert -p "443 80" --no-quic -q &>/dev/null
+    _csf_restart_wait
+  else
+    _l="$(stat -c %s /var/log/lfd.log 2> /dev/null)"
+    csf -r &>/dev/null || { _csf_restart_wait; csf -r &>/dev/null; }
+    _csf_restart_wait
+    # lfd's own restart gives up when another csf run holds the lock, says so
+    # in its log, and does not ask again: such a restart is asked for once more
+    if _csf_lfd_gave_up "${_l}"; then
+      csf -r &>/dev/null
+      _csf_restart_wait
+    fi
+  fi
+  return 0
 }
-_csf_lfd_restarting() {
-  pgrep -u root -f '^lfd - \(re\)starting csf' > /dev/null 2>&1
-}
-_csf_lfd_alive() {
-  pgrep -u root -f '^lfd - ' > /dev/null 2>&1
-}
-# Whether csf holds its lock, read from /proc/locks and never by taking it: csf
-# takes the lock without waiting and gives up when it is held, and lfd does not
-# start a restart it gave up again.
-# /proc/locks names a file by its device (major:minor in hex) and inode, the
-# device split from the number stat gives as the kernel does.
-_csf_locked() {
-  local _d _ino _k
-  read -r _d _ino < <(stat -c '%d %i' /var/lib/csf/csf.lock 2> /dev/null) || return 1
-  [[ "${_d}" =~ ^[0-9]+$ ]] && [[ "${_ino}" =~ ^[0-9]+$ ]] || return 1
-  _k="$(printf '%02x:%02x:%s' "$(( (_d >> 8) & 0xfff ))" "$(( (_d & 0xff) | ((_d >> 12) & 0xfff00) ))" "${_ino}")"
-  grep -q " ${_k} " /proc/locks 2> /dev/null
-}
-
 # Set to YES by _csf_add_ip whenever it appends a line, so the caller only pays
 # for a csf reload when something actually changed (cheap to call repeatedly).
 _CSF_CHANGED="NO"
@@ -272,52 +272,6 @@ _uniq_append() {
   grep -qxF "${_v}" "${_f}" 2>/dev/null || echo "${_v}" >> "${_f}"
 }
 
-_cmd_trust() {
-  local _csf_only="NO" _permanent="NO" _a
-  local -a _ips=()
-  for _a in "$@"; do
-    case "${_a}" in
-      --csf-only)  _csf_only="YES" ;;
-      --permanent) _permanent="YES" ;;
-      --*)         _die "unknown option ${_a}" ;;
-      *)           _is_ip "${_a}" || _die "not an IP/CIDR: ${_a}"; _ips+=("${_a}") ;;
-    esac
-  done
-  [ "${#_ips[@]}" -gt 0 ] || _die "trust: no IP/CIDR given"
-
-  local _ip _fail=""
-  for _ip in "${_ips[@]}"; do
-    _uniq_append "${_csf_ctrl}" "${_ip}"
-    _csf_add_ip "${_ip}"
-    if [ "${_csf_only}" != "YES" ] \
-      && ! _conf_uniq_append "${_realip_ctrl}" "${_ip}"; then
-      _fail="${_fail} ${_ip}"
-      _msg "WARN: ${_ip} not recorded in ${_realip_ctrl}"
-      continue
-    fi
-    _msg "trusted migration peer ${_ip}"
-  done
-
-  [ "${_CSF_CHANGED}" = "YES" ] && _csf_reload
-
-  if [ "${_csf_only}" != "YES" ]; then
-    if [ -x "${_realip_tool}" ]; then
-      "${_realip_tool}"
-    else
-      _msg "WARN: ${_realip_tool} not found; realip .cmig not applied"
-    fi
-  fi
-
-  if [ "${_permanent}" = "YES" ]; then
-    if _conf_flag_put "${_perm_flag}"; then
-      _msg "marked migration proxy trust PERMANENT (${_perm_flag})"
-    else
-      _fail="${_fail} ${_perm_flag}"
-    fi
-  fi
-  [ -z "${_fail}" ] || _die "trust: not recorded:${_fail}"
-}
-
 # Drop the lines equal to $2 from file $1, in place (owner and mode kept).
 # 0 = dropped, 1 = not there, 2 = the rewrite failed and the file is as found:
 # a short write (a full disk) must never leave a truncated firewall list.
@@ -340,58 +294,6 @@ _drop_line() {
   fi
   rm -f "${_t}"
   return 0
-}
-
-_cmd_untrust() {
-  local _a _ip _port
-  local -a _ips=()
-  for _a in "$@"; do
-    case "${_a}" in
-      --*) _die "unknown option ${_a}" ;;
-      *)   _is_ip "${_a}" || _die "not an IP/CIDR: ${_a}"; _ips+=("${_a}") ;;
-    esac
-  done
-  [ "${#_ips[@]}" -gt 0 ] || _die "untrust: no IP/CIDR given"
-
-  local _v _rc
-  for _ip in "${_ips[@]}"; do
-    _conf_drop_line "${_realip_ctrl}" "${_ip}"
-    [ "$?" -eq 2 ] && _die "untrust: could not rewrite ${_realip_ctrl}; left as found"
-    _drop_line "${_csf_ctrl}" "${_ip}"
-    [ "$?" -eq 2 ] && _die "untrust: could not rewrite ${_csf_ctrl}; left as found"
-    if _csf_present; then
-      for _v in "tcp|in|d=80|s=${_ip} # migration proxy" "tcp|in|d=443|s=${_ip} # migration proxy"; do
-        _drop_line "${_csf_allow}" "${_v}"; _rc=$?
-        [ "${_rc}" -eq 2 ] && _die "untrust: could not rewrite ${_csf_allow}; left as found"
-        [ "${_rc}" -eq 0 ] && _CSF_CHANGED="YES"
-      done
-      _drop_line "${_csf_ignore}" "${_ip} # migration proxy"; _rc=$?
-      [ "${_rc}" -eq 2 ] && _die "untrust: could not rewrite ${_csf_ignore}; left as found"
-      [ "${_rc}" -eq 0 ] && _CSF_CHANGED="YES"
-    fi
-    _msg "untrusted migration peer ${_ip}"
-  done
-
-  [ "${_CSF_CHANGED}" = "YES" ] && _csf_reload
-  [ -x "${_realip_tool}" ] && "${_realip_tool}"
-}
-
-_cmd_teardown() {
-  local _force="NO"
-  [ "${1:-}" = "--force" ] && _force="YES"
-  if [ -e "${_perm_flag}" ] && [ "${_force}" != "YES" ]; then
-    _msg "permanent migration proxy marker present; teardown skipped (use --force)"
-    return 0
-  fi
-  local _dropped=YES
-  _conf_drop_file "${_realip_ctrl}" || _dropped=NO
-  rm -f "${_csf_ctrl}" "${_perm_flag}"
-  _csf_strip
-  _csf_reload
-  # Control file now gone -> the tool removes the .cmig include.
-  [ -x "${_realip_tool}" ] && "${_realip_tool}"
-  [ "${_dropped}" = "YES" ] || _die "teardown: could not remove ${_realip_ctrl}"
-  _msg "migration proxy trust torn down on this host"
 }
 
 # --- per-account policy records (the _mig_* primitives xoct and xmass carry) --
@@ -513,13 +415,40 @@ _conf_drop_line() (
   fi
   exit "${_rc}"
 )
-# The file $1 in /data/conf removed under the lock _conf_uniq_append takes,
-# so an append in flight cannot bring back what a teardown just removed.
-_conf_drop_file() (
-  exec 8> "${_CONF_LOCK}"
-  flock -w 30 8 || exit 1
-  _mpt_in_real_dir "${1%/*}" _conf_rm_here "${1##*/}"
-)
+_cmd_untrust() {
+  local _a _ip _port
+  local -a _ips=()
+  for _a in "$@"; do
+    case "${_a}" in
+      --*) _die "unknown option ${_a}" ;;
+      *)   _is_ip "${_a}" || _die "not an IP/CIDR: ${_a}"; _ips+=("${_a}") ;;
+    esac
+  done
+  [ "${#_ips[@]}" -gt 0 ] || _die "untrust: no IP/CIDR given"
+
+  local _v _rc
+  for _ip in "${_ips[@]}"; do
+    _conf_drop_line "${_realip_ctrl}" "${_ip}"
+    [ "$?" -eq 2 ] && _die "untrust: could not rewrite ${_realip_ctrl}; left as found"
+    _drop_line "${_csf_ctrl}" "${_ip}"
+    [ "$?" -eq 2 ] && _die "untrust: could not rewrite ${_csf_ctrl}; left as found"
+    if _csf_present; then
+      for _v in "tcp|in|d=80|s=${_ip} # migration proxy" "tcp|in|d=443|s=${_ip} # migration proxy"; do
+        _drop_line "${_csf_allow}" "${_v}"; _rc=$?
+        [ "${_rc}" -eq 2 ] && _die "untrust: could not rewrite ${_csf_allow}; left as found"
+        [ "${_rc}" -eq 0 ] && _CSF_CHANGED="YES"
+      done
+      _drop_line "${_csf_ignore}" "${_ip} # migration proxy"; _rc=$?
+      [ "${_rc}" -eq 2 ] && _die "untrust: could not rewrite ${_csf_ignore}; left as found"
+      [ "${_rc}" -eq 0 ] && _CSF_CHANGED="YES"
+    fi
+    _msg "untrusted migration peer ${_ip}"
+  done
+
+  [ "${_CSF_CHANGED}" = "YES" ] && _csf_reload
+  [ -x "${_realip_tool}" ] && "${_realip_tool}"
+}
+
 _conf_rm_here() {
   if [ -d "./${1}" ] && [ ! -L "./${1}" ]; then
     rm -rf -- "./${1}"
@@ -527,6 +456,31 @@ _conf_rm_here() {
     rm -f -- "./${1}"
   fi
 }
+# The file $1 in /data/conf removed under the lock _conf_uniq_append takes,
+# so an append in flight cannot bring back what a teardown just removed.
+_conf_drop_file() (
+  exec 8> "${_CONF_LOCK}"
+  flock -w 30 8 || exit 1
+  _mpt_in_real_dir "${1%/*}" _conf_rm_here "${1##*/}"
+)
+_cmd_teardown() {
+  local _force="NO"
+  [ "${1:-}" = "--force" ] && _force="YES"
+  if [ -e "${_perm_flag}" ] && [ "${_force}" != "YES" ]; then
+    _msg "permanent migration proxy marker present; teardown skipped (use --force)"
+    return 0
+  fi
+  local _dropped=YES
+  _conf_drop_file "${_realip_ctrl}" || _dropped=NO
+  rm -f "${_csf_ctrl}" "${_perm_flag}"
+  _csf_strip
+  _csf_reload
+  # Control file now gone -> the tool removes the .cmig include.
+  [ -x "${_realip_tool}" ] && "${_realip_tool}"
+  [ "${_dropped}" = "YES" ] || _die "teardown: could not remove ${_realip_ctrl}"
+  _msg "migration proxy trust torn down on this host"
+}
+
 # The regular file $1 in /data/conf printed, read as _conf_get_file_here reads
 # it (a link or a FIFO at the name prints nothing and is never opened).
 _conf_cat() (
@@ -539,6 +493,52 @@ _conf_cat() (
 _conf_flag_put() {
   mkdir -p "${1%/*}"
   _mpt_in_real_dir "${1%/*}" _conf_put_file_here /dev/null "${1##*/}"
+}
+
+_cmd_trust() {
+  local _csf_only="NO" _permanent="NO" _a
+  local -a _ips=()
+  for _a in "$@"; do
+    case "${_a}" in
+      --csf-only)  _csf_only="YES" ;;
+      --permanent) _permanent="YES" ;;
+      --*)         _die "unknown option ${_a}" ;;
+      *)           _is_ip "${_a}" || _die "not an IP/CIDR: ${_a}"; _ips+=("${_a}") ;;
+    esac
+  done
+  [ "${#_ips[@]}" -gt 0 ] || _die "trust: no IP/CIDR given"
+
+  local _ip _fail=""
+  for _ip in "${_ips[@]}"; do
+    _uniq_append "${_csf_ctrl}" "${_ip}"
+    _csf_add_ip "${_ip}"
+    if [ "${_csf_only}" != "YES" ] \
+      && ! _conf_uniq_append "${_realip_ctrl}" "${_ip}"; then
+      _fail="${_fail} ${_ip}"
+      _msg "WARN: ${_ip} not recorded in ${_realip_ctrl}"
+      continue
+    fi
+    _msg "trusted migration peer ${_ip}"
+  done
+
+  [ "${_CSF_CHANGED}" = "YES" ] && _csf_reload
+
+  if [ "${_csf_only}" != "YES" ]; then
+    if [ -x "${_realip_tool}" ]; then
+      "${_realip_tool}"
+    else
+      _msg "WARN: ${_realip_tool} not found; realip .cmig not applied"
+    fi
+  fi
+
+  if [ "${_permanent}" = "YES" ]; then
+    if _conf_flag_put "${_perm_flag}"; then
+      _msg "marked migration proxy trust PERMANENT (${_perm_flag})"
+    else
+      _fail="${_fail} ${_perm_flag}"
+    fi
+  fi
+  [ -z "${_fail}" ] || _die "trust: not recorded:${_fail}"
 }
 
 _mig_valid_mode() {
@@ -862,6 +862,18 @@ _mig_rec_adopted_src() {
 # _MIG_LOG_RAW, so adopt judges the very bytes it classified.
 _MIG_LOG_CLS=""
 _MIG_LOG_RAW=""
+# Whether the legacy copy of $1 (handle mtime $2) is one the one-time import
+# never judged: the stamp exists, the copy is not newer, and the stamp does
+# not list the account's record as refused. Such a copy was set aside while
+# the import ran and put back after; it counts as absent.
+_mig_copy_stale() {
+  local _st
+  _st="$(_mig_hread "${_MIG_ADOPT_STAMP%/*}" "${_MIG_ADOPT_STAMP##*/}" root 2> /dev/null)" || return 1
+  [[ "${_st%%$'\n'*}" =~ ^[0-9]+$ ]] && [[ "${2}" =~ ^[0-9]+$ ]] || return 1
+  [ "${2}" -le "${_st%%$'\n'*}" ] || return 1
+  ! printf '%s\n' "${_st}" | awk -F'|' -v a="${1}" \
+    '$1 == a && $2 == "record" && $3 == "refused" { f = 1 } END { exit !f }'
+}
 _mig_log_class() {
   local _t _rc _m _l1 _h
   _MIG_LOG_CLS=none
@@ -897,18 +909,6 @@ _mig_log_class() {
   fi
   _MIG_LOG_CLS=account
   echo account
-}
-# Whether the legacy copy of $1 (handle mtime $2) is one the one-time import
-# never judged: the stamp exists, the copy is not newer, and the stamp does
-# not list the account's record as refused. Such a copy was set aside while
-# the import ran and put back after; it counts as absent.
-_mig_copy_stale() {
-  local _st
-  _st="$(_mig_hread "${_MIG_ADOPT_STAMP%/*}" "${_MIG_ADOPT_STAMP##*/}" root 2> /dev/null)" || return 1
-  [[ "${_st%%$'\n'*}" =~ ^[0-9]+$ ]] && [[ "${2}" =~ ^[0-9]+$ ]] || return 1
-  [ "${2}" -le "${_st%%$'\n'*}" ] || return 1
-  ! printf '%s\n' "${_st}" | awk -F'|' -v a="${1}" \
-    '$1 == a && $2 == "record" && $3 == "refused" { f = 1 } END { exit !f }'
 }
 # _MIG_ROLE (or the key $2) of a legacy-shaped log/migproxy.cnf of $1
 # (either host), else empty. For refusals only: a value read here is
@@ -1053,247 +1053,6 @@ _mig_vhost_targets() {
   done 8< <(_mpt_in_real_dir "${_vd}" find . -maxdepth 1 -mindepth 1 -type f \
     ! -name '.*' ! -name 'https.*' 2> /dev/null | sed 's|^\./||' | sort)
   echo "redirects ${_r}"
-}
-
-_cmd_reconcile() {
-  local _force="${1:-}"
-  local _keep="" _perm=NO _undeclared="" _records=0 _record_ips="" _legacy=""
-  local _t _rc _why _acct _mode _peers _role _mark _myips _ip _kept="" _cls _rmt _fail=""
-  local -a _pips
-
-  # Older tools left their records in the accounts' log/; import what root
-  # can vouch for once, before the first root record is read.
-  [ -e "${_MIG_ADOPT_STAMP}" ] || _cmd_adopt --once
-
-  _myips="$(_my_ipv4s)"
-  if [ -z "${_myips}" ]; then
-    # Cannot verify which records are OURS. Refusing to act beats silently
-    # degrading into a teardown under a live proxy.
-    _msg "reconcile: cannot determine this host's IPv4 addresses; leaving trust as found"
-    return 0
-  fi
-
-  while IFS= read -r _acct; do
-    [ -n "${_acct}" ] || continue
-    _t="$(_mig_rec_text "${_acct}")"
-    _rc=$?
-    [ "${_rc}" -eq 3 ] && continue
-    if [ "${_rc}" -ne 0 ]; then
-      # Never partially honoured: the account is undeclared (add-only).
-      _msg "reconcile: ${_acct}: root record malformed; treated as undeclared"
-      _undeclared="${_undeclared} ${_acct}"
-      continue
-    fi
-    _role="$(_mig_txt_get "${_t}" _MIG_ROLE)"
-    _peers=""
-    # Split on spaces and commas, never expanded as a pathname.
-    IFS=' ,' read -r -a _pips <<< "$(_mig_txt_get "${_t}" _MIG_PEER_IPS) $(_mig_txt_get "${_t}" _MIG_PEER_IP)"
-    for _ip in "${_pips[@]}"; do
-      _is_dotted_quad "${_ip}" && _peers="${_peers} ${_ip}"
-    done
-    if ! _why="$(_mig_txt_valid "${_t}")"; then
-      # A record failing validation is never partially honoured; the account
-      # is undeclared and a target record of this host's keeps its peers
-      # where they parse.
-      _msg "reconcile: ${_acct}: root record invalid (${_why}); treated as undeclared"
-      _undeclared="${_undeclared} ${_acct}"
-      if [ "${_role}" = "target" ] && _mig_is_mine "${_acct}"; then
-        _records=$(( _records + 1 ))
-        _record_ips="${_record_ips}${_peers}"
-        _keep="${_keep}${_peers}"
-      fi
-      continue
-    fi
-    # A record written for another address (the box renumbered) is reported,
-    # never acted on.
-    if ! _mig_is_mine "${_acct}"; then
-      _msg "reconcile: ${_acct}: root record names another host address; not acted on"
-      continue
-    fi
-    # Source-authored records describe OUTBOUND proxying; only target-role
-    # records say who this host must keep trusting.
-    [ "${_role}" = "target" ] || continue
-    _records=$(( _records + 1 ))
-    # The source may hold several routable addresses (_MIG_PEER_IPS); the
-    # relay's egress interface is not always its primary one, so all of them
-    # count -- both as trust candidates and as record-owned for the legacy
-    # separation below.
-    _record_ips="${_record_ips}${_peers}"
-    # An init on this relay's own front ended it: the mode stays for the next
-    # cutover to rewire, the trust goes.
-    [ -n "$(_mig_txt_get "${_t}" _MIG_RELAY_ENDED)" ] && continue
-    _mode="$(_mig_txt_get "${_t}" _MIG_MODE)"
-    case "${_mode}" in
-      permanent|ha-switch)
-        # ha-switch behaves exactly as permanent for trust and teardown; it
-        # differs only in the client notification.
-        _keep="${_keep}${_peers}"
-        _perm=YES
-      ;;
-      temporary|retired)
-        # reconcile runs post-mig (DNS moved) or after a policy change:
-        # temporary trust ends here, retired never needed it.
-        :
-      ;;
-    esac
-  done < <(_mig_rec_list)
-
-  # Trust entries the records do NOT account for predate the record system
-  # (an old --permanent migration from a pre-record source). The records
-  # cannot prove anything about them, so they are preserved -- "the union
-  # proves nothing needs it" only ever applies to record-owned entries.
-  for _ip in $( { cat "${_csf_ctrl}" 2> /dev/null
-      _conf_cat "${_realip_ctrl}"; } | sort -u); do
-    _is_ipv4_or_cidr "${_ip}" || continue
-    echo "${_record_ips}" | tr ' ' '\n' | grep -qxF "${_ip}" && continue
-    _legacy="${_legacy} ${_ip}"
-  done
-
-  # What older tools left in log/ is never read for an address or a mode. A
-  # root-written copy the import refused or that came after it, or one
-  # written after the root record (older tools during a fleet roll), freezes
-  # teardown for its account. An older copy the import never saw was put
-  # back from where the account hid it: absent.
-  for _acct in $(_mig_list_accounts); do
-    _cls="$(_mig_log_class "${_acct}")"
-    if [ -e "$(_mig_rec "${_acct}")" ]; then
-      case "${_cls}" in
-        legacy-mine\ *)
-          _rmt="$(_mig_rec_mtime "${_acct}")" || _rmt=""
-          if [[ "${_rmt}" =~ ^[0-9]+$ ]] && [ "${_cls#legacy-mine }" -gt "${_rmt}" ]; then
-            _msg "reconcile: ${_acct}: log record written by older tools after the root record; treated as undeclared"
-            case " ${_undeclared} " in
-              *" ${_acct} "*) ;;
-              *) _undeclared="${_undeclared} ${_acct}" ;;
-            esac
-          fi
-        ;;
-        account)
-          _msg "reconcile: ${_acct}: account-written log record ignored"
-        ;;
-      esac
-      continue
-    fi
-    case "${_cls}" in
-      legacy-mine\ *)
-        _msg "reconcile: ${_acct}: unadopted log record (not read); treated as undeclared"
-        _undeclared="${_undeclared} ${_acct}"
-      ;;
-      legacy-stale)
-        _msg "reconcile: ${_acct}: an older log copy the import never saw; ignored"
-      ;;
-      account)
-        _msg "reconcile: ${_acct}: account-written log record ignored"
-      ;;
-    esac
-  done
-
-  # Accounts marked proxied with no valid record of their own: never guess.
-  # Keep whatever trust exists, leave the permanent marker as found, report.
-  for _mark in "${_MIG_REC_DIR}"/.*.migproxy.proxied; do
-    [ -e "${_mark}" ] || continue
-    _acct="${_mark##*/}"
-    _acct="${_acct#.}"
-    _acct="${_acct%.migproxy.proxied}"
-    _mig_mark "${_acct}" > /dev/null || continue
-    [ -d "/data/disk/${_acct}" ] && [ ! -L "/data/disk/${_acct}" ] || continue
-    _mig_is_proxied "${_acct}" || continue
-    case " ${_undeclared} " in *" ${_acct} "*) continue ;; esac
-    if _mig_is_mine "${_acct}" \
-      && _mig_valid_mode "$(_mig_rec_get "${_acct}" _MIG_MODE)"; then
-      continue   # declared (either role); its policy already spoke above
-    fi
-    _undeclared="${_undeclared} ${_acct}"
-  done
-
-  if [ "${_records}" -eq 0 ] && [ -z "${_undeclared}" ]; then
-    if [ ! -e "${_realip_ctrl}" ] && [ ! -e "${_csf_ctrl}" ] && [ ! -e "${_perm_flag}" ]; then
-      _msg "reconcile: no migration-proxy records and no trust wired; nothing to do"
-      return 0
-    fi
-    # Pre-records fleet: behave exactly as teardown always has (the permanent
-    # marker is honoured; --force overrides). Unquoted on purpose: an empty
-    # _force must vanish, not arrive as an empty first argument.
-    # shellcheck disable=SC2086
-    _cmd_teardown ${_force}
-    return $?
-  fi
-
-  # Unquoted on purpose: these are space-separated sets being split into lines.
-  # shellcheck disable=SC2086
-  _keep="$(printf '%s\n' ${_keep} | sort -u | tr '\n' ' ')"
-  # shellcheck disable=SC2086
-  _legacy="$(printf '%s\n' ${_legacy} | sort -u | tr '\n' ' ')"
-
-  if [ -n "${_undeclared}" ]; then
-    # Undeclared accounts have peers this host cannot know, so existing trust
-    # is only ever ADDED to here, never stripped, and the permanent marker is
-    # left as found (set only if a declared record demands it).
-    for _ip in ${_keep}; do
-      _uniq_append "${_csf_ctrl}" "${_ip}"
-      _conf_uniq_append "${_realip_ctrl}" "${_ip}" || _fail="${_fail} ${_ip}"
-      _csf_add_ip "${_ip}"
-      _kept="${_kept} ${_ip}"
-    done
-    [ "${_CSF_CHANGED}" = "YES" ] && _csf_reload
-    [ -n "${_kept}" ] && [ -x "${_realip_tool}" ] && "${_realip_tool}"
-    if [ "${_perm}" = "YES" ]; then
-      _conf_flag_put "${_perm_flag}" || _fail="${_fail} ${_perm_flag}"
-    fi
-    _msg "reconcile: UNDECLARED proxied accounts:${_undeclared}"
-    _msg "  their trust and the permanent marker are left as found; declare policy on the"
-    _msg "  proxying source (xoct proxy-mode <oN> <mode>, then xoct proxy ... --repair) so"
-    _msg "  the record propagates here"
-    [ -n "${_kept}" ] && _msg "reconcile: declared peers (re)trusted:${_kept}"
-    [ -z "${_fail}" ] || _die "reconcile: not recorded in /data/conf:${_fail}"
-    return 0
-  fi
-
-  if [ -z "${_keep// /}" ] && [ -z "${_legacy// /}" ]; then
-    # Records exist, none needs trust, and no pre-record entries survive: the
-    # union proves nothing needs the marker either, so clear it even though
-    # plain teardown would honour it.
-    _conf_drop_file "${_realip_ctrl}" || _fail="${_fail} ${_realip_ctrl}"
-    rm -f "${_csf_ctrl}" "${_perm_flag}"
-    _csf_strip
-    _csf_reload
-    [ -x "${_realip_tool}" ] && "${_realip_tool}"
-    [ -z "${_fail}" ] || _die "reconcile: could not remove ${_realip_ctrl}"
-    _msg "reconcile: no live permanent/ha-switch peers; migration proxy trust torn down"
-    return 0
-  fi
-
-  # Rewrite both control files to exactly keep + legacy; strip every tagged
-  # csf entry and re-add that set (no selective strip exists -- strip-all then
-  # re-add exploits the existing idempotency).
-  _conf_drop_file "${_realip_ctrl}" \
-    || _die "reconcile: could not remove ${_realip_ctrl}; nothing changed"
-  rm -f "${_csf_ctrl}"
-  _csf_strip
-  for _ip in ${_keep} ${_legacy}; do
-    _uniq_append "${_csf_ctrl}" "${_ip}"
-    _conf_uniq_append "${_realip_ctrl}" "${_ip}" || _fail="${_fail} ${_ip}"
-    _csf_add_ip "${_ip}"
-    _kept="${_kept} ${_ip}"
-  done
-  _csf_reload
-  [ -x "${_realip_tool}" ] && "${_realip_tool}"
-  if [ "${_perm}" = "YES" ]; then
-    _conf_flag_put "${_perm_flag}" || _fail="${_fail} ${_perm_flag}"
-  elif [ -n "${_legacy// /}" ]; then
-    # Pre-record entries may belong to an old --permanent proxy this host
-    # cannot re-derive; the marker stays exactly as found.
-    :
-  else
-    rm -f "${_perm_flag}"
-  fi
-  if [ -n "${_legacy// /}" ]; then
-    _msg "reconcile: pre-record trust entries preserved:${_legacy}"
-    _msg "  (no policy record accounts for them; the permanent marker is left as found."
-    _msg "  Remove them with 'teardown --force' once the old proxies are confirmed gone.)"
-  fi
-  _msg "reconcile: trusted migration peers now:${_kept}"
-  [ -z "${_fail}" ] || _die "reconcile: not recorded in /data/conf:${_fail}"
 }
 
 # --- adopt: import what older tools left in log/, once ----------------------
@@ -1459,6 +1218,30 @@ _ad_unw_rem_rec() {
     *) _rm="<mode>" ;;
   esac
   _ad_unw_rem "${_ra}" "${_p}" "${_m}" "${_rm}"
+}
+
+# Whether log/proxied.pid of the account $1 is the marker older tools wrote:
+# root's, at most 64 bytes, its first line COMPLETE, its mtime no later than
+# a day ahead. Prints that mtime. Status 3 absent, 4 not root-written, 5
+# larger than a marker, 6 an import freeze, 7 not COMPLETE, 8 not a past
+# date. The one proof both the marker and a live relay's record rest on.
+_ad_pid_proof() {
+  local _raw _rc _b _l1 _at
+  # The x keeps trailing newlines: the size is the file's own.
+  _raw="$(_mig_hread "/data/disk/${1}/log" proxied.pid root && printf x)"
+  _rc=$?
+  [ "${_rc}" -eq 3 ] && return 3
+  [ "${_rc}" -eq 0 ] || return 4
+  _raw="${_raw%x}"
+  _at="${_raw%%$'\n'*}"
+  _b="${_raw#*$'\n'}"
+  _l1="${_b%%$'\n'*}"
+  [ "$(printf '%s' "${_b}" | LC_ALL=C wc -c | tr -d ' ')" -le 64 ] || return 5
+  [ "${_l1}" != "A2B-IMPORT-FREEZE" ] || return 6
+  [ "${_l1}" = "COMPLETE" ] || return 7
+  [[ "${_at}" =~ ^[0-9]{9,11}$ ]] || return 8
+  [ "${_at}" -le "$(( $(date +%s) + 86400 ))" ] || return 8
+  printf '%s\n' "${_at}"
 }
 
 _ad_record() {
@@ -1727,30 +1510,6 @@ _ad_record() {
   return 0
 }
 
-# Whether log/proxied.pid of the account $1 is the marker older tools wrote:
-# root's, at most 64 bytes, its first line COMPLETE, its mtime no later than
-# a day ahead. Prints that mtime. Status 3 absent, 4 not root-written, 5
-# larger than a marker, 6 an import freeze, 7 not COMPLETE, 8 not a past
-# date. The one proof both the marker and a live relay's record rest on.
-_ad_pid_proof() {
-  local _raw _rc _b _l1 _at
-  # The x keeps trailing newlines: the size is the file's own.
-  _raw="$(_mig_hread "/data/disk/${1}/log" proxied.pid root && printf x)"
-  _rc=$?
-  [ "${_rc}" -eq 3 ] && return 3
-  [ "${_rc}" -eq 0 ] || return 4
-  _raw="${_raw%x}"
-  _at="${_raw%%$'\n'*}"
-  _b="${_raw#*$'\n'}"
-  _l1="${_b%%$'\n'*}"
-  [ "$(printf '%s' "${_b}" | LC_ALL=C wc -c | tr -d ' ')" -le 64 ] || return 5
-  [ "${_l1}" != "A2B-IMPORT-FREEZE" ] || return 6
-  [ "${_l1}" = "COMPLETE" ] || return 7
-  [[ "${_at}" =~ ^[0-9]{9,11}$ ]] || return 8
-  [ "${_at}" -le "$(( $(date +%s) + 86400 ))" ] || return 8
-  printf '%s\n' "${_at}"
-}
-
 _ad_marker() {
   local _a="$1" _rc _at _rem _ra="$1"
   _mpt_name_ok "${_a}" || _ra="<oN>"
@@ -1950,6 +1709,247 @@ _cmd_adopt() {
     return 0
   fi
   _ad_run NO
+}
+
+_cmd_reconcile() {
+  local _force="${1:-}"
+  local _keep="" _perm=NO _undeclared="" _records=0 _record_ips="" _legacy=""
+  local _t _rc _why _acct _mode _peers _role _mark _myips _ip _kept="" _cls _rmt _fail=""
+  local -a _pips
+
+  # Older tools left their records in the accounts' log/; import what root
+  # can vouch for once, before the first root record is read.
+  [ -e "${_MIG_ADOPT_STAMP}" ] || _cmd_adopt --once
+
+  _myips="$(_my_ipv4s)"
+  if [ -z "${_myips}" ]; then
+    # Cannot verify which records are OURS. Refusing to act beats silently
+    # degrading into a teardown under a live proxy.
+    _msg "reconcile: cannot determine this host's IPv4 addresses; leaving trust as found"
+    return 0
+  fi
+
+  while IFS= read -r _acct; do
+    [ -n "${_acct}" ] || continue
+    _t="$(_mig_rec_text "${_acct}")"
+    _rc=$?
+    [ "${_rc}" -eq 3 ] && continue
+    if [ "${_rc}" -ne 0 ]; then
+      # Never partially honoured: the account is undeclared (add-only).
+      _msg "reconcile: ${_acct}: root record malformed; treated as undeclared"
+      _undeclared="${_undeclared} ${_acct}"
+      continue
+    fi
+    _role="$(_mig_txt_get "${_t}" _MIG_ROLE)"
+    _peers=""
+    # Split on spaces and commas, never expanded as a pathname.
+    IFS=' ,' read -r -a _pips <<< "$(_mig_txt_get "${_t}" _MIG_PEER_IPS) $(_mig_txt_get "${_t}" _MIG_PEER_IP)"
+    for _ip in "${_pips[@]}"; do
+      _is_dotted_quad "${_ip}" && _peers="${_peers} ${_ip}"
+    done
+    if ! _why="$(_mig_txt_valid "${_t}")"; then
+      # A record failing validation is never partially honoured; the account
+      # is undeclared and a target record of this host's keeps its peers
+      # where they parse.
+      _msg "reconcile: ${_acct}: root record invalid (${_why}); treated as undeclared"
+      _undeclared="${_undeclared} ${_acct}"
+      if [ "${_role}" = "target" ] && _mig_is_mine "${_acct}"; then
+        _records=$(( _records + 1 ))
+        _record_ips="${_record_ips}${_peers}"
+        _keep="${_keep}${_peers}"
+      fi
+      continue
+    fi
+    # A record written for another address (the box renumbered) is reported,
+    # never acted on.
+    if ! _mig_is_mine "${_acct}"; then
+      _msg "reconcile: ${_acct}: root record names another host address; not acted on"
+      continue
+    fi
+    # Source-authored records describe OUTBOUND proxying; only target-role
+    # records say who this host must keep trusting.
+    [ "${_role}" = "target" ] || continue
+    _records=$(( _records + 1 ))
+    # The source may hold several routable addresses (_MIG_PEER_IPS); the
+    # relay's egress interface is not always its primary one, so all of them
+    # count -- both as trust candidates and as record-owned for the legacy
+    # separation below.
+    _record_ips="${_record_ips}${_peers}"
+    # An init on this relay's own front ended it: the mode stays for the next
+    # cutover to rewire, the trust goes.
+    [ -n "$(_mig_txt_get "${_t}" _MIG_RELAY_ENDED)" ] && continue
+    _mode="$(_mig_txt_get "${_t}" _MIG_MODE)"
+    case "${_mode}" in
+      permanent|ha-switch)
+        # ha-switch behaves exactly as permanent for trust and teardown; it
+        # differs only in the client notification.
+        _keep="${_keep}${_peers}"
+        _perm=YES
+      ;;
+      temporary|retired)
+        # reconcile runs post-mig (DNS moved) or after a policy change:
+        # temporary trust ends here, retired never needed it.
+        :
+      ;;
+    esac
+  done < <(_mig_rec_list)
+
+  # Trust entries the records do NOT account for predate the record system
+  # (an old --permanent migration from a pre-record source). The records
+  # cannot prove anything about them, so they are preserved -- "the union
+  # proves nothing needs it" only ever applies to record-owned entries.
+  for _ip in $( { cat "${_csf_ctrl}" 2> /dev/null
+      _conf_cat "${_realip_ctrl}"; } | sort -u); do
+    _is_ipv4_or_cidr "${_ip}" || continue
+    echo "${_record_ips}" | tr ' ' '\n' | grep -qxF "${_ip}" && continue
+    _legacy="${_legacy} ${_ip}"
+  done
+
+  # What older tools left in log/ is never read for an address or a mode. A
+  # root-written copy the import refused or that came after it, or one
+  # written after the root record (older tools during a fleet roll), freezes
+  # teardown for its account. An older copy the import never saw was put
+  # back from where the account hid it: absent.
+  for _acct in $(_mig_list_accounts); do
+    _cls="$(_mig_log_class "${_acct}")"
+    if [ -e "$(_mig_rec "${_acct}")" ]; then
+      case "${_cls}" in
+        legacy-mine\ *)
+          _rmt="$(_mig_rec_mtime "${_acct}")" || _rmt=""
+          if [[ "${_rmt}" =~ ^[0-9]+$ ]] && [ "${_cls#legacy-mine }" -gt "${_rmt}" ]; then
+            _msg "reconcile: ${_acct}: log record written by older tools after the root record; treated as undeclared"
+            case " ${_undeclared} " in
+              *" ${_acct} "*) ;;
+              *) _undeclared="${_undeclared} ${_acct}" ;;
+            esac
+          fi
+        ;;
+        account)
+          _msg "reconcile: ${_acct}: account-written log record ignored"
+        ;;
+      esac
+      continue
+    fi
+    case "${_cls}" in
+      legacy-mine\ *)
+        _msg "reconcile: ${_acct}: unadopted log record (not read); treated as undeclared"
+        _undeclared="${_undeclared} ${_acct}"
+      ;;
+      legacy-stale)
+        _msg "reconcile: ${_acct}: an older log copy the import never saw; ignored"
+      ;;
+      account)
+        _msg "reconcile: ${_acct}: account-written log record ignored"
+      ;;
+    esac
+  done
+
+  # Accounts marked proxied with no valid record of their own: never guess.
+  # Keep whatever trust exists, leave the permanent marker as found, report.
+  for _mark in "${_MIG_REC_DIR}"/.*.migproxy.proxied; do
+    [ -e "${_mark}" ] || continue
+    _acct="${_mark##*/}"
+    _acct="${_acct#.}"
+    _acct="${_acct%.migproxy.proxied}"
+    _mig_mark "${_acct}" > /dev/null || continue
+    [ -d "/data/disk/${_acct}" ] && [ ! -L "/data/disk/${_acct}" ] || continue
+    _mig_is_proxied "${_acct}" || continue
+    case " ${_undeclared} " in *" ${_acct} "*) continue ;; esac
+    if _mig_is_mine "${_acct}" \
+      && _mig_valid_mode "$(_mig_rec_get "${_acct}" _MIG_MODE)"; then
+      continue   # declared (either role); its policy already spoke above
+    fi
+    _undeclared="${_undeclared} ${_acct}"
+  done
+
+  if [ "${_records}" -eq 0 ] && [ -z "${_undeclared}" ]; then
+    if [ ! -e "${_realip_ctrl}" ] && [ ! -e "${_csf_ctrl}" ] && [ ! -e "${_perm_flag}" ]; then
+      _msg "reconcile: no migration-proxy records and no trust wired; nothing to do"
+      return 0
+    fi
+    # Pre-records fleet: behave exactly as teardown always has (the permanent
+    # marker is honoured; --force overrides). Unquoted on purpose: an empty
+    # _force must vanish, not arrive as an empty first argument.
+    # shellcheck disable=SC2086
+    _cmd_teardown ${_force}
+    return $?
+  fi
+
+  # Unquoted on purpose: these are space-separated sets being split into lines.
+  # shellcheck disable=SC2086
+  _keep="$(printf '%s\n' ${_keep} | sort -u | tr '\n' ' ')"
+  # shellcheck disable=SC2086
+  _legacy="$(printf '%s\n' ${_legacy} | sort -u | tr '\n' ' ')"
+
+  if [ -n "${_undeclared}" ]; then
+    # Undeclared accounts have peers this host cannot know, so existing trust
+    # is only ever ADDED to here, never stripped, and the permanent marker is
+    # left as found (set only if a declared record demands it).
+    for _ip in ${_keep}; do
+      _uniq_append "${_csf_ctrl}" "${_ip}"
+      _conf_uniq_append "${_realip_ctrl}" "${_ip}" || _fail="${_fail} ${_ip}"
+      _csf_add_ip "${_ip}"
+      _kept="${_kept} ${_ip}"
+    done
+    [ "${_CSF_CHANGED}" = "YES" ] && _csf_reload
+    [ -n "${_kept}" ] && [ -x "${_realip_tool}" ] && "${_realip_tool}"
+    if [ "${_perm}" = "YES" ]; then
+      _conf_flag_put "${_perm_flag}" || _fail="${_fail} ${_perm_flag}"
+    fi
+    _msg "reconcile: UNDECLARED proxied accounts:${_undeclared}"
+    _msg "  their trust and the permanent marker are left as found; declare policy on the"
+    _msg "  proxying source (xoct proxy-mode <oN> <mode>, then xoct proxy ... --repair) so"
+    _msg "  the record propagates here"
+    [ -n "${_kept}" ] && _msg "reconcile: declared peers (re)trusted:${_kept}"
+    [ -z "${_fail}" ] || _die "reconcile: not recorded in /data/conf:${_fail}"
+    return 0
+  fi
+
+  if [ -z "${_keep// /}" ] && [ -z "${_legacy// /}" ]; then
+    # Records exist, none needs trust, and no pre-record entries survive: the
+    # union proves nothing needs the marker either, so clear it even though
+    # plain teardown would honour it.
+    _conf_drop_file "${_realip_ctrl}" || _fail="${_fail} ${_realip_ctrl}"
+    rm -f "${_csf_ctrl}" "${_perm_flag}"
+    _csf_strip
+    _csf_reload
+    [ -x "${_realip_tool}" ] && "${_realip_tool}"
+    [ -z "${_fail}" ] || _die "reconcile: could not remove ${_realip_ctrl}"
+    _msg "reconcile: no live permanent/ha-switch peers; migration proxy trust torn down"
+    return 0
+  fi
+
+  # Rewrite both control files to exactly keep + legacy; strip every tagged
+  # csf entry and re-add that set (no selective strip exists -- strip-all then
+  # re-add exploits the existing idempotency).
+  _conf_drop_file "${_realip_ctrl}" \
+    || _die "reconcile: could not remove ${_realip_ctrl}; nothing changed"
+  rm -f "${_csf_ctrl}"
+  _csf_strip
+  for _ip in ${_keep} ${_legacy}; do
+    _uniq_append "${_csf_ctrl}" "${_ip}"
+    _conf_uniq_append "${_realip_ctrl}" "${_ip}" || _fail="${_fail} ${_ip}"
+    _csf_add_ip "${_ip}"
+    _kept="${_kept} ${_ip}"
+  done
+  _csf_reload
+  [ -x "${_realip_tool}" ] && "${_realip_tool}"
+  if [ "${_perm}" = "YES" ]; then
+    _conf_flag_put "${_perm_flag}" || _fail="${_fail} ${_perm_flag}"
+  elif [ -n "${_legacy// /}" ]; then
+    # Pre-record entries may belong to an old --permanent proxy this host
+    # cannot re-derive; the marker stays exactly as found.
+    :
+  else
+    rm -f "${_perm_flag}"
+  fi
+  if [ -n "${_legacy// /}" ]; then
+    _msg "reconcile: pre-record trust entries preserved:${_legacy}"
+    _msg "  (no policy record accounts for them; the permanent marker is left as found."
+    _msg "  Remove them with 'teardown --force' once the old proxies are confirmed gone.)"
+  fi
+  _msg "reconcile: trusted migration peers now:${_kept}"
+  [ -z "${_fail}" ] || _die "reconcile: not recorded in /data/conf:${_fail}"
 }
 
 # --- trust no record needs any more -------------------------------------------
@@ -2189,6 +2189,38 @@ _mpt_any_undeclared() {
   return 1
 }
 
+# The first prune on a box: reach older tools gave kept no day. Each address
+# holding reach now gets today's, marked seeded, so a relay that ends from now
+# on takes it and one that ended before leaves it. A pre-mig's own line, written
+# meanwhile, wins: the seed never replaces a file that appeared.
+_mpt_reach_seed() {
+  local _t="${_MPT_REACH_DAYS}.seed.$$" _p _today
+  _today="$(date -u '+%Y-%m-%d')"
+  {
+    grep -vE '^[[:space:]]*#' "${_MIG_AUTH_KEYS}" 2> /dev/null \
+      | sed -n -E 's/.* # (xmass|xoct|xcopy) migration source ([0-9.]+)[[:space:]]*$/\2/p'
+    if _csf_present; then
+      cat "${_csf_allow}" "${_csf_ignore}" 2> /dev/null \
+        | sed -n -E 's/^([0-9.]+) # xmass migration (source|inbound-proxy)$/\1/p'
+    fi
+  } | sort -u | while IFS= read -r _ip; do
+    _is_dotted_quad "${_ip}" || continue
+    printf '%s %s seed\n' "${_ip}" "${_today}" || exit 1
+  done > "${_t}" || { rm -f -- "${_t}"; return 1; }
+  # A move older tools began may be under way from any address seeded here. Its
+  # pending line goes first: a seed that fails leaves no reach file, and the
+  # next run seeds again.
+  _p="${_MPT_PENDING}.seed.$$"
+  if ! { { cat "${_MPT_PENDING}" 2> /dev/null; awk '{ print $1, $2, "seed" }' "${_t}"; } \
+    | awk '!s[$1]++' > "${_p}" && chmod 600 "${_p}" && mv -f -- "${_p}" "${_MPT_PENDING}"; }; then
+    rm -f -- "${_p}" "${_t}"
+    return 1
+  fi
+  chmod 600 "${_t}" && mv -n -- "${_t}" "${_MPT_REACH_DAYS}"
+  rm -f -- "${_t}"
+  [ -e "${_MPT_REACH_DAYS}" ]
+}
+
 # A front that moved away or ended asks this box to stop trusting it: its serving
 # trust and witness go, a live record's address stays. Its reach goes too with
 # --over, or with --to when <ip> is no partner of this box: there the front comes
@@ -2308,38 +2340,6 @@ _cmd_release() {
     rm -f "${_perm_flag}"
   fi
   return 0
-}
-
-# The first prune on a box: reach older tools gave kept no day. Each address
-# holding reach now gets today's, marked seeded, so a relay that ends from now
-# on takes it and one that ended before leaves it. A pre-mig's own line, written
-# meanwhile, wins: the seed never replaces a file that appeared.
-_mpt_reach_seed() {
-  local _t="${_MPT_REACH_DAYS}.seed.$$" _p _today
-  _today="$(date -u '+%Y-%m-%d')"
-  {
-    grep -vE '^[[:space:]]*#' "${_MIG_AUTH_KEYS}" 2> /dev/null \
-      | sed -n -E 's/.* # (xmass|xoct|xcopy) migration source ([0-9.]+)[[:space:]]*$/\2/p'
-    if _csf_present; then
-      cat "${_csf_allow}" "${_csf_ignore}" 2> /dev/null \
-        | sed -n -E 's/^([0-9.]+) # xmass migration (source|inbound-proxy)$/\1/p'
-    fi
-  } | sort -u | while IFS= read -r _ip; do
-    _is_dotted_quad "${_ip}" || continue
-    printf '%s %s seed\n' "${_ip}" "${_today}" || exit 1
-  done > "${_t}" || { rm -f -- "${_t}"; return 1; }
-  # A move older tools began may be under way from any address seeded here. Its
-  # pending line goes first: a seed that fails leaves no reach file, and the
-  # next run seeds again.
-  _p="${_MPT_PENDING}.seed.$$"
-  if ! { { cat "${_MPT_PENDING}" 2> /dev/null; awk '{ print $1, $2, "seed" }' "${_t}"; } \
-    | awk '!s[$1]++' > "${_p}" && chmod 600 "${_p}" && mv -f -- "${_p}" "${_MPT_PENDING}"; }; then
-    rm -f -- "${_p}" "${_t}"
-    return 1
-  fi
-  chmod 600 "${_t}" && mv -n -- "${_t}" "${_MPT_REACH_DAYS}"
-  rm -f -- "${_t}"
-  [ -e "${_MPT_REACH_DAYS}" ]
 }
 
 # Daily, from the certificate mirror's cron: the reach of a relay that is over,

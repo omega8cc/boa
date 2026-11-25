@@ -253,6 +253,34 @@ _compute_throttle_state() {
   case "${_MON_CLASS}" in CI|SLOW|NORMAL) : ;; *) _MON_CLASS="" ;; esac
 }
 
+_read_stat_counters() {
+  local _l _a _b
+  _FORKS=0; _CTXT=0
+  while read -r _a _b _l; do
+    case "${_a}" in
+      processes) _FORKS="${_b}" ;;
+      ctxt)      _CTXT="${_b}" ;;
+    esac
+  done < "${_PROC}/stat"
+}
+
+_aggregate() {
+  local _uid _key _root _cpu _peak
+  for _uid in "${!_FIRST[@]}"; do
+    _cpu=$(( ${_LAST[$_uid]} - ${_FIRST[$_uid]} ))
+    (( _cpu < 0 )) && _cpu=0
+    _key="${_KEY_OF_UID[$_uid]}"
+    _root="${_ROOT[$_uid]}"
+    _peak="${_PEAK[$_uid]}"
+    _CMD_CPU[$_key]=$(( ${_CMD_CPU[$_key]:-0} + _cpu ))
+    _CMD_N[$_key]=$(( ${_CMD_N[$_key]:-0} + 1 ))
+    [ -z "${_CMD_PEAK[$_key]+x}" ] && _CMD_PEAK[$_key]=0
+    (( _peak > _CMD_PEAK[$_key] )) && _CMD_PEAK[$_key]=$_peak
+    _ROOT_CPU[$_root]=$(( ${_ROOT_CPU[$_root]:-0} + _cpu ))
+    _ROOT_N[$_root]=$(( ${_ROOT_N[$_root]:-0} + 1 ))
+  done
+}
+
 _run_live() {
   local _passes _i _f1 _f2 _ld1 _ld2 _fk1 _fk2 _cx1 _cx2 _rest
 
@@ -296,38 +324,10 @@ _run_live() {
   _aggregate
 }
 
-_read_stat_counters() {
-  local _l _a _b
-  _FORKS=0; _CTXT=0
-  while read -r _a _b _l; do
-    case "${_a}" in
-      processes) _FORKS="${_b}" ;;
-      ctxt)      _CTXT="${_b}" ;;
-    esac
-  done < "${_PROC}/stat"
-}
-
 ###
 ### Fold the per-uid tracking tables into per-command and per-launcher buckets.
 ###
 declare -A _CMD_CPU _CMD_N _CMD_PEAK _ROOT_CPU _ROOT_N
-_aggregate() {
-  local _uid _key _root _cpu _peak
-  for _uid in "${!_FIRST[@]}"; do
-    _cpu=$(( ${_LAST[$_uid]} - ${_FIRST[$_uid]} ))
-    (( _cpu < 0 )) && _cpu=0
-    _key="${_KEY_OF_UID[$_uid]}"
-    _root="${_ROOT[$_uid]}"
-    _peak="${_PEAK[$_uid]}"
-    _CMD_CPU[$_key]=$(( ${_CMD_CPU[$_key]:-0} + _cpu ))
-    _CMD_N[$_key]=$(( ${_CMD_N[$_key]:-0} + 1 ))
-    [ -z "${_CMD_PEAK[$_key]+x}" ] && _CMD_PEAK[$_key]=0
-    (( _peak > _CMD_PEAK[$_key] )) && _CMD_PEAK[$_key]=$_peak
-    _ROOT_CPU[$_root]=$(( ${_ROOT_CPU[$_root]:-0} + _cpu ))
-    _ROOT_N[$_root]=$(( ${_ROOT_N[$_root]:-0} + 1 ))
-  done
-}
-
 # Convert jiffies → CPU-seconds and percent of one core over the span.
 _fmt_cpu() { awk -v j="$1" -v hz="${_HZ}" -v w="${_SPAN}" \
   'BEGIN{ s=j/hz; printf "%8.2f %7.1f", s, (w>0?s/w*100:0) }'; }

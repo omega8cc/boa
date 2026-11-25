@@ -823,120 +823,6 @@ _validate_credentials() {
   _print_env "multiback_validate_credentials"
 }
 
-# Function to load credentials
-_load_credentials() {
-  local _service="$1"
-  local _user="$2"
-  local _acct=NO _cred_dir _secret_dir _cred_body _secret_body
-  if [ "${_user}" != "arch" ] \
-    && [ "${_user}" != "data" ] \
-    && [ "${_user}" != "global" ] \
-    && [ "${_user}" != "static" ] \
-    && [ "${_user}" != "custom" ]; then
-    _acct=YES
-    _cred_dir="/data/disk/${_user}/static/control/remote_backups/credentials"
-    _secret_dir="/data/disk/${_user}/remote_backups"
-    local _cred_file="${_cred_dir}/${_service}.txt"
-    local _secret_file="${_secret_dir}/.secret.txt"
-    # The credentials hang off static/control, which the tenant owns: refuse
-    # when any name on the way, or the file itself, is a link (a planted one
-    # would hand root another account's credentials), as mybackup does.
-    local _p
-    for _p in "/data/disk/${_user}/static" \
-      "/data/disk/${_user}/static/control" \
-      "/data/disk/${_user}/static/control/remote_backups" \
-      "/data/disk/${_user}/static/control/remote_backups/credentials" \
-      "${_cred_file}"; do
-      if [ -L "${_p}" ]; then
-        echo "[$(date)] REFUSED credentials for ${_user}: ${_p} is a symlink" \
-          >> /var/log/mybackup_invalid_queued.log
-        echo "Error: ${_p} is a symlink. Unable to proceed."
-        exit 1
-      fi
-    done
-    # and when static/control is not the account's own: another account's
-    # login can put one there while the account is on the box-wide group
-    local _why
-    if ! _why=$(_acct_ctrl_own "${_user}"); then
-      echo "[$(date)] REFUSED credentials for ${_user}: static/control is not the account's own (${_why})" \
-        >> /var/log/mybackup_invalid_queued.log
-      echo "Error: static/control of ${_user} is not the account's own (${_why}). Unable to proceed."
-      exit 1
-    fi
-  fi
-  if [ "${_user}" = "global" ] || [ "${_user}" = "data" ] || [ "${_user}" = "custom" ]; then
-    local _cred_file="/root/.remote_backups/credentials/${_service}.txt"
-    local _secret_file="/root/.remote_backups/.secret.txt"
-  fi
-
-  if [ "${_acct}" = "YES" ]; then
-    # The check above and a read by path are two steps, and any directory on
-    # the way can be swapped between them: both files are read inside their
-    # real directories, never through a link or from a FIFO.
-    if _secret_body="$(_acct_in_real_dir "${_secret_dir}" \
-      _acct_read_file_here .secret.txt)"; then
-      export PASSPHRASE="${_secret_body}"
-    else
-      echo "Secret file ${_secret_file} not found. Unable to proceed."
-      exit 1
-    fi
-    if ! _cred_body="$(_acct_in_real_dir "${_cred_dir}" \
-      _acct_read_file_here "${_service}.txt")"; then
-      echo "Error: Credentials file '${_cred_file}' not found."
-      exit 1
-    fi
-  else
-    if [ -s "${_secret_file}" ]; then
-      export PASSPHRASE=$(cat "${_secret_file}")
-    else
-      echo "Secret file ${_secret_file} not found. Unable to proceed."
-      exit 1
-    fi
-
-    if [ ! -s "${_cred_file}" ]; then
-      echo "Error: Credentials file '${_cred_file}' not found."
-      exit 1
-    fi
-    _cred_body="$(timeout 10 dd if="${_cred_file}" iflag=nofollow,nonblock,fullblock \
-      bs=1048576 count=1 status=none 2>/dev/null)"
-  fi
-
-  _validate_credentials "${_cred_file}" "${_service}" "${_cred_body}"
-  _print_env "multiback_load_credentials"
-}
-
-# Function to load paths configuration
-_load_paths() {
-  local _user="$1"
-  if [ "${_user}" != "arch" ] \
-    && [ "${_user}" != "data" ] \
-    && [ "${_user}" != "global" ] \
-    && [ "${_user}" != "static" ] \
-    && [ "${_user}" != "custom" ]; then
-    local _paths_file="/data/disk/${_user}/remote_backups/paths/paths.txt"
-  elif [ "${_user}" = "global" ] || [ "${_user}" = "data" ] || [ "${_user}" = "custom" ]; then
-    local _paths_file="/root/.remote_backups/paths/${_user}_paths.txt"
-  fi
-
-  case "${_paths_file}" in
-    /data/disk/*)
-      _load_account_paths "${_user}" "${_paths_file}"
-      _print_env "multiback_load_paths"
-      return 0
-      ;;
-  esac
-
-  if [ ! -f "${_paths_file}" ]; then
-    echo "Error: Paths configuration file '${_paths_file}' not found."
-    exit 1
-  fi
-
-  if [ "${_user}" != "arch" ]; then
-    source "${_paths_file}"
-  fi
-  _print_env "multiback_load_paths"
-}
-
 # An account's paths.txt is root's file in root's remote_backups/paths, but
 # the account owns /data/disk/<oN> and can swap remote_backups itself for a
 # directory it made. The file is sourced by root, so it is read once, inside
@@ -953,6 +839,14 @@ _load_paths() {
 # cleared, so a restore is never held by a paths file. The reason is logged
 # by line number, never by content.
 _PATHS_LINE_RE='^(_SOURCE|_USER_INCLUDE_PATHS|_USER_EXCLUDE_PATHS|_INCLUDE_LIST|_EXCLUDE_LIST)="([^"$`]*)"$'
+# ./$1 in the current (pinned) root-only directory copied to the new file $2
+# when it is root's own regular file; nothing is created otherwise.
+_acct_copy_root_here() {
+  _root_only . && [ -f "./${1}" ] && [ ! -L "./${1}" ] && _root_only "./${1}" || return 1
+  timeout 10 dd if="./${1}" iflag=nofollow,nonblock of="${2}" conv=excl \
+    status=none 2> /dev/null
+}
+
 _load_account_paths() {
   local _user="$1" _paths_file="$2" _paths_dir="${2%/*}" _body _rc _v _n
   local _line _ln=0 _n_ok=0 _k _val _seen=" " _why=""
@@ -1025,12 +919,36 @@ _load_account_paths() {
     _acct_in_real_dir "${_paths_dir}" _acct_copy_root_here "${_n}" "${_LISTS_TMP}/${_n}"
   done
 }
-# ./$1 in the current (pinned) root-only directory copied to the new file $2
-# when it is root's own regular file; nothing is created otherwise.
-_acct_copy_root_here() {
-  _root_only . && [ -f "./${1}" ] && [ ! -L "./${1}" ] && _root_only "./${1}" || return 1
-  timeout 10 dd if="./${1}" iflag=nofollow,nonblock of="${2}" conv=excl \
-    status=none 2> /dev/null
+# Function to load paths configuration
+_load_paths() {
+  local _user="$1"
+  if [ "${_user}" != "arch" ] \
+    && [ "${_user}" != "data" ] \
+    && [ "${_user}" != "global" ] \
+    && [ "${_user}" != "static" ] \
+    && [ "${_user}" != "custom" ]; then
+    local _paths_file="/data/disk/${_user}/remote_backups/paths/paths.txt"
+  elif [ "${_user}" = "global" ] || [ "${_user}" = "data" ] || [ "${_user}" = "custom" ]; then
+    local _paths_file="/root/.remote_backups/paths/${_user}_paths.txt"
+  fi
+
+  case "${_paths_file}" in
+    /data/disk/*)
+      _load_account_paths "${_user}" "${_paths_file}"
+      _print_env "multiback_load_paths"
+      return 0
+      ;;
+  esac
+
+  if [ ! -f "${_paths_file}" ]; then
+    echo "Error: Paths configuration file '${_paths_file}' not found."
+    exit 1
+  fi
+
+  if [ "${_user}" != "arch" ]; then
+    source "${_paths_file}"
+  fi
+  _print_env "multiback_load_paths"
 }
 
 # Function to validate duration format and fallback to default
@@ -1394,30 +1312,6 @@ _backup_prepare() {
 }
 
 
-# Function to set backup mode
-_set_mode() {
-  local _user="${_USER}"
-  [ -z "${_MODE}" ] && _MODE="backup"
-  if _chain_known && [ "${_cached}" = "YES" ]; then
-    export _MODE="incremental"
-  else
-    [ ! -e "${_LOGPTH}/${_BUCKET_NAME}.${_TODAY}.full.log" ] && export _MODE="full"
-  fi
-  [ -e "/root/.dev.server.cnf" ] && echo "The _MODE has been set to (${_MODE}) in _set_mode for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
-  if [ "${_hostedSys}" = "YES" ]; then
-    if [ "${_user}" = "global" ] || [ "${_user}" = "data" ] || [ "${_user}" = "custom" ]; then
-      if [ "${_DOM}" = 1 ] && [ ! -e "${_LOGPTH}/${_BUCKET_NAME}.${_TODAY}.full.log" ]; then
-        _MODE="full"
-        echo "The _MODE has been re-set to (${_MODE}) in _set_mode for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
-      fi
-    fi
-  else
-    [ -e "/root/.dev.server.cnf" ] && echo "The FULL_BACKUP_FREQUENCY is (${FULL_BACKUP_FREQUENCY}) for ${_BUCKET_NAME}" >> ${_LOGFILE}
-  fi
-  export _MODE
-  _print_env "multiback_set_mode"
-}
-
 # Function to construct backup command
 _set_cmd() {
   local _user="${_USER}"
@@ -1520,6 +1414,56 @@ _set_cmd() {
   _print_env "multiback_set_cmd"
 }
 
+# Whether this box has a duplicity chain in the bucket lives in
+# /etc/boa/control: the archive log is the history the operator reads, and
+# the major OS upgrade's clean-up of /var/log/boa/*.log takes it, after which
+# the next run started a new FULL chain and skipped that day's retention.
+# A box whose archive log predates the marker gets it from the log here, at
+# the first read.
+_chain_put() {
+  local _c="/etc/boa/control/${_BUCKET_NAME}.chain.txt"
+  mkdir -p /etc/boa/control 2> /dev/null
+  chmod 0755 /etc/boa /etc/boa/control 2> /dev/null
+  if { echo "$(date '+%F %T') ${1}" > "${_c}.tmp.$$"; } 2> /dev/null \
+    && chmod 0644 "${_c}.tmp.$$" && mv -f "${_c}.tmp.$$" "${_c}"; then
+    return 0
+  fi
+  rm -f "${_c}.tmp.$$" 2> /dev/null
+  echo "ALERT: ${_c} cannot be written; a lost archive log would start a new full chain" >> ${_LOGFILE}
+  return 1
+}
+
+_chain_known() {
+  [ -e "/etc/boa/control/${_BUCKET_NAME}.chain.txt" ] && return 0
+  [ -e "${_LOGPTH}/${_BUCKET_NAME}.archive.log" ] || return 1
+  _chain_put "from the archive log"
+  return 0
+}
+
+# Function to set backup mode
+_set_mode() {
+  local _user="${_USER}"
+  [ -z "${_MODE}" ] && _MODE="backup"
+  if _chain_known && [ "${_cached}" = "YES" ]; then
+    export _MODE="incremental"
+  else
+    [ ! -e "${_LOGPTH}/${_BUCKET_NAME}.${_TODAY}.full.log" ] && export _MODE="full"
+  fi
+  [ -e "/root/.dev.server.cnf" ] && echo "The _MODE has been set to (${_MODE}) in _set_mode for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
+  if [ "${_hostedSys}" = "YES" ]; then
+    if [ "${_user}" = "global" ] || [ "${_user}" = "data" ] || [ "${_user}" = "custom" ]; then
+      if [ "${_DOM}" = 1 ] && [ ! -e "${_LOGPTH}/${_BUCKET_NAME}.${_TODAY}.full.log" ]; then
+        _MODE="full"
+        echo "The _MODE has been re-set to (${_MODE}) in _set_mode for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
+      fi
+    fi
+  else
+    [ -e "/root/.dev.server.cnf" ] && echo "The FULL_BACKUP_FREQUENCY is (${FULL_BACKUP_FREQUENCY}) for ${_BUCKET_NAME}" >> ${_LOGFILE}
+  fi
+  export _MODE
+  _print_env "multiback_set_mode"
+}
+
 _test() {
   local _mode="$1"
   if [ "${_mode}" != "only" ]; then
@@ -1611,71 +1555,6 @@ _check_if_repair() {
     | grep -q "found incomplete backup sets"; then
     _repair_only
   fi
-}
-
-# Function to check if backup worked cleanly or log the errors
-_check_if_worked_cleanly_or_log_err() {
-  # Dispatch-level _USER, never the wrapper's exported _user: a manual
-  # run inherits no _user, so the tenant branch collapsed to
-  # /data/disk//... and the OK/ERR file landed under /data/disk/static/.
-  local _user="${_USER}"
-  local _logs_dir
-  if [ "${_user}" = "global" ] || [ "${_user}" = "data" ] || [ "${_user}" = "custom" ]; then
-    _logs_dir="/root/.remote_backups/logs"
-  else
-    _logs_dir="/data/disk/${_user}/static/control/remote_backups/logs"
-    # These paths hang off static/control, which the tenant owns, so every
-    # component is a name it can replace with a symlink -- and both verbs
-    # below follow one: cp writes THROUGH a planted destination link, and
-    # a link pointing at an existing directory makes the -e test true, so
-    # the mkdir is skipped and root's write lands in that directory. Same
-    # refusal shape as mybackup's credentials guard. The sentinel is a
-    # diagnostic, so refusing skips it without touching the run's status;
-    # the freshness notice then reports the missing sentinel, which is the
-    # right outcome for an account that planted the link.
-    local _p
-    for _p in "/data/disk/${_user}/static" \
-      "/data/disk/${_user}/static/control" \
-      "/data/disk/${_user}/static/control/remote_backups" \
-      "${_logs_dir}"; do
-      if [ -L "${_p}" ]; then
-        echo "[$(date)] REFUSED sentinel for ${_user}: ${_p} is a symlink" \
-          >> /var/log/mybackup_invalid_queued.log
-        return 0
-      fi
-    done
-    # the run's log never goes into a static/control that is not the
-    # account's own (another account's login can put one there)
-    local _why
-    if ! _why=$(_acct_ctrl_own "${_user}"); then
-      echo "[$(date)] REFUSED sentinel for ${_user}: static/control is not the account's own (${_why})" \
-        >> /var/log/mybackup_invalid_queued.log
-      return 0
-    fi
-  fi
-  local _sentinel
-  if tail -n +$(( ${_bupRun0:-0} + 1 )) "${_LOGFILE}" 2> /dev/null \
-    | grep -q "Backup Statistics"; then
-    _sentinel="${_logs_dir}/OK-${_BUCKET_NAME}.log"
-  else
-    _sentinel="${_logs_dir}/ERR-${_BUCKET_NAME}.log"
-  fi
-  case "${_logs_dir}" in
-    /data/disk/*)
-      # The loop above and a write by path are two steps: logs/ is made
-      # inside the real remote_backups (mkdir never follows a link at the
-      # name) and the sentinel is put inside the real logs/.
-      _acct_in_real_dir "${_logs_dir%/*}" mkdir -- ./logs 2> /dev/null
-      _acct_in_real_dir "${_logs_dir}" _acct_copy_put_here \
-        "${_sentinel##*/}" "${_LOGFILE}"
-      return 0
-      ;;
-  esac
-  [ ! -d "${_logs_dir}" ] && mkdir -p "${_logs_dir}"
-  [ -d "${_logs_dir}" ] || return 0
-  # rm unlinks a planted leaf link itself, never what it points at.
-  [ -L "${_sentinel}" ] && rm -f "${_sentinel}"
-  cp -af "${_LOGFILE}" "${_sentinel}"
 }
 
 # The root file $2 copied to ./$1 in the current (pinned) directory with its
@@ -1969,32 +1848,6 @@ _run_backup() {
   _print_env "multiback_run_backup"
 }
 
-# Whether this box has a duplicity chain in the bucket lives in
-# /etc/boa/control: the archive log is the history the operator reads, and
-# the major OS upgrade's clean-up of /var/log/boa/*.log takes it, after which
-# the next run started a new FULL chain and skipped that day's retention.
-# A box whose archive log predates the marker gets it from the log here, at
-# the first read.
-_chain_put() {
-  local _c="/etc/boa/control/${_BUCKET_NAME}.chain.txt"
-  mkdir -p /etc/boa/control 2> /dev/null
-  chmod 0755 /etc/boa /etc/boa/control 2> /dev/null
-  if { echo "$(date '+%F %T') ${1}" > "${_c}.tmp.$$"; } 2> /dev/null \
-    && chmod 0644 "${_c}.tmp.$$" && mv -f "${_c}.tmp.$$" "${_c}"; then
-    return 0
-  fi
-  rm -f "${_c}.tmp.$$" 2> /dev/null
-  echo "ALERT: ${_c} cannot be written; a lost archive log would start a new full chain" >> ${_LOGFILE}
-  return 1
-}
-
-_chain_known() {
-  [ -e "/etc/boa/control/${_BUCKET_NAME}.chain.txt" ] && return 0
-  [ -e "${_LOGPTH}/${_BUCKET_NAME}.archive.log" ] || return 1
-  _chain_put "from the archive log"
-  return 0
-}
-
 # Function to prepare backup
 # A chain this box wrote while /etc/hostname was empty went to the bucket
 # without the host part; this run starts a new one under the full name. Said
@@ -2020,38 +1873,6 @@ _note_hostless_chain() {
   mkdir -p /etc/boa/control 2> /dev/null
   { date > "/etc/boa/control/${_BUCKET_NOHOST}.noted.txt" \
       && chmod 0644 "/etc/boa/control/${_BUCKET_NOHOST}.noted.txt"; } 2> /dev/null
-}
-
-_backup() {
-  # the length before this run: a run killed before its log was archived
-  # leaves its lines behind, and only this run's may decide repair or OK
-  _bupRun0="$( { wc -l < "${_LOGFILE}"; } 2> /dev/null | tr -d ' ')"
-  _note_hostless_chain
-  _backup_prepare
-  _set_mode
-  _set_cmd
-  _run_backup
-  _check_if_repair
-  _weekly_cleanup
-  _check_if_worked_cleanly_or_log_err
-  _chain_put "${_MODE}"
-  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" != "OFF" ]; then
-    boa info  >> ${_LOGFILE}
-    echo "Sending email report on $(date)" >> ${_LOGFILE}
-    echo >> ${_LOGFILE}
-    s-nail -s "Backup report (${_MODE}) for ${_BUCKET_NAME} on $(date)" ${_MY_EMAIL} < ${_LOGFILE}
-  fi
-  cat ${_LOGFILE} >> ${_LOGPTH}/${_BUCKET_NAME}.archive.log
-  rm -f ${_LOGFILE}
-  _print_env "multiback_backup"
-  # Propagated only after the classifier, cleanup and report steps, so
-  # the ERR file and the emailed log still happen on a failed backup.
-  # The sequential wrapper's verdict is this exit code; with it
-  # discarded a fatal run was reported as completed successfully. The
-  # EXIT trap's bare exit preserves this status after the pid cleanup.
-  if [ "${_BUP_RC:-0}" -ne 0 ]; then
-    exit "${_BUP_RC}"
-  fi
 }
 
 ### Legacy procedure for reference
@@ -2538,46 +2359,6 @@ _rst_links() {
   return 0
 }
 
-# In the current (real) target directory: the restore runs inside a fresh
-# directory only root can open, so no one can swap a name below it while
-# root writes there, and the finished tree is renamed to ./$2 in one step.
-# $1 = the archive path, $2 = the name.
-_rst_staged_here() {
-  local _st _stid _want _rc
-  if [ -e "./${2}" ] || [ -L "./${2}" ]; then
-    echo "Error: $(/bin/pwd -P)/${2} already exists. Unable to proceed."
-    return 1
-  fi
-  _st="$(mktemp -d ./.multiback-restore.XXXXXX 2> /dev/null)" || return 1
-  _want="$(/bin/pwd -P)/${_st#./}"
-  if ! cd -P -- "${_st}" 2> /dev/null || [ "$(/bin/pwd -P)" != "${_want}" ] \
-    || [ "$(stat -c '%u %a' .)" != "0 700" ]; then
-    echo "Error: the staging directory ${_want} is not root's own. Unable to proceed."
-    return 1
-  fi
-  _stid="$(stat -c '%d:%i' .)"
-  _rst_path "${1}" "./${2}"
-  _rc=$?
-  if [ "${_rc}" = 0 ]; then
-    _RST_GIVEN="${1}"
-    _RST_DONE="${_RST_LAST}"
-    _rst_links "./${2}"
-    # what the restore wrote is handed to the account here, in the stage,
-    # before the tree is moved into place (see _acct_own_restored)
-    _acct_own_restored "${_want%/*}/${2}" "${2}"
-    if [ -e "../${2}" ] || [ -L "../${2}" ] || ! mv -T -- "./${2}" "../${2}"; then
-      echo "Error: the restored tree is left in ${_want}/${2}"
-      return 1
-    fi
-  else
-    rm -rf -- "./${2}"
-  fi
-  cd .. || return 1
-  [ "$(stat -c '%d:%i' -- "./${_st#./}" 2> /dev/null)" = "${_stid}" ] \
-    && rmdir -- "./${_st#./}"
-  return "${_rc}"
-}
-
 # Run "$@" inside the directory at the resolved path $1, only when pwd -P
 # there is $1, so no name on it is a link; once entered, ./name stays there
 # whatever is swapped.
@@ -2688,103 +2469,6 @@ _rst_ground_made() {
     /data/disk/arch|/home/*) return 0 ;;
   esac
   getent passwd "${_a}" > /dev/null 2>&1
-}
-
-# Function to restore backup. The target is used where it leads only when
-# that is where the target as given may lead (see _rst_target_ok), and only
-# as a real directory: a missing one is made one name at a time inside its
-# real parent, never an account's own directory (see _rst_ground_made), and
-# the restore acts inside it by pwd -P. The tree itself is restored in root's
-# staging directory there (see _rst_staged_here), so on the target's own
-# filesystem. A full restore (no path) goes only to a directory outside the
-# accounts' ground.
-_restore() {
-  # Dispatch-level _USER, never the wrapper's exported _user (see
-  # _check_if_worked_cleanly_or_log_err)
-  local _user="${_USER}"
-  local _restore_target=$1
-  local _restore_path=$2
-  local _restore_time=$3
-  local _clean_restore_path _last_part _final_restore_target _given _real
-  local _scope=acct _rc=0
-
-  # Remove any trailing slash from _restore_path for proper basename extraction
-  _clean_restore_path="${_restore_path%/}"
-
-  # The last part (basename) of the restore path names the restored tree
-  _last_part="${_clean_restore_path##*/}"
-  case "${_last_part}" in
-    .|..)
-      echo "Error: Invalid restore path '${_restore_path}'."
-      exit 1
-      ;;
-  esac
-
-  [ -n "${_restore_target}" ] || _restore_target="/data/disk/${_user}/static/restores"
-  # The path judged is the path used: no '..' name folds a link away
-  case "/${_restore_target}/" in
-    */../*)
-      echo "Error: give the restore target without '..' names, not '${_restore_target}'."
-      exit 1
-      ;;
-  esac
-  # The target as given (made absolute, links not resolved) and where it
-  # leads now
-  _given="$(realpath -m -s -- "${_restore_target}" 2> /dev/null)"
-  _real="$(realpath -m -- "${_restore_target}" 2> /dev/null)"
-  if [ -z "${_given}" ] || [ -z "${_real}" ]; then
-    echo "Error: Invalid restore target '${_restore_target}'."
-    exit 1
-  fi
-  if ! _rst_target_ok "${_given}" "${_real}"; then
-    echo "Error: ${_given} leads to ${_real} through a link root did not make in a directory only root can write, outside the account's own tree and files store, or it changed while it was checked. Unable to proceed."
-    exit 1
-  fi
-  if [ -z "${_last_part}" ] && { [ -n "$(_rst_ground_acct "${_given}")" ] \
-    || [ -n "$(_rst_ground_acct "${_real}")" ]; }; then
-    echo "Error: A full restore goes to a directory root owns, not ${_real}."
-    exit 1
-  fi
-  case "${_user}" in
-    global|data|custom) _scope="${_user}" ;;
-  esac
-  if ! _rst_setup "${_DCY_UTL_CMD} restore" "${_DCY_UTL_CMD} list-current-files" \
-    "${_restore_time}" "${_scope}" "${_user}" "" \
-    "multiback restore ${_SERVICE} ${_user} $(printf '%q' "${_given}")"; then
-    echo "Error: no private directory for the restore. Unable to proceed."
-    exit 1
-  fi
-
-  if [ ! -e "${_real}" ] && [ ! -L "${_real}" ]; then
-    if ! _rst_ground_made "${_real}"; then
-      echo "Error: ${_real} is not below an existing account's directory or files store. Unable to proceed."
-      exit 1
-    fi
-    echo "Creating restore target directory: ${_real}"
-    if ! _rst_mkdir_path "${_real}"; then
-      echo "Error: ${_real} could not be made: a directory on the way is not a real one. Unable to proceed."
-      exit 1
-    fi
-  fi
-  if ! _rst_in_dir "${_real}" true; then
-    echo "Error: ${_real} is not a real directory. Unable to proceed."
-    exit 1
-  fi
-  if [ -z "${_last_part}" ]; then
-    _final_restore_target="${_real}"
-    _rst_one "" "${_real}" || _rc=1
-  else
-    _final_restore_target="${_real%/}/${_last_part}"
-    _rst_in_dir "${_real}" _rst_staged_here \
-      "${_clean_restore_path}" "${_last_part}" || _rc=1
-  fi
-  _acct_reclaim_restored "${_final_restore_target}"
-
-  _print_env "multiback_restore"
-  if [ "${_rc}" != 0 ]; then
-    echo "Error: the restore of ${_restore_path:-everything} did not complete."
-    exit 1
-  fi
 }
 
 _acct_group() {
@@ -3191,6 +2875,185 @@ _acct_ctrl_own() {
   return 1
 }
 
+# Function to load credentials
+_load_credentials() {
+  local _service="$1"
+  local _user="$2"
+  local _acct=NO _cred_dir _secret_dir _cred_body _secret_body
+  if [ "${_user}" != "arch" ] \
+    && [ "${_user}" != "data" ] \
+    && [ "${_user}" != "global" ] \
+    && [ "${_user}" != "static" ] \
+    && [ "${_user}" != "custom" ]; then
+    _acct=YES
+    _cred_dir="/data/disk/${_user}/static/control/remote_backups/credentials"
+    _secret_dir="/data/disk/${_user}/remote_backups"
+    local _cred_file="${_cred_dir}/${_service}.txt"
+    local _secret_file="${_secret_dir}/.secret.txt"
+    # The credentials hang off static/control, which the tenant owns: refuse
+    # when any name on the way, or the file itself, is a link (a planted one
+    # would hand root another account's credentials), as mybackup does.
+    local _p
+    for _p in "/data/disk/${_user}/static" \
+      "/data/disk/${_user}/static/control" \
+      "/data/disk/${_user}/static/control/remote_backups" \
+      "/data/disk/${_user}/static/control/remote_backups/credentials" \
+      "${_cred_file}"; do
+      if [ -L "${_p}" ]; then
+        echo "[$(date)] REFUSED credentials for ${_user}: ${_p} is a symlink" \
+          >> /var/log/mybackup_invalid_queued.log
+        echo "Error: ${_p} is a symlink. Unable to proceed."
+        exit 1
+      fi
+    done
+    # and when static/control is not the account's own: another account's
+    # login can put one there while the account is on the box-wide group
+    local _why
+    if ! _why=$(_acct_ctrl_own "${_user}"); then
+      echo "[$(date)] REFUSED credentials for ${_user}: static/control is not the account's own (${_why})" \
+        >> /var/log/mybackup_invalid_queued.log
+      echo "Error: static/control of ${_user} is not the account's own (${_why}). Unable to proceed."
+      exit 1
+    fi
+  fi
+  if [ "${_user}" = "global" ] || [ "${_user}" = "data" ] || [ "${_user}" = "custom" ]; then
+    local _cred_file="/root/.remote_backups/credentials/${_service}.txt"
+    local _secret_file="/root/.remote_backups/.secret.txt"
+  fi
+
+  if [ "${_acct}" = "YES" ]; then
+    # The check above and a read by path are two steps, and any directory on
+    # the way can be swapped between them: both files are read inside their
+    # real directories, never through a link or from a FIFO.
+    if _secret_body="$(_acct_in_real_dir "${_secret_dir}" \
+      _acct_read_file_here .secret.txt)"; then
+      export PASSPHRASE="${_secret_body}"
+    else
+      echo "Secret file ${_secret_file} not found. Unable to proceed."
+      exit 1
+    fi
+    if ! _cred_body="$(_acct_in_real_dir "${_cred_dir}" \
+      _acct_read_file_here "${_service}.txt")"; then
+      echo "Error: Credentials file '${_cred_file}' not found."
+      exit 1
+    fi
+  else
+    if [ -s "${_secret_file}" ]; then
+      export PASSPHRASE=$(cat "${_secret_file}")
+    else
+      echo "Secret file ${_secret_file} not found. Unable to proceed."
+      exit 1
+    fi
+
+    if [ ! -s "${_cred_file}" ]; then
+      echo "Error: Credentials file '${_cred_file}' not found."
+      exit 1
+    fi
+    _cred_body="$(timeout 10 dd if="${_cred_file}" iflag=nofollow,nonblock,fullblock \
+      bs=1048576 count=1 status=none 2>/dev/null)"
+  fi
+
+  _validate_credentials "${_cred_file}" "${_service}" "${_cred_body}"
+  _print_env "multiback_load_credentials"
+}
+
+# Function to check if backup worked cleanly or log the errors
+_check_if_worked_cleanly_or_log_err() {
+  # Dispatch-level _USER, never the wrapper's exported _user: a manual
+  # run inherits no _user, so the tenant branch collapsed to
+  # /data/disk//... and the OK/ERR file landed under /data/disk/static/.
+  local _user="${_USER}"
+  local _logs_dir
+  if [ "${_user}" = "global" ] || [ "${_user}" = "data" ] || [ "${_user}" = "custom" ]; then
+    _logs_dir="/root/.remote_backups/logs"
+  else
+    _logs_dir="/data/disk/${_user}/static/control/remote_backups/logs"
+    # These paths hang off static/control, which the tenant owns, so every
+    # component is a name it can replace with a symlink -- and both verbs
+    # below follow one: cp writes THROUGH a planted destination link, and
+    # a link pointing at an existing directory makes the -e test true, so
+    # the mkdir is skipped and root's write lands in that directory. Same
+    # refusal shape as mybackup's credentials guard. The sentinel is a
+    # diagnostic, so refusing skips it without touching the run's status;
+    # the freshness notice then reports the missing sentinel, which is the
+    # right outcome for an account that planted the link.
+    local _p
+    for _p in "/data/disk/${_user}/static" \
+      "/data/disk/${_user}/static/control" \
+      "/data/disk/${_user}/static/control/remote_backups" \
+      "${_logs_dir}"; do
+      if [ -L "${_p}" ]; then
+        echo "[$(date)] REFUSED sentinel for ${_user}: ${_p} is a symlink" \
+          >> /var/log/mybackup_invalid_queued.log
+        return 0
+      fi
+    done
+    # the run's log never goes into a static/control that is not the
+    # account's own (another account's login can put one there)
+    local _why
+    if ! _why=$(_acct_ctrl_own "${_user}"); then
+      echo "[$(date)] REFUSED sentinel for ${_user}: static/control is not the account's own (${_why})" \
+        >> /var/log/mybackup_invalid_queued.log
+      return 0
+    fi
+  fi
+  local _sentinel
+  if tail -n +$(( ${_bupRun0:-0} + 1 )) "${_LOGFILE}" 2> /dev/null \
+    | grep -q "Backup Statistics"; then
+    _sentinel="${_logs_dir}/OK-${_BUCKET_NAME}.log"
+  else
+    _sentinel="${_logs_dir}/ERR-${_BUCKET_NAME}.log"
+  fi
+  case "${_logs_dir}" in
+    /data/disk/*)
+      # The loop above and a write by path are two steps: logs/ is made
+      # inside the real remote_backups (mkdir never follows a link at the
+      # name) and the sentinel is put inside the real logs/.
+      _acct_in_real_dir "${_logs_dir%/*}" mkdir -- ./logs 2> /dev/null
+      _acct_in_real_dir "${_logs_dir}" _acct_copy_put_here \
+        "${_sentinel##*/}" "${_LOGFILE}"
+      return 0
+      ;;
+  esac
+  [ ! -d "${_logs_dir}" ] && mkdir -p "${_logs_dir}"
+  [ -d "${_logs_dir}" ] || return 0
+  # rm unlinks a planted leaf link itself, never what it points at.
+  [ -L "${_sentinel}" ] && rm -f "${_sentinel}"
+  cp -af "${_LOGFILE}" "${_sentinel}"
+}
+
+_backup() {
+  # the length before this run: a run killed before its log was archived
+  # leaves its lines behind, and only this run's may decide repair or OK
+  _bupRun0="$( { wc -l < "${_LOGFILE}"; } 2> /dev/null | tr -d ' ')"
+  _note_hostless_chain
+  _backup_prepare
+  _set_mode
+  _set_cmd
+  _run_backup
+  _check_if_repair
+  _weekly_cleanup
+  _check_if_worked_cleanly_or_log_err
+  _chain_put "${_MODE}"
+  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" != "OFF" ]; then
+    boa info  >> ${_LOGFILE}
+    echo "Sending email report on $(date)" >> ${_LOGFILE}
+    echo >> ${_LOGFILE}
+    s-nail -s "Backup report (${_MODE}) for ${_BUCKET_NAME} on $(date)" ${_MY_EMAIL} < ${_LOGFILE}
+  fi
+  cat ${_LOGFILE} >> ${_LOGPTH}/${_BUCKET_NAME}.archive.log
+  rm -f ${_LOGFILE}
+  _print_env "multiback_backup"
+  # Propagated only after the classifier, cleanup and report steps, so
+  # the ERR file and the emailed log still happen on a failed backup.
+  # The sequential wrapper's verdict is this exit code; with it
+  # discarded a fatal run was reported as completed successfully. The
+  # EXIT trap's bare exit preserves this status after the pid cleanup.
+  if [ "${_BUP_RC:-0}" -ne 0 ]; then
+    exit "${_BUP_RC}"
+  fi
+}
+
 # A root-run restore lands the owners its archive recorded: duplicity sets
 # them by name, or by number where the name is not here, so an archive made
 # on another box (another host's bucket) can land entries on another
@@ -3252,6 +3115,143 @@ _acct_own_restored() {
     \( -type d -o -type f \) "${_x[@]}" \
     -execdir perl -e "${_ACCT_REOWN_PL}" -- "${_u}" -1 {} + 2> /dev/null
   return 0
+}
+
+# In the current (real) target directory: the restore runs inside a fresh
+# directory only root can open, so no one can swap a name below it while
+# root writes there, and the finished tree is renamed to ./$2 in one step.
+# $1 = the archive path, $2 = the name.
+_rst_staged_here() {
+  local _st _stid _want _rc
+  if [ -e "./${2}" ] || [ -L "./${2}" ]; then
+    echo "Error: $(/bin/pwd -P)/${2} already exists. Unable to proceed."
+    return 1
+  fi
+  _st="$(mktemp -d ./.multiback-restore.XXXXXX 2> /dev/null)" || return 1
+  _want="$(/bin/pwd -P)/${_st#./}"
+  if ! cd -P -- "${_st}" 2> /dev/null || [ "$(/bin/pwd -P)" != "${_want}" ] \
+    || [ "$(stat -c '%u %a' .)" != "0 700" ]; then
+    echo "Error: the staging directory ${_want} is not root's own. Unable to proceed."
+    return 1
+  fi
+  _stid="$(stat -c '%d:%i' .)"
+  _rst_path "${1}" "./${2}"
+  _rc=$?
+  if [ "${_rc}" = 0 ]; then
+    _RST_GIVEN="${1}"
+    _RST_DONE="${_RST_LAST}"
+    _rst_links "./${2}"
+    # what the restore wrote is handed to the account here, in the stage,
+    # before the tree is moved into place (see _acct_own_restored)
+    _acct_own_restored "${_want%/*}/${2}" "${2}"
+    if [ -e "../${2}" ] || [ -L "../${2}" ] || ! mv -T -- "./${2}" "../${2}"; then
+      echo "Error: the restored tree is left in ${_want}/${2}"
+      return 1
+    fi
+  else
+    rm -rf -- "./${2}"
+  fi
+  cd .. || return 1
+  [ "$(stat -c '%d:%i' -- "./${_st#./}" 2> /dev/null)" = "${_stid}" ] \
+    && rmdir -- "./${_st#./}"
+  return "${_rc}"
+}
+
+# Function to restore backup. The target is used where it leads only when
+# that is where the target as given may lead (see _rst_target_ok), and only
+# as a real directory: a missing one is made one name at a time inside its
+# real parent, never an account's own directory (see _rst_ground_made), and
+# the restore acts inside it by pwd -P. The tree itself is restored in root's
+# staging directory there (see _rst_staged_here), so on the target's own
+# filesystem. A full restore (no path) goes only to a directory outside the
+# accounts' ground.
+_restore() {
+  # Dispatch-level _USER, never the wrapper's exported _user (see
+  # _check_if_worked_cleanly_or_log_err)
+  local _user="${_USER}"
+  local _restore_target=$1
+  local _restore_path=$2
+  local _restore_time=$3
+  local _clean_restore_path _last_part _final_restore_target _given _real
+  local _scope=acct _rc=0
+
+  # Remove any trailing slash from _restore_path for proper basename extraction
+  _clean_restore_path="${_restore_path%/}"
+
+  # The last part (basename) of the restore path names the restored tree
+  _last_part="${_clean_restore_path##*/}"
+  case "${_last_part}" in
+    .|..)
+      echo "Error: Invalid restore path '${_restore_path}'."
+      exit 1
+      ;;
+  esac
+
+  [ -n "${_restore_target}" ] || _restore_target="/data/disk/${_user}/static/restores"
+  # The path judged is the path used: no '..' name folds a link away
+  case "/${_restore_target}/" in
+    */../*)
+      echo "Error: give the restore target without '..' names, not '${_restore_target}'."
+      exit 1
+      ;;
+  esac
+  # The target as given (made absolute, links not resolved) and where it
+  # leads now
+  _given="$(realpath -m -s -- "${_restore_target}" 2> /dev/null)"
+  _real="$(realpath -m -- "${_restore_target}" 2> /dev/null)"
+  if [ -z "${_given}" ] || [ -z "${_real}" ]; then
+    echo "Error: Invalid restore target '${_restore_target}'."
+    exit 1
+  fi
+  if ! _rst_target_ok "${_given}" "${_real}"; then
+    echo "Error: ${_given} leads to ${_real} through a link root did not make in a directory only root can write, outside the account's own tree and files store, or it changed while it was checked. Unable to proceed."
+    exit 1
+  fi
+  if [ -z "${_last_part}" ] && { [ -n "$(_rst_ground_acct "${_given}")" ] \
+    || [ -n "$(_rst_ground_acct "${_real}")" ]; }; then
+    echo "Error: A full restore goes to a directory root owns, not ${_real}."
+    exit 1
+  fi
+  case "${_user}" in
+    global|data|custom) _scope="${_user}" ;;
+  esac
+  if ! _rst_setup "${_DCY_UTL_CMD} restore" "${_DCY_UTL_CMD} list-current-files" \
+    "${_restore_time}" "${_scope}" "${_user}" "" \
+    "multiback restore ${_SERVICE} ${_user} $(printf '%q' "${_given}")"; then
+    echo "Error: no private directory for the restore. Unable to proceed."
+    exit 1
+  fi
+
+  if [ ! -e "${_real}" ] && [ ! -L "${_real}" ]; then
+    if ! _rst_ground_made "${_real}"; then
+      echo "Error: ${_real} is not below an existing account's directory or files store. Unable to proceed."
+      exit 1
+    fi
+    echo "Creating restore target directory: ${_real}"
+    if ! _rst_mkdir_path "${_real}"; then
+      echo "Error: ${_real} could not be made: a directory on the way is not a real one. Unable to proceed."
+      exit 1
+    fi
+  fi
+  if ! _rst_in_dir "${_real}" true; then
+    echo "Error: ${_real} is not a real directory. Unable to proceed."
+    exit 1
+  fi
+  if [ -z "${_last_part}" ]; then
+    _final_restore_target="${_real}"
+    _rst_one "" "${_real}" || _rc=1
+  else
+    _final_restore_target="${_real%/}/${_last_part}"
+    _rst_in_dir "${_real}" _rst_staged_here \
+      "${_clean_restore_path}" "${_last_part}" || _rc=1
+  fi
+  _acct_reclaim_restored "${_final_restore_target}"
+
+  _print_env "multiback_restore"
+  if [ "${_rc}" != 0 ]; then
+    echo "Error: the restore of ${_restore_path:-everything} did not complete."
+    exit 1
+  fi
 }
 
 # Function to set backup target based on service

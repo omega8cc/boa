@@ -135,38 +135,6 @@ _sanitize_number() {
   echo "$1" | sed 's/[^0-9.]//g'
 }
 
-_clean_pid_exit() {
-  # A signal here must not cut the owner's cleanup short (cron left stopped)
-  trap '' HUP INT TERM PIPE
-  if [ -n "${1}" ]; then
-    echo "REASON ${1} on $(date)" >> /root/.octopus.exit.exceptions.log
-  fi
-  # All cleanup below belongs to the process which created the lock pids in
-  # _up_start; exits on pre-flight paths must never unlock an install
-  # running elsewhere, nor purge its /opt/tmp build staging or backup-mode
-  # control file, nor restart cron it may depend on
-  if [ "${_PID_LOCK_OWNER}" = "YES" ]; then
-    if [ -n "${1}" ]; then
-      [ -e "/opt/tmp/boa" ] && rm -rf /opt/tmp/*
-    fi
-    # only the locks still the files this run made (_boa_lock_release)
-    _boa_lock_release /run/boa_wait.pid "${_BOA_LOCK_WAIT_I}" > /dev/null
-    _boa_lock_release /run/boa_run.pid "${_BOA_LOCK_RUN_I}" > /dev/null
-    # _up_start creates the install marker too; leaving it behind turns
-    # every abort into a fleet-visible launcher lockout until it is reaped
-    _boa_lock_release /run/octopus_install_run.pid "${_BOA_LOCK_OCT_I}" > /dev/null
-    [ -e "/tmp/aegir_backup_mode.txt" ] && rm -f /tmp/aegir_backup_mode.txt
-    # an ignored signal stays ignored in what a process starts: cron and the
-    # jobs it forks would never die by TERM, nor a pipeline by PIPE. Started
-    # in a session of its own first, so no signal to this run's group cuts
-    # the start short, then with the four back at their defaults
-    setsid -w perl -e '$SIG{$_} = "DEFAULT" for qw(HUP INT TERM PIPE); exec @ARGV or exit 1' \
-      service cron start &> /dev/null
-    _symlink_to_websh
-  fi
-  exit 1
-}
-
 #
 # Put websh back on /bin/sh when this run is over, completed or aborted. Every
 # pass runs on dash (the launcher flips /bin/sh at its start: websh refuses
@@ -334,6 +302,71 @@ _sql_pswd_synced() {
     [ "${_l}" = "${_SQL_PSWD}" ] && return 0
   done < /root/.my.cnf
   return 1
+}
+
+_boa_lock_ino() { stat -c %i -- "${1}" 2> /dev/null; }
+# $1 the lock, $2 its inode when this run took it: removed only while it is
+# still that file
+_boa_lock_release() {
+  if [ -n "${2}" ] && [ "$(_boa_lock_ino "${1}")" = "${2}" ] && rm -f -- "${1}"; then
+    echo released
+  else
+    echo left
+  fi
+}
+_clean_pid_exit() {
+  # A signal here must not cut the owner's cleanup short (cron left stopped)
+  trap '' HUP INT TERM PIPE
+  if [ -n "${1}" ]; then
+    echo "REASON ${1} on $(date)" >> /root/.octopus.exit.exceptions.log
+  fi
+  # All cleanup below belongs to the process which created the lock pids in
+  # _up_start; exits on pre-flight paths must never unlock an install
+  # running elsewhere, nor purge its /opt/tmp build staging or backup-mode
+  # control file, nor restart cron it may depend on
+  if [ "${_PID_LOCK_OWNER}" = "YES" ]; then
+    if [ -n "${1}" ]; then
+      [ -e "/opt/tmp/boa" ] && rm -rf /opt/tmp/*
+    fi
+    # only the locks still the files this run made (_boa_lock_release)
+    _boa_lock_release /run/boa_wait.pid "${_BOA_LOCK_WAIT_I}" > /dev/null
+    _boa_lock_release /run/boa_run.pid "${_BOA_LOCK_RUN_I}" > /dev/null
+    # _up_start creates the install marker too; leaving it behind turns
+    # every abort into a fleet-visible launcher lockout until it is reaped
+    _boa_lock_release /run/octopus_install_run.pid "${_BOA_LOCK_OCT_I}" > /dev/null
+    [ -e "/tmp/aegir_backup_mode.txt" ] && rm -f /tmp/aegir_backup_mode.txt
+    # an ignored signal stays ignored in what a process starts: cron and the
+    # jobs it forks would never die by TERM, nor a pipeline by PIPE. Started
+    # in a session of its own first, so no signal to this run's group cuts
+    # the start short, then with the four back at their defaults
+    setsid -w perl -e '$SIG{$_} = "DEFAULT" for qw(HUP INT TERM PIPE); exec @ARGV or exit 1' \
+      service cron start &> /dev/null
+    _symlink_to_websh
+  fi
+  exit 1
+}
+
+# A run killed by a dropped ssh channel (its next write raises PIPE), a hangup,
+# Ctrl-C or kill left the locks _up_start took behind, and clear.sh reaps them
+# only by age, one to three hours later. Release what this run holds at that
+# moment and nothing else, and never /opt/tmp, whose reuse across runs is
+# intentional. A lock is this run's while it is the very file _up_start made
+# (its inode): the installer drops the run lock at its own end, and another
+# run may then take a new one by the same name. Every release goes by that
+# rule, the signal's and the run's own. Logged beside _clean_pid_exit's
+# reasons, never to the closed channel.
+_BOA_LOCK_RUN_I=""
+_BOA_LOCK_WAIT_I=""
+_BOA_LOCK_OCT_I=""
+_boa_on_signal() {
+  local _r _w _o
+  trap '' HUP INT TERM PIPE
+  _r=$(_boa_lock_release /run/boa_run.pid "${_BOA_LOCK_RUN_I}")
+  _w=$(_boa_lock_release /run/boa_wait.pid "${_BOA_LOCK_WAIT_I}")
+  _o=$(_boa_lock_release /run/octopus_install_run.pid "${_BOA_LOCK_OCT_I}")
+  echo "SIGNAL ${1} in ${_cmNd:-octopus} on $(date): boa_run.pid ${_r}, boa_wait.pid ${_w}, octopus_install_run.pid ${_o}" \
+    >> /root/.octopus.exit.exceptions.log 2> /dev/null
+  exit "${2}"
 }
 
 _check_sql_access() {
@@ -1233,39 +1266,6 @@ _up_action_one() {
       && _PASS_DROPPED="${_PASS_DROPPED} ${_sCnd}"
     _SEND_ALERT=YES
   fi
-}
-
-# A run killed by a dropped ssh channel (its next write raises PIPE), a hangup,
-# Ctrl-C or kill left the locks _up_start took behind, and clear.sh reaps them
-# only by age, one to three hours later. Release what this run holds at that
-# moment and nothing else, and never /opt/tmp, whose reuse across runs is
-# intentional. A lock is this run's while it is the very file _up_start made
-# (its inode): the installer drops the run lock at its own end, and another
-# run may then take a new one by the same name. Every release goes by that
-# rule, the signal's and the run's own. Logged beside _clean_pid_exit's
-# reasons, never to the closed channel.
-_BOA_LOCK_RUN_I=""
-_BOA_LOCK_WAIT_I=""
-_BOA_LOCK_OCT_I=""
-_boa_lock_ino() { stat -c %i -- "${1}" 2> /dev/null; }
-# $1 the lock, $2 its inode when this run took it: removed only while it is
-# still that file
-_boa_lock_release() {
-  if [ -n "${2}" ] && [ "$(_boa_lock_ino "${1}")" = "${2}" ] && rm -f -- "${1}"; then
-    echo released
-  else
-    echo left
-  fi
-}
-_boa_on_signal() {
-  local _r _w _o
-  trap '' HUP INT TERM PIPE
-  _r=$(_boa_lock_release /run/boa_run.pid "${_BOA_LOCK_RUN_I}")
-  _w=$(_boa_lock_release /run/boa_wait.pid "${_BOA_LOCK_WAIT_I}")
-  _o=$(_boa_lock_release /run/octopus_install_run.pid "${_BOA_LOCK_OCT_I}")
-  echo "SIGNAL ${1} in ${_cmNd:-octopus} on $(date): boa_run.pid ${_r}, boa_wait.pid ${_w}, octopus_install_run.pid ${_o}" \
-    >> /root/.octopus.exit.exceptions.log 2> /dev/null
-  exit "${2}"
 }
 
 # The reports below this folder hold what a run printed, in debug mode a

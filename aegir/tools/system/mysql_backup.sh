@@ -393,32 +393,6 @@ _dump_peak_plan() {
   } | _backup_notice "Backup compresses as it goes on [${_hName}]: ${_mnt} would reach ${_pct}%" "dump peak ${_p} K on ${_mnt}"
 }
 
-# One database's dump compressed right after it (_COMPRESS_EACH), its
-# uncompressed size added to the night's peak once its archive is in place.
-# A dump whose archive fails stays as it is: the compress step at the end
-# tries it again and counts it then, once. $1 = the database.
-_compress_as_we_go() {
-  local _p _k _n="${_COMPRESS_FAILED_N:-0}" _d="${_COMPRESS_FAILED_DBS}"
-  if [ "${_MYQUICK_USE}" = "YES" ]; then
-    _p="${_SAVELOCATION}/$1"
-  else
-    _p="${_SAVELOCATION}/$1.sql"
-  fi
-  [ -e "${_p}" ] || return 0
-  _k="$(du -sk "${_p}" 2>/dev/null | awk '{ print $1 }')"
-  if [ "${_MYQUICK_USE}" = "YES" ]; then
-    _compress_dump_dir "${_p}"
-  else
-    _compress_dump_sql "${_p}"
-  fi
-  _COMPRESS_FAILED_N="${_n}"
-  _COMPRESS_FAILED_DBS="${_d}"
-  if [ ! -e "${_p}" ] && [[ "${_k}" =~ ^[0-9]+$ ]]; then
-    _DUMP_PEAK_KB=$(( _DUMP_PEAK_KB + _k ))
-    [ "${_k}" -le "${_DUMP_PEAK_MAX_KB}" ] || _DUMP_PEAK_MAX_KB="${_k}"
-  fi
-}
-
 # The night's uncompressed peak, read before the compress step, as
 # "<epoch> <K> <largest K>": the whole set as it stands and its largest
 # entry, or with _COMPRESS_EACH the dumps compressed on the way plus what is
@@ -470,6 +444,66 @@ _sql_wait_drop() {
     rm -f /run/boa_sql_backup_wait.pid
   fi
 }
+### One mydumper directory into its archive. $1 = the directory.
+_compress_dump_dir() {
+  local DbPath="$1" DbName
+  [ -e "${DbPath}/metadata" ] || return 0
+  DbName=$(echo ${DbPath} | cut -d'/' -f7 | awk '{ print $1}' 2>&1)
+  cd ${_SAVELOCATION}
+  ### NEVER delete the dump until the archive that replaces it is
+  ### proven readable: an unchecked tar (disk full, zstd missing)
+  ### left a 0-byte .tar.zst and the rm then destroyed the only
+  ### copy of the night's backup.
+  if tar -c -p -I zstd -f ${DbName}-${_DATE}.tar.zst ${DbName} &> /dev/null \
+    && [ -s "${DbName}-${_DATE}.tar.zst" ] \
+    && tar -p -I zstd -tf ${DbName}-${_DATE}.tar.zst &> /dev/null; then
+    rm -f -r ${DbName}
+  else
+    echo "ALRT: compressing ${DbName} FAILED -- keeping the uncompressed dump directory"
+    rm -f ${DbName}-${_DATE}.tar.zst
+    _COMPRESS_FAILED_N=$(( ${_COMPRESS_FAILED_N:-0} + 1 ))
+    _COMPRESS_FAILED_DBS="${_COMPRESS_FAILED_DBS} ${DbName}"
+  fi
+}
+
+### One mysqldump file into its archive; gzip leaves a failed input
+### untouched. $1 = the .sql file.
+_compress_dump_sql() {
+  local DbSql="$1"
+  [ -e "${DbSql}" ] || return 0
+  if ! gzip "${DbSql}"; then
+    echo "ALRT: compressing $(basename "${DbSql}") FAILED -- keeping the uncompressed dump"
+    _COMPRESS_FAILED_N=$(( ${_COMPRESS_FAILED_N:-0} + 1 ))
+    _COMPRESS_FAILED_DBS="${_COMPRESS_FAILED_DBS} $(basename "${DbSql}" .sql)"
+  fi
+}
+
+# One database's dump compressed right after it (_COMPRESS_EACH), its
+# uncompressed size added to the night's peak once its archive is in place.
+# A dump whose archive fails stays as it is: the compress step at the end
+# tries it again and counts it then, once. $1 = the database.
+_compress_as_we_go() {
+  local _p _k _n="${_COMPRESS_FAILED_N:-0}" _d="${_COMPRESS_FAILED_DBS}"
+  if [ "${_MYQUICK_USE}" = "YES" ]; then
+    _p="${_SAVELOCATION}/$1"
+  else
+    _p="${_SAVELOCATION}/$1.sql"
+  fi
+  [ -e "${_p}" ] || return 0
+  _k="$(du -sk "${_p}" 2>/dev/null | awk '{ print $1 }')"
+  if [ "${_MYQUICK_USE}" = "YES" ]; then
+    _compress_dump_dir "${_p}"
+  else
+    _compress_dump_sql "${_p}"
+  fi
+  _COMPRESS_FAILED_N="${_n}"
+  _COMPRESS_FAILED_DBS="${_d}"
+  if [ ! -e "${_p}" ] && [[ "${_k}" =~ ^[0-9]+$ ]]; then
+    _DUMP_PEAK_KB=$(( _DUMP_PEAK_KB + _k ))
+    [ "${_k}" -le "${_DUMP_PEAK_MAX_KB}" ] || _DUMP_PEAK_MAX_KB="${_k}"
+  fi
+}
+
 # A dump into a held archive would make /data/disk/arch again at the name
 # the relocation's final pass set aside, or fail to write. Checked with the
 # wait marker in place: migratefs writes its hold before it looks for this
@@ -602,6 +636,97 @@ _create_locks() {
 _remove_locks() {
   echo "INFO: Removing locks for $1"
   rm -f /run/mysql_backup_running.pid
+}
+
+# A dump that failed must never disappear quietly: cron discards this
+# script's output, so the ALRT lines above reach nobody. Every failure is
+# counted in the loop and the compress phase, then reported ONCE per run --
+# a dated line in /var/log/boa/mysql.backup.incident.log (harvested with the
+# other incident logs) and an e-mail to _MY_EMAIL unless _INCIDENT_REPORT is
+# OFF. The debris of a failed dump is kept beside the archives as
+# <name>.FAILED with the tool's own output as <name>.mydumper.log, so the
+# operator reads what the tool said instead of guessing.
+_notify_dump_failures() {
+  [ "${_DUMP_FAILED_N:-0}" = "0" ] && [ "${_COMPRESS_FAILED_N:-0}" = "0" ] && return 0
+  local _sub _d
+  if [ "${_DUMP_FAILED_N:-0}" != "0" ]; then
+    _sub="Backup FAILED for ${_DUMP_FAILED_N} database(s) on [${_hName}]"
+  else
+    _sub="Backup archive INCOMPLETE for ${_COMPRESS_FAILED_N} database(s) on [${_hName}]"
+  fi
+  {
+    if [ "${_DUMP_FAILED_N:-0}" != "0" ]; then
+      echo "The database backup run on ${_hName} could not dump ${_DUMP_FAILED_N} database(s):"
+      echo
+      for _d in ${_DUMP_FAILED_DBS}; do
+        echo "  ${_d}"
+      done
+      echo
+      echo "Their dumps are missing from ${_SAVELOCATION}. What the dump tool"
+      echo "left behind is kept there in <name>.FAILED/ together with the tool's"
+      echo "own output (mydumper.log or mysqldump.log); every other database"
+      echo "was archived as usual."
+      echo
+    fi
+    if [ "${_COMPRESS_FAILED_N:-0}" != "0" ]; then
+      echo "The archive step failed for ${_COMPRESS_FAILED_N} database(s), whose dump"
+      echo "directories are kept uncompressed in ${_SAVELOCATION}:"
+      echo
+      for _d in ${_COMPRESS_FAILED_DBS}; do
+        echo "  ${_d}"
+      done
+      echo
+      echo "A full disk or a missing zstd is the usual cause."
+      echo
+    fi
+    echo "To repeat the run once the cause is fixed:"
+    echo
+    echo "  bash /var/xdrago/mysql_backup.sh"
+    echo
+  } | _backup_notice "${_sub}" "in ${_SAVELOCATION}:${_DUMP_FAILED_DBS}${_COMPRESS_FAILED_DBS:+ uncompressed:${_COMPRESS_FAILED_DBS}}"
+}
+
+# A dump the probe had to take without the stored routines or events is
+# archived, but must not pass for a complete one: reported once per run on
+# the same channel.
+_notify_objects_left_out() {
+  [ -z "${_OBJECTS_LEFT_DBS}" ] && return 0
+  local _d
+  {
+    echo "The database backup run on ${_hName} dumped these database(s) without"
+    echo "their stored routines or events (database:left out):"
+    echo
+    for _d in ${_OBJECTS_LEFT_DBS}; do
+      echo "  ${_d}"
+    done
+    echo
+    echo "The dumping login could not read them, and mysqldump would have"
+    echo "stopped the whole dump, so the tables were dumped without them."
+    echo "Check the rights of the login in the option file the run uses."
+    echo
+  } | _backup_notice "Backup without stored routines or events on [${_hName}]" "in ${_SAVELOCATION}:${_OBJECTS_LEFT_DBS}"
+}
+
+# A dump whose stored objects could not each be given the sql_mode they
+# were made under (_mydumper_object_modes) is archived as mydumper wrote
+# it; cron discards the run's WARN line, so it is reported once per run on
+# the same channel.
+_notify_modes_left() {
+  [ -z "${_MODES_LEFT_DBS}" ] && return 0
+  local _d
+  {
+    echo "The database backup run on ${_hName} archived the triggers, routines"
+    echo "or events of these database(s) under the dump's own sql_mode:"
+    echo
+    for _d in ${_MODES_LEFT_DBS}; do
+      echo "  ${_d}"
+    done
+    echo
+    echo "Their own modes could not each be written into the dump, so a load"
+    echo "of one made under another mode (a Drupal site's own, for one) can"
+    echo "fail or work otherwise. The next run writes them again."
+    echo
+  } | _backup_notice "Backup with stored objects under the dump's sql_mode on [${_hName}]" "in ${_SAVELOCATION}:${_MODES_LEFT_DBS}"
 }
 
 _check_running() {
@@ -1332,40 +1457,6 @@ _backup_mysql_schema() {
   rm -f "${_SAVELOCATION}/mysql.mysqldump.log"
 }
 
-### One mydumper directory into its archive. $1 = the directory.
-_compress_dump_dir() {
-  local DbPath="$1" DbName
-  [ -e "${DbPath}/metadata" ] || return 0
-  DbName=$(echo ${DbPath} | cut -d'/' -f7 | awk '{ print $1}' 2>&1)
-  cd ${_SAVELOCATION}
-  ### NEVER delete the dump until the archive that replaces it is
-  ### proven readable: an unchecked tar (disk full, zstd missing)
-  ### left a 0-byte .tar.zst and the rm then destroyed the only
-  ### copy of the night's backup.
-  if tar -c -p -I zstd -f ${DbName}-${_DATE}.tar.zst ${DbName} &> /dev/null \
-    && [ -s "${DbName}-${_DATE}.tar.zst" ] \
-    && tar -p -I zstd -tf ${DbName}-${_DATE}.tar.zst &> /dev/null; then
-    rm -f -r ${DbName}
-  else
-    echo "ALRT: compressing ${DbName} FAILED -- keeping the uncompressed dump directory"
-    rm -f ${DbName}-${_DATE}.tar.zst
-    _COMPRESS_FAILED_N=$(( ${_COMPRESS_FAILED_N:-0} + 1 ))
-    _COMPRESS_FAILED_DBS="${_COMPRESS_FAILED_DBS} ${DbName}"
-  fi
-}
-
-### One mysqldump file into its archive; gzip leaves a failed input
-### untouched. $1 = the .sql file.
-_compress_dump_sql() {
-  local DbSql="$1"
-  [ -e "${DbSql}" ] || return 0
-  if ! gzip "${DbSql}"; then
-    echo "ALRT: compressing $(basename "${DbSql}") FAILED -- keeping the uncompressed dump"
-    _COMPRESS_FAILED_N=$(( ${_COMPRESS_FAILED_N:-0} + 1 ))
-    _COMPRESS_FAILED_DBS="${_COMPRESS_FAILED_DBS} $(basename "${DbSql}" .sql)"
-  fi
-}
-
 _compress_backup() {
   if [ "${_MYQUICK_USE}" = "YES" ]; then
     for DbPath in `find ${_SAVELOCATION}/ -maxdepth 1 -mindepth 1 | sort`; do
@@ -1453,97 +1544,6 @@ _mysqldump_gtid_opts
 [ "${#_MYSQLDUMP_GTID[@]}" -eq 0 ] \
   && echo "INFO: this mysqldump takes no --set-gtid-purged: its dumps carry no GTID state"
 
-
-# A dump that failed must never disappear quietly: cron discards this
-# script's output, so the ALRT lines above reach nobody. Every failure is
-# counted in the loop and the compress phase, then reported ONCE per run --
-# a dated line in /var/log/boa/mysql.backup.incident.log (harvested with the
-# other incident logs) and an e-mail to _MY_EMAIL unless _INCIDENT_REPORT is
-# OFF. The debris of a failed dump is kept beside the archives as
-# <name>.FAILED with the tool's own output as <name>.mydumper.log, so the
-# operator reads what the tool said instead of guessing.
-_notify_dump_failures() {
-  [ "${_DUMP_FAILED_N:-0}" = "0" ] && [ "${_COMPRESS_FAILED_N:-0}" = "0" ] && return 0
-  local _sub _d
-  if [ "${_DUMP_FAILED_N:-0}" != "0" ]; then
-    _sub="Backup FAILED for ${_DUMP_FAILED_N} database(s) on [${_hName}]"
-  else
-    _sub="Backup archive INCOMPLETE for ${_COMPRESS_FAILED_N} database(s) on [${_hName}]"
-  fi
-  {
-    if [ "${_DUMP_FAILED_N:-0}" != "0" ]; then
-      echo "The database backup run on ${_hName} could not dump ${_DUMP_FAILED_N} database(s):"
-      echo
-      for _d in ${_DUMP_FAILED_DBS}; do
-        echo "  ${_d}"
-      done
-      echo
-      echo "Their dumps are missing from ${_SAVELOCATION}. What the dump tool"
-      echo "left behind is kept there in <name>.FAILED/ together with the tool's"
-      echo "own output (mydumper.log or mysqldump.log); every other database"
-      echo "was archived as usual."
-      echo
-    fi
-    if [ "${_COMPRESS_FAILED_N:-0}" != "0" ]; then
-      echo "The archive step failed for ${_COMPRESS_FAILED_N} database(s), whose dump"
-      echo "directories are kept uncompressed in ${_SAVELOCATION}:"
-      echo
-      for _d in ${_COMPRESS_FAILED_DBS}; do
-        echo "  ${_d}"
-      done
-      echo
-      echo "A full disk or a missing zstd is the usual cause."
-      echo
-    fi
-    echo "To repeat the run once the cause is fixed:"
-    echo
-    echo "  bash /var/xdrago/mysql_backup.sh"
-    echo
-  } | _backup_notice "${_sub}" "in ${_SAVELOCATION}:${_DUMP_FAILED_DBS}${_COMPRESS_FAILED_DBS:+ uncompressed:${_COMPRESS_FAILED_DBS}}"
-}
-
-# A dump the probe had to take without the stored routines or events is
-# archived, but must not pass for a complete one: reported once per run on
-# the same channel.
-_notify_objects_left_out() {
-  [ -z "${_OBJECTS_LEFT_DBS}" ] && return 0
-  local _d
-  {
-    echo "The database backup run on ${_hName} dumped these database(s) without"
-    echo "their stored routines or events (database:left out):"
-    echo
-    for _d in ${_OBJECTS_LEFT_DBS}; do
-      echo "  ${_d}"
-    done
-    echo
-    echo "The dumping login could not read them, and mysqldump would have"
-    echo "stopped the whole dump, so the tables were dumped without them."
-    echo "Check the rights of the login in the option file the run uses."
-    echo
-  } | _backup_notice "Backup without stored routines or events on [${_hName}]" "in ${_SAVELOCATION}:${_OBJECTS_LEFT_DBS}"
-}
-
-# A dump whose stored objects could not each be given the sql_mode they
-# were made under (_mydumper_object_modes) is archived as mydumper wrote
-# it; cron discards the run's WARN line, so it is reported once per run on
-# the same channel.
-_notify_modes_left() {
-  [ -z "${_MODES_LEFT_DBS}" ] && return 0
-  local _d
-  {
-    echo "The database backup run on ${_hName} archived the triggers, routines"
-    echo "or events of these database(s) under the dump's own sql_mode:"
-    echo
-    for _d in ${_MODES_LEFT_DBS}; do
-      echo "  ${_d}"
-    done
-    echo
-    echo "Their own modes could not each be written into the dump, so a load"
-    echo "of one made under another mode (a Drupal site's own, for one) can"
-    echo "fail or work otherwise. The next run writes them again."
-    echo
-  } | _backup_notice "Backup with stored objects under the dump's sql_mode on [${_hName}]" "in ${_SAVELOCATION}:${_MODES_LEFT_DBS}"
-}
 
 _DUMP_FAILED_N=0
 _DUMP_FAILED_DBS=""

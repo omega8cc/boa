@@ -404,6 +404,15 @@ EOF
   echo "Wrapper script created at ${_WRAPPER_SCRIPT}"
 }
 
+# Function to validate the cron file
+_validate_cron_file() {
+  if ! grep -q -E "^[^#]*${_WRAPPER_SCRIPT}" "${_CRON_FILE}"; then
+    echo "Error: Cron file validation failed. Please check the file at ${_CRON_FILE}."
+    exit 1
+  fi
+  echo "Cron file validated successfully."
+}
+
 # Function to create cron entries. The minute and hours are this box's own
 # (heavyslots: a lane from its IPv4 address, clear of its nightly database
 # backup, the night maintenance and the weekly upgrade), so the boxes sharing
@@ -446,15 +455,6 @@ _create_cron_entries() {
 
   # Validate the cron file
   _validate_cron_file
-}
-
-# Function to validate the cron file
-_validate_cron_file() {
-  if ! grep -q -E "^[^#]*${_WRAPPER_SCRIPT}" "${_CRON_FILE}"; then
-    echo "Error: Cron file validation failed. Please check the file at ${_CRON_FILE}."
-    exit 1
-  fi
-  echo "Cron file validated successfully."
 }
 
 # An account owns static/control through its .ftp login, so any name below

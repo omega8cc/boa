@@ -1775,106 +1775,6 @@ _unpark_postd_here() {
   return "${_r}"
 }
 
-_stage_a() {
-  ### Two locals: in one statement the RHS expands before _oN is assigned.
-  local _oN="$1"
-  local _q="${_XTRIM_BASE}/${_oN}/quarantine" _p _m _c _fail=0
-  mkdir -p "${_q}/pools" "${_q}/postd" "${_q}/solr"
-  _info "${_oN}: stage A -- quiesce (reversible)"
-  ### Park the runner OUT of /var/xdrago (runner.sh matches any 'run-'
-  ### name there) and NEVER into /var/backups/off-run (BOA hands back what
-  ### it finds there: the release pass to an account that keeps its
-  ### dispatcher, a promotion to each account it moves).
-  if [ -e "/var/xdrago/run-${_oN}" ]; then
-    mv -f "/var/xdrago/run-${_oN}" "${_q}/held-run-${_oN}"
-    _info "${_oN}: dispatcher parked"
-  fi
-  local _w=0
-  while pgrep -f "[r]un-${_oN}([^0-9a-z]|$)" >/dev/null 2>&1 \
-    || pgrep -u "${_oN}" -f "hosting-dispatch|hosting-tasks|provision-" >/dev/null 2>&1; do
-    _w=$(( _w + 5 ))
-    [ "${_w}" -ge "900" ] && { _alrt "${_oN}: drain timeout"; _fail=1; break; }
-    sleep 5
-  done
-  ### nginx post.d fpm includes FIRST (so nothing references the sockets),
-  ### then the pool files -- never the system www<NN> pool, which backs
-  ### the panel front's /sqladmin box-wide.
-  ### A local panel answers through the default include and the account's
-  ### default-version pool: both stay, only the per-site pins are parked.
-  local _panel_pool=""
-  if [ "${_MAP_PANEL_LOCAL}" = "YES" ]; then
-    _panel_pool=$(grep -m1 '^_PHP_FPM_VERSION=' "/root/.${_oN}.octopus.cnf" 2>/dev/null | cut -d= -f2 | tr -d -c 0-9)
-    _info "${_oN}: local panel ${_MAP_PANEL_DOM}: keeping fpm_include_default.inc and pool ${_oN}.${_panel_pool:-?}.conf"
-  fi
-  _p="${_USR}/config/server_master/nginx/post.d"
-  if [ -e "${_p}" ] || [ -L "${_p}" ]; then
-    if ! _in_real_dir "${_p}" true; then
-      _alrt "${_oN}: post.d is not a real directory -- fpm includes not parked"
-      _fail=1
-    elif ! _in_real_dir "${_p}" _park_postd_here "${_q}/postd" "${_MAP_PANEL_LOCAL}"; then
-      _alrt "${_oN}: an fpm include in post.d could not be parked"
-      _fail=1
-    fi
-  fi
-  _nginx_reload_locked || { _alrt "${_oN}: nginx reload after include removal FAILED"; _fail=1; }
-  _AFFECTED_MASTERS=""
-  for _p in /opt/php*/etc/pool.d/"${_oN}".conf /opt/php*/etc/pool.d/"${_oN}".*.conf; do
-    [ -e "${_p}" ] || continue
-    case "$(basename "${_p}")" in
-      www*) continue ;;
-    esac
-    [ -n "${_panel_pool}" ] && [ "$(basename "${_p}")" = "${_oN}.${_panel_pool}.conf" ] && continue
-    # a local panel also keeps the pool of its own (oN.hm), on any version
-    [ "${_MAP_PANEL_LOCAL}" = "YES" ] && [ "$(basename "${_p}")" = "${_oN}.hm.conf" ] && continue
-    _m=$(echo "${_p}" | sed "s|/opt/php\([0-9]*\)/.*|\1|")
-    ### root's record of the tree each pool came from: the restore puts a
-    ### pool back there, never where a file of the account's names
-    if mv -f "${_p}" "${_q}/pools/"; then
-      _AFFECTED_MASTERS="${_AFFECTED_MASTERS} ${_m}"
-      printf '%s %s\n' "$(basename "${_p}")" "${_m}" >> "${_q}/pools.tree"
-    fi
-  done
-  for _m in $(echo "${_AFFECTED_MASTERS}" | tr ' ' '\n' | sort -u); do
-    [ -x "/etc/init.d/php${_m}-fpm" ] && service "php${_m}-fpm" reload &> /dev/null
-  done
-  ### Solr: UNLOAD (all delete flags false) + move aside -- the reversible
-  ### stop, mirroring the orphan archiver. Never 'solr delete' here.
-  ### Quarantine SIBLING to the resolved data dir: /var/solrN is routinely
-  ### a symlink onto the attached /mnt store, and moving a large index onto
-  ### the root filesystem would fill it. The origin dir + port are recorded
-  ### in MAP.txt because the core NAME does not encode the tree (oct.* cores
-  ### exist on solr7 and solr9 alike) -- restore replays the map, never a
-  ### name heuristic.
-  for _c in $(_solr_cores_for "${_oN}"); do
-    local _core _port _res _qsolr
-    _core="$(basename "${_c}")"
-    case "${_c}" in
-      /var/solr9/*) _port=9099 ;;
-      /var/solr7/*) _port=9077 ;;
-      *) _port=8099 ;;
-    esac
-    _res="$(readlink -f "${_c}")"
-    [ -d "${_res}" ] || continue
-    _qsolr="$(dirname "$(dirname "${_res}")")/xtrim-quarantine"
-    mkdir -p "${_qsolr}"
-    curl -s --max-time 15 \
-      "http://127.0.0.1:${_port}/solr/admin/cores?action=UNLOAD&core=${_core}&deleteIndex=false&deleteDataDir=false&deleteInstanceDir=false" &> /dev/null
-    if mv -f "${_res}" "${_qsolr}/${_core}" 2>/dev/null; then
-      echo "${_core}|$(dirname "${_res}")|${_port}|${_qsolr}/${_core}" >> "${_q}/solr/MAP.txt"
-      _info "${_oN}: solr core ${_core} unloaded + quarantined at ${_qsolr}/${_core}"
-    fi
-  done
-  ### Re-probe; any regression auto-restores and aborts.
-  if [ "${_fail}" != "0" ] || ! _probe_all_doms "${_oN}"; then
-    _alrt "${_oN}: stage A regression detected -- auto-restoring"
-    _restore_stage_a "${_oN}" \
-      || _die "${_oN}: stage A aborted; restore incomplete (see ALRT above); nothing deleted"
-    _die "${_oN}: stage A aborted and restored; nothing deleted"
-  fi
-  _phase_set "${_oN}" "stage-a"
-  _info "${_oN}: stage A complete (proxy re-probed clean)"
-}
-
 # A task dispatcher (run-<account>) root may run or hand back: a regular file
 # with one link, owned by root, that no group or other user can write. Any
 # other copy was made or kept where another user could write it (a parked
@@ -2106,6 +2006,106 @@ _restore_stage_a() {
     _alrt "${_oN}: and reload by hand before treating this account as live."
     return 1
   fi
+}
+
+_stage_a() {
+  ### Two locals: in one statement the RHS expands before _oN is assigned.
+  local _oN="$1"
+  local _q="${_XTRIM_BASE}/${_oN}/quarantine" _p _m _c _fail=0
+  mkdir -p "${_q}/pools" "${_q}/postd" "${_q}/solr"
+  _info "${_oN}: stage A -- quiesce (reversible)"
+  ### Park the runner OUT of /var/xdrago (runner.sh matches any 'run-'
+  ### name there) and NEVER into /var/backups/off-run (BOA hands back what
+  ### it finds there: the release pass to an account that keeps its
+  ### dispatcher, a promotion to each account it moves).
+  if [ -e "/var/xdrago/run-${_oN}" ]; then
+    mv -f "/var/xdrago/run-${_oN}" "${_q}/held-run-${_oN}"
+    _info "${_oN}: dispatcher parked"
+  fi
+  local _w=0
+  while pgrep -f "[r]un-${_oN}([^0-9a-z]|$)" >/dev/null 2>&1 \
+    || pgrep -u "${_oN}" -f "hosting-dispatch|hosting-tasks|provision-" >/dev/null 2>&1; do
+    _w=$(( _w + 5 ))
+    [ "${_w}" -ge "900" ] && { _alrt "${_oN}: drain timeout"; _fail=1; break; }
+    sleep 5
+  done
+  ### nginx post.d fpm includes FIRST (so nothing references the sockets),
+  ### then the pool files -- never the system www<NN> pool, which backs
+  ### the panel front's /sqladmin box-wide.
+  ### A local panel answers through the default include and the account's
+  ### default-version pool: both stay, only the per-site pins are parked.
+  local _panel_pool=""
+  if [ "${_MAP_PANEL_LOCAL}" = "YES" ]; then
+    _panel_pool=$(grep -m1 '^_PHP_FPM_VERSION=' "/root/.${_oN}.octopus.cnf" 2>/dev/null | cut -d= -f2 | tr -d -c 0-9)
+    _info "${_oN}: local panel ${_MAP_PANEL_DOM}: keeping fpm_include_default.inc and pool ${_oN}.${_panel_pool:-?}.conf"
+  fi
+  _p="${_USR}/config/server_master/nginx/post.d"
+  if [ -e "${_p}" ] || [ -L "${_p}" ]; then
+    if ! _in_real_dir "${_p}" true; then
+      _alrt "${_oN}: post.d is not a real directory -- fpm includes not parked"
+      _fail=1
+    elif ! _in_real_dir "${_p}" _park_postd_here "${_q}/postd" "${_MAP_PANEL_LOCAL}"; then
+      _alrt "${_oN}: an fpm include in post.d could not be parked"
+      _fail=1
+    fi
+  fi
+  _nginx_reload_locked || { _alrt "${_oN}: nginx reload after include removal FAILED"; _fail=1; }
+  _AFFECTED_MASTERS=""
+  for _p in /opt/php*/etc/pool.d/"${_oN}".conf /opt/php*/etc/pool.d/"${_oN}".*.conf; do
+    [ -e "${_p}" ] || continue
+    case "$(basename "${_p}")" in
+      www*) continue ;;
+    esac
+    [ -n "${_panel_pool}" ] && [ "$(basename "${_p}")" = "${_oN}.${_panel_pool}.conf" ] && continue
+    # a local panel also keeps the pool of its own (oN.hm), on any version
+    [ "${_MAP_PANEL_LOCAL}" = "YES" ] && [ "$(basename "${_p}")" = "${_oN}.hm.conf" ] && continue
+    _m=$(echo "${_p}" | sed "s|/opt/php\([0-9]*\)/.*|\1|")
+    ### root's record of the tree each pool came from: the restore puts a
+    ### pool back there, never where a file of the account's names
+    if mv -f "${_p}" "${_q}/pools/"; then
+      _AFFECTED_MASTERS="${_AFFECTED_MASTERS} ${_m}"
+      printf '%s %s\n' "$(basename "${_p}")" "${_m}" >> "${_q}/pools.tree"
+    fi
+  done
+  for _m in $(echo "${_AFFECTED_MASTERS}" | tr ' ' '\n' | sort -u); do
+    [ -x "/etc/init.d/php${_m}-fpm" ] && service "php${_m}-fpm" reload &> /dev/null
+  done
+  ### Solr: UNLOAD (all delete flags false) + move aside -- the reversible
+  ### stop, mirroring the orphan archiver. Never 'solr delete' here.
+  ### Quarantine SIBLING to the resolved data dir: /var/solrN is routinely
+  ### a symlink onto the attached /mnt store, and moving a large index onto
+  ### the root filesystem would fill it. The origin dir + port are recorded
+  ### in MAP.txt because the core NAME does not encode the tree (oct.* cores
+  ### exist on solr7 and solr9 alike) -- restore replays the map, never a
+  ### name heuristic.
+  for _c in $(_solr_cores_for "${_oN}"); do
+    local _core _port _res _qsolr
+    _core="$(basename "${_c}")"
+    case "${_c}" in
+      /var/solr9/*) _port=9099 ;;
+      /var/solr7/*) _port=9077 ;;
+      *) _port=8099 ;;
+    esac
+    _res="$(readlink -f "${_c}")"
+    [ -d "${_res}" ] || continue
+    _qsolr="$(dirname "$(dirname "${_res}")")/xtrim-quarantine"
+    mkdir -p "${_qsolr}"
+    curl -s --max-time 15 \
+      "http://127.0.0.1:${_port}/solr/admin/cores?action=UNLOAD&core=${_core}&deleteIndex=false&deleteDataDir=false&deleteInstanceDir=false" &> /dev/null
+    if mv -f "${_res}" "${_qsolr}/${_core}" 2>/dev/null; then
+      echo "${_core}|$(dirname "${_res}")|${_port}|${_qsolr}/${_core}" >> "${_q}/solr/MAP.txt"
+      _info "${_oN}: solr core ${_core} unloaded + quarantined at ${_qsolr}/${_core}"
+    fi
+  done
+  ### Re-probe; any regression auto-restores and aborts.
+  if [ "${_fail}" != "0" ] || ! _probe_all_doms "${_oN}"; then
+    _alrt "${_oN}: stage A regression detected -- auto-restoring"
+    _restore_stage_a "${_oN}" \
+      || _die "${_oN}: stage A aborted; restore incomplete (see ALRT above); nothing deleted"
+    _die "${_oN}: stage A aborted and restored; nothing deleted"
+  fi
+  _phase_set "${_oN}" "stage-a"
+  _info "${_oN}: stage A complete (proxy re-probed clean)"
 }
 
 ### ------------------------------------------------------------ stage B ---

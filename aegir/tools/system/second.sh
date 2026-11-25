@@ -488,6 +488,37 @@ _conf_rename_here() {
   mv -f -T -- "./${1}" "./${2}"
 }
 
+_spawn_detached() {
+  _cmd="exec $1"
+  if (( _SPAWN_STEP > 0 )); then
+    _cmd="sleep $(( _SPAWN_STEP / 10 )).$(( _SPAWN_STEP % 10 )); ${_cmd}"
+  fi
+  # The child gets no copy of this run's lock: a daemon a watchdog restarts
+  # would keep it, and after a kill -9 of this run the lock would stay held
+  # until that daemon restarts, so no later run could start.
+  [[ "${_LOCK_FD:-}" =~ ^[0-9]+$ ]] && _cmd="exec ${_LOCK_FD}>&-; ${_cmd}"
+  _SPAWN_STEP=$(( _SPAWN_STEP + 1 ))
+  if command -v nohup >/dev/null 2>&1; then
+    nohup bash -c "${_cmd}" >/dev/null 2>&1 &
+  elif command -v setsid >/dev/null 2>&1; then
+    setsid bash -c "${_cmd}" >/dev/null 2>&1 &
+  else
+    ( bash -c "${_cmd}" >/dev/null 2>&1 ) &
+  fi
+  # If interactive shell, drop it from the job table to mimic cron behavior
+  if [[ "$-" == *i* ]]; then disown; fi
+}
+
+# Save MySQL and process state as an incident starts, before this script stops
+# anything: a stall that held the database leaves no record of its own, and
+# the queries waiting on it are gone once PHP is killed. Detached, so no tier
+# waits on it; sqlsnap.sh keeps one set per cooldown.
+_incident_snapshot() {
+  [ -e "${_monPath}/sqlsnap.sh" ] || return 0
+  [ "${_INCIDENT_SNAPSHOT^^}" = "NO" ] && return 0
+  _spawn_detached "bash ${_monPath}/sqlsnap.sh $1 ${_pthOml}"
+}
+
 # Function to enable nginx high load configuration
 _nginx_high_load_on() {
   local _current_load="$1"
@@ -555,37 +586,6 @@ _nginx_high_load_off() {
 # which delays any web request arriving then and inflates the kernel's load
 # average whenever its 5-second count lands in that instant.
 _SPAWN_STEP=0
-_spawn_detached() {
-  _cmd="exec $1"
-  if (( _SPAWN_STEP > 0 )); then
-    _cmd="sleep $(( _SPAWN_STEP / 10 )).$(( _SPAWN_STEP % 10 )); ${_cmd}"
-  fi
-  # The child gets no copy of this run's lock: a daemon a watchdog restarts
-  # would keep it, and after a kill -9 of this run the lock would stay held
-  # until that daemon restarts, so no later run could start.
-  [[ "${_LOCK_FD:-}" =~ ^[0-9]+$ ]] && _cmd="exec ${_LOCK_FD}>&-; ${_cmd}"
-  _SPAWN_STEP=$(( _SPAWN_STEP + 1 ))
-  if command -v nohup >/dev/null 2>&1; then
-    nohup bash -c "${_cmd}" >/dev/null 2>&1 &
-  elif command -v setsid >/dev/null 2>&1; then
-    setsid bash -c "${_cmd}" >/dev/null 2>&1 &
-  else
-    ( bash -c "${_cmd}" >/dev/null 2>&1 ) &
-  fi
-  # If interactive shell, drop it from the job table to mimic cron behavior
-  if [[ "$-" == *i* ]]; then disown; fi
-}
-
-# Save MySQL and process state as an incident starts, before this script stops
-# anything: a stall that held the database leaves no record of its own, and
-# the queries waiting on it are gone once PHP is killed. Detached, so no tier
-# waits on it; sqlsnap.sh keeps one set per cooldown.
-_incident_snapshot() {
-  [ -e "${_monPath}/sqlsnap.sh" ] || return 0
-  [ "${_INCIDENT_SNAPSHOT^^}" = "NO" ] && return 0
-  _spawn_detached "bash ${_monPath}/sqlsnap.sh $1 ${_pthOml}"
-}
-
 # Function to control processes
 _proc_control() {
   echo "Running process control..."
