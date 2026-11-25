@@ -44,6 +44,10 @@
       autosync monitors go out whatever bytes their lines hold: one that is
       not UTF-8, or a control character, is shown as \xNN.
 
+    * Drupal 7 core 7.108.2 (D7ES) for the panel and the Drupal 7 platforms:
+      its session handler is ready for PHP 8.6, and under strict mode a
+      session cookie that names no stored session now gets a new ID.
+
 @=> New Features
 
     * Upgrade all sites, the platform task that upgrades every Drupal 10 or
