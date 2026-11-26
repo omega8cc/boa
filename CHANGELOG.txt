@@ -234,6 +234,12 @@
       Solr while its killed JVM was still exiting, and Solr's own start
       refuses then. It now waits until the killed process is gone.
 
+    * A barracuda upgrade no longer ends "completed WITH ERRORS" on a
+      server where a package of the operator's own keeps elogind's PAM
+      module installed (a desktop's polkit agent, for one). The line
+      "libpam-elogind left in place" is a WARN there, on every upgrade as
+      before; a removal apt cannot plan or carry out is still an alert.
+
     * A Delete, Migrate, Restore or forced reinstall keeps a database, and
       its login, that another site names as its own, and ends with a
       warning that says which site. A copy whose making was cut off before
