@@ -9150,10 +9150,11 @@ _trim_session_cgroups() {
 # (slab, and per-CPU memory counted for every possible CPU) grows until the
 # OOM killer takes mysqld. Remove the PAM module, the polkit stack that needs
 # it and the services that came with them and need polkit (modemmanager,
-# packagekit), but only when apt would remove nothing else. The elogind
-# daemon is never removed here (inert without the module, and apt may drop
-# it later as unused where only the module needed it). Then remove the empty
-# session cgroups.
+# packagekit), but only when apt would remove nothing else; a module kept by
+# another package is a warning, a removal apt cannot plan or carry out an
+# alert. The elogind daemon is never removed here (inert without the module,
+# and apt may drop it later as unused where only the module needed it). Then
+# remove the empty session cgroups.
 _if_heal_logind_leak() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _if_heal_logind_leak"
@@ -9178,7 +9179,10 @@ _if_heal_logind_leak() {
     if [ -z "${_lgnSim}" ]; then
       _msg "ALRT: libpam-elogind is installed but apt cannot plan its removal; every login session still leaves a cgroup behind"
     elif [ -n "${_lgnExtra}" ]; then
-      _msg "ALRT: libpam-elogind left in place: removing it would also remove ${_lgnExtra}; every login session still leaves a cgroup behind, which graceful.sh removes nightly"
+      # A package the operator installed holds the module: nothing of this
+      # pass failed and the nightly cleanup still runs, so it is said on
+      # every pass at a level that leaves the pass's verdict alone.
+      _msg "WARN: libpam-elogind left in place: removing it would also remove ${_lgnExtra}; every login session still leaves a cgroup behind, which graceful.sh removes nightly"
     else
       _mrun "apt-get purge libpam-elogind -y -qq"
       if _pkg_installed "libpam-elogind"; then
