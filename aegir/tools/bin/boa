@@ -3204,6 +3204,32 @@ _sanitize_pid() {
   echo "$1" | sed 's/[^0-9]//g'
 }
 
+#
+# A Solr or Jetty service this server has denied is no service that is down:
+# the deny's teardown parks its init script and kills its daemon, whose pid
+# file stays behind, so a pid file with no process says nothing about it.
+# Only a deny in force counts, as a setting or a marker file. A service whose
+# deny was lifted is wanted again and stays listed while it has no process,
+# its init script still parked or not: nothing starts it until it is put back.
+_svc_stopped_on_purpose() {
+  local _name _key
+  case "${1}" in
+    solr9) _name="solr9"; _key="_DENY_SOLR9" ;;
+    solr7) _name="solr7"; _key="_DENY_SOLR7" ;;
+    solr4) _name="jetty9"; _key="_DENY_JETTY9" ;;
+    *) return 1 ;;
+  esac
+  if [ -e "/root/.deny.java.cnf" ] || [ -e "/etc/boa/.deny.${_name}.cnf" ]; then
+    return 0
+  fi
+  [ -e "${_barCnf}" ] || return 1
+  (
+    unset _DENY_JAVA "${_key}"
+    . "${_barCnf}" > /dev/null 2>&1 < /dev/null
+    [ "${_DENY_JAVA}" = "YES" ] || [ "${!_key}" = "YES" ]
+  )
+}
+
 # Function to display time in appropriate units
 _display_time() {
   local _service=$1
@@ -3223,6 +3249,7 @@ _display_time() {
       fi
       return
     fi
+    _svc_stopped_on_purpose "${_service}" && return
     if [ "${_service}" = "jenkins" ] && [ ! -e "/var/lib/jenkins" ]; then
       return
     elif [ "${_service}" = "solr4" ] && [ ! -e "/opt/solr4/solr.xml" ]; then
@@ -3271,6 +3298,7 @@ _display_time() {
 
   # Check if the process is running
   if ! ps -p "${_pid}" > /dev/null 2>&1; then
+    _svc_stopped_on_purpose "${_service}" && return
     if [ "${_service}" = "jenkins" ] && [ ! -e "/var/lib/jenkins" ]; then
       return
     elif [ "${_service}" = "solr4" ] && [ ! -e "/opt/solr4/solr.xml" ]; then
@@ -4159,8 +4187,11 @@ _purge_db_users_find() {
       done
       _PURGE_DBU=()
       # the account's own login there, made by its switch (syncpass
-      # remote), at the address its record names
+      # remote), at the address its record names, or the journal of a
+      # switch that was cut off
       _dbr=$(grep -s -m 1 '^row=' "/root/.${_u}.remote-db.txt" | cut -d= -f2-)
+      [ -n "${_dbr}" ] || _dbr=$(grep -s -m 1 '^row=' \
+        "/var/backups/boa/remote-db/${_u}.apply" | cut -d= -f2-)
       if [[ "${_dbr}" =~ ^[0-9A-Fa-f.:]+$ ]]; then
         _PURGE_DBU_KEPT+=( "'${_u}'@'${_dbr}' (its own login on the database server ${_dbh}: drop it there)" )
       fi
@@ -4626,11 +4657,14 @@ _octopus_cleanup() {
         # prefix of ".o10.".
         # Its record of a switch to a login of its own on a remote
         # database server too, which a later account of the name would
-        # take for its own.
+        # take for its own, with the journal of a switch cut off and what
+        # each switch saved, named <account>-YYMMDD-HHMMSS: matched by that
+        # whole shape, since a name may hold a hyphen ("o1-" begins o1-x's).
         for _rootCnf in /root/.${_usEr}.octopus.cnf /root/.${_usEr}.rc \
           /root/.${_usEr}.migration-create.txt /root/.${_usEr}.dbctl-seed.txt \
           /data/conf/${_usEr}_db_broker.txt /root/.${_usEr}.migproxy.* \
-          /root/.${_usEr}.remote-db.txt; do
+          /root/.${_usEr}.remote-db.txt /var/backups/boa/remote-db/${_usEr}.apply \
+          /var/backups/boa/remote-db/${_usEr}-[0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9]; do
           [ -e "${_rootCnf}" ] && mv -f "${_rootCnf}" ${_zombie_dir}root/
         done
         # And its sudo lines: a later account of the name gets its own at

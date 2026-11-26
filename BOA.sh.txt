@@ -3069,7 +3069,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/monitor/check/container_guard.sh "${_urlHmr}/tools/system/monitor/check/container_guard.sh" f93
     _fetch_versioned /var/xdrago/monitor/check/autosync.sh "${_urlHmr}/tools/system/monitor/check/autosync.sh" f96
     _fetch_versioned /var/xdrago/monitor/check/valkey.sh "${_urlHmr}/tools/system/monitor/check/valkey.sh" f71
-    _fetch_versioned /var/xdrago/monitor/check/system.sh "${_urlHmr}/tools/system/monitor/check/system.sh" f56
+    _fetch_versioned /var/xdrago/monitor/check/system.sh "${_urlHmr}/tools/system/monitor/check/system.sh" f57
     _fetch_versioned /var/xdrago/monitor/check/unbound.sh "${_urlHmr}/tools/system/monitor/check/unbound.sh" f77
     _fetch_versioned /var/xdrago/monitor/check/escapecheck.sh "${_urlHmr}/tools/system/monitor/check/escapecheck.sh" f89
     _fetch_versioned /var/xdrago/monitor/check/hackcheck.sh "${_urlHmr}/tools/system/monitor/check/hackcheck.sh" f86
@@ -6613,7 +6613,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/smtpgapps "${_urlHmr}/${_tBn}/smtpgapps" f96 --guard /local/bin/smtpgapps
     _fetch_versioned ${_optBin}/sqlclean "${_urlHmr}/${_tBn}/sqlclean" f89 --guard /local/bin/sqlclean
     _fetch_versioned ${_optBin}/sqlmagic "${_urlHmr}/${_tBn}/sqlmagic" f97 --mode 755 --guard /local/bin/sqlmagic
-    _fetch_versioned ${_optBin}/syncpass "${_urlHmr}/${_tBn}/syncpass" f80 --guard /local/bin/syncpass
+    _fetch_versioned ${_optBin}/syncpass "${_urlHmr}/${_tBn}/syncpass" f78 --guard /local/bin/syncpass
     _fetch_versioned ${_optBin}/thinkdifferent "${_urlHmr}/${_tBn}/thinkdifferent" f99 --mode 755 --guard /local/bin/thinkdifferent
     _fetch_versioned ${_optBin}/verifyvhostsdns "${_urlHmr}/${_tBn}/verifyvhostsdns" f97 --guard /local/bin/verifyvhostsdns
     _fetch_versioned ${_optBin}/vhostcheck "${_urlHmr}/${_tBn}/vhostcheck" f97 --guard /local/bin/vhostcheck
