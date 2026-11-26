@@ -74,8 +74,11 @@
       later a logout, and any page opened with an expired session cookie,
       no longer ends in an error 500; its session handler is ready for PHP
       9, and on PHP 7.0 and later, under strict mode, a session cookie that
-      names no stored session now gets a new ID. Five more core files drop
-      the parameter forms PHP 9 removes, so PHP 8.0 and later compile them
+      names no stored session now gets a new ID. A session started by a
+      request that carried no session cookie, a login among them, no longer
+      takes an ID made from the time of the request: every new session ID
+      is 32 random hexadecimal characters. Five more core files drop the
+      parameter forms PHP 9 removes, so PHP 8.0 and later compile them
       without a deprecation notice.
 
     * The marker of an unfinished platform build is written as a new file
