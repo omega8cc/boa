@@ -247,6 +247,10 @@
       a web, html or docroot folder whose parent has one. For an account a
       path that names a folder runs only when that folder really lies
       outside /tmp and /home, links followed, however the path is spelled.
+      One whose folder does not exist, or whose folder name has a character
+      a command line cannot carry, is refused with exit 1 and a line naming
+      it; it used to start the Drush of the codebase the line ran in, with
+      the arguments meant for the one it named.
 
     * A Delete of a platform whose Composer build was cut off clears that
       build's marker again, so a new build under the same name is no longer
