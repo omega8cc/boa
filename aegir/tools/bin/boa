@@ -3205,21 +3205,21 @@ _sanitize_pid() {
 }
 
 #
-# A Solr or Jetty service this server stopped on purpose is no service that
-# is down: denied in the settings or by a marker file, or its init script
-# parked by the deny's teardown, which does not reverse itself. The daemon
-# that teardown kills leaves its pid file behind, so a pid file with no
-# process says nothing about such a service.
+# A Solr or Jetty service this server has denied is no service that is down:
+# the deny's teardown parks its init script and kills its daemon, whose pid
+# file stays behind, so a pid file with no process says nothing about it.
+# Only a deny in force counts, as a setting or a marker file. A service whose
+# deny was lifted is wanted again and stays listed while it has no process,
+# its init script still parked or not: nothing starts it until it is put back.
 _svc_stopped_on_purpose() {
-  local _init _key
+  local _name _key
   case "${1}" in
-    solr9) _init="solr9"; _key="_DENY_SOLR9" ;;
-    solr7) _init="solr7"; _key="_DENY_SOLR7" ;;
-    solr4) _init="jetty9"; _key="_DENY_JETTY9" ;;
+    solr9) _name="solr9"; _key="_DENY_SOLR9" ;;
+    solr7) _name="solr7"; _key="_DENY_SOLR7" ;;
+    solr4) _name="jetty9"; _key="_DENY_JETTY9" ;;
     *) return 1 ;;
   esac
-  [ -e "/etc/init.d/${_init}" ] || return 0
-  if [ -e "/root/.deny.java.cnf" ] || [ -e "/etc/boa/.deny.${_init}.cnf" ]; then
+  if [ -e "/root/.deny.java.cnf" ] || [ -e "/etc/boa/.deny.${_name}.cnf" ]; then
     return 0
   fi
   [ -e "${_barCnf}" ] || return 1

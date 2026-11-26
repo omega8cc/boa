@@ -241,11 +241,11 @@
       before; a removal apt cannot plan or carry out is still an alert.
 
     * The service report of boa info, and of every upgrade's log, no
-      longer lists a Solr or Jetty service as not running when the server
-      has denied it (_DENY_SOLR9, _DENY_SOLR7, _DENY_JETTY9, _DENY_JAVA or
-      their marker files) or its init script was parked by an earlier
-      deny. The stopped daemon's PID file used to keep "solr9 is not
-      running (stale PID file)" in the report for good.
+      longer lists a Solr or Jetty service as not running while the server
+      denies it (_DENY_SOLR9, _DENY_SOLR7, _DENY_JETTY9, _DENY_JAVA or
+      their marker files). The stopped daemon's PID file used to keep
+      "solr9 is not running (stale PID file)" in the report for good. A
+      version whose deny was lifted is listed again until it is running.
 
     * A Delete, Migrate, Restore or forced reinstall keeps a database, and
       its login, that another site names as its own, and ends with a
