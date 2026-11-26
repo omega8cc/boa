@@ -3204,6 +3204,32 @@ _sanitize_pid() {
   echo "$1" | sed 's/[^0-9]//g'
 }
 
+#
+# A Solr or Jetty service this server stopped on purpose is no service that
+# is down: denied in the settings or by a marker file, or its init script
+# parked by the deny's teardown, which does not reverse itself. The daemon
+# that teardown kills leaves its pid file behind, so a pid file with no
+# process says nothing about such a service.
+_svc_stopped_on_purpose() {
+  local _init _key
+  case "${1}" in
+    solr9) _init="solr9"; _key="_DENY_SOLR9" ;;
+    solr7) _init="solr7"; _key="_DENY_SOLR7" ;;
+    solr4) _init="jetty9"; _key="_DENY_JETTY9" ;;
+    *) return 1 ;;
+  esac
+  [ -e "/etc/init.d/${_init}" ] || return 0
+  if [ -e "/root/.deny.java.cnf" ] || [ -e "/etc/boa/.deny.${_init}.cnf" ]; then
+    return 0
+  fi
+  [ -e "${_barCnf}" ] || return 1
+  (
+    unset _DENY_JAVA "${_key}"
+    . "${_barCnf}" > /dev/null 2>&1 < /dev/null
+    [ "${_DENY_JAVA}" = "YES" ] || [ "${!_key}" = "YES" ]
+  )
+}
+
 # Function to display time in appropriate units
 _display_time() {
   local _service=$1
@@ -3223,6 +3249,7 @@ _display_time() {
       fi
       return
     fi
+    _svc_stopped_on_purpose "${_service}" && return
     if [ "${_service}" = "jenkins" ] && [ ! -e "/var/lib/jenkins" ]; then
       return
     elif [ "${_service}" = "solr4" ] && [ ! -e "/opt/solr4/solr.xml" ]; then
@@ -3271,6 +3298,7 @@ _display_time() {
 
   # Check if the process is running
   if ! ps -p "${_pid}" > /dev/null 2>&1; then
+    _svc_stopped_on_purpose "${_service}" && return
     if [ "${_service}" = "jenkins" ] && [ ! -e "/var/lib/jenkins" ]; then
       return
     elif [ "${_service}" = "solr4" ] && [ ! -e "/opt/solr4/solr.xml" ]; then
