@@ -33,6 +33,9 @@
       alone, and the mail of a report masks the database password Drush
       prints in debug mode.
 
+    * The install log of a new account in debug mode (log/install.log, the
+      account's own file) masks the database password Drush prints there.
+
     * An upgrade of an account in the box's own name database mode
       (_THIS_DB_HOST=FQDN) also removes old backups of its password file
       that hold the root password, and says how many.
@@ -103,6 +106,14 @@
       it, anything that fails puts all back, and each later upgrade gives
       that login a new password.
 
+    * A new account in REMOTE DB SERVER MODE gets a login of its own on the
+      database server at its install, where root on the web head can manage
+      users there: its control panel is installed on that login, and the
+      database server's root password never enters the account's files.
+      Where root cannot, it keeps the shared aegir_root login and the
+      install says so. syncpass remote <account> revert puts either kind
+      back on the shared login.
+
     * Upgrade all sites, the platform task that upgrades every Drupal 10 or
       later site of a platform onto a newer one, one at a time and each as
       its own Upgrade, is granted to the account's main login roles (admin,
@@ -166,6 +177,13 @@
       password still logs in, and the password sync of a switched account
       takes a panel it could not read as a failure and sets everything
       back. A purge also takes a cut-off switch's journal and saved copies.
+
+    * xoct, xcopy and xmass no longer move an account that logs in to its
+      remote database server with a login of its own: that login is bound
+      to the web head's address, so on the target every task of the
+      account would lose its database server. They say to run syncpass
+      remote <account> revert first, which puts it back on the shared
+      aegir_root login.
 
     * The limited shell's history in a .lsh script, or in a single command
       run over an SSH terminal, lists the login's history file again

@@ -6210,6 +6210,56 @@ _satellite_init_pass_back_on_exit() {
 # killed outright leaves it there with the account half made, which no
 # upgrade reaches: the octopus launcher's next pass removes both files. The
 # PHP file goes first: cut off between the two, the other one still says so.
+#
+# What syncpass says of the account's remote database login, in the log.
+_satellite_rdb_relay() {
+  local _l
+  while IFS= read -r _l; do
+    case "${_l}" in
+      INFO:*|NOTE:*|ALRT:*|ERROR:*) _msg "${_STATUS} A: ${_l}" ;;
+    esac
+  done <<< "${1}"
+}
+
+#
+# A new account whose databases are on a remote server where root from this
+# web head can manage users is born switched: syncpass, the one tool that
+# changes anything there, makes and proves a login of the account's own at
+# this web head's address and puts its password in the account's password
+# files (syncpass remote <oN> born); the panel is then installed on it, and
+# root's password never enters the account's files. _SAT_RDB_BORN=YES then.
+# Where root from here cannot manage users there, the account keeps the
+# shared aegir_root login (R2's lend) and the log says so; any other refusal
+# is said as syncpass says it, with the same fallback. A syncpass that does
+# not know the verb answers with its usage: the shared login, as before.
+_satellite_init_own_login() {
+  local _out _rc
+  _SAT_RDB_BORN=NO
+  _satellite_db_head_remote || return 0
+  _out=$(syncpass remote "${_USER}" born 2>&1)
+  _rc=$?
+  _satellite_rdb_relay "${_out}"
+  if [ "${_rc}" = "0" ]; then
+    _SAT_RDB_BORN=YES
+  elif [ "${_rc}" = "2" ]; then
+    _msg "${_STATUS} A: ALRT: ${_THIS_DB_HOST} does not let root from this web head manage users; ${_USER} uses the shared aegir_root credential"
+  fi
+}
+
+#
+# After the panel's install of an account born switched: syncpass records
+# the switch when the install ended, or drops the login it made when not.
+_satellite_init_own_login_end() {
+  local _how=fail _out
+  [ "${_SAT_RDB_BORN}" = "YES" ] || return 0
+  if [ -e "/opt/tmp/state/${_USER}/status-AegirSetupB-OK" ] \
+    && [ ! -e "/opt/tmp/state/${_USER}/status-AegirSetupB-FAIL" ]; then
+    _how=ok
+  fi
+  _out=$(syncpass remote "${_USER}" born-end "${_how}" 2>&1)
+  _satellite_rdb_relay "${_out}"
+}
+
 _satellite_init_pass_lend() {
   local _r
   _satellite_db_remote || return 0
@@ -7433,10 +7483,19 @@ _satellite_run_child_b() {
     rm -f /opt/tmp/testecho*
     chown root:${_USRG} /data/u &> /dev/null
     chmod 0771 /data/u &> /dev/null
-    _satellite_init_pass_lend
-    su -s /bin/bash - ${_USER} -c "/bin/bash ${_AegirSetupB} ${_USER}"
+    _satellite_init_own_login
+    if [ "${_SAT_RDB_BORN}" = "YES" ]; then
+      su -s /bin/bash - ${_USER} -c "/bin/bash ${_AegirSetupB} ${_USER} own-login"
+    else
+      _satellite_init_pass_lend
+      su -s /bin/bash - ${_USER} -c "/bin/bash ${_AegirSetupB} ${_USER}"
+    fi
     wait
-    _satellite_init_pass_back
+    if [ "${_SAT_RDB_BORN}" = "YES" ]; then
+      _satellite_init_own_login_end
+    else
+      _satellite_init_pass_back
+    fi
     if [ -e "/opt/tmp/state/${_USER}/status-AegirSetupB-FAIL" ] \
       || [ ! -e "/opt/tmp/state/${_USER}/status-AegirSetupB-OK" ]; then
       _msg "${_STATUS} A: FATAL ERROR: AegirSetupB installer failed"
@@ -12014,6 +12073,11 @@ _satellite_child_b_aegir_build() {
     else
       _USE_AEGIR_HOST="${_hName}"
       _USE_DB_USER=aegir_root
+      # born switched: the parent made a login of the account's own there
+      # and put its password in .oN.pass.txt (AegirSetupB's own-login)
+      if [ "${_SAT_RDB_OWN_LOGIN}" = "YES" ]; then
+        _USE_DB_USER="${_USER}"
+      fi
     fi
     if [ "${_THIS_DB_HOST}" = "${_MY_OWNIP}" ]; then
       _USE_AEGIR_HOST="${_hName}"
@@ -12030,6 +12094,9 @@ _satellite_child_b_aegir_build() {
     chmod 0600 ${_L_SYS_PHP}
 
     _msg "${_STATUS} B: Running hostmaster-install, please wait..."
+    # The debug run's log is the account's own file: the database password
+    # never reaches it in the forms Drush's debug output gives it.
+    local _dbMask="s#(--aegir_db_pass=)[^ ]*#\\1***#g; s#(mysql://[^:/@ ]*:)[^@ ]*@#\\1***@#g"
     ${_DRUSHCMD} cc drush >${_ROOT}/log/install.log 2>&1
     rm -rf ${_ROOT}/.tmp/cache
     if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -12046,7 +12113,7 @@ _satellite_child_b_aegir_build() {
         --script_user=${_USER} \
         --web_group=${_WEBG} \
         --version=${_AEGIR_VERSION} -y -d \
-      2>&1 | tee ${_ROOT}/log/install.log
+      2>&1 | sed -u -E "${_dbMask}" | tee ${_ROOT}/log/install.log
     else
       ${_DRUSHCMD} hostmaster-install ${_DOMAIN} \
         --aegir_db_host=${_THIS_DB_HOST} \
