@@ -212,6 +212,22 @@
     * A script an account runs through sh is still refused, and now says so
       on one line naming it; it used to end with exit 1 and nothing shown.
 
+    * A Drush command the shell refuses for an account ends with exit 1
+      when Drush itself or other PHP code started it as a child, so the
+      parent stops at the refusal instead of reading it as the child's
+      output and going on. A refused line typed in the shell still ends
+      with exit 0.
+
+    * A codebase's own Drush named by a relative or ~ path runs from the
+      folder the line runs in: behind a cd DIR && it is read from DIR, and
+      a path naming another codebase runs that codebase's Drush. It was
+      read from the shell's own folder, which could start the Drush of the
+      codebase the shell stood in, or none at all. vendor/drush/drush/drush.php
+      and ../vendor/drush/drush/drush.php still take the parent's Drush from
+      a web, html or docroot folder whose parent has one. For an account a
+      path that names a folder runs only when that folder really lies
+      outside /tmp and /home, links followed, however the path is spelled.
+
     * A Delete of a platform whose Composer build was cut off clears that
       build's marker again, so a new build under the same name is no longer
       refused as if the old one still ran.

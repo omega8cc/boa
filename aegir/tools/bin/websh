@@ -1442,6 +1442,30 @@ _in_composer_run() {
   fi
   [ "${_IN_COMPOSER}" = "YES" ]
 }
+# websh's parent is a PHP process: a Drush starting its own child (Drush 8's
+# backend calls, Drush 9 and newer through Symfony Process) or any PHP code
+# handing /bin/sh a line. A tenant's own process, so its /proc entry is
+# readable from inside lshell's sandbox; lshell's own one is not.
+_php_parent() {
+  local _e
+  _e=$(readlink "/proc/${PPID}/exe" 2> /dev/null) || return 1
+  # a PHP build replaced under a running Drush (a PHP upgrade) reads so
+  _e="${_e% (deleted)}"
+  case "${_e}" in
+    /opt/php[0-9][0-9]/bin/php|/usr/bin/php|/usr/bin/php[0-9]*) return 0 ;;
+  esac
+  return 1
+}
+# how a tenant's refused line ends, after _drush_refused_say: exit 1 where a
+# program reads the status, inside a Composer run or under a PHP parent,
+# which would otherwise take the refusal for the child's output and 0 for
+# its success; exit 0 for a line the limited shell runs, as a refused typed
+# line always has
+_refused_exit() {
+  _in_composer_run && exit 1
+  _php_parent && exit 1
+  exit 0
+}
 _drush_refused_loop() {
   [[ $'\xc3\xa9' == ? ]] && local LC_ALL=C
   local _seg _w1 _w2 _rest _cw _cws _cwa _f _n _env _again _pini _d8 _cd _wn _wp _dur _o _ov _orest _isdr _fl _po
@@ -1956,8 +1980,7 @@ _php_direct_refused() {
 _exec_dash_c() {
   if _is_tenant && _drush_refused "$1"; then
     _drush_refused_say
-    _in_composer_run && exit 1
-    exit 0
+    _refused_exit
   fi
   exec /bin/dash "${_SH_OPTS[@]}" -c "$1"
 }
@@ -1991,6 +2014,77 @@ _cd_dir_of() {
   _CDD=""
   [[ "$1" =~ ^[[:space:]]*cd[[:space:]]+([^[:space:]\;\&\|]+) ]] || return 1
   _CDD="${BASH_REMATCH[1]}"
+}
+# vendor/drush/drush/drush.php and ../vendor/drush/drush/drush.php mean the
+# codebase the line runs in ($1): the parent's Drush from a web/html/docroot
+# folder whose parent has one, else the folder's own (a docroot can carry
+# its own vendor/); relative, as the exec line keeps any cd in front
+_la_here() {
+  if [[ "${1%/}" =~ /(web|html|docroot)$ ]] && [ -d "$1/../vendor/drush" ]; then
+    _DEST_DRUSH="../vendor/drush/drush/drush.php"
+  else
+    _DEST_DRUSH="vendor/drush/drush/drush.php"
+  fi
+}
+# Sets _DEST_DRUSH for a drush.php launcher at the head of the line
+# (_LA_PATH), read where the line runs: the cd's folder, else websh's own,
+# a leading ~/ as HOME. The two spellings above take the docroot rule on
+# that folder. Any identity but a tenant runs any other launcher as typed.
+# A tenant's launcher that names a folder runs, by that name, only when the
+# folder it really is in (links followed; ~/static is the account's
+# /data/disk/oN/static) lies outside /tmp and /home, the boundary the fast
+# lane keeps, and only in the launcher path alphabet, as the exec line
+# carries it unquoted; inside the boundary it takes the docroot rule. One
+# that resolves nowhere keeps what it had: an absolute one outside /tmp and
+# /home as typed, any other the docroot rule.
+_la_dest() {
+  [[ $'\xc3\xa9' == ? ]] && local LC_ALL=C
+  local _l="${_LA_PATH}" _run="${PWD}" _c _f="" _d=""
+  if _cd_dir_of "${_LA_CD}"; then
+    _c="${_CDD#\'}"; _c="${_c%\'}"; _c="${_c#\"}"; _c="${_c%\"}"
+    _c="${_c/#\~/${HOME}}"
+    if [[ "${_c}" == /* ]]; then _run="${_c}"; else _run="${PWD}/${_c}"; fi
+  fi
+  if ! _is_tenant; then
+    if [[ "${_l}" == /* ]] || [ -n "${_LA_CD}" ]; then
+      _DEST_DRUSH="${_l}"
+      return 0
+    fi
+    case "${_l}" in
+      vendor/drush/drush/drush.php|./vendor/drush/drush/drush.php|../vendor/drush/drush/drush.php)
+        _la_here "${_run}" ;;
+      *) _DEST_DRUSH="${_l}" ;;
+    esac
+    return 0
+  fi
+  case "${_l}" in
+    vendor/drush/drush/drush.php|./vendor/drush/drush/drush.php|../vendor/drush/drush/drush.php)
+      _la_here "${_run}"
+      return 0
+      ;;
+    /*) _f="${_l}" ;;
+    \~/*) _f="${HOME}/${_l#\~/}" ;;
+    \~*) ;;
+    *) _f="${_run}/${_l}" ;;
+  esac
+  [ -n "${_f}" ] && _d=$(CDPATH='' cd -P -- "${_f%/*}" 2> /dev/null && pwd -P)
+  if [ -n "${_d}" ]; then
+    case "${_d}" in
+      /tmp|/tmp/*|/home|/home/*) ;;
+      *)
+        if [[ "${_f}" =~ ^${_RE_LAPC}+$ ]]; then
+          _DEST_DRUSH="${_f}"
+          return 0
+        fi
+        ;;
+    esac
+  else
+    case "${_l}" in
+      /tmp/*|/home/*) ;;
+      /*) _DEST_DRUSH="${_l}"; return 0 ;;
+    esac
+  fi
+  _la_here "${_run}"
 }
 _dr_site() {
   [[ $'\xc3\xa9' == ? ]] && local LC_ALL=C
@@ -2114,8 +2208,7 @@ _forward_to_dash() {
         if [[ -n "$2" ]]; then
           if _is_tenant && _drush_refused "$2"; then
             _drush_refused_say
-            _in_composer_run && exit 1
-            exit 0
+            _refused_exit
           fi
           _options+=("-c" "$2")
           shift 2
@@ -3950,13 +4043,10 @@ if _grp_set_is "users www-data" \
           _DEST_DRUSH="${_R_M}/vendor/drush/drush/drush.php"
         fi
         if [[ "${_LA_PATH}" == *vendor/drush/drush/drush.php ]] || [[ "${_ARGS}" =~ "vendor/drush/drush/drush.php " ]]; then
-          if [ -n "${_LA_PATH}" ] && { { ! _is_tenant && { [[ "${_LA_PATH}" == /* ]] || [ -n "${_LA_CD}" ]; }; } \
-            || { [[ "${_LA_PATH}" == /* ]] && [[ "${_LA_PATH}" != /tmp/* ]] && [[ "${_LA_PATH}" != /home/* ]]; }; }; then
-            _DEST_DRUSH="${_LA_PATH}"
-          elif [[ "$PWD" =~ /(web|html|docroot)$ ]] && [ -d ../vendor/drush ]; then
-            _DEST_DRUSH="../vendor/drush/drush/drush.php"
+          if [ -n "${_LA_PATH}" ]; then
+            _la_dest
           else
-            _DEST_DRUSH="vendor/drush/drush/drush.php"
+            _la_here "${PWD}"
           fi
           ### echo INF 0 _DEST_DRUSH is ${_DEST_DRUSH}
         fi
@@ -4064,20 +4154,12 @@ if _grp_set_is "users www-data" \
             _DEST_DRUSH="${_R_M}/vendor/drush/drush/drush.php"
           fi
           if [[ "${_LA_PATH}" == *vendor/drush/drush/drush.php ]] || [[ "${_ARGS}" =~ "vendor/drush/drush/drush.php " ]]; then
-            if [ -n "${_LA_PATH}" ] && { { ! _is_tenant && { [[ "${_LA_PATH}" == /* ]] || [ -n "${_LA_CD}" ]; }; } \
-              || { [[ "${_LA_PATH}" == /* ]] && [[ "${_LA_PATH}" != /tmp/* ]] && [[ "${_LA_PATH}" != /home/* ]]; }; }; then
-              # an absolute launcher, or one relative to a cd DIR && in front
-              # of it: run the launcher as typed (the cwd-derived form below
-              # only fits a launcher relative to where websh runs). A tenant's
-              # absolute launcher only outside /tmp and /home, the paths the
-              # fast lane above keeps out on purpose
-              _DEST_DRUSH="${_LA_PATH}"
-            # the parent's Drush only where the parent has one: a docroot
-            # named web/html/docroot can carry its own vendor/ instead
-            elif [[ "$PWD" =~ /(web|html|docroot)$ ]] && [ -d ../vendor/drush ]; then
-              _DEST_DRUSH="../vendor/drush/drush/drush.php"
+            # the launcher where the line runs (_la_dest); a line that names
+            # one past its head takes the docroot rule on websh's folder
+            if [ -n "${_LA_PATH}" ]; then
+              _la_dest
             else
-              _DEST_DRUSH="vendor/drush/drush/drush.php"
+              _la_here "${PWD}"
             fi
             ### echo INF 1 _DEST_DRUSH is ${_DEST_DRUSH}
           fi
