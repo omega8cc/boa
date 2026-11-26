@@ -644,7 +644,7 @@ _session_cgroup_pile_detection() {
     printf "%s%s %d MB", (n++ ? ", " : ""), $1, $2 / 1024 }' /proc/meminfo 2>/dev/null)"
   _cpu="$(cat /sys/devices/system/cpu/possible 2>/dev/null)"
   dpkg-query -W -f='${Status}' libpam-elogind 2>/dev/null | grep -qx 'install ok installed' && _pam="yes"
-  _thisErrLog="$(date) Login-session cgroups piling up (${_cnt} cgroups; ${_mem}; possible CPUs ${_cpu}; libpam-elogind installed: ${_pam}): each holds kernel memory until the OOM killer takes mysqld; barracuda removes elogind's PAM module and the empty cgroups, or says in an ALRT line what kept it; see /sys/fs/cgroup/cgroup.stat"
+  _thisErrLog="$(date) Login-session cgroups piling up (${_cnt} cgroups; ${_mem}; possible CPUs ${_cpu}; libpam-elogind installed: ${_pam}): each holds kernel memory until the OOM killer takes mysqld; barracuda removes elogind's PAM module and the empty cgroups, or says in a WARN or ALRT line why the module stays; see /sys/fs/cgroup/cgroup.stat"
   echo "${_thisErrLog}" >> ${_pthOml}
   if ! _incident_email_report "Login-session cgroups piling up: ${_cnt}" ALERT "system-cgroups" nograce; then
     # wanted but not sent: look again in an hour, not in a day

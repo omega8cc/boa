@@ -447,9 +447,15 @@ _rdb_root_manages() {
 
 # A login there as $1 with the password $2: prints the account row it lands
 # on (CURRENT_USER()). The password goes through a root-only option file
-# removed right after, never through the command line.
+# removed right after, never through the command line. A password read from
+# an account's alias can hold anything: a control character or a quote in it
+# would add option lines of the account's choosing to root's client (a plugin
+# directory it loads from), so such a value logs in nowhere.
 _rdb_login() {
   local _f _o _rc _p="${2//\\/\\\\}"
+  case "${2}" in
+    ""|*[[:cntrl:]]*|*\"*) return 1 ;;
+  esac
   _f=$(mktemp /root/.syncpass.rdb.XXXXXX) || return 1
   printf '[client]\nuser="%s"\npassword="%s"\nhost="%s"\nport=%s\nprotocol=tcp\nconnect-timeout=10\n' \
     "${1}" "${_p}" "${_SQL_CONNECT}" "${_THIS_DB_PORT}" > "${_f}"
@@ -518,10 +524,16 @@ _rdb_aliases_here() {
 # the password $3 (letters and digits) on its master_db line, the host and
 # everything else kept; read back. Status 0 when the alias then holds it.
 _rdb_alias_set() {
-  local _c _n
+  local _c _n _k
+  [[ "${3}" =~ ^[A-Za-z0-9]+$ ]] || return 1
   _c=$(_acct_read_in "/data/disk/${_uname}/.drush" "${1}" && echo x) || return 1
+  # the password never reaches sed's command line: sed writes a mark, the
+  # shell puts the password in its place
+  _k="RDBPASS${$}x${RANDOM}${RANDOM}${RANDOM}"
+  [[ "${_c}" == *"${_k}"* ]] && return 1
   _n=$(printf '%s' "${_c%x}" \
-    | sed -E "/'master_db' *=>/ s#mysql://(aegir_root|${_uname}):[^@']*@#mysql://${2}:${3}@#"; echo x)
+    | sed -E "/'master_db' *=>/ s#mysql://(aegir_root|${_uname}):[^@']*@#mysql://${2}:${_k}@#"; echo x)
+  _n="${_n//"${_k}"/${3}}"
   [ "${_n}" != "${_c}" ] || [ "$(_rdb_alias_pass "${2}" "${1}")" = "${3}" ] || return 1
   _acct_in_real_dir "/data/disk/${_uname}/.drush" _acct_put_same_here "${1}" "${_n%x}" \
     || return 1
@@ -642,11 +654,15 @@ _rdb_hold() {
   fi
   if [ -e /run/boa_queue_stop.pid ] || [ -L /run/boa_queue_stop.pid ]; then
     _p=$( { tr -dc '0-9' < /run/boa_queue_stop.pid; } 2> /dev/null )
-    if [ -n "${_p}" ] && kill -0 "${_p}" 2> /dev/null; then
+    if [ -n "${_p}" ] && kill -0 "${_p}" 2> /dev/null \
+      && [ "$(awk '/^Uid:/ { print $2; exit }' "/proc/${_p}/status" 2> /dev/null)" = "0" ]; then
       echo "ERROR: ${_uname}: the task queue is held by another run; nothing was changed"
       return 1
     fi
-    rm -f -- /run/boa_queue_stop.pid
+    # cleared only while it still names the owner read above, so a hold
+    # another run takes meanwhile is never removed
+    [ "$( { tr -dc '0-9' < /run/boa_queue_stop.pid; } 2> /dev/null )" = "${_p}" ] \
+      && rm -f -- /run/boa_queue_stop.pid
   fi
   if ! ( set -C; echo "$$" > /run/boa_queue_stop.pid ) 2> /dev/null; then
     echo "ERROR: ${_uname}: the task queue could not be held; nothing was changed"
@@ -752,6 +768,11 @@ _rdb_check() {
       return 1
     fi
     _A_ALIAS="${_l}"
+    # the form its record and journal must hold, or a revert could not read them
+    if [[ ! "${_A_ALIAS}" =~ ^server_[A-Za-z0-9._-]+\.alias\.drushrc\.php$ ]]; then
+      echo "ERROR: ${_uname}: its server alias ${_A_ALIAS//[^A-Za-z0-9._-]/?} has a name a record cannot hold; nothing was changed"
+      return 1
+    fi
     _A_SERVER=$(_acct_read_in "/data/disk/${_uname}/.drush" "${_A_ALIAS}" \
       | sed -n "s/^\$aliases\['\([^']*\)'\].*/\1/p" | head -n 1)
     _l=$(echo "SELECT CONCAT('RDB|', n.nid) FROM node n JOIN hosting_db_server d ON d.vid = n.vid WHERE n.type = 'server' AND n.title = '${_THIS_DB_HOST}' AND d.db_user = 'aegir_root';" \
@@ -802,17 +823,26 @@ _rdb_check() {
 # Everything an apply changed put back from what it saved (the panel's
 # records, the server alias), the account's own login there dropped, the
 # journal and the record removed and the password files made random. The
-# saved copy stays.
+# saved copy stays. When either could not be put back, the login, the
+# journal and the files stay as they are, so a revert can finish it.
 _rdb_undo() {
-  local _c
-  _rdb_rows_restore "${_R_SAVED}/rows" \
-    || echo "ALRT: remote database ${_uname}: its panel's server records could not be put back from ${_R_SAVED}/rows"
+  local _c _ok=YES
+  if ! _rdb_rows_restore "${_R_SAVED}/rows"; then
+    echo "ALRT: remote database ${_uname}: its panel's server records could not be put back from ${_R_SAVED}/rows"
+    _ok=NO
+  fi
   _c=$(cat -- "${_R_SAVED}/alias" && echo x)
   if [ "${_c}" = "x" ] || ! _acct_in_real_dir "/data/disk/${_uname}/.drush" \
-    _acct_put_same_here "${_R_ALIAS}" "${_c%x}"; then
+    _acct_put_same_here "${_R_ALIAS}" "${_c%x}" \
+    || [ "$(_rdb_alias_pass aegir_root "${_R_ALIAS}")" != "${_A_OLD}" ]; then
     echo "ALRT: remote database ${_uname}: its server alias could not be put back from ${_R_SAVED}/alias"
+    _ok=NO
   fi
   su -s /bin/bash - "${_uname}" -c "drush8 cc drush" > /dev/null 2>&1 8>&-
+  if [ "${_ok}" != "YES" ]; then
+    echo "ALRT: remote database ${_uname}: the journal, and its own login '${_uname}'@'${_R_ROW}' where it was made, are kept: run syncpass remote ${_uname} revert"
+    return 1
+  fi
   echo "DROP USER IF EXISTS '${_uname}'@'${_R_ROW}';" | _rdb_sql > /dev/null
   rm -f -- "/root/.${_uname}.remote-db.txt" "${_RDB_DIR}/${_uname}.apply"
   _rdb_files_put "$(_rdb_newpass)" > /dev/null
@@ -917,15 +947,15 @@ _rdb_apply() {
     | _rdb_panel > /dev/null
   _l=$(echo "SELECT CONCAT('RDB|', IFNULL(SUM(db_user = '${_uname}' AND db_passwd = '${_p}'), 0), '|', IFNULL(SUM(db_user = 'aegir_root'), 0)) FROM hosting_db_server WHERE nid = ${_R_NODE};" \
     | _rdb_panel)
-  if [ "${_l%%|*}" = "0" ] || [ "${_l#*|}" != "0" ] \
+  if [[ ! "${_l}" =~ ^[1-9][0-9]*\|0$ ]] \
     || ! _rdb_alias_set "${_R_ALIAS}" "${_uname}" "${_p}"; then
-    echo "ALRT: remote database ${_uname}: its panel's server records or its server alias could not be switched; all put back"
+    echo "ALRT: remote database ${_uname}: its panel's server records or its server alias could not be switched; putting all back"
     _rdb_undo
     return 1
   fi
   _rdb_files_put "${_p}" > /dev/null
   if ! _rdb_verify; then
-    echo "ALRT: remote database ${_uname}: the verify of @${_R_SERVER} failed on its own login; all put back on aegir_root"
+    echo "ALRT: remote database ${_uname}: the verify of @${_R_SERVER} failed on its own login; putting all back on aegir_root"
     _rdb_undo
     return 1
   fi
@@ -973,9 +1003,18 @@ _rdb_revert() {
     echo "ERROR: ${_uname}: what the switch saved (${_R_SAVED}) is missing; nothing was changed"
     return 1
   fi
-  _rdb_hold || return 1
   _SQL_CONNECT="${_R_DBHOST}"
   _THIS_DB_PORT="${_R_PORT}"
+  # the saved aegir_root password must still log in there (it may have been
+  # changed since the switch), or the put-back would leave the account on a
+  # login that fails
+  _c=$(_acct_read_in "${_R_SAVED}" alias \
+    | sed -n "s#.*'master_db' *=> *'mysql://aegir_root:\([^@']*\)@.*#\1#p" | head -n 1)
+  if [[ ! "$(_rdb_login aegir_root "$(_rdb_urldecode "${_c}")")" =~ ^aegir_root@ ]]; then
+    echo "ERROR: ${_uname}: the aegir_root password the switch saved (${_R_SAVED}/alias) does not log in to ${_R_DBHOST} now; nothing was changed"
+    return 1
+  fi
+  _rdb_hold || return 1
   _c=$(cat -- "${_R_SAVED}/alias" && echo x)
   if ! _rdb_rows_restore "${_R_SAVED}/rows" \
     || ! _acct_in_real_dir "/data/disk/${_uname}/.drush" _acct_put_same_here "${_R_ALIAS}" "${_c%x}" \
@@ -1087,7 +1126,10 @@ _rdb_fix() {
   echo "ALTER USER '${_uname}'@'${_R_ROW}' IDENTIFIED BY '${_p}';" | _rdb_sql > /dev/null
   if [ "$(_rdb_login "${_uname}" "${_p}")" != "${_uname}@${_R_ROW}" ]; then
     echo "ALTER USER '${_uname}'@'${_R_ROW}' IDENTIFIED BY '$(_rdb_q "${_old}")';" | _rdb_sql > /dev/null
-    echo "ALRT: remote database ${_uname}: its own login '${_uname}'@'${_R_ROW}' on ${_R_DBHOST} could not take a new password; it keeps the one it has"
+    _l="it keeps the one it has"
+    [ "$(_rdb_login "${_uname}" "${_old}")" = "${_uname}@${_R_ROW}" ] \
+      || _l="and the one it had could not be proven after the set-back: the next syncpass fix of it sets a new one"
+    echo "ALRT: remote database ${_uname}: its own login '${_uname}'@'${_R_ROW}' on ${_R_DBHOST} could not take a new password; ${_l}"
     _rdb_files_put "${_old}" > /dev/null
     return 1
   fi
@@ -1095,13 +1137,18 @@ _rdb_fix() {
     | _rdb_panel > /dev/null
   _l=$(echo "SELECT CONCAT('RDB|', COUNT(*), '|', IFNULL(SUM(db_passwd = '${_p}'), 0)) FROM hosting_db_server WHERE nid = ${_R_NODE} AND db_user = '${_uname}';" \
     | _rdb_panel)
-  if [ "${_l%%|*}" = "0" ] || [ "${_l%%|*}" != "${_l#*|}" ] \
+  # an empty or broken read-back (the panel not reached) is a failure too
+  if [[ ! "${_l}" =~ ^([1-9][0-9]*)\|([0-9]+)$ ]] \
+    || [ "${BASH_REMATCH[1]}" != "${BASH_REMATCH[2]}" ] \
     || ! _rdb_alias_set "${_R_ALIAS}" "${_uname}" "${_p}"; then
     echo "UPDATE hosting_db_server SET db_passwd = '$(_rdb_q "${_old}")' WHERE nid = ${_R_NODE} AND db_user = '${_uname}';" \
       | _rdb_panel > /dev/null
     [[ "${_old}" =~ ^[A-Za-z0-9]+$ ]] && _rdb_alias_set "${_R_ALIAS}" "${_uname}" "${_old}"
     echo "ALTER USER '${_uname}'@'${_R_ROW}' IDENTIFIED BY '$(_rdb_q "${_old}")';" | _rdb_sql > /dev/null
-    echo "ALRT: remote database ${_uname}: its panel's server record or its server alias could not take the new password; all set back to the one it has"
+    _l="all set back to the one it has"
+    [ "$(_rdb_login "${_uname}" "${_old}")" = "${_uname}@${_R_ROW}" ] \
+      || _l="set back, but the one it had could not be proven after the set-back: the next syncpass fix of it sets a new one"
+    echo "ALRT: remote database ${_uname}: its panel's server record or its server alias could not take the new password; ${_l}"
     _rdb_files_put "${_old}" > /dev/null
     return 1
   fi
