@@ -177,6 +177,14 @@
 
 @=> Important Fixes
 
+    * The install of an Octopus account, and of the master's control panel,
+      fails when the panel's install (hostmaster-install) did not run to its
+      end: killed, or stopped early on an error. The install had judged the
+      panel by its settings.php, which exists a few seconds into that
+      install, so it reported success and went on with a half-made panel.
+      A panel install that ran to its end and then exited with an error
+      goes on as before, with an ALRT line naming its exit status.
+
     * syncpass remote keeps an account it cannot fully put back on a path
       a revert can finish: a switch whose put-back fails keeps the new
       login and its journal, a revert first proves the saved aegir_root

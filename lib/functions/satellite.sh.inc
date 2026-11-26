@@ -12114,6 +12114,7 @@ _satellite_child_b_aegir_build() {
         --web_group=${_WEBG} \
         --version=${_AEGIR_VERSION} -y -d \
       2>&1 | sed -u -E "${_dbMask}" | tee ${_ROOT}/log/install.log
+      _HM_INSTALL_RC="${PIPESTATUS[0]}"
     else
       ${_DRUSHCMD} hostmaster-install ${_DOMAIN} \
         --aegir_db_host=${_THIS_DB_HOST} \
@@ -12129,6 +12130,7 @@ _satellite_child_b_aegir_build() {
         --web_group=${_WEBG} \
         --version=${_AEGIR_VERSION} -y \
       >${_ROOT}/log/install.log 2>&1
+      _HM_INSTALL_RC="$?"
     fi
     rm -rf ${_HM_ROOT}/profiles/{default,standard,minimal,testing}
     cd ${_HM_ROOT}
@@ -12420,6 +12422,28 @@ _satellite_child_b_aegir_health_check() {
   fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "${_STATUS} B: Simple check if Ægir ${_MSG_STATUS} is successful"
+  fi
+  ### settings.php is written seconds into a panel install, so on its own it
+  ### passes one cut off there. An install that ran to its end exits 0 or
+  ### prints hostmaster-install's closing line; one that did neither failed.
+  local _hmDone=NO
+  if [ "${_LOCAL_STATUS}" = "INIT" ]; then
+    if grep -qsF "Congratulations, Aegir has now been installed." \
+      "${_ROOT}/log/install.log"; then
+      _hmDone=YES
+    fi
+    if [ "${_hmDone}" = "NO" ] && [ "${_HM_INSTALL_RC:-x}" != "0" ]; then
+      _msg "${_STATUS} B: FATAL ERROR: hostmaster-install did not finish (exit status ${_HM_INSTALL_RC:-unknown})"
+      _msg "${_STATUS} B: FATAL ERROR: See ${_ROOT}/log/install.log"
+      _msg "${_STATUS} B: FATAL ERROR: Aborting AegirSetupB installer NOW!"
+      touch "/opt/tmp/state/${_USER}/status-AegirSetupB-FAIL"
+      exit 1
+    fi
+    if [ "${_HM_INSTALL_RC:-x}" != "0" ]; then
+      _msg "${_STATUS} B: ALRT: hostmaster-install ended with exit status ${_HM_INSTALL_RC:-unknown}; see ${_ROOT}/log/install.log"
+    elif [ "${_hmDone}" = "NO" ]; then
+      _msg "${_STATUS} B: ALRT: hostmaster-install exited 0 without its closing line; see ${_ROOT}/log/install.log"
+    fi
   fi
   if [ -e "${_HM_ROOT}/sites/${_DOMAIN}/settings.php" ]; then
     _msg "${_STATUS} B: Ægir ${_MSG_STATUS} test result: OK"
