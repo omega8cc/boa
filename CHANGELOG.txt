@@ -131,7 +131,8 @@
       Git branch or tag, and keeps the new platform for the sites' Upgrade
       only when it is a newer version of the same codebase; otherwise it is
       deleted. A security advisory the build adds is named in its result. It
-      is granted to no role yet.
+      is granted to the account's main login roles (admin, aegir account
+      manager), not to the client, site operator or platform manager roles.
 
     * A nightly upgrade report for Drupal 10 and later sites, switched off
       by default. _UPGRADE_DIGEST=YES in /root/.barracuda.cnf mails the
