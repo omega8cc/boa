@@ -2035,11 +2035,14 @@ _la_here() {
 # /data/disk/oN/static) lies outside /tmp and /home, the boundary the fast
 # lane keeps, and only in the launcher path alphabet, as the exec line
 # carries it unquoted; inside the boundary it takes the docroot rule. One
-# that resolves nowhere keeps what it had: an absolute one outside /tmp and
-# /home as typed, any other the docroot rule.
+# whose folder resolves nowhere, or whose name the exec line cannot carry,
+# names a Drush that cannot run there: status 2 with _LA_WHY set (nowhere,
+# name), never the Drush of the folder the line runs in, which would take
+# the arguments meant for the named one (_la_refuse).
 _la_dest() {
   [[ $'\xc3\xa9' == ? ]] && local LC_ALL=C
   local _l="${_LA_PATH}" _run="${PWD}" _c _f="" _d=""
+  _LA_WHY=""
   if _cd_dir_of "${_LA_CD}"; then
     _c="${_CDD#\'}"; _c="${_c%\'}"; _c="${_c#\"}"; _c="${_c%\"}"
     _c="${_c/#\~/${HOME}}"
@@ -2068,22 +2071,21 @@ _la_dest() {
     *) _f="${_run}/${_l}" ;;
   esac
   [ -n "${_f}" ] && _d=$(CDPATH='' cd -P -- "${_f%/*}" 2> /dev/null && pwd -P)
-  if [ -n "${_d}" ]; then
-    case "${_d}" in
-      /tmp|/tmp/*|/home|/home/*) ;;
-      *)
-        if [[ "${_f}" =~ ^${_RE_LAPC}+$ ]]; then
-          _DEST_DRUSH="${_f}"
-          return 0
-        fi
-        ;;
-    esac
-  else
-    case "${_l}" in
-      /tmp/*|/home/*) ;;
-      /*) _DEST_DRUSH="${_l}"; return 0 ;;
-    esac
+  if [ -z "${_d}" ]; then
+    _LA_WHY=nowhere
+    return 2
   fi
+  case "${_d}" in
+    /tmp|/tmp/*|/home|/home/*) ;;
+    *)
+      if [[ "${_f}" =~ ^${_RE_LAPC}+$ ]]; then
+        _DEST_DRUSH="${_f}"
+        return 0
+      fi
+      _LA_WHY=name
+      return 2
+      ;;
+  esac
   _la_here "${_run}"
 }
 _dr_site() {
@@ -2999,6 +3001,17 @@ _cpp_safe() {
   [[ $'\xc3\xa9' == ? ]] && local LC_ALL=C
   _CPP_S="${1//[^A-Za-z0-9._\/~@+ -]/?}"
   [ "${#_CPP_S}" -le 120 ] || _CPP_S="${_CPP_S:0:117}..."
+}
+# A launcher _la_dest refused: named on stderr (in a plain alphabet, a
+# subshell so a closed stderr keeps the status) and status 1, as a launcher
+# path that runs nothing ends
+_la_refuse() {
+  _cpp_safe "${_LA_PATH}"
+  case "${_LA_WHY}" in
+    name) ( echo "sh: ${_CPP_S}: refused: the folder this line runs in has a name a Drush command line cannot carry" >&2 ) ;;
+    *) ( echo "sh: ${_CPP_S}: refused: the folder of this Drush launcher does not exist" >&2 ) ;;
+  esac
+  exit 1
 }
 _cpp_norm() {
   # $1 = a folder as written in the file; sets _CPP_NK (its path) or
@@ -4044,7 +4057,7 @@ if _grp_set_is "users www-data" \
         fi
         if [[ "${_LA_PATH}" == *vendor/drush/drush/drush.php ]] || [[ "${_ARGS}" =~ "vendor/drush/drush/drush.php " ]]; then
           if [ -n "${_LA_PATH}" ]; then
-            _la_dest
+            _la_dest || _la_refuse
           else
             _la_here "${PWD}"
           fi
@@ -4155,9 +4168,10 @@ if _grp_set_is "users www-data" \
           fi
           if [[ "${_LA_PATH}" == *vendor/drush/drush/drush.php ]] || [[ "${_ARGS}" =~ "vendor/drush/drush/drush.php " ]]; then
             # the launcher where the line runs (_la_dest); a line that names
-            # one past its head takes the docroot rule on websh's folder
+            # one past its head takes the docroot rule on websh's folder; one
+            # it cannot run is refused (_la_refuse)
             if [ -n "${_LA_PATH}" ]; then
-              _la_dest
+              _la_dest || _la_refuse
             else
               _la_here "${PWD}"
             fi

@@ -777,6 +777,23 @@ _wg_free_unfinished() {
   [ "${_s}" != "step=done" ]
 }
 
+# Status 0 when the account $1 logs in to its remote database server with a
+# login of its own (syncpass remote), which is bound to this web head's
+# address, or such a login is half made: root's record of the switch, or
+# the journal of a switch or of an install that made one. Moved to another
+# web head, the account would lose its database server: the move waits
+# until 'syncpass remote <account> revert' puts it back on the shared login.
+_mig_rdb_own_login() {
+  local _f
+  for _f in "/root/.${1}.remote-db.txt" "/var/backups/boa/remote-db/${1}.apply" \
+    "/var/backups/boa/remote-db/${1}.born"; do
+    if [ -e "${_f}" ] || [ -L "${_f}" ]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
 # The held gid of a done free of account $1's web group name while the
 # group it renamed still has that gid here, under its name or an earlier
 # version's (<gid>-wgheld): the paths its walk left in that number (an
@@ -7150,6 +7167,10 @@ _migrate_init() {
       exit 1
     elif [ -e "${_USR}/log/CANCELLED" ]; then
       echo "_USR ${_oct} is not eligible for migration: cancelled"
+      exit 1
+    elif _mig_rdb_own_login "${_oct}"; then
+      echo "_USR ${_oct} is not eligible for migration: it logs in to its remote database server with a login of its own, bound to this web head's address"
+      echo "INFO: run 'syncpass remote ${_oct} revert' here first, which puts it back on the shared aegir_root login ('syncpass remote ${_oct} status' says where it stands); re-run then"
       exit 1
     elif _wg_free_unfinished "${_oct}"; then
       echo "_USR ${_oct} is not eligible for migration: a free of its web group name is unfinished (/etc/boa/control/instgrp-web.${_oct}.free.txt)"
