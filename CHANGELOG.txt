@@ -158,6 +158,13 @@
 
 @=> Improvements
 
+    * A platform the control panel builds from a Git repository on an SSH
+      server the account has not used before no longer stops with "Host key
+      verification failed": the build stores that server's key at its first
+      contact and refuses the server later if its key has changed. The host
+      no longer adds each such server by hand; an SSH client already named
+      for Git is left as it is.
+
     * The Upgrade no longer refuses a newer platform that brings a security
       advisory the site's platform does not have: its plan and its result
       line name the advisory, and so does its dialog where both platforms'
