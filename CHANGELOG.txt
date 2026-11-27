@@ -106,6 +106,18 @@
 
 @=> New Features
 
+    * Build newer version, and the build an Upgrade or Upgrade all sites
+      makes first, can build a platform the control panel built from a
+      published package again from its own composer.json and composer.lock,
+      updating only Drupal core, only its modules and themes, or both, by
+      patch releases only or minor releases too, and if asked only what
+      fixes a security advisory. No choice crosses a major release, and the
+      new lock is judged before anything is installed. It is offered only
+      while the platform's two files are the ones the panel's build left:
+      every panel build of a platform now records their fingerprint.
+      Switched off: its permission, build platform_successor from lock, is
+      granted to no role.
+
     * The Upgrade of a Drupal 10 or later site, and Upgrade all sites, can
       build a newer version of the site's platform first, as Build newer
       version does, and then move the site in the same task: nothing of the
@@ -233,6 +245,12 @@
       CiviCRM 6.20.2.
 
     * The Backdrop webform every Backdrop bundle carries is 1.x-4.26.7.
+
+    * The Drupal 12 platform, built where a platform list names DT0, is
+      12.0.0-rc1, which carries the core security fixes of 18 and 25
+      November that 12.0.0-beta2 lacks.
+
+    * Varbase 11.0.0 is built on Drupal core 11.4.14.
 
 @=> Important Fixes
 
