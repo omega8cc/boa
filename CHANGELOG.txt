@@ -202,6 +202,13 @@
 
 @=> Important Fixes
 
+    * An Octopus pass of an account in REMOTE DB SERVER MODE no longer ends
+      with errors where root on the web head may not manage users on the
+      database server: the sync of the panel's own database user sends
+      nothing there and says so once in a NOTE. It sent every statement,
+      had them refused, and its check of the user's rights printed two
+      ALRT lines on every pass.
+
     * A database server added in a control panel keeps its own login when
       the upgrade, syncpass fix or a move renews the panel's own database
       password: only the server the panel site keeps its databases on takes

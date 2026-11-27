@@ -7083,6 +7083,17 @@ _hostmaster_oldhost_dbuser_drop() {
 }
 
 #
+# Root's login here on the database server in _SQL_CONNECT may create users
+# and grant rights: the rows the panel's database user sync below changes,
+# as syncpass remote tests it (_rdb_root_manages). Status 1 otherwise, a
+# refused login included.
+_satellite_root_manages_head() {
+  [ "$(mysql --silent --skip-column-names -u root -h"${_SQL_CONNECT}" -P"${_THIS_DB_PORT}" \
+    --protocol=tcp -e "SELECT 1 FROM mysql.user WHERE CONCAT(User,'@',Host)=CURRENT_USER() AND Create_user_priv='Y' AND Grant_priv='Y'" \
+    2> /dev/null < /dev/null)" = "1" ]
+}
+
+#
 # Sync hostmaster frontend db_passwd.
 _hostmaster_frontend_dbpass_sync() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -7126,6 +7137,18 @@ _hostmaster_frontend_dbpass_sync() {
       _THIS_HM_DBUR=""
       _THIS_HM_DBPD=""
     fi
+  fi
+  ### On a remote database server where root from this web head may not
+  ### create users and grant them, none of the statements below can run: the
+  ### panel's database user keeps its password and rights there, said once.
+  if [ -n "${_THIS_HM_DBUR}" ] && _satellite_db_head_remote \
+    && ! _satellite_root_manages_head; then
+    if [ "${_SAT_HM_DBUSER_NOTED:-}" != "YES" ]; then
+      _msg "${_STATUS} A: NOTE: ${_USER}: root from this web head cannot manage users on ${_THIS_DB_HOST}, so the panel's database user there is left as it is; allow root from this web head there, with CREATE USER and GRANT OPTION, to keep it to its own database"
+      _SAT_HM_DBUSER_NOTED=YES
+    fi
+    _THIS_HM_DBUR=""
+    _THIS_HM_DBPD=""
   fi
   if [ -e "${_THIS_HM_SPTH}" ] \
     && [ ! -z "${_THIS_HM_DBUR}" ] \
