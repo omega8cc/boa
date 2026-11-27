@@ -202,6 +202,13 @@
 
 @=> Important Fixes
 
+    * A task run from inside a running task (the Verify a Clone or a
+      Migrate runs, a step of an Upgrade) reads its parent's runner lock
+      record from the panel's variable table. Read from Drupal's cached
+      variables, which a bootstrap racing the runner's write could leave
+      on an earlier holder's record, it could miss its own parent, wait
+      30 seconds and be refused as busy, failing the task that ran it.
+
     * A step of an Upgrade, a Go back or a Build newer version that its
       run had queued is never run on its own once the run's task runner is
       lost: it ends with "Not run: this row is a step of task N" and does
