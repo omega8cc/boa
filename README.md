@@ -2,6 +2,16 @@
 
 BOA stands for Barracuda, Octopus, and Ægir—a high-performance LEMP stack supporting Drupal from Pressflow 6 to the latest Drupal 11 (which needs Percona 8.4, see [Install BOA](https://docs.boa.io/self-hosting/install-boa)), as well as **Backdrop CMS**, **Grav CMS** and **Textpattern CMS**.
 
+## New: Upgrades as One Task
+
+The Ægir control panel in BOA now takes a Drupal 10 or newer site to its next release in **one task**, with no shell session and no deployment pipeline of your own to maintain:
+
+- [**Upgrade**](https://docs.boa.io/using/deploying-code/upgrading-a-site) makes a full copy of the site first, moves the site onto a newer platform, runs Drupal's database updates there, and compares the home and login pages with how they answered before the move. When the updates do not finish, or a page answers differently, the site stays on its old platform. **Go back** returns the copy afterwards, in one task.
+- [**Upgrade all sites**](https://docs.boa.io/using/deploying-code/upgrading-a-site#upgrading-every-site-on-a-platform) does the same for every ready site of a platform, one at a time.
+- [**Build newer version**](https://docs.boa.io/using/deploying-code/building-a-newer-version) builds a platform again at a newer version, the way the panel built it the first time, and keeps the result only when it is a newer version of the same codebase.
+- [**Upgrade with a build first**](https://docs.boa.io/using/deploying-code/upgrading-with-a-build) joins them: when no newer platform exists yet, one task builds it, judges it and moves the site.
+- One line in a control file, `drupal_upgrade_modes`, [limits which upgrades a site or a platform accepts](https://docs.boa.io/using/deploying-code/upgrading-a-site#limiting-which-upgrades-a-site-accepts), and a [nightly upgrade report](https://docs.boa.io/using/deploying-code/nightly-upgrade-report) can mail what is waiting once the server admin switches it on.
+
 ## 30 Years of Heritage
 
 We are unique within the hosting industry for many important reasons. Our 15 years of Ægir-based hosting, plus earlier experience with Adgrafix (the first company to offer a control panel for website management in 1995), have helped shape what makes us different today. We take **Open Source seriously** — it’s not a buzzword for us. It’s about freedom from corporate control. Here's a short look back at our 15-year Ægir journey and 19 years with Drupal. [**Read the full story!**](https://github.com/omega8cc/boa/tree/5.x-dev/DIFFERENT30Y.md)
@@ -147,7 +157,7 @@ Check out what the stack adds on top of Ægir in [**Ægir vs BOA**](https://docs
 
 ## Project Roadmap
 
-Check out the details in [**ROADMAP.md**](https://github.com/omega8cc/boa/tree/5.x-dev/ROADMAP.md)
+Where BOA and Ægir are heading, and where everything already shipped is recorded: [**ROADMAP.md**](https://github.com/omega8cc/boa/tree/5.x-dev/ROADMAP.md)
 
 ## Useful Links
 
