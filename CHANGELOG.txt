@@ -195,10 +195,11 @@
     * The REMOTE DB SERVER MODE notes in the barracuda.cnf and octopus.cnf
       templates say what root allowed from the web head is for: with the
       right to create users and grant them, the install of a new account
-      gives it a DB user of its own on the database server. They name
-      syncpass remote <account> apply and revert, and that xoct, xcopy and
-      xmass do not move an account on a DB user of its own. They said root
-      managed the accounts' DB users at each upgrade.
+      gives it a DB user of its own on the database server, and each
+      upgrade uses it to keep every control panel's DB user to its own
+      database. They name syncpass remote <account> apply and revert, and
+      that xoct, xcopy and xmass do not move an account on a DB user of its
+      own. They said root managed the accounts' DB users at each upgrade.
 
 @=> Important Fixes
 
@@ -228,9 +229,10 @@
       password: only the server the panel site keeps its databases on takes
       it, found by the panel's hostmaster alias, where it took every server
       record and alias whose login had the instance's name (aegir_root on
-      the Master) and pointed them all at the local server. An account
-      switched to a login of its own on a remote database server whose cnf
-      later names a local one is left unchanged, with an alert.
+      the Master) and pointed them all at the local server. An account on a
+      login of its own on a remote database server, or with a switch to one
+      half made, whose cnf later names a local one is left unchanged, its
+      password files included, with an alert.
 
     * The install of an Octopus account, and of the master's control panel,
       fails when the panel's install (hostmaster-install) did not run to its

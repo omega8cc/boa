@@ -410,6 +410,12 @@ _THIS_DB_HOST=localhost
 ### a new instance uses 'aegir_root', and its
 ### install says so in an ALRT line.
 ###
+### Each upgrade also uses 'root' there to
+### keep the DB user of every instance's
+### control panel to its own database.
+### Without it, that DB user is left as it
+### is, and the upgrade says so in a NOTE.
+###
 ### An older instance gets a DB user of its
 ### own with: syncpass remote oN apply
 ###

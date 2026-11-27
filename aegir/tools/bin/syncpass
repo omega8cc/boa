@@ -1482,7 +1482,7 @@ _rdb_main() {
 }
 
 _do_syncpass() {
-  local _pSrv _pWhere _pAls
+  local _pSrv _pWhere _pAls _f
   if [ ! -z "${_uname}" ]; then
     _find_correct_ip
     _prH="/var/aegir/.drush"
@@ -1595,12 +1595,18 @@ EOFMYSQL
           exit "${_rc}"
         fi
         # Switched to a login of its own on a remote database server (root's
-        # record) while its cnf now reads local: its panel and alias stay on
-        # that server, so the local renewal would point them at this box.
-        if [ -e "/root/.${_uname}.remote-db.txt" ]; then
-          echo "ERROR: ${_uname} logs in to a remote database server with a login of its own (/root/.${_uname}.remote-db.txt) but its cnf names a local one; nothing was changed: set _THIS_DB_HOST back, or run syncpass remote ${_uname} revert first"
-          exit 1
-        fi
+        # record), or a switch to one cut off or an install's never settled
+        # (its journal), while its cnf now reads local: its panel and alias
+        # stay on that server, so the local renewal would point them at this
+        # box.
+        for _f in "/root/.${_uname}.remote-db.txt" \
+          "/var/backups/boa/remote-db/${_uname}.apply" \
+          "/var/backups/boa/remote-db/${_uname}.born"; do
+          if [ -e "${_f}" ] || [ -L "${_f}" ]; then
+            echo "ERROR: ${_uname} logs in to a remote database server with a login of its own, or a switch to one is half made (${_f}), but its cnf names a local one; nothing was changed: set _THIS_DB_HOST back, or see syncpass remote ${_uname} status"
+            exit 1
+          fi
+        done
         _check_generate
         if [ ! -z "${_ESC_PASS}" ] && [ ! -z "${_ENC_PASS}" ]; then
           if _pSrv=$(_panel_db_server "/data/disk/${_uname}/.drush"); then

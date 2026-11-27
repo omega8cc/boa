@@ -6501,7 +6501,6 @@ _ensure_hosting_dispatch_enabled() {
 }
 
 #
-# Sync provision backend db_passwd.
 # The server context the account's panel site keeps its databases on, as its
 # hostmaster alias names it ('db_server' => '@server_<name>'): the one panel
 # record and server alias a renewal of the account's password changes. A
@@ -6515,6 +6514,8 @@ _satellite_panel_db_server() {
   printf '%s' "${_n}"
 }
 
+#
+# Sync provision backend db_passwd.
 _provision_backend_dbpass_sync() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _provision_backend_dbpass_sync"
@@ -6534,27 +6535,42 @@ _provision_backend_dbpass_sync() {
   fi
   _L_SYS="${_ROOT}/.${_USER}.pass.txt"
   _satellite_root_pass_leftover_drop
-  ### The account home allows traversal, so a lax mode on these backups is
-  ### readable by local users by exact path; never trust the moved file's
-  ### inherited mode -- set 0600 explicitly. Moved by name inside the real
-  ### account root (-T: a link put at the backup name is replaced, never
-  ### followed into the directory it leads to), and the mode is set through
-  ### a handle only on a file with a single link (_SAT_NOFOLLOW_CHMOD_PL).
-  _acct_in_real_dir "${_ROOT}" mv -f -T -- "./.${_USER}.pass.txt" \
-    "./.${_USER}.pass.txt-pre-${_xSrl}-${_X_VERSION}-${_NOW}" &> /dev/null
-  _acct_in_real_dir "${_ROOT}" _satellite_chmod_nofollow f 0600 \
-    "./.${_USER}.pass.txt-pre-${_xSrl}-${_X_VERSION}-${_NOW}" &> /dev/null
-  _L_SYS_PHP="${_ROOT}/.${_USER}.pass.php"
-  _acct_in_real_dir "${_ROOT}" mv -f -T -- "./.${_USER}.pass.php" \
-    "./.${_USER}.pass.php-pre-${_xSrl}-${_X_VERSION}-${_NOW}" &> /dev/null
-  _acct_in_real_dir "${_ROOT}" _satellite_chmod_nofollow f 0600 \
-    "./.${_USER}.pass.php-pre-${_xSrl}-${_X_VERSION}-${_NOW}" &> /dev/null
-  _provision_backend_dbpass_generate
-  if [ -e "/root/.${_USER}.remote-db.txt" ] && ! _satellite_db_head_remote; then
-    ### Switched to a login of its own on a remote database server (root's
-    ### record) while its cnf now reads local: its panel and alias stay on
-    ### that server, so the local renewal would point them at this box.
-    _msg "${_STATUS} A: ALRT: ${_USER}: logs in to a remote database server with a login of its own (/root/.${_USER}.remote-db.txt) but its cnf names a local one; no login, panel record or alias changed: set _THIS_DB_HOST back, or run syncpass remote ${_USER} revert first"
+  ### Switched to a login of its own on a remote database server (root's
+  ### record), or a switch to one cut off or an install's never settled
+  ### (its journal), while its cnf now reads local: its panel and alias
+  ### stay on that server, so the local renewal would point them at this
+  ### box. Its password files and logins are left as they are.
+  local _pOwn=NO _pOwnF
+  if ! _satellite_db_head_remote; then
+    for _pOwnF in "/root/.${_USER}.remote-db.txt" \
+      "/var/backups/boa/remote-db/${_USER}.apply" \
+      "/var/backups/boa/remote-db/${_USER}.born"; do
+      if [ -e "${_pOwnF}" ] || [ -L "${_pOwnF}" ]; then
+        _pOwn=YES
+        break
+      fi
+    done
+  fi
+  if [ "${_pOwn}" != "YES" ]; then
+    ### The account home allows traversal, so a lax mode on these backups is
+    ### readable by local users by exact path; never trust the moved file's
+    ### inherited mode -- set 0600 explicitly. Moved by name inside the real
+    ### account root (-T: a link put at the backup name is replaced, never
+    ### followed into the directory it leads to), and the mode is set through
+    ### a handle only on a file with a single link (_SAT_NOFOLLOW_CHMOD_PL).
+    _acct_in_real_dir "${_ROOT}" mv -f -T -- "./.${_USER}.pass.txt" \
+      "./.${_USER}.pass.txt-pre-${_xSrl}-${_X_VERSION}-${_NOW}" &> /dev/null
+    _acct_in_real_dir "${_ROOT}" _satellite_chmod_nofollow f 0600 \
+      "./.${_USER}.pass.txt-pre-${_xSrl}-${_X_VERSION}-${_NOW}" &> /dev/null
+    _L_SYS_PHP="${_ROOT}/.${_USER}.pass.php"
+    _acct_in_real_dir "${_ROOT}" mv -f -T -- "./.${_USER}.pass.php" \
+      "./.${_USER}.pass.php-pre-${_xSrl}-${_X_VERSION}-${_NOW}" &> /dev/null
+    _acct_in_real_dir "${_ROOT}" _satellite_chmod_nofollow f 0600 \
+      "./.${_USER}.pass.php-pre-${_xSrl}-${_X_VERSION}-${_NOW}" &> /dev/null
+    _provision_backend_dbpass_generate
+  fi
+  if [ "${_pOwn}" = "YES" ]; then
+    _msg "${_STATUS} A: ALRT: ${_USER}: logs in to a remote database server with a login of its own, or a switch to one is half made (${_pOwnF}), but its cnf names a local one; no password file, login, panel record or alias changed: set _THIS_DB_HOST back, or see syncpass remote ${_USER} status"
   elif _satellite_db_head_remote; then
     ### An account on a remote database server: no login there is dropped
     ### or made again, and nothing found by the account's name alone, a
