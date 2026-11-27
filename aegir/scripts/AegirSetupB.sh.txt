@@ -136,6 +136,10 @@ done
 # _THIS_DB_HOST is used as the account's cnf sets it: the panel's install
 # turns FQDN into the box's name itself, with the account's own login.
 _DIST_INSTALL=NO
+# own-login: the parent made a login of the account's own on its remote
+# database server and put its password in the account's password file
+_SAT_RDB_OWN_LOGIN=NO
+[ "${2}" = "own-login" ] && _SAT_RDB_OWN_LOGIN=YES
 _STATUS=INIT
 _LOCAL_STATUS="${_STATUS}"
 _ROOT="/data/disk/${_USER}"

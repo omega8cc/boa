@@ -178,13 +178,35 @@ ${_DRUSHCMD} cc drush >${_ROOT}/install.log 2>&1
 rm -rf ${_ROOT}/.tmp/cache
 _HM_ROOT="${_ROOT}/hostmaster-${_AEGIR_VERSION}"
 
+### The copy in the state dir (0700, this user's) is read for the closing
+### line and removed: it holds the one-time login link the parent's log has.
+_hmOut="${_stateDir}/hostmaster-install.out"
 ${_DRUSHCMD} hostmaster-install \
   --aegir_host=${_AEGIR_HOST} \
   --aegir_db_user=${_AEGIR_DB_USER} \
   --aegir_db_pass=${_ESC_PASS} \
   --aegir_root=${_ROOT} \
   --root=${_HM_ROOT} \
-  --version=${_AEGIR_VERSION} $@
+  --version=${_AEGIR_VERSION} $@ 2>&1 | tee "${_hmOut}"
+_hmRc="${PIPESTATUS[0]}"
+### An install cut off after its first seconds leaves a working-looking
+### tree behind; one that ran to its end exits 0 or prints the closing line.
+_hmDone=NO
+if grep -qsF "Congratulations, Aegir has now been installed." "${_hmOut}"; then
+  _hmDone=YES
+fi
+rm -f "${_hmOut}"
+if [ "${_hmDone}" = "NO" ] && [ "${_hmRc}" != "0" ]; then
+  _msg "FATAL ERROR: hostmaster-install did not finish (exit status ${_hmRc})"
+  _msg "FATAL ERROR: Aborting AegirSetupM installer NOW!"
+  touch "${_stateDir}/status-AegirSetupM-FAIL"
+  exit 1
+fi
+if [ "${_hmRc}" != "0" ]; then
+  _msg "ALRT: hostmaster-install ended with exit status ${_hmRc}"
+elif [ "${_hmDone}" = "NO" ]; then
+  _msg "ALRT: hostmaster-install exited 0 without its closing line"
+fi
 
 mkdir -p /var/aegir/backups/system
 chmod 700 /var/aegir/backups/system
