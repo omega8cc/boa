@@ -4688,7 +4688,7 @@ _satellite_o_contrib_twelve_update_global() {
 # when a new tag is published to the contrib shelves. A bundle records the tag
 # it holds (webform/ver-<tag>.info); a bundle holding another one is refreshed
 # on the next upgrade pass (_satellite_refresh_o_contrib_backdrop_webform).
-_WEBFORM_B_TAG="1.x-4.26.6"
+_WEBFORM_B_TAG="1.x-4.26.7"
 
 # What a failed fetch leaves of the module ./$1 in the current (pinned)
 # 000/modules, for its OOPS line.
