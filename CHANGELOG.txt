@@ -268,6 +268,15 @@
       build's marker again, so a new build under the same name is no longer
       refused as if the old one still ran.
 
+    * A platform's failed Composer build quotes Composer's reason whole. With
+      no terminal Composer wrapped it at 80 columns, and the line naming the
+      cause, such as a plugin the project's allow-plugins does not list,
+      fell out of the last lines the Verify and Build newer version show.
+
+    * Go back names the copy it puts back by the time its Upgrade gave that
+      copy. It read the Upgrade task's start instead, which can fall in the
+      minute before the copy was made.
+
     * _SMTP_RELAY_HOST takes [host]:port, as a relay on port 587 or 465
       needs, and one relay replaces another. An upgrade used to write such
       a relay into Postfix again beside the one already there, and a
