@@ -101,6 +101,9 @@
       fixes of 24 November. After the next Octopus upgrade the Upgrade Grav
       task brings an existing site to it.
 
+    * New platforms are built on Drupal 10.6.23, 11.3.23 and 11.4.14,
+      upstream's security releases of 25 November 2026.
+
 @=> New Features
 
     * The Upgrade of a Drupal 10 or later site, and Upgrade all sites, can
@@ -220,6 +223,16 @@
       database. They name syncpass remote <account> apply and revert, and
       that xoct, xcopy and xmass do not move an account on a DB user of its
       own. They said root managed the accounts' DB users at each upgrade.
+
+@=> Changes and Upgrades
+
+    * The catalogue's distributions are rebuilt on the new cores, with
+      farmOS 4.0.13 and OpenCulturas 3.1.10 among them.
+
+    * The CiviCRM platforms for Drupal 11 and for Backdrop are built on
+      CiviCRM 6.20.2.
+
+    * The Backdrop webform every Backdrop bundle carries is 1.x-4.26.7.
 
 @=> Important Fixes
 
