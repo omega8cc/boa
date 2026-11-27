@@ -985,6 +985,23 @@ _wg_free_unfinished() {
   [ "${_s}" != "step=done" ]
 }
 
+# Status 0 when the account $1 logs in to its remote database server with a
+# login of its own (syncpass remote), which is bound to this web head's
+# address, or such a login is half made: root's record of the switch, or
+# the journal of a switch or of an install that made one. Moved to another
+# web head, the account would lose its database server: the move waits
+# until 'syncpass remote <account> revert' puts it back on the shared login.
+_mig_rdb_own_login() {
+  local _f
+  for _f in "/root/.${1}.remote-db.txt" "/var/backups/boa/remote-db/${1}.apply" \
+    "/var/backups/boa/remote-db/${1}.born"; do
+    if [ -e "${_f}" ] || [ -L "${_f}" ]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
 # The held gid of a done free of account $1's web group name while the
 # group it renamed still has that gid here, under its name or an earlier
 # version's (<gid>-wgheld): the paths its walk left in that number (an
@@ -18407,6 +18424,29 @@ _xmass_a2b_cutover_gate() {
   _die "${_why}"
 }
 
+### An account that logs in to its remote database server with a login of
+### its own (syncpass remote) has it bound to this box's address: on the
+### target, or on a standby promoted by hand, every task of the account
+### would lose its database server. Such an account goes back on the shared
+### aegir_root login first ('syncpass remote <account> revert'), and the
+### switch itself is refused while a pair or a move stands. 'die' refuses,
+### 'deny' reports and marks the DRY run NOT CLEAN.
+_xmass_rdb_gate() {
+  local _how="${1:-die}" _oct _own="" _why
+  for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    [[ "${_oct}" =~ ^[a-z0-9-]+$ ]] || continue
+    _mig_rdb_own_login "${_oct}" && _own="${_own} ${_oct}"
+  done
+  [ -n "${_own}" ] || return 0
+  _why="account(s)${_own} log in to their remote database server with a login of their own, bound to this box's address -- run 'syncpass remote <account> revert' here for each first, which puts it back on the shared aegir_root login"
+  if [ "${_how}" = "deny" ]; then
+    _alrt "DENY: ${_why}"
+    _XMASS_NOT_CLEAN=YES
+    return 1
+  fi
+  _die "${_why}"
+}
+
 _xmass_webgroup_gate() {
   ### An account converted to its own web group here (its web paths in
   ### wg-<account>, private/ 02770/0660) must not land on a target whose
@@ -21819,6 +21859,7 @@ _xmass_cmd_init() {
   _xmass_verify_target_accounts "${_tgt}" die
   _xmass_php_coverage_gate "${_tgt}" die
   _xmass_webgroup_gate "${_tgt}" die
+  _xmass_rdb_gate die
   # A target prepared before the carry existed gets this server's own
   # settings here, before the first sync.
   _xmass_box_settings_gate "${_tgt}" fix \
@@ -24014,6 +24055,7 @@ _xmass_cmd_cutover() {
     _xmass_solr_coverage_gate "${_tgt}" deny || true
     _xmass_webgroup_gate "${_tgt}" deny || true
     _xmass_a2b_cutover_gate deny || true
+    _xmass_rdb_gate deny || true
     # A hazardous-vintage java.sh on the target would kill the final Solr
     # rsync's own receiver DURING the cutover window -- with the 503 already
     # up and the source's Solr already deny-filed. The fact is known before
@@ -24105,6 +24147,7 @@ _xmass_cmd_cutover() {
   _xmass_solr_coverage_gate "${_tgt}" die
   _xmass_webgroup_gate "${_tgt}" die
   _xmass_a2b_cutover_gate die
+  _xmass_rdb_gate die
   # Same consult as the DRY plan, in die mode: the receiver-kill hazard must
   # refuse HERE, at the last free moment, not surface mid-window.
   if ls /opt/solr4 /var/solr7/data /var/solr9/data > /dev/null 2>&1; then
@@ -25239,6 +25282,7 @@ _xmass_cmd_prep_target() {
     _xmass_php_coverage_gate "${_tgt}" die
   fi
   _xmass_webgroup_gate "${_tgt}" die
+  _xmass_rdb_gate die
   _xmass_box_settings_gate "${_tgt}" fix \
     || _die "this server's own settings could not be written on ${_tgt}"
   # what converts on each box once the pair switches (the arm, phase B, the
