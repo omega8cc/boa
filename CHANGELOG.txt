@@ -188,9 +188,13 @@
       directories are the same as before. PHP walks a file's whole path once
       for each entry it tries, with no cache, so the order is CPU time: on a
       test server it took about a fifth off a page Drupal's page cache
-      answers and off the control panel's pages. The control panel's pool
-      takes the order on the worker's next pass, an account's own pools at
-      their next setup (a new BOA release or a change of PHP version).
+      answers and off the control panel's pages.
+
+    * An account's PHP-FPM pools follow a changed pool template on the
+      worker's next pass, as the control panel's pool does, with one reload
+      of each PHP version in use. Before, they were written again only with
+      a new release or a change of the account's PHP version, so a template
+      change published between two releases reached them weeks later.
 
     * The REMOTE DB SERVER MODE notes in the barracuda.cnf and octopus.cnf
       templates say what root allowed from the web head is for: with the
