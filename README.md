@@ -1,5 +1,9 @@
 # Welcome to BOA!
 
+[![First Light: an engineer and her AI companion of light at translucent screens projected in an orbital laboratory, the sun rising over a ringed blue planet; the main screen shows four steps, Build, Judge, Move and Way back](https://omega8.cc/user/pages/blog/first-light/_post/first-light-anime-halo-1200.jpg)](https://omega8.cc/blog/first-light)
+
+**A new era for BOA and Ægir starts here:** upgrades that build themselves, and a new control-panel interface over the proven Ægir engine. Read [**First Light**](https://omega8.cc/blog/first-light).
+
 BOA stands for Barracuda, Octopus, and Ægir—a high-performance LEMP stack supporting Drupal from Pressflow 6 to the latest Drupal 11 (which needs Percona 8.4, see [Install BOA](https://docs.boa.io/self-hosting/install-boa)), as well as **Backdrop CMS**, **Grav CMS** and **Textpattern CMS**.
 
 ## New: Upgrades as One Task
