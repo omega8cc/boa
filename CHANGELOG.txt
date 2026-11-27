@@ -33,6 +33,9 @@
       alone, and the mail of a report masks the database password Drush
       prints in debug mode.
 
+    * The install log of a new account in debug mode (log/install.log, the
+      account's own file) masks the database password Drush prints there.
+
     * An upgrade of an account in the box's own name database mode
       (_THIS_DB_HOST=FQDN) also removes old backups of its password file
       that hold the root password, and says how many.
@@ -67,11 +70,16 @@
       under strict mode, a session cookie that names no stored session now
       gets a new ID.
 
-    * Pressflow 6 core 6.60.4 for the Drupal 6 platforms: on PHP 8.0 and
+    * Pressflow 6 core 6.60.5 for the Drupal 6 platforms: on PHP 8.0 and
       later a logout, and any page opened with an expired session cookie,
       no longer ends in an error 500; its session handler is ready for PHP
       9, and on PHP 7.0 and later, under strict mode, a session cookie that
-      names no stored session now gets a new ID.
+      names no stored session now gets a new ID. A session started by a
+      request that carried no session cookie, a login among them, no longer
+      takes an ID made from the time of the request: every new session ID
+      is 32 random hexadecimal characters. Five more core files drop the
+      parameter forms PHP 9 removes, so PHP 8.0 and later compile them
+      without a deprecation notice.
 
     * The marker of an unfinished platform build is written as a new file
       and renamed into place, never through a link standing at its name.
@@ -103,6 +111,14 @@
       it, anything that fails puts all back, and each later upgrade gives
       that login a new password.
 
+    * A new account in REMOTE DB SERVER MODE gets a login of its own on the
+      database server at its install, where root on the web head can manage
+      users there: its control panel is installed on that login, and the
+      database server's root password never enters the account's files.
+      Where root cannot, it keeps the shared aegir_root login and the
+      install says so. syncpass remote <account> revert puts either kind
+      back on the shared login.
+
     * Upgrade all sites, the platform task that upgrades every Drupal 10 or
       later site of a platform onto a newer one, one at a time and each as
       its own Upgrade, is granted to the account's main login roles (admin,
@@ -115,7 +131,8 @@
       Git branch or tag, and keeps the new platform for the sites' Upgrade
       only when it is a newer version of the same codebase; otherwise it is
       deleted. A security advisory the build adds is named in its result. It
-      is granted to no role yet.
+      is granted to the account's main login roles (admin, aegir account
+      manager), not to the client, site operator or platform manager roles.
 
     * A nightly upgrade report for Drupal 10 and later sites, switched off
       by default. _UPGRADE_DIGEST=YES in /root/.barracuda.cnf mails the
@@ -160,12 +177,27 @@
 
 @=> Important Fixes
 
+    * The install of an Octopus account, and of the master's control panel,
+      fails when the panel's install (hostmaster-install) did not run to its
+      end: killed, or stopped early on an error. The install had judged the
+      panel by its settings.php, which exists a few seconds into that
+      install, so it reported success and went on with a half-made panel.
+      A panel install that ran to its end and then exited with an error
+      goes on as before, with an ALRT line naming its exit status.
+
     * syncpass remote keeps an account it cannot fully put back on a path
       a revert can finish: a switch whose put-back fails keeps the new
       login and its journal, a revert first proves the saved aegir_root
       password still logs in, and the password sync of a switched account
       takes a panel it could not read as a failure and sets everything
       back. A purge also takes a cut-off switch's journal and saved copies.
+
+    * xoct, xcopy and xmass no longer move an account that logs in to its
+      remote database server with a login of its own: that login is bound
+      to the web head's address, so on the target every task of the
+      account would lose its database server. They say to run syncpass
+      remote <account> revert first, which puts it back on the shared
+      aegir_root login.
 
     * The limited shell's history in a .lsh script, or in a single command
       run over an SSH terminal, lists the login's history file again
@@ -227,6 +259,10 @@
       a web, html or docroot folder whose parent has one. For an account a
       path that names a folder runs only when that folder really lies
       outside /tmp and /home, links followed, however the path is spelled.
+      One whose folder does not exist, or whose folder name has a character
+      a command line cannot carry, is refused with exit 1 and a line naming
+      it; it used to start the Drush of the codebase the line ran in, with
+      the arguments meant for the one it named.
 
     * A Delete of a platform whose Composer build was cut off clears that
       build's marker again, so a new build under the same name is no longer

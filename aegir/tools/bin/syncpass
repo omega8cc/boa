@@ -627,6 +627,56 @@ _rdb_rec_write() {
   chmod 0600 "${1}.new" && mv -f -T -- "${1}.new" "${1}"
 }
 
+# The journal of a login of the account's own that its install made on its
+# remote database server before its panel was installed (syncpass remote
+# <oN> born): root's /var/backups/boa/remote-db/<oN>.born, 0600, a single
+# link, with the lines dbhost=, port=, row= and since=. Status 0 when it
+# reads with each form; sets _R_DBHOST, _R_PORT, _R_ROW and _R_SINCE.
+_rdb_born_read() {
+  local _f="${_RDB_DIR}/${_uname}.born" _k _v
+  _R_DBHOST=""
+  _R_PORT=""
+  _R_ROW=""
+  _R_SINCE=""
+  [ -f "${_f}" ] && [ ! -L "${_f}" ] || return 1
+  [ "$(stat -c '%u|%h|%a' -- "${_f}" 2> /dev/null)" = "0|1|600" ] || return 1
+  while IFS='=' read -r _k _v; do
+    case "${_k}" in
+      dbhost) _R_DBHOST="${_v}" ;;
+      port) _R_PORT="${_v}" ;;
+      row) _R_ROW="${_v}" ;;
+      since) _R_SINCE="${_v}" ;;
+    esac
+  done < <(head -c 4096 -- "${_f}" 2> /dev/null)
+  [[ "${_R_DBHOST}" =~ ^[A-Za-z0-9._:-]+$ ]] \
+    && [[ "${_R_PORT}" =~ ^[0-9]{1,5}$ ]] \
+    && [[ "${_R_ROW}" =~ ^[0-9A-Fa-f.:]+$ ]]
+}
+
+# Status 0 while the journal of an install's own login stands, valid or not.
+_rdb_born_cut() {
+  [ -e "${_RDB_DIR}/${_uname}.born" ] || [ -L "${_RDB_DIR}/${_uname}.born" ]
+}
+
+# $1 as upper case hex, as the panel's saved records hold a value.
+_rdb_hex() {
+  printf '%s' "${1}" | od -An -v -tx1 | tr -d ' \n' | tr 'a-f' 'A-F'
+}
+
+# $1 for a server alias's master_db: every byte but a letter, a digit and
+# . _ ~ - written as %XX, which provision and _rdb_urldecode both decode.
+_rdb_urlencode() {
+  local LC_ALL=C _s="${1}" _o="" _c _i
+  for (( _i = 0; _i < ${#_s}; _i++ )); do
+    _c="${_s:_i:1}"
+    case "${_c}" in
+      [A-Za-z0-9._~-]) _o="${_o}${_c}" ;;
+      *) printf -v _c '%%%02X' "'${_c}"; _o="${_o}${_c}" ;;
+    esac
+  done
+  printf '%s' "${_o}"
+}
+
 # The account's own switch lock: one switch, rotation or revert at a time.
 # fd 8 is closed on each command a run starts.
 _rdb_lock() {
@@ -715,25 +765,14 @@ _rdb_pre_drop_here() {
   echo "${_n}"
 }
 
-# Why the account cannot be switched here, or nothing. Status 2 for a
-# database server where root from here cannot manage users: a NOTE, not an
-# error. With $1 "resume", the alias and the node come from the journal.
-# Sets _A_ALIAS, _A_SERVER, _A_NODE, _A_ROW and _A_PLUGIN.
-_rdb_check() {
-  local _p _l _c
-  _A_ALIAS=""
-  _A_SERVER=""
-  _A_NODE=""
-  _A_ROW=""
-  _A_PLUGIN=""
-  if [ ! -d "/data/disk/${_uname}/.drush" ] || [ ! -e "/root/.${_uname}.octopus.cnf" ]; then
-    echo "ERROR: ${_uname} is not an Octopus account on this box"
-    return 1
-  fi
-  if ! _rdb_remote; then
-    echo "ERROR: ${_uname}'s databases are on this box's own server (${_THIS_DB_HOST}): nothing to switch"
-    return 1
-  fi
+# What on this box keeps a login of the account's own off its database
+# server, or nothing: a standby or a box being made one, the active of a
+# standing pair or a move (the login would be bound to this web head's
+# address, which a promotion leaves behind), ProxySQL or a cluster, an
+# unfinished aegir2boa import. Status 2 where root from here cannot manage
+# users there: a NOTE, not an error.
+_rdb_gate() {
+  local _p
   if [ -e /root/.standby.cnf ] || [ -e /root/.standby.prep.cnf ]; then
     echo "ERROR: ${_uname}: this box is a standby: a login of its own there is made on the active web head"
     return 1
@@ -757,6 +796,29 @@ _rdb_check() {
     echo "NOTE: ${_uname}: root from this web head cannot manage users on ${_THIS_DB_HOST}: it keeps the shared aegir_root login; allow root from this web head there, with CREATE USER and GRANT OPTION, to switch it"
     return 2
   fi
+  return 0
+}
+
+# Why the account cannot be switched here, or nothing. Status 2 for a
+# database server where root from here cannot manage users: a NOTE, not an
+# error. With $1 "resume", the alias and the node come from the journal.
+# Sets _A_ALIAS, _A_SERVER, _A_NODE, _A_ROW and _A_PLUGIN.
+_rdb_check() {
+  local _p _l _c
+  _A_ALIAS=""
+  _A_SERVER=""
+  _A_NODE=""
+  _A_ROW=""
+  _A_PLUGIN=""
+  if [ ! -d "/data/disk/${_uname}/.drush" ] || [ ! -e "/root/.${_uname}.octopus.cnf" ]; then
+    echo "ERROR: ${_uname} is not an Octopus account on this box"
+    return 1
+  fi
+  if ! _rdb_remote; then
+    echo "ERROR: ${_uname}'s databases are on this box's own server (${_THIS_DB_HOST}): nothing to switch"
+    return 1
+  fi
+  _rdb_gate || return $?
   if [ "${1}" = "resume" ]; then
     _A_ALIAS="${_R_ALIAS}"
     _A_SERVER="${_R_SERVER}"
@@ -866,6 +928,10 @@ _rdb_apply() {
   local _mode="" _rc _p _l _c _n _r _sql
   if ! _rdb_lock 300; then
     echo "ERROR: ${_uname}: another switch, revert or password sync of it is running; nothing was changed"
+    return 1
+  fi
+  if _rdb_born_cut; then
+    echo "ERROR: ${_uname}: the login of its own its install made there was never recorded (${_RDB_DIR}/${_uname}.born): run syncpass remote ${_uname} status; nothing was changed"
     return 1
   fi
   if [ -e "${_jr}" ] || [ -L "${_jr}" ]; then
@@ -1034,6 +1100,14 @@ _rdb_revert() {
 # stands in the way of a switch. Changes nothing.
 _rdb_status() {
   local _p _l
+  if _rdb_born_cut; then
+    if _rdb_born_read; then
+      echo "STATUS ${_uname}: its install made '${_uname}'@'${_R_ROW}' on ${_R_DBHOST} (${_R_SINCE}) and never recorded it: an install that ended runs syncpass remote ${_uname} born-end ok; one that did not is taken away by boa cleanup, which names that login"
+    else
+      echo "STATUS ${_uname}: the journal ${_RDB_DIR}/${_uname}.born of its install is not valid"
+    fi
+    return 1
+  fi
   if _rdb_rec_read "${_RDB_DIR}/${_uname}.apply"; then
     echo "STATUS ${_uname}: a switch to '${_uname}'@'${_R_ROW}' on ${_R_DBHOST} was cut off (began ${_R_SINCE}): run syncpass remote ${_uname} apply, or revert"
     return 0
@@ -1061,6 +1135,10 @@ _rdb_status() {
 # syncpass remote <oN> plan: what apply would do. Changes nothing.
 _rdb_plan() {
   local _rc
+  if _rdb_born_cut; then
+    echo "PLAN ${_uname}: the login of its own its install made there was never recorded: see syncpass remote ${_uname} status. Nothing was changed"
+    return 1
+  fi
   if _rdb_rec_read "${_RDB_DIR}/${_uname}.apply"; then
     echo "PLAN ${_uname}: a switch was cut off (began ${_R_SINCE}): apply takes it up, revert undoes it"
     return 0
@@ -1094,6 +1172,10 @@ _rdb_fix() {
   fi
   if [ -e "${_jr}" ] || [ -L "${_jr}" ]; then
     echo "ALRT: remote database ${_uname}: a switch to its own login was cut off: run syncpass remote ${_uname} apply, or revert; nothing was changed"
+    return 1
+  fi
+  if _rdb_born_cut; then
+    echo "ALRT: remote database ${_uname}: the login of its own its install made there was never recorded (${_RDB_DIR}/${_uname}.born): run syncpass remote ${_uname} status; nothing was changed"
     return 1
   fi
   if [ ! -e "${_rec}" ] && [ ! -L "${_rec}" ]; then
@@ -1158,6 +1240,199 @@ _rdb_fix() {
   return 0
 }
 
+# syncpass remote <oN> born, run by the account's install alone, as root,
+# before its panel is installed. Where root from this web head can manage
+# users on the account's remote database server, a login of the account's
+# own is made there at this web head's address, as apply makes one (the
+# plugin and rights of the shared aegir_root login, which must open there
+# with root's password), proven, and its password put in the account's two
+# password files, which the install reads: the panel is then installed on
+# that login, and root's password never enters the account's files. The
+# journal is written before the login is made. Status 0 then; 2 where root
+# from here cannot manage users there (a NOTE); any other status leaves
+# nothing there and the install keeps the shared aegir_root login.
+_rdb_born() {
+  local _jr="${_RDB_DIR}/${_uname}.born" _r _l _c _plg _p _f
+  if ! _rdb_lock 300; then
+    echo "ERROR: ${_uname}: another switch, revert or password sync of it is running; nothing was changed"
+    return 1
+  fi
+  if [ ! -e "/root/.${_uname}.octopus.cnf" ] || ! id -u "${_uname}" > /dev/null 2>&1 \
+    || [ ! -d "/data/disk/${_uname}" ] || [ -e "/data/disk/${_uname}/log/cores.txt" ]; then
+    echo "ERROR: ${_uname} is not an Octopus account being installed on this box"
+    return 1
+  fi
+  if ! _rdb_remote; then
+    echo "INFO: ${_uname}'s databases are on this box's own server (${_THIS_DB_HOST})"
+    return 1
+  fi
+  for _f in "/root/.${_uname}.remote-db.txt" "${_RDB_DIR}/${_uname}.apply" "${_jr}"; do
+    if [ -e "${_f}" ] || [ -L "${_f}" ]; then
+      echo "NOTE: ${_uname}: ${_f} stands: its install keeps the shared aegir_root login"
+      return 1
+    fi
+  done
+  _rdb_gate || return $?
+  if ! _l=$(_rdb_web_row); then
+    echo "NOTE: ${_uname}: ${_THIS_DB_HOST} does not see this web head by an address: its install keeps the shared aegir_root login"
+    return 1
+  fi
+  _c=$(echo "SELECT COUNT(*) FROM mysql.user WHERE User = '${_uname}' AND Host = '${_l}';" | _rdb_sql)
+  if [ "${_c}" != "0" ]; then
+    echo "NOTE: ${_uname}: ${_THIS_DB_HOST} already has the login '${_uname}'@'${_l}', which this install did not make: it keeps the shared aegir_root login"
+    return 1
+  fi
+  _r=$(cat /root/.my.pass.txt 2> /dev/null | tr -d '\n')
+  _c=$(_rdb_login aegir_root "${_r}")
+  if [[ ! "${_c}" =~ ^aegir_root@ ]]; then
+    echo "NOTE: ${_uname}: the shared aegir_root login does not open ${_THIS_DB_HOST} with root's password here: its install keeps it as it is"
+    return 1
+  fi
+  _plg=$(echo "SELECT plugin FROM mysql.user WHERE CONCAT(User, '@', Host) = '$(_rdb_q "${_c}")';" | _rdb_sql)
+  if [[ ! "${_plg}" =~ ^[a-z0-9_]+$ ]]; then
+    echo "NOTE: ${_uname}: the login plugin of ${_c} could not be read: its install keeps the shared aegir_root login"
+    return 1
+  fi
+  _R_DBHOST="${_THIS_DB_HOST}"
+  _R_PORT="${_THIS_DB_PORT}"
+  _R_ROW="${_l}"
+  _R_SINCE="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+  rm -f -- "${_jr}.new"
+  if ! mkdir -p "${_RDB_DIR}" || ! chmod 0700 "${_RDB_DIR}" || [ -L "${_RDB_DIR}" ] \
+    || ! ( umask 077
+      printf 'dbhost=%s\nport=%s\nrow=%s\nsince=%s\n' "${_R_DBHOST}" "${_R_PORT}" \
+        "${_R_ROW}" "${_R_SINCE}" > "${_jr}.new" ) \
+    || ! chmod 0600 "${_jr}.new" || ! mv -f -T -- "${_jr}.new" "${_jr}"; then
+    echo "NOTE: ${_uname}: its journal ${_jr} could not be written: its install keeps the shared aegir_root login"
+    return 1
+  fi
+  if ! _p=$(_rdb_newpass); then
+    rm -f -- "${_jr}"
+    echo "NOTE: ${_uname}: no new password could be made: its install keeps the shared aegir_root login"
+    return 1
+  fi
+  _c=$(printf '%s\n' "CREATE USER '${_uname}'@'${_R_ROW}' IDENTIFIED WITH ${_plg} BY '${_p}';" \
+    "GRANT ALL ON *.* TO '${_uname}'@'${_R_ROW}' WITH GRANT OPTION;" \
+    "SELECT CONCAT(Create_user_priv, Grant_priv) FROM mysql.user WHERE User = '${_uname}' AND Host = '${_R_ROW}';" \
+    | _rdb_sql)
+  if [ "${_c}" != "YY" ] || [ "$(_rdb_login "${_uname}" "${_p}")" != "${_uname}@${_R_ROW}" ] \
+    || ! _rdb_files_put "${_p}" > /dev/null; then
+    echo "DROP USER IF EXISTS '${_uname}'@'${_R_ROW}';" | _rdb_sql > /dev/null
+    rm -f -- "${_jr}"
+    echo "ALRT: remote database ${_uname}: a login of its own '${_uname}'@'${_R_ROW}' on ${_R_DBHOST} could not be made and proven for its install; it keeps the shared aegir_root login"
+    return 1
+  fi
+  echo "INFO: ${_uname}: its install logs in to ${_R_DBHOST} as '${_uname}'@'${_R_ROW}', a login of its own made there now (${_plg}, all privileges with grant option, as aegir_root has them)"
+  return 0
+}
+
+# The account born switched made a switched account: the server alias its
+# install wrote and its panel's server node of that host, each found by
+# the account's own login, proven; what a revert needs saved (the alias and
+# the node's records as the shared aegir_root login gives them, root's
+# password in them, root's own under /var/backups/boa/remote-db); the
+# record written as apply writes it; the journal removed. Status 1, with
+# the journal and the login kept, when any of it cannot be done.
+_rdb_born_settle() {
+  local _jr="${_RDB_DIR}/${_uname}.born" _a _s _p _n _r _c _k _rows _v _nn _u _w _out=""
+  _a=$(_acct_in_real_dir "/data/disk/${_uname}/.drush" _rdb_aliases_here "${_uname}" "${_R_DBHOST}")
+  if [ -z "${_a}" ] || [ "$(printf '%s\n' "${_a}" | wc -l)" != "1" ] \
+    || [[ ! "${_a}" =~ ^server_[A-Za-z0-9._-]+\.alias\.drushrc\.php$ ]]; then
+    echo "ALRT: remote database ${_uname}: not exactly one server alias of its install logs in as ${_uname} on ${_R_DBHOST}"
+    return 1
+  fi
+  _s=$(_acct_read_in "/data/disk/${_uname}/.drush" "${_a}" \
+    | sed -n "s/^\$aliases\['\([^']*\)'\].*/\1/p" | head -n 1)
+  _p=$(_rdb_alias_pass "${_uname}" "${_a}")
+  if [[ ! "${_s}" =~ ^server_[A-Za-z0-9._-]+$ ]] || [ -z "${_p}" ] \
+    || [ "$(_rdb_login "${_uname}" "${_p}")" != "${_uname}@${_R_ROW}" ]; then
+    echo "ALRT: remote database ${_uname}: its server alias ${_a} does not log in as '${_uname}'@'${_R_ROW}'"
+    return 1
+  fi
+  _n=$(echo "SELECT CONCAT('RDB|', n.nid) FROM node n JOIN hosting_db_server d ON d.vid = n.vid WHERE n.type = 'server' AND n.title = '$(_rdb_q "${_R_DBHOST}")' AND d.db_user = '${_uname}';" \
+    | _rdb_panel)
+  _rows=""
+  [[ "${_n}" =~ ^[1-9][0-9]*$ ]] && _rows=$(_rdb_rows_read "${_n}")
+  if [ -z "${_rows}" ]; then
+    echo "ALRT: remote database ${_uname}: not exactly one server of its panel named ${_R_DBHOST} logs in as ${_uname}"
+    return 1
+  fi
+  _r=$(cat /root/.my.pass.txt 2> /dev/null | tr -d '\n')
+  if [[ ! "$(_rdb_login aegir_root "${_r}")" =~ ^aegir_root@ ]]; then
+    echo "ALRT: remote database ${_uname}: the shared aegir_root login does not open ${_R_DBHOST} with root's password now, so no revert to it could be saved"
+    return 1
+  fi
+  _R_ALIAS="${_a}"
+  _R_SERVER="${_s}"
+  _R_NODE="${_n}"
+  _R_SAVED="${_RDB_DIR}/${_uname}-${_NOW}"
+  _c=$(_acct_read_in "/data/disk/${_uname}/.drush" "${_a}" && echo x)
+  # the passwords never reach sed's command line: sed writes a mark, the
+  # shell puts the value in its place
+  _k="RDBPASS${$}x${RANDOM}${RANDOM}${RANDOM}"
+  if [ "${_c}" = "x" ] || [[ "${_c}" == *"${_k}"* ]]; then
+    echo "ALRT: remote database ${_uname}: its server alias ${_a} could not be read"
+    return 1
+  fi
+  _c=$(printf '%s' "${_c%x}" \
+    | sed -E "/'master_db' *=>/ s#mysql://${_uname}:[^@']*@#mysql://aegir_root:${_k}@#"; echo x)
+  _c="${_c//"${_k}"/$(_rdb_urlencode "${_r}")}"
+  while IFS='|' read -r _v _nn _u _w; do
+    _out="${_out}${_v}|${_nn}|$(_rdb_hex aegir_root)|$(_rdb_hex "${_r}")"$'\n'
+  done <<< "${_rows}"
+  if ! mkdir -m 0700 "${_R_SAVED}" \
+    || ! ( umask 077; printf '%s' "${_c%x}" > "${_R_SAVED}/alias" \
+      && printf '%s' "${_out}" > "${_R_SAVED}/rows" ) \
+    || [ "$(_rdb_urldecode "$(_acct_read_in "${_R_SAVED}" alias \
+      | sed -n "s#.*'master_db' *=> *'mysql://aegir_root:\([^@']*\)@.*#\1#p" | head -n 1)")" != "${_r}" ]; then
+    echo "ALRT: remote database ${_uname}: what a revert needs could not be saved under ${_R_SAVED}"
+    return 1
+  fi
+  _R_SINCE="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+  if ! _rdb_rec_write "/root/.${_uname}.remote-db.txt"; then
+    echo "ALRT: remote database ${_uname}: its record /root/.${_uname}.remote-db.txt could not be written"
+    return 1
+  fi
+  rm -f -- "${_jr}"
+  _rdb_files_put "${_p}" > /dev/null
+  echo "INFO: ${_uname} is born switched: it logs in to ${_R_DBHOST} as '${_uname}'@'${_R_ROW}', its server alias ${_R_ALIAS}, its panel's server records and its password files hold that login's own password (record /root/.${_uname}.remote-db.txt; saved ${_R_SAVED}, for a revert to the shared aegir_root login)"
+  return 0
+}
+
+# syncpass remote <oN> born-end ok|fail, run by the install that ran born,
+# once its panel's install has returned. ok: the account is made a switched
+# account (_rdb_born_settle); when that cannot be done, its login and the
+# journal stay, the password syncs of it refuse, and this can be run again.
+# fail: the login its install was to use is dropped there, the journal
+# removed and the password files made random. Without a journal it changes
+# nothing.
+_rdb_born_end() {
+  local _jr="${_RDB_DIR}/${_uname}.born"
+  if ! _rdb_lock 300; then
+    echo "ERROR: ${_uname}: another switch, revert or password sync of it is running; nothing was changed"
+    return 1
+  fi
+  if ! _rdb_born_read; then
+    if _rdb_born_cut; then
+      echo "ALRT: remote database ${_uname}: the journal ${_jr} of its install is not valid; nothing was changed"
+      return 1
+    fi
+    return 0
+  fi
+  _SQL_CONNECT="${_R_DBHOST}"
+  _THIS_DB_PORT="${_R_PORT}"
+  if [ "${1}" = "ok" ]; then
+    _rdb_born_settle && return 0
+    echo "ALRT: remote database ${_uname}: it logs in with its own login '${_uname}'@'${_R_ROW}', kept with the journal ${_jr}; its password syncs refuse until syncpass remote ${_uname} born-end ok is run again"
+    return 1
+  fi
+  echo "DROP USER IF EXISTS '${_uname}'@'${_R_ROW}';" | _rdb_sql > /dev/null
+  rm -f -- "${_jr}"
+  _rdb_files_put "$(_rdb_newpass)" > /dev/null
+  echo "INFO: ${_uname}: its install did not end: the login of its own '${_uname}'@'${_R_ROW}' made for it dropped on ${_R_DBHOST}"
+  return 0
+}
+
 # syncpass remote <oN> plan|apply|revert|status
 _rdb_main() {
   # a plain database user name, as the purge takes an account's
@@ -1173,6 +1448,16 @@ _rdb_main() {
     apply) _rdb_apply ;;
     revert) _rdb_revert ;;
     status) _rdb_status ;;
+    born) _rdb_born ;;
+    born-end)
+      case "${_rdb_how}" in
+        ok|fail) _rdb_born_end "${_rdb_how}" ;;
+        *)
+          echo "Usage: syncpass remote <oN> born-end {ok|fail}"
+          exit 1
+          ;;
+      esac
+      ;;
     *)
       echo "Usage: syncpass remote <oN> {plan|apply|revert|status}"
       exit 1
@@ -1422,6 +1707,7 @@ case "$1" in
   ;;
   remote) _uname="$2"
        _rdb_verb="$3"
+       _rdb_how="$4"
        _check_root
        _rdb_main
   ;;
