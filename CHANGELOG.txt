@@ -182,6 +182,16 @@
       still runs changes nothing and says so. The Drush a first Verify adds
       to such a codebase has the same limit, and a stopped one is undone.
 
+    * An account's PHP-FPM pools list the directories PHP may read in the
+      order requests use them: the request's own directory, the account's
+      platforms, the shared code, then the files every request checks. The
+      directories are the same as before. PHP walks a file's whole path once
+      for each entry it tries, with no cache, so the order is CPU time: on a
+      test server it took about a fifth off a page Drupal's page cache
+      answers and off the control panel's pages. The control panel's pool
+      takes the order on the worker's next pass, an account's own pools at
+      their next setup (a new BOA release or a change of PHP version).
+
 @=> Important Fixes
 
     * A database server added in a control panel keeps its own login when
