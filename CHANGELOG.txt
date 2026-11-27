@@ -191,10 +191,10 @@
       answers and off the control panel's pages.
 
     * An account's PHP-FPM pools follow a changed pool template on the
-      worker's next pass, as the control panel's pool does, with one reload
-      of each PHP version in use. Before, they were written again only with
-      a new release or a change of the account's PHP version, so a template
-      change published between two releases reached them weeks later.
+      worker's next pass, as the control panel's pool does. Before, they were
+      written again only with a new release or a change of the account's PHP
+      version, so a template change published between two releases reached
+      them weeks later.
 
     * The REMOTE DB SERVER MODE notes in the barracuda.cnf and octopus.cnf
       templates say what root allowed from the web head is for: with the
