@@ -334,7 +334,7 @@ _VARBASE_SPEC="Vardot/varbase-project:11.0.10"
 # the core: move these once a test install AND clone pass, and _distros_drupal_cores["VBX"]
 # in AegirSetupC only after the new tarball is on the mirror. Drop both when a newer
 # template carries its own lock.
-_VARBASE_CORE="11.4.13"
+_VARBASE_CORE="11.4.14"
 _VARBASE_CORE_PATCHES="11.4.0.8"
 # The 11 line's committed lock pins drupal/ai_provider_amazeeio 1.4.2 (via
 # drupal/drupal_cms_ai), which declares ext-pdo_pgsql; BOA's PHP builds carry no
@@ -415,7 +415,7 @@ _CORE_LEGACY="8.9 9.5"
 # hold no stable release of its minor, so the line stops by itself the day that minor
 # ships. Name only a pre-release with every core security fix so far, replaced at each
 # new one; when none has them the newest stays, for throwaway tests. Empty builds none.
-_CORE_PRERELEASE="11.5.0-beta1 12.0.0-beta2"
+_CORE_PRERELEASE="11.5.0-beta1 12.0.0-rc1"
 # Dependency releases the distribution builds hold back, as root composer.json conflicts
 # (package:constraint, space-separated) that _composer_prepare writes. Every distribution
 # build takes them but Varbase's, which installs its template's own lock with upstream's
