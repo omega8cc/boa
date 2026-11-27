@@ -108,8 +108,10 @@
       version does, and then move the site in the same task: nothing of the
       site is copied or moved before the build is kept and the site is
       judged ready for it, and a kept build stays as a platform whether or
-      not the site moved. Switched off for now: its permission, build
-      drupal_upgrade target, is granted to no role.
+      not the site moved. Its permission, build drupal_upgrade target, is
+      granted to the account's main login roles (admin, aegir account
+      manager), as Build newer version's is, not to the client, site
+      operator or platform manager roles.
 
     * syncpass remote <account> plan|apply|revert|status switches an
       account in REMOTE DB SERVER MODE from the shared aegir_root login to
