@@ -3259,8 +3259,10 @@ _xcopy_wait_boa_quiet() {
 # neither the rename nor the Octopus pass (which finds the row by the
 # account's name) mapped it, so every server verify failed for good: the
 # name is mapped even when the password cannot be read, which the caller
-# reports (non-zero) and the next Octopus pass then fixes. Same text in
-# xoct and xcopy.
+# reports (non-zero) and the next Octopus pass then fixes. Only the row
+# of the server the panel site keeps its databases on: a database server
+# added in the panel whose admin login has either name is left alone.
+# Same text in xoct and xcopy.
 _xcopy_sync_panel_db_pass() {   # 1 account root 2 account here 3 source account 4 panel db
   local _p _set
   _p=$(_xcopy_read_in "${1}" ".${2}.pass.txt" | head -1 | tr -d '\n')
@@ -3271,7 +3273,9 @@ _xcopy_sync_panel_db_pass() {   # 1 account root 2 account here 3 source account
   _set="db_user='${2}'"
   [ -n "${_p}" ] && _set="${_set}, db_passwd='${_p}'"
   mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp "${4}" \
-    -e "UPDATE hosting_db_server SET ${_set} WHERE db_user IN ('${2}','${3}')" 2> /dev/null \
+    -e "UPDATE hosting_db_server SET ${_set} WHERE db_user IN ('${2}','${3}') \
+      AND nid IN (SELECT s.db_server FROM hosting_site s JOIN hosting_context c \
+      ON c.nid=s.nid WHERE c.name='hostmaster')" 2> /dev/null \
     && [ -n "${_p}" ]
 }
 

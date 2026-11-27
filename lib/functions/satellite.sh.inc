@@ -6501,6 +6501,20 @@ _ensure_hosting_dispatch_enabled() {
 }
 
 #
+# The server context the account's panel site keeps its databases on, as its
+# hostmaster alias names it ('db_server' => '@server_<name>'): the one panel
+# record and server alias a renewal of the account's password changes. A
+# database server added in the panel whose admin login has the account's
+# name is another context. Status 1 when no such name can be read.
+_satellite_panel_db_server() {
+  local _n
+  _n=$(_acct_read_in "${_ROOT}/.drush" hostmaster.alias.drushrc.php 2> /dev/null \
+    | sed -n "s/^ *'db_server' *=> *'@\(server_[A-Za-z0-9._-]*\)',* *$/\1/p" | head -n 1)
+  [[ "${_n}" =~ ^server_[A-Za-z0-9._-]+$ ]] || return 1
+  printf '%s' "${_n}"
+}
+
+#
 # Sync provision backend db_passwd.
 _provision_backend_dbpass_sync() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -6521,23 +6535,55 @@ _provision_backend_dbpass_sync() {
   fi
   _L_SYS="${_ROOT}/.${_USER}.pass.txt"
   _satellite_root_pass_leftover_drop
-  ### The account home allows traversal, so a lax mode on these backups is
-  ### readable by local users by exact path; never trust the moved file's
-  ### inherited mode -- set 0600 explicitly. Moved by name inside the real
-  ### account root (-T: a link put at the backup name is replaced, never
-  ### followed into the directory it leads to), and the mode is set through
-  ### a handle only on a file with a single link (_SAT_NOFOLLOW_CHMOD_PL).
-  _acct_in_real_dir "${_ROOT}" mv -f -T -- "./.${_USER}.pass.txt" \
-    "./.${_USER}.pass.txt-pre-${_xSrl}-${_X_VERSION}-${_NOW}" &> /dev/null
-  _acct_in_real_dir "${_ROOT}" _satellite_chmod_nofollow f 0600 \
-    "./.${_USER}.pass.txt-pre-${_xSrl}-${_X_VERSION}-${_NOW}" &> /dev/null
-  _L_SYS_PHP="${_ROOT}/.${_USER}.pass.php"
-  _acct_in_real_dir "${_ROOT}" mv -f -T -- "./.${_USER}.pass.php" \
-    "./.${_USER}.pass.php-pre-${_xSrl}-${_X_VERSION}-${_NOW}" &> /dev/null
-  _acct_in_real_dir "${_ROOT}" _satellite_chmod_nofollow f 0600 \
-    "./.${_USER}.pass.php-pre-${_xSrl}-${_X_VERSION}-${_NOW}" &> /dev/null
-  _provision_backend_dbpass_generate
-  if _satellite_db_head_remote; then
+  ### Switched to a login of its own on a remote database server (root's
+  ### record), or a switch to one cut off or an install's never settled
+  ### (its journal), while its cnf now reads local: its panel and alias
+  ### stay on that server, so the local renewal would point them at this
+  ### box. Its password files and logins are left as they are.
+  local _pOwn=NO _pOwnF
+  if ! _satellite_db_head_remote; then
+    for _pOwnF in "/root/.${_USER}.remote-db.txt" \
+      "/var/backups/boa/remote-db/${_USER}.apply" \
+      "/var/backups/boa/remote-db/${_USER}.born"; do
+      if [ -e "${_pOwnF}" ] || [ -L "${_pOwnF}" ]; then
+        _pOwn=YES
+        break
+      fi
+    done
+  fi
+  if [ "${_pOwn}" != "YES" ]; then
+    ### The account home allows traversal, so a lax mode on these backups is
+    ### readable by local users by exact path; never trust the moved file's
+    ### inherited mode -- set 0600 explicitly. Moved by name inside the real
+    ### account root (-T: a link put at the backup name is replaced, never
+    ### followed into the directory it leads to), and the mode is set through
+    ### a handle only on a file with a single link (_SAT_NOFOLLOW_CHMOD_PL).
+    _acct_in_real_dir "${_ROOT}" mv -f -T -- "./.${_USER}.pass.txt" \
+      "./.${_USER}.pass.txt-pre-${_xSrl}-${_X_VERSION}-${_NOW}" &> /dev/null
+    _acct_in_real_dir "${_ROOT}" _satellite_chmod_nofollow f 0600 \
+      "./.${_USER}.pass.txt-pre-${_xSrl}-${_X_VERSION}-${_NOW}" &> /dev/null
+    _L_SYS_PHP="${_ROOT}/.${_USER}.pass.php"
+    _acct_in_real_dir "${_ROOT}" mv -f -T -- "./.${_USER}.pass.php" \
+      "./.${_USER}.pass.php-pre-${_xSrl}-${_X_VERSION}-${_NOW}" &> /dev/null
+    _acct_in_real_dir "${_ROOT}" _satellite_chmod_nofollow f 0600 \
+      "./.${_USER}.pass.php-pre-${_xSrl}-${_X_VERSION}-${_NOW}" &> /dev/null
+    _provision_backend_dbpass_generate
+  else
+    ### The connection the pass's later steps use (the panel's database
+    ### user sync among them), as _provision_backend_dbpass_generate sets
+    ### it for an account whose cnf names a local database server.
+    _USE_AEGIR_HOST="${_hName}"
+    _USE_DB_USER="${_USER}"
+    _SQL_CONNECT=localhost
+    if [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
+      || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
+      || [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
+      _SQL_CONNECT=127.0.0.1
+    fi
+  fi
+  if [ "${_pOwn}" = "YES" ]; then
+    _msg "${_STATUS} A: ALRT: ${_USER}: logs in to a remote database server with a login of its own, or a switch to one is half made (${_pOwnF}), but its cnf names a local one; no password file, login, panel record or alias changed: set _THIS_DB_HOST back, or see syncpass remote ${_USER} status"
+  elif _satellite_db_head_remote; then
     ### An account on a remote database server: no login there is dropped
     ### or made again, and nothing found by the account's name alone, a
     ### panel record or an alias, is changed (syncpass renews a switched
@@ -6547,10 +6593,18 @@ _provision_backend_dbpass_sync() {
     _satellite_db_broker_rekey
     [ "${_DEBUG_MODE}" = "YES" ] && _msg "${_STATUS} A: ${_USER}: no login changed on ${_THIS_DB_HOST}"
   elif [ ! -z "${_ESC_PASS}" ] || [ ! -z "${_ENC_PASS}" ]; then
-    local _pUpd _pDbHost
+    local _pUpd _pDbHost _pSrv _pWhere _pAls
+    if _pSrv=$(_satellite_panel_db_server); then
+      _pWhere="db_user='${_USER}' AND nid IN (SELECT nid FROM hosting_context WHERE name='${_pSrv}')"
+      _pAls="${_pSrv}.alias.drushrc.php"
+    else
+      _msg "${_STATUS} A: ALRT: ${_USER}: its hostmaster alias names no database server; every server alias and panel record of the login ${_USER} take the new password"
+      _pWhere="db_user='${_USER}'"
+      _pAls='server_*.alias.drushrc.php'
+    fi
     su -s /bin/bash - ${_USER} -c "${_DRUSHCMD} @hostmaster \
       sqlq \"UPDATE hosting_db_server SET db_passwd='${_ESC_PASS}' \
-      WHERE db_user='${_USER}'\"" &> /dev/null
+      WHERE ${_pWhere}\"" &> /dev/null
     _pUpd=$?
     wait
     ### MySQL and the aliases take the new password below either way; a
@@ -6606,7 +6660,7 @@ EOFMYSQL
     fi
     _acct_in_real_dir "${_ROOT}/.drush" _satellite_edit_all_here \
       "s/mysql:\/\/${_USER}:.*/mysql:\/\/${_USER}:${_ENC_PASS}@${_pDbHost}',/g" \
-      'server_*.alias.drushrc.php' &> /dev/null
+      "${_pAls}" &> /dev/null
     wait
   else
     _msg "CRIT: _ESC_PASS empty or not generated"
@@ -7057,6 +7111,17 @@ _hostmaster_oldhost_dbuser_drop() {
 }
 
 #
+# Root's login here on the database server in _SQL_CONNECT may create users
+# and grant rights: the rows the panel's database user sync below changes,
+# as syncpass remote tests it (_rdb_root_manages). Status 1 otherwise, a
+# refused login included.
+_satellite_root_manages_head() {
+  [ "$(mysql --silent --skip-column-names -u root -h"${_SQL_CONNECT}" -P"${_THIS_DB_PORT}" \
+    --protocol=tcp -e "SELECT 1 FROM mysql.user WHERE CONCAT(User,'@',Host)=CURRENT_USER() AND Create_user_priv='Y' AND Grant_priv='Y'" \
+    2> /dev/null < /dev/null)" = "1" ]
+}
+
+#
 # Sync hostmaster frontend db_passwd.
 _hostmaster_frontend_dbpass_sync() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -7100,6 +7165,18 @@ _hostmaster_frontend_dbpass_sync() {
       _THIS_HM_DBUR=""
       _THIS_HM_DBPD=""
     fi
+  fi
+  ### On a remote database server where root from this web head may not
+  ### create users and grant them, none of the statements below can run: the
+  ### panel's database user keeps its password and rights there, said once.
+  if [ -n "${_THIS_HM_DBUR}" ] && _satellite_db_head_remote \
+    && ! _satellite_root_manages_head; then
+    if [ "${_SAT_HM_DBUSER_NOTED:-}" != "YES" ]; then
+      _msg "${_STATUS} A: NOTE: ${_USER}: root from this web head cannot manage users on ${_THIS_DB_HOST}, so the panel's database user there is left as it is; allow root from this web head there, with CREATE USER and GRANT OPTION, to keep it to its own database"
+      _SAT_HM_DBUSER_NOTED=YES
+    fi
+    _THIS_HM_DBUR=""
+    _THIS_HM_DBPD=""
   fi
   if [ -e "${_THIS_HM_SPTH}" ] \
     && [ ! -z "${_THIS_HM_DBUR}" ] \
