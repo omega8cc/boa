@@ -101,7 +101,20 @@
       fixes of 24 November. After the next Octopus upgrade the Upgrade Grav
       task brings an existing site to it.
 
+    * New platforms are built on Drupal 10.6.23, 11.3.23 and 11.4.14,
+      upstream's security releases of 25 November 2026.
+
 @=> New Features
+
+    * The Upgrade of a Drupal 10 or later site, and Upgrade all sites, can
+      build a newer version of the site's platform first, as Build newer
+      version does, and then move the site in the same task: nothing of the
+      site is copied or moved before the build is kept and the site is
+      judged ready for it, and a kept build stays as a platform whether or
+      not the site moved. Its permission, build drupal_upgrade target, is
+      granted to the account's main login roles (admin, aegir account
+      manager), as Build newer version's is, not to the client, site
+      operator or platform manager roles.
 
     * syncpass remote <account> plan|apply|revert|status switches an
       account in REMOTE DB SERVER MODE from the shared aegir_root login to
@@ -158,6 +171,12 @@
 
 @=> Improvements
 
+    * A platform's drupal_upgrade_modes line now governs every build made
+      from it: Build newer version offers only what the line admits, a
+      finished build the line refuses is not kept, and a kept build gets
+      the line in its own boa_platform_control.ini. A site's own line still
+      governs only that site's move.
+
     * A platform the control panel builds from a Git repository on an SSH
       server the account has not used before no longer stops with "Host key
       verification failed": the build stores that server's key at its first
@@ -204,6 +223,16 @@
       database. They name syncpass remote <account> apply and revert, and
       that xoct, xcopy and xmass do not move an account on a DB user of its
       own. They said root managed the accounts' DB users at each upgrade.
+
+@=> Changes and Upgrades
+
+    * The catalogue's distributions are rebuilt on the new cores, with
+      farmOS 4.0.13 and OpenCulturas 3.1.10 among them.
+
+    * The CiviCRM platforms for Drupal 11 and for Backdrop are built on
+      CiviCRM 6.20.2.
+
+    * The Backdrop webform every Backdrop bundle carries is 1.x-4.26.7.
 
 @=> Important Fixes
 
