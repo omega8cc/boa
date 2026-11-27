@@ -7641,6 +7641,25 @@ _ltd_hm_pool() {
 }
 
 #
+# The account's pools are written from the two pool templates, so a changed
+# template is a setup of its own, as a new release is: a stamp in the
+# account's control folder carries the templates' checksum. Status 0 when
+# no stamp named today's templates (it is written now), so the pass sets
+# the pools up once; 1 when it is there or a template cannot be read.
+_ltd_pool_tpl_new() {
+  local _one=/var/xdrago/conf/fpm-pool-foo.conf
+  local _mul=/var/xdrago/conf/fpm-pool-foo-multi.conf
+  local _sum
+  [ -r "${_one}" ] && [ -r "${_mul}" ] || return 1
+  _sum=$(cat "${_one}" "${_mul}" 2> /dev/null | md5sum 2> /dev/null | cut -c 1-12)
+  [ "${#_sum}" = 12 ] || return 1
+  [ -e "${_dscUsr}/static/control/.pool-tpl.${_sum}.pid" ] && return 1
+  _ltd_ctrl_rm '.pool-tpl.*.pid'
+  _ltd_ctrl_stamp ".pool-tpl.${_sum}.pid" "OK"
+  return 0
+}
+
+#
 # Switch PHP Version.
 _switch_php() {
   _FORCE_FPM_SETUP=NO
@@ -7670,6 +7689,8 @@ _switch_php() {
       _ltd_ctrl_stamp ".single-fpm.${_xSrl}.pid" "OK"
       _FORCE_FPM_SETUP=YES
     fi
+    # a changed pool template between two releases sets the pools up too
+    _ltd_pool_tpl_new && _FORCE_FPM_SETUP=YES
 
     # Convert shorthand versions (e.g. "83" to "8.3")
     fix_version_format() {
