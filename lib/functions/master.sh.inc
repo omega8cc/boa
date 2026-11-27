@@ -461,6 +461,21 @@ _ensure_hosting_dispatch_enabled() {
 }
 
 #
+# The server context the Master panel site keeps its databases on, as its
+# hostmaster alias names it ('db_server' => '@server_<name>'): the one panel
+# record and server alias a renewal of aegir_root changes. A database server
+# added in the panel with an admin login named aegir_root is another
+# context. Status 1 when no such name can be read.
+_master_panel_db_server() {
+  local _n _f=/var/aegir/.drush/hostmaster.alias.drushrc.php
+  [ -f "${_f}" ] && [ ! -L "${_f}" ] || return 1
+  _n=$(head -c 1048576 -- "${_f}" 2> /dev/null \
+    | sed -n "s/^ *'db_server' *=> *'@\(server_[A-Za-z0-9._-]*\)',* *$/\1/p" | head -n 1)
+  [[ "${_n}" =~ ^server_[A-Za-z0-9._-]+$ ]] || return 1
+  printf '%s' "${_n}"
+}
+
+#
 # Sync provision backend db_passwd.
 _provision_backend_dbpass_sync() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -489,10 +504,18 @@ _provision_backend_dbpass_sync() {
     mv -f ${_L_SYS}-pre-${_xSrl}-${_X_VERSION}-${_NOW} ${_L_SYS} &> /dev/null
   fi
   if [ ! -z "${_ESC_PASS}" ] && [ ! -z "${_ENC_PASS}" ]; then
-    local _pUpd
+    local _pUpd _pSrv _pWhere _pAls
+    if _pSrv=$(_master_panel_db_server); then
+      _pWhere="db_user='${_ADBU}' AND nid IN (SELECT nid FROM hosting_context WHERE name='${_pSrv}')"
+      _pAls="/var/aegir/.drush/${_pSrv}.alias.drushrc.php"
+    else
+      _msg "ALRT: the Master's hostmaster alias names no database server; every server alias and panel record of the login ${_ADBU} take the new password"
+      _pWhere="db_user='${_ADBU}'"
+      _pAls="/var/aegir/.drush/server_*.alias.drushrc.php"
+    fi
     su -s /bin/bash - aegir -c "drush8 @hostmaster \
       sqlq \"UPDATE hosting_db_server SET db_passwd='${_ESC_PASS}' \
-      WHERE db_user='${_ADBU}'\"" &> /dev/null
+      WHERE ${_pWhere}\"" &> /dev/null
     _pUpd=$?
     wait
     ### MySQL and the aliases take the new password below either way; a
@@ -539,8 +562,9 @@ GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' WITH GRANT OPTION;
 ALTER USER '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_PASS}';
 ALTER USER '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_ESC_PASS}';
 EOFMYSQL
+    # shellcheck disable=SC2086
     sed -i "s/mysql:\/\/${_ADBU}:.*/mysql:\/\/${_ADBU}:${_ENC_PASS}@${_SQL_CONNECT}',/g" \
-      /var/aegir/.drush/server_*.alias.drushrc.php &> /dev/null
+      ${_pAls} &> /dev/null
     wait
   fi
   mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG PRIVILEGES" &> /dev/null

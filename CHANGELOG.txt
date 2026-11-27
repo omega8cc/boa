@@ -158,6 +158,13 @@
 
 @=> Improvements
 
+    * A platform the control panel builds from a Git repository on an SSH
+      server the account has not used before no longer stops with "Host key
+      verification failed": the build stores that server's key at its first
+      contact and refuses the server later if its key has changed. The host
+      no longer adds each such server by hand; an SSH client already named
+      for Git is left as it is.
+
     * The Upgrade no longer refuses a newer platform that brings a security
       advisory the site's platform does not have: its plan and its result
       line name the advisory, and so does its dialog where both platforms'
@@ -175,7 +182,57 @@
       still runs changes nothing and says so. The Drush a first Verify adds
       to such a codebase has the same limit, and a stopped one is undone.
 
+    * An account's PHP-FPM pools list the directories PHP may read in the
+      order requests use them: the request's own directory, the account's
+      platforms, the shared code, then the files every request checks. The
+      directories are the same as before. PHP walks a file's whole path once
+      for each entry it tries, with no cache, so the order is CPU time: on a
+      test server it took about a fifth off a page Drupal's page cache
+      answers and off the control panel's pages. The control panel's pool
+      takes the order on the worker's next pass, an account's own pools at
+      their next setup (a new BOA release or a change of PHP version).
+
+    * The REMOTE DB SERVER MODE notes in the barracuda.cnf and octopus.cnf
+      templates say what root allowed from the web head is for: with the
+      right to create users and grant them, the install of a new account
+      gives it a DB user of its own on the database server, and each
+      upgrade uses it to keep every control panel's DB user to its own
+      database. They name syncpass remote <account> apply and revert, and
+      that xoct, xcopy and xmass do not move an account on a DB user of its
+      own. They said root managed the accounts' DB users at each upgrade.
+
 @=> Important Fixes
+
+    * A task run from inside a running task (the Verify a Clone or a
+      Migrate runs, a step of an Upgrade) reads its parent's runner lock
+      record from the panel's variable table. Read from Drupal's cached
+      variables, which a bootstrap racing the runner's write could leave
+      on an earlier holder's record, it could miss its own parent, wait
+      30 seconds and be refused as busy, failing the task that ran it.
+
+    * A step of an Upgrade, a Go back or a Build newer version that its
+      run had queued is never run on its own once the run's task runner is
+      lost: it ends with "Not run: this row is a step of task N" and does
+      nothing. The queue ran such a row after the run was marked failed, so
+      a site could be moved onto the new platform with none of the run's
+      checks, and its way-back copy then removed.
+
+    * An Octopus pass of an account in REMOTE DB SERVER MODE no longer ends
+      with errors where root on the web head may not manage users on the
+      database server: the sync of the panel's own database user sends
+      nothing there and says so once in a NOTE. It sent every statement,
+      had them refused, and its check of the user's rights printed two
+      ALRT lines on every pass.
+
+    * A database server added in a control panel keeps its own login when
+      the upgrade, syncpass fix or a move renews the panel's own database
+      password: only the server the panel site keeps its databases on takes
+      it, found by the panel's hostmaster alias, where it took every server
+      record and alias whose login had the instance's name (aegir_root on
+      the Master) and pointed them all at the local server. An account on a
+      login of its own on a remote database server, or with a switch to one
+      half made, whose cnf later names a local one is left unchanged, its
+      password files included, with an alert.
 
     * The install of an Octopus account, and of the master's control panel,
       fails when the panel's install (hostmaster-install) did not run to its
@@ -267,6 +324,20 @@
     * A Delete of a platform whose Composer build was cut off clears that
       build's marker again, so a new build under the same name is no longer
       refused as if the old one still ran.
+
+    * A platform's failed Composer build quotes Composer's reason whole. With
+      no terminal Composer wrapped it at 80 columns, and the line naming the
+      cause, such as a plugin the project's allow-plugins does not list,
+      fell out of the last lines the Verify and Build newer version show.
+
+    * Go back names the copy it puts back by the time its Upgrade gave that
+      copy. It read the Upgrade task's start instead, which can fall in the
+      minute before the copy was made.
+
+    * The Upgrade dialog numbers its steps, as the third names the first by
+      number, and leaves a line before "Before you start"; Go back's dialog
+      bullets its points. The panel's theme took a list's numbers and bullets
+      and the space after it away.
 
     * _SMTP_RELAY_HOST takes [host]:port, as a relay on port 587 or 465
       needs, and one relay replaces another. An upgrade used to write such
