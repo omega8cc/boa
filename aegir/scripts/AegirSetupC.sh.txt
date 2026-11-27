@@ -1945,7 +1945,7 @@ declare -A _distros_drupal_cores=(
   ["THR"]="${_SMALLCORE11_4_V}"
   ["UC6"]="${_SMALLCORE6_V}"
   ["UC7"]="${_SMALLCORE7_V}"
-  ["VBX"]="11.4.13"
+  ["VBX"]="11.4.14"
   ["DL6"]="${_SMALLCORE6_V}"
   ["DL7"]="${_SMALLCORE7_V}"
   ["DL9"]="${_SMALLCORE9_V}"
@@ -2866,7 +2866,7 @@ _d_dist_loop() {
         continue
         ;;
     esac
-    # A core still at a pre-release (11.5.0-beta1, 12.0.0-beta2) is built only where the
+    # A core still at a pre-release (11.5.0-beta1, 12.0.0-rc1) is built only where the
     # list names it, never through ALL: it is for testing, not for sites.
     if [[ "${_dist}" =~ ^D[LXET][0-9]$ ]] && [[ "${_d_vers}" == *-* ]] \
       && [[ ! "${_PLATFORMS_LIST}" =~ ${_dist} ]]; then
