@@ -202,6 +202,13 @@
 
 @=> Important Fixes
 
+    * A step of an Upgrade, a Go back or a Build newer version that its
+      run had queued is never run on its own once the run's task runner is
+      lost: it ends with "Not run: this row is a step of task N" and does
+      nothing. The queue ran such a row after the run was marked failed, so
+      a site could be moved onto the new platform with none of the run's
+      checks, and its way-back copy then removed.
+
     * An Octopus pass of an account in REMOTE DB SERVER MODE no longer ends
       with errors where root on the web head may not manage users on the
       database server: the sync of the panel's own database user sends
