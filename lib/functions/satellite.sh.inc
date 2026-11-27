@@ -6502,6 +6502,19 @@ _ensure_hosting_dispatch_enabled() {
 
 #
 # Sync provision backend db_passwd.
+# The server context the account's panel site keeps its databases on, as its
+# hostmaster alias names it ('db_server' => '@server_<name>'): the one panel
+# record and server alias a renewal of the account's password changes. A
+# database server added in the panel whose admin login has the account's
+# name is another context. Status 1 when no such name can be read.
+_satellite_panel_db_server() {
+  local _n
+  _n=$(_acct_read_in "${_ROOT}/.drush" hostmaster.alias.drushrc.php 2> /dev/null \
+    | sed -n "s/^ *'db_server' *=> *'@\(server_[A-Za-z0-9._-]*\)',* *$/\1/p" | head -n 1)
+  [[ "${_n}" =~ ^server_[A-Za-z0-9._-]+$ ]] || return 1
+  printf '%s' "${_n}"
+}
+
 _provision_backend_dbpass_sync() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _provision_backend_dbpass_sync"
@@ -6537,7 +6550,12 @@ _provision_backend_dbpass_sync() {
   _acct_in_real_dir "${_ROOT}" _satellite_chmod_nofollow f 0600 \
     "./.${_USER}.pass.php-pre-${_xSrl}-${_X_VERSION}-${_NOW}" &> /dev/null
   _provision_backend_dbpass_generate
-  if _satellite_db_head_remote; then
+  if [ -e "/root/.${_USER}.remote-db.txt" ] && ! _satellite_db_head_remote; then
+    ### Switched to a login of its own on a remote database server (root's
+    ### record) while its cnf now reads local: its panel and alias stay on
+    ### that server, so the local renewal would point them at this box.
+    _msg "${_STATUS} A: ALRT: ${_USER}: logs in to a remote database server with a login of its own (/root/.${_USER}.remote-db.txt) but its cnf names a local one; no login, panel record or alias changed: set _THIS_DB_HOST back, or run syncpass remote ${_USER} revert first"
+  elif _satellite_db_head_remote; then
     ### An account on a remote database server: no login there is dropped
     ### or made again, and nothing found by the account's name alone, a
     ### panel record or an alias, is changed (syncpass renews a switched
@@ -6547,10 +6565,18 @@ _provision_backend_dbpass_sync() {
     _satellite_db_broker_rekey
     [ "${_DEBUG_MODE}" = "YES" ] && _msg "${_STATUS} A: ${_USER}: no login changed on ${_THIS_DB_HOST}"
   elif [ ! -z "${_ESC_PASS}" ] || [ ! -z "${_ENC_PASS}" ]; then
-    local _pUpd _pDbHost
+    local _pUpd _pDbHost _pSrv _pWhere _pAls
+    if _pSrv=$(_satellite_panel_db_server); then
+      _pWhere="db_user='${_USER}' AND nid IN (SELECT nid FROM hosting_context WHERE name='${_pSrv}')"
+      _pAls="${_pSrv}.alias.drushrc.php"
+    else
+      _msg "${_STATUS} A: ALRT: ${_USER}: its hostmaster alias names no database server; every server alias and panel record of the login ${_USER} take the new password"
+      _pWhere="db_user='${_USER}'"
+      _pAls='server_*.alias.drushrc.php'
+    fi
     su -s /bin/bash - ${_USER} -c "${_DRUSHCMD} @hostmaster \
       sqlq \"UPDATE hosting_db_server SET db_passwd='${_ESC_PASS}' \
-      WHERE db_user='${_USER}'\"" &> /dev/null
+      WHERE ${_pWhere}\"" &> /dev/null
     _pUpd=$?
     wait
     ### MySQL and the aliases take the new password below either way; a
@@ -6606,7 +6632,7 @@ EOFMYSQL
     fi
     _acct_in_real_dir "${_ROOT}/.drush" _satellite_edit_all_here \
       "s/mysql:\/\/${_USER}:.*/mysql:\/\/${_USER}:${_ENC_PASS}@${_pDbHost}',/g" \
-      'server_*.alias.drushrc.php' &> /dev/null
+      "${_pAls}" &> /dev/null
     wait
   else
     _msg "CRIT: _ESC_PASS empty or not generated"

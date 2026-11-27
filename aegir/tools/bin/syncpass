@@ -169,20 +169,35 @@ _acct_put_same_here() {
   rm -f -- "${_t}"
   return 1
 }
-# Every server_*.alias.drushrc.php in the current (pinned) directory edited by
-# the sed script $1 as sed -i edited it (the same bytes: the trailing "x"
-# keeps every newline through the substitution), read bounded and never
-# through a link, and put back as _acct_put_same_here puts it. A name that is
-# not a regular file is left alone.
+# Every server_*.alias.drushrc.php in the current (pinned) directory, or the
+# one alias $2 names, edited by the sed script $1 as sed -i edited it (the
+# same bytes: the trailing "x" keeps every newline through the
+# substitution), read bounded and never through a link, and put back as
+# _acct_put_same_here puts it. A name that is not a regular file is left
+# alone.
 _sed_server_aliases_here() {
-  local _f _c
-  for _f in ./server_*.alias.drushrc.php; do
+  local _f _c _g="./server_*.alias.drushrc.php"
+  [ -n "${2:-}" ] && _g="./${2}"
+  for _f in ${_g}; do
     _f="${_f#./}"
     [ -f "./${_f}" ] && [ ! -L "./${_f}" ] || continue
     _c=$(_acct_read_here "${_f}" && echo x) || continue
     _c=$(printf '%s' "${_c%x}" | sed "${1}"; echo x)
     _acct_put_same_here "${_f}" "${_c%x}"
   done
+}
+# The server context the panel site of the instance whose .drush is $1 keeps
+# its databases on, as its hostmaster alias names it ('db_server' =>
+# '@server_<name>'): the one panel record and server alias a renewal of the
+# instance's password changes. A database server added in the panel whose
+# admin login has the instance's name is another context. Status 1 when no
+# such name can be read.
+_panel_db_server() {
+  local _n
+  _n=$(_acct_read_in "${1}" hostmaster.alias.drushrc.php 2> /dev/null \
+    | sed -n "s/^ *'db_server' *=> *'@\(server_[A-Za-z0-9._-]*\)',* *$/\1/p" | head -n 1)
+  [[ "${_n}" =~ ^server_[A-Za-z0-9._-]+$ ]] || return 1
+  printf '%s' "${_n}"
 }
 
 # The instance user of an account $1 switched to the database broker
@@ -1467,6 +1482,7 @@ _rdb_main() {
 }
 
 _do_syncpass() {
+  local _pSrv _pWhere _pAls
   if [ ! -z "${_uname}" ]; then
     _find_correct_ip
     _prH="/var/aegir/.drush"
@@ -1479,11 +1495,19 @@ _do_syncpass() {
         "${_vBs}/server_master.alias.drushrc.php.${_uname}-${_NOW}" &> /dev/null
       _check_generate
       if [ ! -z "${_ESC_PASS}" ] && [ ! -z "${_ENC_PASS}" ]; then
+        if _pSrv=$(_panel_db_server "${_prH}"); then
+          _pWhere="db_user='aegir_root' AND nid IN (SELECT nid FROM hosting_context WHERE name='${_pSrv}')"
+          _pAls="${_pSrv}.alias.drushrc.php"
+        else
+          echo "ALRT: the Master's hostmaster alias names no database server; every server alias and panel record of the login aegir_root take the new password"
+          _pWhere="db_user='aegir_root'"
+          _pAls=""
+        fi
         mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG HOSTS" &> /dev/null
         su -s /bin/bash - ${_uname} -c "drush8 @hostmaster \
           sqlq \"UPDATE hosting_db_server \
           SET db_passwd='${_ESC_PASS}' \
-          WHERE db_user='aegir_root'\"" &> /dev/null
+          WHERE ${_pWhere}\"" &> /dev/null
         wait
         _ESC="*.*"
         _USE_DB_USER="aegir_root"
@@ -1521,7 +1545,7 @@ ALTER USER '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_ESC_PASS}';
 EOFMYSQL
         _acct_in_real_dir "${_prH}" _sed_server_aliases_here \
           "s/mysql:\/\/aegir_root:.*/mysql:\/\/aegir_root:${_ENC_PASS}@${_SQL_CONNECT}',/g" \
-          &> /dev/null
+          "${_pAls}" &> /dev/null
         wait
         mysqladmin -u root flush-privileges &> /dev/null
         # Where the database broker keeps a baseline of the server's own
@@ -1570,8 +1594,23 @@ EOFMYSQL
           echo "BYE!"
           exit "${_rc}"
         fi
+        # Switched to a login of its own on a remote database server (root's
+        # record) while its cnf now reads local: its panel and alias stay on
+        # that server, so the local renewal would point them at this box.
+        if [ -e "/root/.${_uname}.remote-db.txt" ]; then
+          echo "ERROR: ${_uname} logs in to a remote database server with a login of its own (/root/.${_uname}.remote-db.txt) but its cnf names a local one; nothing was changed: set _THIS_DB_HOST back, or run syncpass remote ${_uname} revert first"
+          exit 1
+        fi
         _check_generate
         if [ ! -z "${_ESC_PASS}" ] && [ ! -z "${_ENC_PASS}" ]; then
+          if _pSrv=$(_panel_db_server "/data/disk/${_uname}/.drush"); then
+            _pWhere="db_user='${_uname}' AND nid IN (SELECT nid FROM hosting_context WHERE name='${_pSrv}')"
+            _pAls="${_pSrv}.alias.drushrc.php"
+          else
+            echo "ALRT: ${_uname}: its hostmaster alias names no database server; every server alias and panel record of the login ${_uname} take the new password"
+            _pWhere="db_user='${_uname}'"
+            _pAls=""
+          fi
           if [ -e "/data/conf/${_uname}_use_proxysql.txt" ]; then
             _SQL_CONNECT=127.0.0.1
             _THIS_DB_PORT=6033
@@ -1581,7 +1620,7 @@ EOFMYSQL
           fi
           su -s /bin/bash - ${_uname} -c "drush8 @hostmaster \
             sqlq \"UPDATE hosting_db_server SET db_passwd='${_ESC_PASS}' \
-            WHERE db_user='${_uname}'\"" &> /dev/null
+            WHERE ${_pWhere}\"" &> /dev/null
           wait
           _ESC="*.*"
           _USE_DB_USER="${_uname}"
@@ -1621,7 +1660,7 @@ EOFMYSQL
           fi
           _acct_in_real_dir "/data/disk/${_uname}/.drush" _sed_server_aliases_here \
             "s/mysql:\/\/${_uname}:.*/mysql:\/\/${_uname}:${_ENC_PASS}@${_SQL_CONNECT}',/g" \
-            &> /dev/null
+            "${_pAls}" &> /dev/null
           wait
           if [ -e "/data/conf/${_uname}_use_proxysql.txt" ]; then
             _SQL_CONNECT=127.0.0.1
