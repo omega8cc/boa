@@ -103,6 +103,14 @@
 
 @=> New Features
 
+    * The Upgrade of a Drupal 10 or later site, and Upgrade all sites, can
+      build a newer version of the site's platform first, as Build newer
+      version does, and then move the site in the same task: nothing of the
+      site is copied or moved before the build is kept and the site is
+      judged ready for it, and a kept build stays as a platform whether or
+      not the site moved. Switched off for now: its permission, build
+      drupal_upgrade target, is granted to no role.
+
     * syncpass remote <account> plan|apply|revert|status switches an
       account in REMOTE DB SERVER MODE from the shared aegir_root login to
       a login of its own on the database server, where root on the web head
@@ -157,6 +165,12 @@
       own address, like Amazon SES.
 
 @=> Improvements
+
+    * A platform's drupal_upgrade_modes line now governs every build made
+      from it: Build newer version offers only what the line admits, a
+      finished build the line refuses is not kept, and a kept build gets
+      the line in its own boa_platform_control.ini. A site's own line still
+      governs only that site's move.
 
     * A platform the control panel builds from a Git repository on an SSH
       server the account has not used before no longer stops with "Host key
