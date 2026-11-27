@@ -6568,6 +6568,18 @@ _provision_backend_dbpass_sync() {
     _acct_in_real_dir "${_ROOT}" _satellite_chmod_nofollow f 0600 \
       "./.${_USER}.pass.php-pre-${_xSrl}-${_X_VERSION}-${_NOW}" &> /dev/null
     _provision_backend_dbpass_generate
+  else
+    ### The connection the pass's later steps use (the panel's database
+    ### user sync among them), as _provision_backend_dbpass_generate sets
+    ### it for an account whose cnf names a local database server.
+    _USE_AEGIR_HOST="${_hName}"
+    _USE_DB_USER="${_USER}"
+    _SQL_CONNECT=localhost
+    if [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
+      || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
+      || [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
+      _SQL_CONNECT=127.0.0.1
+    fi
   fi
   if [ "${_pOwn}" = "YES" ]; then
     _msg "${_STATUS} A: ALRT: ${_USER}: logs in to a remote database server with a login of its own, or a switch to one is half made (${_pOwnF}), but its cnf names a local one; no password file, login, panel record or alias changed: set _THIS_DB_HOST back, or see syncpass remote ${_USER} status"
