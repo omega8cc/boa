@@ -278,8 +278,9 @@
       minute before the copy was made.
 
     * The Upgrade dialog numbers its steps, as the third names the first by
-      number, and leaves a line before "Before you start": the panel's theme
-      took the list's numbers and the paragraph's space away.
+      number, and leaves a line before "Before you start"; Go back's dialog
+      bullets its points. The panel's theme took a list's numbers and bullets
+      and the space after it away.
 
     * _SMTP_RELAY_HOST takes [host]:port, as a relay on port 587 or 465
       needs, and one relay replaces another. An upgrade used to write such
