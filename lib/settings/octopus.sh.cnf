@@ -395,21 +395,39 @@ _THIS_DB_HOST=localhost
 ### exist on the DB head, with the same
 ### password, all privileges and the right to
 ### grant them, and must be allowed to connect
-### from the WEB head. All Octopus instances
-### use it to manage databases for hosted
-### sites.
+### from the WEB head. The Master instance,
+### and every Octopus instance without a DB
+### user of its own there, use it to manage
+### databases for hosted sites.
 ###
 ### Allow also 'root' to connect from the WEB
-### head, so that BOA can manage DB users of
-### the Octopus instances on the DB head when
-### they are upgraded.
+### head, with the right to create users and
+### to grant them. Then the install of a new
+### Octopus instance creates a DB user of its
+### own on the DB head, for the address of the
+### WEB head, and this password never goes in
+### the files of that instance. Without it,
+### a new instance uses 'aegir_root', and its
+### install says so in an ALRT line.
+###
+### An older instance gets a DB user of its
+### own with: syncpass remote oN apply
+###
+### An instance with a DB user of its own can
+### not be moved by xoct, xcopy or xmass to
+### another server. Before the move, run:
+###
+###   syncpass remote oN revert
+###
+### More: https://docs.boa.io/operating/security/database-credentials
 ###
 ### You can later change this password for
 ### both mysql 'root' and 'aegir_root' users
 ### on the remote DB server, but you will
-### have to manually update them in every
-### Ægir instance (Master and Satellites)
-### db server node settings.
+### have to manually update them in the db
+### server node settings of the Master and of
+### every Satellite instance that uses
+### 'aegir_root'.
 ###
 ### However, BOA will always check and use
 ### the password it will find in the standard

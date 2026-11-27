@@ -192,6 +192,14 @@
       takes the order on the worker's next pass, an account's own pools at
       their next setup (a new BOA release or a change of PHP version).
 
+    * The REMOTE DB SERVER MODE notes in the barracuda.cnf and octopus.cnf
+      templates say what root allowed from the web head is for: with the
+      right to create users and grant them, the install of a new account
+      gives it a DB user of its own on the database server. They name
+      syncpass remote <account> apply and revert, and that xoct, xcopy and
+      xmass do not move an account on a DB user of its own. They said root
+      managed the accounts' DB users at each upgrade.
+
 @=> Important Fixes
 
     * A database server added in a control panel keeps its own login when
