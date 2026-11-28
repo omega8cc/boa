@@ -66,4 +66,7 @@ profile boa_sudo flags=(complain) {
   owner /usr/local/bin/boa-dbctl Px -> boa_sudo_cmd,
   owner /usr/local/bin/fix-drupal-*.sh Px -> boa_sudo_cmd,
   owner /usr/local/bin/lock-local-drush-permissions.sh Px -> boa_sudo_cmd,
+  # The shell login's build program runs at the login's uid, so no owner
+  # rule matches the root-owned file.
+  /opt/local/bin/boa-ftp-build Px -> boa_sudo_cmd,
 }
