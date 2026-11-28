@@ -7301,6 +7301,7 @@ _satellite_run_pre_install() {
     # The database broker: it serves an account only while the account's
     # root-owned /data/conf/<oN>_db_broker.txt exists.
     _dbctl_sudo_line "${_USER}"
+    _ftpbuild_sudo_line "${_USER}"
   else
     _sudoers_safe_append /etc/sudoers \
       "${_USER} ALL=NOPASSWD: /etc/init.d/nginx reload" "${_USER} ALL=NOPASSWD"
@@ -7311,6 +7312,7 @@ _satellite_run_pre_install() {
         "${_USER} ALL=NOPASSWD: /usr/local/bin/${_SCRIPT}.sh"
     done
     _dbctl_sudo_line "${_USER}"
+    _ftpbuild_sudo_line "${_USER}"
     if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
       _SQL_CONNECT=127.0.0.1
       _THIS_DB_PORT=6033
@@ -8257,6 +8259,9 @@ _satellite_if_add_ftps_lshell_access() {
     echo "env_path : '/opt/local/bin:/usr/local/bin:/usr/bin:/bin:/opt/user/gems/${_USERFTP}/bin:/opt/user/npm/${_USERFTP}/.npm-packages/bin'" \
       >> /etc/lshell.conf
   fi
+  # The login's build program's sudo line: a new account's login is made
+  # here, after the account's other sudo lines were written.
+  _ftpbuild_sudo_line "${_USER}"
 }
 
 _satellite_if_add_update_user_symlinks() {

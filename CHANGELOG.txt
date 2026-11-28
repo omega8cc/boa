@@ -11,6 +11,16 @@
       granted to the main login roles (admin, aegir account manager), not
       to the client, site operator or platform manager roles.
 
+    * A Composer project an account built in its shell and added to the
+      panel by its path can be built again from its own composer.lock by
+      Build newer version, or by the build an Upgrade makes first, with
+      every step run as the account's shell login and never as its backend
+      user: BOA's new /opt/local/bin/boa-ftp-build, which the backend user
+      may start as that login through one sudo line per account. Off until
+      armed: BOA writes those lines only while /root/.allow.shell.build.cnf
+      is there, and no role of an account's logins holds the permission
+      "build shell-built platform_successor".
+
 @=> Improvements
 
     * A build from a platform's own composer.lock gives the fingerprint of
