@@ -409,7 +409,7 @@ _copy_tree() {
   # The source archived from inside it, pinned: never through a link put at
   # its name since it was checked.
   ( cd -P -- "${_src}" 2> /dev/null && [[ "$(/bin/pwd -P)" == "${_src}" ]] && tar --anchored --no-wildcards "${_ex[@]}" -cf - . ) \
-    | tar -C . --no-overwrite-dir -xf -
+    | tar -C . --no-same-owner --no-overwrite-dir -xf -
   [[ "${PIPESTATUS[0]}" == "0" && "${PIPESTATUS[1]}" == "0" ]] || { echo "the copy of ${_src} failed"; return 1; }
   # Every link and special file goes before anything is written through the
   # copy, and sites/ is made in a docroot that is a plain folder.
@@ -420,7 +420,7 @@ _copy_tree() {
     [[ -d "${_dr}" && ! -L "${_dr}" ]] || { echo "the copy has no plain folder ${_new}/${_sites%/*}"; return 1; }
     mkdir -- "./${_sites}" || return 1
     ( cd -P -- "${_src}/${_sites}" 2> /dev/null && [[ "$(/bin/pwd -P)" == "${_src}/${_sites}" ]] && tar -cf - ./all ) \
-      | tar -C "./${_sites}" -xf -
+      | tar -C "./${_sites}" --no-same-owner -xf -
     [[ "${PIPESTATUS[0]}" == "0" && "${PIPESTATUS[1]}" == "0" ]] || { echo "the copy of ${_src}/${_sites}/all failed"; return 1; }
   fi
   find -P . -mindepth 1 ! -type d ! -type f -delete 2> /dev/null

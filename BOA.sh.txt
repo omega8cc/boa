@@ -6525,7 +6525,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f71 --guard /local/bin/boa
     # The shell login's build program: run by sudo as an account's <oN>.ftp, so
     # world-executable.
-    _fetch_versioned ${_optBin}/boa-ftp-build "${_urlHmr}/${_tBn}/boa-ftp-build" f99 --mode 755 --guard /local/bin/boa-ftp-build
+    _fetch_versioned ${_optBin}/boa-ftp-build "${_urlHmr}/${_tBn}/boa-ftp-build" f98 --mode 755 --guard /local/bin/boa-ftp-build
     _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/${_tBn}/dcysetup" f91 --guard duplicity
     _fetch_versioned ${_optBin}/dhcpfix "${_urlHmr}/${_tBn}/dhcpfix" f98 --guard /local/bin/dhcpfix
     _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/${_tBn}/duobackboa" f39 --guard duplicity
