@@ -1,324 +1,346 @@
 ###
-### In development - changes since BOA-5.88.888
+### Stable BOA-5.88.899 PRO/LTS - CENTAUR EDITION
+### Date: Sat 28 Nov 2026 01:22:48 CET in Warsaw
+### Enjoy upgrades that build themselves
+### 217 commits since BOA-5.88.888
 ###
+
+@=> Centaur Edition
+
+  A centaur is two natures in one body, and so is this release's headline.
+  The Dragon gave the control panel an Upgrade task that moves a Drupal 10
+  or later site onto a newer platform and keeps the way back; the newer
+  platform itself still had to be built by hand. Now the panel builds it:
+  Build newer version makes a Composer platform again at a newer release and
+  keeps the result only when it is a newer version of the same codebase, and
+  an Upgrade, or Upgrade all sites, can build first and move the sites in
+  the same task. A nightly report, off until switched on, says which sites
+  run a Drupal release past its security support and which have an Upgrade
+  ready. Around it, Drupal 7, Pressflow 6, Grav and Adminer take security
+  releases, an outgoing mail relay can take a login, an account on a remote
+  database server gets a login of its own, and PHP-FPM serves a cached page
+  with about a fifth less CPU on a test server.
+
+@=> New Features
+
+    * The Upgrade of a Drupal 10 or later site can build a newer version of
+      the site's platform first, as Build newer version does, and then move
+      the site in the same task: nothing of the site is copied or moved
+      before the build is kept and the site is judged ready for it, and a
+      kept build stays as a platform whether or not the site moved.
+
+    * Upgrade all sites can build a newer version of the platform first
+      too: once the build is kept it upgrades every ready site onto it, one
+      at a time and each as its own Upgrade, and a build that is not kept
+      queues nothing.
+
+    * A new platform task, Build newer version, builds a Composer platform
+      the control panel made again from its own recipe, at another version
+      of its package or another Git branch or tag, and one built from
+      Drupal's own project template also at the newest patch or minor
+      release of its Drupal or the next major; the new platform is kept for
+      the sites' Upgrade only when it is a newer version of the same
+      codebase, and deleted otherwise.
+
+    * Build newer version, Upgrade all sites and the Upgrade's choice to
+      build first (its own permission, build drupal_upgrade target) are
+      granted to the account's main login roles (admin, aegir account
+      manager), as Upgrade and Go back are, not to the client, site operator
+      or platform manager roles; a build also needs create platform, which
+      of those two roles admin alone holds.
+
+    * Shipped switched off: Build newer version, and the build an Upgrade or
+      Upgrade all sites makes first, can build a platform the control panel
+      built from a published package again from its own composer.json and
+      composer.lock (core only, its modules and themes only, or both, by
+      patch or minor releases, never across a major one, and if asked only
+      what fixes a security advisory), while those two files are the ones
+      the panel's build left, which it records for platforms built from this
+      release on; its permission, build platform_successor from lock, goes
+      to none of the roles BOA gives an account's logins, so only the
+      panel's own uid 1 is offered it.
+
+    * A nightly upgrade report for Drupal 10 and later sites, switched off
+      by default: _UPGRADE_DIGEST=YES in /root/.barracuda.cnf mails the
+      server admin, when it changed, which sites run a Drupal release that
+      no longer gets security fixes and which have an Upgrade ready.
+
+    * _UPGRADE_CLIENT_NOTIFY=YES mails an account's client once for each
+      site whose Drupal release stops getting security fixes; like
+      _UPGRADE_DIGEST it is set for every account in /root/.barracuda.cnf,
+      or for one in /root/.<user>.octopus.cnf.
+
+    * An outgoing mail relay that wants a login, such as Amazon SES, is a
+      setting now: _SMTP_RELAY_USER and _SMTP_RELAY_PASS beside
+      _SMTP_RELAY_HOST in /root/.barracuda.cnf, applied by every barracuda
+      upgrade, the login sent only over TLS (port 465 included) and kept in
+      a file only root reads. A relay login set up by hand in Postfix is
+      left alone.
+
+    * _SMTP_RELAY_SITES=YES in /root/.barracuda.cnf keeps the relay named in
+      _SMTP_RELAY_HOST where local sendmail is allowed for hosted sites
+      (_ALLOW_SENDMAIL=YES), so the sites' mail goes through the relay too;
+      without it such a server still delivers directly and every upgrade
+      clears the relay, as before.
+
+    * A new account in REMOTE DB SERVER MODE gets a login of its own on the
+      database server at its install, where root on the web head can manage
+      users there, so the database server's root password never enters the
+      account's files; where root cannot, it keeps the shared aegir_root
+      login and the install says so.
+
+    * syncpass remote <account> plan|apply|revert|status switches an
+      existing account in REMOTE DB SERVER MODE from the shared aegir_root
+      login to a login of its own, proven before anything takes it and put
+      back whole when a step fails; xoct, xcopy and xmass refuse a switched
+      account until syncpass remote <account> revert.
 
 @=> Security
 
-    * syncpass remote never logs in with a password from an account's
-      server alias that holds a control character or a double quote. Such
-      a value went into the option file of root's database client, where
-      it could add options of the account's choosing.
-
-    * An account's Drush 9+ alias store (~/.drush/sites) is its backend
-      user's alone: the folder 0700 and each yml alias 0600, written so and
-      set so on every pass of the limited shell worker. The account's shell
-      login could read the yml copy of a server alias, which holds the
-      database password its drushrc alias keeps from that login.
-
-    * The limited shell logs a refused line that holds a byte which is no
-      part of a letter, writing that byte as \xNN, and its log is UTF-8
-      in any locale. In a UTF-8 locale such a line was in no log, so
-      neither the Shell Escape Alert nor a later audit saw it, and where
-      the login's locale was en_US.UTF-8, typing such a byte ended the
-      session (lshell 0.11.17).
-
-    * websh reads a redirection as dash does wherever it stands: in front
-      of the command, behind a wrapper or glued to a word it is the shell's,
-      and the words around it are judged by the Drush and PHP rules.
-
-    * websh reads the words in front of a Drush or dr runner after the
-      shell's expansions too, as it reads those up to the command word.
-
-    * The install and upgrade reports under /var/backups/reports are root's
-      alone, and the mail of a report masks the database password Drush
-      prints in debug mode.
-
-    * The install log of a new account in debug mode (log/install.log, the
-      account's own file) masks the database password Drush prints there.
-
-    * An upgrade of an account in the box's own name database mode
-      (_THIS_DB_HOST=FQDN) also removes old backups of its password file
-      that hold the root password, and says how many.
-
-    * A new install in REMOTE DB SERVER MODE needs the database server's
-      root password in /root/.my.pass.txt and stops without it: there is no
-      default any more, for a remote Valkey server neither. Existing setups
-      are left as they are; one still on the old default is told so, once
-      in each barracuda or octopus run.
-
-    * Adminer 6.3.1. A box that has an older one gets it within minutes,
-      without an upgrade: the files are replaced in place, with their owner
-      and mode kept, and an index.php that is not a plain Adminer is left
-      alone. A system pass puts the whole tree in place anew, and no longer
-      removes the old one before the new one is there. A newer Adminer an
-      admin put there stays, and a failed download keeps the copy in place.
-
-    * The Drupal 7 module Adminer is no longer in the shared modules: it
-      carried Adminer 4.8.1, and its login ended the Drupal session on
-      current PHP, so it opened no database. The next Octopus upgrade
-      removes it. A site that has it enabled keeps working; to leave no
-      record of it in the site, disable and uninstall it before that
-      upgrade. A copy in the site's or the platform's own sites folder is
-      not touched.
-
-    * The Shell Escape Alert and the incident mails of the system and
-      autosync monitors go out whatever bytes their lines hold: one that is
-      not UTF-8, or a control character, is shown as \xNN.
-
     * Drupal 7 core 7.108.2 (D7ES) for the panel and the Drupal 7 platforms:
       its session handler is ready for PHP 8.6, and on PHP 7.0 and later,
-      under strict mode, a session cookie that names no stored session now
-      gets a new ID.
+      under strict mode, a session cookie that names no stored session gets
+      a new ID.
 
-    * Pressflow 6 core 6.60.5 for the Drupal 6 platforms: on PHP 8.0 and
-      later a logout, and any page opened with an expired session cookie,
-      no longer ends in an error 500; its session handler is ready for PHP
-      9, and on PHP 7.0 and later, under strict mode, a session cookie that
-      names no stored session now gets a new ID. A session started by a
-      request that carried no session cookie, a login among them, no longer
-      takes an ID made from the time of the request: every new session ID
-      is 32 random hexadecimal characters. Five more core files drop the
-      parameter forms PHP 9 removes, so PHP 8.0 and later compile them
-      without a deprecation notice.
-
-    * The marker of an unfinished platform build is written as a new file
-      and renamed into place, never through a link standing at its name.
-
-    * In REMOTE DB SERVER MODE an account's own password files no longer
-      keep the database server's root password: its next upgrade gives them
-      a random one and says so once, and the install of a new account holds
-      it there only while the control panel is installed. If that install
-      is killed outright, the next octopus pass removes both files.
-
-    * In REMOTE DB SERVER MODE an upgrade and syncpass no longer drop and
-      make again the logins of an account's name on the database server,
-      which nothing uses, and no longer change a panel record or a server
-      alias found by the account's name alone. syncpass acts on the
-      database server the account's own cnf names, as its upgrade does,
-      and the password files of every remote account are random.
-
-    * New Grav platforms are built on Grav 2.2.35, with Grav's security
-      fixes of 24 November. After the next Octopus upgrade the Upgrade Grav
-      task brings an existing site to it.
+    * Pressflow 6 core 6.60.5 for the Drupal 6 platforms: every new session
+      ID is 32 random hexadecimal characters, where a session started by a
+      request that carried no session cookie, a login among them, took an ID
+      made from the time of the request.
 
     * New platforms are built on Drupal 10.6.23, 11.3.23 and 11.4.14,
       upstream's security releases of 25 November 2026.
 
-@=> New Features
+    * New Grav platforms are built on Grav 2.2.35, with Grav's security
+      fixes of 24 November; after the next Octopus upgrade the Upgrade Grav
+      task brings an existing site to it.
 
-    * Build newer version, and the build an Upgrade or Upgrade all sites
-      makes first, can build a platform the control panel built from a
-      published package again from its own composer.json and composer.lock,
-      updating only Drupal core, only its modules and themes, or both, by
-      patch releases only or minor releases too, and if asked only what
-      fixes a security advisory. No choice crosses a major release, and the
-      new lock is judged before anything is installed. It is offered only
-      while the platform's two files are the ones the panel's build left:
-      every panel build of a platform now records their fingerprint.
-      Switched off: its permission, build platform_successor from lock, is
-      granted to no role.
+    * Adminer 6.3.1, and a server that has an older one gets it within
+      minutes, without an upgrade: the files are replaced in place with
+      their owner and mode kept, while a newer Adminer an admin put there,
+      or an index.php that is not a plain Adminer, is left alone.
 
-    * The Upgrade of a Drupal 10 or later site, and Upgrade all sites, can
-      build a newer version of the site's platform first, as Build newer
-      version does, and then move the site in the same task: nothing of the
-      site is copied or moved before the build is kept and the site is
-      judged ready for it, and a kept build stays as a platform whether or
-      not the site moved. Its permission, build drupal_upgrade target, is
-      granted to the account's main login roles (admin, aegir account
-      manager), as Build newer version's is, not to the client, site
-      operator or platform manager roles.
+    * The Drupal 7 module Adminer leaves the shared modules at the next
+      Octopus upgrade: it carried an old Adminer of its own, and its login
+      ended the Drupal session on current PHP, so it opened no database. A
+      site that has it enabled keeps working, and disabling and uninstalling
+      it before that upgrade leaves no record of it in the site.
 
-    * syncpass remote <account> plan|apply|revert|status switches an
-      account in REMOTE DB SERVER MODE from the shared aegir_root login to
-      a login of its own on the database server, where root on the web head
-      can manage users there. The new login is proven before the account's
-      server alias, its panel's server record and its password files take
-      it, anything that fails puts all back, and each later upgrade gives
-      that login a new password.
+    * An account's Drush 9+ alias store (~/.drush/sites) is its backend
+      user's alone, the folder 0700 and each yml alias 0600 on every pass of
+      the limited shell worker: the account's shell login could read the yml
+      copy of a server alias, which holds the database password its drushrc
+      alias keeps from that login.
 
-    * A new account in REMOTE DB SERVER MODE gets a login of its own on the
-      database server at its install, where root on the web head can manage
-      users there: its control panel is installed on that login, and the
-      database server's root password never enters the account's files.
-      Where root cannot, it keeps the shared aegir_root login and the
-      install says so. syncpass remote <account> revert puts either kind
-      back on the shared login.
+    * websh reads a redirection as dash does wherever it stands (in front of
+      the command, behind a wrapper or glued to a word), so the words around
+      it are always judged by the Drush and PHP rules.
 
-    * Upgrade all sites, the platform task that upgrades every Drupal 10 or
-      later site of a platform onto a newer one, one at a time and each as
-      its own Upgrade, is granted to the account's main login roles (admin,
-      aegir account manager), not to the client, site operator or platform
-      manager roles.
+    * websh reads the words in front of a Drush or dr runner after the
+      shell's expansions, as it reads those up to the command word.
 
-    * Build newer version, a platform task that builds a Composer platform
-      the control panel made again from its own recipe at the newest patch
-      or minor release of its Drupal, the next major, another version or a
-      Git branch or tag, and keeps the new platform for the sites' Upgrade
-      only when it is a newer version of the same codebase; otherwise it is
-      deleted. A security advisory the build adds is named in its result. It
-      is granted to the account's main login roles (admin, aegir account
-      manager), not to the client, site operator or platform manager roles.
+    * The limited shell logs a refused line that holds a byte which is no
+      part of a letter, written as \xNN, where a UTF-8 locale kept such a
+      line out of its log and out of the Shell Escape Alert; typing such a
+      byte no longer ends a session whose locale is en_US.UTF-8.
 
-    * A nightly upgrade report for Drupal 10 and later sites, switched off
-      by default. _UPGRADE_DIGEST=YES in /root/.barracuda.cnf mails the
-      server admin, when it changed, which sites run a Drupal release that
-      no longer gets security fixes and which have an Upgrade ready.
-      _UPGRADE_CLIENT_NOTIFY=YES mails an account's client once for each
-      site whose release stops getting security fixes. Either is set for
-      every account there, or for one in /root/.<user>.octopus.cnf.
+    * The Shell Escape Alert and the incident mails of the system and
+      autosync monitors go out whatever bytes their lines hold, with a byte
+      that is not UTF-8, or a control character, shown as \xNN.
 
-    * An outgoing mail relay that wants a login, such as Amazon SES, is a
-      setting now: _SMTP_RELAY_USER and _SMTP_RELAY_PASS beside
-      _SMTP_RELAY_HOST in /root/.barracuda.cnf. Every barracuda upgrade
-      applies them: the login goes only over TLS, port 465 included, and
-      is kept in a file only root reads. A relay login set up by hand in
-      Postfix is left alone.
+    * The install and upgrade reports under /var/backups/reports are root's
+      alone, and a mailed report, like a new account's debug install log,
+      masks the database password Drush prints in debug mode.
 
-    * _SMTP_RELAY_SITES=YES in /root/.barracuda.cnf keeps the relay named
-      in _SMTP_RELAY_HOST where local sendmail is allowed for hosted sites
-      (_ALLOW_SENDMAIL=YES), so the sites' mail goes through the relay too.
-      Without it such a box still delivers directly and every upgrade
-      clears the relay, as before. For a relay that keeps each sender's
-      own address, like Amazon SES.
+    * A new install in REMOTE DB SERVER MODE needs the database server's
+      root password in /root/.my.pass.txt and stops without it, since there
+      is no default any more, for a remote Valkey server neither; an
+      existing setup still on the old default is told so once in each
+      barracuda or octopus run.
+
+    * In REMOTE DB SERVER MODE an account's own password files no longer
+      keep the database server's root password: its next upgrade gives them
+      a random one and says so once, and an install holds it there only
+      while the control panel is installed.
+
+    * In REMOTE DB SERVER MODE an upgrade and syncpass no longer drop and
+      make again the logins of an account's name on the database server,
+      which nothing uses, nor change a panel record or a server alias found
+      by the account's name alone.
+
+    * An upgrade of an account in the server's own name database mode
+      (_THIS_DB_HOST=FQDN) removes old backups of its password file that
+      hold the root password, and says how many.
+
+    * The marker of an unfinished platform build is written as a new file
+      and renamed into place, never through a link standing at its name.
 
 @=> Improvements
 
-    * A platform's drupal_upgrade_modes line now governs every build made
-      from it: Build newer version offers only what the line admits, a
-      finished build the line refuses is not kept, and a kept build gets
-      the line in its own boa_platform_control.ini. A site's own line still
-      governs only that site's move.
+    * An account's PHP-FPM pools list the directories PHP may read in the
+      order requests use them, the same directories as before: PHP walks a
+      file's whole path once for each entry it tries, and on a test server
+      the new order took about a fifth off the CPU time of a page Drupal's
+      page cache answers and of the control panel's pages.
 
-    * A platform the control panel builds from a Git repository on an SSH
-      server the account has not used before no longer stops with "Host key
-      verification failed": the build stores that server's key at its first
-      contact and refuses the server later if its key has changed. The host
-      no longer adds each such server by hand; an SSH client already named
-      for Git is left as it is.
+    * An account's PHP-FPM pools follow a changed pool template on the
+      worker's next pass, as the control panel's pool does, where a template
+      change published between two releases reached them only with the next
+      release or a change of the account's PHP version.
+
+    * A platform's drupal_upgrade_modes line governs every build made from
+      it: Build newer version offers only what the line admits, a finished
+      build the line refuses is not kept, and a kept build gets the line in
+      its own boa_platform_control.ini.
 
     * The Upgrade no longer refuses a newer platform that brings a security
-      advisory the site's platform does not have: its plan and its result
-      line name the advisory, and so does its dialog where both platforms'
-      advisories were read. A drupal_upgrade_modes list that asks for
-      security fixes still refuses such a move.
+      advisory the site's platform does not have: its plan, its result line
+      and Build newer version's result name the advisory, while a
+      drupal_upgrade_modes list that asks for security fixes still refuses
+      such a move.
 
-    * websh reads a shell account's long command lines faster again: the
-      redirection reading had made some of them up to twice as slow, and a
-      very long run of redirection signs far slower.
+    * A platform the control panel builds from a Git repository on an SSH
+      server the account has not used before stores that server's key at its
+      first contact and refuses the server later if its key has changed,
+      where the build stopped with "Host key verification failed" until the
+      host added the server by hand.
 
     * A platform the control panel builds with Composer stops a build step
       after 45 minutes, as it stops one silent for five, with everything the
-      step started, and removes what it made. A failed step says why in its
-      last lines. A Verify or a Delete of the platform while a build of it
-      still runs changes nothing and says so. The Drush a first Verify adds
-      to such a codebase has the same limit, and a stopped one is undone.
+      step started, and removes what it made; the Drush a first Verify adds
+      to such a codebase has the same limit.
 
-    * An account's PHP-FPM pools list the directories PHP may read in the
-      order requests use them: the request's own directory, the account's
-      platforms, the shared code, then the files every request checks. The
-      directories are the same as before. PHP walks a file's whole path once
-      for each entry it tries, with no cache, so the order is CPU time: on a
-      test server it took about a fifth off a page Drupal's page cache
-      answers and off the control panel's pages.
+    * A Verify or a Delete of a platform while a build of it still runs
+      changes nothing and says so.
 
-    * An account's PHP-FPM pools follow a changed pool template on the
-      worker's next pass, as the control panel's pool does. Before, they were
-      written again only with a new release or a change of the account's PHP
-      version, so a template change published between two releases reached
-      them weeks later.
+    * boa cleanup takes an Octopus account whose install never finished
+      (marked log/CANCELLED with no log/cores.txt, serving no site but its
+      own panel): detect lists it and purge removes it as any other account,
+      so a new install of the name is possible again.
 
-    * The REMOTE DB SERVER MODE notes in the barracuda.cnf and octopus.cnf
-      templates say what root allowed from the web head is for: with the
-      right to create users and grant them, the install of a new account
-      gives it a DB user of its own on the database server, and each
-      upgrade uses it to keep every control panel's DB user to its own
-      database. They name syncpass remote <account> apply and revert, and
-      that xoct, xcopy and xmass do not move an account on a DB user of its
-      own. They said root managed the accounts' DB users at each upgrade.
+    * boa cleanup purge removes the account's own sudo lines from
+      /etc/sudoers and /etc/sudoers.d, each changed file checked by
+      visudo first.
+
+    * An octopus upgrade no longer waits 50 seconds in part A for a queue
+      run that cannot start while the upgrade holds the account's queue runners.
 
 @=> Changes and Upgrades
 
-    * The catalogue's distributions are rebuilt on the new cores, with
-      farmOS 4.0.13 and OpenCulturas 3.1.10 among them.
+    * Nginx 1.31.10.
+    * Composer 2.11.3.
+
+    * lshell 0.11.19, with the two changes named under Security and
+      Important Fixes.
+
+    * Ten of the catalogue's distributions are rebuilt on the new cores,
+      Drupal CMS 2.2.10, farmOS 4.0.13, OpenCulturas 3.1.10, OpenFed
+      13.6.11, Thunder 8.4.7 and Varbase 11.0.0 among them.
+
+    * The Drupal 12 platform, built where a platform list names DT0, is
+      12.0.0-rc1, which carries the core security fixes of 18 and 25
+      November that the beta lacked.
 
     * The CiviCRM platforms for Drupal 11 and for Backdrop are built on
       CiviCRM 6.20.2.
 
     * The Backdrop webform every Backdrop bundle carries is 1.x-4.26.7.
 
-    * The Drupal 12 platform, built where a platform list names DT0, is
-      12.0.0-rc1, which carries the core security fixes of 18 and 25
-      November that 12.0.0-beta2 lacks.
-
-    * Varbase 11.0.0 is built on Drupal core 11.4.14.
+    * The REMOTE DB SERVER MODE notes in the barracuda.cnf and octopus.cnf
+      templates say which database users to create on the remote server and
+      what root allowed from the web head is for, in place of a control file
+      no code ever read.
 
 @=> Important Fixes
 
-    * A task run from inside a running task (the Verify a Clone or a
-      Migrate runs, a step of an Upgrade) reads its parent's runner lock
-      record from the panel's variable table. Read from Drupal's cached
-      variables, which a bootstrap racing the runner's write could leave
-      on an earlier holder's record, it could miss its own parent, wait
-      30 seconds and be refused as busy, failing the task that ran it.
+    * A Delete, Migrate, Restore or forced reinstall keeps a database, and
+      its login, that another site names as its own, and ends with a warning
+      that says which site: a copy whose making was cut off before it had
+      settings of its own was listed as a site by the next Verify of its
+      platform, and deleting it dropped the database of the live site it was
+      copied from.
 
-    * A step of an Upgrade, a Go back or a Build newer version that its
-      run had queued is never run on its own once the run's task runner is
-      lost: it ends with "Not run: this row is a step of task N" and does
-      nothing. The queue ran such a row after the run was marked failed, so
-      a site could be moved onto the new platform with none of the run's
-      checks, and its way-back copy then removed.
+    * A step of an Upgrade, a Go back or a Build newer version is never run
+      on its own once its run's task runner is lost, and ends with "Not run:
+      this row is a step of task N": the queue ran such a row after the run
+      was marked failed, so a site could be moved onto the new platform with
+      none of the run's checks, and its way-back copy then removed.
 
-    * An Octopus pass of an account in REMOTE DB SERVER MODE no longer ends
-      with errors where root on the web head may not manage users on the
-      database server: the sync of the panel's own database user sends
-      nothing there and says so once in a NOTE. It sent every statement,
-      had them refused, and its check of the user's rights printed two
-      ALRT lines on every pass.
+    * A task run from inside a running task (the Verify a Clone or a Migrate
+      runs, a step of an Upgrade) reads its parent's runner lock record from
+      the panel's variable table, where a cached earlier record could make
+      it miss its own parent, wait 30 seconds and be refused as busy,
+      failing the task that ran it.
 
-    * A database server added in a control panel keeps its own login when
-      the upgrade, syncpass fix or a move renews the panel's own database
-      password: only the server the panel site keeps its databases on takes
-      it, found by the panel's hostmaster alias, where it took every server
-      record and alias whose login had the instance's name (aegir_root on
-      the Master) and pointed them all at the local server. An account on a
-      login of its own on a remote database server, or with a switch to one
-      half made, whose cnf later names a local one is left unchanged, its
-      password files included, with an alert.
+    * A Backup or Clone of a Drupal or Backdrop site no longer fails on a
+      file or folder that a shell user of the account made closed (0600,
+      0700) in the site's files or private store, and a renaming Migrate
+      copies the stores with one in them: the step that opens what the web
+      server wrote closed now reads the account's shell users as well, with
+      group read for the account's own groups and nothing else.
 
     * The install of an Octopus account, and of the master's control panel,
-      fails when the panel's install (hostmaster-install) did not run to its
-      end: killed, or stopped early on an error. The install had judged the
-      panel by its settings.php, which exists a few seconds into that
-      install, so it reported success and went on with a half-made panel.
-      A panel install that ran to its end and then exited with an error
-      goes on as before, with an ALRT line naming its exit status.
+      fails when the panel's install (hostmaster-install) was killed or
+      stopped early on an error, where it judged the panel by a settings.php
+      that exists a few seconds into that install and went on with a
+      half-made panel.
 
-    * syncpass remote keeps an account it cannot fully put back on a path
-      a revert can finish: a switch whose put-back fails keeps the new
-      login and its journal, a revert first proves the saved aegir_root
-      password still logs in, and the password sync of a switched account
-      takes a panel it could not read as a failure and sets everything
-      back. A purge also takes a cut-off switch's journal and saved copies.
+    * A /root/.barracuda.cnf made before the install, with a line or two in
+      it as the documentation asks, is completed with the install's own
+      settings and your own lines are kept: it was left without the e-mail
+      address, the hostname and others, so every later barracuda pass ended
+      with errors.
 
-    * xoct, xcopy and xmass no longer move an account that logs in to its
-      remote database server with a login of its own: that login is bound
-      to the web head's address, so on the target every task of the
-      account would lose its database server. They say to run syncpass
-      remote <account> revert first, which puts it back on the shared
-      aegir_root login.
+    * The command of an install that stops before its Ægir Master stays in
+      /root/.boa.install.command.cnf, so boa says how to go on and barracuda
+      up-* system can, where autoinit moved it away as soon as the install
+      it had launched returned.
 
-    * The limited shell's history in a .lsh script, or in a single command
-      run over an SSH terminal, lists the login's history file again
-      instead of emptying it. A history file the login cannot read is left
-      as it is, and a session keeps writing to the file it read even after
-      the shell's configuration is reloaded (lshell 0.11.18, pinned as
-      0.11.19, which also fixes history on macOS's libedit).
+    * The Upgrade, Upgrade all sites and the Drupal updates line of a site
+      on one of core's own install profiles (Standard, Minimal) no longer
+      take a distribution or another project's platform of the account for a
+      newer version of the site's codebase: the two codebases' locks tell
+      them apart, and with no newer platform the line no longer says up to date.
 
-    * The Drush a Composer platform's first Verify adds is resolved on the
-      PHP the platform's tasks run on, a cli-per-platform.info line for its
-      folder included. With the build step's time limit in front of it, the
-      require ran on the server's default PHP, so where the platform's tasks
-      run on an older PHP the Drush it added could not start there.
+    * The Upgrade no longer offers a pre-release of Drupal core (an alpha,
+      beta, rc or development version) to a site on a finished release: the
+      platform is shown as not ready with the reason, and a site already on
+      a pre-release goes on to newer ones as before.
+
+    * A control panel upgraded to BOA-5.88.888 took the two Upgrade fixes
+      above between the releases, without another upgrade: BOA.sh.txt put
+      the two files into its hosting_tasks_extra where they were exactly the
+      pair that release laid down, and
+      /var/log/boa/panel-upgrade-targets.log says so.
+
+    * The Upgrade and Upgrade all sites dialogs no longer call a site Ready
+      whose upgrade would be refused over what an earlier one left (a copy
+      from a run cut off in its move, one the next run cannot remove, or a
+      folder of the site on the new platform): the site's page and the
+      dialogs say Not ready with the reason, and Upgrade all sites leaves
+      the site out.
+
+    * A platform set to another command line PHP than its account's cli.info
+      (a line in cli-per-platform.info, or a phpNN.info marker) no longer
+      fails the Verify an octopus upgrade queues for it: during the upgrade
+      the panel leaves such tasks queued, with those of the sites on that
+      platform and those moving a site onto it, and starts them when it ends.
+
+    * A platform Verify reads a module's update hooks through the files its
+      install file includes, ten levels down, and only under the module's
+      own name: a distribution that keeps its hooks there (Varbase) had
+      every such module recorded as unknown, so a downgrade went unseen.
+
+    * The Drupal 7 and Backdrop platform scans follow those cores' own
+      listings: a copy made for another core takes no other copy's place,
+      and nothing inside Backdrop's css, js or templates folders is listed.
+
+    * The panel reads a platform's install profiles and their languages from
+      the platform's own records alone, on the site form and in Install,
+      Import, Migrate and Clone tasks.
+
+    * The Packages page of a site or a platform, and the version the panel
+      shows for a Grav site, no longer take package rows of another record
+      that carries the same number.
 
     * Lock and Unlock work on a Composer platform added with an empty
       Docroot field, which the panel records at its project folder: they
@@ -326,182 +348,47 @@
       where they stopped with "A codebase was not found".
 
     * A Migrate onto such a platform records the moved site's own database
-      at once. It read the copy's settings back from the project folder,
-      not from web/, so the panel named the source site's database until a
+      at once, where the panel named the source site's database until a
       later Verify.
 
-    * boa cleanup takes an Octopus account whose install never finished:
-      one marked log/CANCELLED that has no log/cores.txt, whose system
-      user owns /data/disk/<oN> as its home, whose /root/.<oN>.octopus.cnf
-      names it, and which serves no site but its own panel. detect lists it
-      as an install that never finished, and purge removes it as any other
-      account, so a new install of the name is possible again. An account
-      with any other vhost or site alias is refused, saying why.
-
-    * boa cleanup purge removes the account's own sudo lines from
-      /etc/sudoers and /etc/sudoers.d, each changed file checked by visudo
-      first and kept with the account's other records.
-
-    * vdrush @alias updb runs on a Drupal 10 or newer codebase again after a
-      Composer run that installed drush/drush (an update or a require) put
-      vendor/bin/drush back. Drush starts its update check through that
-      script, which the shell refused for an account with no word, so updb
-      stopped at "Exit Code: 1" in SiteProcess.php. A line naming the script
-      now runs the same tree's drush.php, as vdrush does, under the same rules.
-
-    * A script an account runs through sh is still refused, and now says so
-      on one line naming it; it used to end with exit 1 and nothing shown.
-
-    * A Drush command the shell refuses for an account ends with exit 1
-      when Drush itself or other PHP code started it as a child, so the
-      parent stops at the refusal instead of reading it as the child's
-      output and going on. A refused line typed in the shell still ends
-      with exit 0.
-
-    * A codebase's own Drush named by a relative or ~ path runs from the
-      folder the line runs in: behind a cd DIR && it is read from DIR, and
-      a path naming another codebase runs that codebase's Drush. It was
-      read from the shell's own folder, which could start the Drush of the
-      codebase the shell stood in, or none at all. vendor/drush/drush/drush.php
-      and ../vendor/drush/drush/drush.php still take the parent's Drush from
-      a web, html or docroot folder whose parent has one. For an account a
-      path that names a folder runs only when that folder really lies
-      outside /tmp and /home, links followed, however the path is spelled.
-      One whose folder does not exist, or whose folder name has a character
-      a command line cannot carry, is refused with exit 1 and a line naming
-      it; it used to start the Drush of the codebase the line ran in, with
-      the arguments meant for the one it named.
+    * The Drush a Composer platform's first Verify adds is resolved on the
+      PHP the platform's tasks run on, a cli-per-platform.info line for its
+      folder included.
 
     * A Delete of a platform whose Composer build was cut off clears that
-      build's marker again, so a new build under the same name is no longer
+      build's marker, so a new build under the same name is no longer
       refused as if the old one still ran.
 
-    * A platform's failed Composer build quotes Composer's reason whole. With
-      no terminal Composer wrapped it at 80 columns, and the line naming the
-      cause, such as a plugin the project's allow-plugins does not list,
-      fell out of the last lines the Verify and Build newer version show.
+    * A platform's failed Composer build quotes Composer's last lines
+      unwrapped: with no terminal Composer wrapped them at 80 columns, and
+      the line naming the cause, such as a plugin the project's
+      allow-plugins does not list, fell out of the five lines the Verify shows.
+
+    * The Upgrade dialog numbers its steps and Go back's dialog bullets its
+      points, which the panel's theme had taken away.
 
     * Go back names the copy it puts back by the time its Upgrade gave that
-      copy. It read the Upgrade task's start instead, which can fall in the
-      minute before the copy was made.
+      copy, where it read the Upgrade task's start, which can fall in the
+      minute before.
 
-    * The Upgrade dialog numbers its steps, as the third names the first by
-      number, and leaves a line before "Before you start"; Go back's dialog
-      bullets its points. The panel's theme took a list's numbers and bullets
-      and the space after it away.
+    * vdrush @alias updb runs on a Drupal 10 or newer codebase again after a
+      Composer run that installed drush/drush put vendor/bin/drush back:
+      Drush starts its update check through that script, which the shell
+      refused, so updb stopped at "Exit Code: 1" in SiteProcess.php.
 
-    * _SMTP_RELAY_HOST takes [host]:port, as a relay on port 587 or 465
-      needs, and one relay replaces another. An upgrade used to write such
-      a relay into Postfix again beside the one already there, and a
-      changed relay beside the old one.
+    * A Drush command the shell refuses for an account ends with exit 1 when
+      Drush itself or other PHP code started it as a child, so the parent
+      stops at the refusal instead of reading it as the child's output and
+      going on; a refused line typed in the shell still ends with exit 0.
 
-    * An upgrade says so, in two WARN lines, when the host _SMTP_RELAY_HOST
-      names alone replaces a relay set by hand in Postfix as [host]:port:
-      mail then leaves for port 25, without the login set up for that
-      form. It used to put the bare host in front of such a relay, with the
-      same effect and no word. Write the brackets and the port in the
-      setting to keep them.
+    * A script an account runs through sh is still refused, and now says so
+      on one line naming it, where it ended with exit 1 and nothing shown.
 
-    * Solr 9 and Solr 7 could stay down after a barracuda upgrade until
-      the Java monitor found them, listed as not running with a stale PID
-      file in the upgrade's closing service report: the upgrade started
-      Solr while its killed JVM was still exiting, and Solr's own start
-      refuses then. It now waits until the killed process is gone.
-
-    * A barracuda upgrade no longer ends "completed WITH ERRORS" on a
-      server where a package of the operator's own keeps elogind's PAM
-      module installed (a desktop's polkit agent, for one). The line
-      "libpam-elogind left in place" is a WARN there, on every upgrade as
-      before; a removal apt cannot plan or carry out is still an alert.
-
-    * The service report of boa info, and of every upgrade's log, no
-      longer lists a Solr or Jetty service as not running while the server
-      denies it (_DENY_SOLR9, _DENY_SOLR7, _DENY_JETTY9, _DENY_JAVA or
-      their marker files). The stopped daemon's PID file used to keep
-      "solr9 is not running (stale PID file)" in the report for good. A
-      version whose deny was lifted is listed again until it is running.
-
-    * A Delete, Migrate, Restore or forced reinstall keeps a database, and
-      its login, that another site names as its own, and ends with a
-      warning that says which site. A copy whose making was cut off before
-      it had settings of its own is listed as a site by the next Verify of
-      its platform, and deleting it dropped the database of the live site
-      it was copied from.
-
-    * A few uncommon lines of a shell account that the redirection reading
-      had refused run again: a test bracket behind a wrapper, a redirection
-      glued to a NAME=value word, a blank inside ${...}. dr finds its site
-      when --url holds an empty quoted string.
-
-    * A Backup or Clone of a Drupal or Backdrop site no longer fails on a file
-      or folder that a shell user of the account made closed (0600, 0700) in
-      the site's files or private store, and a renaming Migrate copies the
-      stores with one in them, private/temp included. The step that opens
-      what the web server wrote closed before every archive now reads the
-      account's shell users as well: group read for the account's own
-      groups, and nothing else.
-
-    * A platform Verify reads a module's update hooks through the files its
-      install file includes, ten levels down, and only under the module's
-      own name; a distribution that keeps its hooks there (Varbase) had
-      every such module recorded as unknown, so a downgrade went unseen.
-
-    * The Drupal 7 and Backdrop platform scans follow those cores' own
-      listings: a copy made for another core takes no other copy's place,
-      and nothing inside Backdrop's css, js or templates folders is listed.
-
-    * The panel reads a platform's install profiles and their languages
-      from the platform's own records alone, on the site form and in
-      Install, Import, Migrate and Clone tasks.
-
-    * An octopus upgrade no longer waits 50 seconds in part A for a queue run
-      that cannot start while the upgrade holds the account's queue runners,
-      and it no longer announces one. A server's first install keeps its
-      accelerated queue.
-
-    * The Upgrade, Upgrade all sites and the Drupal updates line of a site on
-      one of core's own install profiles (Standard, Minimal) no longer take
-      a distribution or another project's platform of the account for a
-      newer version of the site's codebase: a site on a plain Drupal
-      platform was called ready to be upgraded onto Drupal CMS, and others
-      were told they lack its modules. The two codebases' locks tell them
-      apart. With no newer platform, the line no longer says up to date.
-
-    * The Upgrade no longer offers a pre-release of Drupal core (an alpha,
-      beta, rc or development version) to a site on a finished release: the
-      platform is shown as not ready with the reason. A site already on a
-      pre-release goes on to newer ones as before.
-
-    * A control panel already upgraded to BOA-5.88.888 gets both these fixes
-      without another upgrade: BOA.sh.txt puts the two files in its
-      hosting_tasks_extra where they are exactly a pair that release laid down
-      or an earlier form of this step put, and leaves every other panel alone,
-      a newer one included; see /var/log/boa/panel-upgrade-targets.log. Not on
-      a standby, nor during an install or an upgrade.
-
-    * The Packages page of a site or a platform, and the version the panel
-      shows for a Grav site, no longer take package rows of another record
-      that carries the same number (an install profile's packages are kept
-      under a number of their own).
-
-    * The Upgrade and Upgrade all sites dialogs no longer call a site Ready
-      whose upgrade would be refused over what an earlier one left: a copy
-      from a run cut off in its move, one the next run cannot remove, or a
-      folder of the site on the new platform. The site's page and the
-      dialogs say Not ready with the reason, and Upgrade all sites leaves
-      the site out, where it took it first and stopped there.
-
-    * A platform set to another command line PHP than its account's cli.info
-      (a line in cli-per-platform.info, or a phpNN.info marker) no longer
-      fails the Verify an octopus upgrade queues for it. During the upgrade
-      the panel leaves such tasks queued, those of the sites on that platform
-      and those moving a site onto it as well, says so in their logs, and
-      starts them when it ends. Every other task runs as before.
-
-    * A barracuda pass whose Master panel upgrade stopped before the panel
-      moved ("FATAL ERROR: hostmaster-migrate exited") no longer closes that
-      step with "Ægir Master Instance upgrade completed"; it says the panel
-      was not upgraded and stays where it was.
+    * A codebase's own Drush named by a relative or ~ path runs from the
+      folder the line runs in (behind a cd DIR && it is read from DIR),
+      where it was read from the shell's own folder and could start the
+      Drush of another codebase, or none. One whose folder does not exist is
+      refused with exit 1 and a line naming it.
 
     * dr in a shell account finds its site when the value of --url comes
       from a variable, or the folder of a cd in front of it comes from one
@@ -509,70 +396,95 @@
       site as --url=$URL started dr with no site.
 
     * A Drush or dr line that gives an option from a variable of the
-      option's own name (--uri=$uri) runs: websh took --uri= for an
+      option's own name (--uri=$uri) runs, where websh took --uri= for an
       assignment to uri and refused the line.
 
+    * The limited shell's history in a .lsh script, or in a single command
+      run over an SSH terminal, lists the login's history file again instead
+      of emptying it, and a history file the login cannot read is left as it is.
+
+    * Pressflow 6 on PHP 8.0 and later: a logout, and any page opened with
+      an expired session cookie, no longer ends in an error 500, and five
+      more core files drop the parameter forms PHP 9 removes (core 6.60.5).
+
+    * A database server added in a control panel keeps its own login when an
+      upgrade, syncpass fix or a move renews the panel's own database
+      password: only the server the panel site keeps its databases on takes
+      it, where every server record and alias whose login had the instance's
+      name took it and was pointed at the local server.
+
+    * An Octopus pass of an account in REMOTE DB SERVER MODE no longer ends
+      with two ALRT lines where root on the web head may not manage users on
+      the database server: the sync of the panel's own database user sends
+      nothing there and says so once in a NOTE.
+
     * barracuda and octopus stop on an empty /root/.my.pass.txt and compare
-      its whole value with the password in /root/.my.cnf: an empty file, or
-      one holding only the beginning of that password, passed as in sync.
-
-    * The command of an install that stops before its Ægir Master stays in
-      /root/.boa.install.command.cnf: autoinit moved it away as soon as the
-      install it had launched returned, so boa did not say how to go on and
-      barracuda up-* system could not. An install on a box already on Devuan
-      is recorded too, and autoinit launches a recorded install once.
-
-    * A /root/.barracuda.cnf made before the install, with a line or two in
-      it as the documentation asks, is completed with the install's own
-      settings. It was left without the e-mail address, the hostname and
-      others, so every later barracuda pass ended with errors until they
-      were added by hand. Your own lines are not changed.
-
-    * The report mails of octopus and boa were not sent in a shell with no
-      UTF-8 locale when the log held a non-ASCII character, and the launcher
-      said they were: they go out as UTF-8, as barracuda's do, a failed mail
-      is reported, and the mail about pruned archived stores goes out too.
+      its whole value with the password in /root/.my.cnf, where an empty
+      file, or one holding only the beginning of that password, passed as
+      in sync.
 
     * A first install in REMOTE DB SERVER MODE that stops because MySQL is
       not running here keeps the operator's /root/.my.pass.txt, and one that
-      finds the file empty stops at once, leaves it as it is and, as without
-      the file, says how the install is run again. The settings files say
-      which database users to create on the remote server, in place of a
-      control file no code ever read.
+      finds the file empty stops at once and says how the install is run again.
 
-    * A mail of BOA's with a letter outside ASCII was refused where the locale
-      is not UTF-8, as cron has it on some systems. One line in
-      /etc/s-nail.rc, put back by BOA unless the file sets ttycharset itself,
-      sends them all as UTF-8; a report mail whose log holds bytes that are
-      not UTF-8 goes out without them, and a notice that could not be sent
-      is no longer called sent.
+    * Solr 9 and Solr 7 no longer stay down after a barracuda upgrade until
+      the Java monitor finds them: the upgrade started Solr while its killed
+      JVM was still exiting, which Solr's own start refuses, and now waits
+      until the killed process is gone.
+
+    * The service report of boa info, and of every upgrade's log, no longer
+      lists a Solr or Jetty service as not running while the server denies
+      it (_DENY_SOLR9, _DENY_SOLR7, _DENY_JETTY9, _DENY_JAVA or their marker
+      files), where a stopped daemon's PID file kept "solr9 is not running
+      (stale PID file)" there for good.
+
+    * A barracuda upgrade no longer ends "completed WITH ERRORS" on a server
+      where a package of the operator's own keeps elogind's PAM module
+      installed: the line "libpam-elogind left in place" is a WARN there,
+      and a removal apt cannot plan or carry out is still an alert.
+
+    * A barracuda pass whose Master panel upgrade stopped before the panel
+      moved ("FATAL ERROR: hostmaster-migrate exited") no longer closes that
+      step with "Ægir Master Instance upgrade completed": it says the panel
+      was not upgraded and stays where it was.
+
+    * _SMTP_RELAY_HOST takes [host]:port, as a relay on port 587 or 465
+      needs, and one relay replaces another, where an upgrade wrote such a
+      relay into Postfix again beside the one already there. A bare host
+      that replaces a relay set by hand as [host]:port is named in two WARN
+      lines, since mail then leaves for port 25.
+
+    * BOA's mails go out as UTF-8 in any locale, cron's included, by one
+      line in /etc/s-nail.rc that BOA puts back unless the file sets
+      ttycharset itself: a mail with a letter outside ASCII, the report
+      mails of octopus and boa among them, was refused where the locale is
+      not UTF-8.
+
+    * A report mail whose log holds bytes that are not UTF-8 goes out
+      without them, and a notice or a report that could not be sent is no
+      longer called sent.
 
     * The per-minute kill of a hung apt-get update no longer finds its own
-      process (#1954). On Devuan Daedalus, whose procps sometimes gives a
+      process (#1954): on Devuan Daedalus, whose procps sometimes gives a
       process that starts while ps reads the process table an age of
       4123168608 seconds, it took itself for a hung run several times a day,
-      and cron mailed root a kill that failed. It now takes only apt-get and
-      apt themselves, by the program's name with update among its words: a
-      shell wrapped around a run is no longer killed, and options before
-      update no longer hide one. It reads a run's age from the kernel's start
-      times, not from ps, which in a container that shows its own uptime is
-      off by the time the host ran before it.
+      and cron mailed root a kill that failed.
+
+    * The kill of a hung apt-get update takes only apt-get and apt
+      themselves, with update among their words, and reads a run's age from
+      the kernel's start times: a shell wrapped around a run is no longer
+      killed, and options before update no longer hide one.
 
     * Every check that judges a process by how long it has run reads the
-      kernel's start times, not ps: the stuck SQL helper and guest-fire
+      kernel's start times, not ps (the stuck SQL helper and guest-fire
       watchdogs, the stuck backup notice, the Solr restart after an option
-      change, the nginx start guard, the idle FPM reload, xmass's dump
-      estimate, loadreport's window and the incident snapshot's thread list.
-      In an LXC container that shows its own uptime, every ps age was short by
-      the time the host ran before the container, and a process younger than
-      that read as 130 years old: the stuck SQL helper check read a nightly
-      backup or cleanup run that had just started as far past its limit, and
-      a starting nginx as stuck.
+      change, the nginx start guard, the idle FPM reload among them): in an
+      LXC container that shows its own uptime a nightly backup that had just
+      started read as far past its limit, and a starting nginx as stuck.
 
     * xmass names apt-get update when it fails while setting up Percona's
-      repository for xtrabackup, and runs it a second time first: the apt
-      kill stops a refresh still running after 99 seconds, and the message
-      blamed the repository lines.
+      repository for xtrabackup, and runs it a second time first.
+
 
 ###
 ### Stable BOA-5.88.888 PRO/LTS - DRAGON EDITION
