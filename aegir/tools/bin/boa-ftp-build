@@ -554,6 +554,10 @@ _verb_remove() {
   _plain_file "${_marker}" || _die "no build marker stands beside ${_new}"
   timeout 10 grep -qxF -- "login=${_LOGIN_NAME}" "${_marker}" 2> /dev/null \
     || _die "the marker beside ${_new} names no build of ${_LOGIN_NAME}"
+  # Another folder at the name is refused before anything is touched, as
+  # resolve and install refuse it; the check inside the removal stays for a
+  # swap during it.
+  ( _enter_build "${_new}" "${_id}" ) || _die "${_new} is not the folder this program made"
   _msg "removing what the failed build left at ${_new}"
   _bounded _remove_tree "${_new}" "${_id}"
   _rc=$?
