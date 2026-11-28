@@ -8914,9 +8914,9 @@ _finale() {
     fi
   fi
   if [[ "${_hName}" =~ ".aegir.cc"($) ]]; then
-    _MTD_VR="BOA-5.88.888-omm"
+    _MTD_VR="BOA-5.88.899-omm"
   elif [ -e "/root/.host8.cnf" ]; then
-    _MTD_VR="BOA-5.88.888-aln"
+    _MTD_VR="BOA-5.88.899-aln"
   else
     _MTD_VR="${_X_VERSION}"
   fi
