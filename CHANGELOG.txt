@@ -27,6 +27,15 @@
       its two files to the control panel in its own result, never in the
       task's log, which the steps it starts write into too.
 
+@=> Important Fixes
+
+    * Ægir Provision: Delete Platform works on a Composer build cut off in
+      its install, whose docroot has autoload.php and core but not yet the
+      autoloader that file requires. The Delete's search for sites
+      bootstrapped such a root and ended on the missing file, so the task
+      failed and the record and the folder stayed. Such a root now holds no
+      codebase: only the record goes, and the disk stays as it is.
+
 ###
 ### Stable BOA-5.88.899 PRO/LTS - CENTAUR EDITION
 ### Date: Sat 28 Nov 2026 01:22:48 CET in Warsaw
