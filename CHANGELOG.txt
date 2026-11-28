@@ -1,4 +1,23 @@
 ###
+### In development - changes since BOA-5.88.899
+###
+
+@=> New Features
+
+    * Build newer version, and the build an Upgrade or Upgrade all sites
+      makes first, can build a platform the control panel built from a
+      published package again from its own composer.lock for the account's
+      main login: its permission, build platform_successor from lock, is
+      granted to the main login roles (admin, aegir account manager), not
+      to the client, site operator or platform manager roles.
+
+@=> Improvements
+
+    * A build from a platform's own composer.lock gives the fingerprint of
+      its two files to the control panel in its own result, never in the
+      task's log, which the steps it starts write into too.
+
+###
 ### Stable BOA-5.88.899 PRO/LTS - CENTAUR EDITION
 ### Date: Sat 28 Nov 2026 01:22:48 CET in Warsaw
 ### Enjoy upgrades that build themselves
