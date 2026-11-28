@@ -2725,6 +2725,50 @@ _dbctl_sudo_line() {
   _sudoers_commit "${_file}" "${_tmp}"
 }
 
+# The shell login's build program's sudo line for one account: written only
+# while root allows the build on this server (/root/.allow.shell.build.cnf),
+# and taken out again once it does not. What the build installs is what the
+# project's own files name, which the account's group can write, so the line
+# lets the backend user run code of its choosing as the shell login.
+_ftpbuild_sudo_line() {
+  local _u="${1}"
+  local _file="/etc/sudoers.d/boa-ftp-build"
+  local _line _tmp
+  [[ "${_u}" =~ ^[a-z][a-z0-9_]{0,31}$ ]] || return 1
+  _line="${_u} ALL=(${_u}.ftp) NOPASSWD: /opt/local/bin/boa-ftp-build"
+  if [[ ! -e "/root/.allow.shell.build.cnf" ]] || ! getent passwd "${_u}.ftp" > /dev/null 2>&1; then
+    [[ -e "${_file}" ]] || return 0
+    grep -qxF -- "${_line}" "${_file}" 2> /dev/null || return 0
+    _tmp=$(mktemp "/etc/sudoers.d/.sudoers.boa.XXXXXX" 2> /dev/null)
+    if [[ -z "${_tmp}" || ! -e "${_tmp}" ]]; then
+      return 1
+    fi
+    grep -vxF -- "${_line}" "${_file}" > "${_tmp}" 2> /dev/null
+    if ! command -v visudo > /dev/null 2>&1; then
+      chmod 0440 "${_tmp}" 2> /dev/null
+      mv -f "${_tmp}" "${_file}"
+      return $?
+    fi
+    _sudoers_commit "${_file}" "${_tmp}"
+    return $?
+  fi
+  if [[ -e "${_file}" ]] && grep -qxF -- "${_line}" "${_file}" 2> /dev/null; then
+    return 0
+  fi
+  if ! command -v visudo > /dev/null 2>&1; then
+    echo "${_line}" >> "${_file}"
+    chmod 0440 "${_file}" 2> /dev/null
+    return 0
+  fi
+  _tmp=$(mktemp "/etc/sudoers.d/.sudoers.boa.XXXXXX" 2> /dev/null)
+  if [[ -z "${_tmp}" || ! -e "${_tmp}" ]]; then
+    return 1
+  fi
+  [[ -e "${_file}" ]] && cat "${_file}" > "${_tmp}" 2> /dev/null
+  echo "${_line}" >> "${_tmp}"
+  _sudoers_commit "${_file}" "${_tmp}"
+}
+
 # A root tool has just made root's, aegir_root's or the master panel's
 # database login again (a password rotation, a grant an upgrade gives it):
 # where the database broker keeps a baseline of the server's own logins (in
@@ -2742,7 +2786,8 @@ _dbctl_rerecord() {
   return 0
 }
 
-# The broker's sudo line for every Octopus account, on every barracuda pass:
+# The broker's sudo line, and the shell login's build program's, for every
+# Octopus account, on every barracuda pass:
 # the system-only pass a replication standby runs included. A standby never
 # runs the Octopus pass that also writes it, and once promoted it serves the
 # switched accounts it took over at once.
@@ -2757,6 +2802,7 @@ _dbctl_sudo_lines() {
     [[ "${_home%/}" == "/data/disk/${_u}" ]] || continue
     [[ -d "/data/disk/${_u}" && ! -L "/data/disk/${_u}" ]] || continue
     _dbctl_sudo_line "${_u}"
+    _ftpbuild_sudo_line "${_u}"
   done
   return 0
 }
