@@ -2,87 +2,83 @@ Hello,
 
 We are pleased to inform you that your Ægir instance has been successfully upgraded to [boa.version]
 
-This is the Dragon release. Its main gift sits in your control panel: a site on Drupal 10 or later can now be moved onto a newer platform with one task that keeps the way back open, so trying a new core or a new set of modules no longer means risking the site you have. Around it, the release makes tasks start sooner, serves crawlers from the cache on more sites, and lets off-site backups run side by side. This month's security releases of PHP and Nginx are already on your server.
+This is the Centaur release, named for two natures in one body. Your control panel could already upgrade a Drupal 10 or later site onto a newer platform and keep the way back, but somebody still had to build that newer platform first. Now the panel builds it too, checks that it really is a newer version of the same code, and moves the site, all in one task. Beside that come security updates for Drupal 7, Pressflow 6 and Grav platforms, a current Adminer, and PHP that finds its files faster.
 
 ----------------------------------------
-UPGRADE A SITE, KEEP THE WAY BACK
+BUILD A NEWER VERSION OF A PLATFORM
 ----------------------------------------
 
-Open a Drupal 10 or later site in the panel and you will find a new task, Upgrade. Pick a newer platform from the list and the task does two things in order: it makes a copy of the site exactly as it is, switched off and kept beside the original, and then it moves the site onto the platform you chose. If the database updates do not run to their end, or the site's home or login page no longer answers as it should, the move undoes itself and the site stays where it was. The list offers only platforms the site can really move up to, and Drupal 12 is not offered as a target yet. Each Drupal 10 or later site's page gains a line, Drupal updates, that says whether an upgrade is available and onto which platform, or why none is ready, and one line in the site's or the platform's control file limits which kinds of upgrade a site accepts. The task belongs to the account's main login; team members with the client or site operator role do not see it.
+Open a platform the panel built with Composer, on Drupal 10 or newer, and you will find a new button, Build newer version. It builds the platform again into a new folder beside the old one, the same way the panel built it the first time, at the version you pick. A plain Drupal platform, built from Drupal's own project template, offers the newest patch release, the newest minor release or the next major release (Drupal 11 from Drupal 10; Drupal 12 is not offered yet); any package takes a version you type; your own repository takes another branch or tag. When the build is done the panel judges it, and the new platform is kept only if it is a newer version of the same codebase. Nothing changes on the old platform or its sites meanwhile; a kept platform simply appears as a choice in their Upgrade. The guide is at https://docs.boa.io/using/deploying-code/building-a-newer-version
 
 ----------------------------------------
-WHAT CHANGES COMPARED WITH MIGRATE
+UPGRADE A SITE BEFORE ITS NEW PLATFORM EXISTS
 ----------------------------------------
 
-Until now a site reached newer code through Migrate, and Migrate stays exactly where it is. For an upgrade, though, it left the safety in your hands. The way back was a clone you had to remember to make before the move. When Drupal's database updates stopped half-way, Migrate reported a warning and the site was already on the new platform. And returning to the old one meant taking the moved site out of the way, renaming your clone into its place and setting up cron, HTTPS and aliases on it again, because a Migrate back is refused once a module's database has moved up.
-
-Upgrade does all of that for you, and adds a check Migrate never had: it opens the home page and the login page before and after the move, and undoes the move when they no longer answer the same. It also lists only platforms that are a real step up for the site. Keep Migrate for what Upgrade does not do: sites on Drupal 9 or older and on Backdrop, renames, and any upgrade you want to rehearse on a clone first, since Upgrade has no test stage and works on the live site.
+The Upgrade dialog of a site has a new last choice: build a newer version of the platform first. Choose it and one task does the whole job in order. It checks what can be known beforehand (disk space, time, the PHP the newer Drupal asks for), builds the platform, judges it, then copies your site as the way back and moves it, exactly as an Upgrade always does. Nothing of the site is copied or moved before the build is kept, so a build that fails or is not kept leaves the site as it was. A build that is kept stays as a platform even when the site could not move this time, ready for the next try and for the other sites of the old platform. See https://docs.boa.io/using/deploying-code/upgrading-with-a-build
 
 ----------------------------------------
-GO BACK, IF YOU NEED TO
+A WHOLE PLATFORM'S SITES IN ONE GO
 ----------------------------------------
 
-The copy an Upgrade kept is not just a backup file. A second new task, Go back, switches the upgraded site off, sets it aside under another name and puts the copy back under the site's own name, with its aliases, redirection and HTTPS setting. The site page shows how old the copy is and how much disk it takes, so you can decide when you no longer need it. If a Go back is interrupted, running it again finishes the job from where it stopped.
+Upgrade all sites, the platform task that upgrades every ready site of a platform one at a time, has the same choice. It builds the newer platform once, and when the build is kept it moves the sites onto it, each as its own Upgrade with its own way back. If the build is not kept, no site is touched.
+
+All of this belongs to the account's main login, like Upgrade and Go back; team members with the client, site operator or platform manager role do not see it.
 
 ----------------------------------------
-SEE WHAT A SITE HAS PENDING
+YOUR LIMITS STILL DECIDE
 ----------------------------------------
 
-Check available updates is a third new task, and it changes nothing: it writes into its task log the known security problems of the code a site runs, for Drupal 6 and 7 as well as for Drupal 8 and later. It replaces the old health check, which had stopped doing anything useful, and it is the quick read before you plan an Upgrade.
+The line in a platform's control file that limits which upgrades it accepts, drupal_upgrade_modes, now governs builds too: the dialog offers only what the line allows, a finished build the line refuses is not kept, and a kept build carries the line on. When a newer platform brings a security advisory the old one did not have, the Upgrade no longer refuses flatly: it names the advisory in its plan and its result and goes ahead, unless your line accepts security fixes only.
 
 ----------------------------------------
-A PHP VERSION THAT BELONGS TO THE PLATFORM
+BUILDS THAT EXPLAIN THEMSELVES
 ----------------------------------------
 
-Until now a site took its web PHP version from the account, in fpm.info, or from a line of its own in multi-fpm.info. Both follow the site, never its code: when a platform needed a newer PHP, every site you moved onto it wanted a line of its own. A platform can now carry the version itself. Add one line to ~/static/control/fpm-per-platform.info, the platform's folder and the version:
-
-  d11-prod 8.4
-
-Every site on that platform is then served by PHP 8.4, and a site that arrives there through Upgrade, Migrate or Clone switches to it in the same step. A site with its own line in multi-fpm.info keeps it, so one site can still stay behind. The file is for the web only: drush, composer and your Ægir tasks keep their own setting in cli-per-platform.info. A change takes effect within a few minutes, and a line that cannot apply is named, with the reason, in a file beside yours. It needs an account that serves its sites on more than one PHP version; the guide is at https://docs.boa.io/using/tuning/php-version
+A platform built from your own Git repository on a server your account has not used before now builds at the first try: the server's key is stored at first contact, and a changed key is refused later. A build that fails inside Composer now shows Composer's closing lines at full width, where narrow wrapping used to push the line that names the cause out of sight. And a build step that hangs is stopped after 45 minutes and cleaned up.
 
 ----------------------------------------
-SPEED BOOSTER FOR SHOPS, AND ONE COPY PER COUNTRY
+THE UPGRADE TASK, WISER AFTER REAL USE
 ----------------------------------------
 
-Speed Booster, the cache in front of your sites, learned two things. A shop, or any site that starts a session for every visitor, could not have its pages stored, so every crawler request was rendered from scratch; crawlers that send no cookie now get such pages from the cache, and your visitors notice nothing but a calmer site. And a site that prices or words its pages by country can keep one cached copy per visitor country, where one country's page used to be all the cache could hold. The per-country copies are switched on per site by whoever runs the server: ask your host, and see https://docs.boa.io/using/caching/front-cache-and-page-cache
+The Upgrade task that arrived with the last release has been through real use since. It now tells codebases apart, so a site on a plain Drupal platform is not offered a distribution such as Drupal CMS as its newer version. It offers a site on a finished Drupal release only finished releases, never a beta or a release candidate. A site that an earlier, interrupted upgrade left something in the way of is shown as not ready, with the reason. And the dialog numbers its steps.
 
 ----------------------------------------
-DRUPAL 12 AND DRUSH 15 ARE EXPECTED
+YOUR OWN LOOK STILL COUNTS
 ----------------------------------------
 
-Drush 15 no longer brings its own launcher; it runs under the command Drupal core ships, dr. BOA is ready for that on both sides. In the panel, a site on a codebase with Drush 15 installs and takes its database updates like any other; a codebase with no Drush at all installs its sites too, but the panel skips their database updates and says so in the task log. In your shell, on Drupal 11.5 and newer, run dr --url=https://your-site.example status from the folder of the codebase that holds vendor, while the platform is unlocked. Drupal 12 platforms are built with Drush 15 from Drupal 12's first release.
+After a move the panel looks at two simple things: whether Drupal's database updates completed, and whether the site's home page and login page respond as they used to. It runs no tests of your own and it has no staging step, so for an upgrade that matters, clone the site and upgrade the clone first. We are only starting here. Steps like these may join the panel later, with no dates promised, and the aim is clear: looking after a site's whole life almost the way continuous integration does, in a human-friendly way, where the panel's checks help your own testing and blind automation never takes its place. What the two checks cover is at https://docs.boa.io/using/deploying-code/upgrading-a-site#what-checked-means-and-what-it-does-not
 
 ----------------------------------------
-PHP 8.6 IN FULL
+A NOTICE WHEN A SITE FALLS BEHIND
 ----------------------------------------
 
-PHP 8.6 has left its release candidates behind: the final 8.6.0 is here with the Valkey cache, upload progress and YAML modules working on it, so PHP 8.5 or 8.6 are both real choices where your server offers them.
+Drupal publishes security fixes only for its newest release lines. Your server can now tell you by mail, once for each site, when a Drupal 10 or later site of yours runs a release that no longer gets them. The notice is switched on by whoever runs the server, so ask your host if you would like it. What it says, and when, is at https://docs.boa.io/using/deploying-code/nightly-upgrade-report
 
 ----------------------------------------
-TASKS THAT START SOONER AND SAY MORE
+EVERY DRUPAL LINE, AND GRAV
 ----------------------------------------
 
-A task you queued no longer waits for minutes behind a site's cron run, and a task held back by another running task says so on its own page. Building a platform from the panel now stops at the first step that fails, cleans up after itself and names the folder it could not write, where it used to carry on and leave a half-built platform behind. The Add platform form refuses a path another platform already uses, the Migrate form no longer shows dozens of upgrades between two identical platforms, and every confirm screen describes its task.
+New Drupal 10 and 11 platforms are built on Drupal's security releases of 25 November: 10.6.23, 11.3.23 and 11.4.14. New Drupal 7 platforms are built on core 7.108.2, whose session handling is ready for PHP 8.6, and new Pressflow 6 platforms on 6.60.5, where a logout no longer ends in an error page on PHP 8. New Grav platforms are built on Grav 2.2.35, a security release, and the Upgrade Grav task brings an existing Grav site to it.
 
 ----------------------------------------
-FEWER SURPRISES
+PAGES THAT COST LESS
 ----------------------------------------
 
-Background batch jobs that a Drupal site starts over HTTPS run to their end instead of stopping part way, a site renamed on its own platform answers at once under the new name, and a change you make with Drush no longer leaves the web pages on an old cached copy.
+PHP checks every file a request opens against a list of folders it may read. The list has not changed, but it is now sorted in the order requests use it, and on a test server that alone took about a fifth off the processor time of a cached page and of the panel's own pages. Your sites have it already; there is nothing to switch on.
 
 ----------------------------------------
-BACKUPS THAT RUN SIDE BY SIDE
+IN YOUR SHELL
 ----------------------------------------
 
-If you keep your own off-site backups, they no longer stand in a queue behind the server's backup, two accounts' backups now run at the same time, and a restore you queue with mybackup starts as it should. Restoring the same folder a second time puts the new copy beside the first one, and a retention you set in days or weeks is honoured, where it used to fall back to three months.
+vdrush @site updb runs again on a Drupal 10 or newer codebase after a Composer run has put Drush's own launcher back. dr finds its site when the address comes from a variable, as in a Composer script or a Git alias, and a Drush line with an option like --uri=$uri runs. Your command history survives a script or a single remote command.
 
 ----------------------------------------
-WHEN A SERVER MOVES
+EVERYDAY TASKS, STEADIER
 ----------------------------------------
 
-Should your instance ever move to new hardware, the messages you receive now say where the control panel is afterwards, where SSH and SFTP logins connect, which bucket of your own off-site backups changes its name and which address your sites' outgoing requests come from. A login on the old server tells you where the account went, in case a saved connection still points there.
+A Backup or a Clone no longer fails on a file or folder one of your shell users closed to others inside a site's files. A task that runs inside another, such as the Verify at the end of a Clone, is no longer turned away as busy by its own parent. While your account is being upgraded, the tasks of a platform that runs on its own command-line PHP now wait for the upgrade to end, where they used to fail. And the database browser at /sqladmin/ is Adminer 6.3.1.
 
-Curious about the details? The full story of this release is at https://docs.boa.io/releases/boa-5-88-888
+Everything else this release changed, with the versions and the reasons, is at https://docs.boa.io/releases/boa-5-88-899
 
 ----------------------------------------
 YOU CAN ACCESS YOUR UPGRADED ÆGIR INSTANCE AT THE FOLLOWING URL
