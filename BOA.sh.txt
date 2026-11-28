@@ -6523,6 +6523,9 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f38 --guard duplicity
     _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f24 --guard /local/bin/barracuda
     _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f71 --guard /local/bin/boa
+    # The shell login's build program: run by sudo as an account's <oN>.ftp, so
+    # world-executable.
+    _fetch_versioned ${_optBin}/boa-ftp-build "${_urlHmr}/${_tBn}/boa-ftp-build" f99 --mode 755 --guard /local/bin/boa-ftp-build
     _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/${_tBn}/dcysetup" f91 --guard duplicity
     _fetch_versioned ${_optBin}/dhcpfix "${_urlHmr}/${_tBn}/dhcpfix" f98 --guard /local/bin/dhcpfix
     _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/${_tBn}/duobackboa" f39 --guard duplicity
@@ -6699,7 +6702,7 @@ CSFSTANDBY
   chmod 700 ${_optBin}/{aptcleanup,autosymlink,sqlclean,updatesymlinks,verifyvhostsdns,vhostcheck} &> /dev/null
 
   # _MISC (755): misc user-space utilities
-  chmod 755 ${_optBin}/{backchain,checkmyperms,mybackup,randpass,sqlmagic,thinkdifferent,websh} &> /dev/null
+  chmod 755 ${_optBin}/{backchain,boa-ftp-build,checkmyperms,mybackup,randpass,sqlmagic,thinkdifferent,websh} &> /dev/null
 
   _fetch_failed_report "the tools pass"
 }
