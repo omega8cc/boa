@@ -1,0 +1,597 @@
+#!/bin/bash -p
+###
+### boa-ftp-build -- the panel's build of a codebase an account built in its
+### shell, run as the account's shell login (oN.ftp)
+###
+### A Composer project the shell login built under ~/static and added to the
+### panel by its path is built again from its own composer.json and
+### composer.lock as that login, the identity that built it by hand: never as
+### the backend user oN, never as root. The backend user reaches this program
+### through one sudo line per account, which BOA writes beside the account's
+### other sudo lines:
+###
+###   oN ALL=(oN.ftp) NOPASSWD: /opt/local/bin/boa-ftp-build
+###
+### It takes a fixed recipe, never a command line: four verbs, each with the
+### names it needs, every folder resolved as the shell login under the
+### account's static folder with no link on the way.
+###
+###   copy <source> <new> <docroot|-> [<folder>...]
+###       the project folder <source> copied to <new> beside it, without
+###       vendor/, the docroot's sites/ but sites/all, the folders named
+###       (those Composer installed for the source, relative to it), every
+###       link and special file, the platform's own control file, its Drush
+###       settings and the marks of BOA's permission fixes
+###   resolve <new> <word>...
+###       composer update <words> --no-install --no-scripts --no-plugins
+###       --no-audit: a new composer.lock, nothing installed; the advisory
+###       block lifted alone, the malware block kept
+###   install <new>
+###       composer install --no-dev --no-scripts: the plugins run, the root
+###       composer.json's scripts do not
+###   remove <new>
+###       what a failed build left, removed by the login itself: only a
+###       folder this program's copy made, beside the build's marker naming
+###       this login, never through a link
+###
+### Composer runs through websh, which is /bin/sh on BOA and the shell the
+### account's logins get, so the PHP is the one a build by hand gets. Files
+### are made as a shell session makes them (umask 002), and every folder a
+### verb leaves is open to its owner and the account's group, so the build
+### can be removed whole: a failed one by this program's own remove, a kept
+### one by the platform's Delete.
+### Each verb is bounded on its own: 45 minutes in all and 5 minutes without
+### a line of output, then it is stopped with everything it started; a TERM,
+### which sudo passes on from the backend's own stop, stops it the same way.
+###
+### Exit status: 0 done; 1 the verb's tool failed (its status is said);
+### 2 refused; 124 stopped by a limit; 129, 130 or 143 stopped by a signal.
+###
+export PATH=/usr/local/bin:/usr/bin:/bin
+export SHELL=/bin/bash
+umask 0002
+
+# The test switches reach only a run as root that sudo did not start (the
+# tests'): sudo's password helper runs this program as its caller, with the
+# caller's environment. bash -p reads no startup file and no function from it.
+if [[ -n "${SUDO_UID:-}${SUDO_USER:-}" || "$(id -u 2> /dev/null)" != "0" ]]; then
+  unset BFB_TEST
+fi
+_DISK=/data/disk
+_STEP_LIMIT=2700
+_SILENCE_LIMIT=300
+_STOP_GRACE=5
+_POLL=5
+_SH=/bin/sh
+_WEBSH=/opt/local/bin/websh
+_LOGIN_NAME="$(id -un 2> /dev/null)"
+if [[ "${BFB_TEST:-}" == "1" ]]; then
+  _DISK="${BFB_DISK:-${_DISK}}"
+  _STEP_LIMIT="${BFB_STEP_LIMIT:-${_STEP_LIMIT}}"
+  _SILENCE_LIMIT="${BFB_SILENCE_LIMIT:-${_SILENCE_LIMIT}}"
+  _STOP_GRACE="${BFB_STOP_GRACE:-${_STOP_GRACE}}"
+  _POLL="${BFB_POLL:-${_POLL}}"
+  _SH="${BFB_SH:-${_SH}}"
+  _WEBSH="${BFB_WEBSH:-${_WEBSH}}"
+  _LOGIN_NAME="${BFB_LOGIN:-${_LOGIN_NAME}}"
+  _RECORDS="${BFB_RECORDS:-${_DISK}/.bfb-records}"
+fi
+
+_NAME_RE='[A-Za-z0-9_][A-Za-z0-9._-]*'
+# A package name never starts with a dash, which Composer would read as an
+# option.
+_PKG_RE='[a-z0-9][a-z0-9_.-]*/[a-z0-9][a-z0-9_.-]*'
+
+_msg() { echo "boa-ftp-build: $*"; }
+_info() { echo "boa-ftp-build: OK: $*"; }
+_die() { echo "boa-ftp-build: refused: $*"; exit 2; }
+
+# Who runs: the account's shell login, never root, in the account's own
+# group: an account still on the box-wide group shares it with every other.
+_login_check() {
+  local _uid _gid _home
+  _uid="$(id -u 2> /dev/null)"
+  [[ "${_uid}" =~ ^[0-9]+$ ]] || _die "who runs this cannot be read"
+  [[ "${_uid}" != "0" || "${BFB_TEST:-}" == "1" ]] || _die "it runs as an account's shell login, never as root"
+  [[ "${_LOGIN_NAME}" =~ ^([a-z][a-z0-9_]{0,31})\.ftp$ ]] || _die "it runs as an account's shell login (oN.ftp), not as ${_LOGIN_NAME:-?}"
+  _ACCT="${BASH_REMATCH[1]}"
+  if [[ "${BFB_TEST:-}" != "1" ]]; then
+    _home="$(getent passwd "${_ACCT}" 2> /dev/null | cut -d: -f6)"
+    [[ "${_home%/}" == "${_DISK}/${_ACCT}" ]] || _die "the account ${_ACCT} has no home at ${_DISK}/${_ACCT}"
+    _gid="$(id -g "${_ACCT}" 2> /dev/null)"
+    [[ -n "${_gid}" && "${_gid}" == "$(id -g 2> /dev/null)" ]] || _die "${_LOGIN_NAME} is not in the group of the account ${_ACCT}"
+    [[ "$(id -gn 2> /dev/null)" == "${_ACCT}" ]] || _die "the account ${_ACCT} is on the box's shared group, not a group of its own"
+    _home="$(getent passwd "${_LOGIN_NAME}" 2> /dev/null | cut -d: -f6)"
+    [[ -n "${_home}" && -d "${_home}" ]] && export HOME="${_home}"
+    _RECORDS=""
+    [[ -n "${_home}" && -d "${_home}" && ! -L "${_home}" && -O "${_home}" ]] && _RECORDS="${_home}/.boa-ftp-build"
+    export USER="${_LOGIN_NAME}" LOGNAME="${_LOGIN_NAME}"
+  fi
+  _STATIC="${_DISK}/${_ACCT}/static"
+  [[ "$(cd -P -- "${_STATIC}" 2> /dev/null && /bin/pwd -P)" == "${_STATIC}" ]] \
+    || _die "the account's static folder ${_STATIC} is not a plain folder"
+}
+
+# $1 named as the account's static folder names it, a plain folder there.
+_real_folder() {
+  local _p="${1}"
+  [[ "${#_p}" -le 400 && "${_p}" =~ ^${_STATIC}(/${_NAME_RE})+$ ]] || return 1
+  [[ -d "${_p}" && ! -L "${_p}" ]] || return 1
+  [[ "$(cd -P -- "${_p}" 2> /dev/null && /bin/pwd -P)" == "${_p}" ]]
+}
+
+# $1 a name not taken yet, in a plain folder of the account's static.
+_free_name() {
+  local _p="${1}"
+  [[ "${#_p}" -le 400 && "${_p}" =~ ^${_STATIC}(/${_NAME_RE})+$ ]] || return 1
+  [[ ! -e "${_p}" && ! -L "${_p}" ]] || return 1
+  [[ "$(cd -P -- "${_p%/*}" 2> /dev/null && /bin/pwd -P)" == "${_p%/*}" ]]
+}
+
+# A plain file, never a link.
+_plain_file() {
+  [[ -f "${1}" && ! -L "${1}" ]]
+}
+
+# A project folder's composer.json and composer.lock, both plain files.
+_project_files() {
+  _plain_file "${1}/composer.json" && _plain_file "${1}/composer.lock"
+}
+
+# A folder's identity: its file system, inode and birth time, so a folder
+# moved in at a build's name is never taken for the build.
+_folder_id() {
+  local _v
+  _v="$(stat -c '%d:%i:%W' -- "${1}" 2> /dev/null)"
+  # A file system that keeps no birth time says "-" (or 0): the inode alone.
+  printf '%s' "${_v/%:-/:0}"
+}
+
+# What this program's copy made, in a folder only the login writes: a build
+# is recorded by its path and its identity once made, and every verb after
+# the copy takes only a recorded build, since the marker beside it and the
+# folder it sits in are the backend user's to write. A record older than a
+# step whose folder is gone goes; one still being written never does.
+_record_file() {
+  printf '%s/%s' "${_RECORDS}" "$(printf '%s' "${1}" | md5sum | cut -c1-32)"
+}
+
+_record_dir() {
+  [[ -n "${_RECORDS:-}" ]] || return 1
+  [[ -e "${_RECORDS}" || -L "${_RECORDS}" ]] || mkdir -m 0700 -- "${_RECORDS}" 2> /dev/null
+  [[ -d "${_RECORDS}" && ! -L "${_RECORDS}" && -O "${_RECORDS}" ]] || return 1
+  chmod 0700 -- "${_RECORDS}" 2> /dev/null
+}
+
+_record_prune() {
+  local _r _p _i _t _now
+  _now="$(date +%s)"
+  for _r in "${_RECORDS}"/*; do
+    [[ "${_r}" == *.new ]] && continue
+    _plain_file "${_r}" || continue
+    _t="$(stat -c %Y -- "${_r}" 2> /dev/null)"
+    [[ "${_t}" =~ ^[0-9]+$ && $((_now - _t)) -ge "${_STEP_LIMIT}" ]] || continue
+    [[ -O "${_r}" ]] || continue
+    { IFS= read -r _p; IFS= read -r _i; } < <(timeout 10 head -c 1024 -- "${_r}" 2> /dev/null)
+    [[ -n "${_p}" ]] || continue
+    # Gone, or another folder at its name: no longer this program's build.
+    if [[ ! -e "${_p}" && ! -L "${_p}" ]] || [[ -L "${_p}" || "$(_folder_id "${_p}")" != "${_i}" ]]; then
+      rm -f -- "${_r}"
+    fi
+  done
+}
+
+_record_add() {
+  local _f _id="${2}"
+  _record_dir || return 1
+  _record_prune
+  [[ "${_id}" =~ ^[0-9]+:[0-9]+:[0-9]+$ ]] || return 1
+  _f="$(_record_file "${1}")"
+  rm -f -- "${_f}.new"
+  ( set -C; printf '%s\n%s\n' "${1}" "${_id}" > "${_f}.new" ) 2> /dev/null || return 1
+  mv -f -- "${_f}.new" "${_f}"
+}
+
+# The identity recorded for build $1, or nothing.
+_record_id() {
+  local _f _p="" _id=""
+  [[ -n "${_RECORDS:-}" && -d "${_RECORDS}" && ! -L "${_RECORDS}" && -O "${_RECORDS}" ]] || return 1
+  _f="$(_record_file "${1}")"
+  _plain_file "${_f}" && [[ -O "${_f}" ]] || return 1
+  { IFS= read -r _p; IFS= read -r _id; } < <(timeout 10 head -c 1024 -- "${_f}" 2> /dev/null)
+  [[ "${_p}" == "${1}" && "${_id}" =~ ^[0-9]+:[0-9]+:[0-9]+$ ]] || return 1
+  printf '%s' "${_id}"
+}
+
+# Into build $1 of identity $2, by its folder above pinned and its own
+# identity: a folder moved in at the name is never entered. It changes the
+# shell's directory.
+_enter_build() {
+  local _d="${1}" _id="${2}"
+  [[ -n "${_id}" ]] || return 1
+  cd -P -- "${_d%/*}" 2> /dev/null && [[ "$(/bin/pwd -P)" == "${_d%/*}" ]] || return 1
+  # Never through a link put at the name: the folder entered is the one there.
+  cd -P -- "./${_d##*/}" 2> /dev/null && [[ "$(/bin/pwd -P)" == "${_d}" ]] || return 1
+  [[ "$(_folder_id .)" == "${_id}" ]]
+}
+
+# The identity of new folder $1, measured from inside it with its folder above
+# pinned, only while it is this login's own and empty; nothing otherwise.
+_new_build_id() {
+  local _l
+  (
+    cd -P -- "${1%/*}" 2> /dev/null && [[ "$(/bin/pwd -P)" == "${1%/*}" ]] || exit 1
+    cd -P -- "./${1##*/}" 2> /dev/null && [[ "$(/bin/pwd -P)" == "${1}" ]] || exit 1
+    [[ -O . && -r . && -w . && -x . ]] || exit 1
+    _l="$(ls -A . 2> /dev/null)" && [[ -z "${_l}" ]] || exit 1
+    _folder_id .
+  )
+}
+
+# Every folder of build $1 that this login owns gets group write, as a shell
+# session's umask gives the folders it makes: archives keep the modes they
+# carry, and the platform's Delete removes a kept build whole. Each verb does
+# it on its way out, whatever ended it, from inside the build: a folder the
+# login can neither read nor search is opened as find reaches it, so find
+# goes on into it, and the rest in batches, each by its own name.
+_open_tree() {
+  local _d="${1}" _id="${2}"
+  (
+    _enter_build "${_d}" "${_id}" || exit 0
+    find -P . -xdev -type d -user "$(id -u)" ! -perm -0500 -execdir chmod u+rwx,g+rwx -- {} \; 2> /dev/null
+    find -P . -xdev -type d -user "$(id -u)" ! -perm -0770 -execdir chmod u+rwx,g+rwx -- {} + 2> /dev/null
+  )
+  return 0
+}
+
+# The processes of this login in this program's process group but this
+# one, which are what a verb started; none listed when it cannot be read.
+# Called as $(...), it runs in a subshell of its own, left out too.
+_tree_pids() {
+  local _pg _p
+  _pg="$(ps -o pgid= -p "$$" 2> /dev/null | tr -d ' ')"
+  [[ "${_pg}" =~ ^[0-9]+$ ]] || return 0
+  for _p in $(pgrep -g "${_pg}" -u "$(id -u)" 2> /dev/null); do
+    [[ "${_p}" == "$$" || "${_p}" == "${BASHPID}" ]] || echo "${_p}"
+  done
+}
+
+# Of the pids in $1, those still there once the listing has ended: the
+# listing's own subshells are gone by then. Sets _LIVE, in this shell.
+_live_pids() {
+  local _p
+  _LIVE=""
+  for _p in ${1}; do
+    kill -0 "${_p}" 2> /dev/null && _LIVE="${_LIVE} ${_p}"
+  done
+}
+
+# What a verb started, stopped: TERM, a few seconds, then KILL to what is
+# left. Named one by one, so this program never signals itself.
+_stop_tree() {
+  local _n=0
+  _live_pids "$(_tree_pids)"
+  [[ -z "${_LIVE}" ]] && return 0
+  # shellcheck disable=SC2086
+  kill -TERM ${_LIVE} 2> /dev/null
+  while [[ "${_n}" -lt "${_STOP_GRACE}" ]]; do
+    sleep 1
+    _live_pids "$(_tree_pids)"
+    [[ -z "${_LIVE}" ]] && return 0
+    _n=$((_n + 1))
+  done
+  # shellcheck disable=SC2086
+  kill -KILL ${_LIVE} 2> /dev/null
+  return 0
+}
+
+# A signal is only noted here: a handler that works while read waits on its
+# timer can be cut short by it, and bash aborts. The loop below, and _main,
+# act on it.
+_SIG=""
+trap '_SIG=143' TERM
+trap '_SIG=129' HUP
+trap '_SIG=130' INT
+
+# Runs "$@" with its output passed on line by line, stopped with everything
+# it started when it runs past the step limit, stays silent past the silence
+# limit or a signal comes. Returns its status, 124 when a limit stopped it,
+# or the signal's status.
+# A stop message starts on a line of its own when a cut-off line was printed.
+_line_end() {
+  [[ -n "${_open}" ]] && printf '\n'
+  _open=""
+}
+
+_bounded() {
+  local _fd _pid _line _rc _deadline _last _open=""
+  _deadline=$((SECONDS + _STEP_LIMIT))
+  _last="${SECONDS}"
+  exec {_fd}< <("$@" 2>&1)
+  _pid=$!
+  while :; do
+    if [[ -n "${_SIG}" ]]; then
+      exec {_fd}<&-
+      _line_end
+      _msg "stopped by a signal, with everything it started"
+      _stop_tree
+      return "${_SIG}"
+    fi
+    _line=""
+    if IFS= read -r -t "${_POLL}" -u "${_fd}" _line; then
+      printf '%s\n' "${_line}"
+      _open=""
+      _last="${SECONDS}"
+    else
+      _rc=$?
+      if [[ "${_rc}" -le 128 ]]; then
+        [[ -n "${_line}" ]] && printf '%s\n' "${_line}"
+        break
+      fi
+      if [[ -n "${_line}" ]]; then
+        printf '%s' "${_line}"
+        _open=1
+        _last="${SECONDS}"
+      fi
+      # Ended, its output read: a helper it left may hold the pipe open.
+      kill -0 "${_pid}" 2> /dev/null || break
+    fi
+    if [[ "${SECONDS}" -ge "${_deadline}" ]]; then
+      exec {_fd}<&-
+      _line_end
+      _msg "it ran longer than $((_STEP_LIMIT / 60)) minutes, so it was stopped with everything it started"
+      _stop_tree
+      return 124
+    fi
+    if [[ $((SECONDS - _last)) -ge "${_SILENCE_LIMIT}" ]]; then
+      exec {_fd}<&-
+      _line_end
+      _msg "no output for ${_SILENCE_LIMIT} seconds, so it was stopped with everything it started"
+      _stop_tree
+      return 124
+    fi
+  done
+  exec {_fd}<&-
+  # Its output closed while it may still run: waited for within the limit,
+  # and stopped at it or at a signal.
+  while kill -0 "${_pid}" 2> /dev/null && [[ -z "${_SIG}" && "${SECONDS}" -lt "${_deadline}" ]]; do
+    sleep 1
+  done
+  if kill -0 "${_pid}" 2> /dev/null; then
+    _line_end
+    if [[ -n "${_SIG}" ]]; then
+      _msg "stopped by a signal, with everything it started"
+      _stop_tree
+      return "${_SIG}"
+    fi
+    _msg "it ran longer than $((_STEP_LIMIT / 60)) minutes, so it was stopped with everything it started"
+    _stop_tree
+    return 124
+  fi
+  wait "${_pid}"
+  _rc=$?
+  if [[ -n "${_SIG}" ]]; then
+    _line_end
+    _msg "stopped by a signal, with everything it started"
+    _stop_tree
+    return "${_SIG}"
+  fi
+  # Whatever it left running goes with it: a verb never outlives its tool.
+  _stop_tree
+  return "${_rc}"
+}
+
+# Composer through websh as the account's logins get it, in the build this
+# shell has entered by its identity: never by its name again, which the
+# backend user could have moved by now.
+_composer() {
+  local _line _w
+  [[ "$(readlink -f "${_SH}" 2> /dev/null)" == "$(readlink -f "${_WEBSH}" 2> /dev/null)" && -x "${_WEBSH}" ]] \
+    || _die "${_SH} is not websh, so Composer would not run on the account's own PHP"
+  _line="composer"
+  for _w in "$@"; do
+    _line="${_line} '${_w}'"
+  done
+  _bounded "${_SH}" -c "${_line}"
+}
+
+# The copy itself, from inside the new build: two archives through pipes, as
+# tar keeps them (a link as a link), then what is not the new platform's to
+# carry taken out.
+_copy_tree() {
+  local _src="${1}" _new="${2}" _id="${3}" _sites="${4}" _left _f _dr
+  shift 4
+  _enter_build "${_new}" "${_id}" || { echo "${_new} is not the folder this program made"; return 1; }
+  local _ex=(--exclude=./vendor "--exclude=./${_sites}")
+  for _f in "$@"; do
+    _ex+=("--exclude=./${_f}")
+  done
+  # The source archived from inside it, pinned: never through a link put at
+  # its name since it was checked.
+  ( cd -P -- "${_src}" 2> /dev/null && [[ "$(/bin/pwd -P)" == "${_src}" ]] && tar --anchored --no-wildcards "${_ex[@]}" -cf - . ) \
+    | tar -C . --no-same-owner --no-overwrite-dir -xf -
+  [[ "${PIPESTATUS[0]}" == "0" && "${PIPESTATUS[1]}" == "0" ]] || { echo "the copy of ${_src} failed"; return 1; }
+  # Every link and special file goes before anything is written through the
+  # copy, and sites/ is made in a docroot that is a plain folder.
+  find -P . -mindepth 1 ! -type d ! -type f -delete 2> /dev/null
+  if [[ ! -L "${_src}/${_sites}" && ! -L "${_src}/${_sites}/all" && -d "${_src}/${_sites}/all" ]]; then
+    _dr="."
+    [[ "${_sites}" == */* ]] && _dr="./${_sites%/*}"
+    [[ -d "${_dr}" && ! -L "${_dr}" ]] || { echo "the copy has no plain folder ${_new}/${_sites%/*}"; return 1; }
+    mkdir -- "./${_sites}" || return 1
+    ( cd -P -- "${_src}/${_sites}" 2> /dev/null && [[ "$(/bin/pwd -P)" == "${_src}/${_sites}" ]] && tar -cf - ./all ) \
+      | tar -C "./${_sites}" --no-same-owner -xf -
+    [[ "${PIPESTATUS[0]}" == "0" && "${PIPESTATUS[1]}" == "0" ]] || { echo "the copy of ${_src}/${_sites}/all failed"; return 1; }
+  fi
+  find -P . -mindepth 1 ! -type d ! -type f -delete 2> /dev/null
+  rm -f -- "./${_sites}/all/modules/boa_platform_control.ini"
+  rm -rf -- "./${_sites}/all/drush"
+  rm -f -- "./${_sites}/all/libraries/"*-fixed-*.pid
+  _left="$(find -P . -mindepth 1 ! -type d ! -type f -print -quit 2> /dev/null)"
+  # A name the login gave is printed quoted, never as a line of its own.
+  [[ -z "${_left}" ]] || { printf 'the copy holds %q, which could not be taken out\n' "${_new}/${_left#./}"; return 1; }
+  for _f in "./${_sites}/all/modules/boa_platform_control.ini" "./${_sites}/all/drush"; do
+    [[ -e "${_f}" || -L "${_f}" ]] && { echo "the copy holds ${_new}/${_f#./}, which could not be taken out"; return 1; }
+  done
+  return 0
+}
+
+_verb_copy() {
+  local _src="${1:-}" _new="${2:-}" _doc="${3:-}" _sites _f _rc _id
+  [[ "$#" -ge 3 ]] || _die "copy <source> <new> <docroot|-> [<folder>...]"
+  shift 3
+  [[ "$#" -le 4000 ]] || _die "too many folders to leave out"
+  _real_folder "${_src}" || _die "the project folder ${_src} is not a plain folder in ${_STATIC}"
+  _free_name "${_new}" || _die "${_new} is taken, or not a new name in a plain folder of ${_STATIC}"
+  [[ "${_new%/*}" == "${_src%/*}" && "${_new}" != "${_src}" ]] || _die "${_new} is not beside ${_src}"
+  if [[ "${_doc}" == "-" ]]; then
+    _sites="sites"
+  elif [[ "${_doc}" =~ ^${_NAME_RE}$ ]]; then
+    _real_folder "${_src}/${_doc}" || _die "the docroot ${_src}/${_doc} is not a plain folder"
+    _sites="${_doc}/sites"
+  else
+    _die "the docroot ${_doc} is no folder name"
+  fi
+  for _f in "$@"; do
+    [[ "${_f}" =~ ^${_NAME_RE}(/${_NAME_RE})*$ ]] || _die "the folder to leave out ${_f} is no folder inside the project"
+  done
+  _record_dir || _die "the record of this program's builds, ${_RECORDS:-?}, is not a folder of ${_LOGIN_NAME}'s own"
+  mkdir -m 0700 -- "${_new}" || _die "${_new} could not be made"
+  # Made closed and measured from inside: a folder moved in at the new name
+  # meanwhile is not this login's empty folder, and is never recorded.
+  _id="$(_new_build_id "${_new}")"
+  if [[ -z "${_id}" ]] || ! _record_add "${_new}" "${_id}"; then
+    rmdir -- "${_new}" 2> /dev/null
+    _die "${_new} could not be made and recorded as a build of its own"
+  fi
+  ( _enter_build "${_new}" "${_id}" && chmod u+rwx,g+rwx,o+rx . ) || _die "${_new} is not the folder this program made"
+  _msg "copying ${_src} to ${_new}"
+  _bounded _copy_tree "${_src}" "${_new}" "${_id}" "${_sites}" "$@"
+  _rc=$?
+  _open_tree "${_new}" "${_id}"
+  [[ "${_rc}" == "0" ]] && _info "copied to ${_new}"
+  return "${_rc}"
+}
+
+# A verb after the copy takes only a build the copy recorded, entered by its
+# identity; it works from inside it.
+_build_open() {
+  _real_folder "${1}" || _die "${1} is not a plain folder in ${_STATIC}"
+  _BUILD_ID="$(_record_id "${1}")" || _die "${1} is no build this program made"
+  _enter_build "${1}" "${_BUILD_ID}" || _die "${1} is not the folder this program made"
+}
+
+_verb_resolve() {
+  local _new="${1:-}" _w _names=0 _rc
+  [[ "$#" -ge 2 ]] || _die "resolve <new> <word>..."
+  shift
+  [[ "$#" -le 2000 ]] || _die "too many words"
+  _build_open "${_new}"
+  _project_files . || _die "${_new} holds no plain composer.json and composer.lock"
+  for _w in "$@"; do
+    if [[ "${_w}" =~ ^${_PKG_RE}$ ]]; then
+      _names=$((_names + 1))
+    elif [[ "${_w}" =~ ^--with=${_PKG_RE}:[~^][0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+      :
+    else
+      case "${_w}" in
+        --with-dependencies|--with-all-dependencies|--minimal-changes) ;;
+        *) _die "the word ${_w} is not one a build from the lock passes" ;;
+      esac
+    fi
+  done
+  [[ "${_names}" -gt 0 ]] || _die "no package to update was named"
+  # The advisory block alone, in this verb's own environment: it refuses a
+  # locked release that the update was not asked to move.
+  export COMPOSER_POLICY_ADVISORIES_BLOCK=0
+  export COMPOSER_NO_INTERACTION=1 COLUMNS=500
+  _composer update "$@" --no-install --no-scripts --no-plugins --no-audit --no-interaction --no-progress
+  _rc=$?
+  unset COMPOSER_POLICY_ADVISORIES_BLOCK
+  _open_tree "${_new}" "${_BUILD_ID}"
+  [[ "${_rc}" == "0" ]] && _info "resolved in ${_new}"
+  return "${_rc}"
+}
+
+_verb_install() {
+  local _new="${1:-}" _rc
+  [[ "$#" -eq 1 ]] || _die "install <new>"
+  _build_open "${_new}"
+  _project_files . || _die "${_new} holds no plain composer.json and composer.lock"
+  export COMPOSER_NO_INTERACTION=1 COLUMNS=500
+  _composer install --no-dev --no-interaction --no-progress --no-scripts
+  _rc=$?
+  _open_tree "${_new}" "${_BUILD_ID}"
+  [[ "${_rc}" == "0" ]] && _info "installed in ${_new}"
+  return "${_rc}"
+}
+
+# The removal itself, from inside the build entered by its identity: each
+# folder of the login's opened to it as find reaches it, then everything in
+# it, never past its own file system; then the emptied folder, from the
+# folder above pinned, which rmdir refuses when another stands at the name.
+_remove_tree() {
+  local _d="${1}" _id="${2}"
+  _enter_build "${_d}" "${_id}" || { echo "${_d} is not the folder this program made"; return 1; }
+  find -P . -xdev -type d -user "$(id -u)" ! -perm -0700 -execdir chmod u+rwx -- {} \; 2> /dev/null
+  find -P . -xdev -mindepth 1 -delete 2> /dev/null
+  cd -P -- "${_d%/*}" 2> /dev/null && [[ "$(/bin/pwd -P)" == "${_d%/*}" ]] || { echo "${_d%/*} is no longer the folder it was"; return 1; }
+  # The emptied build itself, never an empty folder moved in at its name.
+  [[ "$(_folder_id "./${_d##*/}")" == "${_id}" ]] || { echo "${_d} is no longer the folder this program made"; return 1; }
+  rmdir -- "./${_d##*/}"
+}
+
+# What a failed build left, removed as the login itself: only a build this
+# program's copy made, beside a marker that names this login, never through a
+# link. The backend user never walks a folder the login can rewrite. A large
+# tree is removed in silence, so only the step limit holds it.
+_verb_remove() {
+  local _new="${1:-}" _marker _rc _id _SILENCE_LIMIT="${_STEP_LIMIT}"
+  [[ "$#" -eq 1 ]] || _die "remove <new>"
+  _real_folder "${_new}" || _die "${_new} is not a plain folder in ${_STATIC}"
+  _id="$(_record_id "${_new}")" || _die "${_new} is no build this program made"
+  _marker="${_new%/*}/.${_new##*/}.unfinished-build"
+  _plain_file "${_marker}" || _die "no build marker stands beside ${_new}"
+  timeout 10 grep -qxF -- "login=${_LOGIN_NAME}" "${_marker}" 2> /dev/null \
+    || _die "the marker beside ${_new} names no build of ${_LOGIN_NAME}"
+  # Another folder at the name is refused before anything is touched, as
+  # resolve and install refuse it; the check inside the removal stays for a
+  # swap during it.
+  ( _enter_build "${_new}" "${_id}" ) || _die "${_new} is not the folder this program made"
+  _msg "removing what the failed build left at ${_new}"
+  _bounded _remove_tree "${_new}" "${_id}"
+  _rc=$?
+  if [[ "${_rc}" != "0" || -e "${_new}" || -L "${_new}" ]]; then
+    _msg "${_new} could not be removed whole"
+    [[ "${_rc}" == "0" ]] && _rc=1
+    return "${_rc}"
+  fi
+  rm -f -- "$(_record_file "${_new}")"
+  _info "removed ${_new}"
+  return 0
+}
+
+_main() {
+  local _verb="${1:-}" _rc
+  shift
+  _login_check
+  case "${_verb}" in
+    copy) _verb_copy "$@" ;;
+    resolve) _verb_resolve "$@" ;;
+    install) _verb_install "$@" ;;
+    remove) _verb_remove "$@" ;;
+    *) _die "the verbs are copy, resolve, install and remove" ;;
+  esac
+  _rc=$?
+  [[ -n "${_SIG}" ]] && return "${_SIG}"
+  case "${_rc}" in
+    0|124) return "${_rc}" ;;
+  esac
+  _msg "it ended with status ${_rc}"
+  return 1
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  _main "$@"
+  exit $?
+fi
